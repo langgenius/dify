@@ -2,11 +2,11 @@
 
 import type { AccessPointAppInfo } from '../shared/utils'
 import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
 import { getBuiltInAccessUrls } from '../shared/utils'

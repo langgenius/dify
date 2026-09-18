@@ -15,7 +15,7 @@ const { mockSetShowAnnotationFullModal, mockT, mockAddAnnotation } = vi.hoisted(
 
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { success: vi.fn() },
 }))
 
