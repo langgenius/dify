@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "Dit pakket heeft geen SKILL.md. Voeg het bestand toe en importeer het opnieuw.",
   "skillManagement.errors.nameConflict": "Er bestaat al een vaardigheid met de naam \"{{name}}\". Hernoem het in SKILL.md en importeer opnieuw.",
   "skillManagement.errors.workspaceLimit": "Uw werkruimte heeft de limiet van 500 vaardigheden bereikt. Verwijder een vaardigheid om een ​​nieuwe toe te voegen.",
-  "skillManagement.exportDialog.description": "Hiermee exporteer je het huidige opgeslagen concept van je vaardigheid. Sla eventuele niet-opgeslagen wijzigingen in de editor op voordat je exporteert.",
-  "skillManagement.exportDialog.title": "Huidige opgeslagen concept exporteren",
   "skillManagement.import": "Importeren",
   "skillManagement.importFailed": "Kan vaardigheid niet importeren.",
   "skillManagement.importSuccess": "Skill geïmporteerd.",
