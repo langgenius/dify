@@ -495,27 +495,31 @@ describe('SkillDetailPage metadata', () => {
     )
   })
 
-  it('exports the current skill from the sidebar More menu', async () => {
-    const user = userEvent.setup()
-    const archive = new Blob(['archive'], { type: 'application/zip' })
-    mocks.fetchSkillArchiveBlob.mockResolvedValue(archive)
-    renderSkillDetailPage()
+  it.each(['version-1', null])(
+    'exports the current skill with published version %s from the sidebar More menu',
+    async (publishedVersionId) => {
+      const user = userEvent.setup()
+      const archive = new Blob(['archive'], { type: 'application/zip' })
+      mocks.fetchSkillArchiveBlob.mockResolvedValue(archive)
+      mocks.skillDetail = createSkillDetail({ latest_published_version_id: publishedVersionId })
+      renderSkillDetailPage()
 
-    await user.click(
-      await screen.findByRole('button', {
-        name: 'skill.skillManagement.moreActions:{"name":"Untitled skill"}',
-      }),
-    )
-    await user.click(screen.getByRole('menuitem', { name: 'common.operation.export' }))
+      await user.click(
+        await screen.findByRole('button', {
+          name: 'skill.skillManagement.moreActions:{"name":"Untitled skill"}',
+        }),
+      )
+      await user.click(screen.getByRole('menuitem', { name: 'common.operation.export' }))
 
-    await waitFor(() => {
-      expect(mocks.fetchSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
-      expect(mocks.downloadBlob).toHaveBeenCalledWith({
-        data: archive,
-        fileName: 'github-actions-failure-debugging.zip',
+      await waitFor(() => {
+        expect(mocks.fetchSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
+        expect(mocks.downloadBlob).toHaveBeenCalledWith({
+          data: archive,
+          fileName: 'github-actions-failure-debugging.zip',
+        })
       })
-    })
-  })
+    },
+  )
 
   it('does not start inline rename on an ordinary detail visit', async () => {
     const { onUrlUpdate } = renderSkillDetailPage()
