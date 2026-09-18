@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import { useTranslation } from 'react-i18next'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import { changeLanguage } from '../client'
-import { getRouteNamespaces } from '../route-namespaces'
+import { getDeclaredRouteNamespaces, getRouteNamespaces } from '../route-namespaces'
 
 vi.unmock('react-i18next')
 const mocks = vi.hoisted(() => ({ pathname: '/signin', loadResource: vi.fn() }))
@@ -97,6 +97,9 @@ describe('route translation loading', () => {
       'common',
       'login',
     ])
+    expect(getDeclaredRouteNamespaces('/signin/check-code')).toEqual(['common', 'login'])
+    expect(getDeclaredRouteNamespaces('/signin-other')).toBeUndefined()
+    expect(getDeclaredRouteNamespaces('/datasets')).toBeUndefined()
     expect(getRouteNamespaces('/signin-other')).toContain('workflow')
     expect(getRouteNamespaces(null)).toContain('workflow')
   })
