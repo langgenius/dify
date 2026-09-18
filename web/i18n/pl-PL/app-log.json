@@ -91,6 +91,7 @@
   "table.header.updatedTime": "Czas aktualizacji",
   "table.header.user": "UŻYTKOWNIK KOŃCOWY LUB KONTO",
   "table.header.userRate": "Ocena użytkownika",
+  "table.unread": "Nieprzeczytane",
   "title": "Dzienniki",
   "triggerBy.appRun": "Aplikacja internetowa",
   "triggerBy.debugging": "Debugowanie",

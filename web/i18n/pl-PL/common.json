@@ -474,6 +474,7 @@
   "operation.fill": "Autouzupełnianie",
   "operation.format": "Format",
   "operation.imageCopied": "Skopiowany obraz",
+  "operation.imageCopyFailed": "Nie można skopiować obrazu. Zamiast tego pobierz go.",
   "operation.imageDownloaded": "Obraz pobrany",
   "operation.in": "w",
   "operation.learnMore": "Dowiedz się więcej",

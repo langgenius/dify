@@ -227,6 +227,8 @@
   "skillManagement.errors.missingSkillMd": "Ten pakiet nie zawiera SKILL.md. Dodaj plik i zaimportuj go ponownie.",
   "skillManagement.errors.nameConflict": "Umiejętność o nazwie „{{name}}” już istnieje. Zmień jego nazwę na SKILL.md i zaimportuj ponownie.",
   "skillManagement.errors.workspaceLimit": "Twój obszar roboczy osiągnął limit 500 umiejętności. Usuń umiejętność, aby dodać nową.",
+  "skillManagement.exportDialog.description": "Zostanie wyeksportowany aktualnie zapisany szkic umiejętności. Jeśli w edytorze są niezapisane zmiany, zapisz je przed eksportem.",
+  "skillManagement.exportDialog.title": "Eksportuj aktualnie zapisany szkic",
   "skillManagement.import": "Importuj",
   "skillManagement.importFailed": "Nie udało się zaimportować umiejętności.",
   "skillManagement.importSuccess": "Skill zaimportowano.",

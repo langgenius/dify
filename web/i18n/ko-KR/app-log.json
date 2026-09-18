@@ -91,6 +91,7 @@
   "table.header.updatedTime": "업데이트 시간",
   "table.header.user": "엔드 유저 또는 계정",
   "table.header.userRate": "사용자 비율",
+  "table.unread": "읽지 않음",
   "title": "로그",
   "triggerBy.appRun": "웹앱",
   "triggerBy.debugging": "디버깅",

@@ -45,6 +45,7 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.storage.storage_type import StorageType
+from fields.dataset_fields import build_dataset_detail_prefetch
 from models.account import Account, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
@@ -229,7 +230,7 @@ class TestDatasetList(_UsesSQLiteSession):
             "icon_url": None,
         }
 
-    def test_get_serializes_database_fields_with_caller_session(self, app: Flask, dataset_model_property_defaults):
+    def test_get_batch_loads_database_fields_with_caller_session(self, app: Flask, dataset_model_property_defaults):
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -239,11 +240,21 @@ class TestDatasetList(_UsesSQLiteSession):
             with (
                 patch.object(DatasetService, "get_datasets", return_value=([dataset], 1)),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
+                patch(
+                    "controllers.console.datasets.datasets.build_dataset_detail_prefetch",
+                    wraps=build_dataset_detail_prefetch,
+                ) as prefetch_mock,
             ):
-                method(api, session, "tenant-1", current_user)
+                resp, status = method(api, session, "tenant-1", current_user)
 
+        assert status == 200
+        prefetch_mock.assert_called_once_with([dataset], session=session)
+        # The page is served from that single batch load, so no field may fall back
+        # to a per-dataset query.
         for getter in dataset_model_property_defaults.values():
-            getter.assert_called_once_with(dataset, session=session)
+            getter.assert_not_called()
+        assert resp["data"][0]["document_count"] == 0
+        assert resp["data"][0]["tags"] == []
 
     def test_get_with_ids_filter(self, app: Flask):
         api = DatasetListApi()

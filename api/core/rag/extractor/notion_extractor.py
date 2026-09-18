@@ -358,7 +358,7 @@ class NotionExtractor(BaseExtractor):
         db.session.execute(
             update(DocumentModel)
             .where(DocumentModel.id == document_model.id)
-            .values(data_source_info=json.dumps(data_source_info))
+            .values({DocumentModel.data_source_info: json.dumps(data_source_info)})
         )
         db.session.commit()
 

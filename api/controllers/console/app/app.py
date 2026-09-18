@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Literal
 
+from flask import send_file
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, ValidationInfo, computed_field, field_validator, model_validator
 from sqlalchemy import select
@@ -47,10 +48,12 @@ from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
-from models.model import IconType
+from models.model import AppMode, IconType
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app_dsl_service import AppDslService
 from services.app_service import (
     AppListParams,
@@ -180,6 +183,9 @@ class CopyAppPayload(BaseModel):
 
 
 class AppExportQuery(BaseModel):
+    format: Literal["yaml", "ifpkg"] | None = Field(
+        default=None, description="Export format; defaults to ifpkg for Agent Apps and yaml for other Apps"
+    )
     include_secret: bool = Field(default=False, description="Include secrets in export")
     workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
 
@@ -1027,6 +1033,10 @@ class AppExportApi(Resource):
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
     @console_ns.doc(params=query_params_from_model(AppExportQuery))
+    @console_ns.doc(
+        produces=["application/json", "application/zip"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/zip"]},
+    )
     @console_ns.response(200, "App exported successfully", console_ns.models[AppExportResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -1041,6 +1051,23 @@ class AppExportApi(Resource):
     @model_validate(AppExportQuery)
     def get(self, req_data: AppExportQuery, app_model: App):
         """Export app"""
+
+        if req_data.format == "ifpkg" or (req_data.format is None and app_model.mode == AppMode.AGENT):
+            if app_model.mode != AppMode.AGENT:
+                raise BadRequest("The ifpkg format is only available for Agent Apps")
+            agent_id = app_model.bound_agent_id_with_session(session=db.session())
+            if agent_id is None:
+                raise NotFound("Agent not found")
+            exported = RosterAgentPackageExporter().export(tenant_id=app_model.tenant_id, agent_id=agent_id)
+            try:
+                archive_response = send_file(
+                    exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
+                )
+            except Exception:
+                exported.close()
+                raise
+            archive_response.call_on_close(exported.close)
+            return archive_response
 
         response = AppExportResponse(
             data=AppDslService.export_dsl(

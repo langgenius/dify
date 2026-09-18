@@ -115,7 +115,7 @@ class DatasourceManager:
         """
         get the datasource runtime
 
-        :param provider_type: the type of the provider
+        :param datasource_type: the type of the datasource
         :param provider_id: the id of the provider
         :param datasource_name: the name of the datasource
         :param tenant_id: the tenant id

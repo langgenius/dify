@@ -474,6 +474,7 @@
   "operation.fill": "Autocompletar",
   "operation.format": "Formato",
   "operation.imageCopied": "Imagen copiada",
+  "operation.imageCopyFailed": "No se pudo copiar la imagen. Descárgala en su lugar.",
   "operation.imageDownloaded": "Imagen descargada",
   "operation.in": "en",
   "operation.learnMore": "Aprender más",

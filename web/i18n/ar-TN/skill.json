@@ -227,6 +227,8 @@
   "skillManagement.errors.missingSkillMd": "لا تحتوي هذه الحزمة على SKILL.md. أضف الملف وقم باستيراده مرة أخرى.",
   "skillManagement.errors.nameConflict": "توجد بالفعل مهارة اسمها \"{{name}}\". أعد تسميته إلى SKILL.md وقم باستيراده مرة أخرى.",
   "skillManagement.errors.workspaceLimit": "وصلت مساحة العمل الخاصة بك إلى الحد الأقصى وهو 500 مهارة. احذف مهارة لإضافة مهارة جديدة.",
+  "skillManagement.exportDialog.description": "سيتم تصدير المسودة المحفوظة الحالية لمهارتك. إذا كانت لديك تغييرات غير محفوظة في المحرر، يُرجى حفظها قبل التصدير.",
+  "skillManagement.exportDialog.title": "تصدير المسودة المحفوظة الحالية",
   "skillManagement.import": "استيراد",
   "skillManagement.importFailed": "فشل استيراد المهارة.",
   "skillManagement.importSuccess": "Skill مستورد.",
