@@ -10,6 +10,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.human_input_v2.shared import AccountId
 from enums import DeploymentEdition
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import RedisClientWrapper
@@ -31,6 +32,7 @@ from models.account import (
     TenantStatus,
 )
 from models.enums import ProviderQuotaType
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services import account_errors
 from services.account_activation_service import AccountActivationRepository, InvitationTokenStore
 from services.account_email import normalize_email
@@ -324,7 +326,7 @@ class SQLAlchemyAccountRefreshPreparationGateway(AccountRefreshPreparationGatewa
 
 
 class SQLAlchemyConsoleAuthProvisioningGateway(AccountProvisioningGateway, WorkspaceProvisioningGateway):
-    """Persist the account/workspace aggregate and own its transaction boundary."""
+    """Persist the account, Contact identity, and workspace in one transaction."""
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -356,6 +358,8 @@ class SQLAlchemyConsoleAuthProvisioningGateway(AccountProvisioningGateway, Works
             if normalized_email_in_use is not None:
                 raise account_errors.AccountNormalizedEmailAlreadyInUseError
             session.add(account)
+            session.flush()
+            SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account.id))
             tenant = self._add_owner_workspace(session, account)
             self._bind_owner_rbac_role(tenant, account.id, session)
 

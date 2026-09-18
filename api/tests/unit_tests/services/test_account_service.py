@@ -19,7 +19,10 @@ from models.account import (
     TenantAccountRole,
     TenantStatus,
 )
+from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
 from models.model import DifySetup
+from repositories.human_input_v2.contact import ContactError, ContactErrorCode
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account_service import (
     AccountService,
     EnterpriseWorkspaceMemberAccountNotFoundError,
@@ -172,6 +175,34 @@ class TestAccountService:
             assert persisted_account.password_salt is not None
             assert persisted_account.timezone == "America/New_York"
             assert persisted_account.last_login_ip == "203.0.113.10"
+            contact = assertion_session.scalars(
+                select(HumanInputContactIdentity).where(HumanInputContactIdentity.account_id == account_id)
+            ).one()
+            assert contact.subject_type == ContactSubjectType.ACCOUNT
+
+    def test_create_account_does_not_commit_when_contact_creation_fails(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].is_registration_allowed.return_value = True
+        with patch.object(
+            SQLAlchemyContactRepository,
+            "provision_account_backed_contact",
+            side_effect=ContactError(ContactErrorCode.CONFLICT, "Contact creation failed"),
+        ):
+            with sqlite_session_factory() as service_session:
+                with pytest.raises(ContactError, match="Contact creation failed"):
+                    AccountService.create_account(
+                        email="test@example.com",
+                        name="Test User",
+                        interface_language="en-US",
+                        session=service_session,
+                    )
+
+        with sqlite_session_factory() as assertion_session:
+            assert assertion_session.scalar(select(Account)) is None
+            assert assertion_session.scalar(select(HumanInputContactIdentity)) is None
 
     def test_create_account_rejects_normalized_email_only_when_requested(
         self,
@@ -326,6 +357,10 @@ class TestAccountService:
             assert persisted_account.name == "Test User"
             assert persisted_account.interface_language == "zh-CN"
             assert persisted_account.interface_theme == "dark"
+            contact = assertion_session.scalars(
+                select(HumanInputContactIdentity).where(HumanInputContactIdentity.account_id == account_id)
+            ).one()
+            assert contact.subject_type == ContactSubjectType.ACCOUNT
             assert persisted_account.password is None
             assert persisted_account.password_salt is None
             assert persisted_account.timezone is not None
@@ -782,6 +817,8 @@ class TestTenantService:
             patch("services.account_service.tenant_was_created.send") as mock_tenant_was_created,
         ):
             with sqlite_session_factory() as service_session:
+                service_session.add(mock_account)
+                service_session.flush()
                 TenantService.create_owner_tenant_if_not_exist(mock_account, session=service_session)
                 tenant = service_session.scalar(select(Tenant).where(Tenant.name == "Test User's Workspace"))
                 assert tenant is not None
@@ -1279,7 +1316,7 @@ class TestTenantService:
 
         mock_tenant = Tenant(name="RBAC User's Workspace")
         mock_tenant.id = "tenant-rbac"
-        sqlite_session.add(mock_tenant)
+        sqlite_session.add_all([mock_account, mock_tenant])
         sqlite_session.flush()
 
         with (
@@ -1665,6 +1702,7 @@ class TestRegisterService:
         with sqlite_session_factory() as assertion_session:
             assert assertion_session.scalar(select(Account).where(Account.email == "admin@example.com")) is None
             assert assertion_session.scalar(select(DifySetup)) is None
+            assert assertion_session.scalar(select(HumanInputContactIdentity)) is None
 
     # ==================== Registration Tests ====================
 

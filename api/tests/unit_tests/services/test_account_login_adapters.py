@@ -13,6 +13,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
+from repositories.human_input_v2.contact import ContactError, ContactErrorCode
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services import account_errors
 from services import account_login_adapters as adapters
 from services.email_code_login_challenge import (
@@ -246,7 +249,7 @@ def test_turnstile_gateway_maps_provider_failures(
     assert (record.exc_info is not None) is has_exception_info
 
 
-def test_provisioning_gateway_persists_account_and_workspace_atomically(
+def test_provisioning_gateway_persists_account_contact_and_workspace_atomically(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -269,6 +272,62 @@ def test_provisioning_gateway_persists_account_and_workspace_atomically(
         assert account.normalized_email == "user@example.com"
         assert account.timezone == "UTC"
         assert membership is not None
+        contact = session.scalars(
+            select(HumanInputContactIdentity).where(HumanInputContactIdentity.account_id == account_id)
+        ).one()
+        assert contact.subject_type == ContactSubjectType.ACCOUNT
+
+
+def test_provisioning_gateway_rolls_back_when_contact_creation_fails(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gateway = adapters.SQLAlchemyConsoleAuthProvisioningGateway(session_factory=sqlite_session_factory)
+    monkeypatch.setattr(adapters, "generate_key_pair", lambda _tenant_id: "public-key")
+    monkeypatch.setattr(gateway, "_after_workspace_created", lambda _tenant, _account_id: None)
+    monkeypatch.setattr(
+        SQLAlchemyContactRepository,
+        "provision_account_backed_contact",
+        MagicMock(side_effect=ContactError(ContactErrorCode.CONFLICT, "Contact creation failed")),
+    )
+
+    with pytest.raises(ContactError, match="Contact creation failed"):
+        gateway.create_with_owner_workspace(
+            email="user@example.com",
+            name="User",
+            interface_language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+        )
+
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account)) is None
+        assert session.scalar(select(HumanInputContactIdentity)) is None
+        assert session.scalar(select(Tenant)) is None
+        assert session.scalar(select(TenantAccountJoin)) is None
+
+
+def test_provisioning_gateway_rolls_back_account_and_contact_when_workspace_creation_fails(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gateway = adapters.SQLAlchemyConsoleAuthProvisioningGateway(session_factory=sqlite_session_factory)
+    monkeypatch.setattr(adapters, "generate_key_pair", MagicMock(side_effect=ValueError("Key generation failed")))
+
+    with pytest.raises(ValueError, match="Key generation failed"):
+        gateway.create_with_owner_workspace(
+            email="user@example.com",
+            name="User",
+            interface_language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+        )
+
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account)) is None
+        assert session.scalar(select(HumanInputContactIdentity)) is None
+        assert session.scalar(select(Tenant)) is None
+        assert session.scalar(select(TenantAccountJoin)) is None
 
 
 def test_provisioning_gateway_rejects_equivalent_normalized_email(
