@@ -42,6 +42,42 @@ describe('Uploader', () => {
     expect(updateFile).toHaveBeenCalledWith(file)
   })
 
+  it.each(['picker', 'drop'])(
+    'rejects an unsupported file from %s and preserves the current state',
+    async (source) => {
+      const user = userEvent.setup({ applyAccept: false })
+      const file = new File(['app: demo'], 'demo.yml')
+      const { container } = render(
+        <ControlledUploader initialFile={source === 'drop' ? file : undefined} />,
+      )
+      const invalid = new File(['binary'], 'wrong.zip')
+      if (source === 'picker') await user.upload(getHiddenInput(), invalid)
+      else fireEvent.drop(getDropZone(container), { dataTransfer: { files: [invalid] } })
+      if (source === 'drop')
+        expect(screen.getByRole('group', { name: 'demo.yml' })).toBeInTheDocument()
+      else
+        expect(screen.getByRole('button', { name: 'app.dslUploader.browse' })).toBeInTheDocument()
+      expect(screen.queryByText('wrong.zip')).not.toBeInTheDocument()
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining('dslUploader.invalidFileType'),
+      )
+    },
+  )
+
+  it('honors the pipeline extension instead of treating every upload as an App package', () => {
+    const updateFile = vi.fn()
+    const { container } = render(
+      <Uploader file={undefined} updateFile={updateFile} accept=".pipeline" />,
+    )
+    fireEvent.drop(getDropZone(container), {
+      dataTransfer: { files: [new File(['PK'], 'agent.ifpkg')] },
+    })
+    expect(updateFile).not.toHaveBeenCalled()
+    const pipeline = new File(['pipeline'], 'knowledge.PIPELINE')
+    fireEvent.drop(getDropZone(container), { dataTransfer: { files: [pipeline] } })
+    expect(updateFile).toHaveBeenCalledWith(pipeline)
+  })
+
   it('should reject dropping multiple files', () => {
     const updateFile = vi.fn()
     const fileA = new File(['a'], 'a.yml', { type: 'text/yaml' })

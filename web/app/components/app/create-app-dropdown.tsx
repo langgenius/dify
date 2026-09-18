@@ -18,6 +18,8 @@ type CreateAppDropdownProps = {
   onCreateBlank?: () => void
   onCreateTemplate?: () => void
   onImportDSL?: () => void
+  importLabel?: string
+  importDescription?: string
   stepByStepTourControlledOpen?: boolean
   stepByStepTourTarget?: string
   stepByStepTourHighlightPart?: string
@@ -27,6 +29,8 @@ export function CreateAppDropdown({
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
+  importLabel,
+  importDescription,
   stepByStepTourControlledOpen,
   stepByStepTourTarget,
   stepByStepTourHighlightPart,
@@ -111,10 +115,10 @@ export function CreateAppDropdown({
               </span>
               <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-1">
                 <span className="system-md-regular text-text-secondary">
-                  {t(($) => $.importDSL, { ns: 'app' })}
+                  {importLabel ?? t(($) => $.importDSL, { ns: 'app' })}
                 </span>
                 <span className="system-xs-regular text-text-tertiary">
-                  {t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
+                  {importDescription ?? t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
                 </span>
               </span>
             </DropdownMenuItem>
