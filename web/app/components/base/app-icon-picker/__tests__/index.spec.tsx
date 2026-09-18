@@ -3,6 +3,7 @@ import type { Area } from 'react-easy-crop'
 import type { ImageFile } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { TransferMethod } from '@/types/app'
 import AppIconPicker from '../index'
 import 'vitest-canvas-mock'
@@ -109,10 +110,6 @@ vi.mock('../../image-uploader/hooks', () => ({
   },
 }))
 
-vi.mock('@/utils/emoji', () => ({
-  searchEmoji: vi.fn().mockResolvedValue(['grinning', 'sunglasses']),
-}))
-
 describe('AppIconPicker', () => {
   const originalCreateElement = document.createElement.bind(document)
   const originalCreateObjectURL = globalThis.URL.createObjectURL
@@ -205,11 +202,11 @@ describe('AppIconPicker', () => {
     it('should call onSelect with emoji data after emoji selection', async () => {
       const { onSelect } = renderPicker()
 
-      await waitFor(() => {
-        expect(document.querySelector('em-emoji')?.closest('button'))!.toBeInTheDocument()
+      await waitFor(async () => {
+        expect(await screen.findByRole('gridcell', { name: 'Grinning face' }))!.toBeInTheDocument()
       })
 
-      const firstEmoji = document.querySelector('em-emoji')?.closest('button')
+      const firstEmoji = await screen.findByRole('gridcell', { name: 'Grinning face' })
       if (!firstEmoji) throw new Error('Could not find emoji option')
 
       await userEvent.click(firstEmoji)
@@ -371,3 +368,5 @@ describe('AppIconPicker', () => {
     })
   })
 })
+
+mockEmojiData()
