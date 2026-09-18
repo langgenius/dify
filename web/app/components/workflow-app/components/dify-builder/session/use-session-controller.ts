@@ -643,17 +643,32 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
   )
 
   const startBuild = useCallback(
-    (appId: string, goalText: string, modelConfig?: SessionModel) =>
-      runCommand({
+    async (appId: string, goalText: string, modelConfig?: SessionModel, deriveAppName = false) => {
+      const started = await runCommand({
         startsSession: true,
         expectTerminalEvent: true,
-        openStream: (signal) => createBuildSession(appId, goalText, modelConfig, signal),
+        openStream: (signal) =>
+          createBuildSession(appId, goalText, modelConfig, signal, deriveAppName),
         trace: {
           kind: 'session_start',
-          payload: { scenario: 'build', app_id: appId, goal_text: goalText },
+          payload: {
+            scenario: 'build',
+            app_id: appId,
+            goal_text: goalText,
+            derive_app_name: deriveAppName,
+          },
         },
-      }),
-    [runCommand],
+      })
+      if (deriveAppName) {
+        await store.get(queryClientAtom).invalidateQueries({
+          queryKey: consoleQuery.apps.byAppId.get.queryKey({
+            input: { params: { app_id: appId } },
+          }),
+        })
+      }
+      return started
+    },
+    [runCommand, store],
   )
 
   const startEdit = useCallback(

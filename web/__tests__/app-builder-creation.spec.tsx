@@ -1,6 +1,7 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { CreateAppEntry } from '@/app/components/app/create-app-entry'
 import CreateAppModal from '@/app/components/app/create-app-modal'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -80,8 +81,11 @@ vi.mock(
 
 const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: mocks.updateUrl })
 
-function CreationFlow() {
+function CreationFlow({ legacy = false }: { legacy?: boolean }) {
   const [created, setCreated] = useState(false)
+  useEffect(() => {
+    mocks.push.mockImplementation(() => setCreated(true))
+  }, [])
   return (
     <NuqsWrapper>
       {created ? (
@@ -99,11 +103,19 @@ function CreationFlow() {
           <h1>New app editor</h1>
           <DifyBuilderComposer />
         </DifyBuilderProvider>
-      ) : (
+      ) : legacy ? (
         <CreateAppModal show onClose={() => setCreated(true)} />
+      ) : (
+        <CreateAppEntry />
       )}
     </NuqsWrapper>
   )
+}
+
+async function openStarter(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+  await user.click(screen.getByRole('menuitem', { name: 'app.types.advanced' }))
+  await screen.findByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' })
 }
 
 describe('App Builder creation flow', () => {
@@ -121,7 +133,7 @@ describe('App Builder creation flow', () => {
 
   it('hands the submitted prompt from the creation dialog to the new app and opens its Builder panel', async () => {
     const user = userEvent.setup()
-    renderWithConsoleQuery(<CreationFlow />, {
+    renderWithConsoleQuery(<CreationFlow legacy />, {
       accountProfile: { id: 'user-1' },
       features: { dify_builder_enabled: true },
       workspacePermissionKeys: ['app.create_and_management'],
@@ -161,8 +173,9 @@ describe('App Builder creation flow', () => {
       workspacePermissionKeys: ['app.create_and_management'],
       queryClient,
     })
+    await openStarter(user)
     await user.type(
-      screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }),
+      screen.getByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' }),
       'Build an expense assistant',
     )
     await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
@@ -195,6 +208,7 @@ describe('App Builder creation flow', () => {
         'created-app',
         'Build an expense assistant',
         builderModel,
+        true,
       ),
     )
     expect(mocks.createApp).toHaveBeenCalledOnce()
@@ -208,8 +222,9 @@ describe('App Builder creation flow', () => {
       workspacePermissionKeys: ['app.create_and_management', 'plugin.model_config'],
       queryClient,
     })
+    await openStarter(user)
     await user.type(
-      screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }),
+      screen.getByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' }),
       'Build an expense assistant',
     )
     await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
@@ -239,6 +254,7 @@ describe('App Builder creation flow', () => {
         'created-app',
         'Build an expense assistant with approval steps',
         builderModel,
+        true,
       ),
     )
     expect(mocks.createApp).toHaveBeenCalledOnce()
@@ -251,8 +267,9 @@ describe('App Builder creation flow', () => {
       workspacePermissionKeys: ['app.create_and_management'],
       queryClient: createBuilderQueryClient({ defaultModel: null, models: [] }),
     })
+    await openStarter(user)
     await user.type(
-      screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }),
+      screen.getByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' }),
       'Build an expense assistant',
     )
     await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
@@ -275,8 +292,9 @@ describe('App Builder creation flow', () => {
       workspacePermissionKeys: ['app.create_and_management'],
       queryClient: createBuilderQueryClient({ defaultLoading: true }),
     })
+    await openStarter(user)
     await user.type(
-      screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }),
+      screen.getByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' }),
       'Build an expense assistant',
     )
     await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
@@ -299,6 +317,7 @@ describe('App Builder creation flow', () => {
         'created-app',
         'Build an expense assistant',
         builderModel,
+        true,
       ),
     )
     expect(mocks.createApp).toHaveBeenCalledOnce()
@@ -312,8 +331,9 @@ describe('App Builder creation flow', () => {
       workspacePermissionKeys: ['app.create_and_management'],
       queryClient,
     })
+    await openStarter(user)
     await user.type(
-      screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }),
+      screen.getByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' }),
       'Build an expense assistant',
     )
     await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
@@ -327,6 +347,7 @@ describe('App Builder creation flow', () => {
         'created-app',
         'Build an expense assistant',
         builderModel,
+        true,
       ),
     )
     expect(mocks.startBuild).toHaveBeenCalledOnce()
