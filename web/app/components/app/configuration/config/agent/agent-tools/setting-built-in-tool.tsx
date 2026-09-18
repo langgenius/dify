@@ -17,6 +17,7 @@ import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
@@ -27,8 +28,7 @@ import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { useLocale } from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { getPluginLanguage } from '@/i18n-config/metadata'
 import {
   fetchBuiltInToolList,
   fetchCustomToolList,
@@ -66,7 +66,7 @@ const SettingBuiltInTool: FC<Props> = ({
   onAuthorizationItemClick,
 }) => {
   const locale = useLocale()
-  const language = getLanguage(locale)
+  const language = getPluginLanguage(locale)
   const { t } = useTranslation()
   const passedTools = (collection as ToolWithProvider).tools
   const hasPassedTools = passedTools?.length > 0

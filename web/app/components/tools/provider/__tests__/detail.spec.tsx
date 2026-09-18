@@ -48,8 +48,9 @@ const render = (ui: ReactElement) => {
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
-vi.mock('@/i18n-config/language', () => ({
-  getLanguage: () => 'en_US',
+vi.mock('@/i18n-config/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n-config/metadata')>()),
+  getPluginLanguage: () => 'en_US',
 }))
 
 const mockConsoleState = vi.hoisted(() => ({

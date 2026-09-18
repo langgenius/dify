@@ -1,23 +1,13 @@
+import type { Locale } from './locale'
 import type { DocLanguage } from '@/types/doc-paths'
 import data from './languages'
+import { supportedLocales } from './locale'
 
 export type I18nText = Record<(typeof LanguagesSupported)[number], string>
 
 export const languages = data.languages
 
-// for compatibility
-export type Locale = 'ja_JP' | 'zh_Hans' | 'en_US' | (typeof languages)[number]['value']
-
-export const LanguagesSupported: Locale[] = languages
-  .filter((item) => item.supported)
-  .map((item) => item.value)
-
-export const getLanguage = (locale: Locale): Locale => {
-  // Plugin metadata supports only en_US, zh_Hans, ja_JP, and pt_BR; otherwise use en_US.
-  if (['zh-Hans', 'ja-JP', 'pt-BR'].includes(locale)) return locale.replace('-', '_') as Locale
-
-  return LanguagesSupported[0]!.replace('-', '_') as Locale
-}
+export const LanguagesSupported: Locale[] = supportedLocales
 
 const DOC_LANGUAGE: Record<string, DocLanguage | undefined> = {
   'zh-Hans': 'zh',
@@ -33,7 +23,7 @@ const ACCESS_CONTROL_TEMPLATE_LANGUAGE: Record<string, AccessControlTemplateLang
   'en-US': 'en',
 }
 
-export const localeMap: Record<Locale, string> = {
+export const localeMap: Record<Locale | 'en_US' | 'zh_Hans' | 'ja_JP', string> = {
   'en-US': 'en',
   en_US: 'en',
   'zh-Hans': 'zh-cn',

@@ -846,6 +846,10 @@ vi.mock('@/context/permission-state', async () => {
 
 vi.mock('@/context/i18n', () => ({
   getEnterpriseDocUrl: mockGetEnterpriseDocUrl,
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 
