@@ -523,7 +523,7 @@ describe('useFormState', () => {
     })
 
     it('should block saving when enabled without an extraction model', async () => {
-      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { toast } = await import('@/app/notifications')
       const { updateDatasetSetting } = await import('@/service/datasets')
       const { result } = renderHook(() => useFormState())
 
