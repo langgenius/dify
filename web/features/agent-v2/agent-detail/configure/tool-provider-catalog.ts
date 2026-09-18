@@ -5,7 +5,6 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
-import { getProviderReference } from '@/app/components/tools/utils/provider-reference'
 import { useGetLanguage } from '@/context/i18n'
 import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
 import {
@@ -14,6 +13,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { getProviderReference } from '@/utils/provider-reference'
 
 type AgentToolPresentationProvider = Pick<
   AgentProviderTool,

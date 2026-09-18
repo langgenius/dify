@@ -4,7 +4,7 @@ import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { CommonNodeType, ToolWithProvider } from '../types'
 import { CollectionType } from '@/app/components/tools/types'
-import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { BlockEnum } from '../types'
 
 export function matchToolInCollection(

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { CollectionType } from '../../types'
+import { CollectionType } from '@/app/components/tools/types'
 import { getProviderReference, matchesProviderReference } from '../provider-reference'
 
 const mcpProvider = {

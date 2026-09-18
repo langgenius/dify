@@ -1,6 +1,6 @@
-import type { Collection } from '../types'
-import { canFindTool } from '@/utils'
-import { CollectionType } from '../types'
+import type { Collection } from '@/app/components/tools/types'
+import { CollectionType } from '@/app/components/tools/types'
+import { canFindTool } from './index'
 
 type ProviderLike = Pick<Collection, 'id' | 'type'> & { server_identifier?: string }
 

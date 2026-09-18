@@ -16,7 +16,6 @@ import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
-import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import {
   ANNOTATION_DEFAULT,
@@ -32,6 +31,7 @@ import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
 import { AgentStrategy, ModelModeType, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { basePath } from '@/utils/var'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../../header/account-setting/model-provider-page/hooks'
 

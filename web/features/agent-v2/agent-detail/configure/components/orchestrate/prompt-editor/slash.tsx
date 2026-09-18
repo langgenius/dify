@@ -21,10 +21,6 @@ import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
-import {
-  getProviderReference,
-  matchesProviderReference,
-} from '@/app/components/tools/utils/provider-reference'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -36,6 +32,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { getProviderReference, matchesProviderReference } from '@/utils/provider-reference'
 import { useAgentPromptToolIconResolver } from './hooks'
 
 export type SlashMenuView = 'main' | 'skills' | 'files' | 'tools' | 'knowledge'

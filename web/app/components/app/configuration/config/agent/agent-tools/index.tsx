@@ -24,7 +24,6 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import { Infotip } from '@/app/components/base/infotip'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
-import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import {
   addDefaultValue,
   toolParametersToFormSchemas,
@@ -39,6 +38,7 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { writeTextToClipboard } from '@/utils/clipboard'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
 import SettingBuiltInTool from './setting-built-in-tool'
 

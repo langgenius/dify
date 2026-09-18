@@ -6,7 +6,6 @@ import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -14,6 +13,7 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { matchesProviderReference } from '@/utils/provider-reference'
 
 type Status = 'not-installed' | 'not-authorized' | undefined
 

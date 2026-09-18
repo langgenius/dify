@@ -14,7 +14,6 @@ import {
   ModelFeatureEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -24,6 +23,7 @@ import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../types'
 

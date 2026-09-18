@@ -6,7 +6,6 @@ import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/ty
 import { useCallback, useMemo, useState } from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import {
   generateFormValue,
   getPlainValue,
@@ -22,6 +21,7 @@ import {
   useInvalidateAllBuiltInTools,
 } from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { usePluginInstalledCheck } from './use-plugin-installed-check'
 
 export type TabType = 'settings' | 'params'

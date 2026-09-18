@@ -6,7 +6,6 @@ import type { Emoji } from '@/app/components/tools/types'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useNodes } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
-import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { registerWorkflowNodeSearch } from '@/app/components/workflow/goto-anything-search'
 import {
@@ -15,6 +14,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { BlockEnum } from '../types'
 import { setupNodeSelectionListener } from '../utils/node-navigation'
 import { useNodesInteractions } from './use-nodes-interactions'

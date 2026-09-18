@@ -3,12 +3,12 @@ import type { Collection } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs, ModelConfig } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, UserInputFormItem } from '@/types/app'
-import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import { DEFAULT_AGENT_SETTING } from '@/config'
 import { PromptMode } from '@/models/debug'
 import { AgentStrategy, AppModeEnum } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { normalizeChatPromptConfig, normalizeCompletionPromptConfig } from './prompt-config'
 
 type BackendAgentTool = ModelConfig['agentConfig']['tools'][number] & {

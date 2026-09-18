@@ -10,7 +10,6 @@ import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
@@ -18,6 +17,7 @@ import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
 
 type DebugWithSingleModelProps = {

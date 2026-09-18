@@ -13,12 +13,9 @@ import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/co
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { getProviderReference, matchesProviderReference } from '@/utils/provider-reference'
 import { basePath } from '@/utils/var'
 import { CollectionType } from '../../../tools/types'
-import {
-  getProviderReference,
-  matchesProviderReference,
-} from '../../../tools/utils/provider-reference'
 import BlockIcon from '../../block-icon'
 import McpToolNotSupportTooltip from '../../nodes/_base/components/mcp-tool-not-support-tooltip'
 import { BlockEnum } from '../../types'
