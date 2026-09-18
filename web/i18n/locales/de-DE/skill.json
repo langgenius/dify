@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "Dieses Paket enthält kein SKILL.md. Fügen Sie die Datei hinzu und importieren Sie sie erneut.",
   "skillManagement.errors.nameConflict": "Ein Skill mit dem Namen „{{name}}“ ist bereits vorhanden. Benennen Sie es in SKILL.md um und importieren Sie es erneut.",
   "skillManagement.errors.workspaceLimit": "Ihr Arbeitsbereich hat die Grenze von 500 Fertigkeiten erreicht. Löschen Sie eine Fertigkeit, um eine neue hinzuzufügen.",
-  "skillManagement.exportDialog.description": "Dadurch wird der aktuell gespeicherte Entwurf Ihres Skills exportiert. Speichern Sie nicht gespeicherte Änderungen im Editor vor dem Export.",
-  "skillManagement.exportDialog.title": "Aktuell gespeicherten Entwurf exportieren",
   "skillManagement.import": "Importieren",
   "skillManagement.importFailed": "Der Skill konnte nicht importiert werden.",
   "skillManagement.importSuccess": "Skill importiert.",
