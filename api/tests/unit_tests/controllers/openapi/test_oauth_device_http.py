@@ -1,5 +1,6 @@
 """Device-flow HTTP contracts with application services isolated at their public boundary."""
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from http.cookies import SimpleCookie
 from types import SimpleNamespace
@@ -8,7 +9,6 @@ from unittest.mock import Mock, create_autospec
 import pytest
 from flask import Flask
 
-from configs import dify_config
 from controllers.console import flask_admission, wraps
 from libs.helper import RateLimiter
 from libs.login import AccountWithTenant
@@ -51,7 +51,7 @@ _COOKIE = "device_approval_grant"
 
 
 @pytest.fixture
-def device_service(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> Mock:
+def device_service(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]) -> Mock:
     service = create_autospec(OAuthDeviceApplicationService, instance=True)
     openapi_app.extensions["application_services"] = SimpleNamespace(
         oauth_device=service,
@@ -61,10 +61,12 @@ def device_service(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> Mock:
     account = Account(name="Ada", email="ada@example.com", status=AccountStatus.ACTIVE)
     account.id = "account-1"
     account_with_tenant = AccountWithTenant(account, "workspace-1")
-    monkeypatch.setattr(dify_config, "LOGIN_DISABLED", True)
-    monkeypatch.setattr(dify_config, "ENABLE_OAUTH_BEARER", True)
-    monkeypatch.setattr(dify_config, "CONSOLE_API_URL", "https://api.example")
-    monkeypatch.setattr(dify_config, "CONSOLE_WEB_URL", "https://console.example")
+    config_overrides(
+        LOGIN_DISABLED=True,
+        ENABLE_OAUTH_BEARER=True,
+        CONSOLE_API_URL="https://api.example",
+        CONSOLE_WEB_URL="https://console.example",
+    )
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
     monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: account_with_tenant)
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: account_with_tenant)
@@ -153,7 +155,13 @@ def test_lookup_returns_public_validity_without_token_data(openapi_app: Flask, d
 def test_device_errors_keep_oauth_response_contract(
     openapi_app: Flask, device_service: Mock, path: str, method: str, error: OAuthDeviceError, status: int, code: str
 ) -> None:
-    getattr(device_service, method).side_effect = error
+    methods = {
+        "start": device_service.start,
+        "poll": device_service.poll,
+        "approve": device_service.approve,
+        "deny": device_service.deny,
+    }
+    methods[method].side_effect = error
 
     response = openapi_app.test_client().post(
         f"{_PREFIX}/{path}",
@@ -194,7 +202,7 @@ def test_poll_serializes_subject_specific_token_payload(
 
 @pytest.mark.parametrize("path", ["approve", "deny"])
 def test_account_decision_uses_admitted_identity(openapi_app: Flask, device_service: Mock, path: str) -> None:
-    method = getattr(device_service, path)
+    method = device_service.approve if path == "approve" else device_service.deny
     method.return_value = DeviceMutation(status="approved" if path == "approve" else "denied")
 
     response = openapi_app.test_client().post(
@@ -214,9 +222,9 @@ def test_account_decision_uses_admitted_identity(openapi_app: Flask, device_serv
 
 @pytest.mark.parametrize("path", ["approve", "deny"])
 def test_disabled_bearer_feature_blocks_account_decisions(
-    openapi_app: Flask, device_service: Mock, monkeypatch: pytest.MonkeyPatch, path: str
+    openapi_app: Flask, device_service: Mock, config_overrides: Callable[..., None], path: str
 ) -> None:
-    monkeypatch.setattr(dify_config, "ENABLE_OAUTH_BEARER", False)
+    config_overrides(ENABLE_OAUTH_BEARER=False)
 
     response = openapi_app.test_client().post(f"{_PREFIX}/{path}", json={"user_code": "ABCD-EFGH"})
 
@@ -356,7 +364,12 @@ def test_external_approval_uses_cookie_and_csrf_header_then_clears_cookie(
 def test_sso_errors_preserve_http_status_and_approval_cookie(
     openapi_app: Flask, device_service: Mock, path: str, method: str, error: OAuthDeviceError, status: int, message: str
 ) -> None:
-    getattr(device_service, method).side_effect = error
+    methods = {
+        "initiate_sso": device_service.initiate_sso,
+        "get_approval_context": device_service.get_approval_context,
+        "approve_external": device_service.approve_external,
+    }
+    methods[method].side_effect = error
     client = openapi_app.test_client()
     client.set_cookie(_COOKIE, "signed-grant", path=_PREFIX)
     if path == "approve-external":
