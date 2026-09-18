@@ -1,4 +1,3 @@
-import json
 from collections.abc import Callable
 from types import SimpleNamespace
 from typing import cast
@@ -9,11 +8,13 @@ import yaml
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
-from models import Account, App, AppMode, Tenant
+from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
+from services.agent.dsl_entities import AgentPackage
 from services.app_dsl_service import AppDslService, Import, PendingData
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportStatus
@@ -21,6 +22,7 @@ from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 from services.system_feature_service import SystemFeatureService
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
 
 _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -58,12 +60,12 @@ def _persist_overwrite_target(session: Session, *, maintainer: str = _OTHER_ACCO
 
 
 def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
-    account = Account(name="DSL author", email=f"{account_id}@example.com")
-    account.id = account_id
-    tenant = Tenant(name="DSL workspace")
-    tenant.id = tenant_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name="DSL author",
+        email=f"{account_id}@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="DSL workspace"),
+    )
 
 
 def _app(
@@ -73,38 +75,20 @@ def _app(
     mode: AppMode = AppMode.CHAT,
     app_model_config_id: str | None = None,
 ) -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         app_model_config_id=app_model_config_id,
         name="Existing app",
-        description="",
         mode=mode,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
         max_active_requests=0,
-        use_icon_as_answer_icon=False,
     )
 
 
 def _workflow(
     *, graph: dict[str, object], environment_variables: list[LLMEnvironmentVariable] | None = None
 ) -> Workflow:
-    workflow = Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=WorkflowType.WORKFLOW,
-        version="draft",
-        graph=json.dumps(graph),
-        _features="{}",
-        created_by="account-1",
-    )
-    workflow.environment_variables = environment_variables or []
-    return workflow
+    return make_workflow(workflow_id="workflow-1", graph=graph, environment_variables=environment_variables or [])
 
 
 @pytest.mark.parametrize("status", [ImportStatus.FAILED, ImportStatus.PENDING])
@@ -795,3 +779,56 @@ def test_append_workflow_export_data_reports_missing_selected_workflow(
             session=unbound_session,
             workflow_id=workflow_id,
         )
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [AppMode.AGENT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION],
+)
+def test_export_dsl_preserves_envelope_and_mode_specific_content(
+    mode: AppMode, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    app = _app(mode=mode)
+    package = AgentPackage.model_validate({"metadata": {"name": app.name}, "soul": {}})
+    monkeypatch.setattr(
+        "services.app_dsl_service.AgentDslService.export_agent_app",
+        Mock(return_value=("agent_1", {"agent_1": package})),
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", Mock(return_value=[])
+    )
+
+    def append_workflow(*, export_data: dict[str, object], **_kwargs: object) -> None:
+        export_data["workflow"] = {"fixture": "workflow"}
+
+    def append_model(export_data: dict[str, object], *_args: object, **_kwargs: object) -> None:
+        export_data["model_config"] = {"fixture": "model"}
+
+    monkeypatch.setattr(AppDslService, "_append_workflow_export_data", Mock(side_effect=append_workflow))
+    monkeypatch.setattr(AppDslService, "_append_model_config_export_data", Mock(side_effect=append_model))
+    data = yaml.safe_load(AppDslService.export_dsl(app, session=unbound_session))
+    assert data["version"] == CURRENT_APP_DSL_VERSION
+    assert data["kind"] == "app"
+    assert data["app"] == {
+        "name": "Existing app",
+        "description": "",
+        "mode": mode.value,
+        "icon_type": "emoji",
+        "icon": "robot",
+        "icon_background": "#FFFFFF",
+        "use_icon_as_answer_icon": False,
+    }
+    if mode == AppMode.AGENT:
+        assert data["agent"] == {"package_ref": "agent_1"}
+        assert AgentPackage.model_validate(data["agent_packages"]["agent_1"]) == package
+        assert data["dependencies"] == []
+        assert "workflow" not in data
+        assert "model_config" not in data
+    elif mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+        assert data["workflow"] == {"fixture": "workflow"}
+        assert "agent" not in data
+        assert "model_config" not in data
+    else:
+        assert data["model_config"] == {"fixture": "model"}
+        assert "agent" not in data
+        assert "workflow" not in data

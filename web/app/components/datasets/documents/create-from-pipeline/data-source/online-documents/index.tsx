@@ -5,7 +5,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
 import {
   settingsQueryParamName,
@@ -181,7 +181,7 @@ const OnlineDocuments = ({
             />
           ) : (
             <div className="flex h-74 items-center justify-center">
-              <Loading type="app" />
+              <LoadingPlaceholder className="h-full" />
             </div>
           )}
         </div>

@@ -96,67 +96,6 @@ class DatasetBindingItem(TypedDict):
     name: str
 
 
-class ExternalKnowledgeApiDict(TypedDict):
-    id: str
-    tenant_id: str
-    name: str
-    description: str
-    settings: dict[str, Any] | None
-    dataset_bindings: list[DatasetBindingItem]
-    created_by: str
-    created_at: str
-
-
-class DocumentDict(TypedDict):
-    id: str
-    tenant_id: str
-    dataset_id: str
-    position: int
-    data_source_type: str
-    data_source_info: str | None
-    dataset_process_rule_id: str | None
-    batch: str
-    name: str
-    created_from: str
-    created_by: str
-    created_api_request_id: str | None
-    created_at: datetime
-    processing_started_at: datetime | None
-    file_id: str | None
-    word_count: int | None
-    parsing_completed_at: datetime | None
-    cleaning_completed_at: datetime | None
-    splitting_completed_at: datetime | None
-    tokens: int | None
-    indexing_latency: float | None
-    completed_at: datetime | None
-    is_paused: bool | None
-    paused_by: str | None
-    paused_at: datetime | None
-    error: str | None
-    stopped_at: datetime | None
-    indexing_status: str
-    enabled: bool
-    disabled_at: datetime | None
-    disabled_by: str | None
-    archived: bool
-    archived_reason: str | None
-    archived_by: str | None
-    archived_at: datetime | None
-    updated_at: datetime
-    doc_type: str | None
-    doc_metadata: Any
-    doc_form: IndexStructureType
-    doc_language: str | None
-    display_status: str | None
-    data_source_info_dict: dict[str, Any]
-    average_segment_length: int
-    dataset_process_rule: ProcessRuleDict | None
-    dataset: None
-    segment_count: int | None
-    hit_count: int | None
-
-
 from models.enums import PermissionEnum
 
 # Backward-compatible alias — new code should import PermissionEnum from models.enums
@@ -627,16 +566,6 @@ class Document(Base):
                 return result
         return {}
 
-    @property
-    def average_segment_length(self):
-        if self.word_count and self.word_count != 0 and self.segment_count and self.segment_count != 0:
-            return self.word_count // self.segment_count
-        return 0
-
-    @property
-    def dataset_process_rule(self):
-        return self.get_dataset_process_rule(session=db.session())
-
     def get_dataset_process_rule(self, *, session: Session) -> "DatasetProcessRule | None":
         if self.dataset_process_rule_id:
             return session.get(DatasetProcessRule, self.dataset_process_rule_id)
@@ -646,16 +575,8 @@ class Document(Base):
         """Load the owning dataset with the caller-owned database session."""
         return session.get(Dataset, self.dataset_id)
 
-    @property
-    def segment_count(self):
-        return self.get_segment_count(session=db.session())
-
     def get_segment_count(self, *, session: Session) -> int:
         return session.scalar(select(func.count(DocumentSegment.id)).where(DocumentSegment.document_id == self.id)) or 0
-
-    @property
-    def hit_count(self):
-        return self.get_hit_count(session=db.session())
 
     def get_hit_count(self, *, session: Session) -> int:
         return (
@@ -707,12 +628,6 @@ class Document(Base):
             return metadata_list
         return None
 
-    @property
-    def process_rule_dict(self) -> ProcessRuleDict | None:
-        if self.dataset_process_rule_id and self.dataset_process_rule:
-            return self.dataset_process_rule.to_dict()
-        return None
-
     def get_built_in_fields(self, *, session: Session) -> list[DocMetadataDetailItem]:
         built_in_fields: list[DocMetadataDetailItem] = []
         built_in_fields.append(
@@ -756,58 +671,6 @@ class Document(Base):
             }
         )
         return built_in_fields
-
-    def to_dict(self) -> DocumentDict:
-        result: DocumentDict = {
-            "id": self.id,
-            "tenant_id": self.tenant_id,
-            "dataset_id": self.dataset_id,
-            "position": self.position,
-            "data_source_type": self.data_source_type,
-            "data_source_info": self.data_source_info,
-            "dataset_process_rule_id": self.dataset_process_rule_id,
-            "batch": self.batch,
-            "name": self.name,
-            "created_from": self.created_from,
-            "created_by": self.created_by,
-            "created_api_request_id": self.created_api_request_id,
-            "created_at": self.created_at,
-            "processing_started_at": self.processing_started_at,
-            "file_id": self.file_id,
-            "word_count": self.word_count,
-            "parsing_completed_at": self.parsing_completed_at,
-            "cleaning_completed_at": self.cleaning_completed_at,
-            "splitting_completed_at": self.splitting_completed_at,
-            "tokens": self.tokens,
-            "indexing_latency": self.indexing_latency,
-            "completed_at": self.completed_at,
-            "is_paused": self.is_paused,
-            "paused_by": self.paused_by,
-            "paused_at": self.paused_at,
-            "error": self.error,
-            "stopped_at": self.stopped_at,
-            "indexing_status": self.indexing_status,
-            "enabled": self.enabled,
-            "disabled_at": self.disabled_at,
-            "disabled_by": self.disabled_by,
-            "archived": self.archived,
-            "archived_reason": self.archived_reason,
-            "archived_by": self.archived_by,
-            "archived_at": self.archived_at,
-            "updated_at": self.updated_at,
-            "doc_type": self.doc_type,
-            "doc_metadata": self.doc_metadata,
-            "doc_form": self.doc_form,
-            "doc_language": self.doc_language,
-            "display_status": self.display_status,
-            "data_source_info_dict": self.data_source_info_dict,
-            "average_segment_length": self.average_segment_length,
-            "dataset_process_rule": self.dataset_process_rule.to_dict() if self.dataset_process_rule else None,
-            "dataset": None,
-            "segment_count": self.segment_count,
-            "hit_count": self.hit_count,
-        }
-        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -1408,28 +1271,12 @@ class ExternalKnowledgeApis(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
-    def to_dict(self) -> ExternalKnowledgeApiDict:
-        return {
-            "id": self.id,
-            "tenant_id": self.tenant_id,
-            "name": self.name,
-            "description": self.description,
-            "settings": self.settings_dict,
-            "dataset_bindings": self.dataset_bindings,
-            "created_by": self.created_by,
-            "created_at": self.created_at.isoformat(),
-        }
-
     @property
     def settings_dict(self) -> dict[str, Any] | None:
         try:
             return json.loads(self.settings) if self.settings else None
         except JSONDecodeError:
             return None
-
-    @property
-    def dataset_bindings(self):
-        return self.get_dataset_bindings(session=db.session())
 
     def get_dataset_bindings(self, *, session: Session) -> list[DatasetBindingItem]:
         external_knowledge_bindings = session.scalars(

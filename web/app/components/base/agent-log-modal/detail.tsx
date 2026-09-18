@@ -10,7 +10,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { fetchAgentLogDetail } from '@/service/log'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
@@ -109,7 +109,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
       >
         {loading && (
           <div className="flex h-full items-center justify-center bg-components-panel-bg">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         {!loading && currentTab === 'DETAIL' && runDetail && (

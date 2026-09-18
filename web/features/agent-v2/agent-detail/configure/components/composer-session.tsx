@@ -14,7 +14,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { rebaseAgentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -552,7 +552,7 @@ function AgentConfigurePageComposerContent({
             !(rightPanelMode === 'build'
               ? capabilities.canBuild
               : previewEnabled) ? null : buildDraft.isPending ? (
-              <Loading type="app" />
+              <LoadingPlaceholder className="h-full" />
             ) : (
               <AgentConfigureRightPanelChat
                 agentId={agentId}

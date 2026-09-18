@@ -28,12 +28,11 @@ from controllers.console.workspace.models import (
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models import Account
+from tests.unit_tests.model_factories import make_account
 
 
 def _account() -> Account:
-    account = Account(name="Model User", email="model-user@example.com")
-    account.id = "u1"
-    return account
+    return make_account(account_id="u1", name="Model User", email="model-user@example.com")
 
 
 class TestDefaultModelApi:

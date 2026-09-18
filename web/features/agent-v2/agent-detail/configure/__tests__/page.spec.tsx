@@ -640,7 +640,9 @@ describe('AgentConfigurePage', () => {
       })
       expect(configureSection).toHaveAttribute('aria-busy', 'true')
       expect(configureSection).toHaveClass('bg-background-body')
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('progressbar', { name: 'agentV2.agentDetail.sections.configure' }),
+      ).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
       expect(
         vi
@@ -685,7 +687,9 @@ describe('AgentConfigurePage', () => {
         { searchParams: '?mode=build' },
       )
 
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('progressbar', { name: 'agentV2.agentDetail.sections.configure' }),
+      ).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
 
       mocks.queryState.buildDraft = {
@@ -889,7 +893,9 @@ describe('AgentConfigurePage', () => {
         'publish:yes',
       )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
-      expect(screen.queryByRole('status', { name: 'appApi.loading' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('progressbar', { name: 'agentV2.agentDetail.sections.configure' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'send build message' })).toBeDisabled()
 
       refreshBuildConversation.resolve({

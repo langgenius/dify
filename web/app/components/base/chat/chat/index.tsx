@@ -10,7 +10,7 @@ import type { Node } from '@/app/components/workflow/types'
 import type { AppData, ToolIcon } from '@/models/share'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -147,6 +147,27 @@ const Chat: FC<ChatProps> = ({
   getHumanInputNodeData,
 }) => {
   const { t } = useTranslation()
+  const responseStatusRef = useRef<HTMLDivElement>(null)
+  const wasRespondingRef = useRef(false)
+  const hasAgentContent = !!renderAgentContent
+
+  // Keep the live region mounted before a response starts. Synchronize only
+  // lifecycle transitions, never the streaming answer or elapsed-time counter.
+  useEffect(() => {
+    const status = responseStatusRef.current
+    if (!status) {
+      wasRespondingRef.current = false
+      return
+    }
+
+    const announcement = isResponding
+      ? t(($) => $['agentDetail.configure.answer.thinking'], { ns: 'agentV2' })
+      : wasRespondingRef.current
+        ? t(($) => $['agentDetail.configure.answer.responseEnded'], { ns: 'agentV2' })
+        : undefined
+    if (announcement && status.textContent !== announcement) status.textContent = announcement
+    wasRespondingRef.current = !!isResponding
+  }, [hasAgentContent, isResponding, t])
   const {
     currentLogItem,
     setCurrentLogItem,
@@ -192,6 +213,9 @@ const Chat: FC<ChatProps> = ({
       onFeedback={onFeedback}
       getHumanInputNodeData={getHumanInputNodeData}
     >
+      {hasAgentContent && (
+        <div ref={responseStatusRef} role="status" aria-atomic="true" className="sr-only" />
+      )}
       <div data-testid="chat-root" className={cn('relative h-full', isTryApp && 'flex flex-col')}>
         <div
           data-testid="chat-container"

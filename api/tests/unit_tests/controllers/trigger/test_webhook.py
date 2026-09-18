@@ -7,6 +7,7 @@ import controllers.trigger.webhook as module
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
+from tests.unit_tests.model_factories import make_workflow
 
 
 class _RequestStub:
@@ -53,7 +54,7 @@ def _webhook_trigger() -> WorkflowWebhookTrigger:
 
 
 def _workflow() -> Workflow:
-    return Workflow(id="workflow-1")
+    return make_workflow(workflow_id="workflow-1")
 
 
 class TestPrepareWebhookExecution:

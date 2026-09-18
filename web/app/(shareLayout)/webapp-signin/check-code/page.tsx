@@ -5,12 +5,12 @@ import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import {
   navigateAfterWebAppLogin,
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import Countdown from '@/app/components/signin/countdown'
-import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
@@ -158,7 +158,7 @@ export default function CheckCode() {
         onClick={() => router.back()}
         className="flex h-9 cursor-pointer appearance-none items-center justify-center text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
-        <span className="bg-background-default-dimm inline-block rounded-full p-1">
+        <span className="inline-block rounded-full p-1">
           <span aria-hidden className="i-ri-arrow-left-line block size-3" />
         </span>
         <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>

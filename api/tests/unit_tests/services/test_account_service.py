@@ -37,6 +37,7 @@ from services.errors.account import (
     NoPermissionError,
 )
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_tenant
 
 type _MockDependencies = dict[str, MagicMock]
 
@@ -75,7 +76,7 @@ class TestAccountAssociatedDataFactory:
 
 
 def _tenant(session: Session | None = None) -> Tenant:
-    tenant = Tenant(name="Test Workspace")
+    tenant = make_tenant(tenant_id=None, name="Test Workspace")
     if session is not None:
         session.add(tenant)
     return tenant

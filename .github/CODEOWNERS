@@ -51,7 +51,7 @@
 /api/tests/*/controllers/trigger/ @CourTeous33
 /api/tests/*/core/trigger/ @CourTeous33
 /api/tests/*/trigger/ @CourTeous33
-/api/tests/*/controllers/console/billing/ @hj24 @zyssyz123
+/api/tests/*/controllers/console/billing/ @zyssyz123
 /api/tests/*/services/enterprise/ @GareArc
 /api/tests/*/migrations/ @snakevash @laipz8200 @MRZHUH
 
@@ -128,8 +128,8 @@
 /api/tasks/async_workflow_tasks.py @Mairuis
 
 # Backend - Billing
-/api/services/billing_service.py @hj24 @zyssyz123
-/api/controllers/console/billing/ @hj24 @zyssyz123
+/api/services/billing_service.py @zyssyz123
+/api/controllers/console/billing/ @zyssyz123
 
 # Backend - Enterprise
 /api/configs/enterprise/ @GareArc
@@ -146,6 +146,12 @@
 
 # Frontend
 /web/ @iamjoel
+
+# Frontend - Tooling
+/lint.config.ts @hyoban @lyzno1
+/eslint.config.mjs @hyoban @lyzno1
+/knip.config.ts @hyoban @lyzno1
+/vite.config.ts @hyoban @lyzno1
 
 # Frontend - Platform and Features
 /web/config/ @lyzno1

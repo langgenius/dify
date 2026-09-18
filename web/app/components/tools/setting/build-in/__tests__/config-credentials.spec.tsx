@@ -86,7 +86,7 @@ describe('ConfigCredential', () => {
         onSaved={mockOnSaved}
       />,
     )
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByTestId('form')).toBeInTheDocument()

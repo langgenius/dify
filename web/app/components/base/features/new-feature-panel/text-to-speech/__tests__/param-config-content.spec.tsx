@@ -41,7 +41,7 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   get languages() {
     return mockLanguages
   },
