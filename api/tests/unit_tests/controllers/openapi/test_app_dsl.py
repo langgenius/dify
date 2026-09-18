@@ -10,7 +10,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.openapi import app_dsl as app_dsl_module
 from controllers.openapi._contract import op_of
-from controllers.openapi._models import AppDslImportPayload, Hint
+from controllers.openapi._models import AppDslImportPayload, AppDslImportResponse, Hint
 from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi
 from controllers.openapi.auth.spec import EndpointSpec
 from models import Account
@@ -23,7 +23,7 @@ class _EndpointView(Protocol):
     """Structural stand-in for a `view` carrying the attributes `@endpoint` attaches."""
 
     __spec__: EndpointSpec
-    __handler__: Callable[..., object]
+    __handler__: Callable[..., tuple[AppDslImportResponse, int]]
 
 
 @pytest.mark.parametrize(

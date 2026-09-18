@@ -1,6 +1,7 @@
 """The two hint mechanics a handler cannot do inline: the next page of a list, and hints on one SSE event kind."""
 
 import json
+from collections.abc import Iterator, Mapping
 
 from controllers.openapi._hints import attach_stream_hints, next_page_hint
 from controllers.openapi._models import Hint, PageQuery, PaginationEnvelope
@@ -14,7 +15,7 @@ class _Query(PageQuery):
     name: str | None = None
 
 
-def test_next_page_hint_copies_path_and_query_and_bumps_page():
+def test_next_page_hint_copies_path_and_query_and_bumps_page() -> None:
     hint = next_page_hint(
         op="thing.list",
         path_args={"workspace_id": "ws-1"},
@@ -28,15 +29,15 @@ def test_next_page_hint_copies_path_and_query_and_bumps_page():
     assert next_page_hint(op="thing.list", path_args={}, query=None, envelope=last) is None
 
 
-def _sse(event: dict) -> str:
+def _sse(event: Mapping[str, object]) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
 
-def _build(event: dict) -> list[Hint]:
+def _build(event: Mapping[str, object]) -> list[Hint]:
     return [Hint(summary="Go on", op="thing.resume", input={"run_id": event["run_id"]})]
 
 
-def test_attach_stream_hints_decorates_only_the_wanted_event():
+def test_attach_stream_hints_decorates_only_the_wanted_event() -> None:
     passthrough = [
         "event: ping\n\n",
         _sse({"event": "message", "answer": "paused"}),
@@ -52,14 +53,14 @@ def test_attach_stream_hints_decorates_only_the_wanted_event():
     }
 
 
-def test_attach_stream_hints_closes_the_source():
+def test_attach_stream_hints_closes_the_source() -> None:
     class Source:
         closed = False
 
-        def __iter__(self):
+        def __iter__(self) -> Iterator[str]:
             yield _sse({"event": "message"})
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     source = Source()

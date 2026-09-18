@@ -39,6 +39,8 @@ _REF: Final = "$ref"
 _REF_PREFIX: Final = "#/$defs/"
 _QUERY_METHODS: Final = frozenset({"GET", "DELETE"})
 
+CatalogOp = dict[str, Any]
+
 
 class Bind(StrEnum):
     PATH = "path"
@@ -127,7 +129,7 @@ def iter_handlers(app: Flask) -> Iterator[tuple[Rule, str, Any]]:
 
 
 def build_catalog(app: Flask) -> dict[str, Any]:
-    ops: dict[str, Any] = {}
+    ops: dict[str, CatalogOp] = {}
     for rule, verb, handler in iter_handlers(app):
         spec = spec_of(handler)
         if spec is None or not spec.allows(dify_config.DEPLOYMENT_EDITION):
