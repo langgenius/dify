@@ -20,7 +20,6 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
-from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -31,6 +30,7 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.human_input_form import with_form_hints
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -151,7 +151,7 @@ class OpenApiWorkflowEventsApi(Resource):
             event_generator = _generate_stream_events
 
         return Response(
-            attach_stream_hints(event_generator(), app_id=owning_app_id),
+            with_form_hints(event_generator(), app_id=owning_app_id),
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )

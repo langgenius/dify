@@ -22,6 +22,7 @@ from flask import Blueprint, Flask, Response, current_app, request
 from pydantic import BaseModel
 
 from configs import dify_config
+from controllers.openapi._upload import has_binary_leaf
 from controllers.openapi.auth.spec import EndpointSpec
 
 CATALOG_HEADER: Final = "X-Dify-Catalog"
@@ -88,23 +89,13 @@ def op_input_schema(
     return {"type": "object", "properties": properties, "required": required}
 
 
-def _has_binary_leaf(node: Any) -> bool:
-    if isinstance(node, list):
-        return any(_has_binary_leaf(item) for item in node)
-    if not isinstance(node, Mapping):
-        return False
-    if node.get("type") == "string" and node.get("format") == "binary":
-        return True
-    return any(_has_binary_leaf(value) for value in node.values())
-
-
 def derive_bind(*, method: str, path_params: Sequence[str], schema: Mapping[str, Any]) -> dict[str, Bind]:
     default = Bind.QUERY if method.upper() in _QUERY_METHODS else Bind.BODY
     bind: dict[str, Bind] = {}
     for name, prop in schema.get("properties", {}).items():
         if name in path_params:
             bind[name] = Bind.PATH
-        elif _has_binary_leaf(prop):
+        elif has_binary_leaf(prop):
             bind[name] = Bind.FILE
         else:
             bind[name] = default

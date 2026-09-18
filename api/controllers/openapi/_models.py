@@ -5,10 +5,9 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any, Final, Literal, Self
 
-from pydantic import AliasPath, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
-from controllers.openapi._multipart import FILES_FIELD
 from controllers.openapi._upload import UploadPart, UploadParts
 from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
@@ -66,7 +65,20 @@ class Hint(BaseModel):
     )
 
 
-class PaginationEnvelope[T](BaseModel):
+class Hinted(BaseModel):
+    """The one place a response carries server-built next steps; `hints` is reserved on every op input."""
+
+    hints: list[Hint] = Field(default_factory=list, description="Next steps the caller can take")
+
+
+class PageQuery(BaseModel):
+    """The two query parameters every list op takes; the next-page hint is built from this model."""
+
+    page: int = Field(1, ge=1)
+    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
+
+
+class PaginationEnvelope[T](Hinted):
     """The one shape every paginated list on this surface answers with."""
 
     page: int
@@ -178,12 +190,11 @@ class SessionListResponse(PaginationEnvelope[SessionRow]):
     pass
 
 
-class SessionListQuery(BaseModel):
+class SessionListQuery(PageQuery):
     """Pagination for GET /account/sessions. Strict (extra='forbid')."""
 
     model_config = ConfigDict(extra="forbid")
 
-    page: int = Field(1, ge=1)
     limit: int = Field(100, ge=1, le=MAX_PAGE_LIMIT)
 
 
@@ -203,13 +214,10 @@ class WorkspaceListResponse(PaginationEnvelope[WorkspaceSummaryResponse]):
     pass
 
 
-class WorkspaceListQuery(BaseModel):
+class WorkspaceListQuery(PageQuery):
     """Strict (extra='forbid')."""
 
     model_config = ConfigDict(extra="forbid")
-
-    page: int = Field(1, ge=1)
-    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
 
 
 class WorkspaceDetailResponse(BaseModel):
@@ -288,12 +296,10 @@ class AppDescribeQuery(BaseModel):
         return members
 
 
-class AppListQuery(BaseModel):
+class AppListQuery(PageQuery):
     """mode is a closed enum of listable app types."""
 
     workspace_id: UUIDStr
-    page: int = Field(1, ge=1)
-    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
     mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
 
@@ -302,7 +308,8 @@ class AppRunRequest(BaseModel):
     inputs: dict[str, Any] = Field(
         description=(
             "Variables declared by the app. The exact shape is per app: read `input_schema` from "
-            "console_app.describe. File variables accept an https URL string here; local files go in `files`."
+            "console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, "
+            "or a local file in `files`, not both."
         )
     )
     query: str | None = Field(
@@ -311,9 +318,13 @@ class AppRunRequest(BaseModel):
     files: UploadParts | None = Field(
         default=None,
         description=(
-            "Local files keyed by the app's file variable name. One part per file; a file-list variable takes "
-            "several parts under the same name. The server uploads them and merges them into `inputs`"
+            "Local files keyed by the app's file variable name; the server uploads each one and sets "
+            "`inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable"
         ),
+    )
+    attachments: list[UploadPart] | None = Field(
+        default=None,
+        description="Local files attached to the message itself (chat-family apps with vision), not to a variable",
     )
     conversation_id: UUIDStrOrEmpty | None = Field(default=None, description="Continue an existing conversation")
     auto_generate_name: bool = Field(default=True, description="Let the server name a new conversation")
@@ -334,14 +345,7 @@ class AppRunRequest(BaseModel):
 
 
 class FileUploadRequest(BaseModel):
-    """One file, sent as the multipart part ``files[file]``.
-
-    The part is addressed through the ``files`` envelope every multipart body on this
-    surface uses, but the catalog advertises the flat name the caller binds a file to.
-    """
-
     file: UploadPart = Field(
-        validation_alias=AliasPath(FILES_FIELD, "file"),
         description="The file to upload; its id can then be used in an app run's file variables",
     )
 
@@ -364,13 +368,11 @@ class DeviceMutateRequest(BaseModel):
     user_code: str
 
 
-class PermittedExternalAppsListQuery(BaseModel):
+class PermittedExternalAppsListQuery(PageQuery):
     """Strict (extra='forbid')."""
 
     model_config = ConfigDict(extra="forbid")
 
-    page: int = Field(1, ge=1)
-    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
     mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
 
@@ -412,13 +414,10 @@ class MemberListResponse(PaginationEnvelope[MemberResponse]):
     pass
 
 
-class MemberListQuery(BaseModel):
+class MemberListQuery(PageQuery):
     """Strict (extra='forbid')."""
 
     model_config = ConfigDict(extra="forbid")
-
-    page: int = Field(1, ge=1)
-    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
 
 
 class MemberInvitePayload(BaseModel):
@@ -494,7 +493,7 @@ class AppDslExportResponse(BaseModel):
     data: str = Field(..., description="DSL YAML string")
 
 
-class AppDslImportResponse(Import):
+class AppDslImportResponse(Import, Hinted):
     """`Import` plus the server-built next step for a pending import."""
 
     hints: list[Hint] = Field(default_factory=list, description="Next steps; empty when the import finished")
@@ -509,7 +508,7 @@ class FormSubmitResponse(BaseModel):
 
 
 class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
-    """The console payload plus local file parts; `_files.materialize_files` merges them into `inputs`."""
+    """The console payload plus local file parts; `_files.merge_files` sets them on `inputs`."""
 
     files: UploadParts | None = Field(
         default=None,

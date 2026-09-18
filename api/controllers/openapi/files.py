@@ -3,17 +3,10 @@
 from __future__ import annotations
 
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest
 
-import services
-from controllers.common.errors import (
-    BlockedFileExtensionError,
-    FileTooLargeError,
-    UnsupportedFileTypeError,
-)
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
-from controllers.openapi._errors import FilenameNotExists
+from controllers.openapi._files import upload
 from controllers.openapi._models import FileUploadRequest
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -24,7 +17,6 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
-from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
 from libs.oauth_bearer import Scope
 
@@ -57,26 +49,4 @@ class AppFileUploadApi(Resource):
         returns=(201, FileResponse, "File uploaded"),
     )
     def post(self, ctx: Context, app_id: str, *, body: FileUploadRequest):
-        file = body.file
-        if not file.mimetype:
-            raise UnsupportedFileTypeError()
-        if not file.filename:
-            raise FilenameNotExists()
-
-        try:
-            upload_file = application_services().files.upload_file(
-                filename=file.filename,
-                content=file.stream.read(),
-                mimetype=file.mimetype,
-                user=ctx.caller,
-            )
-        except services.errors.file.FileTooLargeError as exc:
-            raise FileTooLargeError(exc.description) from exc
-        except services.errors.file.UnsupportedFileTypeError as exc:
-            raise UnsupportedFileTypeError() from exc
-        except services.errors.file.BlockedFileExtensionError as exc:
-            raise BlockedFileExtensionError(exc.description) from exc
-        except ValueError as exc:
-            raise BadRequest(str(exc)) from exc
-
-        return FileResponse.model_validate(upload_file, from_attributes=True)
+        return FileResponse.model_validate(upload(body.file, ctx.caller), from_attributes=True)

@@ -24,8 +24,7 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Kind, endpoint
-from controllers.openapi._files import file_rows_of, materialize_files
-from controllers.openapi._hints import attach_stream_hints
+from controllers.openapi._files import materialize, merge_files
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -37,6 +36,7 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.human_input_form import with_form_hints
 from controllers.service_api.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -120,29 +120,24 @@ def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool, sess
     )
 
 
-def _args_with_files(
-    app: App, caller: Any, payload: AppRunRequest, session: Session, *, exclude: set[str]
-) -> dict[str, Any]:
-    inputs, vision = materialize_files(
-        app=app, caller=caller, inputs=payload.inputs, files=payload.files, rows=file_rows_of(app, session)
-    )
-    args = payload.model_dump(exclude={"files", *exclude}, exclude_none=True)
-    args["inputs"] = inputs
-    if vision:
-        args["files"] = vision
+def _args_with_files(caller: Any, payload: AppRunRequest, *, exclude: set[str]) -> dict[str, Any]:
+    args = payload.model_dump(exclude={"files", "attachments", *exclude}, exclude_none=True)
+    args["inputs"] = merge_files(payload.inputs, payload.files, caller)
+    if payload.attachments:
+        args["files"] = materialize(payload.attachments, caller)
     return args
 
 
 def _run_chat(app: App, caller: Any, payload: AppRunRequest, session: Session):
     if not payload.query or not payload.query.strip():
         raise UnprocessableEntity("query_required_for_chat")
-    args = _args_with_files(app, caller, payload, session, exclude=set())
+    args = _args_with_files(caller, payload, exclude=set())
     with _translate_service_errors():
         return _generate(app, caller, args, streaming=True, session=session)
 
 
 def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Session):
-    args = _args_with_files(app, caller, payload, session, exclude=set())
+    args = _args_with_files(caller, payload, exclude=set())
     args["auto_generate_name"] = False
     args.setdefault("query", "")
     with _translate_service_errors():
@@ -152,7 +147,7 @@ def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Sess
 def _run_workflow(app: App, caller: Any, payload: AppRunRequest, session: Session):
     if payload.query is not None:
         raise UnprocessableEntity("query_not_supported_for_workflow")
-    args = _args_with_files(app, caller, payload, session, exclude={"query", "conversation_id", "auto_generate_name"})
+    args = _args_with_files(caller, payload, exclude={"query", "conversation_id", "auto_generate_name"})
     with _translate_service_errors():
         return _generate(app, caller, args, streaming=True, session=session)
 
@@ -208,7 +203,7 @@ class AppRunApi(Resource):
         )
 
         # response-contract:ignore compact_generate_response
-        return helper.compact_generate_response(attach_stream_hints(stream_obj, app_id=app_model.id))
+        return helper.compact_generate_response(with_form_hints(stream_obj, app_id=app_model.id))
 
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")

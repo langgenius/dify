@@ -6,8 +6,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Kind, endpoint
-from controllers.openapi._hints import IMPORT_CONFIRM_OP
+from controllers.openapi._contract import Kind, endpoint, op_of
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
@@ -40,7 +39,7 @@ def _import_response(result: Import, *, workspace_id: str) -> AppDslImportRespon
         hints.append(
             Hint(
                 summary="Confirm the pending import",
-                op=IMPORT_CONFIRM_OP,
+                op=op_of(AppDslImportConfirmApi.post),
                 input={"workspace_id": workspace_id, "import_id": result.id},
             )
         )
@@ -127,7 +126,7 @@ class AppDslImportConfirmApi(Resource):
     """
 
     @endpoint(
-        op=IMPORT_CONFIRM_OP,
+        op="console_app.dsl.import_confirm",
         kind=Kind.OBJECT,
         summary="Confirm a pending DSL import",
         requirements=(
