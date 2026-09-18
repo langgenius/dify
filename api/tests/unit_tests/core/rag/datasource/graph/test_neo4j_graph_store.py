@@ -8,9 +8,10 @@ stay in step with the Postgres backend.
 """
 
 import sys
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator, Iterator
 from contextlib import contextmanager
 from types import ModuleType
+from typing import cast
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -49,6 +50,11 @@ def _chunk_graph(
 
 def _entity(name: str, entity_type: str = "ORGANIZATION") -> GraphEntity:
     return GraphEntity(name=name, display_name=name.title(), entity_type=entity_type, description="desc")
+
+
+def _merged_rows(params: dict[str, object]) -> list[dict[str, str]]:
+    """The ``rows`` payload a merge statement was given, typed for assertions."""
+    return cast(list[dict[str, str]], params["rows"])
 
 
 class _FakeResult:
@@ -158,7 +164,7 @@ def fake_lock(renewals: list[str], monkeypatch: pytest.MonkeyPatch) -> None:
     """Replace the Redis merge lease, recording every renewal it is asked for."""
 
     @contextmanager
-    def _lock(dataset_id: str) -> Iterator[Callable[[], None]]:
+    def _lock(dataset_id: str) -> Generator[Callable[[], None], None, None]:
         yield lambda: renewals.append(dataset_id)
 
     monkeypatch.setattr(neo4j_module, "graph_index_lock", _lock)
@@ -216,7 +222,7 @@ class TestDriver:
         monkeypatch.setattr(neo4j_module, "_driver", None)
 
         @contextmanager
-        def _lock_won_by_another_thread() -> Iterator[None]:
+        def _lock_won_by_another_thread() -> Generator[None, None, None]:
             # Whoever held the lock finished connecting while we queued behind
             # them; without the second check we would connect all over again.
             neo4j_module._driver = "driver built elsewhere"
@@ -259,7 +265,7 @@ class TestSchema:
         monkeypatch.setattr(neo4j_module, "_schema_ready", False)
 
         @contextmanager
-        def _lock_won_by_another_thread() -> Iterator[None]:
+        def _lock_won_by_another_thread() -> Generator[None, None, None]:
             # The thread ahead of us in the queue already ran the DDL.
             neo4j_module._schema_ready = True
             yield
@@ -309,7 +315,7 @@ class TestAddChunkGraphs:
         # provenance land together or not at all.
         assert neo_session.write_transactions == 1
         _, entity_params = neo_session.queries_matching("MERGE (e:DifyEntity")[0]
-        assert [row["name"] for row in entity_params["rows"]] == ["acme", "globex"]
+        assert [row["name"] for row in _merged_rows(entity_params)] == ["acme", "globex"]
         assert entity_params["dataset_id"] == DATASET_ID
         assert entity_params["tenant_id"] == TENANT_ID
         _, relation_params = neo_session.queries_matching("MERGE (s)-[r:DIFY_RELATION")[0]
@@ -396,7 +402,7 @@ class TestAddChunkGraphs:
 
         store.add_chunk_graphs([chunk], session=session)
 
-        row = neo_session.queries_matching("MERGE (e:DifyEntity")[0][1]["rows"][0]
+        row = _merged_rows(neo_session.queries_matching("MERGE (e:DifyEntity")[0][1])[0]
         assert row["display_name"] == "acme"
         assert row["entity_type"] == UNKNOWN_ENTITY_TYPE
 
@@ -580,7 +586,7 @@ class TestGetRelations:
     def test_edges_are_returned_in_either_direction_with_their_endpoints(
         self, install_driver: Callable[[_FakeSession], _FakeDriver], session: Session
     ) -> None:
-        record = {
+        record: dict[str, object] = {
             "r": {"id": "relation-1", "predicate": "acquired", "description": "Acme bought Globex", "weight": 2.0},
             "source_id": "entity-1",
             "target_id": "entity-2",

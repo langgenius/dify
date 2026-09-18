@@ -1,11 +1,12 @@
 import threading
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 
 import pytest
 
 from core.rag.graph import entity_extractor as entity_extractor_module
 from core.rag.graph.entities import (
+    DEFAULT_ENTITY_TYPES,
     UNKNOWN_ENTITY_TYPE,
     ChunkGraph,
     GraphIndexSetting,
@@ -21,14 +22,22 @@ from graphon.model_runtime.entities.model_entities import ModelType
 TENANT_ID = "tenant-1"
 
 
-def _setting(**overrides: object) -> GraphIndexSetting:
-    values: dict[str, object] = {
-        "enabled": True,
-        "model_provider_name": "openai",
-        "model_name": "gpt-4o-mini",
-    }
-    values.update(overrides)
-    return GraphIndexSetting(**values)
+def _setting(
+    *,
+    model_provider_name: str | None = "openai",
+    model_name: str | None = "gpt-4o-mini",
+    entity_types: list[str] | None = None,
+    max_entities_per_chunk: int = 16,
+    extract_prompt: str | None = None,
+) -> GraphIndexSetting:
+    return GraphIndexSetting(
+        enabled=True,
+        model_provider_name=model_provider_name,
+        model_name=model_name,
+        entity_types=list(DEFAULT_ENTITY_TYPES) if entity_types is None else entity_types,
+        max_entities_per_chunk=max_entities_per_chunk,
+        extract_prompt=extract_prompt,
+    )
 
 
 def _document(text: str, *, doc_id: str | None = "node-1", document_id: str | None = "doc-1") -> Document:
@@ -539,7 +548,7 @@ class TestExtractionBudget:
         existing = threading.BoundedSemaphore(1)
 
         @contextmanager
-        def _lock_won_by_another_thread() -> Iterator[None]:
+        def _lock_won_by_another_thread() -> Generator[None, None, None]:
             # The task ahead of us already published the budget; a second one
             # here would double the process's concurrency.
             entity_extractor_module._extraction_slots = existing
