@@ -41,6 +41,7 @@ from models.model import App, AppModelConfig
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot, Skill
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
+from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
@@ -53,7 +54,6 @@ from services.agent.dsl_entities import (
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 from services.agent.roster_service import AgentRosterService
 from services.entities.dsl_entities import DslImportWarning
-from services.plugin.dependencies_analysis import DependenciesAnalysisService
 
 
 class AgentPackageImportResult(BaseModel):
@@ -198,7 +198,7 @@ class AgentDslService:
     ) -> AgentPackageImportResult:
         """Create the imported backing Agent and its editable unpublished draft."""
 
-        soul, warnings = self._resolve_package_soul(
+        soul, warnings = self.resolve_package_soul(
             tenant_id=app.tenant_id,
             package=package,
             package_path="agent",
@@ -375,29 +375,7 @@ class AgentDslService:
     def extract_package_dependencies(self, packages: Mapping[str, AgentPackage]) -> list[str]:
         dependencies: list[str] = []
         for package in packages.values():
-            soul = package.soul
-            if soul.model is not None:
-                dependencies.append(
-                    DependenciesAnalysisService.analyze_model_provider_dependency(soul.model.model_provider)
-                )
-            for tool in soul.tools.dify_tools:
-                provider_id = tool.provider_id or (
-                    f"{tool.plugin_id}/{tool.provider}" if tool.plugin_id and tool.provider else None
-                )
-                if provider_id:
-                    dependencies.append(DependenciesAnalysisService.analyze_tool_dependency(provider_id))
-            for knowledge_set in soul.knowledge.sets:
-                retrieval = knowledge_set.retrieval
-                if retrieval.model is not None:
-                    dependencies.append(
-                        DependenciesAnalysisService.analyze_model_provider_dependency(retrieval.model.provider)
-                    )
-                if retrieval.reranking_model is not None:
-                    dependencies.append(
-                        DependenciesAnalysisService.analyze_model_provider_dependency(
-                            retrieval.reranking_model.provider
-                        )
-                    )
+            dependencies.extend(extract_agent_soul_dependencies(package.soul))
         return dependencies
 
     def _workspace_skills_for_export(
@@ -505,7 +483,7 @@ class AgentDslService:
         package: AgentPackage,
         package_path: str,
     ) -> AgentPackageImportResult:
-        soul, warnings = self._resolve_package_soul(
+        soul, warnings = self.resolve_package_soul(
             tenant_id=workflow.tenant_id,
             package=package,
             package_path=package_path,
@@ -583,7 +561,7 @@ class AgentDslService:
         self.session.flush()
         return agent, snapshot
 
-    def _resolve_package_soul(
+    def resolve_package_soul(
         self,
         *,
         tenant_id: str,

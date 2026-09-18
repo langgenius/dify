@@ -91,6 +91,7 @@
   "table.header.updatedTime": "Время обновления",
   "table.header.user": "Конечный пользователь или аккаунт",
   "table.header.userRate": "Оценка пользователя",
+  "table.unread": "Непрочитанные",
   "title": "Логирование",
   "triggerBy.appRun": "Веб-приложение",
   "triggerBy.debugging": "Отладка",

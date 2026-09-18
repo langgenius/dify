@@ -78,7 +78,6 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUpgradeJobResponse,
     KnowledgeFSUpgradeRetryResponse,
 )
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
 
@@ -719,9 +718,8 @@ class DatasetListApi(Resource):
                 current_tenant_id,
                 current_user.id,
                 dataset.id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
 
         return item, 201
 

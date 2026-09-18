@@ -72,8 +72,8 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                     'data-disabled:cursor-not-allowed data-disabled:opacity-50',
                   )}
                   disabled={disabled || undefined}
-                  aria-label={checklistLabel}
                 >
+                  <span className="sr-only">{checklistLabel}</span>
                   <span className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover">
                     <span
                       className="i-ri-list-check-3 size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text"

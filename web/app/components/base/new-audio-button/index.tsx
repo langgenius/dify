@@ -1,8 +1,8 @@
 'use client'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { t } from 'i18next'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
@@ -16,6 +16,7 @@ type AudioBtnProps = Readonly<{
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
 
 const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
+  const { t } = useTranslation()
   const [audioState, setAudioState] = useState<AudioState>('initial')
 
   const params = useParams()
@@ -66,8 +67,8 @@ const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
   const tooltipContent = {
     initial: t(($) => $.play, { ns: 'appApi' }),
     ended: t(($) => $.play, { ns: 'appApi' }),
-    paused: t(($) => $.pause, { ns: 'appApi' }),
-    playing: t(($) => $.playing, { ns: 'appApi' }),
+    paused: t(($) => $.play, { ns: 'appApi' }),
+    playing: t(($) => $.pause, { ns: 'appApi' }),
     loading: t(($) => $.loading, { ns: 'appApi' }),
   }[audioState]
 

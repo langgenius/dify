@@ -474,6 +474,7 @@
   "operation.fill": "Preenchimento automático",
   "operation.format": "Formato",
   "operation.imageCopied": "Imagem copiada",
+  "operation.imageCopyFailed": "Não foi possível copiar a imagem. Baixe-a em vez disso.",
   "operation.imageDownloaded": "Imagem baixada",
   "operation.in": "em",
   "operation.learnMore": "Saiba mais",

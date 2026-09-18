@@ -474,6 +474,7 @@
   "operation.fill": "Automatisch ausfüllen",
   "operation.format": "Format",
   "operation.imageCopied": "Kopiertes Bild",
+  "operation.imageCopyFailed": "Das Bild konnte nicht kopiert werden. Bitte laden Sie es stattdessen herunter.",
   "operation.imageDownloaded": "Bild heruntergeladen",
   "operation.in": "in",
   "operation.learnMore": "Mehr erfahren",

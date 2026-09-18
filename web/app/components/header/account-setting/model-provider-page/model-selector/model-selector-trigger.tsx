@@ -116,12 +116,7 @@ function ModelSelectorTrigger({
               <button
                 type="button"
                 aria-describedby={ariaDescribedBy}
-                aria-label={
-                  ariaLabelledBy
-                    ? undefined
-                    : [configureModelLabel, requiredText].filter(Boolean).join(' ')
-                }
-                aria-labelledby={triggerLabelledBy || undefined}
+                aria-labelledby={ariaLabelledBy ? triggerLabelledBy : undefined}
                 data-deprecated={isDeprecated ? '' : undefined}
                 data-invalid={ariaInvalid ? '' : undefined}
                 data-model-status={status}

@@ -2260,6 +2260,16 @@ export const zPluginDependency = z.object({
 })
 
 /**
+ * RosterAgentPackageConflictResponse
+ */
+export const zRosterAgentPackageConflictResponse = z.object({
+  code: z.string(),
+  leaked_dependencies: z.array(zPluginDependency).optional(),
+  message: z.string(),
+  status: z.literal(409).optional().default(409),
+})
+
+/**
  * CheckDependenciesResult
  */
 export const zCheckDependenciesResult = z.object({
@@ -4316,7 +4326,12 @@ export const zPostAppsBody = zCreateAppPayload
  */
 export const zPostAppsResponse = zAppDetailWithSite
 
-export const zPostAppsImportsBody = zAppImportPayload
+export const zPostAppsImportsBody = z.union([
+  zAppImportPayload,
+  z.object({
+    file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  }),
+])
 
 /**
  * Import completed
@@ -5113,6 +5128,7 @@ export const zGetAppsByAppIdExportPath = z.object({
 })
 
 export const zGetAppsByAppIdExportQuery = z.object({
+  format: z.enum(['ifpkg', 'yaml']).optional(),
   include_secret: z.boolean().optional().default(false),
   workflow_id: z.string().optional(),
 })
@@ -5120,7 +5136,10 @@ export const zGetAppsByAppIdExportQuery = z.object({
 /**
  * App exported successfully
  */
-export const zGetAppsByAppIdExportResponse = zAppExportResponse
+export const zGetAppsByAppIdExportResponse = z.union([
+  zAppExportResponse,
+  z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+])
 
 export const zPostAppsByAppIdFeedbacksBody = zMessageFeedbackPayload
 

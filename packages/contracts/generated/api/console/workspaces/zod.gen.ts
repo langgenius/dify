@@ -5593,7 +5593,7 @@ export const zGetWorkspacesCurrentSkillsBySkillIdExportPath = z.object({
 })
 
 /**
- * Published Skill zip archive
+ * Draft Skill zip archive
  */
 export const zGetWorkspacesCurrentSkillsBySkillIdExportResponse = z.record(z.string(), z.unknown())
 

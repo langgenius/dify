@@ -91,6 +91,7 @@
   "table.header.updatedTime": "زمان به‌روزرسانی",
   "table.header.user": "کاربر نهایی یا حساب",
   "table.header.userRate": "امتیاز کاربر",
+  "table.unread": "خوانده‌نشده",
   "title": "لاگ‌ها",
   "triggerBy.appRun": "وب اپ",
   "triggerBy.debugging": "رفع اشکال",

@@ -179,7 +179,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               onSuccess: (data, variables, _onMutateResult, context) => {
                 if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
 
-                if (!variables.body.app_id) {
+                if (!('app_id' in variables.body) || !variables.body.app_id) {
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.features.get.key(),
                   })

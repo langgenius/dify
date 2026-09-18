@@ -474,6 +474,7 @@
   "operation.fill": "Otomatik doldur",
   "operation.format": "Format",
   "operation.imageCopied": "Kopyalanan görüntü",
+  "operation.imageCopyFailed": "Görüntü kopyalanamadı. Lütfen bunun yerine indirin.",
   "operation.imageDownloaded": "Resim indirildi",
   "operation.in": "içinde",
   "operation.learnMore": "Daha fazla bilgi",
