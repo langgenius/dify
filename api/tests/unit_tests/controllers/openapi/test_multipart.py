@@ -1,3 +1,5 @@
+"""Multipart bodies become the same dict a JSON body would be; file parts land where their name says."""
+
 from io import BytesIO
 
 import pytest
@@ -7,6 +9,8 @@ from werkzeug.datastructures import FileStorage
 from controllers.openapi._errors import InvalidFilePart
 from controllers.openapi._multipart import body_from_request
 
+_FILE_FIELDS = frozenset({"file", "files", "attachments"})
+
 
 @pytest.fixture
 def app() -> Flask:
@@ -15,49 +19,48 @@ def app() -> Flask:
     return a
 
 
+def _part(name: str = "x.txt") -> tuple[BytesIO, str]:
+    return (BytesIO(b"x"), name)
+
+
+def _multipart(app: Flask, data: dict):
+    return app.test_request_context("/x", method="POST", data=data, content_type="multipart/form-data")
+
+
 def test_json_request_passes_through(app: Flask):
     with app.test_request_context("/x", method="POST", json={"inputs": {"q": "hi"}}):
-        assert body_from_request() == {"inputs": {"q": "hi"}}
+        assert body_from_request(file_fields=_FILE_FIELDS) == {"inputs": {"q": "hi"}}
 
 
-def test_empty_body_is_empty_dict(app: Flask):
-    with app.test_request_context("/x", method="POST"):
-        assert body_from_request() == {}
-
-
-def test_multipart_parses_json_parts_and_file_parts(app: Flask):
+def test_multipart_places_every_part_name_shape(app: Flask):
     data = {
         "inputs": '{"q": "refund 42"}',
-        "workflow_id": '"wf-1"',
-        "files[doc]": (BytesIO(b"pdf"), "r.pdf", "application/pdf"),
-        "files[pages]": [(BytesIO(b"1"), "1.png", "image/png"), (BytesIO(b"2"), "2.png", "image/png")],
+        "file": _part("one.txt"),
+        "files[doc]": _part("r.pdf"),
+        "files[pages][]": [_part("1.png"), _part("2.png")],
+        "attachments[]": _part("p.jpg"),
     }
-    with app.test_request_context("/x", method="POST", data=data, content_type="multipart/form-data"):
-        body = body_from_request()
+    with _multipart(app, data):
+        body = body_from_request(file_fields=_FILE_FIELDS)
     assert body["inputs"] == {"q": "refund 42"}
-    assert body["workflow_id"] == "wf-1"
+    assert isinstance(body["file"], FileStorage)
     assert isinstance(body["files"]["doc"], FileStorage)
     assert [f.filename for f in body["files"]["pages"]] == ["1.png", "2.png"]
+    assert [f.filename for f in body["attachments"]] == ["p.jpg"]
 
 
-def test_multipart_rejects_non_json_text_part(app: Flask):
-    with app.test_request_context("/x", method="POST", data={"inputs": "not json"}, content_type="multipart/form-data"):
-        with pytest.raises(InvalidFilePart, match="inputs"):
-            body_from_request()
-
-
-def test_multipart_rejects_file_part_outside_files_namespace(app: Flask):
-    data = {"file": (BytesIO(b"x"), "x.txt", "text/plain")}
-    with app.test_request_context("/x", method="POST", data=data, content_type="multipart/form-data"):
-        with pytest.raises(InvalidFilePart, match="file"):
-            body_from_request()
-
-
-def test_multipart_rejects_a_text_part_that_claims_the_files_envelope(app: Flask):
-    """`files` is where the file parts land, so a text part of that name used to be
-    silently replaced by them.
-    """
-    data = {"files": '"mine"', "files[doc]": (BytesIO(b"pdf"), "r.pdf", "application/pdf")}
-    with app.test_request_context("/x", method="POST", data=data, content_type="multipart/form-data"):
-        with pytest.raises(InvalidFilePart, match="files"):
-            body_from_request()
+@pytest.mark.parametrize(
+    ("data", "reason"),
+    [
+        pytest.param({"inputs": "not json"}, "JSON text", id="text_part_not_json"),
+        pytest.param({"inputs[doc]": _part()}, "does not take a file", id="field_is_not_a_file_field"),
+        pytest.param({"files[a][b]": _part()}, "named", id="two_keys"),
+        pytest.param(
+            {"files[doc]": [_part("a.pdf"), _part("b.pdf")]}, r"files\[doc\]\[\]", id="repeated_without_marker"
+        ),
+        pytest.param({"files": '{"doc": "x"}', "files[doc]": _part()}, "file parts", id="json_text_in_file_field"),
+    ],
+)
+def test_multipart_rejects_malformed_bodies(app: Flask, data: dict, reason: str):
+    with _multipart(app, data), pytest.raises(InvalidFilePart, match=reason):
+        body_from_request(file_fields=_FILE_FIELDS)

@@ -9,7 +9,7 @@ from sqlalchemy.engine import Engine
 from werkzeug.exceptions import Forbidden
 
 from controllers.openapi import app_dsl as app_dsl_module
-from controllers.openapi._hints import IMPORT_CONFIRM_OP
+from controllers.openapi._contract import op_of
 from controllers.openapi._models import AppDslImportPayload, Hint
 from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi
 from controllers.openapi.auth.spec import EndpointSpec
@@ -62,47 +62,39 @@ def test_permission_denial_maps_to_forbidden(
     assert isinstance(exc_info.value.__cause__, NoPermissionError)
 
 
-def test_pending_import_returns_confirm_hint(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+@pytest.mark.parametrize(
+    ("result", "status", "hints"),
+    [
+        pytest.param(
+            Import(id="import-1", status=ImportStatus.PENDING),
+            202,
+            [
+                Hint(
+                    summary="Confirm the pending import",
+                    op=op_of(AppDslImportConfirmApi.post),
+                    input={"workspace_id": "workspace-1", "import_id": "import-1"},
+                )
+            ],
+            id="pending",
+        ),
+        pytest.param(Import(id="import-2", status=ImportStatus.COMPLETED, app_id="app-2"), 200, [], id="completed"),
+    ],
+)
+def test_import_hints_a_confirm_only_while_pending(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, result: Import, status: int, hints: list[Hint]
 ) -> None:
     service = Mock()
-    service.import_app.return_value = Import(id="import-1", status=ImportStatus.PENDING)
+    service.import_app.return_value = result
     monkeypatch.setattr(app_dsl_module, "AppDslService", Mock(return_value=service))
     monkeypatch.setattr(app_dsl_module, "db", SimpleNamespace(engine=sqlite_engine))
 
     api = AppDslImportApi()
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
-        result, status = cast(_EndpointView, api.post).__handler__(
+        response, code = cast(_EndpointView, api.post).__handler__(
             api,
             SimpleNamespace(account=Mock(spec=Account)),
             workspace_id="workspace-1",
             body=AppDslImportPayload(mode="yaml-content", yaml_content="app: {}"),
         )
 
-    assert status == 202
-    assert result.hints == [
-        Hint(
-            summary="Confirm the pending import",
-            op=IMPORT_CONFIRM_OP,
-            input={"workspace_id": "workspace-1", "import_id": "import-1"},
-        )
-    ]
-
-
-def test_completed_import_has_no_hints(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
-    service = Mock()
-    service.import_app.return_value = Import(id="import-2", status=ImportStatus.COMPLETED, app_id="app-2")
-    monkeypatch.setattr(app_dsl_module, "AppDslService", Mock(return_value=service))
-    monkeypatch.setattr(app_dsl_module, "db", SimpleNamespace(engine=sqlite_engine))
-
-    api = AppDslImportApi()
-    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
-        result, status = cast(_EndpointView, api.post).__handler__(
-            api,
-            SimpleNamespace(account=Mock(spec=Account)),
-            workspace_id="workspace-1",
-            body=AppDslImportPayload(mode="yaml-content", yaml_content="app: {}"),
-        )
-
-    assert status == 200
-    assert result.hints == []
+    assert (code, response.hints) == (status, hints)
