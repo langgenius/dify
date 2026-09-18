@@ -6,7 +6,7 @@ import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PdfHighlighter, PdfLoader } from './pdf-highlighter-adapter'
 

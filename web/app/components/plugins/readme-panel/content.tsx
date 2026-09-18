@@ -3,9 +3,9 @@
 import type { ReactNode } from 'react'
 import type { PluginDetail } from '../types'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { usePluginReadme } from '@/service/use-plugins'
 import DetailHeader from '../plugin-detail-panel/detail-header'
 

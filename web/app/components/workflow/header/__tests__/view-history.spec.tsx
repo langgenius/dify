@@ -56,7 +56,7 @@ vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   }),
 }))
 
-vi.mock('@/app/components/loading-placeholder', () => ({
+vi.mock('@/app/components/base/loading-placeholder', () => ({
   LoadingPlaceholder: () => <div data-testid="loading" />,
 }))
 

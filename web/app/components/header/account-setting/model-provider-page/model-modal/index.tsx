@@ -23,12 +23,12 @@ import Badge from '@/app/components/base/badge'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   useAuth,
   useCredentialData,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'

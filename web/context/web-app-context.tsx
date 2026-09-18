@@ -11,7 +11,7 @@ import {
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'

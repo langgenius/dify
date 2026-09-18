@@ -9,7 +9,7 @@ import ReactECharts from 'echarts-for-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import {
   buildChartOptions,

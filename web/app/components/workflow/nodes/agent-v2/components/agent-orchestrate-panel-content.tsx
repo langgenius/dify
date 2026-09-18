@@ -22,12 +22,12 @@ import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jo
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useDefaultModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,

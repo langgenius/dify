@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { useStore } from '@/app/components/workflow/store'

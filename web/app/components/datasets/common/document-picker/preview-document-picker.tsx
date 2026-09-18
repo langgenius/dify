@@ -8,7 +8,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import FileIcon from '../document-file-icon'
 
 type Props = Readonly<{

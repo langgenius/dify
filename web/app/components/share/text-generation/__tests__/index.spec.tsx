@@ -40,7 +40,7 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/app/components/loading-placeholder', () => ({
+vi.mock('@/app/components/base/loading-placeholder', () => ({
   LoadingPlaceholder: () => <div role="progressbar" aria-label="Loading app" />,
 }))
 

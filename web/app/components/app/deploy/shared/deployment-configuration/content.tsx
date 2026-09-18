@@ -6,7 +6,7 @@ import type { DeploymentConfigurationQueryState } from './use-deployment-configu
 import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { CredentialsSection } from './credentials-section'
 import { DeploymentPrecheckAlert } from './deployment-precheck-alert'
 import { EnvironmentVariablesSection } from './environment-variables-section'

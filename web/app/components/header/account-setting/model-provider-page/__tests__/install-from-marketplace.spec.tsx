@@ -48,7 +48,7 @@ vi.mock('@/app/components/base/divider', () => ({
   default: () => <div data-testid="divider" />,
 }))
 
-vi.mock('@/app/components/loading-placeholder', () => ({
+vi.mock('@/app/components/base/loading-placeholder', () => ({
   LoadingPlaceholder: () => <div data-testid="loading" />,
 }))
 

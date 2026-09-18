@@ -6,7 +6,7 @@ import type { AgentChatMessageSender, AgentPreviewChatController } from './chat-
 import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { getFormattedAgentDebugChatTree } from './chat-history'
 import { AgentPreviewChatSession } from './chat-session'

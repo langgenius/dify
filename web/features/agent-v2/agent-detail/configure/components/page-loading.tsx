@@ -1,6 +1,6 @@
 'use client'
 
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 
 export function AgentConfigurePageLoading({ label }: { label: string }) {
   return (

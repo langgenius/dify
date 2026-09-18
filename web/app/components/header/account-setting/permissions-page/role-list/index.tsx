@@ -4,7 +4,7 @@ import type { Role, RoleCategory } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Row from './row'
 
 export type RoleListGroup = {

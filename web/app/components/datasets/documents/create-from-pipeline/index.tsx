@@ -9,8 +9,8 @@ import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,

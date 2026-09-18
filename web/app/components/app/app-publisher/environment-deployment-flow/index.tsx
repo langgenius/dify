@@ -6,7 +6,7 @@ import type { DeploymentVersion } from '@/app/components/app/deploy/utils/versio
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentDeploymentFlow } from '@/app/components/app/deploy/shared/environment-deployment-flow'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   publisherEnvironmentDeploymentPollingAtom,
   startPublisherEnvironmentDeploymentPollingAtom,

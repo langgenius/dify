@@ -1,6 +1,6 @@
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { useMemo } from 'react'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'

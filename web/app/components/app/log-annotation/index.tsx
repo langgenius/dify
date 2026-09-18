@@ -6,7 +6,7 @@ import Log from '@/app/components/app/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowLog from '@/app/components/app/workflow-log'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AppModeEnum } from '@/types/app'
 
 type Props = Readonly<{

@@ -1,7 +1,7 @@
 import type { SimpleSubscription } from './types'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { withErrorBoundary } from '@/app/components/base/error-boundary'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SubscriptionListView } from './list-view'
 import { SubscriptionSelectorView } from './selector-view'
 import { SubscriptionListMode } from './types'

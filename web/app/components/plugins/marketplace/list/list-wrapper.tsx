@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   flushMarketplaceSiteFilter,
   flushMarketplaceSiteSearch,

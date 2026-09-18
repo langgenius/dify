@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { DEFAULT_ACCESS_POLICY_ID } from './constants'
 

@@ -17,7 +17,7 @@ import {
 import { useInfiniteScroll } from 'ahooks'
 import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import { BlockSelectorPreviewCardContent } from '../preview-card'
 import SnippetDetailCard from './snippet-detail-card'

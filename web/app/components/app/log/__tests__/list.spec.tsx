@@ -74,7 +74,7 @@ vi.mock('@/app/components/app/store', () => ({
     }),
 }))
 
-vi.mock('@/app/components/loading-placeholder', () => ({
+vi.mock('@/app/components/base/loading-placeholder', () => ({
   LoadingPlaceholder: () => <div>loading</div>,
 }))
 

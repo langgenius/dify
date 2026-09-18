@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AgentFileTree } from '../files/tree'
 
 type AgentSkillFileNode = AgentFileNode

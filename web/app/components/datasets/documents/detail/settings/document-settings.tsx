@@ -15,6 +15,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppUnavailable from '@/app/components/base/app-unavailable'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import StepTwo from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -22,7 +23,6 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import DatasetDetailContext from '@/context/dataset-detail'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'

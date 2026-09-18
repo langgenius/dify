@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { fetchFilePreview } from '@/service/common'
 import s from './index.module.css'
 

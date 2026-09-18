@@ -5,12 +5,12 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType } from '@/models/pipeline'

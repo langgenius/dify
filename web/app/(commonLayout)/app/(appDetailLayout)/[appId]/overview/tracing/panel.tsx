@@ -37,7 +37,7 @@ import {
   TencentIcon,
   WeaveIcon,
 } from '@/app/components/base/icons/src/public/tracing'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname } from '@/next/navigation'

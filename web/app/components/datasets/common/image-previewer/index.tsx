@@ -4,7 +4,7 @@ import { Kbd } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { formatFileSize } from '@/utils/format'
 
 type CachedImage = {

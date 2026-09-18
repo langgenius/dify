@@ -5,7 +5,7 @@ import {
   PdfHighlighter,
   PdfLoader,
 } from '@/app/components/base/file-uploader/pdf-highlighter-adapter'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 
 export function SkillPdfPreview({ fileName, url }: { fileName: string; url: string }) {
   return (

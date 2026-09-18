@@ -116,7 +116,7 @@ vi.mock('@/app/components/base/chat/chat/answer/human-input-content/expiration-t
   default: () => <div>expiration-time</div>,
 }))
 
-vi.mock('@/app/components/loading-placeholder', () => ({
+vi.mock('@/app/components/base/loading-placeholder', () => ({
   LoadingPlaceholder: () => <div>loading</div>,
 }))
 

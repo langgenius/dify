@@ -15,12 +15,12 @@ import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,

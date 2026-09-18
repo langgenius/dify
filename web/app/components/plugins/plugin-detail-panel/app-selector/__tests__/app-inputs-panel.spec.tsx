@@ -10,7 +10,7 @@ let mockHookResult = {
   retry: vi.fn(),
 }
 
-vi.mock('@/app/components/loading-placeholder', () => ({
+vi.mock('@/app/components/base/loading-placeholder', () => ({
   LoadingPlaceholder: () => <div data-testid="loading">Loading</div>,
 }))
 
