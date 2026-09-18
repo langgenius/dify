@@ -6,8 +6,8 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { BuilderChatMessage, SkillBuilderAttachment, SkillBuilderModel } from './shared'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -1094,10 +1094,11 @@ export function SkillBuilderPanel({
                       />
                     </button>
                   </div>
-                  <Button
+                  <IconButton
                     aria-label={t(($) => $['skillManagement.detail.builder.send'])}
                     variant="primary"
-                    className="size-8 px-0 focus-visible:ring-inset"
+                    size="lg"
+                    className="focus-visible:ring-inset"
                     disabled={
                       !canSendBuilderMessage ||
                       (!prompt.trim() && attachments.length === 0) ||
@@ -1115,7 +1116,7 @@ export function SkillBuilderPanel({
                         'size-4',
                       )}
                     />
-                  </Button>
+                  </IconButton>
                 </div>
               </div>
             </div>
