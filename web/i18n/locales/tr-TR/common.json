@@ -450,6 +450,8 @@
   "operation.confirmAction": "Lütfen işleminizi onaylayın.",
   "operation.copied": "Kopyalandı",
   "operation.copy": "Kopyala",
+  "operation.copyErrorDetails": "Hata ayrıntılarını kopyala",
+  "operation.copyErrorFailed": "Kopyalama başarısız. Yeniden dene",
   "operation.copyImage": "Resmi Kopyala",
   "operation.create": "Oluştur",
   "operation.deSelectAll": "Hepsini Seçme",

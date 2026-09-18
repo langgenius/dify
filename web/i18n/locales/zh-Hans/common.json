@@ -450,6 +450,8 @@
   "operation.confirmAction": "请确认您的操作。",
   "operation.copied": " 已复制",
   "operation.copy": "复制",
+  "operation.copyErrorDetails": "复制错误详情",
+  "operation.copyErrorFailed": "复制失败，重试",
   "operation.copyImage": "复制图片",
   "operation.create": "创建",
   "operation.deSelectAll": "取消全选",
