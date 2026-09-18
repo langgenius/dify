@@ -172,6 +172,7 @@ function ModelSelectorTrigger({
                       'grow truncate system-sm-regular text-components-input-text-filled',
                       !isStatusUnavailable && 'line-through',
                     )}
+                    title={defaultModel.model}
                   >
                     {defaultModel.model}
                   </span>
