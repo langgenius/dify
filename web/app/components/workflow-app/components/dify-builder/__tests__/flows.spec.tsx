@@ -809,6 +809,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         body: {
           app_id: 'app-1',
           goal_text: 'Build a support workflow',
+          derive_app_name: false,
           model_config: builderModel,
           scenario: 'build',
         },

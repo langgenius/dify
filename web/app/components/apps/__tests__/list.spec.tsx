@@ -35,6 +35,11 @@ vi.mock('react-i18next', async () => {
 
 const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 const mockAppStarredListQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
+const mockCreateApp = vi.hoisted(() =>
+  vi.fn(async () => ({ id: 'created-app', mode: 'workflow', maintainer: 'creator-1' })),
+)
+const mockPush = vi.hoisted(() => vi.fn())
+vi.mock('@/utils/create-app-tracking', () => ({ trackCreateApp: vi.fn() }))
 const mockUseWorkflowOnlineUsers = vi.hoisted(() =>
   vi.fn((_options: unknown) => ({
     onlineUsersMap: {},
@@ -74,7 +79,7 @@ const mockLearnDifyApp = vi.hoisted(
 
 let mockSearchParams = new URLSearchParams('')
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: mockPush }),
   usePathname: () => '/apps',
   useSearchParams: () => mockSearchParams,
 }))
@@ -94,6 +99,7 @@ vi.mock('@/service/console', () => ({
       },
     },
     apps: {
+      post: { mutationOptions: () => ({ mutationFn: mockCreateApp }) },
       get: {
         key: () => ['console', 'apps', 'get'],
         infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
@@ -252,7 +258,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     ...actual,
     useQuery: (options: { input?: unknown; queryKey?: readonly unknown[] }) =>
       options.queryKey?.includes('features')
-        ? { data: mockAppBuilderEnabled }
+        ? { data: { dify_builder_enabled: mockAppBuilderEnabled, apps: { size: 0, limit: 0 } } }
         : options.input
           ? {
               data: mockStarredIsLoading ? undefined : mockStarredAppData,
@@ -262,7 +268,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
               data: mockSystemFeatures,
               error: null,
             },
-    useSuspenseQuery: () => ({ data: mockSystemFeatures }),
+    useSuspenseQuery: (options: { queryKey: readonly unknown[] }) => ({
+      data: JSON.stringify(options.queryKey).includes('account') ? 'creator-1' : mockSystemFeatures,
+    }),
     useInfiniteQuery: () => ({
       data: mockServiceState.isLoading ? undefined : mockAppData,
       isFetching: mockServiceState.isFetching,
@@ -280,107 +288,114 @@ vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
-vi.mock('@/next/dynamic', () => ({
-  default: (importFn: () => Promise<unknown>) => {
-    const fnString = importFn.toString()
+vi.mock('@/next/dynamic', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/next/dynamic')>()
+  return {
+    default: (importFn: () => Promise<unknown>) => {
+      const fnString = importFn.toString()
+      if (fnString.includes('chat-input-starter'))
+        return actual.default(() => import('@/app/components/app/chat-input-starter'), {
+          ssr: false,
+        })
 
-    if (fnString.includes('tag-management')) {
-      return function MockTagManagement() {
-        return React.createElement('div', { 'data-testid': 'tag-management-modal' })
+      if (fnString.includes('tag-management')) {
+        return function MockTagManagement() {
+          return React.createElement('div', { 'data-testid': 'tag-management-modal' })
+        }
       }
-    }
-    if (fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateFromDSLModal({
-        show,
-        onClose,
-      }: {
-        show: boolean
-        onClose: () => void
-      }) {
-        if (!show) return null
-        return React.createElement(
-          'div',
-          { 'data-testid': 'create-dsl-modal' },
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'close-dsl-modal' },
-            'Close',
-          ),
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'success-dsl-modal' },
-            'Success',
-          ),
-        )
+      if (fnString.includes('create-from-dsl-modal')) {
+        return function MockCreateFromDSLModal({
+          show,
+          onClose,
+        }: {
+          show: boolean
+          onClose: () => void
+        }) {
+          if (!show) return null
+          return React.createElement(
+            'div',
+            { 'data-testid': 'create-dsl-modal' },
+            React.createElement(
+              'button',
+              { onClick: onClose, 'data-testid': 'close-dsl-modal' },
+              'Close',
+            ),
+            React.createElement(
+              'button',
+              { onClick: onClose, 'data-testid': 'success-dsl-modal' },
+              'Success',
+            ),
+          )
+        }
       }
-    }
-    if (fnString.includes('create-app-modal')) {
-      return function MockCreateAppModal({
-        show,
-        onClose,
-        onCreateFromTemplate,
-      }: {
-        show: boolean
-        onClose: () => void
-        onCreateFromTemplate: () => void
-      }) {
-        if (!show) return null
-        return React.createElement(
-          'div',
-          { 'data-testid': 'create-app-modal', role: 'dialog', 'aria-label': 'Create app' },
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'close-create-modal' },
-            'Close',
-          ),
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'success-create-modal' },
-            'Success',
-          ),
-          React.createElement(
-            'button',
-            { onClick: onCreateFromTemplate, 'data-testid': 'to-template-modal' },
-            'To Template',
-          ),
-        )
+      if (fnString.includes('create-app-modal')) {
+        return function MockCreateAppModal({
+          show,
+          onClose,
+          onCreateFromTemplate,
+        }: {
+          show: boolean
+          onClose: () => void
+          onCreateFromTemplate: () => void
+        }) {
+          if (!show) return null
+          return React.createElement(
+            'div',
+            { 'data-testid': 'create-app-modal', role: 'dialog', 'aria-label': 'Create app' },
+            React.createElement(
+              'button',
+              { onClick: onClose, 'data-testid': 'close-create-modal' },
+              'Close',
+            ),
+            React.createElement(
+              'button',
+              { onClick: onClose, 'data-testid': 'success-create-modal' },
+              'Success',
+            ),
+            React.createElement(
+              'button',
+              { onClick: onCreateFromTemplate, 'data-testid': 'to-template-modal' },
+              'To Template',
+            ),
+          )
+        }
       }
-    }
-    if (fnString.includes('create-app-dialog')) {
-      return function MockCreateAppTemplateDialog({
-        show,
-        onClose,
-        onCreateFromBlank,
-      }: {
-        show: boolean
-        onClose: () => void
-        onCreateFromBlank: () => void
-      }) {
-        if (!show) return null
-        return React.createElement(
-          'div',
-          { 'data-testid': 'template-dialog' },
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'close-template-dialog' },
-            'Close',
-          ),
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'success-template-dialog' },
-            'Success',
-          ),
-          React.createElement(
-            'button',
-            { onClick: onCreateFromBlank, 'data-testid': 'to-blank-modal' },
-            'To Blank',
-          ),
-        )
+      if (fnString.includes('create-app-dialog')) {
+        return function MockCreateAppTemplateDialog({
+          show,
+          onClose,
+          onCreateFromBlank,
+        }: {
+          show: boolean
+          onClose: () => void
+          onCreateFromBlank: () => void
+        }) {
+          if (!show) return null
+          return React.createElement(
+            'div',
+            { 'data-testid': 'template-dialog' },
+            React.createElement(
+              'button',
+              { onClick: onClose, 'data-testid': 'close-template-dialog' },
+              'Close',
+            ),
+            React.createElement(
+              'button',
+              { onClick: onClose, 'data-testid': 'success-template-dialog' },
+              'Success',
+            ),
+            React.createElement(
+              'button',
+              { onClick: onCreateFromBlank, 'data-testid': 'to-blank-modal' },
+              'To Blank',
+            ),
+          )
+        }
       }
-    }
-    return () => null
-  },
-}))
+      return () => null
+    },
+  }
+})
 
 vi.mock('../app-card', () => ({
   AppCard: ({
@@ -614,9 +629,9 @@ describe('List', () => {
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate,
       )
-      expect(await screen.findByText('app.newApp.startFromBlank')).toBeInTheDocument()
+      expect(await screen.findByText('app.types.workflow')).toBeInTheDocument()
       expect(
-        screen.getByRole('menuitem', { name: 'app.newApp.startFromBlank', hidden: true }),
+        screen.getByRole('menuitem', { name: 'app.types.workflow', hidden: true }),
       ).toBeInTheDocument()
       const createMenuHighlightPart = document.body.querySelector(
         '[data-step-by-step-tour-highlight-part]',
@@ -1210,25 +1225,31 @@ describe('List', () => {
       renderList()
 
       await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      await user.click(await screen.findByRole('menuitem', { name: /app\.newApp\.buildFromBlank/ }))
+      await user.click(await screen.findByRole('menuitem', { name: 'app.types.workflow' }))
 
-      expect(screen.getByRole('dialog', { name: 'Create app' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('dialog', { name: 'app.newApp.starter.workflowTitle' }),
+      ).toBeInTheDocument()
     })
 
-    it('should open blank app modal from create menu', async () => {
+    it('creates the selected type directly when Builder is disabled', async () => {
       renderList()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      fireEvent.click(await screen.findByText('app.newApp.startFromBlank'))
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.types.workflow' }))
 
-      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/app/created-app/workflow'))
+      expect(mockCreateApp).toHaveBeenCalledWith(
+        { body: expect.objectContaining({ mode: 'workflow', name: 'app.newApp.untitled' }) },
+        expect.anything(),
+      )
     })
 
     it('should open template dialog from create menu', async () => {
       renderList()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      fireEvent.click(await screen.findByText('app.newApp.startFromTemplate'))
+      fireEvent.click(await screen.findByText('app.newApp.menu.startFromTemplate'))
 
       expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
     })

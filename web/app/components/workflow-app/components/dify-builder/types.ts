@@ -58,7 +58,12 @@ export type DifyBuilderSessionController = {
     checklistErrors: ChecklistErrorPayload[],
     modelConfig?: SessionModel,
   ) => Promise<boolean>
-  startBuild: (appId: string, goalText: string, modelConfig?: SessionModel) => Promise<boolean>
+  startBuild: (
+    appId: string,
+    goalText: string,
+    modelConfig?: SessionModel,
+    deriveAppName?: boolean,
+  ) => Promise<boolean>
   startEdit: (appId: string, goalText: string, modelConfig?: SessionModel) => Promise<boolean>
   loadOlderConversation: () => Promise<boolean>
   refresh: () => Promise<boolean>

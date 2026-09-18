@@ -47,6 +47,7 @@ const difyBuilderStartFixMutationAtom = atomWithMutation((get) => ({
 }))
 export const difyBuilderSelectedModelAtom = atom<SessionModel | null>(null)
 export const difyBuilderDraftAtom = atom('')
+export const difyBuilderDeriveAppNameAtom = atom(false)
 export const difyBuilderLocalErrorAtom = atom('')
 export const difyBuilderChecklistErrorsAtom = atom<ChecklistErrorPayload[]>([])
 export const difyBuilderCanvasRefreshGenerationAtom = atom(0)
@@ -62,6 +63,7 @@ export const difyBuilderScopedAtoms = [
   difyBuilderRuntimeAtom,
   difyBuilderSelectedModelAtom,
   difyBuilderDraftAtom,
+  difyBuilderDeriveAppNameAtom,
   difyBuilderLocalErrorAtom,
   difyBuilderChecklistErrorsAtom,
   difyBuilderCanvasRefreshGenerationAtom,
@@ -229,6 +231,11 @@ const startDifyBuilderPromptAtom = atom(
     if (!(await set(prepareDifyBuilderSessionAtom))) return false
 
     const { nodes, edgeCount } = runtime.getCanvasSnapshot()
+    if (shouldStartBuildSession(nodes, edgeCount) && get(difyBuilderDeriveAppNameAtom)) {
+      const started = await runtime.session.startBuild(runtime.appId, prompt, model, true)
+      if (get(difyBuilderSessionViewAtom)) set(difyBuilderDeriveAppNameAtom, false)
+      return started
+    }
     return shouldStartBuildSession(nodes, edgeCount)
       ? runtime.session.startBuild(runtime.appId, prompt, model)
       : runtime.session.startEdit(runtime.appId, prompt, model)
@@ -363,6 +370,7 @@ export const difyBuilderRegisterChecklistErrorsAtom = atom(
 export const difyBuilderResetAtom = atom(null, (get, set) => {
   get(difyBuilderRuntimeAtom)?.session.reset()
   set(difyBuilderSelectedModelAtom, null)
+  set(difyBuilderDeriveAppNameAtom, false)
   set(difyBuilderDraftAtom, '')
   set(difyBuilderRetryableMessageAtom, null)
   set(difyBuilderLocalErrorAtom, '')

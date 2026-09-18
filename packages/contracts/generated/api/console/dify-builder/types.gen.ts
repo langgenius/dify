@@ -53,6 +53,7 @@ export type DifyBuilderSessionViewResponse = {
   canvas_read_only: boolean
   checkpoint?: CheckpointRef | null
   conversation_last_seq: number
+  decision?: Decision | null
   entry_mode?: EntryMode
   interrupted: boolean
   model?: SessionModel | null
@@ -140,6 +141,7 @@ export type DifyBuilderSubmitMessagePayload = {
 
 export type DifyBuilderCreateBuildSessionPayload = {
   app_id: string
+  derive_app_name?: boolean
   goal_text: string
   model_config?: SessionModel | null
   scenario: 'build'
@@ -295,6 +297,13 @@ export type CheckpointRef = {
   checkpoint_id: string
   created_at: string
   label: string
+}
+
+export type Decision = {
+  cancel?: Action | null
+  confirm?: Action | null
+  default_option_id?: string
+  options?: Array<CardOption>
 }
 
 export type EntryMode = 'build' | 'edit' | 'fix' | 'fix_checklist'
@@ -470,6 +479,7 @@ export type DifyBuilderCommandStartedEventData = {
   canvas_read_only: boolean
   checkpoint?: CheckpointRef | null
   conversation_last_seq: number
+  decision?: Decision | null
   entry_mode?: EntryMode
   interrupted: boolean
   kind?: 'command_started'
@@ -612,6 +622,7 @@ export type DifyBuilderStateEventData = {
   canvas_read_only: boolean
   checkpoint?: CheckpointRef | null
   conversation_last_seq: number
+  decision?: Decision | null
   entry_mode?: EntryMode
   interrupted: boolean
   kind?: 'state'
@@ -633,6 +644,17 @@ export type ErrorEventData = {
 }
 
 export type ActionKind = 'automatic' | 'destructive' | 'primary' | 'secondary'
+
+export type CardOption = {
+  canvas_event?: string | null
+  description?: string
+  id: string
+  input?: OptionInput | null
+  is_default?: boolean
+  label: string
+  next_state?: string | null
+  tone?: string
+}
 
 export type UserItem = {
   text: string
@@ -722,6 +744,9 @@ export type TestResultCard = {
 
 export type ErrorCard = {
   body: string
+  diagnostics?: Array<{
+    [key: string]: unknown
+  }>
   node_id?: string | null
   title: string
   tone?: string
@@ -776,6 +801,13 @@ export type CanvasEvent =
 export type ExecutionProgress = {
   activities?: Array<ExecutionActivity>
   status: 'completed' | 'error' | 'running' | 'stopped'
+}
+
+export type OptionInput = {
+  max_length?: number
+  min_length?: number
+  placeholder?: string
+  required?: boolean
 }
 
 export type PreflightIssue = {

@@ -745,7 +745,8 @@ export const zCreateAppPayload = z.object({
   icon_background: z.string().nullish(),
   icon_type: zIconType.nullish(),
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
-  name: z.string().min(1),
+  name: z.string().min(1).nullish(),
+  prompt: z.string().nullish(),
 })
 
 /**

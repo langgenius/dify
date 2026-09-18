@@ -143,7 +143,6 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
           onKeywordsChange={changeKeywords}
           onCreatorIDsChange={changeCreatorIDs}
           onSortByChange={changeSortBy}
-          onCreateBlank={openCreateBlankModal}
           onCreateTemplate={openCreateTemplateDialog}
           onImportDSL={openCreateFromDSLModal}
           onOpenTagManagement={openTagManagement}

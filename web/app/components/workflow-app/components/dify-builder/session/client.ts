@@ -42,6 +42,7 @@ export const createBuildSession = (
   goalText: string,
   modelConfig: SessionModel | undefined,
   signal: AbortSignal,
+  deriveAppName = false,
 ) =>
   consoleClient.difyBuilder.sessions.post(
     {
@@ -49,6 +50,7 @@ export const createBuildSession = (
         app_id: appId,
         scenario: 'build',
         goal_text: goalText,
+        derive_app_name: deriveAppName,
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
     },
