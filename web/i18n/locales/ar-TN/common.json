@@ -450,6 +450,8 @@
   "operation.confirmAction": "يرجى تأكيد الإجراء الخاص بك.",
   "operation.copied": "تم النسخ",
   "operation.copy": "نسخ",
+  "operation.copyErrorDetails": "نسخ تفاصيل الخطأ",
+  "operation.copyErrorFailed": "فشل النسخ. أعد المحاولة",
   "operation.copyImage": "نسخ الصورة",
   "operation.create": "إنشاء",
   "operation.deSelectAll": "إلغاء تحديد الكل",

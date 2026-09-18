@@ -7,12 +7,12 @@ import type {
   TriggerLogEntity,
   TriggerSubscriptionBuilder,
 } from '@/app/components/workflow/block-selector/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import { toast } from '@/app/notifications'
 import {
   useBuildTriggerSubscription,
   useCreateTriggerSubscriptionBuilder,

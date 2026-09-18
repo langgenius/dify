@@ -1,9 +1,9 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentRosterListState } from '../agent-roster-list'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { AgentRosterList } from '../agent-roster-list'
 

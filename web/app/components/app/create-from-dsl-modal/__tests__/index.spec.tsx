@@ -132,7 +132,7 @@ vi.mock('@/utils/imported-app-redirection', () => ({
     mockResolveImportedAppRedirectionTarget(target),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign((...args: unknown[]) => toastMocks.call(...args), {
     success: (...args: unknown[]) => toastMocks.success(...args),
     error: (...args: unknown[]) => toastMocks.error(...args),

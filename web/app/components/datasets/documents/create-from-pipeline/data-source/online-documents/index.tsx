@@ -1,7 +1,6 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -11,6 +10,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType } from '@/models/pipeline'

@@ -4,11 +4,11 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type React from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { toast } from '@/app/notifications'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
@@ -41,7 +41,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test${path}`,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
