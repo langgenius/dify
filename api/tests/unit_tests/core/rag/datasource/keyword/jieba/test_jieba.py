@@ -13,6 +13,7 @@ from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
 from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table
 from repositories.knowledge.keyword_table_repository import load_keyword_table
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_dataset
 
 
 @dataclass
@@ -92,7 +93,7 @@ def runtime(request: pytest.FixtureRequest, sqlite_session: Session, monkeypatch
     monkeypatch.setattr(jieba_module, "redis_client", locks)
     monkeypatch.setattr(jieba_module, "storage", storage)
     apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE=request.param)
-    dataset = Dataset(id="dataset-1", tenant_id="tenant-1", name="Test", created_by="author", keyword_number=2)
+    dataset = make_dataset(name="Test", created_by="author", keyword_number=2)
     sqlite_session.add(dataset)
     sqlite_session.commit()
     return KeywordRuntime(sqlite_session, dataset, storage, locks, extracted)

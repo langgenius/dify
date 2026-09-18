@@ -4,7 +4,7 @@ import type {
   ModelProvider,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
+import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
   CodeBasedExtension,
   CommonResponse,

@@ -49,7 +49,7 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -922,7 +922,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     )
   }
 
-  if (!logs) return <Loading />
+  if (!logs) return <LoadingPlaceholder />
 
   return (
     <div className="relative mt-2 grow overflow-x-auto">

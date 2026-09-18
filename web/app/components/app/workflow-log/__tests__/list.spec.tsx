@@ -11,7 +11,7 @@
 
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -186,7 +186,7 @@ describe('WorkflowAppLogList', () => {
         />,
       )
 
-      expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('should render loading state when appDetail is undefined', () => {
@@ -196,7 +196,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={undefined} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('should render table when data is available', () => {

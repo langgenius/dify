@@ -6,8 +6,8 @@ import GetAutomaticRes from '../get-automatic-res'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: appDebug } = await import('@/i18n/en-US/app-debug.json')
-  const { default: common } = await import('@/i18n/en-US/common.json')
+  const { default: appDebug } = await import('@/i18n/locales/en-US/app-debug.json')
+  const { default: common } = await import('@/i18n/locales/en-US/common.json')
   return createReactI18nextMock({ ...appDebug, ...common })
 })
 

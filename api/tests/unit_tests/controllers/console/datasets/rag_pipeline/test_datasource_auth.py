@@ -34,6 +34,7 @@ from services.credentials.query import CredentialQuery
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.data_source.provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
+from tests.unit_tests.model_factories import make_account
 
 _PROVIDER_ID = "langgenius/notion_datasource/notion"
 
@@ -50,9 +51,7 @@ def credential_query_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _account() -> Account:
-    account = Account(name="Datasource Auth Tester", email="datasource-auth@example.com")
-    account.id = "user-1"
-    return account
+    return make_account(account_id="user-1", name="Datasource Auth Tester", email="datasource-auth@example.com")
 
 
 def _i18n(text: str) -> dict[str, str]:

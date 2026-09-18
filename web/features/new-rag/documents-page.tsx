@@ -13,7 +13,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   datasetDefaultPermissionKeysAtom,
   refreshWorkspacePermissionKeysAfterMutationDenialAtom,
@@ -2019,7 +2019,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         )}
         {documentsQuery.isPending && !permissionDenied ? (
           <div className="flex min-h-64 flex-1 items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         ) : permissionDenied || (documentsQuery.error && !documentsQuery.data) ? (
           <div

@@ -45,6 +45,7 @@ from models.enums import IndexingStatus, SegmentType
 from services.api_token_service import CachedApiToken
 from services.knowledge.dataset_service import DocumentService, SegmentService
 from services.knowledge.segments.application import SegmentMutationService
+from tests.unit_tests.model_factories import make_account
 
 
 @pytest.fixture(autouse=True)
@@ -95,9 +96,9 @@ def mock_tenant() -> Tenant:
 
 
 def _account() -> Account:
-    account = Account(name="Segment API User", email=f"segment-api-{uuid.uuid4()}@example.com")
-    account.id = str(uuid.uuid4())
-    return account
+    return make_account(
+        account_id=str(uuid.uuid4()), name="Segment API User", email=f"segment-api-{uuid.uuid4()}@example.com"
+    )
 
 
 def _api_token(tenant_id: str) -> CachedApiToken:

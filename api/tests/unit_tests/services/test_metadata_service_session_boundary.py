@@ -8,8 +8,7 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models import Account
-from models.dataset import Dataset, DatasetMetadataBinding, Document
+from models.dataset import DatasetMetadataBinding, Document
 from models.enums import DocumentCreatedFrom
 from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
 from services.errors.metadata import MetadataResourceNotFoundError
@@ -22,6 +21,7 @@ from services.knowledge.entities.knowledge_entities import (
 )
 from services.knowledge.metadata.application import MetadataService
 from services.knowledge.resource_scope import DatasetRef
+from tests.unit_tests.model_factories import make_account, make_dataset, make_document
 
 REF = DatasetRef("tenant-1", "dataset-1")
 DOCUMENT_ID = "11111111-1111-1111-1111-111111111111"
@@ -31,30 +31,26 @@ FOREIGN_ID = "22222222-2222-2222-2222-222222222222"
 @pytest.fixture
 def metadata_service(sqlite_session_factory: sessionmaker[Session]) -> Iterator[MetadataService]:
     with sqlite_session_factory.begin() as session:
-        account = Account(name="User", email="metadata@example.com")
-        account.id = "actor"
+        account = make_account(account_id="actor", name="User", email="metadata@example.com")
         session.add(account)
         for ref, document_id in [(REF, DOCUMENT_ID), (DatasetRef("tenant-2", "dataset-2"), FOREIGN_ID)]:
-            session.add(Dataset(id=ref.dataset_id, tenant_id=ref.tenant_id, name="Dataset", created_by="actor"))
             session.add(
-                Document(
-                    id=document_id,
-                    tenant_id=ref.tenant_id,
-                    dataset_id=ref.dataset_id,
-                    position=1,
-                    data_source_type="upload_file",
-                    batch="batch",
-                    name="Document",
-                    created_from=DocumentCreatedFrom.API,
-                    created_by="actor",
-                    created_at=datetime(2026, 1, 1),
-                    updated_at=datetime(2026, 1, 2),
-                    enabled=True,
-                    archived=False,
-                    indexing_status="completed",
-                    doc_metadata=None,
-                )
+                make_dataset(dataset_id=ref.dataset_id, tenant_id=ref.tenant_id, name="Dataset", created_by="actor")
             )
+            document = make_document(
+                document_id=document_id,
+                tenant_id=ref.tenant_id,
+                dataset_id=ref.dataset_id,
+                batch="batch",
+                created_from=DocumentCreatedFrom.API,
+                created_by="actor",
+                created_at=datetime(2026, 1, 1),
+                updated_at=datetime(2026, 1, 2),
+            )
+            document.enabled = True
+            document.archived = False
+            document.indexing_status = "completed"
+            session.add(document)
     return MetadataService(
         store=SQLAlchemyMetadataRepository(session_factory=sqlite_session_factory),
         dataset_access=create_autospec(DatasetAccess, instance=True),

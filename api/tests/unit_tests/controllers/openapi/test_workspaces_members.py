@@ -45,7 +45,7 @@ from controllers.openapi.workspaces import (
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant, TenantAccountJoin
-from models.account import AccountStatus, TenantAccountRole, TenantStatus
+from models.account import TenantAccountRole, TenantStatus
 from services.account_service import TenantService as RealTenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -57,6 +57,7 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
 )
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_account, make_tenant
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -130,14 +131,11 @@ def _auth_data(account_id: uuid.UUID) -> AuthData:
 
 
 def _account(account_id: str = "acct-1", email: str = "u@example.com") -> Account:
-    account = Account(name="User", email=email, status=AccountStatus.ACTIVE)
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="User", email=email)
 
 
 def _tenant(tenant_id: str = "ws-1", *, status: TenantStatus = TenantStatus.NORMAL) -> Tenant:
-    tenant = Tenant(name="WS", status=status)
-    tenant.id = tenant_id
+    tenant = make_tenant(tenant_id=tenant_id, name="WS", status=status)
     tenant.created_at = datetime(2026, 5, 18)
     return tenant
 

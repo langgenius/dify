@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
@@ -205,7 +205,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               !inSidePanel && 'rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg',
             )}
           >
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         )}
         {!isLoading && (

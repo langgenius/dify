@@ -19,6 +19,7 @@ from services.entities.account_entities import (
     AccountInitializationStatus,
     AccountSnapshot,
 )
+from tests.unit_tests.model_factories import make_account_snapshot
 
 
 def _context() -> RequestContext:
@@ -31,21 +32,7 @@ def _context() -> RequestContext:
 
 
 def _account(*, status: str = "uninitialized") -> AccountSnapshot:
-    return AccountSnapshot(
-        id="account-1",
-        name="Account",
-        email="account@example.com",
-        avatar=None,
-        is_password_set=False,
-        interface_language="en-US",
-        interface_theme="light",
-        timezone="UTC",
-        last_login_at=None,
-        last_login_ip=None,
-        status=status,
-        initialized_at=None,
-        created_at=datetime(2026, 1, 1),
-    )
+    return make_account_snapshot(status=status)
 
 
 def test_cloud_initialization_consumes_invitation_and_updates_account_atomically() -> None:

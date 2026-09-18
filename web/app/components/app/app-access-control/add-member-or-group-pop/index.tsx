@@ -16,10 +16,10 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
 import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
@@ -188,14 +188,24 @@ export default function AddMemberOrGroupDialog({
                 }
               >
                 {isLoading ? (
-                  <div className="w-full" aria-hidden="true">
-                    <Loading />
-                  </div>
+                  <>
+                    <SpinnerIcon />
+                    <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
+                  </>
                 ) : (
-                  statusText
+                  <>
+                    {statusText}
+                    {isFetchingNextPage && (
+                      <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
+                    )}
+                  </>
                 )}
               </div>
-              {isFetchingNextPage && <Loading />}
+              {isFetchingNextPage && (
+                <div className="flex w-full justify-center">
+                  <SpinnerIcon />
+                </div>
+              )}
               <div ref={anchorRef} className="h-0" />
             </ScrollAreaContent>
           </ScrollAreaViewport>

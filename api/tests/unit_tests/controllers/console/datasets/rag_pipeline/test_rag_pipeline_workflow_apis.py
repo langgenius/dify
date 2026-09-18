@@ -258,7 +258,7 @@ def workflow_author(sqlite_database: scoped_session[Session]) -> Account:
 
 
 class TestDraftWorkflowApi:
-    def test_get_draft_success(self, app: Flask, workflow_author: Account) -> None:
+    def test_get_draft_success(self, app: Flask, workflow_author: Account, sqlite_session: Session) -> None:
         api = DraftRagPipelineApi()
         method = unwrap(api.get)
 
@@ -275,7 +275,7 @@ class TestDraftWorkflowApi:
                 return_value=service,
             ),
         ):
-            result = method(api, pipeline)
+            result = method(api, sqlite_session, pipeline)
 
         assert result["id"] == "workflow-1"
         assert result["graph"] == {"nodes": [], "edges": []}
@@ -288,7 +288,7 @@ class TestDraftWorkflowApi:
         }
         assert result["updated_by"] is None
 
-    def test_get_draft_not_exist(self, app: Flask) -> None:
+    def test_get_draft_not_exist(self, app: Flask, sqlite_session: Session) -> None:
         api = DraftRagPipelineApi()
         method = unwrap(api.get)
 
@@ -304,7 +304,7 @@ class TestDraftWorkflowApi:
             ),
         ):
             with pytest.raises(DraftWorkflowNotExist):
-                method(api, pipeline)
+                method(api, sqlite_session, pipeline)
 
     def test_sync_hash_not_match(self, app: Flask) -> None:
         api = DraftRagPipelineApi()
