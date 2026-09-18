@@ -5,7 +5,8 @@ English JSON files under `web/i18n/en-US/` are the source locale. Other locale d
 ## Owners
 
 - `languages.ts` is the source of truth for supported Web locales.
-- `language.ts` owns locale normalization and product-specific locale mappings.
+- `locale.ts` owns canonical UI locale tags, the default locale, and input normalization.
+- `language.ts` owns product-specific locale mappings.
 - `resources.ts` owns the typed namespace registry. File names use kebab case while namespaces use camel case, for example `app-debug.json` and `appDebug`.
 - `locale-resources/<locale>.ts` owns lazy loading for one locale.
 - `settings.ts` owns shared i18next options.
@@ -21,7 +22,13 @@ Do not copy the language registry into documentation. Read the current source fi
 4. Keep the backend language and timezone registry in `api/constants/languages.py` aligned when the locale is accepted by backend APIs.
 5. Run the complete i18n check before submitting the change.
 
-`LanguagesSupported` is populated from the supported entries in `languages.ts`. `language.ts` also owns the accepted locale spellings and the `I18nText` contract; keep them aligned when adding a locale.
+`supportedLocales` is populated from the supported entries in `languages.ts`. `language.ts` exposes the existing `LanguagesSupported` and `I18nText` contracts.
+
+## Locale selection
+
+A nonempty locale cookie takes priority over `Accept-Language`. An unusable cookie falls back to English without consulting the header. Header negotiation preserves valid preferences and their quality order while ignoring malformed tags and wildcards.
+
+`locale.ts` canonicalizes language tags and accepts the existing `en_US`, `zh_Hans`, and `ja_JP` spellings at input boundaries. Client language changes, saved preferences, and resource paths use supported UI tags or the English default. Share-app language overrides do not write the console locale cookie. Plugin and model metadata spellings remain separate product contracts.
 
 ## Add or change copy
 

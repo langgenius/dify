@@ -117,4 +117,42 @@ describe('server locale', () => {
       await expect(getLocaleOnServer()).resolves.toBe('en-US')
     },
   )
+
+  it.each([
+    ['en_US', 'en-US'],
+    ['zh_Hans', 'zh-Hans'],
+    ['ja_JP', 'ja-JP'],
+    ['ZH-hans', 'zh-Hans'],
+  ])('normalizes the saved locale %s to %s', async (saved, expected) => {
+    mocks.getCookie.mockReturnValue({ value: saved })
+    const { getLocaleOnServer } = await import('../server')
+
+    await expect(getLocaleOnServer()).resolves.toBe(expected)
+    expect(mocks.headers).not.toHaveBeenCalled()
+  })
+
+  it.each(['en--US', 'en_US_invalid', '*', 'zz-ZZ'])(
+    'falls back for an unusable cookie without consulting the browser: %s',
+    async (saved) => {
+      mocks.getCookie.mockReturnValue({ value: saved })
+      mocks.headers.mockResolvedValue(new Headers({ 'accept-language': 'ja-JP' }))
+      const { getLocaleOnServer } = await import('../server')
+
+      await expect(getLocaleOnServer()).resolves.toBe('en-US')
+      expect(mocks.headers).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ['en--US,ja-JP;q=0.9,en-US;q=0.8', 'ja-JP'],
+    ['ja-JP,en-US;q=0.8,*;q=0.5', 'ja-JP'],
+    ['en-US;q=0.5,zh-CN;q=0.9', 'zh-Hans'],
+    ['*,en--US;q=0.5', 'en-US'],
+    ['ja-JP;q=0,en-US;q=0.5', 'en-US'],
+  ])('negotiates valid header preferences from %s', async (header, expected) => {
+    mocks.headers.mockResolvedValue(new Headers({ 'accept-language': header }))
+    const { getLocaleOnServer } = await import('../server')
+
+    await expect(getLocaleOnServer()).resolves.toBe(expected)
+  })
 })

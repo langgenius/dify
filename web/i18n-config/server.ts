@@ -8,9 +8,10 @@ import resourcesToBackend from 'i18next-resources-to-backend'
 import Negotiator from 'negotiator'
 import { cache } from 'react'
 import { initReactI18next } from 'react-i18next/initReactI18next'
+import { LOCALE_COOKIE_NAME } from '@/config'
 import { cookies, headers } from '@/next/headers'
-import { i18n } from '.'
 import { loadI18nResource } from './load-resource'
+import { canonicalizeLanguageTag, defaultLocale, supportedLocales } from './locale'
 import { namespacesInFileName } from './resources'
 import { getInitOptions } from './settings'
 
@@ -42,31 +43,18 @@ export async function getTranslation<T extends Namespace>(lng: Locale, ns?: T) {
 }
 
 export const getLocaleOnServer = cache(async (): Promise<Locale> => {
-  const locales: string[] = i18n.locales
+  const localeCookie = (await cookies()).get(LOCALE_COOKIE_NAME)
+  const requestedLanguages = localeCookie?.value
+    ? [localeCookie.value]
+    : new Negotiator({
+        headers: { 'accept-language': (await headers()).get('accept-language') ?? '' },
+      }).languages()
+  const languages = requestedLanguages.flatMap((language) => {
+    const canonical = canonicalizeLanguageTag(language)
+    return canonical ? [canonical] : []
+  })
 
-  let languages: string[] | undefined
-  // get locale from cookie
-  const localeCookie = (await cookies()).get('locale')
-  languages = localeCookie?.value ? [localeCookie.value] : []
-
-  if (!languages.length) {
-    // Negotiator expects plain object so we need to transform headers
-    const negotiatorHeaders: Record<string, string> = {}
-    ;(await headers()).forEach((value, key) => (negotiatorHeaders[key] = value))
-    // Use negotiator and intl-localematcher to get best locale
-    languages = new Negotiator({ headers: negotiatorHeaders }).languages()
-  }
-
-  // Validate languages
-  if (
-    !Array.isArray(languages) ||
-    languages.length === 0 ||
-    !languages.every((lang) => typeof lang === 'string' && /^[\w-]+$/.test(lang))
-  )
-    languages = [i18n.defaultLocale]
-
-  // match locale
-  return match(languages, locales, i18n.defaultLocale) as Locale
+  return match(languages, supportedLocales, defaultLocale) as Locale
 })
 
 export const getResources = cache(async (lng: Locale): Promise<Resource> => {
