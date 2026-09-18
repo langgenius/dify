@@ -224,25 +224,33 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     return constraint && constraint !== type ? selectorType(constraint) : undefined
   }
 
-  function typedTranslation(node: ts.Node): Translation | undefined {
+  function typedTranslation(node: ts.Node, call?: ts.CallExpression): Translation | undefined {
     const type = checker.getTypeAtLocation(node)
     const brand = type.getProperty('$TFunctionBrand')
     if (brand) {
       const namespaces = literalTypes(checker.getTypeOfSymbolAtLocation(brand, node))
       if (namespaces?.length) return { namespaces, prefix: '', argument: 0 }
     }
-    for (const signature of type.getCallSignatures()) {
+    // Prefer the instantiated namespace. Inferred selector functions can lose
+    // their alias, so retain declaration signatures for recognizing adapters.
+    const resolved = call && checker.getResolvedSignature(call)
+    const signatures = [...(resolved ? [resolved] : []), ...type.getCallSignatures()]
+    for (const signature of signatures) {
       for (const [argument, parameter] of signature.parameters.entries()) {
         const selector = selectorType(checker.getTypeOfSymbolAtLocation(parameter, node))
         if (!selector) continue
         const namespaceType = selector.aliasTypeArguments?.[0]
         const namespaces = namespaceType ? literalTypes(namespaceType) : undefined
-        return { namespaces: namespaces ?? ['app'], prefix: '', argument }
+        return { namespaces: namespaces ?? [...catalog.keys()], prefix: '', argument }
       }
     }
   }
 
-  function translation(node: ts.Expression, seen = new Set<ts.Node>()): Translation | undefined {
+  function translation(
+    node: ts.Expression,
+    call?: ts.CallExpression,
+    seen = new Set<ts.Node>(),
+  ): Translation | undefined {
     if (seen.has(node)) return
     seen.add(node)
     for (const declaration of declarations(
@@ -254,7 +262,7 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
       ) {
         const variable = declaration.parent.parent
         if (ts.isParameter(variable))
-          return typedTranslation(node) ?? { namespaces: ['app'], prefix: '', argument: 0 }
+          return typedTranslation(node, call) ?? { namespaces: ['app'], prefix: '', argument: 0 }
         if (ts.isVariableDeclaration(variable) && variable.initializer) {
           const call = unwrap(variable.initializer)
           if (ts.isCallExpression(call)) {
@@ -287,17 +295,17 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
       if (ts.isParameter(declaration)) {
         const match = declaration.type?.getText().match(/TFunction\s*<\s*['"]([^'"]+)/)
         if (match) return { namespaces: [match[1]!], prefix: '', argument: 0 }
-        const typed = typedTranslation(node)
+        const typed = typedTranslation(node, call)
         if (typed) return typed
         if (declaration.name.getText() === 't')
           return { namespaces: ['app'], prefix: '', argument: 0 }
       }
       if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
-        const alias = translation(unwrap(declaration.initializer), seen)
+        const alias = translation(unwrap(declaration.initializer), call, seen)
         if (alias) return alias
       }
     }
-    const typed = typedTranslation(node)
+    const typed = typedTranslation(node, call)
     if (typed) return typed
     if (ts.isPropertyAccessExpression(node) && node.name.text === 't')
       return { namespaces: ['app'], prefix: '', argument: 0 }
@@ -468,7 +476,7 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
       }
     }
     if (ts.isCallExpression(node)) {
-      const info = translation(node.expression)
+      const info = translation(node.expression, node)
       const argument = info && node.arguments[info.argument]
       if (info && argument) {
         const options = node.arguments.at(-1)

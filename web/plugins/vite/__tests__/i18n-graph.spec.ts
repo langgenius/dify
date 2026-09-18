@@ -37,6 +37,55 @@ describe('translation graph analysis', () => {
   })
 
   describe('Usage Analysis', () => {
+    it('resolves generic metadata selectors using the namespace at each call site', () => {
+      writeJson('i18n/en-US/app.json', { resetPassword: 'Unused app key' })
+      writeJson('i18n/en-US/login.json', { resetPassword: 'Reset password', unused: 'Unused' })
+      writeJson('i18n/en-US/common.json', { title: 'Title', unused: 'Unused' })
+      writeSource(
+        'src/metadata.ts',
+        `
+        type Namespace = 'app' | 'login' | 'common'
+        type SelectorParam<T extends Namespace> = (source: Record<string, string>) => string
+        export declare function getRouteMetadata<T extends Namespace>(namespace: T, selector: SelectorParam<T>): string
+      `,
+      )
+      writeSource(
+        'src/page.ts',
+        `
+        import { getRouteMetadata } from './metadata'
+        export const login = getRouteMetadata('login', $ => $.resetPassword)
+        const getTitle = getRouteMetadata
+        export const common = getTitle<'common'>('common', $ => $.title)
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['resetPassword'],
+        login: ['unused'],
+        common: ['unused'],
+      })
+    })
+
+    it('keeps possible matches across namespaces when a selector namespace cannot be resolved', () => {
+      writeJson('i18n/en-US/app.json', { title: 'App', unused: 'Unused' })
+      writeJson('i18n/en-US/login.json', { title: 'Login', unused: 'Unused' })
+      writeSource(
+        'src/metadata.ts',
+        `
+        type SelectorParam<T> = (source: Record<string, string>) => string
+        declare function metadata<T>(namespace: T, selector: SelectorParam<T>): string
+        export function page<T>(namespace: T) {
+          return metadata(namespace, $ => $.title)
+        }
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['unused'],
+        login: ['unused'],
+      })
+    })
+
     it('protects every possible namespace when the namespace is dynamic', () => {
       writeJson('i18n/en-US/app.json', { used: 'App' })
       writeJson('i18n/en-US/common.json', { used: 'Common' })
