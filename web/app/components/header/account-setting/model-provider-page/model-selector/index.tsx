@@ -33,6 +33,7 @@ type ModelSelectorBaseProps = {
   onValueChange?: (model: ModelSelectorValue) => void
   onHide?: () => void
   disabled?: boolean
+  loading?: boolean
   scopeFeatures?: readonly string[]
   showDeprecatedWarnIcon?: boolean
   hideProviderSettingsFooter?: boolean
@@ -58,6 +59,7 @@ function ModelSelectorRoot({
   onValueChange,
   onHide,
   disabled,
+  loading,
   size,
   surface,
   shape,
@@ -85,12 +87,12 @@ function ModelSelectorRoot({
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
-      if (disabled && newOpen) return
+      if ((disabled || loading) && newOpen) return
 
       setOpen(newOpen)
       if (!newOpen) setInputValue('')
     },
-    [disabled],
+    [disabled, loading],
   )
 
   const handleSelect = useCallback(
@@ -140,7 +142,8 @@ function ModelSelectorRoot({
         currentProvider={currentProvider}
         currentModel={currentModel}
         defaultModel={value}
-        disabled={disabled}
+        disabled={disabled || loading}
+        loading={loading}
         size={size}
         surface={surface}
         shape={shape}

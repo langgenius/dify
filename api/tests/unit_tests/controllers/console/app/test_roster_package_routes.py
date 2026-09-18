@@ -3,15 +3,18 @@ from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
+from uuid import UUID
 
 import httpx
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from controllers.console.app import app as app_module
 from controllers.console.app import app_import as import_module
 from core.rbac import RBACPermission
+from enums import CloudPlan, DeploymentEdition
 from models.account import Account, Tenant
 from models.model import App, AppMode
 from services import app_import_source
@@ -271,8 +274,11 @@ def test_package_import_rejects_overwrite(
 
 @pytest.mark.parametrize("query", [{}, {"format": "ifpkg"}])
 def test_existing_export_route_returns_ifpkg_for_agent(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, query: dict[str, str]
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], query: dict[str, str]
 ) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    get_plan = Mock(return_value=CloudPlan.SANDBOX)
+    monkeypatch.setattr(app_module.FeatureService, "get_workspace_plan", get_plan)
     model = App(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     monkeypatch.setattr(App, "bound_agent_id_with_session", lambda _self, **_kwargs: "agent-1")
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=lambda: object()))
@@ -289,7 +295,8 @@ def test_existing_export_route_returns_ifpkg_for_agent(
         assert response.mimetype == "application/zip"
         assert "agent.ifpkg" in response.headers["Content-Disposition"]
         response.close()
-    export.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    export.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1", version_id=None)
+    get_plan.assert_not_called()
     close.assert_called_once_with()
 
 
@@ -297,6 +304,73 @@ def test_ifpkg_export_rejects_non_agent_apps() -> None:
     model = App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
     with pytest.raises(BadRequest):
         unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), app_module.AppExportQuery(format="ifpkg"), model)
+
+
+@pytest.mark.parametrize("export_format", [None, "ifpkg", "yaml"])
+@pytest.mark.parametrize(
+    ("edition", "plan", "allowed"),
+    [
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True),
+    ],
+)
+def test_version_export_requires_cloud_paid_plan(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    export_format: str | None,
+    edition: DeploymentEdition,
+    plan: CloudPlan,
+    allowed: bool,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    get_plan = Mock(return_value=plan)
+    monkeypatch.setattr(app_module.FeatureService, "get_workspace_plan", get_plan)
+    model = App(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
+    monkeypatch.setattr(App, "bound_agent_id_with_session", lambda _self, **_kwargs: "agent-1")
+    monkeypatch.setattr(app_module, "db", SimpleNamespace(session=lambda: object()))
+    export = Mock(return_value=SimpleNamespace(archive=io.BytesIO(b"package"), filename="agent.ifpkg", close=Mock()))
+    monkeypatch.setattr(app_module, "RosterAgentPackageExporter", lambda: SimpleNamespace(export=export))
+    export_dsl = Mock(return_value="app: {}")
+    monkeypatch.setattr(app_module.AppDslService, "export_dsl", export_dsl)
+    version_id = "11111111-1111-4111-8111-111111111111"
+    query = app_module.AppExportQuery.model_validate({"format": export_format, "version_id": version_id})
+    with app.test_request_context("/console/api/apps/app-1/export"):
+        if not allowed:
+            with pytest.raises(Forbidden, match="paid plan"):
+                unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), query, model)
+            export.assert_not_called()
+            export_dsl.assert_not_called()
+        else:
+            response = unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), query, model)
+            if export_format == "yaml":
+                assert response == {"data": "app: {}"}
+                assert export_dsl.call_args.kwargs["version_id"] == UUID(version_id)
+            else:
+                export.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1", version_id=UUID(version_id))
+                response.close()
+    if edition == DeploymentEdition.CLOUD:
+        get_plan.assert_called_once_with("tenant-1")
+    else:
+        get_plan.assert_not_called()
+
+
+def test_export_query_rejects_conflicting_version_selectors() -> None:
+    with pytest.raises(ValidationError, match="version_id and workflow_id cannot be used together"):
+        app_module.AppExportQuery.model_validate(
+            {"version_id": "11111111-1111-4111-8111-111111111111", "workflow_id": "workflow-1"}
+        )
+
+
+def test_version_export_rejects_non_agent_apps() -> None:
+    query = app_module.AppExportQuery.model_validate({"version_id": "11111111-1111-4111-8111-111111111111"})
+    with pytest.raises(BadRequest):
+        unwrap(app_module.AppExportApi.get)(
+            app_module.AppExportApi(), query, App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        )
 
 
 @pytest.mark.parametrize(

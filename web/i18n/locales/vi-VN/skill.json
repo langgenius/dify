@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "Gói này không có SKILL.md. Thêm tệp và nhập lại.",
   "skillManagement.errors.nameConflict": "Một kỹ năng có tên \"{{name}}\" đã tồn tại. Đổi tên nó thành SKILL.md và nhập lại.",
   "skillManagement.errors.workspaceLimit": "Không gian làm việc của bạn đã đạt đến giới hạn 500 kỹ năng. Xóa một kỹ năng để thêm một kỹ năng mới.",
-  "skillManagement.exportDialog.description": "Thao tác này sẽ xuất bản nháp hiện đã lưu của kỹ năng. Nếu có thay đổi chưa lưu trong trình chỉnh sửa, hãy lưu trước khi xuất.",
-  "skillManagement.exportDialog.title": "Xuất bản nháp hiện đã lưu",
   "skillManagement.import": "Nhập",
   "skillManagement.importFailed": "Không thể nhập kỹ năng.",
   "skillManagement.importSuccess": "Skill đã nhập.",

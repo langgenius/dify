@@ -24,7 +24,7 @@ vi.mock('../../../utils/to-form-schema', () => ({
   addDefaultValue: (value: Record<string, unknown>, _schemas: unknown[]) => ({ ...value }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: { notify: vi.fn() },
 }))
 

@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "इस पैकेज में कोई SKILL.md नहीं है। फ़ाइल जोड़ें और इसे फिर से आयात करें।",
   "skillManagement.errors.nameConflict": "\"{{name}}\" नामक कौशल पहले से मौजूद है। इसे SKILL.md में नाम बदलें और फिर से आयात करें।",
   "skillManagement.errors.workspaceLimit": "आपका कार्यक्षेत्र 500 कौशल की सीमा तक पहुंच गया है। नया जोड़ने के लिए एक कौशल हटाएँ।",
-  "skillManagement.exportDialog.description": "इससे आपके कौशल का वर्तमान सहेजा गया ड्राफ़्ट निर्यात होगा। यदि संपादक में कोई बदलाव सहेजे नहीं गए हैं, तो निर्यात करने से पहले उन्हें सहेज लें।",
-  "skillManagement.exportDialog.title": "वर्तमान सहेजा गया ड्राफ़्ट निर्यात करें",
   "skillManagement.import": "आयात करें",
   "skillManagement.importFailed": "कौशल आयात करने में विफल.",
   "skillManagement.importSuccess": "Skill आयातित.",

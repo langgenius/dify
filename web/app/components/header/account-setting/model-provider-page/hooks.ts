@@ -50,7 +50,12 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
         provider: currentProvider.provider,
       }
 
-    return currentDefaultModel
+    return (
+      currentDefaultModel ??
+      (defaultModel
+        ? { model: defaultModel.model, provider: defaultModel.provider.provider }
+        : undefined)
+    )
   }, [defaultModel, modelList])
   const currentDefaultModelKey = currentDefaultModel
     ? `${currentDefaultModel.provider}:${currentDefaultModel.model}`

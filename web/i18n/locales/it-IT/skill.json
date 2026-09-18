@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "Questo pacchetto non ha SKILL.md. Aggiungi il file e importalo di nuovo.",
   "skillManagement.errors.nameConflict": "Esiste già una competenza denominata \"{{name}}\". Rinominalo in SKILL.md e importalo di nuovo.",
   "skillManagement.errors.workspaceLimit": "La tua area di lavoro ha raggiunto il limite di 500 competenze. Elimina una competenza per aggiungerne una nuova.",
-  "skillManagement.exportDialog.description": "Verrà esportata la bozza attualmente salvata della tua competenza. Se ci sono modifiche non salvate nell’editor, salvale prima di esportare.",
-  "skillManagement.exportDialog.title": "Esporta la bozza attualmente salvata",
   "skillManagement.import": "Importa",
   "skillManagement.importFailed": "Impossibile importare la competenza.",
   "skillManagement.importSuccess": "Skill importato.",

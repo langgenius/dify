@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   clipboardWrite: vi.fn<(items: ClipboardItem[]) => Promise<void>>(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (...args: Parameters<typeof mocks.notify>) => mocks.notify(...args),
   },

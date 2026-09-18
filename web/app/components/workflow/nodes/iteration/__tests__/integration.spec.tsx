@@ -1,9 +1,9 @@
 import type { IterationNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { BlockEnum, VarType } from '../../../types'
 import Node from '../node'
 import Panel from '../panel'
@@ -13,7 +13,7 @@ const mockHandleNodeAdd = vi.fn()
 const mockHandleNodeIterationRerender = vi.fn()
 let mockNodesReadOnly = false
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),

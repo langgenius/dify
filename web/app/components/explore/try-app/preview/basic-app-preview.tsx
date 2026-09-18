@@ -31,6 +31,7 @@ import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
 import { AgentStrategy, ModelModeType, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { basePath } from '@/utils/var'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../../header/account-setting/model-provider-page/hooks'
 
@@ -299,7 +300,7 @@ const normalizeAgentTool = (
   const providerName = getString(tool.provider_name)
   const providerType = normalizeCollectionType(tool.provider_type)
   const toolName = getString(tool.tool_name)
-  const toolInCollectionList = collectionList?.find((c) => providerId === c.id)
+  const toolInCollectionList = collectionList?.find((c) => matchesProviderReference(c, providerId))
 
   return {
     ...tool,

@@ -18,7 +18,7 @@ vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { info: toastInfoMock },
 }))
 

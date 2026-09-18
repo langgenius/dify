@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "이 패키지에는 SKILL.md가 없습니다. 파일을 추가하고 다시 가져오세요.",
   "skillManagement.errors.nameConflict": "\"{{name}}\"라는 스킬이 이미 존재합니다. SKILL.md에서 이름을 바꾸고 다시 가져옵니다.",
   "skillManagement.errors.workspaceLimit": "작업 영역이 스킬 한도인 500개에 도달했습니다. 새로운 스킬을 추가하려면 스킬을 삭제하세요.",
-  "skillManagement.exportDialog.description": "이 스킬의 현재 저장된 초안을 내보냅니다. 편집기에 저장하지 않은 변경 사항이 있으면 내보내기 전에 저장해 주세요.",
-  "skillManagement.exportDialog.title": "현재 저장된 초안 내보내기",
   "skillManagement.import": "가져오기",
   "skillManagement.importFailed": "스킬을 가져오지 못했습니다.",
   "skillManagement.importSuccess": "Skill 가져왔습니다.",

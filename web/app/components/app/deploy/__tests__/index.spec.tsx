@@ -19,9 +19,9 @@ import {
   PluginCategory,
   RuntimeState,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import {
   appWorkflowQueryOptions,
@@ -852,7 +852,7 @@ vi.mock('#i18n', async (importOriginal) => ({
   useLocale: () => 'en-US',
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },

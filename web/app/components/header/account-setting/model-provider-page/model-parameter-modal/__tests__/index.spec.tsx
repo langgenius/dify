@@ -351,6 +351,20 @@ describe('ModelParameterModal', () => {
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
   })
 
+  it('exposes popup state on the settings button and restores focus after Escape', async () => {
+    const user = userEvent.setup()
+    render(<ModelParameterModal {...defaultProps} />)
+    const trigger = screen.getByRole('button', { name: /modelProvider\.modelSettings/i })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+    await user.click(trigger)
+    expect(trigger).toHaveAttribute('data-popup-open', '')
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    })
+    expect(trigger).toHaveFocus()
+  })
+
   it('should not open content when readonly is true', () => {
     render(<ModelParameterModal {...defaultProps} readonly />)
     expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()

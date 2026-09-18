@@ -10,6 +10,7 @@ import zipfile
 from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
 from typing import BinaryIO, Literal, Protocol, cast
+from uuid import UUID
 
 import yaml
 from sqlalchemy import or_, select
@@ -55,6 +56,7 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageManifest,
     RosterAgentPackageSkill,
 )
+from services.agent.roster_service import AgentRosterService
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.skill_management_service import RuntimeAgentSkillArchive, SkillManagementService
@@ -97,7 +99,8 @@ class RosterAgentPackageExporter:
         self._storage = storage_backend
         self._dependency_provider = dependency_provider or DependenciesAnalysisService.generate_dependencies
 
-    def export(self, *, tenant_id: str, agent_id: str) -> RosterAgentPackageExport:
+    def export(self, *, tenant_id: str, agent_id: str, version_id: UUID | None) -> RosterAgentPackageExport:
+        """Export a visible version, or the shared draft with an active snapshot fallback."""
         with session_factory.create_session() as session:
             row = session.execute(
                 select(Agent, App)
@@ -122,31 +125,40 @@ class RosterAgentPackageExporter:
                 raise AgentNotFoundError()
             agent, app_model = row
 
-            draft = session.scalar(
-                select(AgentConfigDraft)
-                .where(
-                    AgentConfigDraft.tenant_id == tenant_id,
-                    AgentConfigDraft.agent_id == agent.id,
-                    AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
-                    AgentConfigDraft.draft_owner_key == "",
+            draft = None
+            snapshot_id = agent.active_config_snapshot_id
+            if version_id is not None:
+                snapshot = AgentRosterService(session).get_visible_agent_version_snapshot(
+                    tenant_id=tenant_id, agent_id=agent.id, version_id=version_id
                 )
-                .limit(1)
-            )
-            if draft is not None:
-                soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+                snapshot_id = snapshot.id
+                soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
             else:
-                snapshot = session.scalar(
-                    select(AgentConfigSnapshot)
+                draft = session.scalar(
+                    select(AgentConfigDraft)
                     .where(
-                        AgentConfigSnapshot.id == agent.active_config_snapshot_id,
-                        AgentConfigSnapshot.tenant_id == tenant_id,
-                        AgentConfigSnapshot.agent_id == agent.id,
+                        AgentConfigDraft.tenant_id == tenant_id,
+                        AgentConfigDraft.agent_id == agent.id,
+                        AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                        AgentConfigDraft.draft_owner_key == "",
                     )
                     .limit(1)
                 )
-                if snapshot is None:
-                    raise AgentVersionNotFoundError()
-                soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+                if draft is not None:
+                    soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+                else:
+                    active_snapshot = session.scalar(
+                        select(AgentConfigSnapshot)
+                        .where(
+                            AgentConfigSnapshot.id == snapshot_id,
+                            AgentConfigSnapshot.tenant_id == tenant_id,
+                            AgentConfigSnapshot.agent_id == agent.id,
+                        )
+                        .limit(1)
+                    )
+                    if active_snapshot is None:
+                        raise AgentVersionNotFoundError()
+                    soul = AgentSoulConfig.model_validate(active_snapshot.config_snapshot_dict)
 
             resource_soul, skill_sources, file_sources = self._collect_payloads(
                 session=session,
@@ -162,6 +174,7 @@ class RosterAgentPackageExporter:
             tenant_id=tenant_id,
             agent_id=agent_id,
             include_draft=draft is not None,
+            config_snapshot_id=snapshot_id,
         )
         skill_sources.extend(
             self._workspace_skill_sources(
