@@ -284,18 +284,33 @@ describe('CodeBlock', () => {
     })
   })
 
+  describe('Lazy-loaded renderers', () => {
+    it('should not mount echarts output for plain code fences', async () => {
+      render(<CodeBlock className="language-python">print(1)</CodeBlock>)
+
+      await waitFor(() => {
+        expect(screen.getByText('print(1)')).toBeInTheDocument()
+      })
+      expect(document.querySelector('.echarts-for-react')).toBeNull()
+    })
+  })
+
   // ECharts behaviors for loading, parsing, and chart lifecycle updates.
   describe('ECharts', () => {
-    it('should show loading indicator when echarts content is empty', () => {
+    it('should show loading indicator when echarts content is empty', async () => {
       render(<CodeBlock className="language-echarts"></CodeBlock>)
 
-      expect(screen.getByText(/Chart loading.../i))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText(/Chart loading.../i))!.toBeInTheDocument()
+      })
     })
 
-    it('should keep loading when echarts content is whitespace only', () => {
+    it('should keep loading when echarts content is whitespace only', async () => {
       render(<CodeBlock className="language-echarts">{'   '}</CodeBlock>)
 
-      expect(screen.getByText(/Chart loading.../i))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText(/Chart loading.../i))!.toBeInTheDocument()
+      })
     })
 
     it('should render echarts with parsed option when JSON is valid', async () => {
