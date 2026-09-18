@@ -474,6 +474,7 @@
   "operation.fill": "Remplissage auto",
   "operation.format": "Format",
   "operation.imageCopied": "Image copied",
+  "operation.imageCopyFailed": "Impossible de copier l’image. Veuillez la télécharger à la place.",
   "operation.imageDownloaded": "Image téléchargée",
   "operation.in": "dans",
   "operation.learnMore": "En savoir plus",

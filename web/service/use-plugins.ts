@@ -129,6 +129,7 @@ const normalizeI18nObject = (
     'nl-NL': en,
     'ar-TN': en,
     'lo-LA': en,
+    'az-AZ': en,
     en_US: en,
     zh_Hans: zhHans,
     ja_JP: ja,

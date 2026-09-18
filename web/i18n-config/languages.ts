@@ -142,7 +142,7 @@ const data = {
     },
     {
       value: 'sl-SI',
-      name: 'Slovensko (Slovenija)',
+      name: 'Slovenščina (Slovenija)',
       prompt_name: 'Slovensko',
       example: 'Zdravo, Dify!',
       supported: true,
@@ -166,6 +166,13 @@ const data = {
       name: 'العربية (تونس)',
       prompt_name: 'Tunisian Arabic',
       example: 'مرحبا، Dify!',
+      supported: true,
+    },
+    {
+      value: 'az-AZ',
+      name: 'Azərbaycan dili (Azərbaycan)',
+      prompt_name: 'Azerbaijani',
+      example: 'Salam, Dify!',
       supported: true,
     },
   ],

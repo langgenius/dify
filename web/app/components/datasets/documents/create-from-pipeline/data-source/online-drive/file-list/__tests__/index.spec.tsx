@@ -211,10 +211,15 @@ describe('FileList', () => {
         const fileList = [createMockOnlineDriveFile()]
         const props = createDefaultProps({ isLoading: true, fileList })
 
-        const { container } = render(<FileList {...props} />)
+        const { rerender } = render(<FileList {...props} />)
 
-        // Assert - Should show spinner icon at the bottom
-        expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+        expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+        expect(screen.getByRole('checkbox', { name: 'test-file.txt' })).toBeInTheDocument()
+
+        rerender(<FileList {...props} isLoading={false} />)
+
+        expect(screen.queryByRole('status', { name: 'appApi.loading' })).not.toBeInTheDocument()
+        expect(screen.getByRole('checkbox', { name: 'test-file.txt' })).toBeInTheDocument()
       })
     })
 

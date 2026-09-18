@@ -227,6 +227,8 @@
   "skillManagement.errors.missingSkillMd": "Ta paket nima SKILL.md. Dodajte datoteko in jo znova uvozite.",
   "skillManagement.errors.nameConflict": "Spretnost z imenom \"{{name}}\" že obstaja. Preimenujte ga v SKILL.md in znova uvozite.",
   "skillManagement.errors.workspaceLimit": "Vaš delovni prostor je dosegel omejitev 500 veščin. Izbrišite veščino, da dodate novo.",
+  "skillManagement.exportDialog.description": "Izvožen bo trenutno shranjeni osnutek vaše veščine. Če imate v urejevalniku neshranjene spremembe, jih pred izvozom shranite.",
+  "skillManagement.exportDialog.title": "Izvozi trenutno shranjeni osnutek",
   "skillManagement.import": "Uvozi",
   "skillManagement.importFailed": "Spretnosti ni bilo mogoče uvoziti.",
   "skillManagement.importSuccess": "Skill uvoženo.",

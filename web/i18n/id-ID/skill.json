@@ -227,6 +227,8 @@
   "skillManagement.errors.missingSkillMd": "Paket ini tidak memiliki SKILL.md. Tambahkan file dan impor lagi.",
   "skillManagement.errors.nameConflict": "Skill bernama \"{{name}}\" sudah ada. Ubah namanya menjadi SKILL.md dan impor lagi.",
   "skillManagement.errors.workspaceLimit": "Ruang kerja Anda telah mencapai batas 500 keterampilan. Hapus keterampilan untuk menambahkan keterampilan baru.",
+  "skillManagement.exportDialog.description": "Ini akan mengekspor draf keterampilan Anda yang tersimpan saat ini. Jika ada perubahan yang belum disimpan di editor, simpan terlebih dahulu sebelum mengekspor.",
+  "skillManagement.exportDialog.title": "Ekspor Draf Tersimpan Saat Ini",
   "skillManagement.import": "Impor",
   "skillManagement.importFailed": "Gagal mengimpor keterampilan.",
   "skillManagement.importSuccess": "Skill diimpor.",

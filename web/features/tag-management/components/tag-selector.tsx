@@ -283,6 +283,7 @@ export const TagSelector = ({
       <ComboboxPortal>
         <ComboboxPositioner placement="bottom-start" sideOffset={4}>
           <ComboboxPopup
+            onClick={(event) => event.stopPropagation()}
             aria-label={accessibleTriggerLabel}
             className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
           >

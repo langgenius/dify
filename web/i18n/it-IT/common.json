@@ -474,6 +474,7 @@
   "operation.fill": "Compilazione automatica",
   "operation.format": "Formato",
   "operation.imageCopied": "Immagine copiata",
+  "operation.imageCopyFailed": "Impossibile copiare l’immagine. Scaricala invece.",
   "operation.imageDownloaded": "Immagine scaricata",
   "operation.in": "in",
   "operation.learnMore": "Scopri di più",

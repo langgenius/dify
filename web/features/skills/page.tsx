@@ -417,6 +417,7 @@ function SkillCard({
   const descriptionId = useId()
   const draftStatusId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isExportOpen, setIsExportOpen] = useState(false)
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
   )
@@ -424,6 +425,7 @@ function SkillCard({
     mutationFn: () => fetchSkillArchiveBlob(skill.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${skill.name}.zip` })
+      setIsExportOpen(false)
     },
     onError: () => {
       toast.error(tCommon(($) => $['operation.downloadFailed']))
@@ -526,60 +528,56 @@ function SkillCard({
           </div>
         </div>
       )}
-      {(canEdit || canDelete || !!skill.latest_published_version_id) && (
-        <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
-          <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger
-                render={
-                  <IconButton
-                    aria-label={t(($) => $['skillManagement.moreActions'], {
-                      name: skill.display_name,
-                    })}
-                    size="lg"
-                    className="data-popup-open:bg-state-base-hover"
+      <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
+        <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+              render={
+                <IconButton
+                  aria-label={t(($) => $['skillManagement.moreActions'], {
+                    name: skill.display_name,
+                  })}
+                  size="lg"
+                  className="data-popup-open:bg-state-base-hover"
+                >
+                  <span aria-hidden className="i-ri-more-fill size-4.5" />
+                </IconButton>
+              }
+            />
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+              {canEdit && (
+                <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+                  <span
+                    aria-hidden
+                    className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
+                  />
+                  <span>{tCommon(($) => $['operation.duplicate'])}</span>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="gap-2" onClick={() => setIsExportOpen(true)}>
+                <span
+                  aria-hidden
+                  className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
+                />
+                <span>{tCommon(($) => $['operation.export'])}</span>
+              </DropdownMenuItem>
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    className="gap-2"
+                    onClick={() => setIsDeleteOpen(true)}
                   >
-                    <span aria-hidden className="i-ri-more-fill size-4.5" />
-                  </IconButton>
-                }
-              />
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
-                {canEdit && (
-                  <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
-                    <span
-                      aria-hidden
-                      className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
-                    />
-                    <span>{tCommon(($) => $['operation.duplicate'])}</span>
+                    <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                    <span>{tCommon(($) => $['operation.delete'])}</span>
                   </DropdownMenuItem>
-                )}
-                {skill.latest_published_version_id && (
-                  <DropdownMenuItem className="gap-2" onClick={handleExport}>
-                    <span
-                      aria-hidden
-                      className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
-                    />
-                    <span>{tCommon(($) => $['operation.export'])}</span>
-                  </DropdownMenuItem>
-                )}
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      className="gap-2"
-                      onClick={() => setIsDeleteOpen(true)}
-                    >
-                      <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                      <span>{tCommon(($) => $['operation.delete'])}</span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      )}
+      </div>
       <div className="pointer-events-none absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
         <div className="pointer-events-auto w-full min-w-0">
           <SkillCardTags
@@ -590,6 +588,35 @@ function SkillCard({
           />
         </div>
       </div>
+      <AlertDialog
+        open={isExportOpen}
+        onOpenChange={(open) => {
+          if (!exportMutation.isPending) setIsExportOpen(open)
+        }}
+      >
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+              {t(($) => $['skillManagement.exportDialog.title'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="system-md-regular text-text-secondary">
+              {t(($) => $['skillManagement.exportDialog.description'])}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton disabled={exportMutation.isPending}>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              tone="default"
+              loading={exportMutation.isPending}
+              onClick={handleExport}
+            >
+              {tCommon(($) => $['operation.confirm'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       <DeleteSkillDialog skill={skill} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
     </li>
   )

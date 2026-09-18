@@ -474,6 +474,7 @@
   "operation.fill": "ຕື່ມຂໍ້ມູນອັດຕະໂນມັດ",
   "operation.format": "ຈັດຮູບແບບ",
   "operation.imageCopied": "ຄັດລອກຮູບແລ້ວ",
+  "operation.imageCopyFailed": "ບໍ່ສາມາດສຳເນົາຮູບພາບໄດ້. ກະລຸນາດາວໂຫຼດຮູບພາບແທນ.",
   "operation.imageDownloaded": "ດາວໂຫຼດຮູບແລ້ວ",
   "operation.in": "ໃນ",
   "operation.learnMore": "ຮຽນຮູ້ເພີ່ມເຕີມ",
