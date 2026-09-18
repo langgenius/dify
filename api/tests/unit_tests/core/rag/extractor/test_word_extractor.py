@@ -907,9 +907,7 @@ def test_extract_reads_text_inside_a_text_box(monkeypatch: pytest.MonkeyPatch, u
     assert content.index("Paragraph text") < content.index("Callout") < content.index("After")
 
 
-def test_extract_reads_a_text_box_with_a_vml_fallback_once(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-):
+def test_extract_reads_a_text_box_with_a_vml_fallback_once(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
     """Word writes the same text under mc:Choice and again under mc:Fallback."""
     content = _extract_text(monkeypatch, unbound_session, _docx_with_text_box(_TEXT_BOX_WITH_VML_FALLBACK))
 
