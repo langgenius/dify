@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from http import HTTPStatus
 from typing import Never
+from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
@@ -878,12 +879,12 @@ class WorkspaceContactIMBindingsApi(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
-    def delete(self, tenant_id: str, contact_id: str):
+    def delete(self, tenant_id: str, contact_id: UUID):
         query = query_params_from_request(DeleteIMBindingQuery)
         try:
             build_im_contact_sync_application().binding_service.delete_organization_binding(
                 organization_scope=_workspace_scope(tenant_id),
-                contact_id=ContactId(contact_id),
+                contact_id=ContactId(str(contact_id)),
                 binding_id=IMBindingId(query.binding_id),
             )
         except (IMBindingCommandError, IMWriteUnavailableError) as error:

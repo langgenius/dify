@@ -4,12 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from inspect import unwrap
+from types import SimpleNamespace
+from uuid import UUID
 
 import pytest
 import sqlalchemy as sa
+from flask import Flask
+from flask.typing import ResponseReturnValue
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from controllers.console.workspace import human_input
 from core.human_input_v2.entities import HumanInputContactType, IMBindingScope, IMProvider
 from core.human_input_v2.im_integration import IMBindingCommandError, IMBindingCommandErrorCode
 from core.human_input_v2.shared import (
@@ -256,3 +262,53 @@ def test_missing_channel_maps_to_not_configured_before_mutation(binding_context:
         )
 
     assert error_info.value.code is IMBindingCommandErrorCode.INTEGRATION_NOT_CONFIGURED
+
+
+@pytest.mark.parametrize(
+    ("contact_id", "expected_status"),
+    [(_CONTACT_ID, 200), (_OTHER_CONTACT_ID, 404)],
+)
+def test_delete_binding_through_uuid_route(
+    binding_context: _BindingContext,
+    monkeypatch: pytest.MonkeyPatch,
+    contact_id: ContactId,
+    expected_status: int,
+) -> None:
+    contact = binding_context.service.create_organization_binding(
+        organization_scope=_OWNER_SCOPE,
+        tenant_id=_TENANT_ID,
+        contact_id=_CONTACT_ID,
+        identity_id=_IDENTITY_ID,
+        bound_by_account_id=_ACCOUNT_ID,
+    )
+    binding = contact.im_bindings[0]
+    monkeypatch.setattr(
+        human_input,
+        "build_im_contact_sync_application",
+        lambda: SimpleNamespace(binding_service=binding_context.service),
+    )
+    app = Flask(__name__)
+
+    @app.delete("/workspaces/current/human-input/contacts/<uuid:contact_id>/im-bindings")
+    def delete_binding(contact_id: UUID) -> ResponseReturnValue:
+        # Isolate authentication while retaining Flask's path conversion and the real binding service.
+        return unwrap(human_input.WorkspaceContactIMBindingsApi.delete)(
+            human_input.WorkspaceContactIMBindingsApi(), str(_TENANT_ID), contact_id
+        )
+
+    response = app.test_client().delete(
+        f"/workspaces/current/human-input/contacts/{contact_id}/im-bindings",
+        query_string={"binding_id": str(binding.id)},
+    )
+
+    assert response.status_code == expected_status
+    response_body = response.get_json()
+    assert response_body is not None
+    with binding_context.sessions() as session:
+        remaining = session.get(HumanInputIMBinding, str(binding.id))
+        if expected_status == 200:
+            assert response_body == {}
+            assert remaining is None
+        else:
+            assert response_body["code"] == "im_binding_not_found"
+            assert remaining is not None
