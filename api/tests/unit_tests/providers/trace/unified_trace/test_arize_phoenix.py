@@ -93,6 +93,7 @@ def test_emit_keeps_the_canonical_run_span_name(adapter: PhoenixAdapterFixture) 
 
     assert tracer.start_span.call_args.kwargs["name"] == "workflow_run-1"
     assert "dify.workflow.run_id" not in tracer.start_span.call_args.kwargs["attributes"]
+    assert "dify.span.start_time" not in tracer.start_span.call_args.kwargs["attributes"]
 
 
 @pytest.mark.parametrize("kind", list(CanonicalSpanKind))

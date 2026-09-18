@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
@@ -336,6 +336,42 @@ def test_emit_names_an_untitled_tool_node_by_its_span_name(monkeypatch: pytest.M
 
     assert span.attributes["gen_ai.tool.name"] == "tool"
     assert span.attributes["dify.tool.provider_type"] == "builtin"
+
+
+def test_emit_exposes_span_times_as_utc_attributes(monkeypatch: pytest.MonkeyPatch) -> None:
+    span = emitted(
+        monkeypatch,
+        CanonicalSpan(
+            id="node-1",
+            parent_id=None,
+            name="llm_Answer",
+            kind=CanonicalSpanKind.LLM,
+            start_time=datetime(2026, 9, 18, 9, 56, 33, 620123, tzinfo=UTC),
+            end_time=datetime(2026, 9, 18, 9, 56, 37, 14000, tzinfo=UTC),
+            status=CanonicalSpanStatus.OK,
+        ),
+    )
+
+    assert span.attributes["dify.span.start_time"] == "2026-09-18T09:56:33.620Z"
+    assert span.attributes["dify.span.end_time"] == "2026-09-18T09:56:37.014Z"
+
+
+def test_span_time_attributes_name_the_same_instant_as_the_span(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The builder hands over naive datetimes; whatever the host timezone, the attributes and the
+    # exported span times must agree.
+    span = emitted(monkeypatch, run_span("start_Start", "node-1"))
+
+    start = datetime.fromisoformat(str(span.attributes["dify.span.start_time"]))
+    end = datetime.fromisoformat(str(span.attributes["dify.span.end_time"]))
+    assert int(start.timestamp() * 1_000_000_000) == span.start_time
+    assert int(end.timestamp() * 1_000_000_000) == span.end_time
+
+
+def test_emit_omits_the_end_time_of_an_unfinished_span(monkeypatch: pytest.MonkeyPatch) -> None:
+    span = emitted(monkeypatch, run_span("start_Start", "node-1").model_copy(update={"end_time": None}))
+
+    assert "dify.span.start_time" in span.attributes
+    assert "dify.span.end_time" not in span.attributes
 
 
 def test_emit_ignores_tool_info_outside_tool_spans(monkeypatch: pytest.MonkeyPatch) -> None:

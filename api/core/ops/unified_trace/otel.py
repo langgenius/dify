@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from typing import Any, override
 from urllib.parse import urlparse, urlunparse
 
@@ -171,6 +172,24 @@ def _tool_attributes(canonical_span: CanonicalSpan) -> dict[str, AttributeValue]
         value = tool_info.get(info_key)
         if isinstance(value, str) and value:
             attributes[attribute_key] = value
+    return attributes
+
+
+def _iso_utc(value: datetime) -> str:
+    """Render a span time as ISO 8601 UTC with millisecond precision.
+
+    Converted through ``timestamp()`` exactly like the exporter's span start/end nanos, so the
+    attribute always names the same instant as the span itself, naive datetimes included.
+    """
+    return datetime.fromtimestamp(value.timestamp(), tz=UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def _time_attributes(canonical_span: CanonicalSpan) -> dict[str, AttributeValue]:
+    # Trace UIs mostly show a span's start relative to the trace start; expose the absolute
+    # wall-clock times as well so a node's start and end can be read off directly.
+    attributes: dict[str, AttributeValue] = {"dify.span.start_time": _iso_utc(canonical_span.start_time)}
+    if canonical_span.end_time is not None:
+        attributes["dify.span.end_time"] = _iso_utc(canonical_span.end_time)
     return attributes
 
 
@@ -343,6 +362,7 @@ class UnifiedOTelAdapter(OTLPUnifiedAdapter[OTelTracingConfig]):
         attributes = super().attributes(canonical_span, trace, parent)
         attributes.update(_gen_ai_attributes(canonical_span, trace))
         attributes.update(_tool_attributes(canonical_span))
+        attributes.update(_time_attributes(canonical_span))
         if _run_span_operation(canonical_span) is not None:
             # The run id left the span name; keep it searchable as a first-class attribute.
             attributes["dify.workflow.run_id"] = canonical_span.metadata["workflow_run_id"]
