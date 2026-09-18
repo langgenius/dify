@@ -653,7 +653,9 @@ def test_expired_parent_exports_a_linked_root(monkeypatch: pytest.MonkeyPatch) -
     assert repository.accept_upload(delivery)
     with repository.session_factory() as session:
         session.execute(
-            sa.update(OpsTraceDelivery).values(created_at=repository.database_time(session) - timedelta(hours=2))
+            sa.update(OpsTraceDelivery).values(
+                {OpsTraceDelivery.created_at: repository.database_time(session) - timedelta(hours=2)}
+            )
         )
         session.commit()
     monkeypatch.setattr(repository, "validate_trace_owner", Mock())
@@ -715,9 +717,7 @@ def test_foreign_parent_is_rejected_even_after_wait_expiry() -> None:
         session.execute(
             sa.update(OpsTraceDelivery)
             .where(OpsTraceDelivery.id == child.id)
-            .values(
-                created_at=repository.database_time(session) - timedelta(hours=2),
-            )
+            .values({OpsTraceDelivery.created_at: repository.database_time(session) - timedelta(hours=2)})
         )
         session.commit()
     child = repository.get_delivery(child.tenant_id, child.id)
