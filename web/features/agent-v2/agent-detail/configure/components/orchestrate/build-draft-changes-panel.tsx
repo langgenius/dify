@@ -147,6 +147,11 @@ function getChangeSections({
     t(($) => $['agentDetail.configure.advancedSettings.envEditor.shortLabel']),
     changeSummary.envVariables,
   )
+  pushItemSection(
+    'appVariables',
+    t(($) => $['agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel']),
+    changeSummary.appVariables,
+  )
 
   return sections
 }

@@ -127,13 +127,24 @@ function getAgentBuildDraftChangeSummary({
     getKey: (variable) => variable.id || variable.key,
     getName: (variable) => variable.key,
   })
+  const appVariableChanges = getItemDiff({
+    currentItems: normalDraft.appVariables,
+    nextItems: buildDraft.appVariables,
+    getKey: (variable) => variable.id || variable.name,
+    getName: (variable) => variable.name,
+  })
 
   return {
     changedKeys,
-    changesCount: fileChanges.length + skillChanges.length + envVariableChanges.length,
+    changesCount:
+      fileChanges.length +
+      skillChanges.length +
+      envVariableChanges.length +
+      appVariableChanges.length,
     skills: skillChanges,
     files: fileChanges,
     envVariables: envVariableChanges,
+    appVariables: appVariableChanges,
   }
 }
 
@@ -229,6 +240,7 @@ export function useAgentConfigureBuildDraftData({
         skills: [],
         files: [],
         envVariables: [],
+        appVariables: [],
       }
     }
 
