@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Generator, Iterable, Mapping
-from typing import Any, Final
+from typing import Any, Final, Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
@@ -22,6 +22,11 @@ _DATA_PREFIX: Final = "data: "
 _EVENT_FIELD: Final = "event"
 
 HintBuilder = Callable[[Mapping[str, Any]], list[Hint]]
+
+
+@runtime_checkable
+class _ClosableStream(Protocol):
+    def close(self) -> None: ...
 
 
 def next_page_hint(
@@ -65,6 +70,5 @@ def attach_stream_hints(events: Iterable[str], *, event: str, build: HintBuilder
             parsed |= Hinted(hints=hints).model_dump(exclude_none=True)
             yield f"{_DATA_PREFIX}{json.dumps(parsed, ensure_ascii=False)}\n\n"
     finally:
-        close = getattr(events, "close", None)
-        if close is not None:
-            close()
+        if isinstance(events, _ClosableStream):
+            events.close()

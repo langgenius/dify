@@ -14,16 +14,17 @@ import copy
 import hashlib
 import json
 import re
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Collection, Iterator, Mapping, Sequence
 from enum import StrEnum
 from typing import Any, Final
 
 from flask import Blueprint, Flask, Response, current_app, request
 from pydantic import BaseModel
+from werkzeug.routing import Rule
 
 from configs import dify_config
 from controllers.openapi._upload import has_binary_leaf
-from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.auth.spec import spec_of
 
 CATALOG_HEADER: Final = "X-Dify-Catalog"
 # Trailing slash: `/openapi/v1beta/x` is a different surface, not this one.
@@ -112,38 +113,40 @@ def _catalog_path(rule: str, *, arguments: Collection[str]) -> str:
     return path
 
 
-def _spec_of(view: Any) -> EndpointSpec | None:
-    spec = getattr(view, "__spec__", None)
-    return spec if isinstance(spec, EndpointSpec) else None
+def iter_handlers(app: Flask) -> Iterator[tuple[Rule, str, Any]]:
+    for rule in app.url_map.iter_rules():
+        if not rule.rule.startswith(_PREFIX):
+            continue
+        view = app.view_functions.get(rule.endpoint)
+        if view is None or not hasattr(view, "view_class"):
+            continue
+        cls = view.view_class
+        for verb in sorted((rule.methods or set()) & _VERBS):
+            handler = getattr(cls, verb.lower())  # guard-ignore: no-new-getattr -- HTTP verb selects the handler
+            yield rule, verb, handler
 
 
 def build_catalog(app: Flask) -> dict[str, Any]:
     ops: dict[str, Any] = {}
-    for rule in app.url_map.iter_rules():
-        if not rule.rule.startswith(_PREFIX):
+    for rule, verb, handler in iter_handlers(app):
+        spec = spec_of(handler)
+        if spec is None or not spec.allows(dify_config.DEPLOYMENT_EDITION):
             continue
-        cls = getattr(app.view_functions.get(rule.endpoint), "view_class", None)
-        if cls is None:
-            continue
-        for verb in sorted((rule.methods or set()) & _VERBS):
-            spec = _spec_of(getattr(cls, verb.lower(), None))
-            if spec is None or not spec.allows(dify_config.DEPLOYMENT_EDITION):
-                continue
-            path_params = sorted(rule.arguments)
-            schema = op_input_schema(path_params=path_params, query=spec.query, body=spec.body)
-            if spec.op in ops:
-                raise RuntimeError(f"op id {spec.op} declared on two routes")
-            ops[spec.op] = {
-                "summary": spec.summary,
-                "method": verb,
-                "path": _catalog_path(rule.rule, arguments=rule.arguments),
-                "kind": spec.kind.value,
-                "input": schema,
-                "bind": derive_bind(method=verb, path_params=path_params, schema=schema),
-                "tags": [spec.op.split(".", 1)[0]],
-                "internal": spec.internal,
-                "deprecated": spec.deprecated,
-            }
+        path_params = sorted(rule.arguments)
+        schema = op_input_schema(path_params=path_params, query=spec.query, body=spec.body)
+        if spec.op in ops:
+            raise RuntimeError(f"op id {spec.op} declared on two routes")
+        ops[spec.op] = {
+            "summary": spec.summary,
+            "method": verb,
+            "path": _catalog_path(rule.rule, arguments=rule.arguments),
+            "kind": spec.kind.value,
+            "input": schema,
+            "bind": derive_bind(method=verb, path_params=path_params, schema=schema),
+            "tags": [spec.op.split(".", 1)[0]],
+            "internal": spec.internal,
+            "deprecated": spec.deprecated,
+        }
     return {"ops": ops}
 
 
