@@ -1,6 +1,7 @@
 """Generic OpenTelemetry tracing provider: export unified traces to a custom OTLP/HTTP collector."""
 
 import json
+import logging
 import re
 from typing import Any, override
 from urllib.parse import urlparse, urlunparse
@@ -8,13 +9,20 @@ from urllib.parse import urlparse, urlunparse
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.util.types import AttributeValue
 from pydantic import field_validator
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from core.helper.encrypter import is_obfuscated_token
 from core.ops.entities.config_entity import BaseTracingConfig
+from core.ops.entities.trace_entity import BaseTraceInfo, WorkflowTraceInfo
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalTrace
 from core.ops.unified_trace.otlp_adapter import OTLPUnifiedAdapter, OTLPUnifiedTrace
 from core.ops.unified_trace.parent_context import ParentResolution
 from core.ops.utils import validate_project_name, validate_url_with_path
+from extensions.ext_database import db
+from models.model import App
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_ENDPOINT = "http://localhost:4318/v1/traces"
 DEFAULT_SERVICE_NAME = "dify"
@@ -307,7 +315,37 @@ class UnifiedOTelAdapter(OTLPUnifiedAdapter[OTelTracingConfig]):
         return attributes
 
 
+def _with_app_name(trace_info: BaseTraceInfo) -> BaseTraceInfo:
+    """Ensure a workflow trace carries metadata["app_name"], which names its OTel run spans.
+
+    The trace manager only resolves the app name when enterprise telemetry is on; without it the
+    run spans would fall back to a bare "workflow"/"chatflow". A failed lookup degrades to that
+    same fallback instead of dropping the trace.
+    """
+    if not isinstance(trace_info, WorkflowTraceInfo):
+        return trace_info
+    app_name = trace_info.metadata.get("app_name")
+    if isinstance(app_name, str) and app_name.strip():
+        return trace_info
+    app_id = trace_info.metadata.get("app_id")
+    if not isinstance(app_id, str) or not app_id:
+        return trace_info
+    try:
+        with Session(db.engine) as session:
+            app = session.get(App, app_id)
+    except SQLAlchemyError:
+        logger.warning("could not resolve the app name for OTel run spans, app_id=%s", app_id, exc_info=True)
+        return trace_info
+    if app is None or not app.name:
+        return trace_info
+    return trace_info.model_copy(update={"metadata": {**trace_info.metadata, "app_name": app.name}})
+
+
 class UnifiedOTelTrace(OTLPUnifiedTrace):
     """Unified trace instance exporting to a custom OTel collector."""
 
     adapter_class = UnifiedOTelAdapter
+
+    @override
+    def trace(self, trace_info: BaseTraceInfo) -> None:
+        super().trace(_with_app_name(trace_info))

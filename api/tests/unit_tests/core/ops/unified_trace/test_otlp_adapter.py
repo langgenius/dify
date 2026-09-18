@@ -8,8 +8,11 @@ import pytest
 from opentelemetry.exporter.otlp.proto.http import Compression
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace.export import SpanExportResult
+from sqlalchemy.exc import SQLAlchemyError
 
+from core.ops.entities.trace_entity import MessageTraceInfo, WorkflowTraceInfo
 from core.ops.exceptions import RetryableTraceDispatchError, TraceDispatchRejectedError
+from core.ops.unified_trace import otel as otel_module
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.otel import OTelTracingConfig, UnifiedOTelAdapter, UnifiedOTelTrace
 from core.ops.unified_trace.otlp_adapter import (
@@ -171,6 +174,98 @@ def test_emit_keeps_names_that_only_look_like_run_spans(monkeypatch: pytest.Monk
 
     assert span.name == "workflow_notes"
     assert "dify.workflow.run_id" not in span.attributes
+
+
+class FakeAppSession:
+    def __init__(self, app: object | None = None, error: Exception | None = None) -> None:
+        self.app = app
+        self.error = error
+        self.lookups: list[object] = []
+
+    def __enter__(self) -> "FakeAppSession":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def get(self, _model: object, key: object) -> object | None:
+        self.lookups.append(key)
+        if self.error is not None:
+            raise self.error
+        return self.app
+
+
+def stub_app_session(monkeypatch: pytest.MonkeyPatch, session: FakeAppSession) -> None:
+    monkeypatch.setattr(otel_module, "Session", lambda _engine: session)
+    monkeypatch.setattr(otel_module, "db", SimpleNamespace(engine=object()))
+
+
+def workflow_trace_info(**metadata: object) -> WorkflowTraceInfo:
+    return WorkflowTraceInfo.model_construct(metadata=metadata)
+
+
+def test_with_app_name_resolves_the_name_when_the_trace_manager_left_it_blank(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Without enterprise telemetry the trace manager ships app_name="", which would leave the
+    # run spans named a bare "workflow".
+    session = FakeAppSession(app=SimpleNamespace(name="Support Bot"))
+    stub_app_session(monkeypatch, session)
+    original = workflow_trace_info(app_id="app-1", app_name="", workflow_run_id="run-1")
+
+    enriched = otel_module._with_app_name(original)
+
+    assert enriched.metadata["app_name"] == "Support Bot"
+    assert enriched.metadata["workflow_run_id"] == "run-1"
+    assert session.lookups == ["app-1"]
+    # The caller's trace info is not mutated.
+    assert original.metadata["app_name"] == ""
+
+
+def test_with_app_name_keeps_a_resolved_name_without_querying(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = FakeAppSession(app=SimpleNamespace(name="Other"))
+    stub_app_session(monkeypatch, session)
+    original = workflow_trace_info(app_id="app-1", app_name="Support Bot")
+
+    assert otel_module._with_app_name(original) is original
+    assert session.lookups == []
+
+
+@pytest.mark.parametrize(
+    "trace_info",
+    [
+        # Only workflow traces carry run spans.
+        MessageTraceInfo.model_construct(metadata={"app_id": "app-1", "app_name": ""}),
+        workflow_trace_info(app_name=""),
+        workflow_trace_info(app_id="", app_name=""),
+    ],
+)
+def test_with_app_name_leaves_traces_it_cannot_resolve(
+    monkeypatch: pytest.MonkeyPatch, trace_info: WorkflowTraceInfo | MessageTraceInfo
+) -> None:
+    session = FakeAppSession(app=SimpleNamespace(name="Support Bot"))
+    stub_app_session(monkeypatch, session)
+
+    assert otel_module._with_app_name(trace_info) is trace_info
+    assert session.lookups == []
+
+
+@pytest.mark.parametrize(
+    "session",
+    [
+        FakeAppSession(app=None),
+        FakeAppSession(app=SimpleNamespace(name="")),
+        # A failed lookup degrades to the bare operation name rather than dropping the trace.
+        FakeAppSession(error=SQLAlchemyError("database unavailable")),
+    ],
+)
+def test_with_app_name_degrades_when_the_app_cannot_be_read(
+    monkeypatch: pytest.MonkeyPatch, session: FakeAppSession
+) -> None:
+    stub_app_session(monkeypatch, session)
+    original = workflow_trace_info(app_id="app-1", app_name="")
+
+    assert otel_module._with_app_name(original) is original
 
 
 def test_emit_names_tool_spans_for_gen_ai(monkeypatch: pytest.MonkeyPatch) -> None:
