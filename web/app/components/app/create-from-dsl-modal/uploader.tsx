@@ -8,15 +8,18 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { formatFileSize } from '@/utils/format'
 
+const importFormats = {
+  app: { accept: '.yaml,.yml,.ifpkg', displayName: 'DSL' },
+  dsl: { accept: '.yaml,.yml', displayName: 'YAML' },
+  pipeline: { accept: '.pipeline', displayName: 'PIPELINE' },
+} as const
+
 type Props = Readonly<{
   file: File | undefined
   updateFile: (file?: File) => void
   browseButtonRef?: RefObject<HTMLButtonElement | null>
   className?: string
-  accept?: string
-  displayName?: string
-  fileIconClassName?: string
-  hint?: string
+  importType?: 'app' | 'dsl' | 'pipeline'
   disabled?: boolean
 }>
 
@@ -25,13 +28,17 @@ export function Uploader({
   updateFile,
   browseButtonRef,
   className,
-  accept = '.yaml,.yml',
-  displayName = 'YAML',
-  fileIconClassName = 'i-custom-public-files-yaml',
-  hint,
+  importType = 'dsl',
   disabled = false,
 }: Props) {
   const { t } = useTranslation()
+  const { accept, displayName: formatName } = importFormats[importType]
+  const isPackage = importType === 'app' && file?.name.toLowerCase().endsWith('.ifpkg')
+  const displayName = isPackage ? t(($) => $.appPackage, { ns: 'app' }) : formatName
+  const fileIconClassName = isPackage
+    ? 'i-ri-file-zip-line text-text-tertiary'
+    : 'i-custom-public-files-yaml'
+  const hint = importType === 'app' ? t(($) => $.importAppFormats, { ns: 'app' }) : undefined
   const [dragging, setDragging] = useState(false)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploaderRef = useRef<HTMLInputElement>(null)

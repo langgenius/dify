@@ -322,12 +322,7 @@ function CreateFromDSLModal({
                   className="px-6 py-4"
                 >
                   <Uploader
-                    accept=".yaml,.yml,.ifpkg"
-                    displayName={isPackageImport ? t(($) => $.appPackage, { ns: 'app' }) : 'DSL'}
-                    fileIconClassName={
-                      isPackageImport ? 'i-ri-file-zip-line text-text-tertiary' : undefined
-                    }
-                    hint={t(($) => $.importAppFormats, { ns: 'app' })}
+                    importType="app"
                     browseButtonRef={browseButtonRef}
                     className="mt-0"
                     file={currentFile}

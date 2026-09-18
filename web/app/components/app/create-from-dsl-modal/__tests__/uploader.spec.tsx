@@ -67,7 +67,7 @@ describe('Uploader', () => {
   it('honors the pipeline extension instead of treating every upload as an App package', () => {
     const updateFile = vi.fn()
     const { container } = render(
-      <Uploader file={undefined} updateFile={updateFile} accept=".pipeline" />,
+      <Uploader file={undefined} updateFile={updateFile} importType="pipeline" />,
     )
     fireEvent.drop(getDropZone(container), {
       dataTransfer: { files: [new File(['PK'], 'agent.ifpkg')] },
@@ -76,6 +76,24 @@ describe('Uploader', () => {
     const pipeline = new File(['pipeline'], 'knowledge.PIPELINE')
     fireEvent.drop(getDropZone(container), { dataTransfer: { files: [pipeline] } })
     expect(updateFile).toHaveBeenCalledWith(pipeline)
+  })
+
+  it('updates App file metadata when replacing a package with DSL', () => {
+    const updateFile = vi.fn()
+    const { rerender } = render(
+      <Uploader importType="app" file={new File(['PK'], 'agent.IFPKG')} updateFile={updateFile} />,
+    )
+    expect(screen.getByText('app.appPackage')).toBeInTheDocument()
+
+    rerender(
+      <Uploader
+        importType="app"
+        file={new File(['app: demo'], 'app.yml')}
+        updateFile={updateFile}
+      />,
+    )
+    expect(screen.getByText('DSL')).toBeInTheDocument()
+    expect(screen.queryByText('app.appPackage')).not.toBeInTheDocument()
   })
 
   it('should reject dropping multiple files', () => {
@@ -102,7 +120,7 @@ describe('Uploader', () => {
     const updateFile = vi.fn()
     const file = new File(['name: demo'], 'demo.yml', { type: 'text/yaml' })
 
-    render(<Uploader file={file} updateFile={updateFile} displayName="DSL" />)
+    render(<Uploader file={file} updateFile={updateFile} importType="app" />)
 
     expect(screen.getByText(/(?:^|\.)demo\.yml(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText('DSL')).toBeInTheDocument()
