@@ -1,9 +1,9 @@
 'use client'
 
 import type { Node } from '../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useSearchParams } from '@/next/navigation'
 import { scrollToWorkflowNode } from '../utils/node-navigation'
 import { useNodesInteractions } from './use-nodes-interactions'

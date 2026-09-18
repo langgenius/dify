@@ -60,7 +60,7 @@ vi.mock('@/app/components/base/loading-placeholder', () => ({
   LoadingPlaceholder: () => <div data-testid="loading" />,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),

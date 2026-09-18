@@ -5,7 +5,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryState } from 'nuqs'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +16,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
 import { useCodeBasedExtensions, useModelProviderDetails } from '@/service/use-common'

@@ -14,7 +14,6 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -23,6 +22,7 @@ import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/gene
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
+import { toast } from '@/app/notifications'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 

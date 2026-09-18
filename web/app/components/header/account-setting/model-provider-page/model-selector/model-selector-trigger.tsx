@@ -19,6 +19,7 @@ type ModelSelectorTriggerProps = {
   currentModel?: ModelSelectorModel
   defaultModel?: ModelSelectorValue
   disabled?: boolean
+  loading?: boolean
   size?: 'small' | 'medium'
   surface?: 'default' | 'workflow'
   shape?: 'standalone' | 'split'
@@ -33,6 +34,7 @@ function ModelSelectorTrigger({
   currentModel,
   defaultModel,
   disabled,
+  loading = false,
   size = 'medium',
   surface = 'default',
   shape = 'standalone',
@@ -47,63 +49,67 @@ function ModelSelectorTrigger({
   const isDeprecated = !isSelected && !!defaultModel
   const isEmpty = !isSelected && !defaultModel
   const providerId = isSelected ? currentProvider.provider : defaultModel?.provider
-  const { data: resolvedProvider } = useQuery({
+  const { data: providerSummary } = useQuery({
     ...consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
     enabled: !!providerId,
-    select: ({ data }) => data.find((provider) => provider.provider === providerId),
   })
+  const resolvedProvider = providerSummary?.data.find(
+    (provider) => provider.provider === providerId,
+  )
+  const isStatusUnavailable = loading || (!!providerId && providerSummary === undefined)
+  const isDisabled = disabled || loading
   const credentialPanel = useCredentialPanelInfo(resolvedProvider)
 
-  const status = deriveModelStatus(
-    isSelected ? currentModel?.model : defaultModel?.model,
-    isSelected ? currentProvider?.provider : defaultModel?.provider,
-    resolvedProvider,
-    currentModel,
-    credentialPanel,
-  )
+  const status = isStatusUnavailable
+    ? undefined
+    : deriveModelStatus(
+        isSelected ? currentModel?.model : defaultModel?.model,
+        isSelected ? currentProvider?.provider : defaultModel?.provider,
+        resolvedProvider,
+        currentModel,
+        credentialPanel,
+      )
 
   const isActive = status === 'active'
   const statusI18nKey =
     DERIVED_MODEL_STATUS_BADGE_I18N[status as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
   const tooltipI18nKey =
     DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
-  const statusLabel =
-    isModelCompatible && statusI18nKey
+  const statusLabel = !isModelCompatible
+    ? t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
+    : statusI18nKey
       ? t(($) => $[statusI18nKey], { ns: 'common' })
-      : t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
-  const tooltipLabel =
-    isModelCompatible && tooltipI18nKey
+      : undefined
+  const tooltipLabel = !isModelCompatible
+    ? t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
+    : tooltipI18nKey
       ? t(($) => $[tooltipI18nKey], { ns: 'common' })
-      : t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
+      : statusLabel
   const isCreditsExhausted = status === 'credits-exhausted'
   const shouldShowModelMeta = showModelMeta && status === 'active' && isModelCompatible
-  const deprecatedStatusLabel =
-    statusLabel || t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
-  const deprecatedTooltipLabel =
-    tooltipLabel || t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
   const triggerTooltipLabel =
-    isDeprecated && showDeprecatedWarnIcon
-      ? deprecatedTooltipLabel
-      : isSelected && ((!isActive && statusI18nKey) || !isModelCompatible)
+    isDeprecated && !isStatusUnavailable && showDeprecatedWarnIcon
+      ? tooltipLabel
+      : isSelected && !isStatusUnavailable && ((!isActive && statusI18nKey) || !isModelCompatible)
         ? tooltipLabel
         : undefined
 
   return (
     <Tooltip>
       <TooltipTrigger
-        disabled={!triggerTooltipLabel || disabled}
+        disabled={!triggerTooltipLabel || isDisabled}
         render={
           <PopoverTrigger
-            disabled={disabled}
+            disabled={isDisabled}
             render={
               <button
                 type="button"
-                data-deprecated={isDeprecated ? '' : undefined}
+                data-deprecated={isDeprecated && !isStatusUnavailable ? '' : undefined}
                 data-model-status={status}
                 data-shape={shape}
                 data-size={size}
                 data-surface={surface}
-                disabled={disabled}
+                disabled={isDisabled}
                 className={cn(
                   'group/model-selector-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden transition-colors',
                   'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt',
@@ -153,13 +159,21 @@ function ModelSelectorTrigger({
                   <ModelName
                     className="grow"
                     modelItem={currentModel}
-                    nameClassName={currentModel?.deprecated ? 'line-through' : undefined}
+                    nameClassName={
+                      currentModel?.deprecated && !isStatusUnavailable ? 'line-through' : undefined
+                    }
                     showMode={shouldShowModelMeta}
                     showFeatures={shouldShowModelMeta}
                   />
                 )}
                 {isDeprecated && (
-                  <span className="grow truncate system-sm-regular text-components-input-text-filled line-through">
+                  <span
+                    className={cn(
+                      'grow truncate system-sm-regular text-components-input-text-filled',
+                      !isStatusUnavailable && 'line-through',
+                    )}
+                    title={defaultModel.model}
+                  >
                     {defaultModel.model}
                   </span>
                 )}
@@ -170,7 +184,8 @@ function ModelSelectorTrigger({
                 )}
 
                 {isSelected &&
-                  !disabled &&
+                  !isDisabled &&
+                  !isStatusUnavailable &&
                   ((!isActive && statusI18nKey) || !isModelCompatible) && (
                     <span
                       className={cn(
@@ -185,17 +200,17 @@ function ModelSelectorTrigger({
                     </span>
                   )}
 
-                {isDeprecated && showDeprecatedWarnIcon && (
+                {isDeprecated && !isStatusUnavailable && showDeprecatedWarnIcon && (
                   <span className="flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning bg-components-badge-bg-dimm px-1.25 py-0.5">
                     <span aria-hidden className="i-ri-alert-fill size-3 text-text-warning" />
                     <span className="system-xs-medium whitespace-nowrap text-text-warning">
-                      {deprecatedStatusLabel}
+                      {statusLabel}
                     </span>
                   </span>
                 )}
               </span>
             </span>
-            {!disabled && shape !== 'split' && (isActive || isEmpty) && (
+            {!isDisabled && shape !== 'split' && (isActive || isEmpty) && (
               <span
                 aria-hidden="true"
                 className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary transition-colors group-hover/model-selector-trigger:text-text-secondary group-data-popup-open/model-selector-trigger:text-text-secondary"

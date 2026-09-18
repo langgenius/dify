@@ -8,7 +8,17 @@ const mocks = vi.hoisted(() => ({
   exportAppDsl: vi.fn(),
   getEnvironmentVariables: vi.fn(),
   toastError: vi.fn(),
-  toastPromise: vi.fn((promise: Promise<unknown>) => promise),
+  toastSuccess: vi.fn(),
+  toastPromise: vi.fn(
+    async (
+      promise: Promise<unknown>,
+      options: { success: (format: unknown) => { title: string }; error: { title: string } },
+    ) => {
+      const format = await promise
+      mocks.toastSuccess(options.success(format).title)
+      return format
+    },
+  ),
 }))
 
 vi.mock('@/service/console', () => ({
@@ -34,7 +44,7 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: mocks.downloadBlob,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mocks.toastError,
     promise: mocks.toastPromise,
@@ -72,12 +82,18 @@ describe('useExportAppDsl', () => {
     await act(async () => {
       await expect(
         result.current.exportAppDsl({
+          format: 'ifpkg',
           appId: 'agent-app-id',
           appName: 'Support Agent',
         }),
       ).resolves.toEqual({ status: 'downloaded' })
     })
 
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('app.exportAppSuccess')
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith(
+      { params: { app_id: 'agent-app-id' }, query: { include_secret: false, format: 'ifpkg' } },
+      { context: { silent: true } },
+    )
     expect(mocks.downloadBlob).toHaveBeenCalledWith({ data: archive, fileName })
     const [{ data }] = mocks.downloadBlob.mock.calls[0] as [{ data: Blob }]
     expect(new Uint8Array(await data.arrayBuffer())).toEqual(
@@ -112,6 +128,7 @@ describe('useExportAppDsl', () => {
     })
     const [{ data }] = mocks.downloadBlob.mock.calls[0] as [{ data: Blob }]
     expect(await data.text()).toBe('kind: app\nversion: 0.1.5\n')
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('common.operation.downloadSuccess')
   })
 
   it('exposes pending state until the export command settles', async () => {
@@ -152,21 +169,31 @@ describe('useExportAppDsl', () => {
     )
   })
 
-  it('lets the promise toast own errors without triggering a download', async () => {
-    mocks.exportAppDsl.mockRejectedValue(new Error('Export failed'))
-    const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
+  it.each([undefined, 'ifpkg'] as const)(
+    'lets the promise toast own %s export errors without triggering a download',
+    async (format) => {
+      mocks.exportAppDsl.mockRejectedValue(new Error('Export failed'))
+      const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
 
-    await act(async () => {
-      await expect(
-        result.current.exportAppDsl({
-          appId: '4f6ae8f8-86c8-4ec8-82ef-e27f5932692b',
-          appName: 'Support Agent',
+      await act(async () => {
+        await expect(
+          result.current.exportAppDsl({
+            format,
+            appId: '4f6ae8f8-86c8-4ec8-82ef-e27f5932692b',
+            appName: 'Support Agent',
+          }),
+        ).resolves.toEqual({ status: 'failed' })
+      })
+
+      expect(mocks.toastPromise).toHaveBeenCalledWith(
+        expect.any(Promise),
+        expect.objectContaining({
+          error: { title: format === 'ifpkg' ? 'app.exportAppFailed' : 'app.exportFailed' },
         }),
-      ).resolves.toEqual({ status: 'failed' })
-    })
-
-    expect(mocks.downloadBlob).not.toHaveBeenCalled()
-  })
+      )
+      expect(mocks.downloadBlob).not.toHaveBeenCalled()
+    },
+  )
 })
 
 describe('useExportWorkflowAppDsl', () => {

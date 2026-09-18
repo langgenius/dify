@@ -10,11 +10,11 @@ import {
   ComboboxTrigger,
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
