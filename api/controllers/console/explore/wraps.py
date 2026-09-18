@@ -28,6 +28,9 @@ def installed_app_required[**P, R](view: Callable[Concatenate[InstalledApp, P], 
             _, current_tenant_id = current_account_with_tenant()
             installed_app = db.session.scalar(
                 select(InstalledApp)
+                # installed_app_id comes from an <uuid:...> route converter, so it
+                # is a UUID instance at runtime; StringUUID binds UUIDs as hex on
+                # SQLite, which would not match the stored hyphenated ids.
                 .where(InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_tenant_id)
                 .limit(1)
             )
