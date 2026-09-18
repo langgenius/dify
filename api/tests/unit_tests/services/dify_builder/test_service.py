@@ -574,6 +574,82 @@ def test_app_revision_is_projected_and_guards_workflow_dependent_actions(
     assert len(enqueued) == 1
 
 
+def _drifted_testdata_session(repo, lock, enqueued):
+    """A testdata gate whose draft moved after the form was issued."""
+    revision = {"value": "hash-1"}
+    svc = DifyBuilderService(
+        repo,
+        lock,
+        lambda _sid, action, _actor, _token: enqueued.append(action),
+        get_app_revision_fn=lambda _app_id, _actor: revision["value"],
+    )
+    session = _seed_session_at(repo, PcState.FIX_AWAIT_TESTDATA)
+    stored, context = repo.get_session(session.id)
+    context.last_snapshot_hash = "hash-1"
+    repo.compare_and_advance(session.id, stored.version, stored.current_state, context, [])
+    # The canvas autosaves while the user is still filling the form.
+    revision["value"] = "hash-2"
+    assert svc.get_session_view(session.id, _actor()).app_revision.conflicted is True
+    return svc, session
+
+
+def test_providing_testdata_survives_a_stale_base_app_revision(
+    repo: SqlDifyBuilderRepository, lock: FakeSessionLock
+) -> None:
+    """The gate asks a human to type for tens of seconds, right after Builder
+    wrote the canvas -- long enough for the editor's autosave to move the
+    revision. The submit carries run inputs, not graph edits, so refusing it
+    only stranded the user behind a recovery prompt with a frozen form."""
+    enqueued: list[Action] = []
+    svc, session = _drifted_testdata_session(repo, lock, enqueued)
+
+    svc.submit_action(
+        session.id,
+        _actor(),
+        Action(kind="provide_testdata", payload={"mode": "provide"}, base_version=2, base_app_revision="hash-1"),
+    )
+
+    assert [a.kind for a in enqueued] == ["provide_testdata"]
+
+
+def test_providing_testdata_survives_a_missing_base_app_revision(
+    repo: SqlDifyBuilderRepository, lock: FakeSessionLock
+) -> None:
+    enqueued: list[Action] = []
+    svc, session = _drifted_testdata_session(repo, lock, enqueued)
+
+    svc.submit_action(
+        session.id,
+        _actor(),
+        Action(kind="provide_testdata", payload={"mode": "provide"}, base_version=2),
+    )
+
+    assert [a.kind for a in enqueued] == ["provide_testdata"]
+
+
+def test_the_testdata_exemption_does_not_leak_to_other_actions(
+    repo: SqlDifyBuilderRepository, lock: FakeSessionLock
+) -> None:
+    # A drifted draft must still stop anything that would act on the graph.
+    current_revision = "hash-1"
+    svc = DifyBuilderService(
+        repo,
+        lock,
+        lambda *_args: None,
+        get_app_revision_fn=lambda _app_id, _actor: current_revision,
+    )
+    session = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
+    stored, context = repo.get_session(session.id)
+    context.last_snapshot_hash = "hash-1"
+    repo.compare_and_advance(session.id, stored.version, stored.current_state, context, [])
+    current_revision = "hash-2"
+
+    with pytest.raises(ConflictError, match="stale app revision"):
+        svc.submit_action(session.id, _actor(), Action(kind="run_verify", base_version=2, base_app_revision="hash-1"))
+    with pytest.raises(ConflictError, match="draft changed outside Builder"):
+        svc.submit_action(session.id, _actor(), Action(kind="run_verify", base_version=2, base_app_revision="hash-2"))
+
+
 def test_submit_message_wraps_submit_action(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository, lock: FakeSessionLock
 ) -> None:
