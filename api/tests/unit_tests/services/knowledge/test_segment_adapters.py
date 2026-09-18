@@ -785,8 +785,13 @@ def test_child_index_failure_leaves_database_unchanged(indexing_probe: IndexingP
     app, repository, probe = indexing_probe
     context = RequestContext("request", None, "author", "workspace-1")
     parent = app.create_segment(context, dataset_id="dataset-1", document_id="document-1", values={"content": "parent"})
-    args = {"dataset_id": "dataset-1", "document_id": "document-1", "segment_id": parent.data.id}
-    child = app.create_child_chunk(context, **args, content="original")
+    child = app.create_child_chunk(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id=parent.data.id,
+        content="original",
+    )
     ref = DatasetRef("workspace-1", "dataset-1").document("document-1").segment(parent.data.id)
     before = repository.get_children(ref)
     probe.fail = True
@@ -794,13 +799,38 @@ def test_child_index_failure_leaves_database_unchanged(indexing_probe: IndexingP
     def mutate() -> None:
         match operation:
             case "create":
-                app.create_child_chunk(context, **args, content="new")
+                app.create_child_chunk(
+                    context,
+                    dataset_id="dataset-1",
+                    document_id="document-1",
+                    segment_id=parent.data.id,
+                    content="new",
+                )
             case "update":
-                app.update_child_chunk(context, **args, child_chunk_id=child.id, content="changed")
+                app.update_child_chunk(
+                    context,
+                    dataset_id="dataset-1",
+                    document_id="document-1",
+                    segment_id=parent.data.id,
+                    child_chunk_id=child.id,
+                    content="changed",
+                )
             case "replace":
-                app.update_child_chunks(context, **args, chunks=[ChildChunkUpdateArgs(content="replacement")])
+                app.update_child_chunks(
+                    context,
+                    dataset_id="dataset-1",
+                    document_id="document-1",
+                    segment_id=parent.data.id,
+                    chunks=[ChildChunkUpdateArgs(content="replacement")],
+                )
             case "delete":
-                app.delete_child_chunk(context, **args, child_chunk_id=child.id)
+                app.delete_child_chunk(
+                    context,
+                    dataset_id="dataset-1",
+                    document_id="document-1",
+                    segment_id=parent.data.id,
+                    child_chunk_id=child.id,
+                )
 
     with pytest.raises((ChildChunkIndexingApplicationError, ChildChunkDeleteIndexApplicationError)):
         mutate()
@@ -876,12 +906,10 @@ def test_batch_status_and_delete_only_modify_scoped_segments(
     second = app.create_segment(context, dataset_id="dataset-1", document_id="document-1", values={"content": "second"})
     with sqlite_session_factory.begin() as session:
         session.add(_segment("foreign", "workspace-2", "dataset-1", "document-1"))
-    args = {
-        "dataset_id": "dataset-1",
-        "document_id": "document-1",
-        "segment_ids": [first.data.id, second.data.id, "foreign"],
-    }
-    app.change_segment_status(context, **args, action="disable")
+    segment_ids = [first.data.id, second.data.id, "foreign"]
+    app.change_segment_status(
+        context, dataset_id="dataset-1", document_id="document-1", segment_ids=segment_ids, action="disable"
+    )
     kind, task_args = probe.tasks[-1]
     assert kind == "disable"
     assert isinstance(task_args[0], list)
@@ -894,7 +922,7 @@ def test_batch_status_and_delete_only_modify_scoped_segments(
         foreign_row = session.get(DocumentSegment, "foreign")
         assert foreign_row is not None
         assert foreign_row.enabled is True
-    app.delete_segments(context, **args)
+    app.delete_segments(context, dataset_id="dataset-1", document_id="document-1", segment_ids=segment_ids)
     with sqlite_session_factory() as session:
         assert session.get(DocumentSegment, first.data.id) is None
         assert session.get(DocumentSegment, second.data.id) is None

@@ -461,15 +461,17 @@ def test_get_for_stored_document_rejects_deleted_or_different_stored_credential(
         session.add_all([dataset, document])
         credential_id = credential.id
 
-    kwargs = {
-        "workspace_id": "workspace-1",
-        "dataset_id": "dataset-1",
-        "document_id": "document-1",
-        "credential_id": credential_id,
-        "provider": "notion_datasource",
-        "plugin_id": "langgenius/notion_datasource",
-    }
-    assert repository.get_for_stored_document(**kwargs) is None
+    assert (
+        repository.get_for_stored_document(
+            workspace_id="workspace-1",
+            dataset_id="dataset-1",
+            document_id="document-1",
+            credential_id=credential_id,
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+        )
+        is None
+    )
 
     with sqlite_session_factory.begin() as session:
         stored_document = session.get(Document, "document-1")
@@ -481,4 +483,14 @@ def test_get_for_stored_document_rejects_deleted_or_different_stored_credential(
         assert stored_credential is not None
         session.delete(stored_credential)
 
-    assert repository.get_for_stored_document(**kwargs) is None
+    assert (
+        repository.get_for_stored_document(
+            workspace_id="workspace-1",
+            dataset_id="dataset-1",
+            document_id="document-1",
+            credential_id=credential_id,
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+        )
+        is None
+    )

@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import null, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.source import DataSourceOauthBinding
@@ -203,7 +203,7 @@ def test_null_disabled_state_is_treated_as_enabled(
         session.flush()
         binding_id = binding.id
         session.execute(
-            update(DataSourceOauthBinding).where(DataSourceOauthBinding.id == binding_id).values(disabled=None)
+            update(DataSourceOauthBinding).where(DataSourceOauthBinding.id == binding_id).values(disabled=null())
         )
 
     assert (
