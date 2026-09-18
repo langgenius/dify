@@ -250,6 +250,39 @@ def test_create_build_session_records_whether_builder_may_rename_the_app(
     assert fc.app_name_auto is expected
 
 
+def test_create_build_session_records_the_apps_current_name(
+    repo: SqlDifyBuilderRepository, lock: FakeSessionLock, enqueued: list[tuple]
+) -> None:
+    # Seeded once at creation so the build-complete card can name the app.
+    svc = DifyBuilderService(
+        repo,
+        lock,
+        lambda *args: enqueued.append(args),
+        get_app_name_fn=lambda _app_id, _actor: "Refund approval",
+    )
+
+    view = svc.create_build_session(APP_ID, _actor(), goal_text="Build it")
+
+    _session, fc = repo.get_session(view.session_id)
+    assert fc.app_name == "Refund approval"
+
+
+def test_create_build_session_tolerates_an_unreadable_app_name(
+    repo: SqlDifyBuilderRepository, lock: FakeSessionLock, enqueued: list[tuple]
+) -> None:
+    svc = DifyBuilderService(
+        repo,
+        lock,
+        lambda *args: enqueued.append(args),
+        get_app_name_fn=lambda _app_id, _actor: None,
+    )
+
+    view = svc.create_build_session(APP_ID, _actor(), goal_text="Build it")
+
+    _session, fc = repo.get_session(view.session_id)
+    assert fc.app_name == ""
+
+
 def test_create_build_session_does_not_rename_by_default(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
