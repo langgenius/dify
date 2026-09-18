@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Running commands",
   "agentDetail.configure.answer.duration.minute": "{{count}}m",
   "agentDetail.configure.answer.duration.second": "{{count}}s",
+  "agentDetail.configure.answer.responseEnded": "Response ended",
   "agentDetail.configure.answer.thinking": "Thinking",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition, while offering versioning to the extracted configs, does not support versioning on the file system itself. Be careful with your actions in Build mode, as changes made to the file system happen in real time and cannot always be neatly reverted. Community Edition is not your ideal choice for serving mass external audiences.",
   "agentDetail.configure.build.empty.description": "Describe what you want and it fills in the form on the left as you go.",
@@ -269,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "File system path",
   "agentDetail.configure.workingDirectory.description": "Files the agent reads and writes as it runs. Anything it generates, like qna_report.pdf, shows up here.",
   "agentDetail.configure.workingDirectory.fileSystem": "File system",
-  "agentDetail.configure.workingDirectory.open": "Open working directory",
   "agentDetail.configure.workingDirectory.persistentFiles": "Persistent",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Files the agent keeps and can use everywhere it runs, including end users' conversations and workflows. Any changes made here during this build chat take effect once you Apply.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Temporary",
@@ -348,7 +348,6 @@
   "agentDetail.sections.logs": "Logs",
   "agentDetail.sections.monitoring": "Monitoring",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "AGENT",
   "agentDetail.versionHistory.empty": "No versions yet",
   "agentDetail.versionHistory.exitVersions": "Exit versions",
   "agentDetail.versionHistory.filter": "Filter versions",
@@ -408,8 +407,5 @@
   "roster.sort.lastModified": "Last modified",
   "roster.sort.recentlyCreated": "Recently created",
   "roster.title": "Agents",
-  "roster.usageStatus.draft": "Draft",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} file upload failed.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} file uploads failed.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Draft"
 }

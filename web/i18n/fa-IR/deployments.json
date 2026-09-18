@@ -27,7 +27,6 @@
   "list.emptyTitle": "هنوز استقراری وجود ندارد",
   "overview.chip.latest": "آخرین",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "در حال استقرار",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "استقرار ناموفق",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "نامعتبر",
   "status.RUNTIME_INSTANCE_STATUS_READY": "در حال اجرا",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "مستقر نشده",
@@ -87,6 +86,5 @@
   "studio.versionValue": "مقدار نسخه",
   "studio.versionsBehind_one": "{{count}} نسخه عقب‌تر",
   "studio.versionsBehind_other": "{{count}} نسخه عقب‌تر",
-  "versions.checkingReleaseContent": "در حال بررسی محتوای نسخه...",
   "versions.deployTo": "استقرار به {{name}}"
 }

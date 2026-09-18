@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "명령 실행 중",
   "agentDetail.configure.answer.duration.minute": "{{count}}분",
   "agentDetail.configure.answer.duration.second": "{{count}}초",
+  "agentDetail.configure.answer.responseEnded": "응답이 종료되었습니다",
   "agentDetail.configure.answer.thinking": "생각 중",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition은 추출된 설정에 대한 버전 관리는 제공하지만 파일 시스템 자체의 버전 관리는 지원하지 않습니다. Build 모드에서의 작업에 주의하세요. 파일 시스템 변경은 실시간으로 발생하며 항상 깔끔하게 되돌릴 수 있는 것은 아닙니다. Community Edition은 대규모 외부 사용자에게 서비스를 제공하기에 이상적인 선택이 아닙니다.",
   "agentDetail.configure.build.empty.description": "원하는 내용을 설명하면 대화에 맞춰 왼쪽 양식이 채워집니다.",
@@ -269,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "파일 시스템 경로",
   "agentDetail.configure.workingDirectory.description": "에이전트가 실행 중에 읽고 쓰는 파일입니다. qna_report.pdf 같은 생성 결과가 여기에 표시됩니다.",
   "agentDetail.configure.workingDirectory.fileSystem": "파일 시스템",
-  "agentDetail.configure.workingDirectory.open": "작업 디렉터리 열기",
   "agentDetail.configure.workingDirectory.persistentFiles": "영구",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "에이전트가 유지하며 최종 사용자 대화와 워크플로를 포함해 에이전트가 실행되는 모든 곳에서 사용할 수 있는 파일입니다. 이 빌드 채팅에서 이러한 파일을 변경한 내용은 적용을 클릭하면 반영됩니다.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "임시",
@@ -348,7 +348,6 @@
   "agentDetail.sections.logs": "로그",
   "agentDetail.sections.monitoring": "모니터링",
   "agentDetail.title": "에이전트",
-  "agentDetail.type": "에이전트",
   "agentDetail.versionHistory.empty": "아직 버전이 없습니다",
   "agentDetail.versionHistory.exitVersions": "버전 나가기",
   "agentDetail.versionHistory.filter": "버전 필터",
@@ -408,8 +407,5 @@
   "roster.sort.lastModified": "마지막 수정",
   "roster.sort.recentlyCreated": "최근 생성",
   "roster.title": "에이전트",
-  "roster.usageStatus.draft": "초안",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "파일 {{count}}개 업로드에 실패했습니다.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "파일 {{count}}개 업로드에 실패했습니다.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "초안"
 }

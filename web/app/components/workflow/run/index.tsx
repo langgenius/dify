@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
 import { useStore } from '../store'
@@ -145,7 +145,7 @@ const RunPanel: FC<RunProps> = ({
       >
         {loading && (
           <div className="flex h-full items-center justify-center bg-components-panel-bg">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         <TabsPanel value="RESULT">

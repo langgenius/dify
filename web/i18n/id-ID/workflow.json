@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "Integrasi ini diinstal dari GitHub. Silakan buka Integrasis untuk menginstal ulang",
   "nodes.agent.roster.change": "Ubah",
   "nodes.agent.roster.editInConsole": "Edit di Agents",
-  "nodes.agent.roster.editInConsoleDisabled": "Mengedit agen memerlukan peran Editor atau yang lebih tinggi.",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "Hanya anggota dengan peran Editor atau yang lebih tinggi, atau izin Kelola Agents, yang dapat mengedit agen.",
   "nodes.agent.roster.inlineSetup.description": "Pengaturan sekali pakai yang hanya berada di simpul ini",
   "nodes.agent.roster.inlineSetup.name": "Pengaturan inline",
   "nodes.agent.roster.inlineSetup.type": "Hanya di simpul ini",

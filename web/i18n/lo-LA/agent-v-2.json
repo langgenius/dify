@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "ກຳລັງປະຕິບັດຄຳສັ່ງ",
   "agentDetail.configure.answer.duration.minute": "{{count}} ນາທີ",
   "agentDetail.configure.answer.duration.second": "{{count}} ວິນາທີ",
+  "agentDetail.configure.answer.responseEnded": "ການຕອບກັບສິ້ນສຸດແລ້ວ",
   "agentDetail.configure.answer.thinking": "ກຳລັງຄິດ",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition ເຖິງວ່າຈະມີລະບົບເວີຊັນໃຫ້ກັບການຕັ້ງຄ່າທີ່ສະກັດອອກມາ ແຕ່ບໍ່ຮອງຮັບລະບົບເວີຊັນໃນລະບົບໄຟລ໌ໂດຍກົງ. ກະລຸນາລະມັດລະວັງໃນການໃຊ້ໂໝດສ້າງ (Build mode) ເພາະການປ່ຽນແປງໃນລະບົບໄຟລ໌ຈະເກີດຂຶ້ນທັນທີ ແລະ ບາງຄັ້ງບໍ່ສາມາດຍ້ອນກັບໄດ້. Community Edition ບໍ່ແມ່ນທາງເລືອກທີ່ດີທີ່ສຸດສຳລັບການໃຫ້ບໍລິການຜູ້ໃຊ້ພາຍນອກຈຳນວນຫຼາຍ.",
   "agentDetail.configure.build.empty.description": "ອະທິບາຍສິ່ງທີ່ທ່ານຕ້ອງການ ແລ້ວລະບົບຈະຕື່ມຂໍ້ມູນໃສ່ແບບຟອມດ້ານຊ້າຍໃຫ້ເອງ.",
@@ -269,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "ເສັ້ນທາງລະບົບໄຟລ໌",
   "agentDetail.configure.workingDirectory.description": "ໄຟລ໌ທີ່ຕົວແທນອ່ານ ແລະ ຂຽນໃນຂະນະທີ່ເຮັດວຽກ. ສິ່ງໃດກໍຕາມທີ່ມັນສ້າງຂຶ້ນ ເຊັ່ນ: qna_report.pdf ຈະສະແດງຢູ່ນີ້.",
   "agentDetail.configure.workingDirectory.fileSystem": "ລະບົບໄຟລ໌",
-  "agentDetail.configure.workingDirectory.open": "ເປີດໂຟນເດີເຮັດວຽກ",
   "agentDetail.configure.workingDirectory.persistentFiles": "ຖາວອນ",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "ໄຟລ໌ທີ່ເອເຈນເກັບຮັກສາ ແລະ ສາມາດໃຊ້ໄດ້ທຸກບ່ອນທີ່ເອເຈນເຮັດວຽກ ລວມທັງການສົນທະນາຂອງຜູ້ໃຊ້ປາຍທາງ ແລະ ເວີກໂຟລ. ການປ່ຽນແປງທີ່ເຮັດຢູ່ນີ້ໃນແຊັດສ້າງນີ້ຈະມີຜົນເມື່ອທ່ານກົດ “ນຳໃຊ້”.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "ຊົ່ວຄາວ",
@@ -348,7 +348,6 @@
   "agentDetail.sections.logs": "ບັນທຶກ (Logs)",
   "agentDetail.sections.monitoring": "ການຕິດຕາມ",
   "agentDetail.title": "ຕົວແທນ (Agent)",
-  "agentDetail.type": "AGENT",
   "agentDetail.versionHistory.empty": "ຍັງບໍ່ມີເວີຊັນເທື່ອ",
   "agentDetail.versionHistory.exitVersions": "ອອກຈາກໜ້າເວີຊັນ",
   "agentDetail.versionHistory.filter": "ກັ່ນຕອງເວີຊັນ",
@@ -408,8 +407,5 @@
   "roster.sort.lastModified": "ແກ້ໄຂຫຼ້າສຸດ",
   "roster.sort.recentlyCreated": "ສ້າງຫຼ້າສຸດ",
   "roster.title": "ຕົວແທນ",
-  "roster.usageStatus.draft": "ສະບັບຮ່າງ",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "ອັບໂຫຼດໄຟລ໌ບໍ່ສຳເລັດ {{count}} ໄຟລ໌.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "ອັບໂຫຼດໄຟລ໌ບໍ່ສຳເລັດ {{count}} ໄຟລ໌.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "ສະບັບຮ່າງ"
 }

@@ -7,7 +7,7 @@ import { memo, useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
 import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { submitHumanInputForm } from '@/service/workflow'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
@@ -273,7 +273,7 @@ const WorkflowPreview = () => {
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (
             <div className="flex h-full items-center justify-center bg-components-panel-bg">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
           {currentTab === 'TRACING' && (
@@ -284,7 +284,7 @@ const WorkflowPreview = () => {
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
             <div className="flex h-full items-center justify-center bg-background-section-burn!">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
         </div>

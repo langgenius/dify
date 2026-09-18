@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "در حال اجرای دستورات",
   "agentDetail.configure.answer.duration.minute": "{{count}} دقیقه",
   "agentDetail.configure.answer.duration.second": "{{count}} ثانیه",
+  "agentDetail.configure.answer.responseEnded": "پاسخ پایان یافت",
   "agentDetail.configure.answer.thinking": "در حال فکر کردن",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition با اینکه برای پیکربندی‌های استخراج‌شده نسخه‌بندی ارائه می‌کند، از نسخه‌بندی خود سیستم فایل پشتیبانی نمی‌کند. در حالت Build با اقدامات خود محتاط باشید، زیرا تغییرات روی سیستم فایل به‌صورت بلادرنگ انجام می‌شوند و همیشه نمی‌توان آن‌ها را به‌صورت تمیز بازگرداند. Community Edition انتخاب ایده‌آلی برای خدمت‌رسانی به مخاطبان خارجی گسترده نیست.",
   "agentDetail.configure.build.empty.description": "آنچه می‌خواهید را توضیح دهید تا فرم سمت چپ در طول گفتگو تکمیل شود.",
@@ -269,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "مسیر سیستم فایل",
   "agentDetail.configure.workingDirectory.description": "فایل‌هایی که عامل هنگام اجرا می‌خواند و می‌نویسد. هر چیزی که تولید کند، مثل qna_report.pdf، اینجا نمایش داده می‌شود.",
   "agentDetail.configure.workingDirectory.fileSystem": "سیستم فایل",
-  "agentDetail.configure.workingDirectory.open": "باز کردن پوشه کاری",
   "agentDetail.configure.workingDirectory.persistentFiles": "ماندگار",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "فایل‌هایی که عامل نگه می‌دارد و می‌تواند در هر جایی که اجرا می‌شود، از جمله گفتگوهای کاربران نهایی و گردش‌های کاری، از آن‌ها استفاده کند. تغییراتی که در این گفتگوی ساخت روی این فایل‌ها انجام می‌دهید، پس از کلیک روی «اعمال» اجرایی می‌شوند.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "موقت",
@@ -348,7 +348,6 @@
   "agentDetail.sections.logs": "گزارش‌ها",
   "agentDetail.sections.monitoring": "نظارت",
   "agentDetail.title": "عامل",
-  "agentDetail.type": "عامل",
   "agentDetail.versionHistory.empty": "هنوز نسخه‌ای وجود ندارد",
   "agentDetail.versionHistory.exitVersions": "خروج از نسخه‌ها",
   "agentDetail.versionHistory.filter": "فیلتر نسخه‌ها",
@@ -408,8 +407,5 @@
   "roster.sort.lastModified": "آخرین تغییر",
   "roster.sort.recentlyCreated": "تازه‌ترین ایجاد",
   "roster.title": "عامل‌ها",
-  "roster.usageStatus.draft": "پیش‌نویس",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "بارگذاری {{count}} فایل ناموفق بود.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "بارگذاری {{count}} فایل ناموفق بود.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "پیش‌نویس"
 }

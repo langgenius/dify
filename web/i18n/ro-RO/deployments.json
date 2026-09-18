@@ -27,7 +27,6 @@
   "list.emptyTitle": "Nicio implementare încă",
   "overview.chip.latest": "cea mai recentă",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Se implementează",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Implementare eșuată",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Invalid",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Rulează",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Neimplementat",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Valoarea versiunii",
   "studio.versionsBehind_one": "{{count}} versiune în urmă",
   "studio.versionsBehind_other": "{{count}} versiuni în urmă",
-  "versions.checkingReleaseContent": "Se verifică conținutul versiunii...",
   "versions.deployTo": "Implementează în {{name}}"
 }

@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/constants'
@@ -98,7 +98,7 @@ const ToolPicker: FC<Props> = ({
 
   const loadingContent = (
     <div className="flex h-99 items-center justify-center">
-      <Loading />
+      <LoadingPlaceholder />
     </div>
   )
 
