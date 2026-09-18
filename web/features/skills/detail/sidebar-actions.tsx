@@ -273,20 +273,18 @@ export function SkillDetailSidebarActions({
               <span>{tCommon(($) => $['operation.duplicate'])}</span>
             </DropdownMenuItem>
           )}
-          {detail.latest_published_version_id && (
-            <DropdownMenuItem
-              className="gap-2"
-              onClick={() => {
-                if (!exportMutation.isPending) exportMutation.mutate()
-              }}
-            >
-              <span
-                aria-hidden
-                className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
-              />
-              <span>{tCommon(($) => $['operation.export'])}</span>
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem
+            className="gap-2"
+            onClick={() => {
+              if (!exportMutation.isPending) exportMutation.mutate()
+            }}
+          >
+            <span
+              aria-hidden
+              className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
+            />
+            <span>{tCommon(($) => $['operation.export'])}</span>
+          </DropdownMenuItem>
           {canDelete && (
             <>
               <DropdownMenuSeparator />
