@@ -288,11 +288,22 @@ class ToolTransformService:
             user = mcp_provider.load_user(db.session())
             user_name = user.name if user else "Anonymous"
 
+        def _resolve_title(tool: MCPTool) -> str:
+            """Resolve display title: title -> annotations.title -> name."""
+            if tool.title:
+                return tool.title
+            annotations = getattr(tool, "annotations", None)
+            if annotations:
+                ann_title = getattr(annotations, "title", None)
+                if ann_title:
+                    return ann_title
+            return tool.name
+
         return [
             ToolApiEntity(
                 author=user_name or "Anonymous",
                 name=tool.name,
-                label=I18nObject(en_US=tool.title or tool.name, zh_Hans=tool.title or tool.name),
+                label=I18nObject(en_US=_resolve_title(tool), zh_Hans=_resolve_title(tool)),
                 description=I18nObject(en_US=tool.description or "", zh_Hans=tool.description or ""),
                 parameters=ToolTransformService.convert_mcp_schema_to_parameter(tool.inputSchema),
                 labels=[],
