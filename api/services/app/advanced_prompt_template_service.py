@@ -1,5 +1,5 @@
 import copy
-from typing import Any, TypedDict
+from typing import Any
 
 from core.prompt.prompt_templates.advanced_prompt_templates import (
     BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG,
@@ -16,23 +16,9 @@ from core.prompt.prompt_templates.advanced_prompt_templates import (
 from models.model import AppMode
 
 
-class AdvancedPromptTemplateArgs(TypedDict):
-    """Expected shape of the args dict passed to AdvancedPromptTemplateService.get_prompt."""
-
-    app_mode: str
-    model_mode: str
-    model_name: str
-    has_context: str
-
-
 class AdvancedPromptTemplateService:
     @classmethod
-    def get_prompt(cls, args: AdvancedPromptTemplateArgs) -> dict[str, Any]:
-        app_mode = args["app_mode"]
-        model_mode = args["model_mode"]
-        model_name = args["model_name"]
-        has_context = args["has_context"]
-
+    def get_prompt(cls, *, app_mode: str, model_mode: str, model_name: str, has_context: str) -> dict[str, Any]:
         if "baichuan" in model_name.lower():
             return cls.get_baichuan_prompt(app_mode, model_mode, has_context)
         else:

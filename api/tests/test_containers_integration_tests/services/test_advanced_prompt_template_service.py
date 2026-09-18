@@ -17,7 +17,7 @@ from core.prompt.prompt_templates.advanced_prompt_templates import (
     CONTEXT,
 )
 from models.model import AppMode
-from services.advanced_prompt_template_service import AdvancedPromptTemplateService
+from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 
 
 class TestAdvancedPromptTemplateService:
@@ -52,7 +52,7 @@ class TestAdvancedPromptTemplateService:
         }
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_prompt(args)
+        result = AdvancedPromptTemplateService.get_prompt(**args)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -89,7 +89,7 @@ class TestAdvancedPromptTemplateService:
         }
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_prompt(args)
+        result = AdvancedPromptTemplateService.get_prompt(**args)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -128,7 +128,7 @@ class TestAdvancedPromptTemplateService:
             }
 
             # Act: Execute the method under test
-            result = AdvancedPromptTemplateService.get_prompt(args)
+            result = AdvancedPromptTemplateService.get_prompt(**args)
 
             # Assert: Verify Baichuan template is used
             assert result is not None
@@ -651,7 +651,7 @@ class TestAdvancedPromptTemplateService:
                 }
 
                 # Act: Execute the method under test
-                result = AdvancedPromptTemplateService.get_prompt(args)
+                result = AdvancedPromptTemplateService.get_prompt(**args)
 
                 # Assert: Verify result is not empty
                 assert result is not None
@@ -683,7 +683,7 @@ class TestAdvancedPromptTemplateService:
                 }
 
                 # Act: Execute the method under test
-                result = AdvancedPromptTemplateService.get_prompt(args)
+                result = AdvancedPromptTemplateService.get_prompt(**args)
 
                 # Assert: Verify result is not empty
                 assert result is not None
@@ -715,7 +715,7 @@ class TestAdvancedPromptTemplateService:
 
         for args in edge_cases:
             # Act: Execute the method under test
-            result = AdvancedPromptTemplateService.get_prompt(args)
+            result = AdvancedPromptTemplateService.get_prompt(**args)
 
             # Assert: Verify method handles edge cases gracefully
             # Should either return a valid result or empty dict, but not crash
@@ -747,7 +747,7 @@ class TestAdvancedPromptTemplateService:
         }
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_prompt(args)
+        result = AdvancedPromptTemplateService.get_prompt(**args)
 
         # Assert: Verify original templates are unchanged
         assert original_chat_completion == CHAT_APP_COMPLETION_PROMPT_CONFIG
@@ -783,7 +783,7 @@ class TestAdvancedPromptTemplateService:
         }
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_prompt(args)
+        result = AdvancedPromptTemplateService.get_prompt(**args)
 
         # Assert: Verify original templates are unchanged
         assert original_baichuan_chat_completion == BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG
@@ -834,7 +834,7 @@ class TestAdvancedPromptTemplateService:
 
         for args in test_scenarios:
             # Act: Execute the method under test
-            result = AdvancedPromptTemplateService.get_prompt(args)
+            result = AdvancedPromptTemplateService.get_prompt(**args)
 
             # Assert: Verify context integration is consistent
             assert result is not None
@@ -891,7 +891,7 @@ class TestAdvancedPromptTemplateService:
 
         for args in test_scenarios:
             # Act: Execute the method under test
-            result = AdvancedPromptTemplateService.get_prompt(args)
+            result = AdvancedPromptTemplateService.get_prompt(**args)
 
             # Assert: Verify context integration is consistent
             assert result is not None
