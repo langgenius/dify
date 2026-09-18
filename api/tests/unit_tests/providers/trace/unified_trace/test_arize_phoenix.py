@@ -81,6 +81,20 @@ def test_emit_creates_parent_before_child_and_maps_session(adapter: PhoenixAdapt
     assert tracer.start_span.call_args_list[1].kwargs["context"] is not None
 
 
+def test_emit_keeps_the_canonical_run_span_name(adapter: PhoenixAdapterFixture) -> None:
+    # Naming run spans after the app is specific to the OTel export; Phoenix keeps the builder's.
+    subject, tracer, _ = adapter
+
+    subject.emit(
+        trace(span(id="run-1", name="workflow_run-1", metadata={"workflow_run_id": "run-1", "app_name": "Bot"})),
+        None,
+        MagicMock(),
+    )
+
+    assert tracer.start_span.call_args.kwargs["name"] == "workflow_run-1"
+    assert "dify.workflow.run_id" not in tracer.start_span.call_args.kwargs["attributes"]
+
+
 @pytest.mark.parametrize("kind", list(CanonicalSpanKind))
 def test_emit_maps_every_canonical_kind(adapter: PhoenixAdapterFixture, kind: CanonicalSpanKind) -> None:
     expected = {

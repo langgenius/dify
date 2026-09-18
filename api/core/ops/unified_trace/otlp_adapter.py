@@ -186,6 +186,10 @@ class OTLPUnifiedAdapter[ConfigT: BaseTracingConfig]:
             raise InvalidTraceParentContextError(f"{self.provider_name} parent context contains an invalid traceparent")
         return context
 
+    def span_name(self, canonical_span: CanonicalSpan) -> str:
+        """Name of the exported span. Providers override this to adapt the canonical name."""
+        return canonical_span.name
+
     def attributes(
         self,
         canonical_span: CanonicalSpan,
@@ -252,7 +256,7 @@ class OTLPUnifiedAdapter[ConfigT: BaseTracingConfig]:
             local_parent = span_by_id.get(canonical_span.parent_id or "")
             context = set_span_in_context(local_parent) if local_parent is not None else root_context
             span = self._tracer.start_span(
-                name=canonical_span.name,
+                name=self.span_name(canonical_span),
                 context=context,
                 attributes=self.attributes(canonical_span, trace, parent),
                 start_time=_nanos(canonical_span.start_time),

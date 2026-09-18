@@ -118,6 +118,61 @@ def test_emit_adds_gen_ai_attributes_from_metadata(monkeypatch: pytest.MonkeyPat
     assert json.loads(llm_attributes["metadata"])["model_name"] == "gpt-4o"
 
 
+def run_span(name: str, span_id: str, **metadata: object) -> CanonicalSpan:
+    return CanonicalSpan(
+        id=span_id,
+        parent_id=None,
+        name=name,
+        kind=CanonicalSpanKind.CHAIN,
+        start_time=datetime(2025, 1, 1),
+        end_time=datetime(2025, 1, 1, 0, 0, 1),
+        status=CanonicalSpanStatus.OK,
+        metadata=metadata,
+    )
+
+
+def emitted(monkeypatch: pytest.MonkeyPatch, span: CanonicalSpan) -> trace_sdk.ReadableSpan:
+    adapter, exporter = make_adapter(monkeypatch)
+    adapter.emit(CanonicalTrace(trace_id="t", session_id="", root_span_id=span.id, spans=(span,)), None, MagicMock())
+    return exporter.export.call_args.args[0][0]
+
+
+@pytest.mark.parametrize(
+    ("builder_name", "span_id", "expected"),
+    [
+        ("workflow_run-1", "run-1", "workflow Support Bot"),
+        # A chatflow's root span is keyed by the message id but named after the run.
+        ("chatflow_run-1", "message-1", "chatflow Support Bot"),
+    ],
+)
+def test_emit_names_run_spans_after_the_app(
+    monkeypatch: pytest.MonkeyPatch, builder_name: str, span_id: str, expected: str
+) -> None:
+    span = emitted(monkeypatch, run_span(builder_name, span_id, workflow_run_id="run-1", app_name="  Support Bot "))
+
+    assert span.name == expected
+    # The run id left the name, so it must stay searchable.
+    assert span.attributes["dify.workflow.run_id"] == "run-1"
+
+
+@pytest.mark.parametrize("app_name", [None, "", "   "])
+def test_emit_names_run_spans_by_operation_without_app_name(
+    monkeypatch: pytest.MonkeyPatch, app_name: str | None
+) -> None:
+    span = emitted(monkeypatch, run_span("workflow_run-1", "run-1", workflow_run_id="run-1", app_name=app_name))
+
+    assert span.name == "workflow"
+    assert span.attributes["dify.workflow.run_id"] == "run-1"
+
+
+def test_emit_keeps_names_that_only_look_like_run_spans(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A node titled like a run span, inside run-1, is not the run span.
+    span = emitted(monkeypatch, run_span("workflow_notes", "node-1", workflow_run_id="run-1", app_name="Support Bot"))
+
+    assert span.name == "workflow_notes"
+    assert "dify.workflow.run_id" not in span.attributes
+
+
 def test_emit_names_tool_spans_for_gen_ai(monkeypatch: pytest.MonkeyPatch) -> None:
     adapter, exporter = make_adapter(monkeypatch)
     tool = CanonicalSpan(

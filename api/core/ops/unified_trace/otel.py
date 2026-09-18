@@ -115,6 +115,24 @@ def _is_json(value: str) -> bool:
     return True
 
 
+# The shared builder names the workflow and chatflow spans after the run id
+# (``workflow_<run id>``). Span names are expected to be low-cardinality: a name per run makes
+# every execution a new operation in Jaeger/Tempo. The OTel export names these spans
+# "<operation> <app name>" instead and keeps the run id as an attribute.
+_RUN_SPAN_OPERATIONS: tuple[str, ...] = ("workflow", "chatflow")
+
+
+def _run_span_operation(canonical_span: CanonicalSpan) -> str | None:
+    """Return "workflow"/"chatflow" for the spans the builder named after the run id, else None."""
+    run_id = canonical_span.metadata.get("workflow_run_id")
+    if not isinstance(run_id, str) or not run_id:
+        return None
+    for operation in _RUN_SPAN_OPERATIONS:
+        if canonical_span.name == f"{operation}_{run_id}":
+            return operation
+    return None
+
+
 def _gen_ai_attributes(canonical_span: CanonicalSpan, trace: CanonicalTrace) -> dict[str, AttributeValue]:
     attributes: dict[str, AttributeValue] = {}
     operation_name = _GEN_AI_OPERATION_NAME.get(canonical_span.kind)
@@ -265,6 +283,16 @@ class UnifiedOTelAdapter(OTLPUnifiedAdapter[OTelTracingConfig]):
         return Resource(config.parsed_resource_attributes()).merge(Resource({SERVICE_NAME: config.service_name}))
 
     @override
+    def span_name(self, canonical_span: CanonicalSpan) -> str:
+        operation = _run_span_operation(canonical_span)
+        if operation is None:
+            return canonical_span.name
+        app_name = canonical_span.metadata.get("app_name")
+        if isinstance(app_name, str) and app_name.strip():
+            return f"{operation} {app_name.strip()}"
+        return operation
+
+    @override
     def attributes(
         self,
         canonical_span: CanonicalSpan,
@@ -273,6 +301,9 @@ class UnifiedOTelAdapter(OTLPUnifiedAdapter[OTelTracingConfig]):
     ) -> dict[str, AttributeValue]:
         attributes = super().attributes(canonical_span, trace, parent)
         attributes.update(_gen_ai_attributes(canonical_span, trace))
+        if _run_span_operation(canonical_span) is not None:
+            # The run id left the span name; keep it searchable as a first-class attribute.
+            attributes["dify.workflow.run_id"] = canonical_span.metadata["workflow_run_id"]
         return attributes
 
 
