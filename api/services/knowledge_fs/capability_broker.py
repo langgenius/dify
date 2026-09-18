@@ -413,7 +413,7 @@ def _lock_authorization_revision(
             KnowledgeFSAuthorizationRevision.content_policy_revision == revision.content_policy_revision,
             KnowledgeFSAuthorizationRevision.revoke_sequence == revision.revoke_sequence,
         )
-        .values(updated_at=sa.func.current_timestamp())
+        .values({KnowledgeFSAuthorizationRevision.updated_at: sa.func.current_timestamp()})
     )
     if cast(CursorResult[tuple[object, ...]], result).rowcount != 1:
         raise KnowledgeFSOperationUnavailableError("KnowledgeFS authorization revision changed during issuance")
