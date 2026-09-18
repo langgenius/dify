@@ -21,6 +21,8 @@ import {
 } from 'nuqs'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
+import Loading from '@/app/components/base/loading'
 import { SearchInput } from '@/app/components/base/search-input'
 import UserCommunityIcon from './assets/user-community.svg'
 import { ContactChannelIcon } from './channel-icon'
@@ -175,6 +177,7 @@ export function ContactsDirectoryPage() {
   const [platformDialogOpen, setPlatformDialogOpen] = useState(false)
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([])
   const [removalError, setRemovalError] = useState(false)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const rowTriggersRef = useRef(new Map<string, HTMLButtonElement>())
   const selectedContactIdRef = useRef<string | null>(null)
   const directoryQuery = useContactsDirectory({ kind, limit: 20, search })
@@ -203,7 +206,7 @@ export function ContactsDirectoryPage() {
       currentPageCount > 0 &&
       currentPageCount < loadedPages &&
       directoryQuery.hasNextPage &&
-      !directoryQuery.isFetchingNextPage &&
+      !directoryQuery.isFetching &&
       !directoryQuery.isFetchNextPageError
     ) {
       void fetchNextPage()
@@ -212,7 +215,7 @@ export function ContactsDirectoryPage() {
     currentPageCount,
     directoryQuery.hasNextPage,
     directoryQuery.isFetchNextPageError,
-    directoryQuery.isFetchingNextPage,
+    directoryQuery.isFetching,
     fetchNextPage,
     loadedPages,
   ])
@@ -293,7 +296,7 @@ export function ContactsDirectoryPage() {
   }
 
   async function loadMore() {
-    const nextResult = await fetchNextPage()
+    const nextResult = await fetchNextPage({ cancelRefetch: false })
     if (!nextResult.isFetchNextPageError)
       void setBrowsing({ contact_pages: nextResult.data?.pages.length ?? loadedPages })
   }
@@ -401,7 +404,10 @@ export function ContactsDirectoryPage() {
         )}
       </header>
       <div className="flex min-h-0 flex-1 gap-1 overflow-hidden px-4 pt-1 pb-1 sm:px-8">
-        <div className="min-w-0 flex-1 overflow-auto rounded-xl bg-components-panel-bg">
+        <div
+          ref={scrollContainerRef}
+          className="min-w-0 flex-1 overflow-auto rounded-xl bg-components-panel-bg"
+        >
           {directoryQuery.isPending && (
             <div
               role="status"
@@ -521,17 +527,30 @@ export function ContactsDirectoryPage() {
                   ))}
                 </tbody>
               </table>
+              {directoryQuery.isFetchingNextPage && <Loading className="py-3" />}
               {directoryQuery.hasNextPage && (
-                <div className="flex flex-col items-center border-t border-divider-subtle p-3">
+                <>
                   {directoryQuery.isFetchNextPageError && (
-                    <p role="alert" className="mb-2 system-xs-regular text-text-destructive">
-                      {t(($) => $['directory.pageError'])}
-                    </p>
+                    <div className="flex flex-col items-center gap-2 p-3">
+                      <p role="alert" className="system-xs-regular text-text-destructive">
+                        {t(($) => $['directory.pageError'])}
+                      </p>
+                      <Button loading={directoryQuery.isFetchingNextPage} onClick={loadMore}>
+                        {t(($) => $['action.retry'])}
+                      </Button>
+                    </div>
                   )}
-                  <Button loading={directoryQuery.isFetchingNextPage} onClick={loadMore}>
-                    {t(($) => $['action.loadMore'])}
-                  </Button>
-                </div>
+                  <InfiniteScrollSentinel
+                    canLoadMore={
+                      !directoryQuery.isFetching &&
+                      !directoryQuery.isFetchNextPageError &&
+                      currentPageCount >= loadedPages
+                    }
+                    onLoadMore={() => void loadMore()}
+                    preloadDistance={100}
+                    scrollContainerRef={scrollContainerRef}
+                  />
+                </>
               )}
             </div>
           )}
