@@ -25,11 +25,12 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale,
 }))
 
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n-config/client', () => ({
   setLocaleOnClient: vi.fn(),
 }))
 

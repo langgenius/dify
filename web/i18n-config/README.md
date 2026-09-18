@@ -6,7 +6,11 @@ English JSON files under `web/i18n/en-US/` are the source locale. Other locale d
 
 - `languages.ts` is the source of truth for supported Web locales.
 - `locale.ts` owns canonical UI locale tags, the default locale, and input normalization.
-- `language.ts` owns product-specific locale mappings.
+- `language.ts` owns documentation, access-template, and date-library locale mappings.
+- `metadata.ts` owns plugin/model language mappings and localized metadata selection.
+- `index.ts` exports only shared configuration and the canonical UI locale type.
+- `client.ts` owns client language changes and cookie persistence.
+- `#i18n` selects the client or server translation hooks; use it for `useLocale`.
 - `resources.ts` owns the typed namespace registry. File names use kebab case while namespaces use camel case, for example `app-debug.json` and `appDebug`.
 - `locale-resources/<locale>.ts` owns lazy loading for one locale.
 - `settings.ts` owns shared i18next options.

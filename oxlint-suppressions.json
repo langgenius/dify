@@ -5174,11 +5174,6 @@
       "count": 1
     }
   },
-  "web/i18n-config/lib.client.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
   "web/models/datasets.ts": {
     "erasable-syntax-only/enums": {
       "count": 7

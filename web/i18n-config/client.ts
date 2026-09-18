@@ -1,10 +1,12 @@
 'use client'
 import type { Resource } from 'i18next'
-import type { Locale } from '.'
+import type { Locale } from './locale'
 import type { Namespace, NamespaceInFileName } from './resources'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
+import Cookies from 'js-cookie'
 import { getI18n, initReactI18next } from 'react-i18next'
+import { LOCALE_COOKIE_NAME } from '@/config'
 import { loadI18nResource } from './load-resource'
 import { normalizeLocale } from './locale'
 import { getInitOptions } from './settings'
@@ -30,4 +32,11 @@ export const changeLanguage = async (lng?: string) => {
   if (!lng) return
   const i18n = getI18n()
   await i18n.changeLanguage(normalizeLocale(lng))
+}
+
+export const setLocaleOnClient = async (locale: string, reloadPage = true) => {
+  const normalized = normalizeLocale(locale)
+  Cookies.set(LOCALE_COOKIE_NAME, normalized, { expires: 365 })
+  await changeLanguage(normalized)
+  if (reloadPage) location.reload()
 }

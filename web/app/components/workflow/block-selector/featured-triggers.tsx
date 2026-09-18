@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next'
 import type { TriggerPluginActionPreviewPayload } from './trigger-plugin/action-item'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
+import type { PluginLanguage } from '@/i18n-config/metadata'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -237,7 +237,7 @@ const FeaturedTriggers = ({
 
 type FeaturedTriggerUninstalledItemProps = {
   plugin: Plugin
-  language: Locale
+  language: PluginLanguage
   previewCardHandle: PreviewCardHandle<FeaturedTriggerPreviewPayload>
   onInstallSuccess?: () => Promise<void> | void
   t: TFunction
