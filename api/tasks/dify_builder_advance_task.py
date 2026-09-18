@@ -218,10 +218,10 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         # uses it as its model provider (None -> reply-language localization is a no-op).
         localizer = Localizer(agent.model_or_none)
 
-        def rename_app(proposed: str) -> None:
+        def rename_app(proposed: str) -> str:
             assert actor is not None
             assert loaded_session is not None
-            app_naming.rename_app_from_proposal(
+            return app_naming.rename_app_from_proposal(
                 app_id=loaded_session.app_id,
                 tenant_id=actor.tenant_id,
                 account_id=actor.account_id,

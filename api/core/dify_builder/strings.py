@@ -165,6 +165,13 @@ TEMPLATES: list[Template] = [
         template="Model changed to {name}",
         translate_fields=frozenset(),  # name is a model identifier; re-inserted verbatim
     ),
+    # Deliberately last: the app name is arbitrary, so this pattern is the
+    # broadest here and every more specific template must get first refusal.
+    Template(
+        pattern=re.compile(r"^(?P<name>.+) is ready$"),
+        template="{name} is ready",
+        translate_fields=frozenset(),  # the app's own name; re-inserted verbatim
+    ),
 ]
 
 

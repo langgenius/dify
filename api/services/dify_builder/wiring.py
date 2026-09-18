@@ -20,7 +20,7 @@ from core.dify_builder.models import Action, Actor
 from extensions.ext_database import db
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from models import App, TenantAccountJoin, TenantAccountRole
-from services.dify_builder import progress_bus, session_lock
+from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import AppAccess, DifyBuilderService, SessionView
@@ -85,6 +85,10 @@ def _get_app_revision(app_id: str, actor: Actor) -> str:
     return revision
 
 
+def _get_app_name(app_id: str, actor: Actor) -> str:
+    return app_naming.current_app_name(app_id=app_id, tenant_id=actor.tenant_id)
+
+
 def build_service() -> DifyBuilderService:
     repo = SqlDifyBuilderRepository(sessionmaker(bind=db.engine, expire_on_commit=False))
     return DifyBuilderService(
@@ -94,6 +98,7 @@ def build_service() -> DifyBuilderService:
         subscribe_fn=progress_bus.subscribe,
         authorize_app_fn=_authorize_app,
         get_app_revision_fn=_get_app_revision,
+        get_app_name_fn=_get_app_name,
     )
 
 

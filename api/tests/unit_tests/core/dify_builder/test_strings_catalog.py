@@ -65,3 +65,21 @@ def test_catalog_covers_handler_literals():
                 continue
             missing.append((name, raw))
     assert not missing, f"uncatalogued user-facing literals: {missing}"
+
+
+def test_the_built_headline_is_a_template_so_it_localizes():
+    # "<App name> is ready" (spec N4): the frame translates, the name does not.
+    matched = strings.match_template("Refund approval is ready")
+
+    assert matched is not None
+    tpl, groups = matched
+    assert tpl.template == "{name} is ready"
+    assert groups["name"] == "Refund approval"
+
+
+def test_the_built_headline_template_yields_to_more_specific_ones():
+    # It matches almost anything, so it must be the last resort, not the first.
+    tpl, groups = strings.match_template("Workflow built (3 nodes)")
+
+    assert "{count}" in tpl.template
+    assert groups["count"] == "3"

@@ -119,7 +119,9 @@ def _refine_app_name(env: Env, fc: DifyBuilderContext) -> None:
         return
     proposed = env.agent.propose_app_name(fc.goal_text, fc.requirements)
     if proposed and proposed.strip():
-        env.rename_app(proposed)
+        stored = env.rename_app(proposed)
+        if stored:
+            fc.app_name = stored
 
 
 def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -499,7 +501,16 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             nodes=result.nodes or describe_changed_nodes(result.changed_nodes),
         ),
     )
-    plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v2.1", items=list(fc.plan_items)))
+    # Spec N4: the app is named once here, in the card headline, and nowhere
+    # else in the build output -- the completion receipt never repeats it.
+    plan_items = append_card(
+        fc,
+        PlanCard(
+            title=f"{fc.app_name} is ready" if fc.app_name else "Build plan",
+            version_tag="v2.1",
+            items=list(fc.plan_items),
+        ),
+    )
     decision_items = append_card(fc, DecisionItem(text="Approved the plan"))
     execution = progress.finish()
     turn_items = append_card(

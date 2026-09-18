@@ -115,11 +115,13 @@ class Env:
     # MUST NOT raise: the engine does not guard this call, so the service-layer
     # implementation is responsible for swallowing its own errors and returning a safe fallback.
     localize_items: Callable[[list["ConversationItem"], str], list["ConversationItem"]] | None = None
-    # Renames the session's app to a model-proposed title (spec N1). None -> no-op.
-    # MUST NOT raise: the engine does not guard this call, so the service-layer
-    # implementation swallows its own errors -- a failed rename leaves the
-    # derived name in place and never blocks the build.
-    rename_app: Callable[[str], None] | None = None
+    # Renames the session's app to a model-proposed title (spec N1) and returns
+    # the name actually stored, or "" if nothing changed -- the engine records
+    # that on the context, so it never claims a name the database does not have.
+    # None -> no-op. MUST NOT raise: the engine does not guard this call, so the
+    # service-layer implementation swallows its own errors -- a failed rename
+    # leaves the derived name in place and never blocks the build.
+    rename_app: Callable[[str], str] | None = None
     # Correlation metadata for the handler transition currently running.
     # The runner resets it before every independently committed step.
     session_id: str = ""
