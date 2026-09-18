@@ -1,6 +1,5 @@
 import Cookies from 'js-cookie'
-import { setLocaleOnClient } from '..'
-import { changeLanguage } from '../client'
+import { changeLanguage, setLocaleOnClient } from '../client'
 
 const mocks = vi.hoisted(() => ({ changeLanguage: vi.fn() }))
 

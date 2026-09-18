@@ -41,7 +41,7 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
       <div>
         <input placeholder="Search emojis..." />
         <button type="button" onClick={() => {}}>
-          <em-emoji />
+          <span>😀</span>
         </button>
         <button
           type="button"
@@ -256,7 +256,7 @@ describe('DuplicateAppModal', () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
-    const emojiButton = document.querySelector('em-emoji')?.closest('button')
+    const emojiButton = screen.getByText('😀').closest('button')
     expect(emojiButton).toBeTruthy()
     await user.click(emojiButton!)
     await user.click(screen.getByRole('button', { name: '#E4FBCC', hidden: true }))
