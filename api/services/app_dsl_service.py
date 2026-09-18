@@ -751,6 +751,7 @@ class AppDslService:
         session: Session,
         include_secret: bool = False,
         workflow_id: str | None = None,
+        version_id: uuid.UUID | None = None,
     ) -> str:
         """
         Export app
@@ -758,6 +759,8 @@ class AppDslService:
         :param session: Database session used to load export data
         :param include_secret: Whether include secret variable
         :param workflow_id: Optional published workflow version to export
+        :param version_id: Optional published Agent version to export
+        :raises AgentVersionNotFoundError: If the selected Agent version is unavailable or not visible in history
         :raises WorkflowNotFoundError: If the selected workflow version does not exist
         :raises IsDraftWorkflowError: If the selected workflow is a draft
         :return:
@@ -765,7 +768,7 @@ class AppDslService:
         app_mode = AppMode.value_of(app_model.mode)
 
         if app_mode == AppMode.AGENT:
-            package_ref, packages = AgentDslService(session).export_agent_app(app=app_model)
+            package_ref, packages = AgentDslService(session).export_agent_app(app=app_model, version_id=version_id)
             dependencies = AgentDslService(session).extract_package_dependencies(packages)
             export_data = make_agent_app_dsl(
                 app_model,
