@@ -1,7 +1,7 @@
 import type { InitOptions } from 'i18next'
+import type { Namespace } from './resources'
 import { defaultLocale } from './locale'
 import { defaultNS, namespaces } from './resources'
-import type { Namespace } from './resources'
 
 type GetInitOptionsParams = {
   namespaces?: readonly Namespace[]

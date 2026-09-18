@@ -10,9 +10,9 @@ import { cache } from 'react'
 import { initReactI18next } from 'react-i18next/initReactI18next'
 import { LOCALE_COOKIE_NAME } from '@/config'
 import { cookies, headers } from '@/next/headers'
+import { getInitialNamespacesForPath } from './initial-namespaces'
 import { loadI18nResource } from './load-resource'
 import { canonicalizeLanguageTag, defaultLocale, supportedLocales } from './locale'
-import { getInitialNamespacesForPath } from './initial-namespaces'
 import { getInitOptions } from './settings'
 
 const getOrCreateI18next = cache(async (lng: Locale) => {
@@ -73,12 +73,9 @@ async function loadResourceNamespaces(
   return { [lng]: messages }
 }
 
-export const getResources = cache(async (
-  lng: Locale,
-  namespacesToLoad: readonly Namespace[],
-): Promise<Resource> => loadResourceNamespaces(lng, namespacesToLoad))
-
-export const getResourcesForPath = cache(async (lng: Locale, pathname: string): Promise<Resource> => {
-  const namespacesToLoad = getInitialNamespacesForPath(pathname)
-  return loadResourceNamespaces(lng, namespacesToLoad)
-})
+export const getResourcesForPath = cache(
+  async (lng: Locale, pathname: string): Promise<Resource> => {
+    const namespacesToLoad = getInitialNamespacesForPath(pathname)
+    return loadResourceNamespaces(lng, namespacesToLoad)
+  },
+)

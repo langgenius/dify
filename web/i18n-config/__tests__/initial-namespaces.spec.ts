@@ -1,5 +1,5 @@
-import { namespaces } from '../resources'
 import { getInitialNamespacesForPath, shellNamespaces } from '../initial-namespaces'
+import { namespaces } from '../resources'
 
 describe('getInitialNamespacesForPath', () => {
   it('loads only shell namespaces on a lightweight apps route', () => {
@@ -26,6 +26,13 @@ describe('getInitialNamespacesForPath', () => {
 
     expect(initial).toContain('workflow')
     expect(initial).toContain('appDebug')
+    expect(initial).toContain('agentV2')
     expect(initial).not.toContain('dataset')
+  })
+
+  it('includes explore on sign-in routes for post-auth landing pages', () => {
+    const initial = getInitialNamespacesForPath('/signin')
+
+    expect(initial).toContain('explore')
   })
 })

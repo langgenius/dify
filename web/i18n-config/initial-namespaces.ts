@@ -18,30 +18,29 @@ const isPathUnder = (pathname: string, route: string) =>
 
 const ROUTE_NAMESPACE_RULES: RouteNamespaceRule[] = [
   {
-    match: pathname => isPathUnder(pathname, '/signin') || isPathUnder(pathname, '/signup'),
-    namespaces: ['login', 'register', 'oauth'],
+    match: (pathname) => isPathUnder(pathname, '/signin') || isPathUnder(pathname, '/signup'),
+    namespaces: ['login', 'register', 'oauth', 'explore'],
   },
   {
-    match: pathname => isPathUnder(pathname, '/reset-password') || isPathUnder(pathname, '/install'),
+    match: (pathname) =>
+      isPathUnder(pathname, '/reset-password') || isPathUnder(pathname, '/install'),
     namespaces: ['login', 'register'],
   },
   {
-    match: pathname => isPathUnder(pathname, '/device'),
+    match: (pathname) => isPathUnder(pathname, '/device'),
     namespaces: ['deviceFlow'],
   },
   {
-    match: pathname => isPathUnder(pathname, '/education'),
+    match: (pathname) => isPathUnder(pathname, '/education'),
     namespaces: ['education'],
   },
   {
-    match: pathname =>
-      pathname === '/'
-      || isPathUnder(pathname, '/explore')
-      || isPathUnder(pathname, '/apps'),
+    match: (pathname) =>
+      pathname === '/' || isPathUnder(pathname, '/explore') || isPathUnder(pathname, '/apps'),
     namespaces: ['explore'],
   },
   {
-    match: pathname => isPathUnder(pathname, '/datasets'),
+    match: (pathname) => isPathUnder(pathname, '/datasets'),
     namespaces: [
       'dataset',
       'datasetCreation',
@@ -52,29 +51,28 @@ const ROUTE_NAMESPACE_RULES: RouteNamespaceRule[] = [
     ],
   },
   {
-    match: pathname => isPathUnder(pathname, '/agents'),
+    match: (pathname) => isPathUnder(pathname, '/agents'),
     namespaces: ['agentV2', 'workflow', 'skill', 'custom'],
   },
   {
-    match: pathname => isPathUnder(pathname, '/skills'),
+    match: (pathname) => isPathUnder(pathname, '/skills'),
     namespaces: ['skill', 'workflow'],
   },
   {
-    match: pathname =>
-      isPathUnder(pathname, '/marketplace')
-      || isPathUnder(pathname, '/plugins')
-      || isPathUnder(pathname, '/templates'),
+    match: (pathname) =>
+      isPathUnder(pathname, '/marketplace') ||
+      isPathUnder(pathname, '/plugins') ||
+      isPathUnder(pathname, '/templates'),
     namespaces: ['plugin', 'pluginTags', 'pluginTrigger', 'explore'],
   },
   {
-    match: pathname => isPathUnder(pathname, '/integrations') || isPathUnder(pathname, '/tools'),
+    match: (pathname) => isPathUnder(pathname, '/integrations') || isPathUnder(pathname, '/tools'),
     namespaces: ['tools', 'plugin', 'pluginTags', 'pluginTrigger'],
   },
   {
-    match: pathname =>
-      isPathUnder(pathname, '/app')
-      || isPathUnder(pathname, '/snippets'),
+    match: (pathname) => isPathUnder(pathname, '/app') || isPathUnder(pathname, '/snippets'),
     namespaces: [
+      'agentV2',
       'appDebug',
       'appOverview',
       'appApi',
@@ -97,25 +95,25 @@ const ROUTE_NAMESPACE_RULES: RouteNamespaceRule[] = [
     match: (pathname) => {
       const [section] = pathname.split('/').filter(Boolean)
       return (
-        section === 'chat'
-        || section === 'chatbot'
-        || section === 'workflow'
-        || section === 'completion'
-        || section === 'agent'
-        || section === 'environment'
-        || isPathUnder(pathname, '/webapp-signin')
-        || isPathUnder(pathname, '/webapp-reset-password')
+        section === 'chat' ||
+        section === 'chatbot' ||
+        section === 'workflow' ||
+        section === 'completion' ||
+        section === 'agent' ||
+        section === 'environment' ||
+        isPathUnder(pathname, '/webapp-signin') ||
+        isPathUnder(pathname, '/webapp-reset-password')
       )
     },
     namespaces: ['share', 'workflow', 'runLog', 'appDebug'],
   },
   {
-    match: pathname => isPathUnder(pathname, '/account'),
+    match: (pathname) => isPathUnder(pathname, '/account'),
     namespaces: ['billing', 'permission', 'permissionKeys'],
   },
 ]
 
-export function resolveRouteNamespaces(pathname: string): Namespace[] {
+function resolveRouteNamespaces(pathname: string): Namespace[] {
   const matched: Namespace[] = []
 
   for (const rule of ROUTE_NAMESPACE_RULES) {
@@ -127,6 +125,10 @@ export function resolveRouteNamespaces(pathname: string): Namespace[] {
 }
 
 export function getInitialNamespacesForPath(pathname: string): Namespace[] {
-  const merged = new Set<Namespace>([defaultNS, ...shellNamespaces, ...resolveRouteNamespaces(pathname)])
-  return namespaces.filter(ns => merged.has(ns))
+  const merged = new Set<Namespace>([
+    defaultNS,
+    ...shellNamespaces,
+    ...resolveRouteNamespaces(pathname),
+  ])
+  return namespaces.filter((ns) => merged.has(ns))
 }
