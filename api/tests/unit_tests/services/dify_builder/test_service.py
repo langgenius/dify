@@ -238,6 +238,27 @@ def test_create_build_session_rejects_blank_goal(service: DifyBuilderService, en
     assert enqueued == []
 
 
+@pytest.mark.parametrize(("derive", "expected"), [(True, True), (False, False)])
+def test_create_build_session_records_whether_builder_may_rename_the_app(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, derive: bool, expected: bool
+) -> None:
+    # The client knows which entry it came from: the homepage prompt (Builder
+    # renames once) or create-from-blank (the user already named it).
+    view = service.create_build_session(APP_ID, _actor(), goal_text="Build it", derive_app_name=derive)
+
+    _session, fc = repo.get_session(view.session_id)
+    assert fc.app_name_auto is expected
+
+
+def test_create_build_session_does_not_rename_by_default(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    view = service.create_build_session(APP_ID, _actor(), goal_text="Build it")
+
+    _session, fc = repo.get_session(view.session_id)
+    assert fc.app_name_auto is False
+
+
 def test_create_fix_session_converts_valid_checklist_dicts_before_persisting(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
@@ -770,6 +791,32 @@ def test_get_session_view_actions_for_fix_await_decision(
         ("continue_adjusting", ActionKind.SECONDARY),
         ("revert", ActionKind.DESTRUCTIVE),
     ]
+
+
+def test_session_view_carries_the_same_choice_as_options_and_as_actions(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    s = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
+
+    view = service.get_session_view(s.id, _actor())
+
+    # Both contracts are live while the web client migrates, and they must never
+    # disagree about what this gate is asking.
+    assert [o.id for o in view.decision.options] == [a.id for a in view.actions]
+    assert view.decision.default_option_id == "publish_fix"
+    assert (view.decision.confirm.id, view.decision.cancel.id) == ("confirm", "cancel")
+
+
+def test_a_session_view_with_nothing_to_decide_has_no_decision(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    s = _seed_session_at(repo, PcState.BUILD_COMPLETE)
+
+    view = service.get_session_view(s.id, _actor())
+
+    # A finished session asks nothing, so there is no card to put options in.
+    assert view.actions == []
+    assert view.decision is None
 
 
 def test_get_session_view_actions_for_fix_await_verify(
