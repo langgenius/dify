@@ -11,7 +11,7 @@ import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { StrictMode } from 'react'
-import { vi } from 'vite-plus/test'
+import { afterEach, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { SkillDetailPage } from '../detail/page'
 
@@ -32,6 +32,8 @@ const mocks = vi.hoisted(() => ({
   restoreSkillMutationFn: vi.fn(),
   saveDraftFileMutationFn: vi.fn(),
   sendSkillAssistMessage: vi.fn(),
+  modelParameterRulesFetch: vi.fn<typeof fetch>(),
+  textGenerationModelListGet: vi.fn(),
   defaultTextGenerationModel: undefined as
     | { provider: { provider: string }; model: string }
     | undefined,
@@ -114,6 +116,7 @@ vi.mock('@/app/components/main-nav/components/help-menu', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useLanguage: () => 'en_US',
   useDefaultModel: () => ({
     data: mocks.defaultTextGenerationModel,
   }),
@@ -127,14 +130,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: () => <button type="button">model-settings</button>,
   SplitModelSelector: () => <button type="button">model-settings</button>,
-}))
-
-vi.mock('@/service/use-common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-common')>()),
-  useModelParameterRules: () => ({
-    data: { data: [] },
-    isLoading: false,
-  }),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
@@ -685,6 +680,13 @@ export function getMocks() {
 export function resetDetailPageFixture() {
   vi.useRealTimers()
   vi.resetAllMocks()
+  mocks.modelParameterRulesFetch.mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (!url.includes('/models/parameter-rules'))
+      throw new Error(`Unexpected Skill detail request: ${url}`)
+    return Response.json({ data: [] })
+  })
+  vi.stubGlobal('fetch', mocks.modelParameterRulesFetch)
   mocks.routeSkillId = 'skill-1'
   mocks.defaultTextGenerationModel = {
     provider: {
@@ -704,6 +706,9 @@ export function resetDetailPageFixture() {
       ],
     },
   ]
+  mocks.textGenerationModelListGet.mockImplementation(async () => ({
+    data: mocks.textGenerationModelList,
+  }))
   mocks.skillDetail = createSkillDetail()
   mocks.skillDetailGetFn.mockImplementation(async () => mocks.skillDetail)
   mocks.skillDetailKey.mockImplementation((options) => ['skill-detail', options])
@@ -855,6 +860,10 @@ export function resetDetailPageFixture() {
   })
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
@@ -866,7 +875,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       >
     }) =>
       options.queryKey[0].includes('modelTypes')
-        ? { data: mocks.textGenerationModelList, isPending: false }
+        ? actual.useQuery({ ...options, queryFn: mocks.textGenerationModelListGet })
         : actual.useQuery(options),
   }
 })
