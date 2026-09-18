@@ -2,7 +2,7 @@ import os
 from urllib.parse import quote
 from uuid import UUID
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
@@ -10,6 +10,7 @@ from werkzeug.exceptions import NotFound
 from controllers.common.errors import UnsupportedFileTypeError
 from controllers.common.file_response import enforce_download_for_html
 from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.files import files_ns
 from extensions.ext_application_services import application_services
 from services.errors.file import UnsupportedFileTypeError as UnsupportedFileTypeServiceError
@@ -74,13 +75,13 @@ class ImagePreviewApi(Resource):
     @files_ns.doc(
         responses={
             200: "Image preview returned successfully",
-            400: "Missing or invalid query parameters",
             404: "File not found or signature is invalid",
             415: "Unsupported file type",
+            422: "Missing or invalid query parameters",
         }
     )
-    def get(self, file_id: UUID) -> Response:
-        args = FileSignatureQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(FileSignatureQuery)
+    def get(self, args: FileSignatureQuery, file_id: UUID) -> Response:
         try:
             delivery = application_services().upload_file_delivery.get_signed_image_preview(
                 file_id=str(file_id),
@@ -109,13 +110,12 @@ class FilePreviewApi(Resource):
     @files_ns.doc(
         responses={
             200: "File stream returned successfully",
-            400: "Missing or invalid query parameters",
             404: "File not found or signature is invalid",
+            422: "Missing or invalid query parameters",
         }
     )
-    def get(self, file_id: UUID) -> Response:
-        args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))
-
+    @model_validate(FilePreviewQuery)
+    def get(self, args: FilePreviewQuery, file_id: UUID) -> Response:
         try:
             delivery = application_services().upload_file_delivery.get_signed_file_preview(
                 file_id=str(file_id),

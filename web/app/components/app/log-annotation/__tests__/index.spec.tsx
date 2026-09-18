@@ -69,7 +69,7 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation pageType={PageType.log} />)
 
       // Assert
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should render log content without the old page tabs', () => {

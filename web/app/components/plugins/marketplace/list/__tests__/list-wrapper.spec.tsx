@@ -32,14 +32,6 @@ vi.mock('#i18n', async () => {
   }
 })
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: ({ className }: { className?: string }) => (
-    <div data-testid="loading" className={className}>
-      loading
-    </div>
-  ),
-}))
-
 vi.mock('../../sort-dropdown', () => ({
   default: () => <div data-testid="sort-dropdown">sort</div>,
 }))
@@ -58,7 +50,7 @@ vi.mock('../../state', () => ({
 // tree needs an adapter even though the data hook itself is mocked.
 const renderListWrapper = (ui: ReactNode) => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams: '' })
-  return render(<NuqsWrapper>{ui}</NuqsWrapper>)
+  return render(ui, { wrapper: NuqsWrapper })
 }
 
 describe('ListWrapper', () => {
@@ -81,8 +73,40 @@ describe('ListWrapper', () => {
 
     renderListWrapper(<ListWrapper />)
 
-    expect(screen.getByText('1 plugins found')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('1 plugins found')
     expect(screen.getByTestId('sort-dropdown')).toBeInTheDocument()
+  })
+
+  it('keeps the status owner mounted through pagination and reports the total result count', () => {
+    mockMarketplaceData.plugins = [{ plugin_id: 'p1', name: 'Plugin One' } as Plugin]
+    mockMarketplaceData.pluginsTotal = 20
+    const view = renderListWrapper(<ListWrapper />)
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('20 plugins found')
+
+    mockMarketplaceData.isFetchingNextPage = true
+    view.rerender(<ListWrapper />)
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('loading')
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+
+    mockMarketplaceData.isFetchingNextPage = false
+    mockMarketplaceData.plugins = [
+      ...mockMarketplaceData.plugins,
+      { plugin_id: 'p2', name: 'Plugin Two' } as Plugin,
+    ]
+    view.rerender(<ListWrapper />)
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('20 plugins found')
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+
+    mockMarketplaceData.isRefreshing = true
+    view.rerender(<ListWrapper />)
+    expect(status).toHaveTextContent('loading')
+    mockMarketplaceData.isRefreshing = false
+    mockMarketplaceData.isError = true
+    view.rerender(<ListWrapper />)
+    expect(status).toHaveTextContent('marketplace.loadError')
   })
 
   it('shows centered loading on a cold start', () => {
@@ -91,7 +115,7 @@ describe('ListWrapper', () => {
 
     renderListWrapper(<ListWrapper />)
 
-    expect(screen.getByTestId('loading')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   // The reported "jitter": every debounced keystroke used to unmount the grid
@@ -107,7 +131,7 @@ describe('ListWrapper', () => {
     const list = screen.getByTestId('list')
     expect(list).toBeInTheDocument()
     expect(list.parentElement).toHaveAttribute('aria-busy', 'true')
-    expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
   it('renders list when loading additional pages', () => {
@@ -126,7 +150,7 @@ describe('ListWrapper', () => {
 
     renderListWrapper(<ListWrapper />)
 
-    expect(screen.getAllByTestId('loading')).toHaveLength(1)
+    expect(screen.getAllByRole('progressbar')).toHaveLength(1)
   })
 
   it('keeps the supplied layout constraint while category results are loading', () => {
@@ -136,7 +160,7 @@ describe('ListWrapper', () => {
     const { container } = renderListWrapper(<ListWrapper className="catalog-content-min-height" />)
 
     expect(container.firstElementChild).toHaveClass('catalog-content-min-height')
-    expect(screen.getByTestId('loading')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   // A failed search used to arrive as a successful empty page and render as
@@ -149,7 +173,7 @@ describe('ListWrapper', () => {
     renderListWrapper(<ListWrapper />)
 
     expect(screen.queryByTestId('list')).not.toBeInTheDocument()
-    expect(screen.getByText('marketplace.loadError')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('marketplace.loadError')
 
     await user.click(screen.getByRole('button', { name: 'operation.retry' }))
     expect(mockMarketplaceData.refetch).toHaveBeenCalledTimes(1)

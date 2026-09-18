@@ -9,9 +9,9 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
 import { useSubscriptionList } from './use-subscription-list'
 

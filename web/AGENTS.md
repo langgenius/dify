@@ -10,7 +10,7 @@ Web owns application-specific requirements and consumes shared architecture guid
 
 - For truncated text disclosure and native `title` decisions, follow [Truncated Text Disclosure].
 - When adding or changing page layouts, navigation, or landmark elements, follow [Page landmarks] and inspect the composed page, including parent layouts.
-- User-facing strings must use `web/i18n/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
+- User-facing strings must use `web/i18n/locales/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
 - For new backend calls and migrated surfaces, use generated `consoleQuery` / `consoleClient` APIs from `@/service/console`. Do not add handwritten REST helpers or DTO mirrors, mock-backed app state, or direct edits to generated contracts.
 - Prefer `@langgenius/dify-ui/*` primitives, data attributes, and design tokens. Use the [Dify UI package index] to find a primitive; read the relevant contract directly when it is already known. Preserve a visible focus indicator on the final focusable element.
 - Reuse the Web `SearchInput` composite when its search, clear, and IME contract matches the feature; otherwise follow the canonical [Input Group contract].

@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import ToolItem from '../tool-item'
 
-vi.mock('@/i18n-config/language', () => ({ getLanguage: () => 'en_US' }))
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
+  getPluginLanguage: () => 'en_US',
+}))
 vi.mock(
   '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool',
   () => ({

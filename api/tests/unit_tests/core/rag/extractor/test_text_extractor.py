@@ -8,6 +8,18 @@ from core.rag.extractor.text_extractor import TextExtractor
 
 
 class TestTextExtractor:
+    def test_extract_autodetect_preserves_full_file_beyond_sample(self, tmp_path: Path):
+        file_path = tmp_path / "large.txt"
+        content = "Document text\n" * 50_000 + "End of document"
+        file_path.write_text(content, encoding="utf-16")
+        assert file_path.stat().st_size > 1024 * 1024
+
+        docs = TextExtractor(str(file_path), encoding="utf-8", autodetect_encoding=True).extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == content
+        assert docs[0].metadata == {"source": str(file_path)}
+
     def test_extract_success(self, tmp_path: Path):
         file_path = tmp_path / "data.txt"
         file_path.write_text("hello world", encoding="utf-8")

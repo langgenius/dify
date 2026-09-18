@@ -282,7 +282,7 @@ export type Memory = {
   role_prefix?: RolePrefix
   window: {
     enabled: boolean
-    size: number | string | null
+    size: number | null
   }
   query_prompt_template: string
 }

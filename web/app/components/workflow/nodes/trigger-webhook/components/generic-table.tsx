@@ -327,11 +327,11 @@ const GenericTable: FC<GenericTableProps> = ({
                   </div>
                 ))}
                 {!readonly && dataIndex !== null && hasContent && (
-                  <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
+                  <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={() => removeRow(dataIndex)}
-                      className="p-1"
+                      className="rounded-sm p-1 focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                       aria-label="Delete row"
                     >
                       {/* oxlint-disable-next-line dify/prefer-tailwind-icons */}

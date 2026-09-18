@@ -110,7 +110,7 @@ export function DetailSidebarFrame({
   }, [])
 
   useHotkey(DETAIL_SIDEBAR_TOGGLE_HOTKEY, handleToggleDetailNavigation, {
-    ignoreInputs: false,
+    ignoreInputs: true,
     preventDefault: true,
   })
 

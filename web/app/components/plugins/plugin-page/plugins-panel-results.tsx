@@ -14,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import IntegrationsToolProviderCard from '@/app/components/integrations/tool-provider-card'
 import { BuiltinMarketplacePanel } from '@/app/components/tools/marketplace/builtin-marketplace-panel'
 import CategoryEmptyState from './category-empty-state'
@@ -121,6 +121,16 @@ const PluginsPanelResults = ({
         contentFrameClassName,
       )}
     >
+      <div role="status" aria-atomic="true" className="sr-only">
+        {isFetching
+          ? t(($) => $.loading, { ns: 'common' })
+          : t(($) => $['marketplace.pluginsResult'], {
+              ns: 'plugin',
+              num:
+                (hasVisiblePlugins ? filteredList.length : 0) +
+                (hasVisibleBuiltinTools ? filteredBuiltinTools.length : 0),
+            })}
+      </div>
       <ScrollAreaViewport
         ref={containerRef}
         aria-label={scrollAreaLabel}
@@ -166,7 +176,7 @@ const PluginsPanelResults = ({
           {!isLastPage && (
             <div className="flex w-full justify-center py-4">
               {isFetching ? (
-                <Loading className="size-8" />
+                <LoadingPlaceholder className="size-8" />
               ) : autoLoadNextPage ? null : (
                 <Button onClick={loadNextPage}>
                   {t(($) => $['common.loadMore'], { ns: 'workflow' })}

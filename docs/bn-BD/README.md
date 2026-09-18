@@ -145,7 +145,7 @@ Dify সব ধরনের অবদানকে স্বাগত জান�
 
 - **কোড**: [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) পড়ুন, তারপর [নতুন অবদানকারীদের উপযোগী সমস্যাগুলো](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) দেখুন।
 - **ধারণা ও প্রতিক্রিয়া**: একটি [GitHub আলোচনা](https://github.com/langgenius/dify/discussions) শুরু করুন বা বিদ্যমান আলোচনায় যোগ দিন।
-- **অনুবাদ**: কোনো লোকেল যোগ বা হালনাগাদ করতে [আন্তর্জাতিকীকরণ নির্দেশিকা](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) অনুসরণ করুন।
+- **অনুবাদ**: কোনো লোকেল যোগ বা হালনাগাদ করতে [আন্তর্জাতিকীকরণ নির্দেশিকা](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) অনুসরণ করুন।
 - **কমিউনিটি**: আপনার তৈরি অ্যাপ শেয়ার করুন, অন্য ব্যবহারকারীদের সাহায্য করুন এবং Dify সম্পর্কে সবাইকে জানান।
 
 ### অবদানকারীরা

@@ -1,10 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { useAppFavicon } from './use-app-favicon'
 
-vi.mock('@/utils/emoji', () => ({
-  searchEmoji: vi.fn(async () => '🤖'),
-}))
-
 const firstAppIcon = 'https://example.com/app-one.png'
 const secondAppIcon = 'https://example.com/app-two.png'
 
@@ -76,7 +72,7 @@ describe('useAppFavicon', () => {
 
   it('renders emoji icons as SVG favicons', async () => {
     renderHook(() =>
-      useAppFavicon({ icon_type: 'emoji', icon: 'robot', icon_background: '#ffffff' }),
+      useAppFavicon({ icon_type: 'emoji', icon: 'robot_face', icon_background: '#ffffff' }),
     )
 
     await waitFor(() => {

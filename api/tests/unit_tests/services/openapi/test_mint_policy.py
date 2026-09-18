@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import pytest
 
-from enums import DeploymentEdition
 from libs.oauth_bearer import MINTABLE_PROFILES, Scope, SubjectType
 from services.openapi.mint_policy import MintPolicyViolation, validate_mint_policy
 
@@ -73,50 +72,3 @@ def test_message_carries_both_drift_reasons():
     msg = str(exc.value)
     assert "prefix" in msg
     assert "scopes" in msg
-
-
-def test_license_required_decorator_skips_on_ce(config_overrides):
-    from services.openapi.license_gate import license_required
-
-    @license_required
-    def view():
-        return "ok"
-
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    assert view() == "ok"
-
-
-def test_license_required_decorator_403_on_invalid_ee_license(config_overrides):
-    from unittest.mock import patch
-
-    from werkzeug.exceptions import Forbidden
-
-    from services.openapi.license_gate import license_required
-
-    @license_required
-    def view():
-        return "ok"
-
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-    with (
-        patch("services.openapi.license_gate._is_license_valid", return_value=False),
-    ):
-        with pytest.raises(Forbidden) as exc:
-            view()
-        assert "license_required" in exc.value.description
-
-
-def test_license_required_decorator_passes_on_valid_ee_license(config_overrides):
-    from unittest.mock import patch
-
-    from services.openapi.license_gate import license_required
-
-    @license_required
-    def view():
-        return "ok"
-
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-    with (
-        patch("services.openapi.license_gate._is_license_valid", return_value=True),
-    ):
-        assert view() == "ok"

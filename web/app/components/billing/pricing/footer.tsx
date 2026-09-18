@@ -1,6 +1,6 @@
-import type { Locale } from '@/i18n-config/language'
+import type { Locale } from '@/i18n/locale'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import Link from '@/next/link'
 
 const websiteLocalePaths: Partial<Record<Locale, string>> = {

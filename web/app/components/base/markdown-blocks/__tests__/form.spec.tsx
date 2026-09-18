@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import MarkdownForm from '../form'
@@ -369,27 +369,23 @@ describe('MarkdownForm', () => {
     })
   })
 
-  // Native submit event is intentionally blocked at form level.
   describe('Form submit behavior', () => {
-    it('should prevent native submit propagation from form onSubmit', () => {
+    it('should submit with Enter without submitting the surrounding chat', async () => {
+      const user = userEvent.setup()
       const parentOnSubmit = vi.fn()
       const node = createRootNode([
         createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
         createElementNode('button', {}, [createTextNode('Submit')]),
       ])
-      const { container } = render(
+      render(
         <div onSubmit={parentOnSubmit}>
           <MarkdownForm node={node} />
         </div>,
       )
 
-      const form = container.querySelector('form')
-      expect(form).not.toBeNull()
-      if (!form) throw new Error('Form element not found')
-
-      fireEvent.submit(form)
+      await user.type(screen.getByRole('textbox', { name: 'name' }), '{Enter}')
       expect(parentOnSubmit).not.toHaveBeenCalled()
-      expect(mockOnSend).not.toHaveBeenCalled()
+      expect(mockOnSend).toHaveBeenCalledExactlyOnceWith('name: Alice')
     })
   })
 
@@ -820,7 +816,6 @@ describe('MarkdownForm', () => {
     })
   })
 
-  // Standard input types (password, email, number) use the generic Input branch.
   describe('Standard input types', () => {
     it('should render password input with masked value', () => {
       const node = createRootNode([
@@ -843,14 +838,22 @@ describe('MarkdownForm', () => {
       expect(screen.getByPlaceholderText('Email'))!.toHaveAttribute('type', 'email')
     })
 
-    it('should render number input', () => {
+    it('should submit an edited decimal without changing the string output contract', async () => {
+      const user = userEvent.setup()
       const node = createRootNode([
-        createElementNode('input', { type: 'number', name: 'age', placeholder: 'Age' }),
+        createElementNode('label', { for: 'amount' }, [createTextNode('Amount')]),
+        createElementNode('input', { type: 'number', name: 'amount', value: '0' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
       ])
 
       render(<MarkdownForm node={node} />)
 
-      expect(screen.getByPlaceholderText('Age'))!.toHaveAttribute('type', 'number')
+      const input = screen.getByRole('textbox', { name: 'Amount' })
+      expect(input).toHaveValue('0')
+      await user.clear(input)
+      await user.type(input, '3.5')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(mockOnSend).toHaveBeenCalledExactlyOnceWith('amount: 3.5')
     })
 
     it('should submit typed value from password input', async () => {

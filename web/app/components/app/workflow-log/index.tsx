@@ -12,7 +12,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmptyElement from '@/app/components/app/log/empty-element'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useWorkflowLogs } from '@/service/use-log'
@@ -103,7 +103,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {showArchivedLogsNotice && <ArchivedLogsNotice />}
         {/* workflow log */}
         {total === undefined ? (
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />
         ) : (

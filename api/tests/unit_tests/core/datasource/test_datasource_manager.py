@@ -1,9 +1,9 @@
 import types
-from collections.abc import Generator, Iterator
+from collections.abc import Generator
+from datetime import UTC, datetime
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from contexts.wrapper import RecyclableContextVar
@@ -12,21 +12,29 @@ from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage, DatasourceProviderType
 from core.datasource.errors import DatasourceProviderNotFoundError
 from core.workflow.file_reference import parse_file_reference
+from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
-from models.base import TypeBase
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from models.tools import ToolFile
 
 
 @pytest.fixture
-def tool_file_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-    """Bind datasource-owned lookups to a SQLite ToolFile table."""
-    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[ToolFile.__tablename__]])
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(datasource_manager_module.session_factory, "create_session", session_maker)
-    with session_maker() as session:
-        yield session
+def datasource_session(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> Session:
+    """Bind datasource-owned lookups to the shared SQLite test database."""
+    monkeypatch.setattr(datasource_manager_module.session_factory, "create_session", sqlite_session_factory)
+    return sqlite_session
+
+
+@pytest.fixture
+def tool_file_session(datasource_session: Session) -> Session:
+    return datasource_session
 
 
 def _persist_tool_file(session: Session, *, file_id: str, tenant_id: str) -> ToolFile:
@@ -43,6 +51,27 @@ def _persist_tool_file(session: Session, *, file_id: str, tenant_id: str) -> Too
     session.add(tool_file)
     session.commit()
     return tool_file
+
+
+def _persist_upload_file(session: Session, *, file_id: str, tenant_id: str) -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="files/file.txt",
+        name="f",
+        size=1,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        created_at=datetime.now(UTC),
+        used=True,
+        source_url="http://x",
+    )
+    upload_file.id = file_id
+    session.add(upload_file)
+    session.commit()
+    return upload_file
 
 
 def _gen_messages_text_only(text: str) -> Generator[DatasourceMessage, None, None]:
@@ -631,52 +660,18 @@ def test_stream_node_events_skips_file_build_for_non_online_types(mocker: Mocker
     assert events[-1].node_run_result.outputs["file"] is None
 
 
-def test_get_upload_file_by_id_builds_file(mocker: MockerFixture):
-    # fake UploadFile row
-    fake_row = types.SimpleNamespace(
-        id="fid",
-        name="f",
-        extension="txt",
-        mime_type="text/plain",
-        size=1,
-        key="k",
-        source_url="http://x",
-    )
-
-    class _S:
-        def __init__(self, row):
-            self._row = row
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc):
-            return False
-
-        def scalar(self, *_args, **_kwargs):
-            return self._row
-
-    mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_S(fake_row))
+def test_get_upload_file_by_id_builds_file(datasource_session: Session):
+    _persist_upload_file(datasource_session, file_id="fid", tenant_id="t1")
 
     f = DatasourceManager.get_upload_file_by_id(file_id="fid", tenant_id="t1")
     assert f.related_id == "fid"
     assert f.extension == ".txt"
     assert parse_file_reference(f.reference).storage_key is None
-    assert f.storage_key == "k"
+    assert f.storage_key == "files/file.txt"
 
 
-def test_get_upload_file_by_id_raises_when_missing(mocker: MockerFixture):
-    class _S:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc):
-            return False
-
-        def scalar(self, *_args, **_kwargs):
-            return None
-
-    mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_S())
+def test_get_upload_file_by_id_raises_when_missing(datasource_session: Session):
+    _persist_upload_file(datasource_session, file_id="fid", tenant_id="other-tenant")
 
     with pytest.raises(ValueError, match="UploadFile not found for file_id=fid, tenant_id=t1"):
         DatasourceManager.get_upload_file_by_id(file_id="fid", tenant_id="t1")

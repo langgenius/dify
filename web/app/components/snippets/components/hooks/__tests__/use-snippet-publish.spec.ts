@@ -1,5 +1,5 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, renderHook } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import { useSnippetPublish } from '../use-snippet-publish'
 
 const mockMutateAsync = vi.fn()
@@ -10,7 +10,7 @@ const mockHandleCheckBeforePublish = vi.fn<() => Promise<boolean>>()
 
 let isPending = false
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),

@@ -157,7 +157,7 @@ class DataSourceApi(Resource):
         data_source_oauth_base_path = "/console/api/oauth/data-source"
         providers = ["notion"]
 
-        integrate_data = []
+        integrate_data: list[dict[str, bool | datetime | dict[str, Any] | str | None]] = []
         for provider in providers:
             # existing_integrate = next((ai for ai in data_source_integrates if ai.provider == provider), None)
             existing_integrates = filter(lambda item: item.provider == provider, data_source_integrates)

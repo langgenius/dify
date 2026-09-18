@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Field, FieldDescription, FieldError, FieldLabel } from '../../field'
 import { Form } from '../../form'
@@ -7,6 +8,19 @@ import { Textarea } from '../index'
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
 describe('Textarea', () => {
+  it('should show keyboard focus when read-only', async () => {
+    const screen = await render(<Textarea aria-label="Notes" defaultValue="Saved notes" readOnly />)
+    const textarea = screen.getByRole('textbox', { name: 'Notes' })
+    const restingBoxShadow = getComputedStyle(textarea.element()).boxShadow
+
+    await userEvent.keyboard('{Tab}')
+
+    await expect.element(textarea).toHaveFocus()
+    await expect
+      .poll(() => getComputedStyle(textarea.element()).boxShadow)
+      .not.toBe(restingBoxShadow)
+  })
+
   it('should render a labelled textarea through Base UI Field.Control', async () => {
     const screen = await render(
       <Field name="description">

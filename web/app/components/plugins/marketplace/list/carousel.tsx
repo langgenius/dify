@@ -1,6 +1,5 @@
 'use client'
 
-/* oxlint-disable eslint-react/set-state-in-effect */
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import Autoplay from 'embla-carousel-autoplay'

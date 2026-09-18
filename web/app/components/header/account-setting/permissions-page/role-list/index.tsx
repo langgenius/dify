@@ -4,7 +4,7 @@ import type { Role, RoleCategory } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Row from './row'
 
 export type RoleListGroup = {
@@ -36,7 +36,7 @@ const RoleList = ({
   if (isLoading) {
     return (
       <div className={cn('px-1 py-8 text-center', className)}>
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -68,7 +68,7 @@ const RoleList = ({
       ))}
       {isFetchingNextPage && (
         <div className="px-1 py-3 text-center">
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         </div>
       )}
     </div>

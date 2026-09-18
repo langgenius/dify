@@ -14,7 +14,7 @@ function Input({ className, ...props }: InputProps) {
     <BaseInput
       className={cn(
         [
-          'w-full appearance-none rounded-lg border border-transparent bg-components-input-bg-normal px-3 py-1.75 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden transition-[background-color,border-color,box-shadow]',
+          'w-full appearance-none rounded-lg border border-transparent bg-components-input-bg-normal px-3 py-1.75 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden transition-[background-color,border-color]',
           'placeholder:text-components-input-text-placeholder',
           'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
           textControlFocusClassName,

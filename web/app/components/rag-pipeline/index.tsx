@@ -1,6 +1,6 @@
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { useMemo } from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
@@ -27,7 +27,7 @@ const RagPipeline = () => {
   if (!data || isLoading) {
     return (
       <div className="relative flex size-full items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }

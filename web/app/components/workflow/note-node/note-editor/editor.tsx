@@ -10,6 +10,7 @@ import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { memo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 // import TreeView from '@/app/components/base/prompt-editor/plugins/tree-view'
 import Placeholder from '@/app/components/base/prompt-editor/plugins/placeholder'
 import FormatDetectorPlugin from './plugins/format-detector-plugin'
@@ -22,11 +23,12 @@ type EditorProps = {
   setHistoryShortcutsEnabled?: (v: boolean) => void
 }
 const Editor = ({
-  placeholder = 'write you note...',
+  placeholder,
   onChange,
   containerElement,
   setHistoryShortcutsEnabled,
 }: EditorProps) => {
+  const { t } = useTranslation()
   const handleEditorChange = useCallback(
     (editorState: EditorState) => {
       onChange?.(editorState)
@@ -40,6 +42,7 @@ const Editor = ({
         contentEditable={
           <div>
             <ContentEditable
+              aria-label={t(($) => $['nodes.note.editor.label'], { ns: 'workflow' })}
               onFocus={() => setHistoryShortcutsEnabled?.(false)}
               onBlur={() => setHistoryShortcutsEnabled?.(true)}
               spellCheck={false}
@@ -47,7 +50,12 @@ const Editor = ({
             />
           </div>
         }
-        placeholder={<Placeholder value={placeholder} compact />}
+        placeholder={
+          <Placeholder
+            value={placeholder ?? t(($) => $['nodes.note.editor.placeholder'], { ns: 'workflow' })}
+            compact
+          />
+        }
         ErrorBoundary={LexicalErrorBoundary}
       />
       <ClickableLinkPlugin disabled />

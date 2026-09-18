@@ -8,9 +8,9 @@ import type {
 } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { createWorkflowToolProvider, saveWorkflowToolProvider } from '@/service/tools'
 import {
   useInvalidateAllWorkflowTools,

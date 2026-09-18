@@ -22,6 +22,7 @@ from models import Tenant
 from models.provider import Provider, ProviderModel, ProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_tenant
 
 
 def _invoke_reset() -> int:
@@ -38,9 +39,7 @@ USER_ID = "22222222-2222-2222-2222-222222222222"
 
 
 def _tenant(tenant_id: str, *, name: str = "Test tenant") -> Tenant:
-    tenant = Tenant(name=name, encrypt_public_key="old-key")
-    tenant.id = tenant_id
-    return tenant
+    return make_tenant(tenant_id=tenant_id, name=name, encrypt_public_key="old-key")
 
 
 def _encrypted_rows(tenant_id: str, *, suffix: str = "1") -> tuple[object, ...]:

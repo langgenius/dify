@@ -61,6 +61,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
         <div className="flex shrink-0 justify-between p-3">
           <div className="flex grow items-center space-x-2">
             <AppIcon
+              decorative
               size="large"
               iconType={appDetail.site.icon_type}
               icon={appDetail.site.icon ?? undefined}

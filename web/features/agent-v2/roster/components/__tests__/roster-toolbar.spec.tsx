@@ -4,6 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { RosterToolbar } from '../roster-toolbar'
 
+const permissions = vi.hoisted(() => ({ canCreate: true, canImport: true }))
+
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanCreateAgents: () => permissions.canCreate,
+  useCanImportAgents: () => permissions.canImport,
+}))
+
 vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
   default: ({ show, onSuccess }: { show: boolean; onSuccess?: () => void }) =>
     show ? (
@@ -39,7 +46,39 @@ const renderToolbar = ({
 }
 
 describe('RosterToolbar', () => {
-  it('opens the shared create menu for blank Agent creation and DSL import', async () => {
+  beforeEach(() => {
+    permissions.canCreate = true
+    permissions.canImport = true
+  })
+
+  it.each([
+    { canCreate: true, canImport: false },
+    { canCreate: true, canImport: true },
+  ])('shows the permitted create and import actions: %o', async (grants) => {
+    Object.assign(permissions, grants)
+    renderToolbar()
+
+    await userEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+    expect(Boolean(screen.queryByRole('menuitem', { name: 'app.newApp.startFromBlank' }))).toBe(
+      grants.canCreate,
+    )
+    expect(Boolean(screen.queryByRole('menuitem', { name: /app\.importApp/ }))).toBe(
+      grants.canImport,
+    )
+  })
+
+  it('hides the create menu when neither action is permitted', () => {
+    permissions.canCreate = false
+    permissions.canImport = false
+    renderToolbar()
+
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.create' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('opens the shared create menu for blank Agent creation and App import', async () => {
     const user = userEvent.setup()
     const { queryClient } = renderToolbar()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -47,9 +86,9 @@ describe('RosterToolbar', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     expect(screen.getByRole('menuitem', { name: 'app.newApp.startFromBlank' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /app\.importDSL/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /app\.importApp/ })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: /app\.importDSL/ }))
+    await user.click(screen.getByRole('menuitem', { name: /app\.importApp/ }))
 
     expect(
       await screen.findByRole('dialog', { name: 'agentV2.roster.importDSL' }),

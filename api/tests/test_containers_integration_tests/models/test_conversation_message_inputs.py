@@ -80,7 +80,7 @@ class TestConversationMessageInputsTenantResolution:
             owner = owner_cls(app_id=app.id)
             owner.inputs = {"file": _build_local_file_mapping("upload-1")}
 
-            restored_inputs = owner.inputs
+            restored_inputs = owner.inputs_with_session(session=db_session_with_containers)
 
         # The tenant_id should come from the real App row in the DB
         assert restored_inputs["file"] == {"tenant_id": app.tenant_id, "upload_file_id": "upload-1"}
@@ -108,7 +108,7 @@ class TestConversationMessageInputsTenantResolution:
             owner = owner_cls(app_id=app.id)
             owner.inputs = {"file": _build_local_file_mapping("upload-1", tenant_id=payload_tenant_id)}
 
-            restored_inputs = owner.inputs
+            restored_inputs = owner.inputs_with_session(session=db_session_with_containers)
 
         assert restored_inputs["file"] == {"tenant_id": payload_tenant_id, "upload_file_id": "upload-1"}
         assert len(build_calls) == 1
@@ -139,7 +139,7 @@ class TestConversationMessageInputsTenantResolution:
                 ]
             }
 
-            restored_inputs = owner.inputs
+            restored_inputs = owner.inputs_with_session(session=db_session_with_containers)
 
         assert len(build_calls) == 2
         assert all(call[1] == app.tenant_id for call in build_calls)

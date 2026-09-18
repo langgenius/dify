@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
 import { useInvitationCheck } from '@/service/use-common'
@@ -42,14 +42,18 @@ vi.mock('@tanstack/react-query', async () => {
   }
 })
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n', () => ({
   i18n: {
     defaultLocale: 'en-US',
   },
+}))
+
+vi.mock('@/i18n/client', () => ({
   setLocaleOnClient: vi.fn(() => Promise.resolve()),
 }))
 

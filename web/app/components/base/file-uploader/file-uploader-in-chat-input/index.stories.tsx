@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { AppToastHost } from '@/app/notifications/host'
 import { TransferMethod } from '@/types/app'
 import FileUploaderInChatInput from '.'
 import { FileList } from '../file-uploader-in-chat-input/file-list'
@@ -37,7 +37,7 @@ const ChatInputDemo = ({ initialFiles = mockFiles, ...props }: ChatInputDemoProp
 
   return (
     <>
-      <ToastHost />
+      <AppToastHost />
       <FileContextProvider value={files} onChange={setFiles}>
         <div className="w-90 rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
           <div className="mb-3 text-xs text-text-secondary">Simulated chat input</div>

@@ -6,28 +6,23 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.datasource.datasource_file_manager import DatasourceFileManager
-from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 from models.tools import ToolFile
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _upload_file(id: str, *, key: str, mime_type: str) -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
+        file_id=id,
         key=key,
         name="file.png",
         size=4,
         extension=".png",
         mime_type=mime_type,
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         created_at=datetime.now(UTC).replace(tzinfo=None),
-        used=False,
     )
-    upload_file.id = id
-    return upload_file
 
 
 def _tool_file(id: str, *, key: str = "tool_key", mimetype: str = "image/png") -> ToolFile:

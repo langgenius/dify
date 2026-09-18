@@ -3,30 +3,16 @@ from __future__ import annotations
 import inspect
 import uuid
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
-import pytest
 from flask import Flask
-from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from controllers.console import console_ns
 from controllers.console.app import workflow_trigger as workflow_trigger_module
-from models.base import TypeBase
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App, AppMode, IconType
 from models.trigger import AppTrigger
-
-
-@pytest.fixture
-def database_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch):
-    models = (App, AppTrigger)
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    monkeypatch.setattr(workflow_trigger_module, "db", SimpleNamespace(engine=sqlite_engine))
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield session
 
 
 def _persist_app_trigger(
@@ -107,8 +93,8 @@ def test_webhook_trigger_response_serializes_datetime():
     assert payload["created_at"] == "2026-01-02T03:04:05Z"
 
 
-def test_app_triggers_get_uses_injected_tenant_id(app: Flask, database_session: Session) -> None:
-    app_model, trigger = _persist_app_trigger(database_session)
+def test_app_triggers_get_uses_injected_tenant_id(app: Flask, sqlite_session: Session) -> None:
+    app_model, trigger = _persist_app_trigger(sqlite_session)
     other_tenant_trigger = AppTrigger(
         tenant_id=str(uuid.uuid4()),
         app_id=app_model.id,
@@ -118,21 +104,21 @@ def test_app_triggers_get_uses_injected_tenant_id(app: Flask, database_session: 
         provider_name="provider",
         status=AppTriggerStatus.ENABLED,
     )
-    database_session.add(other_tenant_trigger)
-    database_session.commit()
+    sqlite_session.add(other_tenant_trigger)
+    sqlite_session.commit()
 
     api = workflow_trigger_module.AppTriggersApi()
     method = inspect.unwrap(api.get)
 
     with app.test_request_context("/"):
-        response = method(api, app_model.tenant_id, app_model)
+        response = method(api, sqlite_session, app_model.tenant_id, app_model)
 
     assert [item["id"] for item in response["data"]] == [trigger.id]
     assert response["data"][0]["icon"].endswith("/provider/icon")
 
 
-def test_app_trigger_enable_uses_injected_tenant_id(app: Flask, database_session: Session) -> None:
-    app_model, trigger = _persist_app_trigger(database_session, status=AppTriggerStatus.DISABLED)
+def test_app_trigger_enable_uses_injected_tenant_id(app: Flask, sqlite_session: Session) -> None:
+    app_model, trigger = _persist_app_trigger(sqlite_session, status=AppTriggerStatus.DISABLED)
     payload = {"trigger_id": trigger.id, "enable_trigger": True}
 
     api = workflow_trigger_module.AppTriggerEnableApi()
@@ -145,13 +131,15 @@ def test_app_trigger_enable_uses_injected_tenant_id(app: Flask, database_session
         response = method(
             api,
             workflow_trigger_module.ParserEnable(trigger_id=trigger.id, enable_trigger=True),
+            sqlite_session,
             app_model.tenant_id,
             app_model,
         )
 
     assert response["id"] == trigger.id
     assert response["status"] == "enabled"
-    database_session.expire_all()
-    persisted_trigger = database_session.get(AppTrigger, trigger.id)
+    sqlite_session.flush()
+    sqlite_session.expire_all()
+    persisted_trigger = sqlite_session.get(AppTrigger, trigger.id)
     assert persisted_trigger is not None
     assert persisted_trigger.status == AppTriggerStatus.ENABLED

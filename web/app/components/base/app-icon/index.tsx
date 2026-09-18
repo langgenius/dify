@@ -1,25 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import type { AppIconType } from '@/types/app'
-import data from '@emoji-mart/data'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import { cva } from 'class-variance-authority'
-import { init } from 'emoji-mart'
 import * as React from 'react'
-import { useRef, useSyncExternalStore } from 'react'
-
-init({ data })
-
-const subscribeHydrationState = () => () => {}
-
-const useIsHydrated = () =>
-  useSyncExternalStore(
-    subscribeHydrationState,
-    () => true,
-    () => false,
-  )
+import { useRef } from 'react'
+import { resolveEmoji } from '@/utils/emoji'
 
 type AppIconProps = {
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large' | 'xl' | 'xxl'
@@ -113,9 +101,7 @@ const AppIcon: FC<AppIconProps> = ({
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
   const isDecorative = decorative && !onClick
-  const emojiIcon = icon && icon !== '' ? icon : '🤖'
-  const isHydrated = useIsHydrated()
-  const Icon = isHydrated ? <em-emoji key={emojiIcon} id={emojiIcon} /> : emojiIcon
+  const Icon = resolveEmoji(icon)
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const isHovering = useHover(wrapperRef)
   const handleKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>) => {

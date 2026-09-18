@@ -18,7 +18,7 @@ const HistoryPanel: FC<Props> = ({ showWarning, onShowEditModal }) => {
       className="mt-2"
       title={
         <div className="flex items-center gap-2">
-          <div>{t(($) => $['feature.conversationHistory.title'], { ns: 'appDebug' })}</div>
+          <h2>{t(($) => $['feature.conversationHistory.title'], { ns: 'appDebug' })}</h2>
         </div>
       }
       headerIcon={

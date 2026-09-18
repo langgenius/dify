@@ -97,7 +97,7 @@ export function List({
           <table className="w-full min-w-110 border-collapse border-0">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
               <tr>
-                <td className="w-12 rounded-l-lg bg-background-section-burn px-2 align-middle whitespace-nowrap">
+                <th className="w-12 rounded-l-lg bg-background-section-burn px-2 text-left align-middle font-[weight:inherit] whitespace-nowrap">
                   <div className="flex items-center">
                     <Checkbox
                       className="shrink-0"
@@ -105,22 +105,22 @@ export function List({
                       aria-label={t(($) => $['operation.selectAll'], { ns: 'common' })}
                     />
                   </div>
-                </td>
-                <td className="w-5 bg-background-section-burn pr-1 pl-2 whitespace-nowrap">
+                </th>
+                <th className="w-5 bg-background-section-burn pr-1 pl-2 text-left font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.question'], { ns: 'appAnnotation' })}
-                </td>
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                </th>
+                <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.answer'], { ns: 'appAnnotation' })}
-                </td>
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                </th>
+                <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.createdAt'], { ns: 'appAnnotation' })}
-                </td>
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                </th>
+                <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.hits'], { ns: 'appAnnotation' })}
-                </td>
-                <td className="w-24 rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                </th>
+                <th className="w-24 rounded-r-lg bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.actions'], { ns: 'appAnnotation' })}
-                </td>
+                </th>
               </tr>
             </thead>
             <tbody className="system-sm-regular text-text-secondary">

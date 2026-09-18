@@ -167,7 +167,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
         <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
           <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40"></div>
           <div className="p-1">
-            <span className="i-custom-vender-solid-alertsandfeedback-alert-triangle size-4 text-text-warning-secondary" />
+            <span className="size-4 text-text-warning-secondary" />
           </div>
           <span className="system-xs-medium text-text-primary">
             {t(($) => $['stepTwo.highQualityTip'], { ns: 'datasetCreation' })}

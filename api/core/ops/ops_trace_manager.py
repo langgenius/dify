@@ -1188,7 +1188,7 @@ class TraceTask:
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            inputs=message_data.query or message_data.inputs,
+            inputs=message_data.query or message_data.inputs_with_session(session=db.session()),
             documents=doc_list,
             start_time=timer.get("start"),
             end_time=timer.get("end"),

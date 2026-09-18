@@ -13,11 +13,11 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
+import { toast } from '@/app/notifications'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { ReadmeEntrance } from '../readme-panel/entrance'
 

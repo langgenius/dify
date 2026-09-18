@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import os
+import posixpath
 import uuid
 from collections.abc import Generator, Sequence  # Changed Iterator to Generator
 from contextlib import contextmanager, suppress
@@ -30,7 +31,7 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 
-from .errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
+from .errors.file import BlockedFileExtensionError, FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -171,14 +172,7 @@ class FileService:
     def get_file_presigned_url(self, *, file_id: str, tenant_id: str) -> str:
         """Generate a direct storage URL for a tenant-owned upload file."""
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(
-                select(UploadFile)
-                .where(
-                    UploadFile.id == file_id,
-                    UploadFile.tenant_id == tenant_id,
-                )
-                .limit(1)
-            )
+            upload_file = self.get_upload_file_by_id(tenant_id, file_id, session=session)
             if upload_file is None:
                 raise NotFound("File not found")
 
@@ -192,10 +186,17 @@ class FileService:
         )
 
     def get_icon_url(self, file_id: str, tenant_id: str) -> str:
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
-            StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
-        ):
-            return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
+        try:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+                StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
+            ):
+                return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
+            with self._session_maker(expire_on_commit=False) as session:
+                upload_file = self.get_upload_file_by_id(tenant_id, file_id, session=session)
+            if upload_file is None:
+                raise NotFound("File not found")
+        except NotFound as exc:
+            raise FileNotExistsError("File reference not found") from exc
         return file_helpers.get_signed_file_url(upload_file_id=file_id)
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
@@ -272,6 +273,17 @@ class FileService:
             session.delete(upload_file)
 
     @staticmethod
+    def get_upload_file_by_id(tenant_id: str, upload_file_id: str, *, session: Session) -> UploadFile | None:
+        return session.scalar(
+            select(UploadFile)
+            .where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.id == upload_file_id,
+            )
+            .limit(1)
+        )
+
+    @staticmethod
     def get_upload_files_by_ids(
         tenant_id: str, upload_file_ids: Sequence[str], *, session: Session
     ) -> dict[str, UploadFile]:
@@ -304,8 +316,9 @@ class FileService:
         We keep this conservative: the upload flow already rejects `/` and `\\`, but older rows (or imported data)
         could still contain unsafe names.
         """
-        # Drop any directory components and prevent empty names.
-        base = os.path.basename(name).strip() or "file"
+        # Drop any directory components and prevent empty names. ZIP names are always POSIX-style, so split on
+        # `/` explicitly rather than through `os.path`, whose separators differ on Windows hosts.
+        base = posixpath.basename(name).strip() or "file"
 
         # ZIP uses forward slashes as separators; remove any residual separator characters.
         return base.replace("/", "_").replace("\\", "_")

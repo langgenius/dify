@@ -176,7 +176,7 @@ vi.mock('@/context/permission-state', () => ({
   refreshWorkspacePermissionKeysAfterMutationDenialAtom: permissionState.refreshAtom,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastState }))
+vi.mock('@/app/notifications', () => ({ toast: toastState }))
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn(() => true) }))
 
 vi.mock('@tanstack/react-virtual', () => ({
@@ -435,7 +435,7 @@ describe('DocumentDetailPage', () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(chunksOptions).not.toHaveBeenCalled()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('uses source provenance instead of exposing an internal source id', () => {

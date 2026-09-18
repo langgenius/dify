@@ -31,7 +31,6 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
@@ -40,6 +39,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { toast } from '@/app/notifications'
 import { SkillCardTags } from '@/features/tag-management/components/skill-card-tags'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -466,7 +466,7 @@ function SkillCard({
   return (
     <li
       aria-labelledby={nameId}
-      className="group relative isolate col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt"
+      className="group relative isolate col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 hover:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-data-popup-open:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt [@media(hover:none)]:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)]"
     >
       <Link
         href={`/skills/${skill.id}`}
@@ -526,60 +526,60 @@ function SkillCard({
           </div>
         </div>
       )}
-      {(canEdit || canDelete || !!skill.latest_published_version_id) && (
-        <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
-          <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger
-                render={
-                  <IconButton
-                    aria-label={t(($) => $['skillManagement.moreActions'], {
-                      name: skill.display_name,
-                    })}
-                    size="lg"
-                    className="data-popup-open:bg-state-base-hover"
+      <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
+        <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+              render={
+                <IconButton
+                  aria-label={t(($) => $['skillManagement.moreActions'], {
+                    name: skill.display_name,
+                  })}
+                  size="lg"
+                  className="data-popup-open:bg-state-base-hover"
+                >
+                  <span aria-hidden className="i-ri-more-fill size-4.5" />
+                </IconButton>
+              }
+            />
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+              {canEdit && (
+                <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+                  <span
+                    aria-hidden
+                    className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
+                  />
+                  <span>{tCommon(($) => $['operation.duplicate'])}</span>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                className="gap-2"
+                disabled={exportMutation.isPending}
+                onClick={handleExport}
+              >
+                <span
+                  aria-hidden
+                  className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
+                />
+                <span>{tCommon(($) => $['operation.export'])}</span>
+              </DropdownMenuItem>
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    className="gap-2"
+                    onClick={() => setIsDeleteOpen(true)}
                   >
-                    <span aria-hidden className="i-ri-more-fill size-4.5" />
-                  </IconButton>
-                }
-              />
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
-                {canEdit && (
-                  <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
-                    <span
-                      aria-hidden
-                      className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
-                    />
-                    <span>{tCommon(($) => $['operation.duplicate'])}</span>
+                    <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                    <span>{tCommon(($) => $['operation.delete'])}</span>
                   </DropdownMenuItem>
-                )}
-                {skill.latest_published_version_id && (
-                  <DropdownMenuItem className="gap-2" onClick={handleExport}>
-                    <span
-                      aria-hidden
-                      className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
-                    />
-                    <span>{tCommon(($) => $['operation.export'])}</span>
-                  </DropdownMenuItem>
-                )}
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      className="gap-2"
-                      onClick={() => setIsDeleteOpen(true)}
-                    >
-                      <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                      <span>{tCommon(($) => $['operation.delete'])}</span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      )}
+      </div>
       <div className="pointer-events-none absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
         <div className="pointer-events-auto w-full min-w-0">
           <SkillCardTags

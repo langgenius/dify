@@ -23,21 +23,21 @@ export const useGetValidators = () => {
       if (required && !validators) {
         mergedValidators = {
           onMount: ({ value }: any) => {
-            if (!value)
+            if (!value && value !== 0)
               return t(($) => $['errorMsg.fieldRequired'], {
                 ns: 'common',
                 field: memorizedLabel || name,
               })
           },
           onChange: ({ value }: any) => {
-            if (!value)
+            if (!value && value !== 0)
               return t(($) => $['errorMsg.fieldRequired'], {
                 ns: 'common',
                 field: memorizedLabel || name,
               })
           },
           onBlur: ({ value }: any) => {
-            if (!value)
+            if (!value && value !== 0)
               return t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: memorizedLabel })
           },
         }

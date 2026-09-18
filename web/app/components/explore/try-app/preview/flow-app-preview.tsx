@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { useGetTryAppFlowPreview } from '@/service/use-try-app'
@@ -158,7 +158,7 @@ const FlowAppPreview: FC<Props> = ({ appId, className }) => {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }

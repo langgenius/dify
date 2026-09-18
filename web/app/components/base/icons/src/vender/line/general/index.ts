@@ -12,5 +12,3 @@ export { default as Plus02 } from './Plus02'
 
 export { default as SearchMenu } from './SearchMenu'
 export { default as Settings01 } from './Settings01'
-
-export { default as X } from './X'

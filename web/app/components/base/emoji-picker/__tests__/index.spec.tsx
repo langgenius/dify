@@ -1,28 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { mockEmojiData } from '@/test/emoji-picker'
 import EmojiPicker from '../index'
 
-vi.mock('@emoji-mart/data', () => ({
-  default: {
-    categories: [
-      {
-        id: 'category1',
-        name: 'Category 1',
-        emojis: ['emoji1', 'emoji2'],
-      },
-    ],
-  },
-}))
-
-vi.mock('emoji-mart', () => ({
-  init: vi.fn(),
-  SearchIndex: {
-    search: vi.fn().mockResolvedValue([{ skins: [{ native: '🔍' }] }]),
-  },
-}))
-
-vi.mock('@/utils/emoji', () => ({
-  searchEmoji: vi.fn().mockResolvedValue(['🔍']),
-}))
+mockEmojiData()
 
 describe('EmojiPicker', () => {
   const mockOnSelect = vi.fn()
@@ -43,7 +23,7 @@ describe('EmojiPicker', () => {
         render(<EmojiPicker open onOpenChange={mockOnOpenChange} />)
       })
       expect(screen.getByRole('dialog', { name: /Emoji/i }))!.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
       expect(screen.getByText(/Cancel/i))!.toBeInTheDocument()
       expect(screen.getByText(/OK/i))!.toBeInTheDocument()
     })
@@ -63,9 +43,7 @@ describe('EmojiPicker', () => {
         render(<EmojiPicker open onOpenChange={mockOnOpenChange} onSelect={mockOnSelect} />)
       })
 
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'emoji1' }))
-      })
+      fireEvent.click(await screen.findByRole('gridcell', { name: 'Grinning face' }))
 
       const okButton = screen.getByText(/OK/i)
       expect(okButton.closest('button')).not.toBeDisabled()

@@ -8,7 +8,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import FileIcon from '../document-file-icon'
 
 type Props = Readonly<{
@@ -73,7 +73,7 @@ const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange })
             <PreviewDocumentList list={files} onChange={handleChange} />
           ) : (
             <div className="mt-2 flex h-25 w-90 items-center justify-center">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
         </div>

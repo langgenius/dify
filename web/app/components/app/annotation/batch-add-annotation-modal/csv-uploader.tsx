@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
+import { toast } from '@/app/notifications'
 
 export type Props = Readonly<{
   file: File | undefined

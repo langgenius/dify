@@ -170,7 +170,7 @@ describe('ReadmePanel', () => {
       error: null,
     })
     const { rerender } = renderWithQueryClient(<ReadmePanel />)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
 
     mockUsePluginReadme.mockReturnValue({
       data: null,

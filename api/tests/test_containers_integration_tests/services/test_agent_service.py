@@ -133,8 +133,9 @@ class TestAgentService:
         app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Update the app model config to set agent_mode for agent-chat mode
-        if app.mode == AppMode.AGENT_CHAT and app.app_model_config:
-            app.app_model_config.agent_mode = json.dumps({"enabled": True, "strategy": "react", "tools": []})
+        app_model_config = app.app_model_config_with_session(session=db_session_with_containers)
+        if app.mode == AppMode.AGENT_CHAT and app_model_config:
+            app_model_config.agent_mode = json.dumps({"enabled": True, "strategy": "react", "tools": []})
 
             db_session_with_containers.commit()
 

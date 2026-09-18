@@ -1,4 +1,4 @@
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import AppAccessConfigPage from '@/app/components/app/access-config'
 
 export type AccessConfigPageProps = {

@@ -70,7 +70,7 @@ vi.mock('@/service/console', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: tagMocks.api,
 }))
 

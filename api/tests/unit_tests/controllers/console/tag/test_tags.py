@@ -20,7 +20,7 @@ from controllers.console.tag.tags import (
 )
 from machinery.context import RequestContext
 from models import Account
-from models.account import AccountStatus, TenantAccountRole
+from models.account import TenantAccountRole
 from models.enums import TagType
 from services.tag_application_service import (
     TagApplicationError,
@@ -32,6 +32,7 @@ from services.tag_application_service import (
     UpdateTagInput,
 )
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_account
 
 
 def unwrap(func):
@@ -58,14 +59,7 @@ def request_context() -> RequestContext:
 
 
 def _account(role: TenantAccountRole) -> Account:
-    account = Account(
-        name="Tag User",
-        email=f"{role.value}@example.com",
-        status=AccountStatus.ACTIVE,
-    )
-    account.id = "user-1"
-    account.role = role
-    return account
+    return make_account(account_id="user-1", name="Tag User", email=f"{role.value}@example.com", role=role)
 
 
 @pytest.fixture

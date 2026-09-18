@@ -118,7 +118,7 @@ function WorkspaceSwitchControls({
         </DropdownMenu>
         <CollapsibleTrigger
           disabled={disabled}
-          className="size-6 min-h-0 w-6 justify-center gap-0 rounded-md p-0.5 data-panel-open:bg-state-base-hover data-panel-open:text-text-secondary"
+          className="text-text-secondary data-panel-open:bg-state-base-hover"
           render={
             <IconButton aria-label={t(($) => $['operation.search'], { ns: 'common' })}>
               <span aria-hidden className={workspaceSwitchActionIconWrapClassName}>

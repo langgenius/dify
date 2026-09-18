@@ -98,7 +98,7 @@ describe('KnowledgeSpaceShell', () => {
     )
 
     expect(queryOptionsMock).toHaveBeenCalledWith({ input: { params: { id: 'space-1' } } })
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('renders a refresh-safe header and route navigation when loaded', () => {

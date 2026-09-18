@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -51,7 +51,7 @@ export function BuiltInAccessPoints({
   })
   const actions = useAccessPointActions(appId, canManageAccessPoint)
 
-  if (!appInfo) return <Loading />
+  if (!appInfo) return <LoadingPlaceholder />
 
   const workflowState = getPublishedWorkflowState(appInfo, workflow)
   const builtInLoading = workflowState.isWorkflowApp && workflowLoading

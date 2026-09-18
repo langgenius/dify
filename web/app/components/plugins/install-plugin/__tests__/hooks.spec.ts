@@ -6,7 +6,7 @@ const { mockToastError, mockUploadGitHub } = vi.hoisted(() => ({
   mockUploadGitHub: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },

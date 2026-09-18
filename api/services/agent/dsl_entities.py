@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from core.plugin.entities.plugin import PluginDependency
 from models.agent import Agent
 from models.agent_config_entities import AgentSoulConfig
+from models.model import App
+from services.entities.dsl_entities import make_app_dsl
 
 AGENT_PACKAGE_SCHEMA_VERSION = 1
 AGENT_PACKAGE_REF_KEY = "package_ref"
@@ -59,6 +62,54 @@ class AgentPackage(BaseModel):
     workspace_skills: list[AgentPackageWorkspaceSkill] = Field(default_factory=list)
 
 
+class AgentAppReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    package_ref: str = Field(min_length=1)
+
+
+class AgentAppDsl(BaseModel):
+    """The existing standalone Agent App DSL, also stored as archive app.yaml."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    version: str = Field(min_length=1)
+    kind: Literal["app"]
+    app: dict[str, Any]
+    agent: AgentAppReference
+    agent_packages: dict[str, AgentPackage]
+    dependencies: list[PluginDependency] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_agent_app(self) -> Self:
+        if self.app.get("mode") != "agent":
+            raise ValueError("Agent App DSL requires app.mode=agent")
+        if not isinstance(self.app.get("name"), str) or not self.app["name"]:
+            raise ValueError("Agent App DSL requires an app name")
+        if set(self.agent_packages) != {self.agent.package_ref}:
+            raise ValueError("Agent App DSL must contain exactly the referenced Agent package")
+        return self
+
+    @property
+    def package(self) -> AgentPackage:
+        return self.agent_packages[self.agent.package_ref]
+
+
+def make_agent_app_dsl(
+    app: App,
+    *,
+    package_ref: str,
+    packages: dict[str, AgentPackage],
+    dependencies: list[PluginDependency],
+) -> AgentAppDsl:
+    return AgentAppDsl(
+        **make_app_dsl(app),
+        agent=AgentAppReference(package_ref=package_ref),
+        agent_packages=packages,
+        dependencies=dependencies,
+    )
+
+
 def portable_ref(prefix: str, value: str) -> str:
     digest = hashlib.sha256(value.encode()).hexdigest()[:16]
     return f"{prefix}-{digest}"
@@ -87,40 +138,15 @@ def _strip_sensitive_values(value: Any) -> Any:
     return result
 
 
-def make_portable_agent_package(
-    agent: Agent,
-    agent_soul: AgentSoulConfig,
-    workspace_skills: list[AgentPackageWorkspaceSkill] | None = None,
-) -> AgentPackage:
-    """Return a package safe to place in YAML or the system clipboard."""
+def make_portable_agent_soul(agent_soul: AgentSoulConfig) -> AgentSoulConfig:
+    """Return an Agent Soul without workspace-local credentials or identities.
+
+    Resource references are intentionally preserved. Container formats decide
+    whether to omit their payloads, as YAML DSL does, or remap them to
+    package-local identifiers, as Roster packages do.
+    """
 
     soul_data = agent_soul.model_dump(mode="json")
-    omitted_assets = [
-        AgentPackageOmittedAsset(
-            kind="skill",
-            name=item.name,
-            size=item.size,
-            hash=item.hash,
-            mime_type=item.mime_type,
-        )
-        for item in agent_soul.config_skills
-    ]
-    omitted_assets.extend(
-        AgentPackageOmittedAsset(
-            kind="file",
-            name=item.name,
-            size=item.size,
-            hash=item.hash,
-            mime_type=item.mime_type,
-        )
-        for item in agent_soul.config_files
-    )
-    for item in soul_data.get("config_skills", []):
-        item["file_id"] = ""
-        item["is_missing"] = True
-    for item in soul_data.get("config_files", []):
-        item["file_id"] = ""
-        item["is_missing"] = True
 
     if soul_data.get("model"):
         soul_data["model"]["credential_ref"] = None
@@ -155,7 +181,53 @@ def make_portable_agent_package(
         for key in ("id", "contact_id", "human_id", "tenant_id"):
             contact[key] = None
 
-    portable_soul = AgentSoulConfig.model_validate(soul_data)
+    return AgentSoulConfig.model_validate(soul_data)
+
+
+def make_portable_agent_package(
+    agent: Agent,
+    agent_soul: AgentSoulConfig,
+    workspace_skills: list[AgentPackageWorkspaceSkill] | None = None,
+    *,
+    include_assets: bool = False,
+) -> AgentPackage:
+    """Return a portable package for YAML, clipboard, or an asset-bearing archive.
+
+    Archives preserve package-local references to included assets; standalone
+    YAML and clipboard exports mark resources missing because they omit payloads.
+    """
+
+    portable_soul = make_portable_agent_soul(agent_soul)
+    omitted_assets = [
+        AgentPackageOmittedAsset(
+            kind="skill",
+            name=item.name,
+            size=item.size,
+            hash=item.hash,
+            mime_type=item.mime_type,
+        )
+        for item in agent_soul.config_skills
+        if not include_assets or item.is_missing
+    ]
+    omitted_assets.extend(
+        AgentPackageOmittedAsset(
+            kind="file",
+            name=item.name,
+            size=item.size,
+            hash=item.hash,
+            mime_type=item.mime_type,
+        )
+        for item in agent_soul.config_files
+        if not include_assets or item.is_missing
+    )
+    for skill_ref in portable_soul.config_skills:
+        if not include_assets or skill_ref.is_missing:
+            skill_ref.file_id = ""
+            skill_ref.is_missing = True
+    for file_ref in portable_soul.config_files:
+        if not include_assets or file_ref.is_missing:
+            file_ref.file_id = ""
+            file_ref.is_missing = True
     icon_type = agent.icon_type.value if agent.icon_type is not None else None
     return AgentPackage(
         metadata=AgentPackageMetadata(

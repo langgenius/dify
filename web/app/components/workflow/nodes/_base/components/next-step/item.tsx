@@ -34,13 +34,18 @@ const Item = ({ nodeId, sourceHandle, data }: ItemProps) => {
       {!nodesReadOnly && (
         <>
           <Button
-            className="mr-1 hidden shrink-0 group-hover:flex"
+            className="mr-1 shrink-0 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
             size="small"
             onClick={() => handleNodeSelect(nodeId)}
           >
             {t(($) => $['common.jumpToNode'], { ns: 'workflow' })}
           </Button>
-          <div className={cn('hidden shrink-0 items-center group-hover:flex', open && 'flex')}>
+          <div
+            className={cn(
+              'flex shrink-0 items-center opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
+              open && 'opacity-100',
+            )}
+          >
             <Operator
               data={data}
               nodeId={nodeId}

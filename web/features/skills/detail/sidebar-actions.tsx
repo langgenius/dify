@@ -19,10 +19,10 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
@@ -273,20 +273,18 @@ export function SkillDetailSidebarActions({
               <span>{tCommon(($) => $['operation.duplicate'])}</span>
             </DropdownMenuItem>
           )}
-          {detail.latest_published_version_id && (
-            <DropdownMenuItem
-              className="gap-2"
-              onClick={() => {
-                if (!exportMutation.isPending) exportMutation.mutate()
-              }}
-            >
-              <span
-                aria-hidden
-                className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
-              />
-              <span>{tCommon(($) => $['operation.export'])}</span>
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem
+            className="gap-2"
+            onClick={() => {
+              if (!exportMutation.isPending) exportMutation.mutate()
+            }}
+          >
+            <span
+              aria-hidden
+              className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
+            />
+            <span>{tCommon(($) => $['operation.export'])}</span>
+          </DropdownMenuItem>
           {canDelete && (
             <>
               <DropdownMenuSeparator />

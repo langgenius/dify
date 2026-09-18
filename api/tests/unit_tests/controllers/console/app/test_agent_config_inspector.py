@@ -7,6 +7,7 @@ workflow-node agent binding, and service delegation for the new config surface.
 from __future__ import annotations
 
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
@@ -119,7 +120,7 @@ def test_manifest_resolves_workflow_node_agent_and_normal_draft(unbound_session:
     assert config_service.return_value.manifest.call_args.kwargs["config_version_kind"].value == "draft"
 
 
-def test_normal_draft_resolution_commits_created_draft_before_service_session(sqlite_session: Session) -> None:
+def test_normal_draft_read_resolution_does_not_commit(sqlite_session: Session) -> None:
     session = sqlite_session
     commits: list[str] = []
     event.listen(session, "after_commit", lambda _session: commits.append("commit"))
@@ -135,6 +136,64 @@ def test_normal_draft_resolution_commits_created_draft_before_service_session(sq
         )
     assert version_id == "draft-1"
     assert version_kind.value == "draft"
+    assert commits == []
+
+
+def test_normal_config_reads_fall_back_to_snapshot_without_creating_draft(unbound_session: Session) -> None:
+    with patch(f"{_MOD}.AgentComposerService") as composer:
+        composer.load_agent_composer.return_value = {"draft": None, "active_config_snapshot": {"id": "snapshot-1"}}
+        version_id, version_kind = inspector._resolve_console_version(
+            session=unbound_session,
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="acct-1",
+            version_id=None,
+            draft_type="draft",
+        )
+        composer.prepare_agent_composer_draft.assert_not_called()
+    assert version_id == "snapshot-1"
+    assert version_kind.value == "snapshot"
+
+
+def test_stale_inline_config_reads_use_effective_snapshot(unbound_session: Session) -> None:
+    with patch(f"{_MOD}.AgentComposerService") as composer:
+        composer.load_agent_composer.return_value = {
+            "agent": {"scope": "workflow_only"},
+            "draft": {"id": "draft-1", "base_snapshot_id": "snapshot-1"},
+            "active_config_snapshot": {"id": "snapshot-2"},
+        }
+        version_id, version_kind = inspector._resolve_console_version(
+            session=unbound_session,
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="acct-1",
+            version_id=None,
+            draft_type="draft",
+        )
+        composer.prepare_agent_composer_draft.assert_not_called()
+    assert version_id == "snapshot-2"
+    assert version_kind.value == "snapshot"
+
+
+def test_config_write_prepares_draft_before_independent_service_session(sqlite_session: Session) -> None:
+    commits: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: commits.append("commit"))
+    with app.test_request_context("/", method="POST"), patch(f"{_MOD}.AgentComposerService") as composer:
+        composer.prepare_agent_composer_draft.return_value = SimpleNamespace(id="draft-1")
+        target = inspector._resolve_target(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="acct-1",
+            version_id=None,
+            draft_type="draft",
+        )
+        composer.prepare_agent_composer_draft.assert_called_once_with(
+            session=sqlite_session, tenant_id="tenant-1", agent_id="agent-1", account_id="acct-1"
+        )
+        composer.load_agent_composer.assert_not_called()
+    assert target.version_id == "draft-1"
+    assert target.version_kind.value == "draft"
     assert commits == ["commit"]
 
 

@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { useRAGRecommendationsCollapsed } from '@/app/components/workflow/block-selector/storage'
 import Link from '@/next/link'
@@ -68,7 +68,7 @@ export function RAGToolRecommendations({
           {/* For first time loading, show loading */}
           {isLoadingRAGRecommendedPlugins && (
             <div className="py-2">
-              <Loading type="app" />
+              <LoadingPlaceholder className="h-full" />
             </div>
           )}
           {!isFetchingRAGRecommendedPlugins &&

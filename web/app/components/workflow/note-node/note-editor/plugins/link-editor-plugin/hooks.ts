@@ -1,4 +1,3 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { TOGGLE_LINK_COMMAND } from '@lexical/link'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
@@ -6,6 +5,7 @@ import { escape } from 'es-toolkit/string'
 import { CLICK_COMMAND, COMMAND_PRIORITY_LOW } from 'lexical'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useNoteEditorStore } from '../../store'
 import { urlRegExp } from '../../utils'
 
@@ -22,9 +22,17 @@ export const useOpenLink = () => {
     return mergeRegister(
       editor.registerUpdateListener(() => {
         setTimeout(() => {
-          const { selectedLinkUrl, selectedIsLink, setLinkAnchorElement, setLinkOperatorShow } =
-            noteEditorStore.getState()
+          const {
+            selectedLinkUrl,
+            selectedIsLink,
+            selectedLinkKey,
+            dismissedLinkKey,
+            setLinkAnchorElement,
+            setLinkOperatorShow,
+          } = noteEditorStore.getState()
           if (selectedIsLink) {
+            // Restoring the editor selection must not reopen a dismissed surface.
+            if (dismissedLinkKey && dismissedLinkKey === selectedLinkKey) return
             setLinkAnchorElement(true)
             if (selectedLinkUrl) setLinkOperatorShow(true)
             else setLinkOperatorShow(false)
@@ -103,8 +111,12 @@ export const useLink = () => {
     const { setLinkAnchorElement } = noteEditorStore.getState()
     setLinkAnchorElement()
   }, [editor, noteEditorStore])
+  const restoreEditorFocus = useCallback(() => {
+    editor.focus()
+  }, [editor])
   return {
     handleSaveLink,
     handleUnlink,
+    restoreEditorFocus,
   }
 }

@@ -141,6 +141,8 @@ describe('GetAutomaticRes', () => {
       />,
     )
 
+    expect(screen.getByRole('dialog', { name: /generate\.title/ })).toBeInTheDocument()
+
     fireEvent.click(screen.getByText(/(?:^|\.)generate\.template\.pythonDebugger\.name(?=$|:)/))
 
     await waitFor(() => {

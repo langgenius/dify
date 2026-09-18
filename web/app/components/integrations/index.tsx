@@ -232,13 +232,13 @@ export default function IntegrationsPage({
   const toolsNavItemClassName = cn(
     integrationSidebarNavItemClassName,
     integrationSidebarInactiveNavItemClassName,
-    'group',
+    'group/collapsible',
   )
   const toolsNavItemContent = (
     <>
       <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-        <ToolsDisclosureIcon className="h-3.5 w-3 group-hover:hidden group-focus-visible:hidden" />
-        <span className="i-ri-arrow-down-s-line hidden size-4 transition-transform duration-100 ease-out group-hover:inline-block group-focus-visible:inline-block group-data-panel-open:rotate-180 motion-reduce:transition-none" />
+        <ToolsDisclosureIcon className="h-3.5 w-3 group-hover/collapsible:hidden group-focus-visible/collapsible:hidden" />
+        <span className="i-ri-arrow-down-s-line hidden size-4 transition-transform duration-100 ease-out group-hover/collapsible:inline-block group-focus-visible/collapsible:inline-block group-data-panel-open/collapsible:rotate-180 motion-reduce:transition-none" />
       </span>
       <span className="min-w-0 flex-1 truncate">
         {t(($) => $['menus.tools'], { ns: 'common' })}
@@ -300,7 +300,7 @@ export default function IntegrationsPage({
               <CollapsibleTrigger
                 className={cn(
                   toolsNavItemClassName,
-                  'border-none bg-transparent data-panel-open:text-components-menu-item-text',
+                  'min-h-8 touch-manipulation justify-between border-none bg-transparent select-none data-panel-open:text-components-menu-item-text',
                 )}
               >
                 {toolsNavItemContent}

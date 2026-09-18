@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import data from '../i18n-config/languages'
+import data from '../i18n/languages'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -105,7 +105,7 @@ Examples:
 
 async function getKeysFromLanguage(language) {
   return new Promise((resolve, reject) => {
-    const folderPath = path.resolve(__dirname, '../i18n', language)
+    const folderPath = path.resolve(__dirname, '../i18n/locales', language)
     const allKeys = []
     fs.readdir(folderPath, (err, files) => {
       if (err) {
@@ -146,7 +146,7 @@ async function getKeysFromLanguage(language) {
 }
 
 async function removeExtraKeysFromFile(language, fileName, extraKeys) {
-  const filePath = path.resolve(__dirname, '../i18n', language, `${fileName}.json`)
+  const filePath = path.resolve(__dirname, '../i18n/locales', language, `${fileName}.json`)
 
   if (!fs.existsSync(filePath)) {
     console.log(`⚠️  File not found: ${filePath}`)
@@ -260,7 +260,7 @@ async function main() {
           console.log(`\n🤖 Auto-removing extra keys from ${language}...`)
 
           // Get all translation files
-          const i18nFolder = path.resolve(__dirname, '../i18n', language)
+          const i18nFolder = path.resolve(__dirname, '../i18n/locales', language)
           const files = fs
             .readdirSync(i18nFolder)
             .filter((file) => file.endsWith('.json'))

@@ -45,15 +45,18 @@ function AgentConfigurePageContent({ agentId }: AgentConfigurePageProps) {
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.deployment_edition,
   })
-  const previewEnabled = deploymentEdition !== 'COMMUNITY'
-  const rightPanelMode = requestedMode === 'preview' && previewEnabled ? 'preview' : 'build'
+  const { canBuild, canTestAndRun } = configureData.capabilities
+  const previewEnabled = canTestAndRun && deploymentEdition !== 'COMMUNITY'
+  const rightPanelMode =
+    !canBuild || (requestedMode === 'preview' && previewEnabled) ? 'preview' : 'build'
   const changeRightPanelMode = useCallback(
     (nextMode: AgentConfigureRightPanelMode) => {
       if (nextMode === 'preview' && !previewEnabled) return
+      if (nextMode === 'build' && !canBuild) return
 
       return setRequestedMode(nextMode)
     },
-    [previewEnabled, setRequestedMode],
+    [canBuild, previewEnabled, setRequestedMode],
   )
 
   return (

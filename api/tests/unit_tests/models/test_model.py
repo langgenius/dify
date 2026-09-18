@@ -104,7 +104,9 @@ def _build_local_file_mapping(record_id: str, *, tenant_id: str | None = None) -
 
 
 @pytest.mark.parametrize("owner_cls", [Conversation, Message])
-def test_inputs_restore_external_remote_url_file_mappings(owner_cls: type[Conversation] | type[Message]) -> None:
+def test_inputs_restore_external_remote_url_file_mappings(
+    owner_cls: type[Conversation] | type[Message], sqlite_session: Session
+) -> None:
     owner = owner_cls(app_id="app-1")
     owner.inputs = {
         "file": {
@@ -119,7 +121,7 @@ def test_inputs_restore_external_remote_url_file_mappings(owner_cls: type[Conver
         }
     }
 
-    restored_file = owner.inputs["file"]
+    restored_file = owner.inputs_with_session(session=sqlite_session)["file"]
 
     assert restored_file.transfer_method == FileTransferMethod.REMOTE_URL
     assert restored_file.remote_url == "https://example.com/report.pdf"

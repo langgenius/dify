@@ -37,11 +37,8 @@ const permissionGroups = [
   }),
 ]
 
-const getPermissionRow = (permissionName: string) =>
-  screen.getByText(permissionName).closest('div')!
-
 const getPermissionCheckbox = (permissionName: string) =>
-  within(getPermissionRow(permissionName)).getByRole('checkbox')
+  screen.getByRole('checkbox', { name: permissionName })
 
 describe('PermissionGroupList', () => {
   beforeEach(() => {

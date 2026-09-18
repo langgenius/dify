@@ -1,16 +1,13 @@
 'use client'
 
 import type { MarketplaceSearchSelection } from '../home/marketplace-search-autocomplete'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useTranslation } from '#i18n'
 import Link from '@/next/link'
-import MarketplaceLogoDark from '@/public/marketplace/dify-marketplace-logo-dark.svg'
-import MarketplaceLogo from '@/public/marketplace/dify-marketplace-logo.svg'
 import HomeCatalogTabs from '../home/home-catalog-tabs'
 import HomeGuide from '../home/home-guide'
-import styles from '../home/home-sticky.module.css'
 import { MarketplaceSearchAutocomplete } from '../home/marketplace-search-autocomplete'
+import { MarketplaceLogo } from '../marketplace-logo'
 
 type CreatorProfileHeaderProps = {
   actions?: React.ReactNode
@@ -34,24 +31,7 @@ export default function CreatorProfileHeader({
           aria-label="Dify Marketplace"
           className="flex h-full w-[141.933px] shrink-0 items-center"
         >
-          <img
-            alt=""
-            aria-hidden
-            className={cn(
-              'h-[16.386px] w-[141.761px] max-w-none shrink-0',
-              styles.marketplaceLogoLight,
-            )}
-            src={MarketplaceLogo.src}
-          />
-          <img
-            alt=""
-            aria-hidden
-            className={cn(
-              'h-[16.386px] w-[141.761px] max-w-none shrink-0',
-              styles.marketplaceLogoDark,
-            )}
-            src={MarketplaceLogoDark.src}
-          />
+          <MarketplaceLogo />
         </Link>
         <div className="hidden md:block">
           <HomeCatalogTabs activeTab={null} isMarketplacePlatform={false} />

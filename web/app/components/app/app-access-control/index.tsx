@@ -6,10 +6,10 @@ import type {
   AccessControlSubjectsStatus,
 } from './specific-groups-or-members'
 import type { Subject } from '@/models/access-control'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode, SubjectType } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'

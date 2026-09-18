@@ -102,7 +102,9 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation()
 
-    if (e.key === 'Enter' || e.key === 'Tab' || e.key === ' ' || e.key === ',') {
+    if (e.key === 'Tab') {
+      setOpen(false)
+    } else if (e.key === 'Enter' || e.key === ' ' || e.key === ',') {
       e.preventDefault()
       handleEmailAdd()
     } else if (e.key === 'Backspace') {

@@ -213,7 +213,7 @@ const ChatVariablePanel = () => {
         {t(($) => $['chatVariable.panelTitle'], { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <CollapsibleTrigger
-            className="size-6 min-h-0 justify-center gap-0 p-0.5 hover:not-data-disabled:text-text-secondary data-panel-open:bg-state-accent-active data-panel-open:text-text-accent data-panel-open:hover:bg-state-accent-active-alt"
+            className="rounded-lg text-text-secondary data-panel-open:bg-state-accent-active data-panel-open:text-text-accent data-panel-open:hover:bg-state-accent-active-alt"
             render={
               <IconButton aria-label={t(($) => $['chatVariable.tips'], { ns: 'workflow' })}>
                 <span aria-hidden="true" className="i-ri-book-open-line size-4" />

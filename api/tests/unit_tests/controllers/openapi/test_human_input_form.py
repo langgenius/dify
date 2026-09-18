@@ -26,7 +26,6 @@ def _make_auth_data(app_model, caller, caller_kind):
     return AuthData.model_construct(
         token_type=TokenType.OAUTH_ACCOUNT,
         account_id=uuid.uuid4(),
-        token_hash="test",
         scopes=frozenset({Scope.FULL}),
         app=app_model,
         caller=caller,

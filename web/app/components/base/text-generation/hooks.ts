@@ -1,6 +1,6 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { ssePost } from '@/service/base'
 
 type SendOptions = {

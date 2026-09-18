@@ -1,9 +1,9 @@
 import { fireEvent, screen } from '@testing-library/react'
-import { setLocaleOnClient } from '@/i18n-config'
+import { setLocaleOnClient } from '@/i18n/client'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Header from '../_header'
 
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n/client', () => ({
   setLocaleOnClient: vi.fn(),
 }))
 

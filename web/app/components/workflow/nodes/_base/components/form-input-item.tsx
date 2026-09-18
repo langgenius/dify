@@ -11,6 +11,7 @@ import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
   Select,
   SelectContent,
@@ -22,7 +23,6 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
-import Input from '@/app/components/base/input'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
@@ -44,7 +44,6 @@ import {
   getCheckboxListValue,
   getFilterVar,
   getFormInputState,
-  getNumberInputValue,
   getSelectedLabels,
   getTargetVarType,
   getVarKindType,
@@ -56,6 +55,7 @@ import FormInputTypeSwitch from './form-input-type-switch'
 
 type Props = Readonly<{
   readOnly: boolean
+  labelId?: string
   nodeId: string
   schema: CredentialFormSchema
   value: ResourceVarInputs
@@ -81,6 +81,7 @@ type FormInputValue =
 
 const FormInputItem: FC<Props> = ({
   readOnly,
+  labelId,
   nodeId,
   schema,
   value,
@@ -237,14 +238,12 @@ const FormInputItem: FC<Props> = ({
 
   const handleValueChange = (newValue: FormInputValue) => {
     const nextType = getVarKindType(formState) ?? varInput?.type ?? VarKindType.constant
-    let nextValue: FormInputValue = newValue
-    if (isNumber) nextValue = Number.parseFloat(String(newValue ?? ''))
     onChange({
       ...value,
       [variable]: {
         ...varInput,
         type: nextType,
-        value: nextValue,
+        value: newValue,
       },
     })
   }
@@ -345,13 +344,20 @@ const FormInputItem: FC<Props> = ({
         />
       )}
       {isNumber && isConstant && (
-        <Input
-          className="h-8 grow"
-          type="number"
-          value={getNumberInputValue(varInput?.value)}
-          onChange={(e) => handleValueChange(e.target.value)}
-          placeholder={placeholder?.[language] || placeholder?.en_US}
-        />
+        <NumberField
+          step="any"
+          className="min-w-0 grow"
+          value={varInput?.value == null || varInput.value === '' ? null : Number(varInput.value)}
+          readOnly={readOnly}
+          onValueChange={(value) => handleValueChange(value)}
+        >
+          <NumberFieldGroup>
+            <NumberFieldInput
+              aria-labelledby={labelId}
+              placeholder={placeholder?.[language] || placeholder?.en_US}
+            />
+          </NumberFieldGroup>
+        </NumberField>
       )}
       {isDate && isConstant && (
         <div className="min-w-0 grow">

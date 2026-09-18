@@ -18,7 +18,7 @@ export default {
         if (!filename.endsWith('.json')) return
 
         const parts = normalize(filename).split(sep)
-        // e.g., i18n/ar-TN/common.json -> jsonFile = common.json, lang = ar-TN
+        // e.g., i18n/locales/ar-TN/common.json -> jsonFile = common.json, lang = ar-TN
         const jsonFile = parts.at(-1)
         const lang = parts.at(-2)
 
@@ -31,7 +31,7 @@ export default {
         try {
           currentJson = JSON.parse(sourceCode.text)
           // Look for the same filename in en-US folder
-          // e.g., i18n/ar-TN/common.json -> i18n/en-US/common.json
+          // e.g., i18n/locales/ar-TN/common.json -> i18n/locales/en-US/common.json
           const englishFilePath = path.join(path.dirname(filename), '..', 'en-US', jsonFile ?? '')
           englishJson = JSON.parse(fs.readFileSync(englishFilePath, 'utf8'))
         } catch (error) {

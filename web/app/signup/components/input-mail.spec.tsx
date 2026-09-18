@@ -2,7 +2,7 @@ import type { MockedFunction } from 'vite-plus/test'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useSearchParams } from '@/next/navigation'
 import { useSendMail } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -31,7 +31,8 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 

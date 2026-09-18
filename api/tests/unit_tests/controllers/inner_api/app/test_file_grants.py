@@ -326,7 +326,9 @@ def test_mint_folds_an_oversized_subject_into_one_identity(app: Flask, sqlite_se
 
     end_users = sqlite_session.scalars(select(EndUser).order_by(EndUser.created_at)).all()
     assert len(end_users) == 2
-    assert all(len(end_user.external_user_id) == 255 for end_user in end_users)
+    assert all(
+        end_user.external_user_id is not None and len(end_user.external_user_id) == 255 for end_user in end_users
+    )
     assert _subject_of(first) == _subject_of(again) != _subject_of(other)
 
 

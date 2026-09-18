@@ -56,8 +56,8 @@ let mockCredentialData: CredentialData | undefined = {
   current_credential_name: 'Default',
 }
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     default: {
@@ -214,7 +214,7 @@ describe('ModelLoadBalancingModal', () => {
       />,
     )
 
-    expect(screen.getByRole('status'))!.toBeInTheDocument()
+    expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
   })
 
   it('should render predefined model content', () => {

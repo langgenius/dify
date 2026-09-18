@@ -178,7 +178,7 @@ export default function AccountSetting({
 
   return (
     <MenuDialog title={t(($) => $['settings.settings'], { ns: 'common' })} onClose={onCancelAction}>
-      <div className="flex h-screen w-full max-w-full pl-0 sm:pl-58">
+      <div className="mx-auto flex h-screen w-full max-w-270 px-4">
         <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
           <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
             {t(($) => $['settings.settings'], { ns: 'common' })}
@@ -224,7 +224,11 @@ export default function AccountSetting({
             ))}
           </div>
         </div>
-        <div className="relative flex min-h-0 w-206 min-w-0">
+        <div className="relative flex min-h-0 min-w-0 flex-1">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-full w-screen bg-components-panel-bg"
+          />
           <ScrollArea className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg">
             <ScrollAreaViewport
               ref={scrollContainerRef}

@@ -2,12 +2,12 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import {
   useCreateEndpoint,

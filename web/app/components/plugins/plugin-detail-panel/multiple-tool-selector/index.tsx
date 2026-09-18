@@ -129,7 +129,7 @@ const MultipleToolSelector = ({
           {supportCollapse ? (
             <CollapsibleTrigger
               aria-label={label}
-              className="group/collapse h-6 min-h-0 w-auto min-w-0 justify-start gap-0.5 bg-transparent p-0 hover:not-data-disabled:bg-transparent"
+              className="group/collapse flex h-6 min-h-0 min-w-0 touch-manipulation items-center justify-start gap-0.5 rounded-lg bg-transparent system-sm-medium text-text-secondary outline-hidden select-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary"
             >
               <span className="truncate system-sm-semibold-uppercase text-text-secondary">
                 {label}

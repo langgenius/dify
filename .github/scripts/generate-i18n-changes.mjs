@@ -8,7 +8,8 @@ const headSha = process.env.HEAD_SHA || ''
 const files = (process.env.CHANGED_FILES || '').split(/\s+/).filter(Boolean)
 const outputPath = process.env.I18N_CHANGES_OUTPUT_PATH || '/tmp/i18n-changes.json'
 
-const englishPath = (fileStem) => path.join(repoRoot, 'web', 'i18n', 'en-US', `${fileStem}.json`)
+const englishPath = (fileStem) =>
+  path.join(repoRoot, 'web', 'i18n', 'locales', 'en-US', `${fileStem}.json`)
 
 const readCurrentJson = (fileStem) => {
   const filePath = englishPath(fileStem)
@@ -21,7 +22,7 @@ const readBaseJson = (fileStem) => {
   if (!baseSha) return null
 
   try {
-    const relativePath = `web/i18n/en-US/${fileStem}.json`
+    const relativePath = `web/i18n/locales/en-US/${fileStem}.json`
     const content = execFileSync('git', ['show', `${baseSha}:${relativePath}`], {
       encoding: 'utf8',
     })

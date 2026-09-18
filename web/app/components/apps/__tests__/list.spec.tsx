@@ -1214,7 +1214,7 @@ describe('List', () => {
       renderList()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      fireEvent.click(await screen.findByText('app.importDSL'))
+      fireEvent.click(await screen.findByText('app.importApp'))
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })

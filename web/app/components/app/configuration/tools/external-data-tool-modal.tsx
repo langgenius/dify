@@ -14,13 +14,14 @@ import {
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { toast } from '@/app/components/app/configuration/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
-import { useDocLink, useLocale } from '@/context/i18n'
+import { useDocLink } from '@/context/i18n'
 import { useCodeBasedExtensions } from '@/service/use-common'
 import {
   buildProviders,

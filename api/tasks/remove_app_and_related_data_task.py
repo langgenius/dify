@@ -513,7 +513,9 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
     total_files_deleted = 0
 
     while True:
-        with session_factory.create_session() as session, session.begin():
+        # Read the batch in a transaction of its own: the offload cleanup in between
+        # must run with no transaction open.
+        with session_factory.create_session() as session:
             # Get a batch of draft variable IDs along with their file_ids
             query_sql = """
                 SELECT id, file_id FROM workflow_draft_variables
@@ -523,18 +525,21 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
             result = session.execute(sa.text(query_sql), {"app_id": app_id, "batch_size": batch_size})
 
             rows = list(result)
-            if not rows:
-                break
 
-            draft_var_ids = [row[0] for row in rows]
-            file_ids = [row[1] for row in rows if row[1] is not None]
+        if not rows:
+            break
 
-            # Clean up associated Offload data first
-            if file_ids:
-                files_deleted = _delete_draft_variable_offload_data(session, file_ids)
-                total_files_deleted += files_deleted
+        draft_var_ids = [row[0] for row in rows]
+        file_ids = [row[1] for row in rows if row[1] is not None]
 
-            # Delete the draft variables
+        # Clean up associated Offload data first, outside any transaction, so the rows
+        # remain visible if the storage cleanup has to be retried.
+        if file_ids:
+            files_deleted = _delete_draft_variable_offload_data(file_ids)
+            total_files_deleted += files_deleted
+
+        # Delete the draft variables
+        with session_factory.create_session() as session, session.begin():
             delete_sql = """
                 DELETE FROM workflow_draft_variables
                 WHERE id IN :ids
@@ -558,7 +563,7 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
     return total_deleted
 
 
-def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
+def _delete_draft_variable_offload_data(file_ids: list[str]) -> int:
     """
     Delete Offload data associated with WorkflowDraftVariable file_ids.
 
@@ -568,8 +573,10 @@ def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
     3. Deletes UploadFile records
     4. Deletes WorkflowDraftVariableFile records
 
+    Object storage is external: the storage deletes below run outside any database
+    transaction (see api/AGENTS.md).
+
     Args:
-        session: Database connection
         file_ids: List of WorkflowDraftVariableFile IDs
 
     Returns:
@@ -590,8 +597,9 @@ def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
                              JOIN upload_files uf ON wdvf.upload_file_id = uf.id
                     WHERE wdvf.id IN :file_ids \
                     """
-        result = session.execute(sa.text(query_sql), {"file_ids": tuple(file_ids)})
-        file_records = list(result)
+        with session_factory.create_session() as session:
+            result = session.execute(sa.text(query_sql), {"file_ids": tuple(file_ids)})
+            file_records = [(row[0], row[1], row[2]) for row in result]
 
         # Delete from object storage and collect upload file IDs
         upload_file_ids = []
@@ -605,22 +613,23 @@ def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
                 # Continue with database cleanup even if storage deletion fails
                 upload_file_ids.append(upload_file_id)
 
-        # Delete UploadFile records
-        if upload_file_ids:
-            delete_upload_files_sql = """
-                                      DELETE \
-                                      FROM upload_files
-                                      WHERE id IN :upload_file_ids \
-                                      """
-            session.execute(sa.text(delete_upload_files_sql), {"upload_file_ids": tuple(upload_file_ids)})
+        with session_factory.create_session() as session, session.begin():
+            # Delete UploadFile records
+            if upload_file_ids:
+                delete_upload_files_sql = """
+                                          DELETE \
+                                          FROM upload_files
+                                          WHERE id IN :upload_file_ids \
+                                          """
+                session.execute(sa.text(delete_upload_files_sql), {"upload_file_ids": tuple(upload_file_ids)})
 
-        # Delete WorkflowDraftVariableFile records
-        delete_variable_files_sql = """
-                                    DELETE \
-                                    FROM workflow_draft_variable_files
-                                    WHERE id IN :file_ids \
-                                    """
-        session.execute(sa.text(delete_variable_files_sql), {"file_ids": tuple(file_ids)})
+            # Delete WorkflowDraftVariableFile records
+            delete_variable_files_sql = """
+                                        DELETE \
+                                        FROM workflow_draft_variable_files
+                                        WHERE id IN :file_ids \
+                                        """
+            session.execute(sa.text(delete_variable_files_sql), {"file_ids": tuple(file_ids)})
 
     except Exception:
         logging.exception("Error deleting draft variable offload data:")

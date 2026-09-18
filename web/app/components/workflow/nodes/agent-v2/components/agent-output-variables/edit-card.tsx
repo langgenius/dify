@@ -156,10 +156,10 @@ export function OutputEditCard({
         </div>
         {allowDefaultValue && (
           <Collapsible>
-            <CollapsibleTrigger className="h-8 min-h-8 justify-start gap-x-0.5 rounded-none border-y border-divider-subtle pr-2 pl-2.5 system-xs-regular text-text-tertiary hover:not-data-disabled:bg-state-base-hover hover:not-data-disabled:text-text-tertiary focus-visible:bg-state-base-hover focus-visible:ring-inset data-panel-open:text-text-tertiary">
+            <CollapsibleTrigger className="group/collapsible flex h-8 min-h-8 w-full touch-manipulation items-center justify-start gap-2 gap-x-0.5 border-y border-divider-subtle pr-2 pl-2.5 text-start system-xs-regular text-text-tertiary outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset">
               <span
                 aria-hidden="true"
-                className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open:rotate-180 motion-reduce:transition-none"
+                className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open/collapsible:rotate-180 motion-reduce:transition-none"
               />
               {t(($) => $['nodes.agent.outputVars.showAdvancedOptions'], { ns: 'workflow' })}
             </CollapsibleTrigger>

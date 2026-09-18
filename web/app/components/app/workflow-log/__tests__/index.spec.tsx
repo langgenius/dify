@@ -19,7 +19,7 @@ import type { CloudSandboxPlanState } from '../../log/cloud-sandbox-retention'
 import type { ILogsProps } from '../index'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -322,7 +322,7 @@ describe('Logs Container', () => {
       const { container } = renderWithQueryClient(<Logs {...defaultProps} />)
 
       // Assert
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should not show loading spinner when data is available', () => {
@@ -337,7 +337,7 @@ describe('Logs Container', () => {
       const { container } = renderWithQueryClient(<Logs {...defaultProps} />)
 
       // Assert
-      expect(container.querySelector('.spin-animation')).not.toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar')).not.toBeInTheDocument()
     })
   })
 
@@ -653,7 +653,7 @@ describe('Logs Container', () => {
       const { container } = renderWithQueryClient(<Logs {...defaultProps} />)
 
       // Assert - should show loading state when data is undefined
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should handle app with different ID', () => {

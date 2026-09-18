@@ -3,14 +3,11 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { SelectorParam } from 'i18next'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
-import { getAppACLCapabilities } from '@/utils/permission'
 
 const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
@@ -37,16 +34,7 @@ export function useWebAppAccessControl(
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.webapp_auth.enabled,
   })
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { canReleaseAndVersion: canManage } = getAppACLCapabilities(agent?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: agent?.maintainer,
-    workspacePermissionKeys,
-  })
+  const { canReleaseAndVersion: canManage } = getAgentACLCapabilities(agent?.permission_keys)
   const hasAccessControl = Boolean(webAppAuthEnabled && appId && accessMode)
   const { data: accessSubjects } = useAppWhiteListSubjects(
     appId,

@@ -6,8 +6,7 @@ import { ENABLE_FEATURE_PREVIEW } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
-import { setLocaleOnClient } from '@/i18n-config'
+import { setLocaleOnClient } from '@/i18n/client'
 import { accountCommand } from './account'
 import { createCommand } from './create'
 import { discordCommand } from './discord'
@@ -61,9 +60,8 @@ const unregisterSlashCommands = () => {
 export const SlashCommandProvider = () => {
   const theme = useTheme()
   const getDocsHomeUrl = useDocLink()
-  const canManageAgents = useCanManageAgents()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
-  const agentsAvailable = isAgentV2Enabled() && canManageAgents
+  const agentsAvailable = isAgentV2Enabled()
   const skillsAvailable = !isCurrentWorkspaceDatasetOperator
   useEffect(() => {
     registerSlashCommands({

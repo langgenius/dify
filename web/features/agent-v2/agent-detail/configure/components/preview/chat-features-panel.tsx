@@ -11,7 +11,10 @@ import { useTranslation } from 'react-i18next'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import { useSetAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
+import {
+  useAppFeatures,
+  useSetAppFeatures,
+} from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { Resolution, TransferMethod } from '@/types/app'
 
 type AgentChatFeaturesPanelProps = {
@@ -123,10 +126,7 @@ function toAppFeatures(
     text_to_speech: features.text2speech as AgentSoulAppFeaturesConfig['text_to_speech'],
     speech_to_text: features.speech2text,
     retriever_resource: features.citation,
-    sensitive_word_avoidance:
-      features.moderation as AgentSoulAppFeaturesConfig['sensitive_word_avoidance'],
     file_upload: toAgentFileUploadFeatureConfig(features.file),
-    annotation_reply: features.annotationReply,
   }
 }
 
@@ -167,9 +167,16 @@ function AgentChatFeaturesPanelContent({
   )
 }
 
-export function AgentChatFeaturesPanel({ appFeatures, ...props }: AgentChatFeaturesPanelProps) {
+export function AgentChatFeaturesPanel({
+  appFeatures: snapshotAppFeatures,
+  ...props
+}: AgentChatFeaturesPanelProps) {
+  const draftAppFeatures = useAppFeatures()
+  const appFeatures = props.disabled ? snapshotAppFeatures : draftAppFeatures
   const features = useMemo(() => toPanelFeatures(appFeatures), [appFeatures])
-  const featuresKey = useMemo(() => JSON.stringify(appFeatures ?? {}), [appFeatures])
+  // Keep transient feature switches while editing, including an empty opener
+  // that has been enabled but has not had its statement saved yet.
+  const featuresKey = props.disabled ? JSON.stringify(appFeatures ?? {}) : 'draft'
 
   return (
     <FeaturesProvider key={featuresKey} features={features}>

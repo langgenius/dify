@@ -10,8 +10,8 @@ let mockHookResult = {
   retry: vi.fn(),
 }
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading">Loading</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div data-testid="loading">Loading</div>,
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form', () => ({

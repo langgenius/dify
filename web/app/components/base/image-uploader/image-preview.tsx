@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { downloadUrl } from '@/utils/download'
 
 type ImagePreviewProps = {
@@ -25,6 +25,31 @@ const isBase64 = (str: string): boolean => {
   }
 }
 
+const fetchImageAsPng = async (url: string): Promise<Blob> => {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error('Unable to load image')
+  const blob = await response.blob()
+  if (blob.type === 'image/png') return blob
+
+  const bitmap = await createImageBitmap(blob)
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Unable to convert image')
+    context.drawImage(bitmap, 0, 0)
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((png) => {
+        if (png) resolve(png)
+        else reject(new Error('Unable to encode image'))
+      }, 'image/png')
+    })
+  } finally {
+    bitmap.close()
+  }
+}
+
 const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onNext }) => {
   const { t } = useTranslation()
   const [scale, setScale] = useState(1)
@@ -36,7 +61,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
 
   const openInNewTab = () => {
     // Open in a new window, considering the case when the page is inside an iframe
-    if (url.startsWith('http') || url.startsWith('https')) {
+    if (url.startsWith('http') || url.startsWith('/')) {
       window.open(url, '_blank')
     } else if (url.startsWith('data:image')) {
       // Base64 image
@@ -49,7 +74,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
 
   const downloadImage = () => {
     // Open in a new window, considering the case when the page is inside an iframe
-    if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:image')) {
+    if (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:image')) {
       downloadUrl({ url, fileName: title, target: '_blank' })
       return
     }
@@ -69,31 +94,19 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
     })
   }
 
-  const imageBase64ToBlob = (base64: string, type = 'image/png'): Blob => {
-    const byteCharacters = atob(base64)
-    const byteArrays = []
-
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-      const slice = byteCharacters.slice(offset, offset + 512)
-      const byteNumbers = Array.from({ length: slice.length })
-      for (let i = 0; i < slice.length; i++) byteNumbers[i] = slice.charCodeAt(i)
-
-      const byteArray = new Uint8Array(byteNumbers as any)
-      byteArrays.push(byteArray)
-    }
-
-    return new Blob(byteArrays, { type })
-  }
-
   const imageCopy = useCallback(() => {
     const shareImage = async () => {
       try {
-        const base64Data = url.split(',')[1]
-        const blob = imageBase64ToBlob(base64Data!, 'image/png')
+        if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined')
+          throw new Error('Image clipboard is unavailable')
 
+        const png = fetchImageAsPng(isBase64(url) ? `data:image/png;base64,${url}` : url)
+        // Handle a rejected fetch even if clipboard permission is denied before
+        // the browser consumes the item. Keep write in the click gesture for Safari.
+        void png.catch(noop)
         await navigator.clipboard.write([
           new ClipboardItem({
-            [blob.type]: blob,
+            'image/png': png,
           }),
         ])
         setIsCopied(true)
@@ -102,13 +115,12 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
       } catch (err) {
         console.error('Failed to copy image:', err)
 
-        downloadUrl({ url, fileName: `${title}.png` })
-
-        toast.info(t(($) => $['operation.imageDownloaded'], { ns: 'common' }))
+        setIsCopied(false)
+        toast.error(t(($) => $['operation.imageCopyFailed'], { ns: 'common' }))
       }
     }
     shareImage()
-  }, [t, title, url])
+  }, [t, url])
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     if (e.deltaY < 0) zoomIn()

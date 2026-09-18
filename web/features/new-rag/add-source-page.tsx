@@ -14,7 +14,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
@@ -954,7 +954,7 @@ export function AddSourcePage({
   )
     return (
       <div className="flex min-h-64 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
 
@@ -1034,7 +1034,7 @@ export function AddSourcePage({
                 />
               ) : connection?.status === 'active' ? (
                 <div className="flex min-h-64 items-center justify-center">
-                  <Loading />
+                  <LoadingPlaceholder />
                 </div>
               ) : connection?.status === 'provisioning' ? (
                 <ProvisioningConnection onReconcile={reconcileConnection} />

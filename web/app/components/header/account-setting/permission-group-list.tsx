@@ -151,7 +151,7 @@ const PermissionGroupList = ({
                             const checked = selectedSet.has(permission.key)
 
                             return (
-                              <div
+                              <label
                                 key={permission.key}
                                 className={cn(
                                   'flex min-h-9 items-center gap-3 px-3 py-1.5',
@@ -161,7 +161,6 @@ const PermissionGroupList = ({
                                   checked && 'bg-state-accent-hover',
                                   checked && !readonly && 'hover:bg-state-accent-hover',
                                 )}
-                                onClick={() => togglePermission(permission.key)}
                               >
                                 <Checkbox
                                   checked={checked}
@@ -174,7 +173,7 @@ const PermissionGroupList = ({
                                 <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
                                   {permission.name}
                                 </span>
-                              </div>
+                              </label>
                             )
                           })}
                         </div>

@@ -1,9 +1,9 @@
 import type { PluginCategoryEnum } from '../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,

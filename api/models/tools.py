@@ -21,7 +21,6 @@ from core.tools.entities.tool_entities import (
 )
 
 from .base import TypeBase
-from .engine import db
 from .enums import PermissionEnum
 from .model import Account, App, Tenant
 from .types import EnumText, LongText, StringUUID
@@ -353,8 +352,8 @@ class MCPToolProvider(TypeBase):
         sa.String(32), nullable=False, server_default=sa.text("'off'"), default="off"
     )
 
-    def load_user(self) -> Account | None:
-        return db.session.scalar(select(Account).where(Account.id == self.user_id))
+    def load_user(self, session: Session) -> Account | None:
+        return session.scalar(select(Account).where(Account.id == self.user_id))
 
     @property
     def credentials(self) -> dict[str, Any]:

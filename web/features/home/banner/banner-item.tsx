@@ -49,13 +49,13 @@ export function BannerItem({ banner, sort, language, accountId, titleId }: Banne
         </div>
       </div>
 
-      <div className="pointer-events-none relative z-20 hidden w-60 max-w-60 shrink-0 flex-col items-end justify-center self-stretch p-2 @min-[720px]/banner:flex">
+      <div className="pointer-events-none relative z-20 hidden w-[213.65px] max-w-[213.65px] shrink-0 flex-col items-end justify-center self-stretch p-2 @min-[720px]/banner:flex">
         <img
           src={imgSrc}
           alt=""
-          width={224}
+          width={200}
           height={168}
-          className="aspect-4/3 w-full shrink-0 rounded-xl object-cover"
+          className="aspect-20/17 w-full shrink-0 rounded-xl object-cover"
         />
       </div>
 

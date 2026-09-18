@@ -141,7 +141,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
@@ -544,10 +544,10 @@ describe('AppCard', () => {
     it('should render app icon', () => {
       // AppIcon component renders the emoji icon from app data
       const { container } = render(<AppCard app={mockApp} />)
-      const emojiIcon = container.querySelector(`em-emoji[id="${mockApp.icon}"]`)
+      const emojiIcon = screen.getByText(mockApp.icon!)
       const imageIcon = container.querySelector('img')
       expect(emojiIcon || imageIcon).toBeTruthy()
-      expect(emojiIcon?.parentElement).toHaveAttribute('aria-hidden', 'true')
+      expect(emojiIcon).toHaveAttribute('aria-hidden', 'true')
     })
 
     it('should treat a redundant image icon as decorative', () => {

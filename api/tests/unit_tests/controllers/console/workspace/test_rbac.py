@@ -28,6 +28,7 @@ from controllers.console.workspace import rbac as rbac_mod
 from controllers.console.workspace.rbac import _RolesListQuery
 from enums import DeploymentEdition
 from models import Account
+from tests.unit_tests.model_factories import make_account
 
 
 @pytest.fixture
@@ -47,9 +48,7 @@ def _rbac_config(config_overrides) -> None:
 
 
 def _account() -> Account:
-    account = Account(name="RBAC User", email="rbac@example.com")
-    account.id = "acct-1"
-    return account
+    return make_account(account_id="acct-1", name="RBAC User", email="rbac@example.com")
 
 
 class TestCurrentIds:

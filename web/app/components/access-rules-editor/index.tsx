@@ -1,13 +1,16 @@
 'use client'
 
-import type { AccessPolicyWithBindings, ResourceUserAccessSetting } from '@/models/access-control'
+import type {
+  AccessPolicy,
+  ResourceUserAccessPolicies,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE_OPTIONS } from '@/service/access-control/constants'
 import AddAccessSubjectPopover from './add-access-subject-popover'
 import AutomaticIncludeWorkspaceMembersSection from './automatic-include-workspace-members-section'
@@ -21,8 +24,8 @@ export type AccessPolicyMemberBindingRemoval = {
 }
 
 export type AccessRulesEditorProps = {
-  rules: AccessPolicyWithBindings[]
-  userAccessSettings: ResourceUserAccessSetting[]
+  rules: { policy?: Pick<AccessPolicy, 'id' | 'name'> | null }[]
+  userAccessSettings: ResourceUserAccessPolicies[]
   isLoadingRules: boolean
   isLoadingUserAccessSettings: boolean
   automaticIncludeWorkspaceMembers?: boolean
@@ -77,17 +80,23 @@ function AccessRulesEditor({
   const shouldCenterTableBody = isLoading || userAccessSettings.length === 0
   const areMembershipChangesDisabled = automaticIncludeWorkspaceMembers === true
   const policyOptions = useMemo(() => {
-    return rules.map((rule) => ({
-      id: rule.policy.id,
-      name: rule.policy.name,
-    }))
+    return rules.flatMap((rule) =>
+      rule.policy
+        ? [
+            {
+              id: rule.policy.id,
+              name: rule.policy.name,
+            },
+          ]
+        : [],
+    )
   }, [rules])
   const protectedAccountIds = useMemo(() => {
     const accountIds = new Set<string>()
 
     for (const setting of userAccessSettings) {
       const accountId = setting.account.account_id
-      const isWorkspaceOwner = setting.roles.some((role) => role.role_tag === 'owner')
+      const isWorkspaceOwner = setting.roles?.some((role) => role.role_tag === 'owner')
       if (accountId === maintainerId || isWorkspaceOwner) accountIds.add(accountId)
     }
 
@@ -119,7 +128,7 @@ function AccessRulesEditor({
       const accountId = setting.account.account_id
       if (!selectedAccountIds.has(accountId) || protectedAccountIds.has(accountId)) continue
 
-      const accessPolicyId = setting.access_policies[0]?.id ?? DEFAULT_ACCESS_POLICY_ID
+      const accessPolicyId = setting.access_policies?.[0]?.id ?? DEFAULT_ACCESS_POLICY_ID
       const accountIds = accountIdsByAccessPolicyId.get(accessPolicyId)
       if (accountIds) accountIds.push(accountId)
       else accountIdsByAccessPolicyId.set(accessPolicyId, [accountId])
@@ -294,7 +303,7 @@ function AccessRulesEditor({
                     colSpan={3}
                     className="flex flex-1 items-center justify-center px-4 py-8 text-center"
                   >
-                    <Loading type="app" />
+                    <LoadingPlaceholder className="h-full" />
                   </td>
                 </tr>
               ) : userAccessSettings.length === 0 ? (

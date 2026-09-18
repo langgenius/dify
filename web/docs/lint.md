@@ -94,9 +94,28 @@ ESLint is intentionally limited to non-code files. The remaining limitations and
 | Non-JavaScript formats   | Oxlint plugins cannot provide custom parsers or file languages. ESLint covers JSON, JSONC, YAML, TOML, and Markdown semantic rules, while Oxfmt remains responsible for their formatting.                        |
 | Markdown code blocks     | ESLint validates the Markdown document, but fenced JavaScript and TypeScript blocks are not passed through the former overlapping preset. This remains deferred rather than duplicating the Oxlint rule set.     |
 | Override-scoped settings | The three Dify UI Tailwind rules are disabled with the rest of ESLint's code path. Oxlint still applies the web `react-x.additionalStateHooks` setting globally because it cannot scope settings to an override. |
-| Oxlint disable severity  | Oxlint only accepts `reportUnusedDisableDirectives` at the root, where it remains `warn`; the former Dify UI-specific ESLint `error` severity is no longer applied to code files.                                |
 
 Suppression comments belong to exactly one linter. Use `oxlint-disable` for code rules from `lint.config.ts`, and use `eslint-disable` only for non-code rules from `eslint.config.mjs`. Oxlint deliberately sets `respectEslintDisableDirectives` to `false`, so an ESLint comment cannot hide an Oxlint finding.
+
+### Inline Disable Comments
+
+Prefer fixing the finding. When an exception is necessary, name the specific rule and use `oxlint-disable-next-line` at the affected statement. For a shared exception spanning several statements, use a bounded disable/enable pair. File-wide disable comments are forbidden, including in tests. `dify/no-file-wide-disable` reports an error when a block disable has any rules left disabled at the end of the file; a matching enable must restore every disabled rule. The native `unicorn/no-abusive-eslint-disable` rule also rejects disables without rule names, which would otherwise suppress the custom check itself.
+
+For existing violations that cannot be fixed in the current change, remove the file-wide comment and record a scoped bulk-suppression baseline instead of turning the rule off for the file:
+
+```sh
+vp run -w lint:oxlint path/to/file.spec.tsx --suppress-all
+```
+
+Review the `oxlint-suppressions.json` diff and retain only the intended file/rule counts. The rule remains active and findings beyond the recorded count are reported; this is a count baseline, not a list of specific suppressed lines. Avoid repository-wide `--suppress-all` for a scoped cleanup. After fixing violations, use `--prune-suppressions` as described above.
+
+Use `lint.config.ts` overrides only when a rule is intentionally inapplicable to a file, and `ignorePatterns` only when the entire file must be excluded, such as generated output. Explain the reason next to the configuration. Do not migrate existing violations to a blanket rule-off override or broaden exceptions to future files with a directory glob.
+
+Explain the concrete reason after `--`: which external contract, lifecycle, or rule limitation makes the exception necessary. A description that merely repeats the rule or says "fix lint" is insufficient. New or modified disables must include this explanation; existing test typing exceptions can be addressed incrementally.
+
+`dify/require-disable-directive-description` uses Oxlint's parsed directives to report missing explanations, including JSX comments. It runs at `error`; existing undescribed exceptions are tracked in the bulk-suppression baseline for incremental cleanup. Enable comments do not need a repeated explanation. This rule does not assess whether a reason is valid and does not replace review. Do not add generic descriptions just to silence it.
+
+`reportUnusedDisableDirectives` runs at `error` repository-wide. Remove an exception when the finding no longer exists. Keep both checks active: a described disable may still be unused, and a used disable may still lack a reason.
 
 ### Introducing New Plugins or Rules
 

@@ -1,7 +1,8 @@
 import type { CommonNodeType, OnSelectBlock } from '@/app/components/workflow/types'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
+  DropdownMenuItem,
   DropdownMenuPopup,
   DropdownMenuPortal,
   DropdownMenuPositioner,
@@ -39,9 +40,19 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
   )
 
   const triggerElement = (
-    <Button variant="ghost" size="medium" className="w-full justify-start px-2">
+    <DropdownMenuItem
+      nativeButton
+      render={<button type="button" />}
+      closeOnClick={false}
+      className={buttonVariants({
+        variant: 'ghost',
+        size: 'medium',
+        className:
+          'mx-0 w-full justify-start px-2 data-highlighted:bg-components-button-ghost-bg-hover',
+      })}
+    >
       {t(($) => $['panel.change'], { ns: 'workflow' })}
-    </Button>
+    </DropdownMenuItem>
   )
 
   return (
@@ -90,26 +101,26 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
             <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
               <div className="p-1">
                 <ChangeItem data={data} nodeId={nodeId} sourceHandle={sourceHandle} />
-                <div
-                  className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                <DropdownMenuItem
+                  className="mx-0"
                   onClick={() => {
                     onOpenChange(false)
                     handleNodeDisconnect(nodeId)
                   }}
                 >
                   {t(($) => $['common.disconnect'], { ns: 'workflow' })}
-                </div>
+                </DropdownMenuItem>
               </div>
               <div className="p-1">
-                <div
-                  className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                <DropdownMenuItem
+                  className="mx-0"
                   onClick={() => {
                     onOpenChange(false)
                     handleNodeDelete(nodeId)
                   }}
                 >
                   {t(($) => $['operation.delete'], { ns: 'common' })}
-                </div>
+                </DropdownMenuItem>
               </div>
             </div>
           </DropdownMenuPopup>

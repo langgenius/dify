@@ -692,11 +692,12 @@ class MCPToolManageService:
         self, db_provider: MCPToolProvider, provider_entity: MCPProviderEntity, tools: list[MCPTool]
     ) -> ToolProviderApiEntity:
         """Build API response for tool provider."""
-        user = db_provider.load_user()
+        user = db_provider.load_user(self._session)
+        user_name = user.name if user else None
         response = provider_entity.to_api_response(
-            user_name=user.name if user else None,
+            user_name=user_name,
         )
-        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, tools)
+        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, tools, user_name=user_name)
         response["plugin_unique_identifier"] = provider_entity.provider_id
         return ToolProviderApiEntity(**response)
 

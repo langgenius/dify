@@ -6,13 +6,13 @@ import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import NoData from '@/app/components/share/text-generation/no-data'
+import { toast } from '@/app/notifications'
 import { useResultRunState } from './hooks/use-result-run-state'
 import { useResultSender } from './hooks/use-result-sender'
 
@@ -160,7 +160,7 @@ const Result: FC<IResultProps> = ({
         !isWorkflow &&
         (runState.isResponding && !runState.completionRes ? (
           <div className="flex size-full items-center justify-center">
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         ) : (
           <>{isNoData ? <NoData /> : renderTextGenerationRes()}</>
@@ -169,7 +169,7 @@ const Result: FC<IResultProps> = ({
         isWorkflow &&
         (runState.isResponding && !runState.workflowProcessData ? (
           <div className="flex size-full items-center justify-center">
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         ) : !runState.workflowProcessData ? (
           <NoData />

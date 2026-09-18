@@ -12,7 +12,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -118,7 +118,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         />
         {isLoading && datasets.length === 0 && (
           <div className="flex h-50">
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         )}
 
@@ -201,7 +201,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   )}
                 </button>
               ))}
-              {isFetchingNextPage && <Loading />}
+              {isFetchingNextPage && <LoadingPlaceholder />}
             </div>
           </>
         )}

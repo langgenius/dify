@@ -1,6 +1,6 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
+import { toast } from '@/app/notifications'
 import { useExportSnippetMutation } from '@/service/use-snippets'
 import { downloadBlob } from '@/utils/download'
 import { useSnippetDSL } from '../use-snippet-dsl'
@@ -17,7 +17,7 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },

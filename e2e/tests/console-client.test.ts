@@ -48,7 +48,9 @@ const createApiResponse = ({
 }
 
 const createRequestContext = (response: APIResponse, csrfToken = 'csrf-token') => {
-  const fetch = vi.fn<APIRequestContext['fetch']>(async () => response)
+  const fetch = vi.fn<(...args: Parameters<APIRequestContext['fetch']>) => Promise<APIResponse>>(
+    async () => response,
+  )
   const context = {
     fetch,
     storageState: vi.fn<APIRequestContext['storageState']>(async () => ({

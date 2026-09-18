@@ -312,7 +312,7 @@ export const AgentProviderToolItem = memo(
         className="overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
       >
         <div className="flex min-h-7 items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-1">
-          <CollapsibleTrigger className="group min-h-0 min-w-0 flex-1 justify-start gap-2 rounded-md px-0 pr-1 text-left hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary">
+          <CollapsibleTrigger className="group/collapsible flex min-h-0 w-full min-w-0 flex-1 touch-manipulation items-center justify-start gap-2 rounded-md pr-1 text-left system-sm-medium text-text-secondary outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid">
             <ProviderIcon icon={icon} iconClassName={tool.iconClassName} />
             <span className="flex min-w-0 items-center">
               <span className="min-w-0 truncate system-sm-medium text-text-primary">
@@ -321,7 +321,7 @@ export const AgentProviderToolItem = memo(
               <span
                 aria-hidden
                 className={cn(
-                  'i-custom-vender-solid-arrows-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none',
+                  'i-custom-vender-solid-arrows-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none',
                 )}
               />
             </span>

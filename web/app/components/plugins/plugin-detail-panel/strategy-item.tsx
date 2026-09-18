@@ -1,6 +1,8 @@
 'use client'
+
 import type { StrategyDetail } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n/locale'
+import type { PluginLanguage } from '@/i18n/metadata'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
@@ -11,10 +13,10 @@ type Props = Readonly<{
   provider: {
     author: string
     name: string
-    description: Record<Locale, string>
+    description: Record<Locale | PluginLanguage, string>
     tenant_id: string
     icon: string
-    label: Record<Locale, string>
+    label: Record<Locale | PluginLanguage, string>
     tags: string[]
   }
   detail: StrategyDetail

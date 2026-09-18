@@ -6,7 +6,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useRouter } from '@/next/navigation'
@@ -116,7 +116,7 @@ const Marketplace = ({
       <div className="-mt-3.5 shrink-0 grow bg-background-default-subtle pb-2">
         {isLoading && page === 1 && (
           <div className="absolute top-1/2 left-1/2 -translate-1/2">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         {(!isLoading || page > 1) && (

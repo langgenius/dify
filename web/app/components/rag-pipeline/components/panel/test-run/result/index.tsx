@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { useStore } from '@/app/components/workflow/store'
@@ -50,7 +50,7 @@ const Result = () => {
         )}
         {currentTab === 'DETAIL' && !workflowRunningData?.result && (
           <div className="flex grow items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         {currentTab === 'TRACING' && (
@@ -61,7 +61,7 @@ const Result = () => {
         )}
         {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
           <div className="flex grow items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
       </div>

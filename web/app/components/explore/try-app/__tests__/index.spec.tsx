@@ -123,7 +123,7 @@ describe('TryApp (main index.tsx)', () => {
 
       render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
 
-      expect(document.body.querySelector('[role="status"]')).toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).toBeInTheDocument()
     })
 
     it('renders unavailable state when the app detail request fails', () => {

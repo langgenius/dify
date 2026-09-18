@@ -44,16 +44,10 @@ vi.mock('@/service/base', () => ({
   request: (...args: unknown[]) => queryMocks.request(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => queryMocks.toastError(message),
   },
-}))
-
-// Permission-dependent selector actions are covered by agent-selector.spec.tsx;
-// this suite is about block insertion.
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => true,
 }))
 
 const createBlock = (

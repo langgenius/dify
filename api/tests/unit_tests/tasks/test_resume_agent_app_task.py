@@ -18,6 +18,7 @@ from models.enums import InvokeFrom as StoredInvokeFrom
 from models.human_input import HumanInputForm
 from models.model import App, AppMode, Conversation, EndUser
 from tasks.app_generate import resume_agent_app_task as mod
+from tests.unit_tests.model_factories import make_app, make_conversation
 
 MODULE = "tasks.app_generate.resume_agent_app_task"
 
@@ -33,15 +34,12 @@ def task_session(mocker: MockerFixture, sqlite_session_factory: sessionmaker[Ses
 
 
 def _app(*, app_id: str, tenant_id: str) -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name="Agent app",
-        description="",
         mode=AppMode.AGENT_CHAT,
         icon_type=None,
-        icon=None,
-        icon_background=None,
         enable_site=False,
         enable_api=False,
     )
@@ -55,8 +53,8 @@ def _conversation(
     end_user_id: str | None = None,
     invoke_from: StoredInvokeFrom = StoredInvokeFrom.WEB_APP,
 ) -> Conversation:
-    return Conversation(
-        id=conversation_id,
+    return make_conversation(
+        conversation_id=conversation_id,
         app_id=app_id,
         mode=AppMode.AGENT_CHAT,
         name="Agent conversation",

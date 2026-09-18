@@ -1,9 +1,9 @@
 import type { AccessPointAppInfo } from '../shared/utils'
 import type { AppTrigger } from '@/service/use-tools'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum } from '@/types/app'
@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   updateTriggerStatus: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),

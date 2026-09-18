@@ -145,7 +145,7 @@ Dify 歡迎各種形式的貢獻：
 
 - **程式碼**：閱讀[貢獻指南](./CONTRIBUTING.md)，再瀏覽[適合新手的議題](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)。
 - **想法與意見**：發起或加入 [GitHub Discussions](https://github.com/langgenius/dify/discussions)。
-- **翻譯**：依照[國際化指南](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)新增或更新語言。
+- **翻譯**：依照[國際化指南](https://github.com/langgenius/dify/blob/main/web/i18n/README.md)新增或更新語言。
 - **社群**：分享您建立的應用程式、協助其他使用者，並向更多人介紹 Dify。
 
 ### 貢獻者

@@ -154,7 +154,7 @@ vi.mock('../../_base/hooks/use-node-crud', () => ({
 }))
 
 vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => true,
+  useCanCreateAgents: () => true,
 }))
 
 vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
@@ -394,6 +394,7 @@ describe('agent/panel', () => {
             icon: 'N',
             icon_background: '#E9D7FE',
             icon_type: 'emoji',
+            permission_keys: ['agent.acl.edit'],
             role: 'Researcher',
           }
         : undefined,

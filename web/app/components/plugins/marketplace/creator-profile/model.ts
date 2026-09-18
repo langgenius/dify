@@ -261,11 +261,7 @@ export const adaptCreations = ({
     const dependencyIds = (template.deps_plugins ?? []).filter(
       (id): id is string => typeof id === 'string' && id.length > 0,
     )
-    const publisher =
-      template.publisher_handle ||
-      template.publisher_unique_handle ||
-      template.creator_email ||
-      'template'
+    const publisher = template.publisher_unique_handle || template.publisher_handle || 'template'
 
     return {
       id: `template:${template.id}`,
@@ -352,10 +348,6 @@ export const getStandaloneCreationHref = (creation: CreatorCreation, locale?: st
     return language ? `${path}?${language}` : path
   }
 
-  const params = new URLSearchParams({
-    templateId: creation.target.id,
-    creationType: 'templates',
-  })
-  if (locale) params.set('language', locale)
-  return `/template/${encodeURIComponent(creation.target.publisher)}/${encodeURIComponent(creation.target.templateName)}?${params.toString()}`
+  const path = `/template/${encodeURIComponent(creation.target.publisher)}/${encodeURIComponent(creation.target.id)}`
+  return language ? `${path}?${language}` : path
 }

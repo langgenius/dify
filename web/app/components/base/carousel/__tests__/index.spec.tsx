@@ -193,7 +193,7 @@ describe('Carousel', () => {
       expect(dots[2])!.toHaveAttribute('data-state', 'active')
     })
 
-    it('should subscribe to embla events and unsubscribe from select on unmount', () => {
+    it('should release embla subscriptions on unmount', () => {
       const { unmount } = renderCarouselWithControls()
 
       const selectCallback = mockApi.on.mock.calls.find(
@@ -205,6 +205,7 @@ describe('Carousel', () => {
 
       unmount()
 
+      expect(mockApi.off).toHaveBeenCalledWith('reInit', selectCallback)
       expect(mockApi.off).toHaveBeenCalledWith('select', selectCallback)
     })
   })

@@ -389,6 +389,16 @@ class AgentComposerService:
         return cls._load_agent_composer_for_agent(session=session, tenant_id=tenant_id, agent=agent)
 
     @classmethod
+    def prepare_agent_composer_draft(
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
+    ) -> AgentConfigDraft:
+        """Prepare a persisted normal draft for an explicit configuration write."""
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        return cls.get_or_create_normal_agent_draft(
+            session=session, tenant_id=tenant_id, agent=agent, created_by=account_id
+        )
+
+    @classmethod
     def load_agent_soul_for_debug(
         cls,
         *,
@@ -416,22 +426,38 @@ class AgentComposerService:
 
     @classmethod
     def _load_agent_composer_for_agent(cls, *, session: Session, tenant_id: str, agent: Agent) -> dict[str, Any]:
-        draft = cls.get_or_create_normal_agent_draft(
+        """Read effective configuration without creating or rebasing persisted drafts.
+
+        Stale workflow-only drafts read from the current snapshot. Their draft
+        metadata still describes the persisted row; write paths own rebasing.
+        """
+        draft = cls._get_agent_draft(
             session=session,
             tenant_id=tenant_id,
-            agent=agent,
-            created_by=agent.updated_by or agent.created_by,
+            agent_id=agent.id,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
         )
         version = cls._get_version_if_present(
             session=session, tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
         )
+        if draft is None or (
+            agent.scope == AgentScope.WORKFLOW_ONLY
+            and agent.active_config_snapshot_id
+            and draft.base_snapshot_id != agent.active_config_snapshot_id
+        ):
+            if version is None:
+                raise AgentVersionNotFoundError()
+            agent_soul = version.config_snapshot_dict
+        else:
+            agent_soul = draft.config_snapshot_dict
         return {
             "variant": ComposerVariant.AGENT_APP.value,
             "agent": cls._serialize_agent(agent),
             "active_config_snapshot": cls._serialize_version(version),
             "active_config_is_published": bool(agent.active_config_snapshot_id and agent.active_config_is_published),
             "draft": cls._serialize_draft(draft),
-            "agent_soul": draft.config_snapshot_dict,
+            "agent_soul": agent_soul,
             "save_options": [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value],
             "app_id": agent.app_id,
             "backing_app_id": agent.backing_app_id or agent.app_id,
@@ -1982,6 +2008,9 @@ class AgentComposerService:
         account_id: str | None,
         created_by: str | None,
     ) -> AgentConfigDraft:
+        # All draft writers lock the parent before checking for an absent draft.
+        # Locking a draft query alone cannot serialize concurrent first writes.
+        session.scalar(select(Agent.id).where(Agent.tenant_id == tenant_id, Agent.id == agent.id).with_for_update())
         draft = cls._get_agent_draft(
             session=session,
             tenant_id=tenant_id,

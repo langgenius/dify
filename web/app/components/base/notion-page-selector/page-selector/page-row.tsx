@@ -83,7 +83,7 @@ const NotionPageRow = ({
       {!searchValue && !row.hasChild && row.parentExists && (
         <div className="mr-1 size-5 shrink-0" style={{ marginLeft: row.depth * 8 }} />
       )}
-      <NotionIcon className="mr-1 shrink-0" type="page" src={row.page.page_icon} />
+      <NotionIcon decorative className="mr-1 shrink-0" type="page" src={row.page.page_icon} />
       <div
         className="grow truncate text-[13px] leading-4 font-medium text-text-secondary"
         title={row.page.page_name}

@@ -12,11 +12,11 @@ import {
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath,
+  zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsQuery,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath,
+  zDeleteWorkspacesCurrentModelProvidersByProviderModelsQuery,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse,
   zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
   zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse,
@@ -377,6 +377,7 @@ import {
   zPostWorkspacesCurrentPluginUploadGithubResponse,
   zPostWorkspacesCurrentPluginUploadPkgBody,
   zPostWorkspacesCurrentPluginUploadPkgResponse,
+  zPostWorkspacesCurrentRbacAccessPoliciesBody,
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath,
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse,
   zPostWorkspacesCurrentRbacAccessPoliciesResponse,
@@ -480,6 +481,7 @@ import {
   zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody,
   zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath,
   zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse,
+  zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdBody,
   zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
   zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse,
   zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockPath,
@@ -1419,8 +1421,8 @@ export const delete6 = oc
   })
   .input(
     z.object({
-      body: zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody,
       params: zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath,
+      query: zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsQuery,
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
@@ -1611,8 +1613,8 @@ export const delete7 = oc
   })
   .input(
     z.object({
-      body: zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody,
       params: zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath,
+      query: zDeleteWorkspacesCurrentModelProvidersByProviderModelsQuery,
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse)
@@ -2348,7 +2350,12 @@ export const put5 = oc
     path: '/workspaces/current/rbac/access-policies/{policy_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath }))
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdBody,
+      params: zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
+    }),
+  )
   .output(zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
 
 export const byPolicyId = {
@@ -2374,8 +2381,10 @@ export const post45 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentRbacAccessPolicies',
     path: '/workspaces/current/rbac/access-policies',
+    successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostWorkspacesCurrentRbacAccessPoliciesBody }))
   .output(zPostWorkspacesCurrentRbacAccessPoliciesResponse)
 
 export const accessPolicies = {

@@ -4,6 +4,7 @@ import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.ge
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import MCPModal from '../modal'
 
 // Mock the service API
@@ -12,7 +13,7 @@ vi.mock('@/service/common', () => ({
 }))
 
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },
@@ -689,7 +690,7 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
         })
       }
     })
@@ -706,14 +707,14 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
         })
 
         fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
         fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
         await waitFor(() => {
-          expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+          expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
         })
       }
     })
@@ -730,13 +731,13 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
         })
 
         fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
 
         await waitFor(() => {
-          expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+          expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
         })
       }
     })
@@ -898,3 +899,5 @@ describe('MCPModal', () => {
     })
   })
 })
+
+mockEmojiData()

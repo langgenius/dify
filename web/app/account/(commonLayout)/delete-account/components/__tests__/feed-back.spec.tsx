@@ -28,7 +28,7 @@ vi.mock('@/service/use-common', () => ({
   useLogout: () => ({ mutateAsync: mockLogout }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { info: vi.fn() },
 }))
 

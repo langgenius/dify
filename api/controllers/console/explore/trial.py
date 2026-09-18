@@ -915,7 +915,10 @@ class DatasetListApi(Resource):
         else:
             raise NeedAddIdsError()
 
-        response = {"data": datasets, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+        # `get_datasets_by_ids` resolves the ids it was handed in a single page
+        # (`per_page=len(ids)`), so `limit` never bounded this result and there is
+        # never a next page to ask for.
+        response = {"data": datasets, "has_more": False, "limit": limit, "total": total, "page": page}
         return dump_response(TrialDatasetListResponse, response)
 
 

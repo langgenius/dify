@@ -79,8 +79,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
                 file={currentFile}
                 updateFile={handleFile}
                 className="mt-0! w-full"
-                accept=".pipeline"
-                displayName="PIPELINE"
+                importType="pipeline"
               />
             </div>
           </div>

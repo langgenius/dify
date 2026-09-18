@@ -3,7 +3,7 @@ import type { Features } from '../../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import VoiceSettings from '../voice-settings'
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),

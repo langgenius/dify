@@ -285,6 +285,7 @@ def _resolve_console_version(
     account_id: str,
     version_id: str | None,
     draft_type: str | None,
+    for_write: bool = False,
 ) -> tuple[str, AgentConfigVersionKind]:
     if version_id:
         return version_id, AgentConfigVersionKind.SNAPSHOT
@@ -301,15 +302,27 @@ def _resolve_console_version(
             if isinstance(draft_id, str) and draft_id:
                 return draft_id, AgentConfigVersionKind.BUILD_DRAFT
         else:
+            if for_write:
+                prepared_draft = AgentComposerService.prepare_agent_composer_draft(
+                    session=session, tenant_id=tenant_id, agent_id=agent_id, account_id=account_id
+                )
+                # Asset services open an independent session for the mutation.
+                draft_id = prepared_draft.id
+                session.commit()
+                return draft_id, AgentConfigVersionKind.DRAFT
             state = AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=agent_id)
             draft = state.get("draft") or {}
             draft_id = draft.get("id")
-            if isinstance(draft_id, str) and draft_id:
-                # load_agent_composer creates the normal draft on first access.
-                # Config asset services use their own SQLAlchemy session, so the
-                # draft must be visible before we hand its id across that boundary.
-                session.commit()
+            snapshot_id = (state.get("active_config_snapshot") or {}).get("id")
+            stale_inline_draft = (
+                (state.get("agent") or {}).get("scope") == "workflow_only"
+                and isinstance(snapshot_id, str)
+                and draft.get("base_snapshot_id") != snapshot_id
+            )
+            if isinstance(draft_id, str) and draft_id and not stale_inline_draft:
                 return draft_id, AgentConfigVersionKind.DRAFT
+            if isinstance(snapshot_id, str) and snapshot_id:
+                return snapshot_id, AgentConfigVersionKind.SNAPSHOT
     except AgentVersionNotFoundError as exc:
         raise AgentConfigServiceError(
             "config_version_not_found",
@@ -339,6 +352,7 @@ def _resolve_target(
         account_id=account_id,
         version_id=version_id,
         draft_type=draft_type,
+        for_write=request.method in {"POST", "PUT", "PATCH", "DELETE"},
     )
     return _ResolvedConsoleTarget(
         tenant_id=tenant_id,

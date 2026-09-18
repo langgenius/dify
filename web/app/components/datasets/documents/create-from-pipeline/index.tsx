@@ -9,7 +9,7 @@ import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
@@ -246,9 +246,10 @@ const CreateFormPipeline = () => {
       router.replace(`/datasets/${dataset.id}/documents`)
   }, [dataset, router, shouldRedirectToDocuments])
 
-  if (isFetchingPipelineInfo) return <Loading type="app" />
+  if (isFetchingPipelineInfo) return <LoadingPlaceholder className="h-full" />
 
-  if (isLoadingWorkspacePermissionKeys || shouldRedirectToDocuments) return <Loading type="app" />
+  if (isLoadingWorkspacePermissionKeys || shouldRedirectToDocuments)
+    return <LoadingPlaceholder className="h-full" />
 
   return (
     <div className="relative flex h-[calc(100vh-56px)] w-full min-w-5xl overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">

@@ -23,7 +23,6 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
@@ -34,6 +33,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
+import { toast } from '@/app/notifications'
 import { WORKFLOW_GENERATION_TIMEOUT_MS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -213,6 +213,7 @@ function WorkflowGeneratorModal() {
   // Seed from the palette's inline-captured instruction, else the last instruction
   // generated from (persisted across opens). Captured at mount only — the modal
   // remounts on each open, so this is just the initial value.
+  const instructionRef = useRef<HTMLTextAreaElement>(null)
   const [instruction, setInstruction] = useState(initialInstruction || lastInstruction || '')
   // Planner result, streamed ahead of the graph (null until it lands).
   const [plan, setPlan] = useState<WorkflowGenPlan | null>(null)
@@ -570,7 +571,10 @@ function WorkflowGeneratorModal() {
         }
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[calc(100vw-2rem)] max-w-285! min-w-0 overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent
+        initialFocus={instructionRef}
+        className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[calc(100vw-2rem)] max-w-285! min-w-0 overflow-hidden! border-none p-0! text-left align-middle"
+      >
         <div className="flex h-full min-h-0 flex-col md:flex-row">
           {/* Left pane: instructions + ideal output + model selector */}
           <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-r md:border-b-0 lg:w-142.5">
@@ -605,10 +609,7 @@ function WorkflowGeneratorModal() {
                 {t(($) => $['workflowGenerator.instruction'])}
               </FieldLabel>
               <Textarea
-                // Autofocus is appropriate here: the modal's sole purpose is to
-                // capture an instruction, so focusing it on open aids the flow.
-                // oxlint-disable-next-line jsx-a11y/no-autofocus
-                autoFocus
+                ref={instructionRef}
                 className="h-40"
                 placeholder={
                   isRefine

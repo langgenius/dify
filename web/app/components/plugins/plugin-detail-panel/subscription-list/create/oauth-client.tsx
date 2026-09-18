@@ -6,11 +6,11 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import { toast } from '@/app/notifications'
 import { usePluginStore } from '../../store'
 import {
   ClientTypeEnum,

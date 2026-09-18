@@ -134,7 +134,7 @@ Dify her türlü katkıyı memnuniyetle karşılar:
 
 - **Kod**: [Katkı Kılavuzu'nu](./CONTRIBUTING.md) okuyun, ardından [yeni katkıda bulunanlara uygun sorunlara](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) göz atın.
 - **Fikirler ve geri bildirim**: Bir [GitHub tartışması](https://github.com/langgenius/dify/discussions) başlatın veya mevcut bir tartışmaya katılın.
-- **Çeviriler**: Bir dil eklemek veya güncellemek için [uluslararasılaştırma kılavuzunu](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) izleyin.
+- **Çeviriler**: Bir dil eklemek veya güncellemek için [uluslararasılaştırma kılavuzunu](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) izleyin.
 - **Topluluk**: Oluşturduğunuz uygulamaları paylaşın, diğer kullanıcılara yardımcı olun ve Dify'ı duyurun.
 
 ### Katkıda bulunanlar

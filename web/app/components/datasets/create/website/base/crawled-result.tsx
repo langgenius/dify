@@ -76,7 +76,7 @@ const CrawledResult: FC<Props> = ({
               ? t(($) => $[`${I18N_PREFIX}.resetAll`], { ns: 'datasetCreation' })
               : t(($) => $[`${I18N_PREFIX}.selectAll`], { ns: 'datasetCreation' })
           }
-          labelClassName="system-[13px] leading-[16px] font-medium text-text-secondary"
+          labelClassName="leading-[16px] font-medium text-text-secondary"
         />
         <div className="text-xs text-text-tertiary">
           {t(($) => $[`${I18N_PREFIX}.scrapTimeInfo`], {

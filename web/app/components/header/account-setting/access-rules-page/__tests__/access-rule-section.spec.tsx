@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { AccessPolicyWithBindings } from '@/models/access-control'
+import type { AccessRule } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -17,7 +17,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const rule: AccessPolicyWithBindings = {
+const rule: AccessRule = {
   policy: {
     id: 'app-rule-1',
     tenant_id: 'tenant-1',
@@ -28,8 +28,8 @@ const rule: AccessPolicyWithBindings = {
     permission_keys: ['app.edit'],
     is_builtin: true,
     category: 'global_system_default',
-    created_at: '2026-01-01',
-    updated_at: '2026-01-01',
+    created_at: 1767225600,
+    updated_at: 1767225600,
   },
   roles: [
     {
@@ -44,6 +44,8 @@ const rule: AccessPolicyWithBindings = {
     {
       account_id: 'account-1',
       account_name: 'Levi',
+      avatar: '',
+      email: 'levi@example.com',
       binding_id: 'account-binding-1',
       is_locked: false,
     },

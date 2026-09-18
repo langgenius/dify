@@ -8,7 +8,7 @@ import { omit } from 'es-toolkit/object'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
@@ -163,7 +163,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         />
         <RetentionUpgradeNotice />
         {total === undefined ? (
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List
             logs={isChatMode ? chatConversations : completionConversations}

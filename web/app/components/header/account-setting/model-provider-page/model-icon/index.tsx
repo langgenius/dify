@@ -8,7 +8,7 @@ import type { ModelSelectorProvider } from '../model-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
 import useTheme from '@/hooks/use-theme'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import { Theme } from '@/types/app'
 import { useLanguage } from '../hooks'
 

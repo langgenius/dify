@@ -728,15 +728,40 @@ class AppService:
 
         # Preserve the original commit-before-signal ordering for telemetry.
         session.commit()
-        app_was_created.send(app, account=account, session=session)
+        self.finalize_created_app(
+            app=app,
+            backing_agent_id=backing_agent.id if backing_agent else None,
+            account=account,
+            session=session,
+        )
+        return app
+
+    def finalize_created_app(
+        self,
+        *,
+        app: App,
+        backing_agent_id: str | None,
+        account: Account,
+        session: Session,
+        created_records_initialized: bool = False,
+    ) -> None:
+        """Run post-commit App creation hooks and external access initialization."""
+
+        app_was_created.send(
+            app,
+            account=account,
+            session=session,
+            created_records_initialized=created_records_initialized,
+        )
         session.commit()
+        app_mode = app.mode
         initialize_access = _CREATED_APP_ACCESS_INITIALIZERS.get(app_mode, _initialize_created_app_access)
         initialize_access(
             _CreatedApp(
-                tenant_id=tenant_id,
+                tenant_id=app.tenant_id,
                 creator_account_id=account.id,
                 app_id=app.id,
-                backing_agent_id=backing_agent.id if backing_agent else None,
+                backing_agent_id=backing_agent_id,
             )
         )
 
@@ -746,8 +771,6 @@ class AppService:
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(app.tenant_id)
-
-        return app
 
     def get_app(self, app: App, *, session: Session) -> App:
         """
@@ -809,9 +832,12 @@ class AppService:
                 def __init__(self, app):
                     self.__dict__.update(app.__dict__)
 
-                @property
                 @override
-                def app_model_config(self):
+                def app_model_config_with_session(self, *, session: Session) -> AppModelConfig | None:
+                    # Hand back the in-memory config the masking pass above produced, and
+                    # deliberately ignore `session`: re-reading the row here would undo the
+                    # masking. Response paths resolve the config through this accessor
+                    # (`AppResponseView.app_model_config`), so the override has to sit here.
                     return model_config
 
             app = ModifiedApp(app)

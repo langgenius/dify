@@ -1,5 +1,4 @@
 import json
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -8,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from graphon.enums import BuiltinNodeTypes
+from models.account import Account
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -23,6 +23,10 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentConfigFileRefConfig, AgentConfigSkillRefConfig, AgentSoulConfig
+from models.dataset import Dataset
+from models.enums import AppStatus
+from models.model import App, AppMode
+from models.workflow import Workflow, WorkflowType
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
@@ -30,37 +34,87 @@ from services.agent.dsl_entities import (
     AgentPackageMetadata,
     make_portable_agent_package,
 )
-from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
+from services.agent.dsl_service import AgentDslService, AgentPackageImportResult, is_agent_v2_graph
 from services.entities.dsl_entities import DslImportWarning
 
 
-def _agent() -> Agent:
+def _agent(
+    *,
+    agent_id: str = "agent-1",
+    app_id: str | None = None,
+    name: str = "Portable Agent",
+    scope: AgentScope = AgentScope.ROSTER,
+    source: AgentSource = AgentSource.AGENT_APP,
+) -> Agent:
     agent = Agent(
         tenant_id="tenant-1",
-        name="Portable Agent",
+        name=name,
         description="description",
         role="researcher",
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
+        scope=scope,
+        source=source,
         status=AgentStatus.ACTIVE,
+        app_id=app_id,
         icon_type=AgentIconType.EMOJI,
         icon="R",
     )
-    agent.id = "agent-1"
+    agent.id = agent_id
     return agent
 
 
-def _snapshot(*, snapshot_id: str = "snapshot-1", soul: AgentSoulConfig | None = None) -> AgentConfigSnapshot:
+def _snapshot(
+    *,
+    snapshot_id: str = "snapshot-1",
+    agent_id: str = "agent-1",
+    version: int = 1,
+    soul: AgentSoulConfig | None = None,
+) -> AgentConfigSnapshot:
     snapshot = AgentConfigSnapshot(
         tenant_id="tenant-1",
-        agent_id="agent-1",
-        version=1,
+        agent_id=agent_id,
+        version=version,
         home_snapshot_id="home-1",
         config_snapshot=soul or AgentSoulConfig(),
         created_by="account-1",
     )
     snapshot.id = snapshot_id
     return snapshot
+
+
+def _app(*, name: str = "", description: str = "", mode: AppMode = AppMode.AGENT_CHAT) -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name=name,
+        description=description,
+        mode=mode,
+        status=AppStatus.NORMAL,
+        enable_site=False,
+        enable_api=False,
+        api_rpm=0,
+        api_rph=0,
+    )
+
+
+def _account() -> Account:
+    account = Account(name="Owner", email="owner@example.com")
+    account.id = "account-1"
+    return account
+
+
+def _workflow(*, workflow_id: str = "workflow-1") -> Workflow:
+    return Workflow(
+        id=workflow_id,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph={"nodes": [], "edges": []},
+        features={},
+        created_by="account-1",
+        environment_variables=[],
+        conversation_variables=[],
+    )
 
 
 def _agent_node(node_id: str, binding: object | None = None) -> dict:
@@ -70,7 +124,8 @@ def _agent_node(node_id: str, binding: object | None = None) -> dict:
     return {"id": node_id, "data": data}
 
 
-def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -> None:
+@pytest.mark.parametrize("include_assets", [False, True])
+def test_make_portable_agent_package_strips_workspace_credentials_and_assets(include_assets: bool) -> None:
     soul = AgentSoulConfig.model_validate(
         {
             "model": {
@@ -110,8 +165,10 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
                 ],
             },
             "env": {"secret_refs": [{"name": "GLOBAL_TOKEN", "value": "plain-secret", "id": "secret-1"}]},
-            "config_skills": [{"name": "research", "file_kind": "tool_file", "file_id": "skill-file"}],
-            "config_files": [{"name": "guide.md", "file_kind": "upload_file", "file_id": "config-file"}],
+            "config_skills": [{"name": "research", "file_id": "skill-file"}, {"name": "missing", "is_missing": True}],
+            "config_files": [
+                {"name": "guide.md", "file_kind": "upload_file", "file_id": "config-file", "mime_type": "text/markdown"}
+            ],
             "human": {
                 "contacts": [
                     {
@@ -125,7 +182,9 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
         }
     )
 
-    package = make_portable_agent_package(_agent(), soul)
+    original = soul.model_dump(mode="json")
+    package = make_portable_agent_package(_agent(), soul, include_assets=include_assets)
+    assert soul.model_dump(mode="json") == original
     serialized = package.model_dump(mode="json")
 
     assert package.soul.model is not None
@@ -135,19 +194,31 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
     assert package.soul.tools.dify_tools[0].runtime_parameters["upload_file_id"] is None
     assert package.soul.tools.dify_tools[0].runtime_parameters["api_key"] is None
     assert package.soul.config_skills[0].name == "research"
-    assert package.soul.config_skills[0].file_id == ""
-    assert package.soul.config_skills[0].is_missing is True
+    assert package.soul.config_skills[0].file_id == ("skill-file" if include_assets else "")
+    assert package.soul.config_skills[0].is_missing is (not include_assets)
     assert package.soul.config_files[0].name == "guide.md"
-    assert package.soul.config_files[0].file_id == ""
-    assert package.soul.config_files[0].is_missing is True
-    assert [asset.kind for asset in package.omitted_assets] == ["skill", "file"]
+    assert package.soul.config_files[0].file_id == ("config-file" if include_assets else "")
+    assert package.soul.config_files[0].is_missing is (not include_assets)
+    assert package.soul.config_skills[1].is_missing
+    assert package.soul.config_files[0].mime_type == "text/markdown"
+    assert [asset.kind for asset in package.omitted_assets] == (
+        ["skill"] if include_assets else ["skill", "skill", "file"]
+    )
+    assert [asset.name for asset in package.omitted_assets] == (
+        ["missing"] if include_assets else ["research", "missing", "guide.md"]
+    )
     assert "plain-secret" not in str(serialized)
     assert "model-secret" not in str(serialized)
     assert "tool-secret" not in str(serialized)
-    assert "skill-file" not in str(serialized)
-    assert "config-file" not in str(serialized)
+    assert ("skill-file" in str(serialized)) is include_assets
+    assert ("config-file" in str(serialized)) is include_assets
     assert package.soul.human.contacts[0].id is None
     assert package.soul.human.contacts[0].name == "Reviewer"
+
+    package.soul.config_skills[0].description = "Changed"
+    package.soul.config_files[0].name = "changed.md"
+    package.soul.tools.cli_tools[0].env.secret_refs[0].name = "CHANGED"
+    assert soul.model_dump(mode="json") == original
 
 
 def test_agent_package_round_trips_as_strict_dsl_dto() -> None:
@@ -217,7 +288,7 @@ def test_import_warnings_cover_runtime_setup_removed_from_package(
     )
     monkeypatch.setattr("services.agent.dsl_service.get_tenant_knowledge_dataset_rows", Mock(return_value={}))
 
-    _, warnings = AgentDslService(unbound_session)._resolve_package_soul(
+    _, warnings = AgentDslService(unbound_session).resolve_package_soul(
         tenant_id="tenant-1",
         package=make_portable_agent_package(_agent(), soul),
         package_path="agent_packages.agent_1",
@@ -239,45 +310,45 @@ def test_agent_package_rejects_unknown_schema_version() -> None:
 
 def test_export_agent_app_requires_backing_agent(sqlite_session: Session) -> None:
     with pytest.raises(ValueError, match="no active backing Agent"):
-        AgentDslService(sqlite_session).export_agent_app(app=SimpleNamespace(tenant_id="tenant-1", id="app-1"))
+        AgentDslService(sqlite_session).export_agent_app(app=_app())
 
 
 @pytest.mark.parametrize("use_draft", [True, False])
-def test_export_agent_app_uses_draft_or_active_snapshot(use_draft: bool, sqlite_session: Session) -> None:
-    agent = _agent()
-    agent.app_id = "app-1"
+def test_export_agent_app_uses_draft_or_active_snapshot(sqlite_session: Session, use_draft: bool) -> None:
+    agent = _agent(app_id="app-1")
     agent.active_config_snapshot_id = "snapshot-1"
-    sqlite_session.add(agent)
+    snapshot = _snapshot(soul=AgentSoulConfig(config_note="snapshot"))
+    rows: list[object] = [agent, snapshot]
     if use_draft:
-        sqlite_session.add(
+        rows.append(
             AgentConfigDraft(
+                id="draft-1",
                 tenant_id="tenant-1",
                 agent_id=agent.id,
                 draft_type=AgentConfigDraftType.DRAFT,
+                account_id=None,
                 draft_owner_key="",
                 config_snapshot=AgentSoulConfig(config_note="draft"),
             )
         )
-    sqlite_session.flush()
-    service = AgentDslService(sqlite_session)
-    require_snapshot = Mock(return_value=_snapshot(soul=AgentSoulConfig(config_note="snapshot")))
-    service._require_snapshot = require_snapshot
+    sqlite_session.add_all(rows)
+    sqlite_session.commit()
 
-    package_ref, packages = service.export_agent_app(app=SimpleNamespace(tenant_id="tenant-1", id="app-1"))
+    package_ref, packages = AgentDslService(sqlite_session).export_agent_app(app=_app())
 
     assert package_ref == "agent_1"
     assert packages[package_ref].soul.config_note == ("draft" if use_draft else "snapshot")
-    assert require_snapshot.call_count == (0 if use_draft else 1)
 
 
 def test_export_workflow_packages_deduplicates_shared_agent(sqlite_session: Session) -> None:
     graph = {"nodes": [_agent_node("node-1"), _agent_node("node-2")], "edges": []}
     bindings = [
         WorkflowAgentNodeBinding(
+            id=f"binding-{node_id}",
             tenant_id="tenant-1",
             app_id="app-1",
             workflow_id="workflow-1",
-            workflow_version="draft",
+            workflow_version=Workflow.VERSION_DRAFT,
             node_id=node_id,
             agent_id="agent-1",
             current_snapshot_id="snapshot-1",
@@ -287,14 +358,11 @@ def test_export_workflow_packages_deduplicates_shared_agent(sqlite_session: Sess
         )
         for node_id in ("node-1", "node-2")
     ]
-    sqlite_session.add_all(bindings)
-    sqlite_session.flush()
-    service = AgentDslService(sqlite_session)
-    service._require_agent = Mock(return_value=_agent())
-    service._require_snapshot = Mock(return_value=_snapshot())
+    sqlite_session.add_all([_agent(), _snapshot(), *bindings])
+    sqlite_session.commit()
 
-    portable_graph, packages = service.export_workflow_packages(
-        workflow=SimpleNamespace(tenant_id="tenant-1", id="workflow-1", version="draft"),
+    portable_graph, packages = AgentDslService(sqlite_session).export_workflow_packages(
+        workflow=_workflow(),
         graph=graph,
     )
 
@@ -305,13 +373,12 @@ def test_export_workflow_packages_deduplicates_shared_agent(sqlite_session: Sess
             AGENT_PACKAGE_REF_KEY: "agent_1",
         }
         assert node["data"][AGENT_NODE_JOB_DSL_KEY]["workflow_prompt"] == node["id"]
-    assert service._require_agent.call_count == 2
 
 
 def test_export_workflow_packages_rejects_incomplete_binding(sqlite_session: Session) -> None:
     with pytest.raises(ValueError, match="no complete persisted binding"):
         AgentDslService(sqlite_session).export_workflow_packages(
-            workflow=SimpleNamespace(tenant_id="tenant-1", id="workflow-1", version="draft"),
+            workflow=_workflow(),
             graph={"nodes": [_agent_node("node-1")], "edges": []},
         )
 
@@ -347,27 +414,28 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(
     service = AgentDslService(sqlite_session)
     soul = AgentSoulConfig(config_note="portable")
     warning = DslImportWarning(code="setup", path="agent.soul", message="setup required")
-    service._resolve_package_soul = Mock(return_value=(soul, [warning]))
+    service.resolve_package_soul = Mock(return_value=(soul, [warning]))
     service._unique_roster_name = Mock(return_value="Portable Agent import")
     agent = _agent()
     agent.active_config_snapshot_id = "snapshot-1"
     agent.active_config_is_published = True
+    snapshot = _snapshot(soul=soul)
     roster_service = Mock()
-    roster_service.create_backing_agent_for_app.return_value = agent
+
+    def create_backing_agent(**_kwargs: object) -> Agent:
+        sqlite_session.add_all([agent, snapshot])
+        sqlite_session.flush()
+        return agent
+
+    roster_service.create_backing_agent_for_app.side_effect = create_backing_agent
     monkeypatch.setattr("services.agent.dsl_service.AgentRosterService", Mock(return_value=roster_service))
-    service._require_snapshot = Mock(return_value=_snapshot(soul=soul))
-    app = SimpleNamespace(
-        tenant_id="tenant-1",
-        id="app-1",
-        name="",
-        description="",
-        app_model_config=None,
-        app_model_config_id=None,
-    )
+    app = _app()
+    sqlite_session.add(app)
+    sqlite_session.commit()
 
     result = service.import_agent_app_package(
         app=app,
-        account=SimpleNamespace(id="account-1"),
+        account=_account(),
         package=make_portable_agent_package(_agent(), soul),
     )
 
@@ -375,7 +443,15 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(
     assert agent.active_config_is_published is False
     assert app.name == "Portable Agent"
     assert app.description == "description"
-    assert sqlite_session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == agent.id)) is not None
+    assert app.app_model_config_id is not None
+    draft = sqlite_session.scalar(
+        select(AgentConfigDraft).where(
+            AgentConfigDraft.agent_id == agent.id,
+            AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+        )
+    )
+    assert draft is not None
+    assert draft.config_snapshot.config_note == "portable"
 
 
 def test_import_workflow_packages_materializes_every_package_binding_as_inline(sqlite_session: Session) -> None:
@@ -406,7 +482,7 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline(s
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        workflow_version="draft",
+        workflow_version=Workflow.VERSION_DRAFT,
         node_id="old-node",
         binding_type=WorkflowAgentBindingType.INLINE_AGENT,
         agent_id="old-inline-agent",
@@ -415,33 +491,34 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline(s
         created_by="account-1",
     )
     sqlite_session.add(old_binding)
-    sqlite_session.flush()
+    sqlite_session.commit()
     service = AgentDslService(sqlite_session)
     imported_results = [
-        SimpleNamespace(
-            agent=SimpleNamespace(id=f"inline-agent-{index}"),
-            snapshot=SimpleNamespace(id=f"inline-snapshot-{index}"),
+        AgentPackageImportResult(
+            agent=_agent(
+                agent_id=f"inline-agent-{index}",
+                scope=AgentScope.WORKFLOW_ONLY,
+                source=AgentSource.IMPORTED,
+            ),
+            snapshot=_snapshot(
+                snapshot_id=f"inline-snapshot-{index}",
+                agent_id=f"inline-agent-{index}",
+            ),
             warnings=[DslImportWarning(code=f"inline-{index}", path="agent", message="inline warning")],
         )
         for index in range(1, 4)
     ]
     service._create_imported_inline_agent = Mock(side_effect=imported_results)
-    workflow = SimpleNamespace(
-        tenant_id="tenant-1",
-        app_id="app-1",
-        id="workflow-1",
-        version="draft",
-        graph="{}",
-    )
+    workflow = _workflow()
 
     result, warnings, retirement_candidates = service.import_workflow_packages(
         workflow=workflow,
         portable_graph=graph,
         raw_packages={"agent_1": package.model_dump(mode="json")},
-        account=SimpleNamespace(id="account-1"),
+        account=_account(),
     )
 
-    assert sqlite_session.get(WorkflowAgentNodeBinding, "old-binding") is None
+    assert sqlite_session.get(WorkflowAgentNodeBinding, old_binding.id) is None
     assert retirement_candidates == {"old-inline-agent"}
     assert service._create_imported_inline_agent.call_count == 3
     assert [call.kwargs["node_id"] for call in service._create_imported_inline_agent.call_args_list] == [
@@ -460,7 +537,7 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline(s
     assert AGENT_NODE_JOB_DSL_KEY not in result["nodes"][0]["data"]
     assert json.loads(workflow.graph) == result
     added_bindings = sqlite_session.scalars(
-        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == "workflow-1")
+        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == workflow.id)
     ).all()
     assert len(added_bindings) == 3
     assert all(binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT for binding in added_bindings)
@@ -477,23 +554,27 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline(s
     ],
 )
 def test_import_workflow_packages_rejects_invalid_package_binding(
-    binding: dict, error: str, sqlite_session: Session
+    sqlite_session: Session, binding: dict, error: str
 ) -> None:
     package = make_portable_agent_package(_agent(), AgentSoulConfig())
 
     with pytest.raises(ValueError, match=error):
         AgentDslService(sqlite_session).import_workflow_packages(
-            workflow=SimpleNamespace(tenant_id="tenant-1", app_id="app-1", id="workflow-1", version="draft"),
+            workflow=_workflow(),
             portable_graph={"nodes": [_agent_node("node-1", binding)], "edges": []},
             raw_packages={"agent_1": package.model_dump(mode="json")},
-            account=SimpleNamespace(id="account-1"),
+            account=_account(),
         )
 
 
 def test_clone_inline_binding_copies_soul(unbound_session: Session) -> None:
     service = AgentDslService(unbound_session)
-    target_agent = SimpleNamespace(id="target-agent")
-    target_snapshot = SimpleNamespace(id="target-snapshot")
+    target_agent = _agent(
+        agent_id="target-agent",
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+    )
+    target_snapshot = _snapshot(snapshot_id="target-snapshot", agent_id=target_agent.id)
     service._create_workflow_only_agent = Mock(return_value=(target_agent, target_snapshot))
     source_agent = _agent()
     source_soul = AgentSoulConfig(
@@ -501,8 +582,8 @@ def test_clone_inline_binding_copies_soul(unbound_session: Session) -> None:
         config_skills=[AgentConfigSkillRefConfig(name="summarizer", file_id="skill-file-1")],
         config_files=[AgentConfigFileRefConfig(name="brief.pdf", file_kind="upload_file", file_id="config-file-1")],
     )
-    source_snapshot = SimpleNamespace(config_snapshot_dict=source_soul.model_dump(mode="json"))
-    workflow = SimpleNamespace(tenant_id="tenant-1", app_id="app-1", id="workflow-1")
+    source_snapshot = _snapshot(soul=source_soul)
+    workflow = _workflow()
 
     result = service.clone_inline_binding_for_node(
         workflow=workflow,
@@ -526,22 +607,28 @@ def test_clone_inline_binding_copies_soul(unbound_session: Session) -> None:
     assert create_kwargs["source"] == AgentSource.WORKFLOW
 
 
-def test_extract_package_dependencies_covers_model_tools_and_knowledge(
+def test_extract_package_dependencies_covers_models_features_tools_and_knowledge(
     monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
     tool_dependency = Mock(side_effect=lambda provider: f"tool:{provider}")
     monkeypatch.setattr(
-        "services.agent.dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         model_dependency,
     )
     monkeypatch.setattr(
-        "services.agent.dsl_service.DependenciesAnalysisService.analyze_tool_dependency",
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_tool_dependency",
         tool_dependency,
     )
     soul = AgentSoulConfig.model_validate(
         {
             "model": {"plugin_id": "model-plugin", "model_provider": "provider/model", "model": "model"},
+            "app_features": {
+                "suggested_questions_after_answer": {
+                    "enabled": True,
+                    "model": {"provider": "provider/follow-up", "name": "follow-up-model"},
+                }
+            },
             "tools": {
                 "dify_tools": [
                     {
@@ -567,9 +654,49 @@ def test_extract_package_dependencies_covers_model_tools_and_knowledge(
                         "retrieval": {
                             "mode": "single",
                             "model": {"provider": "provider/retrieval", "name": "embed", "mode": "embedding"},
+                        },
+                        "metadata_filtering": {
+                            "mode": "automatic",
+                            "model_config": {
+                                "provider": "provider/metadata",
+                                "name": "metadata-model",
+                                "mode": "chat",
+                            },
+                        },
+                    },
+                    {
+                        "id": "set-2",
+                        "name": "Reranked Set",
+                        "datasets": [{"id": "dataset-2", "name": "Reranked Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": True,
+                            "reranking_mode": "reranking_model",
                             "reranking_model": {"provider": "provider/rerank", "model": "rerank"},
                         },
-                    }
+                    },
+                    {
+                        "id": "set-3",
+                        "name": "Weighted Set",
+                        "datasets": [{"id": "dataset-3", "name": "Weighted Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": True,
+                            "reranking_mode": "weighted_score",
+                            "weights": {
+                                "vector_setting": {
+                                    "embedding_provider_name": "provider/embedding",
+                                    "embedding_model_name": "embedding-model",
+                                    "vector_weight": 0.7,
+                                },
+                                "keyword_setting": {"keyword_weight": 0.3},
+                            },
+                        },
+                    },
                 ]
             },
         }
@@ -581,25 +708,84 @@ def test_extract_package_dependencies_covers_model_tools_and_knowledge(
 
     assert dependencies == [
         "model:provider/model",
+        "model:provider/follow-up",
         "tool:provider/tool",
         "tool:plugin-id/fallback-provider",
         "model:provider/retrieval",
+        "model:provider/metadata",
         "model:provider/rerank",
+        "model:provider/embedding",
     ]
+
+
+def test_extract_package_dependencies_ignores_inactive_knowledge_models(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
+    monkeypatch.setattr(
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        model_dependency,
+    )
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "set-1",
+                        "name": "Set",
+                        "datasets": [{"id": "dataset-1", "name": "Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": False,
+                            "reranking_mode": "weighted_score",
+                            "reranking_model": {"provider": "provider/inactive-rerank", "model": "rerank"},
+                            "weights": {
+                                "vector_setting": {
+                                    "embedding_provider_name": "provider/inactive-embedding",
+                                }
+                            },
+                            "model": {
+                                "provider": "provider/inactive-retrieval",
+                                "name": "retrieval-model",
+                                "mode": "chat",
+                            },
+                        },
+                        "metadata_filtering": {
+                            "mode": "disabled",
+                            "model_config": {
+                                "provider": "provider/inactive-metadata",
+                                "name": "metadata-model",
+                                "mode": "chat",
+                            },
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    dependencies = AgentDslService(unbound_session).extract_package_dependencies(
+        {"agent_1": make_portable_agent_package(_agent(), soul)}
+    )
+
+    assert dependencies == []
+    model_dependency.assert_not_called()
 
 
 def test_create_imported_inline_agent_uses_import_provenance(unbound_session: Session) -> None:
     service = AgentDslService(unbound_session)
     soul = AgentSoulConfig(config_note="inline")
     warning = DslImportWarning(code="setup", path="agent", message="setup")
-    service._resolve_package_soul = Mock(return_value=(soul, [warning]))
+    service.resolve_package_soul = Mock(return_value=(soul, [warning]))
     service._create_workflow_only_agent = Mock(return_value=(_agent(), _snapshot(soul=soul)))
-    workflow = SimpleNamespace(tenant_id="tenant-1", id="workflow-1")
+    workflow = _workflow()
 
     result = service._create_imported_inline_agent(
         workflow=workflow,
         node_id="node-1",
-        account=SimpleNamespace(id="account-1"),
+        account=_account(),
         package=make_portable_agent_package(_agent(), soul),
         package_path="agent_packages.agent_1",
     )
@@ -616,11 +802,12 @@ def test_create_workflow_only_agent_sets_backing_app_and_snapshot(
 ) -> None:
     service = AgentDslService(sqlite_session)
     roster_service = Mock()
-    roster_service.create_hidden_backing_app_for_workflow_agent.return_value = SimpleNamespace(id="backing-app")
+    backing_app = _app()
+    backing_app.id = "backing-app"
+    roster_service.create_hidden_backing_app_for_workflow_agent.return_value = backing_app
     monkeypatch.setattr("services.agent.dsl_service.AgentRosterService", Mock(return_value=roster_service))
-    service._create_snapshot = Mock(return_value=SimpleNamespace(id="snapshot-1"))
     monkeypatch.setattr("services.agent.dsl_service.agent_soul_has_model", Mock(return_value=True))
-    workflow = SimpleNamespace(tenant_id="tenant-1", app_id="app-1", id="workflow-1")
+    workflow = _workflow()
 
     agent, snapshot = service._create_workflow_only_agent(
         workflow=workflow,
@@ -632,17 +819,22 @@ def test_create_workflow_only_agent_sets_backing_app_and_snapshot(
         operation=AgentConfigRevisionOperation.IMPORT_PACKAGE,
     )
 
-    assert snapshot.id == "snapshot-1"
+    assert sqlite_session.get(Agent, agent.id) is agent
+    assert sqlite_session.get(AgentConfigSnapshot, snapshot.id) is snapshot
     assert agent.scope == AgentScope.WORKFLOW_ONLY
     assert agent.backing_app_id == "backing-app"
-    assert agent.active_config_snapshot_id == "snapshot-1"
+    assert agent.active_config_snapshot_id == snapshot.id
     assert agent.active_config_has_model is True
     assert agent.active_config_is_published is True
-    assert sqlite_session.get(Agent, agent.id) is agent
+    revision = sqlite_session.scalar(
+        select(AgentConfigRevision).where(AgentConfigRevision.current_snapshot_id == snapshot.id)
+    )
+    assert revision is not None
+    assert revision.operation == AgentConfigRevisionOperation.IMPORT_PACKAGE
 
 
 def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     soul = AgentSoulConfig.model_validate(
         {
@@ -664,17 +856,23 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(
             },
         }
     )
-    get_dataset_rows = Mock(return_value={"existing": SimpleNamespace(id="existing")})
+    existing_dataset = Dataset(
+        id="existing",
+        tenant_id="tenant-1",
+        name="Existing",
+        created_by="account-1",
+    )
+    get_dataset_rows = Mock(return_value={"existing": existing_dataset})
     monkeypatch.setattr("services.agent.dsl_service.get_tenant_knowledge_dataset_rows", get_dataset_rows)
 
-    resolved, warnings = AgentDslService(unbound_session)._resolve_package_soul(
+    resolved, warnings = AgentDslService(sqlite_session).resolve_package_soul(
         tenant_id="tenant-1",
         package=make_portable_agent_package(_agent(), soul),
         package_path="agent_packages.agent_1",
     )
 
     get_dataset_rows.assert_called_once_with(
-        session=unbound_session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         dataset_ids=["existing", "missing"],
     )
@@ -710,11 +908,14 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(
 
 def test_create_snapshot_increments_version_and_records_revision(sqlite_session: Session) -> None:
     agent = _agent()
-    first = _snapshot(snapshot_id="snapshot-1")
-    second = _snapshot(snapshot_id="snapshot-2")
-    second.version = 2
-    sqlite_session.add_all([agent, first, second])
-    sqlite_session.flush()
+    sqlite_session.add_all(
+        [
+            agent,
+            _snapshot(snapshot_id="snapshot-1", version=1),
+            _snapshot(snapshot_id="snapshot-2", version=2),
+        ]
+    )
+    sqlite_session.commit()
     service = AgentDslService(sqlite_session)
 
     snapshot = service._create_snapshot(
@@ -727,6 +928,7 @@ def test_create_snapshot_increments_version_and_records_revision(sqlite_session:
 
     assert snapshot.version == 3
     assert snapshot.home_snapshot_id is None
+    assert sqlite_session.get(AgentConfigSnapshot, snapshot.id) is snapshot
     revision = sqlite_session.scalar(
         select(AgentConfigRevision).where(AgentConfigRevision.current_snapshot_id == snapshot.id)
     )
@@ -735,12 +937,14 @@ def test_create_snapshot_increments_version_and_records_revision(sqlite_session:
 
 
 def test_unique_roster_name_uses_first_available_suffix(sqlite_session: Session) -> None:
-    for index, name in enumerate(("Agent", "Agent import"), start=1):
-        agent = _agent()
-        agent.id = f"agent-{index}"
-        agent.name = name
-        sqlite_session.add(agent)
-    sqlite_session.flush()
+    sqlite_session.add_all(
+        [
+            _agent(agent_id="agent-1", name="Agent"),
+            _agent(agent_id="agent-2", name="Agent import"),
+            _agent(agent_id="decoy-agent", name="Agent import 2", scope=AgentScope.WORKFLOW_ONLY),
+        ]
+    )
+    sqlite_session.commit()
 
     result = AgentDslService(sqlite_session)._unique_roster_name(tenant_id="tenant-1", requested="Agent")
 
@@ -748,11 +952,11 @@ def test_unique_roster_name_uses_first_available_suffix(sqlite_session: Session)
 
 
 def test_require_helpers_and_graph_detection(sqlite_session: Session) -> None:
-    service = AgentDslService(sqlite_session)
     agent = _agent()
     snapshot = _snapshot()
     sqlite_session.add_all([agent, snapshot])
-    sqlite_session.flush()
+    sqlite_session.commit()
+    service = AgentDslService(sqlite_session)
 
     assert service._require_agent(tenant_id="tenant-1", agent_id="agent-1") is agent
     with pytest.raises(ValueError, match="source Agent"):

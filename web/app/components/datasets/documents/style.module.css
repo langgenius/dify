@@ -5,7 +5,7 @@
   box-sizing: border-box;
   max-width: 200px;
 }
-.documentTable thead td {
+.documentTable thead th {
   padding: 0px 10px 0px 12px;
   box-sizing: border-box;
   max-width: 200px;

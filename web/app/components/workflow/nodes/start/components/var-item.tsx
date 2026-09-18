@@ -61,7 +61,11 @@ const VarItem: FC<Props> = ({
     >
       <div className="flex w-0 grow items-center space-x-1">
         <Variable02
-          className={cn('size-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')}
+          className={cn(
+            'size-3.5 text-text-accent',
+            canDrag &&
+              'group-hover:opacity-0 group-has-[.handle:focus]:opacity-0 group-has-[.handle[aria-pressed=true]]:opacity-0',
+          )}
         />
         <div
           title={payload.variable}

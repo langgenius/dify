@@ -10,7 +10,7 @@ import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
@@ -117,7 +117,7 @@ const CategoryMarketplacePanel = ({
       </div>
       {!collapsed && (
         <div>
-          {showLoading && <Loading type="area" />}
+          {showLoading && <LoadingPlaceholder />}
           {showInstalledPluginIdsError && (
             <div className="flex flex-col items-center gap-2 py-4">
               <span className="system-sm-regular text-text-tertiary" role="alert">

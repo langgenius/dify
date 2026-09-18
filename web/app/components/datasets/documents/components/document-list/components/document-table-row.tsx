@@ -16,6 +16,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { DataSourceType } from '@/models/datasets'
+import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { formatNumber } from '@/utils/format'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -83,11 +84,14 @@ const DocumentTableRow = React.memo(
     const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
     const queryString = searchParams.toString()
 
-    const handleRowClick = useCallback(() => {
-      router.push(
-        `/datasets/${datasetId}/documents/${doc.id}${queryString ? `?${queryString}` : ''}`,
-      )
-    }, [router, datasetId, doc.id, queryString])
+    const documentHref = `/datasets/${datasetId}/documents/${doc.id}${queryString ? `?${queryString}` : ''}`
+    const handleRowClick = useCallback(
+      (event: React.MouseEvent<HTMLTableRowElement>) => {
+        if ((event.target as HTMLElement).closest('a, button, input')) return
+        router.push(documentHref)
+      },
+      [router, documentHref],
+    )
 
     const stopPropagation = useCallback((e: React.SyntheticEvent) => {
       e.stopPropagation()
@@ -121,9 +125,13 @@ const DocumentTableRow = React.memo(
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <span id={documentNameId} className="grow truncate text-sm">
+                  <Link
+                    id={documentNameId}
+                    href={documentHref}
+                    className="grow truncate rounded-sm text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                  >
                     {doc.name}
-                  </span>
+                  </Link>
                 }
               />
               <TooltipContent>{doc.name}</TooltipContent>

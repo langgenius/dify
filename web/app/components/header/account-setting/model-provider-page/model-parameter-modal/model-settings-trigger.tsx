@@ -22,7 +22,7 @@ function ModelSettingsTrigger({ disabled, surface = 'default' }: ModelSettingsTr
             render={
               <IconButton
                 aria-label={label}
-                className="relative shrink-0 rounded-l-none! rounded-r-lg! focus-visible:z-1 data-[surface=workflow]:bg-workflow-block-parma-bg data-[surface=workflow]:hover:bg-workflow-block-parma-bg"
+                className="relative shrink-0 rounded-l-none! rounded-r-lg! focus-visible:z-1 data-popup-open:bg-components-button-tertiary-bg-hover data-[surface=workflow]:bg-workflow-block-parma-bg data-[surface=workflow]:hover:bg-workflow-block-parma-bg"
                 data-surface={surface}
                 disabled={disabled}
                 size="lg"

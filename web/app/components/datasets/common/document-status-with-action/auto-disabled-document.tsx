@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import {
   useAutoDisabledDocuments,
   useDocumentEnable,

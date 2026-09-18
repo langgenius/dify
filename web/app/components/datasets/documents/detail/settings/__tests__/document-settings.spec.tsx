@@ -65,8 +65,8 @@ vi.mock('@/app/components/base/app-unavailable', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: ({ type }: { type?: string }) => (
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: ({ type }: { type?: string }) => (
     <div data-testid="loading" data-type={type}>
       Loading...
     </div>

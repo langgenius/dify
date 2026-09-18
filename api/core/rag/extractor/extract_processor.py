@@ -83,10 +83,12 @@ class ExtractProcessor:
             suffix = Path(url).suffix
             if not suffix and suffix != ".":
                 # get content-type
-                if response.headers.get("Content-Type"):
-                    suffix = "." + response.headers.get("Content-Type").split("/")[-1]
+                content_type = response.headers.get("Content-Type")
+                if content_type:
+                    # strip parameters such as "; charset=utf-8" before using the subtype as suffix
+                    suffix = "." + content_type.split(";")[0].strip().split("/")[-1]
                 else:
-                    content_disposition = response.headers.get("Content-Disposition")
+                    content_disposition = response.headers.get("Content-Disposition", "")
                     filename_match = re.search(r'filename="([^"]+)"', content_disposition)
                     if filename_match:
                         filename = unquote(filename_match.group(1))
@@ -147,9 +149,11 @@ class ExtractProcessor:
                             upload_file.id,
                         )
                     elif file_extension == ".pdf":
-                        assert upload_file is not None
                         extractor = PdfExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                            file_path,
+                            upload_file.tenant_id if upload_file else None,
+                            upload_file.created_by if upload_file else None,
+                            session=session,
                         )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
@@ -195,9 +199,11 @@ class ExtractProcessor:
                             upload_file.id,
                         )
                     elif file_extension == ".pdf":
-                        assert upload_file is not None
                         extractor = PdfExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                            file_path,
+                            upload_file.tenant_id if upload_file else None,
+                            upload_file.created_by if upload_file else None,
+                            session=session,
                         )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)

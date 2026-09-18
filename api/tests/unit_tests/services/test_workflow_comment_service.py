@@ -19,6 +19,7 @@ from models.account import Account, TenantAccountRole
 from models.model import AppMode
 from services import workflow_comment_service as service_module
 from services.workflow_comment_service import WorkflowCommentService
+from tests.unit_tests.model_factories import make_account, make_app
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_TENANT_ID = "11111111-1111-1111-1111-111111111112"
@@ -55,22 +56,20 @@ def _account(
     email: str = "user@example.com",
     interface_language: str | None = "en-US",
 ) -> Account:
-    account = Account(name=name, email=email, interface_language=interface_language)
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name=name, email=email, interface_language=interface_language)
 
 
 def _app(*, app_id: str = APP_ID, tenant_id: str = TENANT_ID, name: str = "My App") -> App:
-    app = App(
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name=name,
         mode=AppMode.WORKFLOW,
+        icon_type=None,
         enable_site=False,
         enable_api=False,
         created_by=OWNER_ID,
     )
-    app.id = app_id
-    return app
 
 
 def _comment(

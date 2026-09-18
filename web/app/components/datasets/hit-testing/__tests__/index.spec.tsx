@@ -435,7 +435,7 @@ describe('HitTestingPage', () => {
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('shows both empty history and empty result states', () => {

@@ -1,9 +1,8 @@
-/* oxlint-disable typescript/no-explicit-any */
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import VersionInfoModal from '../version-info-modal'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },

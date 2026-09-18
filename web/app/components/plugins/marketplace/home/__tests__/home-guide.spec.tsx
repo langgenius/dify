@@ -1,7 +1,7 @@
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import HomeGuide from '../home-guide'
 
 const mocks = vi.hoisted(() => ({

@@ -23,7 +23,7 @@ import Badge from '@/app/components/base/badge'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   useAuth,
   useCredentialData,
@@ -360,7 +360,7 @@ const ModelModal: FC<ModelModalProps> = ({
           )}
           {isLoading && (
             <div className="mt-3 flex items-center justify-center">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
           {!isLoading && showCredentialForm && (

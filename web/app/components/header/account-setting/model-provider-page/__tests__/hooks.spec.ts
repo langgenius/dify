@@ -8,7 +8,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { act, renderHook } from '@testing-library/react'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { fetchDefaultModal } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import {
@@ -36,7 +36,8 @@ import {
   useUpdateModelProviders,
 } from '../hooks'
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en-US'),
 }))
 

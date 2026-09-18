@@ -49,21 +49,16 @@ from graphon.node_events import NodeRunResult
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import StringSegment
 from graphon.variables.variables import StringVariable
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _workflow(graph: dict[str, object] | None = None) -> Workflow:
-    return Workflow.new(
+    return make_workflow(
         tenant_id="tenant",
         app_id="app",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
         graph=json.dumps(graph or {}, default=str),
-        features="{}",
         created_by="account",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
     )
 
 

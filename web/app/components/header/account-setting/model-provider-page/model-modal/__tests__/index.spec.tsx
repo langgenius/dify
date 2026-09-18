@@ -233,7 +233,7 @@ describe('ModelModal', () => {
 
     expect(screen.getByText('common.modelProvider.auth.apiKeyModal.title'))!.toBeInTheDocument()
     expect(screen.getByText('common.modelProvider.auth.apiKeyModal.desc'))!.toBeInTheDocument()
-    expect(screen.getByRole('status'))!.toBeInTheDocument()
+    expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeDisabled()
 
     predefined.unmount()

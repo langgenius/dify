@@ -4,7 +4,7 @@
 // this maps a server code to an i18n key, then the key to translated copy.
 
 import type { TFunction } from 'i18next'
-import type deviceFlowResources from '@/i18n/en-US/device-flow.json'
+import type deviceFlowResources from '@/i18n/locales/en-US/device-flow.json'
 import { DeviceFlowError } from '@/service/device-flow'
 
 type DeviceFlowKey = keyof typeof deviceFlowResources

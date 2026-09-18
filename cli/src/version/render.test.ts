@@ -24,7 +24,6 @@ function compatible(): VersionReport['compat'] {
 }
 
 // Regex matching the ANSI CSI introducer (ESC `[`).
-// eslint-disable-next-line no-control-regex
 const ANSI_RE = /\[/
 
 describe('renderVersionText', () => {

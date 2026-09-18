@@ -26,13 +26,9 @@ export function useNodeKeyboardInteractions(onSelect: (id: string, cancel?: bool
   return (event: KeyboardEvent<HTMLDivElement>) => {
     const target = event.target
     if (!(target instanceof HTMLElement)) return
-    const isNodeTitle = target.hasAttribute('data-node-keyboard-target')
-    const nodeTarget = isNodeTitle ? target.closest<HTMLElement>('.react-flow__node') : target
-    const isNode = nodeTarget?.classList.contains('react-flow__node')
+    const isNode = target.classList.contains('react-flow__node')
     const isSelection = target.classList.contains('react-flow__nodesselection-rect')
     if (!isNode && !isSelection) return
-    // The title button owns its normal click activation.
-    if (isNodeTitle && (event.key === 'Enter' || event.key === ' ')) return
     const movement = getKeyboardMovement(event)
     const isMovementKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)
     const isSelectionKey = ['Enter', ' ', 'Escape'].includes(event.key)
@@ -43,11 +39,9 @@ export function useNodeKeyboardInteractions(onSelect: (id: string, cancel?: bool
     event.preventDefault()
     event.stopPropagation()
     if (event.altKey || event.ctrlKey || event.metaKey) return
-    if (getNodesReadOnly() || workflowStore.getState().controlMode === ControlMode.Comment) return
+    if (workflowStore.getState().controlMode === ControlMode.Comment) return
     const { nodes, setNodes } = workflow.getState()
-    const focusedNode = isNode
-      ? nodes.find((node) => node.id === nodeTarget?.dataset.id)
-      : undefined
+    const focusedNode = isNode ? nodes.find((node) => node.id === target.dataset.id) : undefined
     if (isNode && !focusedNode) return
     if (
       focusedNode &&
@@ -61,7 +55,7 @@ export function useNodeKeyboardInteractions(onSelect: (id: string, cancel?: bool
       if (focusedNode) onSelect(focusedNode.id, event.key === 'Escape')
       return
     }
-    if (!movement) return
+    if (getNodesReadOnly() || !movement) return
     if (!collaborationManager.canApplyLocalGraphMutation()) return
 
     const movingIds = new Set(

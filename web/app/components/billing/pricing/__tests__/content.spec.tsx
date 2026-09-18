@@ -14,7 +14,14 @@ import { PricingContent } from '../content'
 const openBillingWindow = vi.hoisted(() => vi.fn())
 vi.mock('@/hooks/use-async-window-open', () => ({ useAsyncWindowOpen: () => openBillingWindow }))
 
-vi.mock('@/context/i18n', () => ({ useGetLanguage: () => 'en-US', useLocale: () => 'en-US' }))
+vi.mock('@/context/i18n', () => ({
+  useGetLanguage: () => 'en-US',
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => 'en-US',
+}))
 vi.mock('../plans/self-hosted-plan-item/list', () => ({ SelfHostedPlanFeatures: () => null }))
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')

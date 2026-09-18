@@ -26,7 +26,7 @@ vi.mock('@langgenius/dify-ui/input', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   __esModule: true,
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),

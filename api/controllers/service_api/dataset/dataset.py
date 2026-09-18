@@ -35,8 +35,12 @@ from controllers.service_api.wraps import (
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.base import ResponseModel
+from fields.dataset_fields import (
+    DatasetDetailPrefetch,
+    build_dataset_detail_prefetch,
+    dataset_detail_response_source,
+)
 from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResponse
-from fields.dataset_fields import dataset_detail_response_source
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_user
@@ -61,7 +65,6 @@ from services.tag_service import (
 from services.tag_service import (
     UpdateTagPayload as UpdateTagServicePayload,
 )
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
@@ -98,9 +101,11 @@ _SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
 _SERVICE_DATASET_LIST_EXCLUDE = {"data": {"__all__": _SERVICE_DATASET_DETAIL_EXCLUDE}}
 
 
-def _dump_service_dataset_detail(dataset: Any, *, session: Session) -> dict[str, Any]:
+def _dump_service_dataset_detail(
+    dataset: Any, *, session: Session, prefetch: DatasetDetailPrefetch | None = None
+) -> dict[str, Any]:
     return DatasetDetailResponse.model_validate(
-        dataset_detail_response_source(dataset, session=session), from_attributes=True
+        dataset_detail_response_source(dataset, session=session, prefetch=prefetch), from_attributes=True
     ).model_dump(
         mode="json",
         exclude=_SERVICE_DATASET_DETAIL_EXCLUDE,
@@ -461,7 +466,8 @@ class DatasetListApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        data = [_dump_service_dataset_detail(dataset, session=session) for dataset in datasets]
+        prefetch = build_dataset_detail_prefetch(datasets, session=session)
+        data = [_dump_service_dataset_detail(dataset, session=session, prefetch=prefetch) for dataset in datasets]
         for item in data:
             if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
@@ -558,9 +564,8 @@ class DatasetListApi(DatasetApiResource):
                 tenant_id,
                 current_user.id,
                 dataset.id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
-            initialize_created_app_rbac_access_task.delay(tenant_id, current_user.id, dataset_id=dataset.id)
 
         return _dump_service_dataset_detail(dataset, session=session), 200
 

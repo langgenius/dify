@@ -7,14 +7,14 @@ from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
+from models.enums import DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _dataset(**overrides: object) -> Dataset:
@@ -60,21 +60,14 @@ def _pipeline(*, pipeline_id: str = "p-new", tenant_id: str = "t1") -> Pipeline:
 
 
 def _upload_file(*, file_id: str = "file-1", tenant_id: str = "tenant-1") -> UploadFile:
-    upload_file = UploadFile(
+    return make_upload_file(
+        file_id=file_id,
         tenant_id=tenant_id,
-        storage_type=StorageType.LOCAL,
         key="files/f.txt",
         name="f.txt",
-        size=10,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         created_at=datetime.now(UTC).replace(tzinfo=None),
-        used=False,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 @pytest.mark.parametrize(

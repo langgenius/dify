@@ -1,8 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
@@ -17,28 +16,21 @@ type Props = Readonly<{
 const IdeaOutput: FC<Props> = ({ value, onChange }) => {
   const { t } = useTranslation()
 
-  const [isFoldIdeaOutput, { toggle: toggleFoldIdeaOutput }] = useBoolean(true)
-
   return (
-    <div className="mt-4 text-[0px]">
-      <div
-        className="mb-1.5 flex cursor-pointer items-center text-sm/5 font-medium text-text-primary"
-        onClick={toggleFoldIdeaOutput}
-      >
-        <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">
+    <Collapsible className="mt-4 text-[0px]">
+      <CollapsibleTrigger className="group mb-1.5 flex cursor-pointer flex-wrap items-center text-left text-sm/5 font-medium text-text-primary focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden">
+        <span className="mr-1 system-sm-semibold-uppercase text-text-secondary">
           {t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appDebug' })}
-        </div>
-        <div className="system-xs-regular text-text-tertiary">
+        </span>
+        <span className="system-xs-regular text-text-tertiary">
           ({t(($) => $[`${i18nPrefix}.optional`], { ns: 'appDebug' })})
-        </div>
+        </span>
         <ArrowDownRoundFill
-          className={cn(
-            'size text-text-quaternary',
-            isFoldIdeaOutput && 'relative top-px -rotate-90',
-          )}
+          aria-hidden
+          className="size relative top-px -rotate-90 text-text-quaternary group-data-panel-open:top-0 group-data-panel-open:rotate-0"
         />
-      </div>
-      {!isFoldIdeaOutput && (
+      </CollapsibleTrigger>
+      <CollapsiblePanel>
         <Textarea
           aria-label={t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appDebug' })}
           className="h-20"
@@ -46,8 +38,8 @@ const IdeaOutput: FC<Props> = ({ value, onChange }) => {
           value={value}
           onValueChange={(value) => onChange(value)}
         />
-      )}
-    </div>
+      </CollapsiblePanel>
+    </Collapsible>
   )
 }
 export default React.memo(IdeaOutput)

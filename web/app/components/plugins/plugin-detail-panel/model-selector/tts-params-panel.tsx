@@ -10,7 +10,7 @@ import {
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 
 type Props = Readonly<{
   currentModel: any

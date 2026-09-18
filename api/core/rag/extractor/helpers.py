@@ -31,7 +31,9 @@ def detect_file_encodings(file_path: str, timeout: int = 5, sample_size: int = 1
     """
 
     def read_and_detect(filename: str):
-        rst = charset_normalizer.from_path(filename)
+        with open(filename, "rb") as file:
+            sample = file.read(sample_size)
+        rst = charset_normalizer.from_bytes(sample)
         best = rst.best()
         if best is None:
             return []

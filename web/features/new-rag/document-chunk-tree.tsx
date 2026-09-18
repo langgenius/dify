@@ -3,10 +3,10 @@
 import type { DocumentChunkTree } from './document-detail-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { chunkTreeLabel, visibleDocumentChunkNodes } from './document-detail-model'
 
 const VIRTUALIZATION_THRESHOLD = 80
@@ -210,7 +210,7 @@ export function DocumentChunkTreePanel({
       )}
       {isPending ? (
         <div className="flex min-h-40 items-center justify-center" role="status">
-          <Loading />
+          <SpinnerIcon />
           <span className="sr-only">{tCommon(($) => $.loading)}</span>
         </div>
       ) : error && !isFetchNextPageError && !chunkCount ? (

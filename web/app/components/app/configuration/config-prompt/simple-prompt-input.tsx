@@ -8,7 +8,7 @@ import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
@@ -52,6 +52,11 @@ const Prompt: FC<ISimplePromptInput> = ({
   noResize,
 }) => {
   const { t } = useTranslation()
+  const titleId = useId()
+  const title =
+    mode !== AppModeEnum.COMPLETION
+      ? t(($) => $.chatSubTitle, { ns: 'appDebug' })
+      : t(($) => $.completionSubTitle, { ns: 'appDebug' })
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const featuresStore = useFeaturesStore()
@@ -197,11 +202,9 @@ const Prompt: FC<ISimplePromptInput> = ({
         {!noTitle && (
           <div className="flex h-11 items-center justify-between pr-2.5 pl-3">
             <div className="flex items-center space-x-1">
-              <div className="system-sm-semibold-uppercase text-text-secondary">
-                {mode !== AppModeEnum.COMPLETION
-                  ? t(($) => $.chatSubTitle, { ns: 'appDebug' })
-                  : t(($) => $.completionSubTitle, { ns: 'appDebug' })}
-              </div>
+              <h2 id={titleId} className="system-sm-semibold-uppercase text-text-secondary">
+                {title}
+              </h2>
               {!readonly && (
                 <Infotip
                   aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
@@ -233,6 +236,8 @@ const Prompt: FC<ISimplePromptInput> = ({
           }
         >
           <PromptEditor
+            aria-labelledby={noTitle ? undefined : titleId}
+            aria-label={noTitle ? title : undefined}
             className="min-h-52.5"
             compact
             value={promptTemplate}

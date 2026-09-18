@@ -131,8 +131,8 @@ const main = async () => {
 
     if (startAgentBackendForRun) {
       shellctlProcess = await startLoggedProcess({
-        command: 'npx',
-        args: ['tsx', './scripts/setup.ts', 'shellctl-sandbox'],
+        command: process.execPath,
+        args: ['--import', 'tsx', './scripts/setup.ts', 'shellctl-sandbox'],
         cwd: e2eDir,
         label: 'shellctl sandbox',
         logFilePath: path.join(logDir, 'cucumber-shellctl-sandbox.log'),
@@ -145,8 +145,8 @@ const main = async () => {
       })
 
       difyAgentProcess = await startLoggedProcess({
-        command: 'npx',
-        args: ['tsx', './scripts/setup.ts', 'agent-backend'],
+        command: process.execPath,
+        args: ['--import', 'tsx', './scripts/setup.ts', 'agent-backend'],
         cwd: e2eDir,
         env: { E2E_START_AGENT_BACKEND: '1' },
         label: 'agent backend',
@@ -161,8 +161,8 @@ const main = async () => {
     }
 
     apiProcess = await startLoggedProcess({
-      command: 'npx',
-      args: ['tsx', './scripts/setup.ts', 'api'],
+      command: process.execPath,
+      args: ['--import', 'tsx', './scripts/setup.ts', 'api'],
       cwd: e2eDir,
       env: startAgentBackendForRun ? { E2E_START_AGENT_BACKEND: '1' } : undefined,
       label: 'api server',
@@ -175,8 +175,9 @@ const main = async () => {
     })
 
     celeryProcess = await startLoggedProcess({
-      command: 'npx',
+      command: process.execPath,
       args: [
+        '--import',
         'tsx',
         './scripts/setup.ts',
         'celery',
@@ -189,8 +190,8 @@ const main = async () => {
 
     await startWebServer({
       baseURL,
-      command: 'npx',
-      args: ['tsx', './scripts/setup.ts', 'web'],
+      command: process.execPath,
+      args: ['--import', 'tsx', './scripts/setup.ts', 'web'],
       cwd: e2eDir,
       logFilePath: path.join(logDir, 'cucumber-web.log'),
       reuseExistingServer: reuseExistingWebServer,
@@ -208,8 +209,9 @@ const main = async () => {
       if (full && !hasCustomTags(forwardArgs)) cucumberEnv.E2E_CUCUMBER_TAGS = fullNonExternalTags
 
       const result = await runCommand({
-        command: 'npx',
+        command: process.execPath,
         args: [
+          '--import',
           'tsx',
           './node_modules/@cucumber/cucumber/bin/cucumber.js',
           '--config',

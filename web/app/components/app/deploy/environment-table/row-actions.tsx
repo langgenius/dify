@@ -12,10 +12,10 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Fragment, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
+import { toast } from '@/app/notifications'
 import { getEnvironmentDeploymentActions } from '../utils/environment-deployment'
 import { UndeployConfirmDialog } from './undeploy-confirm-dialog'
 

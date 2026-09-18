@@ -83,6 +83,8 @@ type ToolBrowserProps = {
   searchText: string
   tags: ListProps['tags']
   buildInTools: ToolWithProvider[]
+  /** Full installed plugin IDs when selectable providers are scoped. */
+  installedPluginIds?: ReadonlySet<string>
   customTools: ToolWithProvider[]
   workflowTools: ToolWithProvider[]
   mcpTools: ToolWithProvider[]
@@ -109,6 +111,7 @@ function ToolBrowser({
   canNotSelectMultiple,
   onSelectMultiple,
   buildInTools,
+  installedPluginIds,
   workflowTools,
   customTools,
   mcpTools = [],
@@ -233,9 +236,13 @@ function ToolBrowser({
   )
   const { data: marketplacePluginsData, isFetching: isMarketplaceFetching } =
     useMarketplacePlugins(marketplaceSearchParams)
+  const installedPluginLookup = installedPluginIds ?? providerMap
   const notInstalledPlugins = useMemo(
-    () => marketplacePluginsData?.pages.flatMap((page) => page.plugins) ?? [],
-    [marketplacePluginsData?.pages],
+    () =>
+      marketplacePluginsData?.pages.flatMap((page) =>
+        page.plugins.filter((plugin) => !installedPluginLookup.has(plugin.plugin_id)),
+      ) ?? [],
+    [marketplacePluginsData?.pages, installedPluginLookup],
   )
 
   const pluginRef = useRef<ListRef>(null)

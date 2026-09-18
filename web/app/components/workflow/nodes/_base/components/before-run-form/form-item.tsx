@@ -3,6 +3,8 @@ import type { FC } from 'react'
 import type { InputVar } from '../../../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
   Select,
   SelectContent,
@@ -23,7 +25,6 @@ import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
-import Input from '@/app/components/base/input'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -52,6 +53,7 @@ const FormItem: FC<Props> = ({
   inStepRun = false,
 }) => {
   const { t } = useTranslation()
+  const labelId = React.useId()
   const { type } = payload
   const fileSettings = useHooksStore((s) => s.configsMap?.fileSettings)
   const jsonSchemaPlaceholder = React.useMemo(() => {
@@ -144,7 +146,7 @@ const FormItem: FC<Props> = ({
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
         <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
-          <div className="truncate">
+          <div id={labelId} className="truncate">
             {typeof payload.label === 'object' ? nodeKey : payload.label}
           </div>
           {payload.hide === true ? (
@@ -163,26 +165,37 @@ const FormItem: FC<Props> = ({
       <div className="grow">
         {type === InputVarType.textInput && (
           <Input
+            name={payload.variable}
+            aria-labelledby={labelId}
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onValueChange={(value) => onChange(value)}
             placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
             autoFocus={autoFocus}
           />
         )}
 
         {type === InputVarType.number && (
-          <Input
-            type="number"
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
-            autoFocus={autoFocus}
-          />
+          <NumberField
+            step="any"
+            name={payload.variable}
+            value={value == null || value === '' ? null : Number(value)}
+            onValueChange={(value) => onChange(value)}
+          >
+            <NumberFieldGroup>
+              <NumberFieldInput
+                aria-labelledby={labelId}
+                placeholder={
+                  typeof payload.label === 'object' ? payload.label.variable : payload.label
+                }
+                autoFocus={autoFocus}
+              />
+            </NumberFieldGroup>
+          </NumberField>
         )}
 
         {type === InputVarType.paragraph && (
           <Textarea
-            aria-label={typeof payload.label === 'object' ? payload.label.variable : payload.label}
+            aria-labelledby={labelId}
             value={value || ''}
             onValueChange={(value) => onChange(value)}
             placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}

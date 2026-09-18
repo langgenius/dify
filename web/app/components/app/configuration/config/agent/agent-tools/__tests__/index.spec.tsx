@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { PropsWithChildren } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type SettingBuiltInToolType from '../setting-built-in-tool'

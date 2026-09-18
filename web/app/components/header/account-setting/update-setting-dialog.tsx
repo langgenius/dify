@@ -15,7 +15,6 @@ import {
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +29,7 @@ import {
   dayjsToTimeOfDay,
   timeOfDayToDayjs,
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   useMutationPluginAutoUpgradeSettings,

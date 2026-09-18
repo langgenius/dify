@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { CloudSandboxPlanState } from '../cloud-sandbox-retention'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -70,8 +69,8 @@ vi.mock('../retention-upgrade-notice', () => ({
   RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div>loading-logs</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div>loading-logs</div>,
 }))
 
 describe('Logs', () => {

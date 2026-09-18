@@ -1,12 +1,12 @@
 import type { SortableItem } from './types'
 import type { MoreInfo, ValueSelector } from '@/app/components/workflow/types'
 import type { InputVar } from '@/models/pipeline'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChangeType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { useInputFieldPanel } from '../../../../hooks/use-input-field-panel'
 import { usePipeline } from '../../../../hooks/use-pipeline'
 

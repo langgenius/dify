@@ -283,11 +283,6 @@ export type ValidationResultResponse = {
   result: 'error' | 'success'
 }
 
-export type ParserDeleteModels = {
-  model: string
-  model_type: ModelType
-}
-
 export type ProviderModelListResponse = {
   data: Array<ModelWithProviderEntityResponse>
 }
@@ -296,12 +291,6 @@ export type ParserPostModels = {
   config_from?: string | null
   credential_id?: string | null
   load_balancing?: LoadBalancingPayload | null
-  model: string
-  model_type: ModelType
-}
-
-export type ParserDeleteCredential = {
-  credential_id: string
   model: string
   model_type: ModelType
 }
@@ -345,6 +334,11 @@ export type ParserValidate = {
   credentials: {
     [key: string]: unknown
   }
+  model: string
+  model_type: ModelType
+}
+
+export type ParserDeleteModels = {
   model: string
   model_type: ModelType
 }
@@ -525,6 +519,33 @@ export type PluginCategoryListResponse = {
   builtin_tools: Array<PluginCategoryBuiltinToolProviderResponse>
   has_more: boolean
   plugins: Array<PluginCategoryInstalledPluginResponse>
+}
+
+export type AccessPolicyCreateRequest = {
+  description?: string
+  name: string
+  permission_keys?: Array<string>
+  resource_type: RbacResourceType
+}
+
+export type AccessPolicy = {
+  category?: string
+  created_at?: number
+  description?: string
+  id: string
+  is_builtin?: boolean
+  name: string
+  permission_keys?: Array<string>
+  policy_key?: string
+  resource_type: string
+  tenant_id?: string
+  updated_at?: number
+}
+
+export type AccessPolicyUpdateRequest = {
+  description?: string
+  name: string
+  permission_keys?: Array<string>
 }
 
 export type DeleteMemberBindingsRequest = {
@@ -1419,8 +1440,6 @@ export type ModelProviderPluginSummaryResponse = {
   version: string
 }
 
-export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
-
 export type ModelWithProviderEntityResponse = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
@@ -1443,6 +1462,8 @@ export type LoadBalancingPayload = {
   }> | null
   enabled?: boolean | null
 }
+
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
 export type CredentialConfiguration = {
   credential_id: string
@@ -1655,6 +1676,8 @@ export type PluginCategoryInstalledPluginResponse = {
   version: string
 }
 
+export type RbacResourceType = 'agent' | 'app' | 'dataset'
+
 export type AccessPolicyMemberBinding = {
   access_policy_id: string
   account_id: string
@@ -1688,20 +1711,6 @@ export type Pagination = {
   per_page?: number
   total_count?: number
   total_pages?: number
-}
-
-export type AccessPolicy = {
-  category?: string
-  created_at?: number
-  description?: string
-  id: string
-  is_builtin?: boolean
-  name: string
-  permission_keys?: Array<string>
-  policy_key?: string
-  resource_type: string
-  tenant_id?: string
-  updated_at?: number
 }
 
 export type RbacRole = {
@@ -3579,11 +3588,14 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResp
   PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponses[keyof PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponses]
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
-  body: ParserDeleteModels
+  body?: never
   path: {
     provider: string
   }
-  query?: never
+  query: {
+    model: string
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+  }
   url: '/workspaces/current/model-providers/{provider}/models'
 }
 
@@ -3627,11 +3639,15 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsResponse =
   PostWorkspacesCurrentModelProvidersByProviderModelsResponses[keyof PostWorkspacesCurrentModelProvidersByProviderModelsResponses]
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = {
-  body: ParserDeleteCredential
+  body?: never
   path: {
     provider: string
   }
-  query?: never
+  query: {
+    credential_id: string
+    model: string
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+  }
   url: '/workspaces/current/model-providers/{provider}/models/credentials'
 }
 
@@ -4372,16 +4388,14 @@ export type GetWorkspacesCurrentRbacAccessPoliciesResponse =
   GetWorkspacesCurrentRbacAccessPoliciesResponses[keyof GetWorkspacesCurrentRbacAccessPoliciesResponses]
 
 export type PostWorkspacesCurrentRbacAccessPoliciesData = {
-  body?: never
+  body: AccessPolicyCreateRequest
   path?: never
   query?: never
   url: '/workspaces/current/rbac/access-policies'
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: AccessPolicy
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesResponse =
@@ -4424,7 +4438,7 @@ export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
   GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses[keyof GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses]
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
-  body?: never
+  body: AccessPolicyUpdateRequest
   path: {
     policy_id: string
   }
@@ -4433,9 +4447,7 @@ export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessPolicy
 }
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =

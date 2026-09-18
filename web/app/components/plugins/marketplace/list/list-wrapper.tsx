@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   flushMarketplaceSiteFilter,
   flushMarketplaceSiteSearch,
@@ -82,6 +82,15 @@ const ListWrapper = ({
         className,
       )}
     >
+      <div role="status" aria-atomic="true" className="sr-only">
+        {isLoading || isRefreshing || isFetchingNextPage
+          ? t(($) => $.loading, { ns: 'common' })
+          : isError
+            ? t(($) => $['marketplace.loadError'], { ns: 'plugin' })
+            : plugins
+              ? t(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: pluginsTotal })
+              : null}
+      </div>
       <div className="flex w-full grow flex-col">
         {plugins && (
           <div className="mb-4 flex items-center pt-3">
@@ -124,10 +133,10 @@ const ListWrapper = ({
       </div>
       {isLoading && page === 1 && (
         <div className="absolute top-1/2 left-1/2 -translate-1/2">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       )}
-      {isFetchingNextPage && <Loading className="my-3" />}
+      {isFetchingNextPage && <LoadingPlaceholder className="my-3" />}
     </div>
   )
 }

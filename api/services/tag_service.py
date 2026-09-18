@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from flask_login import current_user
 from flask_sqlalchemy.session import Session as FlaskSession
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import NotFound
@@ -179,7 +179,12 @@ class TagService:
             )
             if existing:
                 raise ValueError("Tag name already exists")
-        tag.name = payload.name
+        session.execute(
+            update(Tag)
+            .where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id)
+            .values(name=payload.name)
+            .execution_options(synchronize_session="fetch")
+        )
         session.commit()
         return tag
 

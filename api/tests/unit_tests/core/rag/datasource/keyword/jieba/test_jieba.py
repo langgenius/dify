@@ -11,6 +11,7 @@ import core.rag.datasource.keyword.jieba.jieba as jieba_module
 from core.rag.datasource.keyword.jieba.jieba import Jieba, dumps_with_sets, set_orjson_default
 from core.rag.models.document import Document
 from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
+from tests.unit_tests.model_factories import make_dataset
 
 
 class _DummyLock:
@@ -34,11 +35,7 @@ def _dataset_keyword_table(
 
 
 def _dataset(dataset_keyword_table: DatasetKeywordTable | None = None, keyword_number: int | None = None) -> Dataset:
-    dataset = Dataset(
-        id="dataset-1",
-        tenant_id="tenant-1",
-        keyword_number=keyword_number,
-    )
+    dataset = make_dataset(keyword_number=keyword_number)
     dataset.get_dataset_keyword_table = MagicMock(return_value=dataset_keyword_table)
     return dataset
 

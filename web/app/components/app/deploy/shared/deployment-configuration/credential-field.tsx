@@ -88,7 +88,7 @@ export function CredentialField({
               <div className="flex size-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
                 <span aria-hidden className="i-ri-key-2-line size-5 text-text-tertiary" />
               </div>
-              <div className="wrap-break-words flex w-full flex-col items-start gap-1">
+              <div className="flex w-full flex-col items-start gap-1">
                 <p className="w-full system-sm-medium text-text-secondary">
                   {t(($) => $['studio.noCredentialsYet'])}
                 </p>

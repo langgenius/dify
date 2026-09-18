@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import type { SnippetDetail, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useSnippetDraftStore } from '../../draft-store'
 import SnippetMain from '../snippet-main'
@@ -46,7 +46,7 @@ const mockInspectVarsCrud = {
   invalidateConversationVarValues: vi.fn(),
 }
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),

@@ -5,7 +5,7 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AddAnnotationModal from '../index'
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: vi.fn((args) => mockToastNotify(args)),
   },

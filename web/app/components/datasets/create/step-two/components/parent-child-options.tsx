@@ -146,7 +146,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                     tooltip={t(($) => $['stepTwo.parentChildDelimiterTip'], {
                       ns: 'datasetCreation',
                     })!}
-                    onChange={(e) => onParentDelimiterChange(e.target.value)}
+                    onValueChange={onParentDelimiterChange}
                   />
                   <MaxLengthInput
                     unit="characters"
@@ -181,7 +181,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
               tooltip={t(($) => $['stepTwo.parentChildChunkDelimiterTip'], {
                 ns: 'datasetCreation',
               })!}
-              onChange={(e) => onChildDelimiterChange(e.target.value)}
+              onValueChange={onChildDelimiterChange}
             />
             <MaxLengthInput
               unit="characters"

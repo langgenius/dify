@@ -43,6 +43,7 @@ from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, Docum
 from models.enums import IndexingStatus, SegmentType
 from services.api_token_service import CachedApiToken
 from services.dataset_service import DocumentService, SegmentService
+from tests.unit_tests.model_factories import make_account
 
 
 def _segment_response_dict(summary: str | None = None):
@@ -85,9 +86,9 @@ def mock_tenant() -> Tenant:
 
 
 def _account() -> Account:
-    account = Account(name="Segment API User", email=f"segment-api-{uuid.uuid4()}@example.com")
-    account.id = str(uuid.uuid4())
-    return account
+    return make_account(
+        account_id=str(uuid.uuid4()), name="Segment API User", email=f"segment-api-{uuid.uuid4()}@example.com"
+    )
 
 
 def _api_token(tenant_id: str) -> CachedApiToken:

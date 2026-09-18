@@ -28,7 +28,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -153,7 +153,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     setShowRightPanel(!isMobile)
   }, [isMobile, setShowRightPanel])
 
-  if (!canRunRetrievalRecall) return <Loading type="app" />
+  if (!canRunRetrievalRecall) return <LoadingPlaceholder className="h-full" />
 
   return (
     <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
@@ -188,7 +188,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         </div>
         {isRecordsLoading && (
           <div className="flex-1">
-            <Loading type="app" />
+            <LoadingPlaceholder className="h-full" />
           </div>
         )}
         {!isRecordsLoading && recordsRes?.data && recordsRes.data.length > 0 && (

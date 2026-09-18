@@ -20,7 +20,7 @@ const WebsitePreview = ({ currentWebsite, hidePreview }: WebsitePreviewProps) =>
           <div className="system-2xs-semibold-uppercase">
             {t(($) => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}
           </div>
-          <div className="text-tex-primary title-md-semi-bold">{currentWebsite.title}</div>
+          <div className="title-md-semi-bold">{currentWebsite.title}</div>
           <div className="flex gap-x-1 system-xs-medium text-text-tertiary">
             <RiGlobalLine className="size-3.5" />
             <span className="uppercase" title={currentWebsite.source_url}>

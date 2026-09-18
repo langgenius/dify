@@ -22,10 +22,10 @@ from controllers.web.message import (
     MessageMoreLikeThisQuery,
     MessageSuggestedQuestionApi,
 )
-from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _chat_app() -> App:
@@ -37,12 +37,7 @@ def _completion_app() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        type=EndUserType.BROWSER,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1")
 
 
 # The @model_validate and @with_session decorators wrap the handlers; tests

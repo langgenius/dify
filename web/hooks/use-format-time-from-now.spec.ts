@@ -14,10 +14,11 @@ import type { Mock } from 'vite-plus/test'
  */
 import { renderHook } from '@testing-library/react'
 // Import after mock to get the mocked version
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useFormatTimeFromNow } from './use-format-time-from-now'
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en-US'),
 }))
 

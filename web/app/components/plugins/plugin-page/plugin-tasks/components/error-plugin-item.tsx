@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { Plugin, PluginStatus } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
+import type { PluginLanguage } from '@/i18n/metadata'
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +14,7 @@ import PluginItem from './plugin-item'
 type ErrorPluginItemProps = {
   plugin: PluginStatus
   getIconUrl: (icon: string) => string
-  language: Locale
+  language: PluginLanguage
   onClear: () => void
 }
 

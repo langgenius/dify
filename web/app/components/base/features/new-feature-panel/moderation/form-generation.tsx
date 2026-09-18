@@ -10,7 +10,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 
 type FormGenerationProps = {
   forms: CodeBasedExtensionForm[]

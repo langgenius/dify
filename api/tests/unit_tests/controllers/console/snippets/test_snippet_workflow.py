@@ -15,13 +15,16 @@ from werkzeug.exceptions import HTTPException, NotFound
 from controllers.console.snippets import snippet_workflow as snippet_workflow_module
 from models.account import Account, TenantAccountRole
 from models.snippet import CustomizedSnippet
+from tests.unit_tests.model_factories import make_account
 
 
 def _account(account_id: str = "account-1") -> Account:
-    account = Account(name="Test User", email=f"{account_id}@example.com")
-    account.id = account_id
-    account.role = TenantAccountRole.EDITOR
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Test User",
+        email=f"{account_id}@example.com",
+        role=TenantAccountRole.EDITOR,
+    )
 
 
 def _snippet(**overrides) -> CustomizedSnippet:
@@ -641,7 +644,9 @@ def test_delete_published_snippet_workflow_raises_bad_request_when_in_use(
     assert exc_info.value.code == 400
 
 
-def test_workflow_run_detail_raises_not_found_when_run_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_run_detail_raises_not_found_when_run_missing(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     snippet = _snippet()
     monkeypatch.setattr(
         snippet_workflow_module,
@@ -654,7 +659,7 @@ def test_workflow_run_detail_raises_not_found_when_run_missing(app: Flask, monke
 
     with app.test_request_context("/snippets/snippet-1/workflow-runs/run-1"):
         with pytest.raises(NotFound, match="Workflow run not found"):
-            handler(api, snippet=snippet, run_id="run-1")
+            handler(api, sqlite_session, snippet=snippet, run_id="run-1")
 
 
 def test_draft_node_last_run_raises_not_found_when_execution_missing(

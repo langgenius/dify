@@ -5,7 +5,7 @@ import type { HumanInputFormError } from '@/service/use-share'
 import type { HumanInputResolvedValue } from '@/types/workflow'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm } from '@/service/use-share'
@@ -57,7 +57,7 @@ const FormContent = () => {
   useDocumentTitle(documentTitle)
 
   if (isLoading) {
-    return <Loading type="app" />
+    return <LoadingPlaceholder className="h-full" />
   }
 
   if (success) {

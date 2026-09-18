@@ -9,7 +9,6 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useLayoutEffect, useRef } from 'react'
@@ -20,6 +19,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'

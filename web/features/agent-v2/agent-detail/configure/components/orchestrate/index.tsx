@@ -6,7 +6,6 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type { AgentBuildDraftChangedKey } from './build-draft-changes-context'
-import type { ModelSelectorProvider } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -46,7 +45,6 @@ type AgentOrchestratePanelProps = {
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
   currentModel?: AgentComposerModel
-  textGenerationModelList: ModelSelectorProvider[]
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
@@ -71,7 +69,6 @@ export function AgentOrchestratePanel({
   agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
-  textGenerationModelList,
   isPublishing,
   className,
   readOnly = false,
@@ -164,11 +161,7 @@ export function AgentOrchestratePanel({
                         isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS
                       }
                     >
-                      <AgentModelField
-                        currentModel={currentModel}
-                        textGenerationModelList={textGenerationModelList}
-                        onSelect={onSelectModel}
-                      />
+                      <AgentModelField currentModel={currentModel} onSelect={onSelectModel} />
                       <AgentPromptEditor />
                       <AgentSkills />
                       <AgentFiles />

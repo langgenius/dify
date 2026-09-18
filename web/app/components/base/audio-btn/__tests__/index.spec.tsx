@@ -121,7 +121,7 @@ describe('AudioBtn', () => {
         expect(mockPlayAudio).toHaveBeenCalledTimes(1)
         expect(getButton())!.toBeDisabled()
       })
-      expect(screen.getByRole('status'))!.toBeInTheDocument()
+      expect(getButton()).toHaveAccessibleName('loading')
       await hoverAndCheckTooltip('loading')
     })
 

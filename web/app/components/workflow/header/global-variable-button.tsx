@@ -1,5 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
@@ -25,25 +26,32 @@ const GlobalVariableButton = ({ disabled }: { disabled: boolean }) => {
   }
 
   return (
-    <IconButton
-      aria-label={t(($) => $['globalVar.title'], { ns: 'workflow' })}
-      aria-expanded={showGlobalVariablePanel}
-      size="lg"
-      className={cn(
-        'border border-transparent',
-        theme === 'dark' &&
-          showGlobalVariablePanel &&
-          'border-black/5 bg-white/10 backdrop-blur-xs',
-      )}
-      disabled={disabled}
-      onClick={handleClick}
-      variant="ghost"
-    >
-      <span
-        aria-hidden
-        className="i-custom-vender-line-others-global-variable size-4 text-components-button-secondary-text"
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <IconButton
+            aria-label={t(($) => $['globalVar.title'], { ns: 'workflow' })}
+            aria-expanded={showGlobalVariablePanel}
+            size="lg"
+            className={cn(
+              'border border-transparent',
+              theme === 'dark' &&
+                showGlobalVariablePanel &&
+                'border-black/5 bg-white/10 backdrop-blur-xs',
+            )}
+            disabled={disabled}
+            onClick={handleClick}
+            variant="ghost"
+          >
+            <span
+              aria-hidden
+              className="i-custom-vender-line-others-global-variable size-4 text-components-button-secondary-text"
+            />
+          </IconButton>
+        }
       />
-    </IconButton>
+      <TooltipContent>{t(($) => $['globalVar.title'], { ns: 'workflow' })}</TooltipContent>
+    </Tooltip>
   )
 }
 

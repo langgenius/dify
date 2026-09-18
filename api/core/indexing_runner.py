@@ -400,7 +400,8 @@ class IndexingRunner:
             )
             total_segments += len(documents)
             for document in documents:
-                if len(preview_texts) < 10:
+                preview_count = len(qa_preview_texts) if doc_form == "qa_model" else len(preview_texts)
+                if preview_count < 10:
                     if doc_form and doc_form == "qa_model":
                         qa_detail = QAPreviewDetail(
                             question=document.page_content, answer=document.metadata.get("answer") or ""

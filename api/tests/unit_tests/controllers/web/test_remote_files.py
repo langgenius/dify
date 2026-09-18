@@ -23,7 +23,6 @@ from controllers.common.errors import (
 )
 from controllers.web import remote_files as remote_files_module
 from libs.exception import BaseHTTPException
-from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from services.errors.file import (
     BlockedFileExtensionError as ServiceBlockedFileExtensionError,
@@ -55,6 +54,7 @@ REMOTE_FILE_ERROR_CASES: tuple[tuple[type[RemoteFileError], type[BaseHTTPExcepti
         502,
     ),
 )
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _app_model() -> App:
@@ -71,13 +71,7 @@ def _app_model() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=EndUserType.BROWSER,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1", app_id="app-1")
 
 
 def _upload_result() -> RemoteFileUploadResult:

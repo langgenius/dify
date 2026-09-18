@@ -2,7 +2,8 @@ import type { i18n } from 'i18next'
 import type { ChatConfig } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { AppData, AppMeta } from '@/models/share'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as ReactI18next from 'react-i18next'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -118,97 +119,55 @@ describe('HeaderInMobile', () => {
     expect(await screen.findByText('Conv 1'))!.toBeInTheDocument()
   })
 
-  it('should open and close sidebar', async () => {
+  it('contains sidebar focus and restores the trigger after Escape', async () => {
+    const user = userEvent.setup()
     render(<HeaderInMobile />)
-
-    // Open sidebar (menu button is the first action btn)
-    const menuButton = screen.getAllByRole('button')[0]
-    fireEvent.click(menuButton!)
-
-    // HeaderInMobile renders MobileSidebar which renders Sidebar and overlay
-    // HeaderInMobile renders MobileSidebar which renders Sidebar and overlay
-    expect(await screen.findByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
-    expect(screen.getByTestId('sidebar-content'))!.toBeInTheDocument()
-
-    // Close sidebar via overlay click
-    fireEvent.click(screen.getByTestId('mobile-sidebar-overlay'))
-    await waitFor(() => {
-      expect(screen.queryByTestId('mobile-sidebar-overlay')).not.toBeInTheDocument()
-    })
+    const trigger = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })
+    const backgroundMore = screen.getByRole('button', { name: 'common.operation.more' })
+    await user.click(trigger)
+    const sidebar = await screen.findByRole('dialog', { name: 'Test Chat' })
+    await waitFor(() => expect(sidebar).toContainElement(document.activeElement as HTMLElement))
+    expect(screen.queryAllByRole('button', { name: 'common.operation.more' })).not.toContain(
+      backgroundMore,
+    )
+    await user.tab({ shift: true })
+    expect(sidebar).toContainElement(document.activeElement as HTMLElement)
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
-  it('should not close sidebar when clicking inside sidebar content', async () => {
+  it('provides a keyboard-operable sidebar close button', async () => {
+    const user = userEvent.setup()
     render(<HeaderInMobile />)
-
-    // Open sidebar
-    const menuButton = screen.getAllByRole('button')[0]
-    fireEvent.click(menuButton!)
-
-    expect(await screen.findByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
-
-    // Click inside sidebar content (should not close)
-    fireEvent.click(screen.getByTestId('sidebar-content'))
-
-    // Sidebar should still be visible
-    // Sidebar should still be visible
-    expect(screen.getByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
+    const trigger = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })
+    await user.click(trigger)
+    const sidebar = await screen.findByRole('dialog', { name: 'Test Chat' })
+    const close = within(sidebar).getByRole('button', { name: 'common.operation.close' })
+    close.focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
-  it('should open and close chat settings', async () => {
+  it('opens named modal chat settings and closes with Escape', async () => {
+    const user = userEvent.setup()
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       inputsForms: [{ variable: 'test', label: 'Test', type: 'text', required: true }],
     })
-
     render(<HeaderInMobile />)
-
-    // Open dropdown (More button)
-    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
-
-    // Find and click "View Chat Settings"
-    await waitFor(() => {
-      expect(screen.getByText(/share\.chat\.viewChatSettings/i))!.toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByText(/share\.chat\.viewChatSettings/i))
-
-    // Check if chat settings overlay is open
-    await waitFor(() => {
-      expect(screen.getByTestId('mobile-chat-settings-overlay')).toBeInTheDocument()
-    })
-
-    // Close chat settings via overlay click
-    fireEvent.click(screen.getByTestId('mobile-chat-settings-overlay'))
-    await waitFor(() => {
-      expect(screen.queryByTestId('mobile-chat-settings-overlay')).not.toBeInTheDocument()
-    })
-  })
-
-  it('should not close chat settings when clicking inside settings content', async () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [{ variable: 'test', label: 'Test', type: 'text', required: true }],
-    })
-
-    render(<HeaderInMobile />)
-
-    // Open dropdown and chat settings
-    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
-    await waitFor(() => {
-      expect(screen.getByText(/share\.chat\.viewChatSettings/i))!.toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByText(/share\.chat\.viewChatSettings/i))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mobile-chat-settings-overlay')).toBeInTheDocument()
-    })
-
-    // Click inside the settings panel (find the title)
-    const settingsTitle = screen.getByText(/share\.chat\.chatSettingsTitle/i)
-    fireEvent.click(settingsTitle)
-
-    // Settings should still be visible
-    // Settings should still be visible
-    expect(screen.getByTestId('mobile-chat-settings-overlay'))!.toBeInTheDocument()
+    const trigger = screen.getByRole('button', { name: 'common.operation.more' })
+    await user.click(trigger)
+    await user.click(await screen.findByRole('menuitem', { name: 'share.chat.viewChatSettings' }))
+    const settings = await screen.findByRole('dialog', { name: 'share.chat.chatSettingsTitle' })
+    await waitFor(() => expect(settings).toContainElement(document.activeElement as HTMLElement))
+    expect(
+      within(settings).getByRole('button', { name: 'common.operation.close' }),
+    ).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
   it('should hide chat settings option when no input forms', async () => {

@@ -12,7 +12,7 @@ from uuid import UUID
 import jwt
 import pytest
 from flask import Flask
-from sqlalchemy import update
+from sqlalchemy import null, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -775,7 +775,7 @@ def test_content_disposition_follows_the_inline_whitelist(
 @pytest.mark.usefixtures("sqlite_db", "stored_bytes")
 def test_content_downloads_a_file_with_no_recorded_mime_type(app: Flask, sqlite_session: Session) -> None:
     upload_file = _persist_upload_file(sqlite_session, owner_id="anyone")
-    sqlite_session.execute(update(UploadFile).where(UploadFile.id == upload_file.id).values(mime_type=None))
+    sqlite_session.execute(update(UploadFile).where(UploadFile.id == upload_file.id).values(mime_type=null()))
     sqlite_session.commit()
     token = _content_token(file_id=upload_file.id, kind=FileKind.UPLOAD)
 

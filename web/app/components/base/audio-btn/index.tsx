@@ -1,10 +1,10 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
+import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { t } from 'i18next'
 import { useState } from 'react'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import Loading from '@/app/components/base/loading'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
 
@@ -97,7 +97,7 @@ export function AudioBtn({ id, voice, value, className, isAudition }: AudioBtnPr
               >
                 {audioState === 'loading' ? (
                   <div className="flex size-full items-center justify-center rounded-md">
-                    <Loading />
+                    <SpinnerIcon />
                   </div>
                 ) : (
                   <div className="flex size-full items-center justify-center rounded-md hover:bg-gray-50">

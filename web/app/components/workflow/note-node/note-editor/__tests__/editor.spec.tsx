@@ -50,7 +50,9 @@ describe('Editor', () => {
       renderEditor({ placeholder: 'Type note' })
 
       expect(screen.getByText('Type note')).toBeInTheDocument()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'workflow.nodes.note.editor.label' }),
+      ).toBeInTheDocument()
     })
 
     it('should render linked text with distinct link styling', async () => {
@@ -152,6 +154,9 @@ describe('Editor', () => {
 
       await waitFor(() => {
         expect(changes).toContain('hello world')
+        expect(
+          screen.getByRole('textbox', { name: 'workflow.nodes.note.editor.label' }),
+        ).toHaveTextContent('hello world')
       })
     })
   })

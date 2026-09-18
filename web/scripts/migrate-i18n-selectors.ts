@@ -27,7 +27,7 @@ const SKIPPED_DIRECTORIES = new Set([
   '.vinext',
   'coverage',
   'dist',
-  'i18n',
+  'locales',
   'node_modules',
   'public',
 ])

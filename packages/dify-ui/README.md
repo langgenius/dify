@@ -39,7 +39,7 @@ Import `styles.css` once from the consumer's root stylesheet or entrypoint.
 | Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                                              |
 | Controls         | `./segmented-control`                                                                                                                                                                |
 | Display          | `./collapsible`, `./kbd`                                                                                                                                                             |
-| Feedback         | `./meter`, `./progress`, `./status-dot`, `./toast`                                                                                                                                   |
+| Feedback         | `./meter`, `./progress`, `./spinner`, `./status-dot`, `./toast`                                                                                                                      |
 | Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` |
 | Layout           | `./scroll-area`                                                                                                                                                                      |
 | Media            | `./avatar`                                                                                                                                                                           |

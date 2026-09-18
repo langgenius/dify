@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeCatalogTabs from '../home-catalog-tabs'
 import { HomeStickyCatalogTabs, HomeStickyStateProvider } from '../home-sticky-state-provider'

@@ -15,7 +15,7 @@ const getEditButton = () => screen.getByRole('button', { name: 'common.operation
 const getDeleteButton = () => screen.getByRole('button', { name: 'common.operation.delete' })
 const getCopyButton = () => screen.getByRole('button', { name: 'common.operation.copy' })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(
     (message: string, options?: { type?: string }) =>
       mockToastNotify({ type: options?.type, message }),

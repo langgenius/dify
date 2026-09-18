@@ -3,11 +3,11 @@ import type { FormRefObject, FormSchema } from '@/app/components/base/form/types
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useForm, useStore } from '@tanstack/react-form'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
+import { toast } from '@/app/notifications'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
   useDeletePluginOAuthCustomClientHook,

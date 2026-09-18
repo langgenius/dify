@@ -5,7 +5,7 @@ import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -38,6 +38,7 @@ const TriggerFormItem: FC<Props> = ({
   disableVariableInsertion = false,
 }) => {
   const language = useLanguage()
+  const labelId = useId()
   const { name, label, type, required, tooltip, input_schema } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
   const showDescription =
@@ -51,7 +52,7 @@ const TriggerFormItem: FC<Props> = ({
     <div className="space-y-0.5 py-1">
       <div>
         <div className="flex h-6 items-center">
-          <div className="system-sm-medium text-text-secondary">
+          <div id={labelId} className="system-sm-medium text-text-secondary">
             {label[language] || label.en_US}
           </div>
           {required && (
@@ -88,6 +89,7 @@ const TriggerFormItem: FC<Props> = ({
         )}
       </div>
       <FormInputItem
+        labelId={labelId}
         readOnly={readOnly}
         nodeId={nodeId}
         schema={schema}

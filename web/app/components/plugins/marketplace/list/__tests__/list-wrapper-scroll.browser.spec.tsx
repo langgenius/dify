@@ -25,10 +25,6 @@ vi.mock('#i18n', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div>loading</div>,
-}))
-
 vi.mock('../../sort-dropdown', () => ({
   default: () => <div>sort</div>,
 }))
@@ -93,7 +89,8 @@ describe('Marketplace result scroll anchoring', () => {
     const scrollTopBefore = scrollContainer.scrollTop
 
     await screen.getByRole('button', { name: 'Type search' }).click()
-    await expect.element(screen.getByText('1 plugins found')).toBeVisible()
+    await expect.element(screen.getByRole('status')).toHaveTextContent('1 plugins found')
+    await expect.element(screen.getByTestId('catalog-results')).toBeVisible()
     await new Promise(requestAnimationFrame)
 
     expect(scrollContainer.scrollTop).toBe(scrollTopBefore)

@@ -112,6 +112,7 @@ export function AgentPreviewHeader({
   mode,
   previewEnabled,
   isChatFeaturesOpen,
+  buildEnabled = true,
   onModeChange,
   onToggleChatFeatures,
   onOpenWorkingDirectory,
@@ -124,6 +125,7 @@ export function AgentPreviewHeader({
   mode: AgentConfigureRightPanelMode
   previewEnabled: boolean
   isChatFeaturesOpen: boolean
+  buildEnabled?: boolean
   onModeChange: (mode: AgentConfigureRightPanelMode) => void
   onToggleChatFeatures: () => void
   onOpenWorkingDirectory: () => void
@@ -163,7 +165,11 @@ export function AgentPreviewHeader({
           onValueChange={(value) => onModeChange(value)}
           aria-label={t(($) => $['agentDetail.configure.rightPanel.modeLabel'])}
         >
-          <SegmentedControlItem<AgentConfigureRightPanelMode> value="build" className="uppercase">
+          <SegmentedControlItem<AgentConfigureRightPanelMode>
+            value="build"
+            disabled={!buildEnabled}
+            className="uppercase"
+          >
             <span aria-hidden className="i-custom-vender-agent-v2-configure-build size-4" />
             {t(($) => $['agentDetail.configure.rightPanel.build'])}
           </SegmentedControlItem>

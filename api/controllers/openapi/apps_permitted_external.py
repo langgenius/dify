@@ -52,8 +52,8 @@ class PermittedExternalAppsListApi(Resource):
         )
 
         if not page_result.app_ids:
-            env = PermittedExternalAppsListResponse(
-                page=query.page, limit=query.limit, total=page_result.total, has_more=False, data=[]
+            env = PermittedExternalAppsListResponse.build(
+                page=query.page, limit=query.limit, total=page_result.total, items=[]
             )
             return env
 
@@ -80,12 +80,8 @@ class PermittedExternalAppsListApi(Resource):
                     workspace_name=tenant.name if tenant else None,
                 )
             )
-        env = PermittedExternalAppsListResponse(
-            page=query.page,
-            limit=query.limit,
-            total=page_result.total,
-            has_more=query.page * query.limit < page_result.total,
-            data=items,
+        env = PermittedExternalAppsListResponse.build(
+            page=query.page, limit=query.limit, total=page_result.total, items=items
         )
         return env
 

@@ -422,9 +422,9 @@ const Debug: FC<IDebug> = ({
     <>
       <Collapsible open={expanded} onOpenChange={setExpanded} render={<div className="shrink-0" />}>
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="system-xl-semibold text-text-primary">
+          <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['inputs.title'], { ns: 'appDebug' })}
-          </div>
+          </h2>
           <div className="flex items-center">
             {debugWithMultipleModel ? (
               <>
@@ -475,7 +475,7 @@ const Debug: FC<IDebug> = ({
                       <TooltipTrigger
                         render={
                           <CollapsibleTrigger
-                            className="size-6 min-h-0 justify-center gap-0 p-0.5 hover:not-data-disabled:text-text-secondary data-panel-open:bg-state-accent-active data-panel-open:text-text-accent data-panel-open:hover:bg-state-accent-active-alt"
+                            className="rounded-lg text-text-secondary data-panel-open:bg-state-accent-active data-panel-open:text-text-accent data-panel-open:hover:bg-state-accent-active-alt"
                             render={
                               <IconButton
                                 aria-label={t(($) => $['panel.userInputField'], { ns: 'workflow' })}

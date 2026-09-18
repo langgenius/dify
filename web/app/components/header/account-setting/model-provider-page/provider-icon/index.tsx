@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
 import { Openai } from '@/app/components/base/icons/src/vender/other'
 import useTheme from '@/hooks/use-theme'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import { Theme } from '@/types/app'
 import { useLanguage } from '../hooks'
 

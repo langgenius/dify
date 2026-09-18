@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, RefObject } from 'react'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -9,6 +9,7 @@ import { useStore } from '@/app/components/workflow/store'
 import VarReferenceVars from './var-reference-vars'
 
 type Props = Readonly<{
+  searchInputRef?: RefObject<HTMLInputElement | null>
   vars: NodeOutPutVar[]
   popupFor?: 'assigned' | 'toAssigned'
   onChange: (value: ValueSelector, varDetail: Var) => void
@@ -17,6 +18,7 @@ type Props = Readonly<{
   preferSchemaType?: boolean
 }>
 const VarReferencePopup: FC<Props> = ({
+  searchInputRef,
   vars,
   popupFor,
   onChange,
@@ -59,6 +61,7 @@ const VarReferencePopup: FC<Props> = ({
         )
       ) : (
         <VarReferenceVars
+          searchInputRef={searchInputRef}
           searchBoxClassName="mt-1"
           vars={vars}
           onChange={onChange}

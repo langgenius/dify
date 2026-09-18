@@ -104,6 +104,21 @@ class StoredWorkflowAgentSession:
 class WorkflowAgentWorkspaceStore:
     """Load or create the participant named by a node execution caller row."""
 
+    @staticmethod
+    def load_active_participant(
+        *,
+        session: Session,
+        scope: WorkspaceOwnerScope,
+        agent_id: str,
+    ) -> AgentWorkspaceBinding | None:
+        """Look up the participant that pins a Chatflow node's generation."""
+
+        return AgentWorkspaceService.resolve_active_binding_for_scope(
+            session=session,
+            scope=scope,
+            agent_id=agent_id,
+        )
+
     def load_existing_node_execution_scope(
         self,
         *,
@@ -315,7 +330,7 @@ class WorkflowAgentWorkspaceStore:
         """Reuse a conversation-scoped participant or allocate a new one."""
 
         if scope.conversation_id is not None:
-            existing_binding = AgentWorkspaceService.resolve_active_binding_for_scope(
+            existing_binding = WorkflowAgentWorkspaceStore.load_active_participant(
                 session=session,
                 scope=scope.workspace_owner,
                 agent_id=scope.agent_id,

@@ -1,6 +1,7 @@
 import type { Topic } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { useEdgesInteractions } from '../../../../hooks/use-edges-interactions'
 import ClassList from '../class-list'
 
@@ -100,6 +101,38 @@ describe('question-classifier/class-list', () => {
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ name: '' })]),
     )
+  })
+
+  it('confirms keyboard sorting through the branch-aware sort callback', async () => {
+    const user = userEvent.setup()
+    const handleSortTopic = vi.fn()
+    const onChange = vi.fn()
+    const topics = [createTopic(), createTopic({ id: 'topic-2', name: 'Refunds' })]
+    function Fixture() {
+      const [list, setList] = useState(topics)
+      return (
+        <ClassList
+          nodeId="node-1"
+          list={list}
+          onChange={onChange}
+          filterVar={() => true}
+          handleSortTopic={(items) => {
+            handleSortTopic(items)
+            setList(items)
+          }}
+        />
+      )
+    }
+    render(<Fixture />)
+    const handle = screen.getAllByRole('button', { pressed: false })[0]!
+    for (let index = 0; index < 10 && document.activeElement !== handle; index++) await user.tab()
+    expect(handle).toHaveFocus()
+    await user.keyboard('{Enter}{ArrowDown}')
+    expect(screen.getByText('1:Refunds')).toBeInTheDocument()
+    expect(handleSortTopic).not.toHaveBeenCalled()
+    await user.keyboard('{Enter}')
+    expect(handleSortTopic).toHaveBeenCalledExactlyOnceWith([topics[1], topics[0]])
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('hides drag and add affordances when readonly', () => {

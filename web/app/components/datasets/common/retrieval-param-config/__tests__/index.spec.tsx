@@ -5,7 +5,7 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalParamConfig from '../index'
 
 const mockNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockNotify(message),
   },

@@ -20,7 +20,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
@@ -69,6 +69,7 @@ const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial 
   icon_url: null,
   mode: 'agent',
   name: 'Research Agent',
+  permission_keys: [],
   role: 'Research Assistant',
   ...overrides,
 })

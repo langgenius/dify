@@ -5,7 +5,7 @@ import { noop } from 'es-toolkit/function'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
@@ -178,7 +178,7 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
   )
 
   if (isFetchingLastRunData) {
-    return <Loading type="app" />
+    return <LoadingPlaceholder className="h-full" />
   }
 
   if (isError)

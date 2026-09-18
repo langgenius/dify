@@ -14,6 +14,7 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import SegmentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                     DocumentSegment.dataset_id == dataset_id,
                     DocumentSegment.document_id == document_id,
                 )
-                .values(error=str(e), status="error", disabled_at=naive_utc_now(), enabled=False)
+                .values(error=str(e), status=SegmentStatus.ERROR, disabled_at=naive_utc_now(), enabled=False)
             )
             session.commit()
         finally:

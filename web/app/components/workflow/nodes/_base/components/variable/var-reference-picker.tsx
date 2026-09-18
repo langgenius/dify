@@ -146,6 +146,7 @@ const VarReferencePicker: FC<Props> = ({
   const isInLoop = !!node?.data.isInLoop
   const loopNode = isInLoop ? (nodes.find((n) => n.id === node?.parentId) ?? null) : null
 
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
   const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
   useEffect(() => {
@@ -419,12 +420,14 @@ const VarReferencePicker: FC<Props> = ({
           />
         )}
         <PopoverContent
+          initialFocus={searchInputRef}
           placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
           sideOffset={4}
           className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           {!isConstant && (
             <VarReferencePopup
+              searchInputRef={searchInputRef}
               vars={outputVars}
               popupFor={popupFor}
               onChange={handleVarReferenceChange}

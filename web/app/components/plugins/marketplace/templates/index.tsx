@@ -1,8 +1,8 @@
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { TemplateCategory } from './categories'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
-import { getTranslation } from '@/i18n-config/server'
+import { getTranslation } from '@/i18n/server'
 import { redirect } from '@/next/navigation'
 import {
   getMarketplaceTemplateCollectionsAndTemplates,

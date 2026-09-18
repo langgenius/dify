@@ -68,21 +68,6 @@ describe('SVGRenderer', () => {
       })
     })
 
-    it('re-renders on window resize', async () => {
-      render(<SVGRenderer content={validSvg} />)
-      await waitFor(() => {
-        expect(mockAddTo).toHaveBeenCalledTimes(1)
-      })
-
-      await act(async () => {
-        window.dispatchEvent(new Event('resize'))
-      })
-
-      await waitFor(() => {
-        expect(mockAddTo).toHaveBeenCalledTimes(2)
-      })
-    })
-
     it('uses default values for width/height if not present', async () => {
       const mockSvgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
       parseFromStringSpy.mockReturnValue({

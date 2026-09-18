@@ -14,6 +14,7 @@ const createBlogBanner = (id: string, title: string, sort: number): PluginBanner
     blog_title: title,
     subtitle: 'New Agent node support',
     description: 'Build agent workflows with the new Agent node.',
+    cover_image: '/api/v1/banners/images/banners/blog-cover.png',
     link: 'https://dify.ai/blog',
     link_target_type: 'blog',
   },
@@ -94,6 +95,7 @@ describe('Marketplace home trending layout', () => {
         blog_title: longTitle,
         subtitle: subtitleText,
         description: descriptionText,
+        cover_image: '/api/v1/banners/images/banners/blog-cover.png',
         link: 'https://dify.ai/blog',
         link_target_type: 'blog',
       },
@@ -223,20 +225,6 @@ describe('Marketplace home trending layout', () => {
     expect(artwork).not.toBeNull()
     expect(artwork!.getBoundingClientRect().width).toBeGreaterThanOrEqual(1200)
     expect(getComputedStyle(artwork!).objectPosition).toBe('0% 50%')
-  })
-
-  it('keeps the blog artwork left corners rounded when its image is cropped', async () => {
-    const screen = await render(
-      <div className="w-[600px]">
-        <HomeBannerSlide banner={blogBanner} isMarketplacePlatform page="plugins" />
-      </div>,
-    )
-
-    const artwork = screen.getByRole('link').element().querySelector('img')
-
-    expect(artwork).not.toBeNull()
-    expect(getComputedStyle(artwork!).borderTopLeftRadius).toBe('16px')
-    expect(getComputedStyle(artwork!).borderBottomLeftRadius).toBe('16px')
   })
 
   it('wraps from the last banner back to the first visible slide', async () => {

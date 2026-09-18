@@ -1,8 +1,8 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { useAutoDisabledDocuments } from '@/service/knowledge/use-document'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import AutoDisabledDocument from '../auto-disabled-document'
@@ -33,7 +33,7 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useInvalidDisabledDocument: vi.fn(() => mockInvalidDisabledDocument),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
   },

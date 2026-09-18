@@ -41,7 +41,7 @@ vi.mock('@/service/apps', () => ({
   updateTracingStatus: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: vi.fn(),
 }))
 
