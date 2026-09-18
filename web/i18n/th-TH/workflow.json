@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "การผสานรวมนี้ติดตั้งจาก GitHub โปรดไปที่การผสานรวมเพื่อติดตั้งใหม่",
   "nodes.agent.roster.change": "เปลี่ยน",
   "nodes.agent.roster.editInConsole": "แก้ไขใน Agents",
-  "nodes.agent.roster.editInConsoleDisabled": "การแก้ไข Agent ต้องมีบทบาท Editor ขึ้นไป",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "เฉพาะสมาชิกที่มีบทบาท Editor ขึ้นไป หรือมีสิทธิ์จัดการ Agents เท่านั้นที่แก้ไข Agent ได้",
   "nodes.agent.roster.inlineSetup.description": "การตั้งค่าครั้งเดียวที่อยู่เฉพาะในโหนดนี้",
   "nodes.agent.roster.inlineSetup.name": "การตั้งค่าแบบอินไลน์",
   "nodes.agent.roster.inlineSetup.type": "เฉพาะในโหนดนี้",

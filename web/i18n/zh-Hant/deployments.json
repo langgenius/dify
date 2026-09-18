@@ -27,7 +27,6 @@
   "list.emptyTitle": "尚無部署",
   "overview.chip.latest": "最新",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "部署中",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "部署失敗",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "異常",
   "status.RUNTIME_INSTANCE_STATUS_READY": "執行中",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "未部署",
@@ -87,6 +86,5 @@
   "studio.versionValue": "版本值",
   "studio.versionsBehind_one": "落後 {{count}} 個版本",
   "studio.versionsBehind_other": "落後 {{count}} 個版本",
-  "versions.checkingReleaseContent": "正在檢查版本內容…",
   "versions.deployTo": "部署到 {{name}}"
 }

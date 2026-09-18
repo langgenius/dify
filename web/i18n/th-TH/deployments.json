@@ -27,7 +27,6 @@
   "list.emptyTitle": "ยังไม่มีการปรับใช้",
   "overview.chip.latest": "ล่าสุด",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "กำลังปรับใช้",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "การปรับใช้ล้มเหลว",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "ไม่ถูกต้อง",
   "status.RUNTIME_INSTANCE_STATUS_READY": "กำลังทำงาน",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "ยังไม่ได้ปรับใช้",
@@ -87,6 +86,5 @@
   "studio.versionValue": "ค่าของเวอร์ชัน",
   "studio.versionsBehind_one": "ล้าหลัง {{count}} เวอร์ชัน",
   "studio.versionsBehind_other": "ล้าหลัง {{count}} เวอร์ชัน",
-  "versions.checkingReleaseContent": "กำลังตรวจสอบเนื้อหารีลีส...",
   "versions.deployTo": "ปรับใช้กับ {{name}}"
 }

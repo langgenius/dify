@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Виконання команд",
   "agentDetail.configure.answer.duration.minute": "{{count}} хв",
   "agentDetail.configure.answer.duration.second": "{{count}} с",
+  "agentDetail.configure.answer.responseEnded": "Відповідь завершено",
   "agentDetail.configure.answer.thinking": "Розмірковує",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition, хоча й пропонує версіонування витягнутих конфігурацій, не підтримує версіонування самої файлової системи. Будьте обережні з діями в режимі Build, адже зміни файлової системи відбуваються в реальному часі й не завжди можуть бути чисто скасовані. Community Edition не є ідеальним вибором для обслуговування масової зовнішньої аудиторії.",
   "agentDetail.configure.build.empty.description": "Опишіть, що вам потрібно, і форма ліворуч заповнюватиметься під час розмови.",
@@ -269,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Шлях файлової системи",
   "agentDetail.configure.workingDirectory.description": "Файли, які агент читає і записує під час роботи. Усе, що він створює, наприклад qna_report.pdf, з’являється тут.",
   "agentDetail.configure.workingDirectory.fileSystem": "Файлова система",
-  "agentDetail.configure.workingDirectory.open": "Відкрити робочий каталог",
   "agentDetail.configure.workingDirectory.persistentFiles": "Постійні",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Файли, які агент зберігає та може використовувати всюди, де він запускається, зокрема в розмовах кінцевих користувачів і робочих процесах. Зміни, внесені тут під час цього чату створення, набудуть чинності після натискання «Застосувати».",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Тимчасові",
@@ -348,7 +348,6 @@
   "agentDetail.sections.logs": "Журнали",
   "agentDetail.sections.monitoring": "Моніторинг",
   "agentDetail.title": "Агент",
-  "agentDetail.type": "АГЕНТ",
   "agentDetail.versionHistory.empty": "Поки що немає версій",
   "agentDetail.versionHistory.exitVersions": "Вийти з версій",
   "agentDetail.versionHistory.filter": "Фільтрувати версії",
@@ -408,8 +407,5 @@
   "roster.sort.lastModified": "Остання зміна",
   "roster.sort.recentlyCreated": "Нещодавно створені",
   "roster.title": "Агенти",
-  "roster.usageStatus.draft": "Чернетка",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Не вдалося завантажити {{count}} файл.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Не вдалося завантажити {{count}} файлів.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Чернетка"
 }

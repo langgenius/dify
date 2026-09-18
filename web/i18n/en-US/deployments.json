@@ -27,7 +27,6 @@
   "list.emptyTitle": "No deployments yet",
   "overview.chip.latest": "latest",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Deploying",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Deploy failed",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Invalid",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Running",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Not deployed",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Version value",
   "studio.versionsBehind_one": "{{count}} version behind",
   "studio.versionsBehind_other": "{{count}} versions behind",
-  "versions.checkingReleaseContent": "Checking release content...",
   "versions.deployTo": "Deploy to {{name}}"
 }

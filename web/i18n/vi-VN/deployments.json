@@ -27,7 +27,6 @@
   "list.emptyTitle": "Chưa có triển khai nào",
   "overview.chip.latest": "mới nhất",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Đang triển khai",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Triển khai thất bại",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Không hợp lệ",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Đang chạy",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Chưa triển khai",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Giá trị phiên bản",
   "studio.versionsBehind_one": "Chậm {{count}} phiên bản",
   "studio.versionsBehind_other": "Chậm {{count}} phiên bản",
-  "versions.checkingReleaseContent": "Đang kiểm tra nội dung bản phát hành...",
   "versions.deployTo": "Triển khai đến {{name}}"
 }

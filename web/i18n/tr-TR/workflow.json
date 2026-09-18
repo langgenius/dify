@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "Bu entegrasyon GitHub'dan yüklenmiştir. Lütfen şuraya gidin: Entegrasyonlar yeniden yüklemek için",
   "nodes.agent.roster.change": "Değiştir",
   "nodes.agent.roster.editInConsole": "Agents'da düzenle",
-  "nodes.agent.roster.editInConsoleDisabled": "Ajanları düzenlemek için Editör veya üzeri bir rol gerekir.",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "Yalnızca Editör veya üzeri role ya da Agents'ı yönet iznine sahip üyeler ajanları düzenleyebilir.",
   "nodes.agent.roster.inlineSetup.description": "Yalnızca bu düğümde yaşayan tek seferlik bir kurulum",
   "nodes.agent.roster.inlineSetup.name": "Inline kurulum",
   "nodes.agent.roster.inlineSetup.type": "Yalnızca bu düğümde",

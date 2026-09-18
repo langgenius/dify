@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Opdrachten uitvoeren",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
+  "agentDetail.configure.answer.responseEnded": "Antwoord beëindigd",
   "agentDetail.configure.answer.thinking": "Aan het nadenken",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition biedt wel versiebeheer voor geëxtraheerde configuraties, maar ondersteunt geen versiebeheer van het bestandssysteem zelf. Wees voorzichtig met je acties in de Build-modus, omdat wijzigingen aan het bestandssysteem in realtime plaatsvinden en niet altijd netjes kunnen worden teruggedraaid. Community Edition is niet de ideale keuze voor het bedienen van grote externe doelgroepen.",
   "agentDetail.configure.build.empty.description": "Beschrijf wat je wilt en het formulier links wordt gaandeweg ingevuld.",
@@ -269,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Bestandssysteempad",
   "agentDetail.configure.workingDirectory.description": "Bestanden die de agent leest en schrijft tijdens het uitvoeren. Alles wat hij genereert, zoals qna_report.pdf, verschijnt hier.",
   "agentDetail.configure.workingDirectory.fileSystem": "Bestandssysteem",
-  "agentDetail.configure.workingDirectory.open": "Werkmap openen",
   "agentDetail.configure.workingDirectory.persistentFiles": "Permanent",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Bestanden die de agent bewaart en overal kan gebruiken waar deze wordt uitgevoerd, waaronder gesprekken van eindgebruikers en workflows. Wijzigingen die je hier tijdens deze buildchat aanbrengt, worden van kracht zodra je op ‘Toepassen’ klikt.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Tijdelijk",
@@ -348,7 +348,6 @@
   "agentDetail.sections.logs": "Logs",
   "agentDetail.sections.monitoring": "Monitoring",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "AGENT",
   "agentDetail.versionHistory.empty": "Nog geen versies",
   "agentDetail.versionHistory.exitVersions": "Versies verlaten",
   "agentDetail.versionHistory.filter": "Versies filteren",
@@ -408,8 +407,5 @@
   "roster.sort.lastModified": "Laatst gewijzigd",
   "roster.sort.recentlyCreated": "Recent aangemaakt",
   "roster.title": "Agenten",
-  "roster.usageStatus.draft": "Concept",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Uploaden van {{count}} bestand is mislukt.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Uploaden van {{count}} bestanden is mislukt.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Concept"
 }

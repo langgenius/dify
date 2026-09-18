@@ -8,6 +8,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import {
@@ -16,7 +17,6 @@ import {
   sendForgotPasswordEmail,
 } from '@/service/common'
 import { basePath } from '@/utils/var'
-import Loading from '../components/base/loading'
 
 type ForgotPasswordFormValues = {
   email: string
@@ -67,7 +67,7 @@ const ForgotPasswordForm = () => {
   }, [])
 
   return loading ? (
-    <Loading />
+    <LoadingPlaceholder />
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">

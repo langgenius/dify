@@ -27,7 +27,6 @@
   "list.emptyTitle": "Henüz dağıtım yok",
   "overview.chip.latest": "en son",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Dağıtılıyor",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Dağıtım başarısız",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Geçersiz",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Çalışıyor",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Dağıtılmadı",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Sürüm değeri",
   "studio.versionsBehind_one": "{{count}} sürüm geride",
   "studio.versionsBehind_other": "{{count}} sürüm geride",
-  "versions.checkingReleaseContent": "Sürüm içeriği kontrol ediliyor...",
   "versions.deployTo": "{{name}} ortamına dağıt"
 }

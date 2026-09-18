@@ -185,9 +185,6 @@ catalogs:
     '@egoist/tailwindcss-icons':
       specifier: 1.9.2
       version: 1.9.2
-    '@emoji-mart/data':
-      specifier: 1.2.1
-      version: 1.2.1
     '@eslint-community/eslint-plugin-eslint-comments':
       specifier: 4.8.1
       version: 4.8.1
@@ -464,9 +461,6 @@ catalogs:
     embla-carousel-react:
       specifier: 8.6.0
       version: 8.6.0
-    emoji-mart:
-      specifier: 5.6.0
-      version: 5.6.0
     es-toolkit:
       specifier: 1.52.0
       version: 1.52.0
@@ -536,6 +530,9 @@ catalogs:
     foxact:
       specifier: 0.3.11
       version: 0.3.11
+    frimousse:
+      specifier: 0.3.0
+      version: 0.3.0
     fuse.js:
       specifier: 7.5.0
       version: 7.5.0
@@ -1360,9 +1357,6 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@emoji-mart/data':
-        specifier: 'catalog:'
-        version: 1.2.1
       '@floating-ui/react':
         specifier: 'catalog:'
         version: 0.27.20(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1486,9 +1480,6 @@ importers:
       embla-carousel-react:
         specifier: 'catalog:'
         version: 8.6.0(react@19.3.0)
-      emoji-mart:
-        specifier: 'catalog:'
-        version: 5.6.0
       es-toolkit:
         specifier: 'catalog:'
         version: 1.52.0
@@ -1498,6 +1489,9 @@ importers:
       foxact:
         specifier: 'catalog:'
         version: 0.3.11(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      frimousse:
+        specifier: 'catalog:'
+        version: 0.3.0(@typescript/typescript6@6.0.2)(react@19.3.0)
       fuse.js:
         specifier: 'catalog:'
         version: 7.5.0
@@ -2176,9 +2170,6 @@ packages:
 
   '@emnapi/wasi-threads@1.2.2':
     resolution: {integrity: sha512-c95qOXkHdydNKhscBTebqEC1CVAZpyqOfVfBzQ1qgzyl3gfeldUjIggDbIZgDKsHLgnsM+igH7TJ/eAasaVuMA==}
-
-  '@emoji-mart/data@1.2.1':
-    resolution: {integrity: sha512-no2pQMWiBy6gpBEiqGeU77/bFejDqUTRY7KX+0+iur13op3bqUsXdnwoZs6Xb1zbv0gAj5VvS1PWoUUckSr5Dw==}
 
   '@es-joy/jsdoccomment@0.92.0':
     resolution: {integrity: sha512-WivZqV5jPTYDQJgIMp0hTsyQESKYNY6yCJr4b0l84tYtQntkAMkc6zARh2vlRQyeg4aYHPUkCUDpvr2IWAiGpQ==}
@@ -6346,9 +6337,6 @@ packages:
   embla-carousel@8.6.0:
     resolution: {integrity: sha512-SjWyZBHJPbqxHOzckOfo8lHisEaJWmwd23XppYFYVh10bU66/Pn5tkVkbkCMZVdbUE5eTCI2nD8OyIP4Z+uwkA==}
 
-  emoji-mart@5.6.0:
-    resolution: {integrity: sha512-eJp3QRe79pjwa+duv+n7+5YsNhRcMl812EcFVwrnRvYKoNPoQb5qxU8DG6Bgwji0akHdp6D4Ln6tYLG58MFSow==}
-
   emoji-regex-xs@2.0.1:
     resolution: {integrity: sha512-1QFuh8l7LqUcKe24LsPUNzjrzJQ7pgRwp1QMcZ5MX6mFplk2zQ08NVCM84++1cveaUUYtcCYHmeFEuNg16sU4g==}
     engines: {node: '>=10.0.0'}
@@ -6808,6 +6796,15 @@ packages:
       react:
         optional: true
       react-dom:
+        optional: true
+
+  frimousse@0.3.0:
+    resolution: {integrity: sha512-kO6LMoKY/cLAYEhXXtqLRaLIE6L/DagpFPrUZaLv3LsUa1/8Iza3HhwZcgN8eZ+weXnhv69eoclNUPohcCa/IQ==}
+    peerDependencies:
+      react: ^18 || ^19
+      typescript: '>=5.1.0'
+    peerDependenciesMeta:
+      typescript:
         optional: true
 
   fs-constants@1.0.0:
@@ -10192,8 +10189,6 @@ snapshots:
     dependencies:
       tslib: 2.8.1
     optional: true
-
-  '@emoji-mart/data@1.2.1': {}
 
   '@es-joy/jsdoccomment@0.92.0':
     dependencies:
@@ -13962,8 +13957,6 @@ snapshots:
 
   embla-carousel@8.6.0: {}
 
-  emoji-mart@5.6.0: {}
-
   emoji-regex-xs@2.0.1: {}
 
   empathic@2.0.1: {}
@@ -14583,6 +14576,12 @@ snapshots:
     optionalDependencies:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
+
+  frimousse@0.3.0(@typescript/typescript6@6.0.2)(react@19.3.0):
+    dependencies:
+      react: 19.3.0
+    optionalDependencies:
+      typescript: '@typescript/typescript6@6.0.2'
 
   fs-constants@1.0.0:
     optional: true
@@ -18102,7 +18101,6 @@ time:
   '@chromatic-com/storybook@5.3.1': '2026-09-02T13:43:27.595Z'
   '@cucumber/cucumber@13.2.1': '2026-08-04T07:20:28.681Z'
   '@egoist/tailwindcss-icons@1.9.2': '2026-01-31T10:48:44.594Z'
-  '@emoji-mart/data@1.2.1': '2024-04-25T15:36:14.556Z'
   '@eslint-community/eslint-plugin-eslint-comments@4.8.1': '2026-09-12T22:48:47.148Z'
   '@eslint-react/eslint-plugin@5.19.1': '2026-09-14T17:56:33.726Z'
   '@eslint/markdown@8.0.3': '2026-07-01T13:28:44.339Z'
@@ -18196,7 +18194,6 @@ time:
   embla-carousel-autoplay@8.6.0: '2025-04-04T17:37:46.303Z'
   embla-carousel-fade@8.6.0: '2025-04-04T17:37:50.278Z'
   embla-carousel-react@8.6.0: '2025-04-04T17:37:53.976Z'
-  emoji-mart@5.6.0: '2024-04-25T14:22:21.440Z'
   es-toolkit@1.52.0: '2026-08-28T07:22:17.687Z'
   eslint-config-flat-gitignore@2.4.0: '2026-08-27T07:24:43.063Z'
   eslint-markdown@0.17.0: '2026-09-16T06:20:36.564Z'
@@ -18220,6 +18217,7 @@ time:
   eventsource-parser@4.1.1: '2026-09-15T18:30:29.195Z'
   fast-deep-equal@3.1.3: '2020-06-08T07:27:28.474Z'
   foxact@0.3.11: '2026-09-05T12:25:54.102Z'
+  frimousse@0.3.0: '2025-07-15T10:44:32.958Z'
   fuse.js@7.5.0: '2026-07-13T17:23:36.705Z'
   happy-dom@20.14.5: '2026-09-12T00:07:47.688Z'
   hast-util-to-jsx-runtime@2.3.6: '2025-03-05T11:30:29.166Z'

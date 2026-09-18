@@ -27,7 +27,6 @@
   "list.emptyTitle": "Поки що немає розгортань",
   "overview.chip.latest": "останній",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Розгортається",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Розгортання не вдалося",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Недійсний",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Запущено",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Не розгорнуто",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Значення версії",
   "studio.versionsBehind_one": "Відставання на {{count}} версію",
   "studio.versionsBehind_other": "Відставання на {{count}} версій",
-  "versions.checkingReleaseContent": "Перевірка вмісту релізу...",
   "versions.deployTo": "Розгорнути в {{name}}"
 }
