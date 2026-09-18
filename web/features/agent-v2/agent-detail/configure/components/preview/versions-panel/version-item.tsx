@@ -116,7 +116,7 @@ export function VersionItem({
               className="gap-2"
             >
               <span aria-hidden className="i-ri-file-download-line size-4 shrink-0" />
-              <span className="flex-1">{t(($) => $.export, { ns: 'app' })}</span>
+              <span className="flex-1">{t(($) => $.exportApp, { ns: 'app' })}</span>
               {showUpgrade && (
                 <PremiumBadge size="s">
                   {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
