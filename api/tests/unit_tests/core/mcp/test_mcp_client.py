@@ -494,6 +494,7 @@ class TestMCPClientWithAuthRetry:
     def mock_provider(self):
         provider = MagicMock(spec=MCPProviderEntity)
         provider.id = "test-provider-id"
+        provider.server_identifier = "test-server-identifier"
         provider.tenant_id = "test-tenant-id"
         provider.retrieve_tokens.return_value = OAuthTokens(
             access_token="new-token",
@@ -510,7 +511,6 @@ class TestMCPClientWithAuthRetry:
             headers={"Authorization": "Bearer old-token"},
             provider_entity=mock_provider,
             authorization_code="test-code",
-            by_server_id=True,
         )
         return client
 
@@ -522,7 +522,6 @@ class TestMCPClientWithAuthRetry:
             timeout=30.0,
             provider_entity=mock_provider,
             authorization_code="initial-code",
-            by_server_id=True,
         )
 
         assert client.server_url == "http://test.example.com"
@@ -530,7 +529,6 @@ class TestMCPClientWithAuthRetry:
         assert client.timeout == 30.0
         assert client.provider_entity == mock_provider
         assert client.authorization_code == "initial-code"
-        assert client.by_server_id is True
         assert client._has_retried is False
 
     @patch("core.mcp.auth_client.db")
@@ -550,7 +548,7 @@ class TestMCPClientWithAuthRetry:
             expires_in=3600,
             refresh_token="new-refresh-token",
         )
-        mock_service.get_provider_entity.return_value = new_provider
+        mock_service.get_provider_entity_by_server_identifier.return_value = new_provider
 
         # MCPAuthError parses resource_metadata and scope from www_authenticate_header
         www_auth = 'Bearer resource_metadata="http://meta", scope="read"'
@@ -565,8 +563,8 @@ class TestMCPClientWithAuthRetry:
             resource_metadata_url="http://meta",
             scope_hint="read",
         )
-        mock_service.get_provider_entity.assert_called_once_with(
-            mock_provider.id, mock_provider.tenant_id, by_server_id=True
+        mock_service.get_provider_entity_by_server_identifier.assert_called_once_with(
+            server_identifier=mock_provider.server_identifier, tenant_id=mock_provider.tenant_id
         )
 
         # Verify client updates
@@ -607,7 +605,7 @@ class TestMCPClientWithAuthRetry:
 
         new_provider = MagicMock(spec=MCPProviderEntity)
         new_provider.retrieve_tokens.return_value = None
-        mock_service.get_provider_entity.return_value = new_provider
+        mock_service.get_provider_entity_by_server_identifier.return_value = new_provider
 
         error = MCPAuthError("Auth failed")
 
