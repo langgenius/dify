@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Running commands",
   "agentDetail.configure.answer.duration.minute": "{{count}}m",
   "agentDetail.configure.answer.duration.second": "{{count}}s",
+  "agentDetail.configure.answer.responseEnded": "Response ended",
   "agentDetail.configure.answer.thinking": "Thinking",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition, while offering versioning to the extracted configs, does not support versioning on the file system itself. Be careful with your actions in Build mode, as changes made to the file system happen in real time and cannot always be neatly reverted. Community Edition is not your ideal choice for serving mass external audiences.",
   "agentDetail.configure.build.empty.description": "Describe what you want and it fills in the form on the left as you go.",

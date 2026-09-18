@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "正在執行命令",
   "agentDetail.configure.answer.duration.minute": "{{count}}分",
   "agentDetail.configure.answer.duration.second": "{{count}}秒",
+  "agentDetail.configure.answer.responseEnded": "回覆已結束",
   "agentDetail.configure.answer.thinking": "思考過程",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition 雖然會對提取出的設定提供版本管理，但不支援檔案系統本身的版本管理。請謹慎使用 Build 模式，因為對檔案系統的變更會即時發生，且不一定總能乾淨地回復。Community Edition 並不是面向大量外部受眾提供服務的理想選擇。",
   "agentDetail.configure.build.empty.description": "描述你的需求，它會隨著對話填寫左側表單。",
