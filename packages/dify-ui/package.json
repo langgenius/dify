@@ -160,6 +160,10 @@
     "./tooltip": {
       "types": "./src/tooltip/index.tsx",
       "import": "./src/tooltip/index.tsx"
+    },
+    "./spinner": {
+      "types": "./src/spinner/index.tsx",
+      "import": "./src/spinner/index.tsx"
     }
   },
   "scripts": {

@@ -13,7 +13,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
@@ -78,7 +78,7 @@ const ChangePasswordForm = () => {
     <div
       className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
     >
-      {isVerifyingToken && <Loading />}
+      {isVerifyingToken && <LoadingPlaceholder />}
       {isTokenInvalid && (
         <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">

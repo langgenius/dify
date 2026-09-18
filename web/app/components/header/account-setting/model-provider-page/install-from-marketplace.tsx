@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
@@ -124,9 +124,9 @@ const InstallFromMarketplace = ({
           </div>
         </div>
         {!collapse && shouldLoadMarketplace && !hasLoadedInstalledPluginIds && (
-          <Loading type="area" />
+          <LoadingPlaceholder />
         )}
-        {!collapse && hasLoadedInstalledPluginIds && isAllPluginsLoading && <Loading type="area" />}
+        {!collapse && hasLoadedInstalledPluginIds && isAllPluginsLoading && <LoadingPlaceholder />}
         {!isAllPluginsLoading && !collapse && hasLoadedInstalledPluginIds && (
           <List
             marketplaceCollections={[]}

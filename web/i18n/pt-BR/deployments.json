@@ -27,7 +27,6 @@
   "list.emptyTitle": "Nenhuma implantação ainda",
   "overview.chip.latest": "mais recente",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Implantando",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Falha na implantação",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Inválido",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Em execução",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Não implantado",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Valor da versão",
   "studio.versionsBehind_one": "{{count}} versão atrás",
   "studio.versionsBehind_other": "{{count}} versões atrás",
-  "versions.checkingReleaseContent": "Verificando o conteúdo da versão...",
   "versions.deployTo": "Implantar em {{name}}"
 }

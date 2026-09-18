@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
@@ -79,7 +79,7 @@ export function KnowledgeSpaceShell({
       <>
         {pageTitleElement}
         <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       </>
     )

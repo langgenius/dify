@@ -11,7 +11,7 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 import { useTranslation } from 'react-i18next'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 
@@ -124,11 +124,7 @@ export function AgentLogDetailPanel({
         <div className="rounded-t-xl bg-background-section-burn p-3 pb-2" />
       </div>
       <div className="mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn">
-        {messagesQuery.isPending && (
-          <div className="flex h-full items-center justify-center">
-            <Loading />
-          </div>
-        )}
+        {messagesQuery.isPending && <LoadingPlaceholder className="h-full" />}
         {messagesQuery.isError && (
           <div className="flex h-full items-center justify-center text-center system-sm-regular text-text-tertiary">
             {t(($) => $['agentDetail.logs.loadFailed'], { ns: 'agentV2' })}

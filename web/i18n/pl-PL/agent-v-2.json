@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Uruchamianie poleceń",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
+  "agentDetail.configure.answer.responseEnded": "Odpowiedź zakończona",
   "agentDetail.configure.answer.thinking": "Myśli",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition oferuje wersjonowanie wyodrębnionych konfiguracji, ale nie obsługuje wersjonowania samego systemu plików. Zachowaj ostrożność podczas działań w trybie Build, ponieważ zmiany w systemie plików zachodzą w czasie rzeczywistym i nie zawsze można je czysto cofnąć. Community Edition nie jest idealnym wyborem do obsługi masowej publiczności zewnętrznej.",
   "agentDetail.configure.build.empty.description": "Opisz, czego chcesz, a formularz po lewej będzie wypełniany w trakcie rozmowy.",
@@ -269,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Ścieżka systemu plików",
   "agentDetail.configure.workingDirectory.description": "Pliki, które agent odczytuje i zapisuje podczas działania. Wszystko, co wygeneruje, np. qna_report.pdf, pojawi się tutaj.",
   "agentDetail.configure.workingDirectory.fileSystem": "System plików",
-  "agentDetail.configure.workingDirectory.open": "Otwórz katalog roboczy",
   "agentDetail.configure.workingDirectory.persistentFiles": "Trwałe",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Pliki, które agent zachowuje i może wykorzystywać wszędzie tam, gdzie działa, w tym w rozmowach użytkowników końcowych i przepływach pracy. Zmiany wprowadzone tutaj podczas tego czatu tworzenia zaczną obowiązywać po kliknięciu „Zastosuj”.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Tymczasowe",
@@ -348,7 +348,6 @@
   "agentDetail.sections.logs": "Logi",
   "agentDetail.sections.monitoring": "Monitorowanie",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "AGENT",
   "agentDetail.versionHistory.empty": "Brak wersji",
   "agentDetail.versionHistory.exitVersions": "Opuść wersje",
   "agentDetail.versionHistory.filter": "Filtruj wersje",
@@ -408,8 +407,5 @@
   "roster.sort.lastModified": "Ostatnio zmodyfikowane",
   "roster.sort.recentlyCreated": "Ostatnio utworzone",
   "roster.title": "Agenci",
-  "roster.usageStatus.draft": "Wersja robocza",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Nie udało się przesłać {{count}} pliku.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Nie udało się przesłać {{count}} plików.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Wersja robocza"
 }

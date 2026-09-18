@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import { getProcessedInputs } from '@/app/components/base/chat/chat/utils'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
 import { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
@@ -278,7 +278,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (
             <div className="flex h-full items-center justify-center bg-components-panel-bg">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
           {currentTab === 'TRACING' && (
@@ -289,7 +289,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
             <div className="flex h-full items-center justify-center bg-background-section-burn!">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
         </div>

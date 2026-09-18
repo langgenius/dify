@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Executando comandos",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
+  "agentDetail.configure.answer.responseEnded": "A resposta terminou",
   "agentDetail.configure.answer.thinking": "Pensando",
   "agentDetail.configure.build.empty.communityEditionTip": "A Community Edition, embora ofereça versionamento para as configurações extraídas, não oferece suporte a versionamento do próprio sistema de arquivos. Tenha cuidado com suas ações no modo Build, pois as alterações feitas no sistema de arquivos acontecem em tempo real e nem sempre podem ser revertidas de forma limpa. A Community Edition não é a escolha ideal para atender grandes públicos externos.",
   "agentDetail.configure.build.empty.description": "Descreva o que você quer e o formulário à esquerda será preenchido conforme a conversa avança.",
@@ -269,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Caminho do sistema de arquivos",
   "agentDetail.configure.workingDirectory.description": "Arquivos que o agente lê e grava enquanto executa. Tudo o que ele gera, como qna_report.pdf, aparece aqui.",
   "agentDetail.configure.workingDirectory.fileSystem": "Sistema de arquivos",
-  "agentDetail.configure.workingDirectory.open": "Abrir diretório de trabalho",
   "agentDetail.configure.workingDirectory.persistentFiles": "Persistentes",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Arquivos que o agente mantém e pode usar em qualquer lugar em que seja executado, incluindo conversas de usuários finais e fluxos de trabalho. As alterações feitas aqui durante este chat de criação entram em vigor quando você clica em “Aplicar”.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Temporários",
@@ -348,7 +348,6 @@
   "agentDetail.sections.logs": "Logs",
   "agentDetail.sections.monitoring": "Monitoramento",
   "agentDetail.title": "Agente",
-  "agentDetail.type": "AGENTE",
   "agentDetail.versionHistory.empty": "Ainda não há versões",
   "agentDetail.versionHistory.exitVersions": "Sair das versões",
   "agentDetail.versionHistory.filter": "Filtrar versões",
@@ -408,8 +407,5 @@
   "roster.sort.lastModified": "Última modificação",
   "roster.sort.recentlyCreated": "Criados recentemente",
   "roster.title": "Agentes",
-  "roster.usageStatus.draft": "Rascunho",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Falha no envio de {{count}} arquivo.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Falha no envio de {{count}} arquivos.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Rascunho"
 }

@@ -47,6 +47,27 @@ pnpm i18n:check --file app billing --lang zh-Hans ja-JP
 
 Arguments after `--file` and `--lang` are space-separated. Use `--auto-remove` only when intentionally deleting extra locale keys.
 
+## Unused translations
+
+Vite application builds (`vp run build:vinext`) fail when static analysis identifies
+potentially unused English keys in the application module graph. CI runs the same build in Web Style. The plugin
+collects original module sources before transforms and analyzes each final client,
+SSR, and RSC graph with its own source map after all environments finish. A key is
+reported only when it is unused in every environment. Files that
+are not imported by the application, including standalone tests and stories, do
+not count as usage. Type-only dependencies inform analysis but do not count as
+usage themselves.
+
+Unresolved dynamic keys protect their namespaces. The report may contain false
+positives or miss unused keys; review actual usage before deleting any translations.
+Findings list namespace and key; remove confirmed unused keys from all locale files
+or restore their application usage. The
+plugin never modifies locale files. The previous whole-project prune CLI has been
+removed so there is only one definition of unused translations.
+
+Development, Storybook, and test startup do not run this check. Next.js builds do
+not load Vite plugins.
+
 ## Automated translation
 
 Changes to `web/i18n/en-US/*.json` on `main` trigger the scoped translation workflow. The workflow derives target locales from `languages.ts`, translates only the changed namespaces and keys, verifies them with `i18n:check`, and opens a pull request when translations change.
