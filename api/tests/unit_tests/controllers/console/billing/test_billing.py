@@ -15,6 +15,7 @@ from controllers.console.billing.billing import Invoices, PartnerTenants, Subscr
 from controllers.console.billing.error import (
     BillingOperationFailedError,
     BillingUnavailableError,
+    TokenerEducationCheckoutUnsupportedHTTPError,
 )
 from enums import CloudPlan, DeploymentEdition
 from machinery.context import RequestContext
@@ -23,6 +24,7 @@ from models.model import DifySetup
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
+    TokenerEducationCheckoutUnsupportedError,
 )
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -131,6 +133,27 @@ class TestBillingPortal:
             "code": "billing_operation_failed",
             "message": "We couldn't complete this request. Please try again. If the problem persists, contact support.",
             "status": 502,
+        }
+
+    def test_get_subscription_exposes_clear_tokener_education_error(
+        self,
+        app: Flask,
+        request_context: RequestContext,
+        billing_portal: MagicMock,
+    ) -> None:
+        resource = Subscription()
+        method = unwrap(resource.get)
+        query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="year")
+        billing_portal.get_subscription.side_effect = TokenerEducationCheckoutUnsupportedError
+
+        with app.test_request_context("/billing/subscription"):
+            with pytest.raises(TokenerEducationCheckoutUnsupportedHTTPError) as exc_info:
+                method(resource, query, request_context)
+
+        assert exc_info.value.data == {
+            "code": "tokener_education_checkout_unsupported",
+            "message": "Education subscriptions are not supported with Tokener billing.",
+            "status": 409,
         }
 
 

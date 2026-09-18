@@ -18,6 +18,7 @@ from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
+from core.model_billing_profile import ModelBillingProfileService
 from core.model_context import get_credit_usage_metadata
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
@@ -879,6 +880,11 @@ class ModelManager:
         configuration = provider_model_bundle.configuration
         if configuration.using_provider_type != ProviderType.SYSTEM:
             return
+
+        if ModelBillingProfileService.resolve(configuration.tenant_id).uses_tokener:
+            raise ModelCurrentlyNotSupportError(
+                f"Hosted SYSTEM model {model_type.value}/{model} is disabled for this workspace."
+            )
 
         # Hosted allowlists retain the existing comma-separated format. Model names
         # are matched exactly; model-type-specific entries will be introduced later.

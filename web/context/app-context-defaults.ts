@@ -14,5 +14,7 @@ export const initialWorkspaceSummary: GetWorkspacesCurrentSummaryResponse = {
   name: '',
   plan: null,
   credits: null,
+  model_billing_source: 'legacy_message_credits',
+  tokener_bootstrap_status: null,
   role: 'normal',
 }

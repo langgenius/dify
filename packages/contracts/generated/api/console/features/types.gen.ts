@@ -17,6 +17,7 @@ export type FeatureModel = {
   is_allow_transfer_workspace: boolean
   knowledge_pipeline: KnowledgePipeline
   members: LimitationModel
+  model_billing_source: 'legacy_message_credits' | 'tokener'
   model_load_balancing_enabled: boolean
   trigger_event: Quota
   webapp_copyright_enabled: boolean

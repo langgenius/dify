@@ -104,6 +104,9 @@ export const zFeatureModel = z.object({
   is_allow_transfer_workspace: z.boolean().default(true),
   knowledge_pipeline: zKnowledgePipeline.default({ publish_enabled: false }),
   members: zLimitationModel.default({ limit: 1, size: 0 }),
+  model_billing_source: z
+    .enum(['legacy_message_credits', 'tokener'])
+    .default('legacy_message_credits'),
   model_load_balancing_enabled: z.boolean().default(false),
   trigger_event: zQuota.default({
     limit: 3000,

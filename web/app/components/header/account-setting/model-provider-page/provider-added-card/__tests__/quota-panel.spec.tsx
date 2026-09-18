@@ -1,3 +1,4 @@
+import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -18,6 +19,9 @@ let mockWorkspaceData:
   next_credit_reset_date: 1735603200,
 }
 let mockWorkspaceIsPending = false
+let mockModelBillingSource: 'legacy_message_credits' | 'tokener' = 'legacy_message_credits'
+let mockTokenerBootstrapStatus: 'pending' | 'ready' | 'failed' | null = null
+let mockTokenerMetering: NonNullable<ModelProviderCreditsResponse['tokener_metering']> | null = null
 let mockTrialModels: string[] | undefined = ['langgenius/openai/openai']
 let mockPlugins = [
   {
@@ -85,6 +89,9 @@ vi.mock('../use-trial-credits', () => ({
       : Math.min(Math.max(rawUsedCredits, 0), totalCredits)
     const credits = isUnlimited ? -1 : Math.max(totalCredits - usedCredits, 0)
     return {
+      modelBillingSource: mockModelBillingSource,
+      tokenerBootstrapStatus: mockTokenerBootstrapStatus,
+      tokenerMetering: mockTokenerMetering,
       credits,
       usedCredits,
       totalCredits,
@@ -169,6 +176,9 @@ describe('QuotaPanel', () => {
       next_credit_reset_date: 1735603200,
     }
     mockWorkspaceIsPending = false
+    mockModelBillingSource = 'legacy_message_credits'
+    mockTokenerBootstrapStatus = null
+    mockTokenerMetering = null
     mockTrialModels = ['langgenius/openai/openai']
     mockPlugins = [{ plugin_id: 'langgenius/openai', latest_package_identifier: 'openai@1.0.0' }]
     mockFetchManifestFromMarketPlace.mockClear()
@@ -203,6 +213,189 @@ describe('QuotaPanel', () => {
     expect(screen.getByText(/modelProvider\.used/)).toBeInTheDocument()
     expect(screen.queryByText(/modelProvider\.ranOutDate/)).not.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.resetDate/)).toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.tokenerUsageLabel/)).not.toBeInTheDocument()
+  })
+
+  it('should show Tokener balance and available monthly metering without legacy quota semantics', () => {
+    mockModelBillingSource = 'tokener'
+    mockTokenerBootstrapStatus = 'ready'
+    mockTokenerMetering = {
+      tenant_id: 'tenant-1',
+      currency: 'USD',
+      available_usd_micro: '12500000',
+      current_month: {
+        status: 'available',
+        start_date: '2026-09-01',
+        end_date: '2026-09-03',
+        billed_usd_micro: '3750000',
+        request_count: '42',
+      },
+      balance_generated_at: '2026-09-03T06:00:00Z',
+      usage_generated_at: '2026-09-03T05:59:30Z',
+    }
+
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+
+    expect(
+      screen.getByRole('group', { name: /modelProvider\.tokenerUsageLabel/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('$12.50')).toBeInTheDocument()
+    expect(screen.getByText('$3.75')).toBeInTheDocument()
+    expect(screen.getByText('42')).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.tokenerBilledThisMonth/)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.tokenerRequestsThisMonth/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/modelProvider\.tokenerUsageTip/)).toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.quotaLabel/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
+  })
+
+  it('should show an active allowance separately without adding it to the Tokener balance', () => {
+    mockModelBillingSource = 'tokener'
+    mockTokenerBootstrapStatus = 'ready'
+    mockTokenerMetering = {
+      tenant_id: 'tenant-1',
+      currency: 'USD',
+      available_usd_micro: '12500000',
+      current_month: {
+        status: 'available',
+        start_date: '2026-09-01',
+        end_date: '2026-09-03',
+        billed_usd_micro: '3750000',
+        request_count: '42',
+      },
+      balance_generated_at: '2026-09-03T06:00:00Z',
+      usage_generated_at: '2026-09-03T05:59:30Z',
+      entitlement_status: 'active',
+      allowance: {
+        window_id: 'invoice-period-1',
+        source_ref: 'invoice-1',
+        amount_usd_micro: '59000000',
+        available_usd_micro: '20000000',
+        starts_at: '2026-09-01T00:00:00Z',
+        ends_at: '2026-10-01T00:00:00Z',
+      },
+    }
+
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+
+    expect(screen.getByText('$12.50')).toBeInTheDocument()
+    expect(screen.getByText('$59.00')).toBeInTheDocument()
+    expect(screen.getByText('$20.00')).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.tokenerAllowanceTotal/)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.tokenerAllowanceRemaining/)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.tokenerAllowancePeriod/)).toBeInTheDocument()
+    expect(screen.getByText(/2026-09-01 – 2026-10-01/)).toBeInTheDocument()
+    expect(screen.queryByText('$71.50')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['processing', 'modelProvider.tokenerEntitlementProcessing'],
+    ['retrying', 'modelProvider.tokenerEntitlementRetrying'],
+    ['failed', 'modelProvider.tokenerEntitlementFailed'],
+  ] as const)(
+    'should show the server-provided %s entitlement state without optimistic allowance',
+    (entitlementStatus, messageKey) => {
+      mockModelBillingSource = 'tokener'
+      mockTokenerBootstrapStatus = 'ready'
+      mockTokenerMetering = {
+        tenant_id: 'tenant-1',
+        currency: 'USD',
+        available_usd_micro: '12500000',
+        current_month: {
+          status: 'unavailable',
+          start_date: '2026-09-01',
+          end_date: '2026-09-03',
+          error_code: 'metering_unavailable',
+        },
+        balance_generated_at: '2026-09-03T06:00:00Z',
+        entitlement_status: entitlementStatus,
+        ...(entitlementStatus === 'failed' ? { entitlement_error_code: 'allowance_failed' } : {}),
+        allowance: {
+          window_id: 'not-active-yet',
+          source_ref: 'invoice-1',
+          amount_usd_micro: '59000000',
+          available_usd_micro: '59000000',
+          starts_at: '2026-09-01T00:00:00Z',
+          ends_at: '2026-10-01T00:00:00Z',
+        },
+      }
+
+      renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+
+      expect(screen.getByText('$12.50')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent(messageKey)
+      expect(screen.queryByText('$59.00')).not.toBeInTheDocument()
+      expect(screen.queryByText(/modelProvider\.tokenerAllowanceTotal/)).not.toBeInTheDocument()
+    },
+  )
+
+  it('should preserve a negative Tokener balance while monthly metering is unavailable', () => {
+    mockModelBillingSource = 'tokener'
+    mockTokenerBootstrapStatus = 'ready'
+    mockTokenerMetering = {
+      tenant_id: 'tenant-1',
+      currency: 'USD',
+      available_usd_micro: '-1500000',
+      current_month: {
+        status: 'unavailable',
+        start_date: '2026-09-01',
+        end_date: '2026-09-03',
+        error_code: 'metering_unavailable',
+      },
+      balance_generated_at: '2026-09-03T06:00:00Z',
+      usage_generated_at: null,
+    }
+
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+
+    expect(screen.getByText('-$1.50')).toBeInTheDocument()
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.tokenerMonthlyUsageUnavailable/)).toBeInTheDocument()
+    expect(screen.queryByText('$0.00')).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.tokenerRequestsThisMonth/)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['1000000', '$1.00'],
+    ['999988', '$0.999988'],
+    ['12', '$0.000012'],
+    ['-12', '-$0.000012'],
+  ])('should preserve micro-USD precision for %s', (availableUsdMicro, expectedAmount) => {
+    mockModelBillingSource = 'tokener'
+    mockTokenerBootstrapStatus = 'ready'
+    mockTokenerMetering = {
+      tenant_id: 'tenant-1',
+      currency: 'USD',
+      available_usd_micro: availableUsdMicro,
+      current_month: {
+        status: 'unavailable',
+        start_date: '2026-09-01',
+        end_date: '2026-09-03',
+        error_code: 'metering_unavailable',
+      },
+      balance_generated_at: '2026-09-03T06:00:00Z',
+      usage_generated_at: null,
+    }
+
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+
+    expect(screen.getByText(expectedAmount)).toBeInTheDocument()
+  })
+
+  it('should distinguish pending, failed, and unavailable ready metering', () => {
+    mockModelBillingSource = 'tokener'
+    mockTokenerBootstrapStatus = 'pending'
+
+    const { rerender } = renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    expect(screen.getByText(/modelProvider\.tokenerUsagePending/)).toBeInTheDocument()
+
+    mockTokenerBootstrapStatus = 'ready'
+    rerender(<QuotaPanel providers={[...mockProviders]} />)
+    expect(screen.getByText(/modelProvider\.tokenerUsageUnavailable/)).toBeInTheDocument()
+
+    mockTokenerBootstrapStatus = 'failed'
+    rerender(<QuotaPanel providers={[...mockProviders]} />)
+    expect(screen.getByText(/modelProvider\.tokenerUsageSetupFailed/)).toBeInTheDocument()
   })
 
   it('should keep quota content during background refetch when cached workspace exists', () => {

@@ -39,6 +39,29 @@ describe('useTrialCredits', () => {
           is_exhausted?: boolean
           exhausted_at?: number | null
           next_credit_reset_date?: number | null
+          model_billing_source?: 'legacy_message_credits' | 'tokener'
+          tokener_bootstrap_status?: 'pending' | 'ready' | 'failed' | null
+          tokener_metering?: {
+            tenant_id: string
+            currency: 'USD'
+            available_usd_micro: string
+            current_month:
+              | {
+                  status: 'available'
+                  start_date: string
+                  end_date: string
+                  billed_usd_micro: string
+                  request_count: string
+                }
+              | {
+                  status: 'unavailable'
+                  start_date: string
+                  end_date: string
+                  error_code: string
+                }
+            balance_generated_at: string
+            usage_generated_at?: string | null
+          } | null
         }
       | undefined,
     isPending = false,
@@ -66,6 +89,9 @@ describe('useTrialCredits', () => {
       const { result } = renderHook(() => useTrialCredits())
 
       expect(result.current).toEqual({
+        modelBillingSource: 'legacy_message_credits',
+        tokenerBootstrapStatus: null,
+        tokenerMetering: null,
         credits: 60,
         usedCredits: 40,
         totalCredits: 100,
@@ -97,6 +123,31 @@ describe('useTrialCredits', () => {
       expect(result.current.isUnlimited).toBe(false)
       expect(result.current.isExhausted).toBe(false)
     })
+
+    it('should poll near-real-time metering only for Tokener workspaces', () => {
+      renderHook(() => useTrialCredits({ pollTokenerMetering: true }))
+      const options = mockUseQuery.mock.calls[0]?.[0] as {
+        refetchInterval: (query: {
+          state: { data?: { model_billing_source?: 'legacy_message_credits' | 'tokener' } }
+        }) => number | false
+      }
+
+      expect(
+        options.refetchInterval({
+          state: { data: { model_billing_source: 'legacy_message_credits' } },
+        }),
+      ).toBe(false)
+      expect(
+        options.refetchInterval({ state: { data: { model_billing_source: 'tokener' } } }),
+      ).toBe(30_000)
+    })
+
+    it('should not poll from non-visual credit consumers', () => {
+      renderHook(() => useTrialCredits())
+      const options = mockUseQuery.mock.calls[0]?.[0] as { refetchInterval: false }
+
+      expect(options.refetchInterval).toBe(false)
+    })
   })
 
   describe('when workspace data is missing or exhausted', () => {
@@ -106,6 +157,9 @@ describe('useTrialCredits', () => {
       const { result } = renderHook(() => useTrialCredits())
 
       expect(result.current).toEqual({
+        modelBillingSource: 'legacy_message_credits',
+        tokenerBootstrapStatus: undefined,
+        tokenerMetering: null,
         credits: 0,
         usedCredits: 0,
         totalCredits: 0,
@@ -153,6 +207,53 @@ describe('useTrialCredits', () => {
         usedCredits: 999,
         totalCredits: -1,
         isUnlimited: true,
+        isExhausted: false,
+      })
+    })
+
+    it('should never interpret a Tokener profile as exhausted legacy credits', () => {
+      mockTrialCreditsQuery({
+        model_billing_source: 'tokener',
+        tokener_bootstrap_status: 'ready',
+        tokener_metering: {
+          tenant_id: 'tenant-1',
+          currency: 'USD',
+          available_usd_micro: '-1500000',
+          current_month: {
+            status: 'unavailable',
+            start_date: '2026-09-01',
+            end_date: '2026-09-03',
+            error_code: 'metering_unavailable',
+          },
+          balance_generated_at: '2026-09-03T06:00:00Z',
+        },
+        quota_limit: 200,
+        quota_used: 200,
+        remaining_credits: 0,
+        is_exhausted: true,
+      })
+
+      const { result } = renderHook(() => useTrialCredits())
+
+      expect(result.current).toMatchObject({
+        modelBillingSource: 'tokener',
+        tokenerBootstrapStatus: 'ready',
+        tokenerMetering: {
+          tenant_id: 'tenant-1',
+          currency: 'USD',
+          available_usd_micro: '-1500000',
+          current_month: {
+            status: 'unavailable',
+            start_date: '2026-09-01',
+            end_date: '2026-09-03',
+            error_code: 'metering_unavailable',
+          },
+          balance_generated_at: '2026-09-03T06:00:00Z',
+        },
+        credits: 0,
+        usedCredits: 0,
+        totalCredits: 0,
+        isUnlimited: false,
         isExhausted: false,
       })
     })

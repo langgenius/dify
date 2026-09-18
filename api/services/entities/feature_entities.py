@@ -1,6 +1,7 @@
 """Feature query results and policy values shared by their consumers."""
 
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -146,6 +147,7 @@ class PluginInstallationPermissionModel(FeatureResponseModel):
 class FeatureModel(FeatureResponseModel):
     """Effective feature availability and limits for the current workspace."""
 
+    model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     enable_skill: bool = True
