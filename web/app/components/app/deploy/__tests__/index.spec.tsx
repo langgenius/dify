@@ -1112,7 +1112,7 @@ describe('AppDeploy', () => {
 
     render(<AppDeploy />)
 
-    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'common.appMenus.deploy' }),
     ).not.toBeInTheDocument()
