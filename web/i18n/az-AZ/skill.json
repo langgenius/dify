@@ -188,6 +188,8 @@
   "skillManagement.errors.missingSkillMd": "Bu paketdə SKILL.md yoxdur. Faylı əlavə edin və yenidən idxal edin.",
   "skillManagement.errors.nameConflict": "\"{{name}}\" adlı bacarıq artıq mövcuddur. SKILL.md faylında adını dəyişin və yenidən idxal edin.",
   "skillManagement.errors.workspaceLimit": "İş məkanınız 500 bacarıq həddinə çatıb. Yeni bacarıq əlavə etmək üçün bir bacarığı silin.",
+  "skillManagement.exportDialog.description": "Bu, bacarığınızın cari yadda saxlanmış qaralamasını ixrac edəcək. Redaktorda yadda saxlanmamış dəyişiklikləriniz varsa, ixrac etməzdən əvvəl onları yadda saxlayın.",
+  "skillManagement.exportDialog.title": "Cari yadda saxlanmış qaralamanı ixrac et",
   "skillManagement.import": "İdxal et",
   "skillManagement.importFailed": "Bacarığı idxal etmək mümkün olmadı.",
   "skillManagement.importSuccess": "Bacarıq idxal edildi.",
