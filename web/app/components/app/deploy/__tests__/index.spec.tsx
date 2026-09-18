@@ -771,7 +771,6 @@ vi.mock('react-i18next', async () => {
       'The app will stop running in this environment, and all of its access points will become unavailable.',
     'deployments.studio.undeployConfirmTitle': 'Undeploy {{versionName}} from {{envName}}',
     'deployments.status.RUNTIME_INSTANCE_STATUS_DEPLOYING': 'Deploying',
-    'deployments.status.RUNTIME_INSTANCE_STATUS_FAILED': 'Deploy failed',
     'deployments.status.RUNTIME_INSTANCE_STATUS_INVALID': 'Invalid',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
     'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED': 'Not deployed',

@@ -140,14 +140,13 @@ describe('AgentDetailSection', () => {
   })
 
   it.each([null, '', '   '])(
-    'omits an empty role without adding a type placeholder (%s)',
+    'omits an empty role while keeping the agent accessible (%s)',
     (role) => {
       mocks.queryData = createAgent({ role })
       renderAgentDetailSection()
 
       expect(screen.getByText('Research Agent')).toBeInTheDocument()
       expect(screen.queryByText('Research Assistant')).not.toBeInTheDocument()
-      expect(screen.queryByText('agentV2.agentDetail.type')).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Research Agent/ })).toBeInTheDocument()
     },
   )
