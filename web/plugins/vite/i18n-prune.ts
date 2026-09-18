@@ -13,26 +13,27 @@ export function i18nPrunePlugin(): Plugin[] {
 
   const check = async () => {
     const { checkTranslationGraph } = await import('./i18n-prune/graph')
-    const modules = new Map<string, string>()
+    let unused: Record<string, string[]> | undefined
+    const protectedNamespaces = new Set<string>()
     for (const graph of graphs.values()) {
-      for (const [id, code] of graph) {
-        const file = normalizePath(id.split('?')[0]!)
-        const previous = modules.get(file)
-        if (previous !== undefined && previous !== code) {
-          // Keep environment/query variants in the same directory so their
-          // relative type imports resolve without discarding another usage set.
-          const extension = path.extname(file)
-          modules.set(
-            `${file.slice(0, -extension.length)}.__i18n_${modules.size}${extension}`,
-            code,
-          )
-        } else {
-          modules.set(file, code)
-        }
-      }
+      // Keep original paths in a separate compiler program per environment so
+      // imports resolve against that environment's source, not the first build.
+      const modules = new Map<string, string>()
+      for (const [id, code] of graph) modules.set(normalizePath(id.split('?')[0]!), code)
+      const result = checkTranslationGraph(root, modules)
+      for (const namespace of result.protectedNamespaces) protectedNamespaces.add(namespace)
+      // Intersect unused sets: usage (or protection) in any environment keeps a key.
+      unused =
+        unused === undefined
+          ? result.unused
+          : Object.fromEntries(
+              Object.entries(unused).map(([namespace, keys]) => {
+                const remaining = new Set(result.unused[namespace] ?? [])
+                return [namespace, keys.filter((key) => remaining.has(key))]
+              }),
+            )
     }
-    const result = checkTranslationGraph(root, modules)
-    const keys = Object.entries(result.unused).flatMap(([namespace, unused]) =>
+    const keys = Object.entries(unused ?? {}).flatMap(([namespace, unused]) =>
       unused.map((key) => `${namespace}:${key}`),
     )
     if (keys.length) {
@@ -43,8 +44,10 @@ export function i18nPrunePlugin(): Plugin[] {
           'Review actual usage before removing any keys.',
           ...keys.map((key) => `  - ${key}`),
           'Remove confirmed unused keys from web/i18n/ locale files or restore their application usage.',
-          ...(result.protectedNamespaces.length
-            ? [`Dynamic keys protect these namespaces: ${result.protectedNamespaces.join(', ')}`]
+          ...(protectedNamespaces.size
+            ? [
+                `Dynamic keys protect these namespaces: ${[...protectedNamespaces].sort().join(', ')}`,
+              ]
             : []),
         ].join('\n'),
       )

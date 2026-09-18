@@ -176,6 +176,61 @@ describe('i18n build check', () => {
     await expect(builder.buildApp()).resolves.toBeUndefined()
   })
 
+  it.each([
+    ['client', 'ssr'],
+    ['ssr', 'client'],
+  ])('resolves imported selectors in their own environments (%s first)', async (first, second) => {
+    writeFileSync(localeFile, JSON.stringify({ client: 'Client', ssr: 'SSR' }))
+    writeFileSync(
+      path.join(root, 'selector.ts'),
+      `
+      export const selector = ($: Record<string, string>) => $.placeholder
+    `,
+    )
+    writeFileSync(
+      path.join(root, 'entry.ts'),
+      `
+      import { selector } from './selector'
+      export function label(t: (selector: (source: Record<string, string>) => string) => string) {
+        return t(selector)
+      }
+    `,
+    )
+    const builder = await createBuilder({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      plugins: [
+        {
+          name: 'environment-selector-fixture',
+          enforce: 'pre',
+          transform(code, id) {
+            if (id === path.join(root, 'selector.ts'))
+              return code.replace('$.placeholder', `$.${this.environment.name}`)
+          },
+        },
+        i18nPrunePlugin(),
+      ],
+      environments: { client: {}, ssr: {} },
+      builder: {
+        async buildApp(builder) {
+          for (const name of [first, second]) await builder.build(builder.environments[name]!)
+        },
+      },
+      build: {
+        write: false,
+        lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] },
+      },
+    })
+
+    await expect(builder.buildApp()).resolves.toBeUndefined()
+
+    writeFileSync(localeFile, JSON.stringify({ client: 'Client', ssr: 'SSR', unused: 'Unused' }))
+    await expect(builder.buildApp()).rejects.toThrow(
+      /Found 1 potentially unused i18n keys[\s\S]*app:unused/,
+    )
+  })
+
   it('does not block development when unused translations exist', async () => {
     writeFileSync(localeFile, JSON.stringify({ used: 'Used', unused: 'Unused' }))
     const server = await createServer({

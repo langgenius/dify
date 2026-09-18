@@ -40,8 +40,9 @@ Arguments after `--file` and `--lang` are space-separated. Use `--auto-remove` o
 
 Vite application builds (`vp run build:vinext`) fail when static analysis identifies
 potentially unused English keys in the application module graph. CI runs the same build in Web Style. The plugin
-collects original module sources before transforms, merges the final client, SSR,
-and RSC graphs, and checks translations after all environments finish. Files that
+collects original module sources before transforms and analyzes each final client,
+SSR, and RSC graph with its own source map after all environments finish. A key is
+reported only when it is unused in every environment. Files that
 are not imported by the application, including standalone tests and stories, do
 not count as usage. Type-only dependencies inform analysis but do not count as
 usage themselves.
