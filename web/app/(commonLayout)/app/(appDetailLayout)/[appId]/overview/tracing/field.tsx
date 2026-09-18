@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 
 type Props = Readonly<{
@@ -12,6 +13,9 @@ type Props = Readonly<{
   onChange: (value: string) => void
   isRequired?: boolean
   placeholder?: string
+  /** Render a textarea instead of a single-line input, for multi-line values such as JSON. */
+  multiline?: boolean
+  description?: string
 }>
 
 const Field: FC<Props> = ({
@@ -22,8 +26,11 @@ const Field: FC<Props> = ({
   onChange,
   isRequired = false,
   placeholder = '',
+  multiline = false,
+  description,
 }) => {
   const inputId = React.useId()
+  const Control = multiline ? Textarea : Input
 
   return (
     <div className={cn(className)}>
@@ -39,13 +46,14 @@ const Field: FC<Props> = ({
         </label>
         {isRequired && <span className="ml-0.5 text-xs font-semibold text-[#D92D20]">*</span>}
       </div>
-      <Input
+      <Control
         id={inputId}
         value={value}
-        onValueChange={(nextValue) => onChange(nextValue)}
-        className="h-9"
+        onValueChange={(nextValue: string) => onChange(nextValue)}
+        className={multiline ? 'min-h-20 font-mono text-xs' : 'h-9'}
         placeholder={placeholder}
       />
+      {description && <div className="mt-1 text-xs text-text-tertiary">{description}</div>}
     </div>
   )
 }

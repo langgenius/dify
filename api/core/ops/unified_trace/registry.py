@@ -3,6 +3,7 @@
 import collections
 from typing import TypedDict, override
 
+from configs import dify_config
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import BaseTracingConfig, TracingProviderEnum
 
@@ -28,8 +29,53 @@ class UnifiedTraceProviderConfigMap(collections.UserDict[str, UnifiedProviderCon
                 from dify_trace_langsmith.unified_trace import UnifiedLangSmithTrace
 
                 return {"config_class": LangSmithConfig, "trace_instance": UnifiedLangSmithTrace}
+            case TracingProviderEnum.OTEL:
+                from core.ops.unified_trace.otel import OTelTracingConfig, UnifiedOTelTrace
+
+                return {"config_class": OTelTracingConfig, "trace_instance": UnifiedOTelTrace}
             case _:
                 raise KeyError(f"Unified tracing provider is not registered: {key}")
 
 
 unified_provider_config_map = UnifiedTraceProviderConfigMap()
+
+# Providers that exist only in unified form: there is no legacy dispatch for the switch to keep.
+_UNIFIED_ONLY_PROVIDERS: frozenset[str] = frozenset({TracingProviderEnum.OTEL})
+
+
+def unified_dispatch_enabled(tracing_provider: str) -> bool:
+    """Whether the unified registry applies to ``tracing_provider`` in this deployment.
+
+    ``OPS_TRACE_UNIFIED_ENABLED`` exists to keep Phoenix and LangSmith on their legacy
+    per-provider dispatch until a deployment opts in. The generic OpenTelemetry provider is
+    always dispatched through the unified runtime; gating it on the switch only turned off
+    nested-workflow parent restoration while leaving every other unified behaviour in place.
+    """
+    return tracing_provider in _UNIFIED_ONLY_PROVIDERS or dify_config.OPS_TRACE_UNIFIED_ENABLED
+
+
+def is_unified_provider(tracing_provider: str) -> bool:
+    """Whether traces for ``tracing_provider`` are dispatched through the unified runtime."""
+    if not unified_dispatch_enabled(tracing_provider):
+        return False
+    try:
+        unified_provider_config_map[tracing_provider]
+    except KeyError:
+        return False
+    return True
+
+
+def unified_scope_key_field(tracing_provider: str) -> str | None:
+    """Name of the config field a provider uses as its destination scope key.
+
+    Declared here next to the provider entries so generic parent-context code does not
+    have to guess the field name, and resolved without importing the provider SDK: it
+    runs for the *parent* app's provider, which the current deployment may not install.
+    """
+    match tracing_provider:
+        case TracingProviderEnum.PHOENIX | TracingProviderEnum.LANGSMITH:
+            return "project"
+        case TracingProviderEnum.OTEL:
+            return "service_name"
+        case _:
+            return None
