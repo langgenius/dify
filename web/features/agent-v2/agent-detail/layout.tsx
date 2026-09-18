@@ -51,7 +51,7 @@ export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps)
     if (redirectPath) router.replace(redirectPath)
   }, [router, redirectPath])
 
-  if (agentQuery.isPending) return <Loading />
+  if (agentQuery.isPending) return <Loading type="app" />
   if (redirectPath) return null
   if (agentQuery.isError) {
     return (
