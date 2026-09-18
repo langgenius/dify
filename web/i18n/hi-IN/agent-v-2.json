@@ -270,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "फ़ाइल सिस्टम पथ",
   "agentDetail.configure.workingDirectory.description": "एजेंट चलते समय जिन फाइलों को पढ़ता और लिखता है। वह जो भी बनाता है, जैसे qna_report.pdf, यहां दिखता है।",
   "agentDetail.configure.workingDirectory.fileSystem": "फ़ाइल सिस्टम",
-  "agentDetail.configure.workingDirectory.open": "वर्किंग डायरेक्टरी खोलें",
   "agentDetail.configure.workingDirectory.persistentFiles": "स्थायी",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "वे फ़ाइलें जिन्हें एजेंट रखता है और जहाँ भी वह चलता है वहाँ उपयोग कर सकता है, जिसमें अंतिम उपयोगकर्ताओं की बातचीत और वर्कफ़्लो शामिल हैं। इस बिल्ड चैट के दौरान यहाँ किए गए बदलाव आपके “लागू करें” पर क्लिक करने के बाद प्रभावी होते हैं।",
   "agentDetail.configure.workingDirectory.temporaryFiles": "अस्थायी",
@@ -349,7 +348,6 @@
   "agentDetail.sections.logs": "लॉग",
   "agentDetail.sections.monitoring": "निगरानी",
   "agentDetail.title": "एजेंट",
-  "agentDetail.type": "एजेंट",
   "agentDetail.versionHistory.empty": "अभी तक कोई संस्करण नहीं",
   "agentDetail.versionHistory.exitVersions": "संस्करणों से बाहर निकलें",
   "agentDetail.versionHistory.filter": "संस्करण फ़िल्टर करें",
@@ -409,8 +407,5 @@
   "roster.sort.lastModified": "अंतिम संशोधन",
   "roster.sort.recentlyCreated": "हाल ही में बनाए गए",
   "roster.title": "एजेंट",
-  "roster.usageStatus.draft": "ड्राफ्ट",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} फ़ाइल अपलोड नहीं हो सकी।",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} फ़ाइलें अपलोड नहीं हो सकीं।",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "ड्राफ्ट"
 }

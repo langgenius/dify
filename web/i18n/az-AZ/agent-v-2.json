@@ -270,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Fayl sistemi yolu",
   "agentDetail.configure.workingDirectory.description": "Agentin işləyərkən oxuduğu və yazdığı fayllar. Yaratdığı hər şey, məsələn, qna_report.pdf, burada görünür.",
   "agentDetail.configure.workingDirectory.fileSystem": "Fayl sistemi",
-  "agentDetail.configure.workingDirectory.open": "İş qovluğunu aç",
   "agentDetail.configure.workingDirectory.persistentFiles": "Daimi",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Agentin saxladığı və son istifadəçilərin söhbətləri və iş axınları daxil olmaqla, işlədiyi hər yerdə istifadə edə bildiyi fayllar. Bu qurma söhbəti zamanı burada edilən dəyişikliklər «Tətbiq et» düyməsinə basdıqda qüvvəyə minir.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Müvəqqəti",
@@ -349,7 +348,6 @@
   "agentDetail.sections.logs": "Jurnallar",
   "agentDetail.sections.monitoring": "Monitorinq",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "Agent",
   "agentDetail.versionHistory.empty": "Hələ versiya yoxdur",
   "agentDetail.versionHistory.exitVersions": "Versiyalardan çıx",
   "agentDetail.versionHistory.filter": "Versiyaları süzgəcdən keçir",
@@ -409,8 +407,5 @@
   "roster.sort.lastModified": "Son dəyişdirilənlər",
   "roster.sort.recentlyCreated": "Son yaradılanlar",
   "roster.title": "Agentlər",
-  "roster.usageStatus.draft": "Qaralama",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} faylın yüklənməsi uğursuz oldu.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} faylın yüklənməsi uğursuz oldu.",
-  "skillManagement.title": "Bacarıqlar"
+  "roster.usageStatus.draft": "Qaralama"
 }

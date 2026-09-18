@@ -27,7 +27,6 @@
   "list.emptyTitle": "Noch keine Bereitstellungen",
   "overview.chip.latest": "neueste",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Wird bereitgestellt",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Bereitstellung fehlgeschlagen",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Ungültig",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Läuft",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Nicht bereitgestellt",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Versionswert",
   "studio.versionsBehind_one": "{{count}} Version zurück",
   "studio.versionsBehind_other": "{{count}} Versionen zurück",
-  "versions.checkingReleaseContent": "Release-Inhalt wird überprüft...",
   "versions.deployTo": "In {{name}} bereitstellen"
 }

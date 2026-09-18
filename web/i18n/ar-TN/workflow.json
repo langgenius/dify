@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "تم تثبيت هذا الملحق من GitHub. يرجى الانتقال إلى الملحقات لإعادة التثبيت",
   "nodes.agent.roster.change": "تغيير",
   "nodes.agent.roster.editInConsole": "تعديل في Agents",
-  "nodes.agent.roster.editInConsoleDisabled": "يتطلب تعديل الوكلاء دور المحرر أو دورًا أعلى.",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "لا يمكن تعديل الوكلاء إلا للأعضاء الذين لديهم دور المحرر أو دور أعلى، أو إذن إدارة Agents.",
   "nodes.agent.roster.inlineSetup.description": "إعداد لمرة واحدة يبقى فقط في هذه العقدة",
   "nodes.agent.roster.inlineSetup.name": "إعداد inline",
   "nodes.agent.roster.inlineSetup.type": "فقط في هذه العقدة",

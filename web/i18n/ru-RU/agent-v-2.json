@@ -270,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Путь файловой системы",
   "agentDetail.configure.workingDirectory.description": "Файлы, которые агент читает и записывает во время работы. Все, что он создает, например qna_report.pdf, появится здесь.",
   "agentDetail.configure.workingDirectory.fileSystem": "Файловая система",
-  "agentDetail.configure.workingDirectory.open": "Открыть рабочий каталог",
   "agentDetail.configure.workingDirectory.persistentFiles": "Постоянные",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Файлы, которые агент сохраняет и может использовать везде, где он запускается, включая беседы конечных пользователей и рабочие процессы. Изменения, внесённые здесь во время этого чата сборки, вступят в силу после нажатия «Применить».",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Временные",
@@ -349,7 +348,6 @@
   "agentDetail.sections.logs": "Журналы",
   "agentDetail.sections.monitoring": "Мониторинг",
   "agentDetail.title": "Агент",
-  "agentDetail.type": "АГЕНТ",
   "agentDetail.versionHistory.empty": "Версий пока нет",
   "agentDetail.versionHistory.exitVersions": "Выйти из версий",
   "agentDetail.versionHistory.filter": "Фильтровать версии",
@@ -409,8 +407,5 @@
   "roster.sort.lastModified": "Последнее изменение",
   "roster.sort.recentlyCreated": "Недавно созданные",
   "roster.title": "Агенты",
-  "roster.usageStatus.draft": "Черновик",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Не удалось загрузить {{count}} файл.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Не удалось загрузить {{count}} файлов.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Черновик"
 }
