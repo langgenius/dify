@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "此集成安裝自 GitHub。請前往集成重新安裝",
   "nodes.agent.roster.change": "更換",
   "nodes.agent.roster.editInConsole": "在 Agents 中編輯",
-  "nodes.agent.roster.editInConsoleDisabled": "編輯 Agent 需要「編輯」及以上角色。",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "只有擁有「編輯」及以上角色或「管理 Agents」權限的成員，才能編輯 Agent。",
   "nodes.agent.roster.inlineSetup.description": "僅存在於此節點的一次性設定",
   "nodes.agent.roster.inlineSetup.name": "內聯設定",
   "nodes.agent.roster.inlineSetup.type": "僅在此節點中",

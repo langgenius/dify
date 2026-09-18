@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Jalur sistem file",
   "agentDetail.configure.workingDirectory.description": "File yang dibaca dan ditulis agent saat berjalan. Semua yang dibuatnya, seperti qna_report.pdf, muncul di sini.",
   "agentDetail.configure.workingDirectory.fileSystem": "Sistem file",
-  "agentDetail.configure.workingDirectory.open": "Buka direktori kerja",
   "agentDetail.configure.workingDirectory.persistentFiles": "Permanen",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "File yang disimpan agen dan dapat digunakan di mana pun agen berjalan, termasuk percakapan pengguna akhir dan alur kerja. Setiap perubahan yang dibuat di sini selama chat build ini akan berlaku setelah Anda mengeklik Terapkan.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Sementara",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "Log",
   "agentDetail.sections.monitoring": "Pemantauan",
   "agentDetail.title": "Agen",
-  "agentDetail.type": "AGEN",
   "agentDetail.versionHistory.empty": "Belum ada versi",
   "agentDetail.versionHistory.exitVersions": "Keluar versi",
   "agentDetail.versionHistory.filter": "Filter versi",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "Terakhir diubah",
   "roster.sort.recentlyCreated": "Baru dibuat",
   "roster.title": "Agen",
-  "roster.usageStatus.draft": "Draf",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} berkas gagal diunggah.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} berkas gagal diunggah.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Draf"
 }

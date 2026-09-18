@@ -402,8 +402,6 @@
   "nodes.agent.pluginNotInstalledDesc": "Bu inteqrasiya GitHub-dan quraşdırılıb. Yenidən quraşdırmaq üçün inteqrasiyalar bölməsinə keçin",
   "nodes.agent.roster.change": "Dəyiş",
   "nodes.agent.roster.editInConsole": "Agentlər bölməsində redaktə et",
-  "nodes.agent.roster.editInConsoleDisabled": "Agentləri redaktə etmək üçün redaktor rolu və ya daha yüksək rol tələb olunur.",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "Yalnız redaktor rolu və ya daha yüksək rolu, yaxud agentləri idarə etmək icazəsi olan üzvlər agentləri redaktə edə bilər.",
   "nodes.agent.roster.inlineSetup.description": "Yalnız bu düyündə mövcud olan birdəfəlik konfiqurasiya",
   "nodes.agent.roster.inlineSetup.name": "Daxili konfiqurasiya",
   "nodes.agent.roster.inlineSetup.type": "Yalnız bu düyündə",

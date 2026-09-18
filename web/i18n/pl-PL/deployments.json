@@ -27,7 +27,6 @@
   "list.emptyTitle": "Brak wdrożeń",
   "overview.chip.latest": "najnowsze",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Wdrażanie",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Wdrożenie nie powiodło się",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Nieprawidłowe",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Uruchomione",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Nie wdrożone",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Wartość wersji",
   "studio.versionsBehind_one": "{{count}} wersja wstecz",
   "studio.versionsBehind_other": "{{count}} wersji wstecz",
-  "versions.checkingReleaseContent": "Sprawdzanie zawartości wydania...",
   "versions.deployTo": "Wdróż do {{name}}"
 }

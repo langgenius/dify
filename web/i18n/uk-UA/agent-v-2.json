@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Шлях файлової системи",
   "agentDetail.configure.workingDirectory.description": "Файли, які агент читає і записує під час роботи. Усе, що він створює, наприклад qna_report.pdf, з’являється тут.",
   "agentDetail.configure.workingDirectory.fileSystem": "Файлова система",
-  "agentDetail.configure.workingDirectory.open": "Відкрити робочий каталог",
   "agentDetail.configure.workingDirectory.persistentFiles": "Постійні",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Файли, які агент зберігає та може використовувати всюди, де він запускається, зокрема в розмовах кінцевих користувачів і робочих процесах. Зміни, внесені тут під час цього чату створення, набудуть чинності після натискання «Застосувати».",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Тимчасові",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "Журнали",
   "agentDetail.sections.monitoring": "Моніторинг",
   "agentDetail.title": "Агент",
-  "agentDetail.type": "АГЕНТ",
   "agentDetail.versionHistory.empty": "Поки що немає версій",
   "agentDetail.versionHistory.exitVersions": "Вийти з версій",
   "agentDetail.versionHistory.filter": "Фільтрувати версії",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "Остання зміна",
   "roster.sort.recentlyCreated": "Нещодавно створені",
   "roster.title": "Агенти",
-  "roster.usageStatus.draft": "Чернетка",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Не вдалося завантажити {{count}} файл.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Не вдалося завантажити {{count}} файлів.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Чернетка"
 }

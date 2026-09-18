@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Percorso del file system",
   "agentDetail.configure.workingDirectory.description": "File che l’agente legge e scrive durante l’esecuzione. Tutto ciò che genera, come qna_report.pdf, appare qui.",
   "agentDetail.configure.workingDirectory.fileSystem": "File system",
-  "agentDetail.configure.workingDirectory.open": "Apri directory di lavoro",
   "agentDetail.configure.workingDirectory.persistentFiles": "Persistenti",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "File che l’agente conserva e può usare ovunque venga eseguito, incluse le conversazioni degli utenti finali e i workflow. Le modifiche apportate qui durante questa chat di creazione diventano effettive dopo aver fatto clic su «Applica».",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Temporanei",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "Log",
   "agentDetail.sections.monitoring": "Monitoraggio",
   "agentDetail.title": "Agente",
-  "agentDetail.type": "AGENTE",
   "agentDetail.versionHistory.empty": "Nessuna versione al momento",
   "agentDetail.versionHistory.exitVersions": "Esci dalle versioni",
   "agentDetail.versionHistory.filter": "Filtra versioni",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "Ultima modifica",
   "roster.sort.recentlyCreated": "Creati di recente",
   "roster.title": "Agenti",
-  "roster.usageStatus.draft": "Bozza",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Caricamento di {{count}} file non riuscito.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Caricamento di {{count}} file non riuscito.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Bozza"
 }

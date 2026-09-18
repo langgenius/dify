@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "Этот интеграция устанавливается с GitHub. Пожалуйста, перейдите в раздел Интеграции для переустановки",
   "nodes.agent.roster.change": "Сменить",
   "nodes.agent.roster.editInConsole": "Редактировать в Agents",
-  "nodes.agent.roster.editInConsoleDisabled": "Для редактирования агентов требуется роль «Редактор» или выше.",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "Редактировать агентов могут только участники с ролью «Редактор» или выше либо с разрешением «Управление Agents».",
   "nodes.agent.roster.inlineSetup.description": "Одноразовая настройка, существующая только в этом узле",
   "nodes.agent.roster.inlineSetup.name": "Встроенная настройка",
   "nodes.agent.roster.inlineSetup.type": "Только в этом узле",

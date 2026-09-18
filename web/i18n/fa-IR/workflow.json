@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "این یکپارچه‌سازی از GitHub نصب شده. برای نصب مجدد به بخش یکپارچه‌سازی‌ها بروید.",
   "nodes.agent.roster.change": "تغییر",
   "nodes.agent.roster.editInConsole": "ویرایش در Agents",
-  "nodes.agent.roster.editInConsoleDisabled": "ویرایش عامل‌ها به نقش ویرایشگر یا بالاتر نیاز دارد.",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "فقط اعضایی که نقش ویرایشگر یا بالاتر، یا مجوز مدیریت Agents را دارند، می‌توانند عامل‌ها را ویرایش کنند.",
   "nodes.agent.roster.inlineSetup.description": "یک پیکربندی یک‌باره که فقط در این گره وجود دارد",
   "nodes.agent.roster.inlineSetup.name": "پیکربندی inline",
   "nodes.agent.roster.inlineSetup.type": "فقط در این گره",

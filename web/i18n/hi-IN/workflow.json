@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "यह एकीकरण गिटहब से स्थापित किया गया है। कृपया पुनः स्थापित करने के लिए एकीकरण पर जाएं।",
   "nodes.agent.roster.change": "बदलें",
   "nodes.agent.roster.editInConsole": "Agents में संपादित करें",
-  "nodes.agent.roster.editInConsoleDisabled": "एजेंट संपादित करने के लिए एडिटर या उससे ऊपर की भूमिका आवश्यक है।",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "केवल एडिटर या उससे ऊपर की भूमिका, या Agents प्रबंधित करें अनुमति वाले सदस्य ही एजेंट संपादित कर सकते हैं।",
   "nodes.agent.roster.inlineSetup.description": "एक एकल सेटअप जो केवल इस नोड में रहता है",
   "nodes.agent.roster.inlineSetup.name": "इनलाइन सेटअप",
   "nodes.agent.roster.inlineSetup.type": "केवल इस नोड में",

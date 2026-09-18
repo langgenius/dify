@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Chemin du système de fichiers",
   "agentDetail.configure.workingDirectory.description": "Fichiers que l’agent lit et écrit pendant son exécution. Tout ce qu’il génère, comme qna_report.pdf, apparaît ici.",
   "agentDetail.configure.workingDirectory.fileSystem": "Système de fichiers",
-  "agentDetail.configure.workingDirectory.open": "Ouvrir le répertoire de travail",
   "agentDetail.configure.workingDirectory.persistentFiles": "Persistants",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Fichiers que l’agent conserve et peut utiliser partout où il s’exécute, y compris dans les conversations des utilisateurs finaux et les workflows. Les modifications apportées ici pendant cette discussion de création prennent effet dès que vous cliquez sur « Appliquer ».",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Temporaires",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "Journaux",
   "agentDetail.sections.monitoring": "Surveillance",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "AGENT",
   "agentDetail.versionHistory.empty": "Pas encore de versions",
   "agentDetail.versionHistory.exitVersions": "Quitter les versions",
   "agentDetail.versionHistory.filter": "Filtrer les versions",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "Dernière modification",
   "roster.sort.recentlyCreated": "Récemment créés",
   "roster.title": "Agents",
-  "roster.usageStatus.draft": "Brouillon",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Échec du téléversement de {{count}} fichier.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Échec du téléversement de {{count}} fichiers.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Brouillon"
 }

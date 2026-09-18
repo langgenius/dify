@@ -27,7 +27,6 @@
   "list.emptyTitle": "Nog geen implementaties",
   "overview.chip.latest": "nieuwste",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Implementeren",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Implementatie mislukt",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Ongeldig",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Actief",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Niet geïmplementeerd",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Versiewaarde",
   "studio.versionsBehind_one": "{{count}} versie achter",
   "studio.versionsBehind_other": "{{count}} versies achter",
-  "versions.checkingReleaseContent": "Release-inhoud controleren...",
   "versions.deployTo": "Implementeren naar {{name}}"
 }

@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Đường dẫn hệ thống tệp",
   "agentDetail.configure.workingDirectory.description": "Các tệp mà agent đọc và ghi khi chạy. Mọi thứ nó tạo ra, như qna_report.pdf, sẽ xuất hiện ở đây.",
   "agentDetail.configure.workingDirectory.fileSystem": "Hệ thống tệp",
-  "agentDetail.configure.workingDirectory.open": "Mở thư mục làm việc",
   "agentDetail.configure.workingDirectory.persistentFiles": "Lâu dài",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Các tệp mà agent lưu giữ và có thể sử dụng ở mọi nơi agent chạy, bao gồm cuộc trò chuyện của người dùng cuối và quy trình làm việc. Mọi thay đổi được thực hiện tại đây trong cuộc trò chuyện xây dựng này sẽ có hiệu lực sau khi bạn nhấp vào “Áp dụng”.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Tạm thời",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "Nhật ký",
   "agentDetail.sections.monitoring": "Giám sát",
   "agentDetail.title": "Tác nhân",
-  "agentDetail.type": "TÁC NHÂN",
   "agentDetail.versionHistory.empty": "Chưa có phiên bản nào",
   "agentDetail.versionHistory.exitVersions": "Thoát phiên bản",
   "agentDetail.versionHistory.filter": "Lọc phiên bản",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "Sửa đổi gần nhất",
   "roster.sort.recentlyCreated": "Mới tạo gần đây",
   "roster.title": "Tác nhân",
-  "roster.usageStatus.draft": "Bản nháp",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Tải lên {{count}} tệp thất bại.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Tải lên {{count}} tệp thất bại.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Bản nháp"
 }

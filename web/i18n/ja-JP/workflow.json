@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "このインテグレーションは GitHub からインストールされています。再インストールするにはインテグレーションに移動してください。",
   "nodes.agent.roster.change": "変更",
   "nodes.agent.roster.editInConsole": "Agents で編集",
-  "nodes.agent.roster.editInConsoleDisabled": "Agent の編集にはエディター以上のロールが必要です。",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "Agent を編集できるのは、エディター以上のロール、または「Agentsを管理」権限を持つメンバーのみです。",
   "nodes.agent.roster.inlineSetup.description": "このノード内にのみ存在する一度きりのセットアップ",
   "nodes.agent.roster.inlineSetup.name": "インラインセットアップ",
   "nodes.agent.roster.inlineSetup.type": "このノード内のみ",

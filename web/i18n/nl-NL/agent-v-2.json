@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Bestandssysteempad",
   "agentDetail.configure.workingDirectory.description": "Bestanden die de agent leest en schrijft tijdens het uitvoeren. Alles wat hij genereert, zoals qna_report.pdf, verschijnt hier.",
   "agentDetail.configure.workingDirectory.fileSystem": "Bestandssysteem",
-  "agentDetail.configure.workingDirectory.open": "Werkmap openen",
   "agentDetail.configure.workingDirectory.persistentFiles": "Permanent",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Bestanden die de agent bewaart en overal kan gebruiken waar deze wordt uitgevoerd, waaronder gesprekken van eindgebruikers en workflows. Wijzigingen die je hier tijdens deze buildchat aanbrengt, worden van kracht zodra je op ‘Toepassen’ klikt.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Tijdelijk",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "Logs",
   "agentDetail.sections.monitoring": "Monitoring",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "AGENT",
   "agentDetail.versionHistory.empty": "Nog geen versies",
   "agentDetail.versionHistory.exitVersions": "Versies verlaten",
   "agentDetail.versionHistory.filter": "Versies filteren",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "Laatst gewijzigd",
   "roster.sort.recentlyCreated": "Recent aangemaakt",
   "roster.title": "Agenten",
-  "roster.usageStatus.draft": "Concept",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Uploaden van {{count}} bestand is mislukt.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Uploaden van {{count}} bestanden is mislukt.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Concept"
 }

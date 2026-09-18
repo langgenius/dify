@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Dateisystempfad",
   "agentDetail.configure.workingDirectory.description": "Dateien, die der Agent während der Ausführung liest und schreibt. Alles, was er erzeugt, z. B. qna_report.pdf, erscheint hier.",
   "agentDetail.configure.workingDirectory.fileSystem": "Dateisystem",
-  "agentDetail.configure.workingDirectory.open": "Arbeitsverzeichnis öffnen",
   "agentDetail.configure.workingDirectory.persistentFiles": "Dauerhaft",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Dateien, die der Agent behält und überall verwenden kann, wo er ausgeführt wird, einschließlich Unterhaltungen mit Endbenutzern und Workflows. Änderungen, die du während dieses Build-Chats hier vornimmst, werden wirksam, sobald du auf „Anwenden“ klickst.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Temporär",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "Logs",
   "agentDetail.sections.monitoring": "Monitoring",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "AGENT",
   "agentDetail.versionHistory.empty": "Noch keine Versionen",
   "agentDetail.versionHistory.exitVersions": "Versionen verlassen",
   "agentDetail.versionHistory.filter": "Versionen filtern",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "Zuletzt geändert",
   "roster.sort.recentlyCreated": "Zuletzt erstellt",
   "roster.title": "Agenten",
-  "roster.usageStatus.draft": "Entwurf",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} Datei konnte nicht hochgeladen werden.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} Dateien konnten nicht hochgeladen werden.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Entwurf"
 }

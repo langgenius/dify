@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Pot datotečnega sistema",
   "agentDetail.configure.workingDirectory.description": "Datoteke, ki jih agent bere in zapisuje med izvajanjem. Vse, kar ustvari, na primer qna_report.pdf, se prikaže tukaj.",
   "agentDetail.configure.workingDirectory.fileSystem": "Datotečni sistem",
-  "agentDetail.configure.workingDirectory.open": "Odpri delovni imenik",
   "agentDetail.configure.workingDirectory.persistentFiles": "Trajno",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Datoteke, ki jih agent ohrani in jih lahko uporablja povsod, kjer se izvaja, vključno s pogovori končnih uporabnikov in delovnimi tokovi. Spremembe, ki jih med tem pogovorom za gradnjo naredite tukaj, začnejo veljati, ko kliknete »Uporabi«.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Začasno",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "Dnevniki",
   "agentDetail.sections.monitoring": "Spremljanje",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "AGENT",
   "agentDetail.versionHistory.empty": "Še ni različic",
   "agentDetail.versionHistory.exitVersions": "Zapusti različice",
   "agentDetail.versionHistory.filter": "Filtriraj različice",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "Nazadnje spremenjeno",
   "roster.sort.recentlyCreated": "Nedavno ustvarjeno",
   "roster.title": "Agenti",
-  "roster.usageStatus.draft": "Osnutek",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Nalaganje {{count}} datoteke ni uspelo.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Nalaganje {{count}} datotek ni uspelo.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Osnutek"
 }

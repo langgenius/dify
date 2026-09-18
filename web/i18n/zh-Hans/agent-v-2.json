@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "文件系统路径",
   "agentDetail.configure.workingDirectory.description": "Agent 运行时读取和写入的文件。它生成的任何内容，例如 qna_report.pdf，都会显示在这里。",
   "agentDetail.configure.workingDirectory.fileSystem": "文件系统",
-  "agentDetail.configure.workingDirectory.open": "打开工作目录",
   "agentDetail.configure.workingDirectory.persistentFiles": "长期",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "长期保留的文件。Agent 可在后续每次运行中使用这些文件，包括终端用户的对话和工作流。在本次构建对话中对此类文件的改动，会在点击「应用」后生效。",
   "agentDetail.configure.workingDirectory.temporaryFiles": "临时",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "日志",
   "agentDetail.sections.monitoring": "监控",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "Agent",
   "agentDetail.versionHistory.empty": "暂无版本",
   "agentDetail.versionHistory.exitVersions": "退出版本",
   "agentDetail.versionHistory.filter": "筛选版本",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "最后修改",
   "roster.sort.recentlyCreated": "最近创建",
   "roster.title": "Agent",
-  "roster.usageStatus.draft": "草稿",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} 个文件上传失败。",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} 个文件上传失败。",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "草稿"
 }

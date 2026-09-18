@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "مسار نظام الملفات",
   "agentDetail.configure.workingDirectory.description": "الملفات التي يقرأها الوكيل ويكتبها أثناء التشغيل. كل ما ينشئه، مثل qna_report.pdf، يظهر هنا.",
   "agentDetail.configure.workingDirectory.fileSystem": "نظام الملفات",
-  "agentDetail.configure.workingDirectory.open": "فتح دليل العمل",
   "agentDetail.configure.workingDirectory.persistentFiles": "دائمة",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "ملفات يحتفظ بها الوكيل ويمكنه استخدامها أينما يعمل، بما في ذلك محادثات المستخدمين النهائيين وسير العمل. تسري أي تغييرات تُجرى هنا خلال محادثة البناء هذه بمجرد الضغط على «تطبيق».",
   "agentDetail.configure.workingDirectory.temporaryFiles": "مؤقتة",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "السجلات",
   "agentDetail.sections.monitoring": "المراقبة",
   "agentDetail.title": "وكيل",
-  "agentDetail.type": "وكيل",
   "agentDetail.versionHistory.empty": "لا توجد إصدارات بعد",
   "agentDetail.versionHistory.exitVersions": "الخروج من الإصدارات",
   "agentDetail.versionHistory.filter": "تصفية الإصدارات",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "آخر تعديل",
   "roster.sort.recentlyCreated": "الأحدث إنشاءً",
   "roster.title": "الوكلاء",
-  "roster.usageStatus.draft": "مسودة",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "فشل رفع {{count}} ملف.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "فشل رفع {{count}} ملفات.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "مسودة"
 }

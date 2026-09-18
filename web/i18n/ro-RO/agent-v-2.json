@@ -269,7 +269,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Calea sistemului de fișiere",
   "agentDetail.configure.workingDirectory.description": "Fișierele pe care agentul le citește și le scrie în timpul rulării. Tot ce generează, precum qna_report.pdf, apare aici.",
   "agentDetail.configure.workingDirectory.fileSystem": "Sistem de fișiere",
-  "agentDetail.configure.workingDirectory.open": "Deschide directorul de lucru",
   "agentDetail.configure.workingDirectory.persistentFiles": "Persistente",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Fișiere pe care agentul le păstrează și le poate folosi oriunde rulează, inclusiv în conversațiile utilizatorilor finali și în fluxurile de lucru. Modificările făcute aici în timpul acestui chat de creare intră în vigoare după ce faceți clic pe „Aplică”.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Temporare",
@@ -348,7 +347,6 @@
   "agentDetail.sections.logs": "Jurnale",
   "agentDetail.sections.monitoring": "Monitorizare",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "AGENT",
   "agentDetail.versionHistory.empty": "Nicio versiune încă",
   "agentDetail.versionHistory.exitVersions": "Ieși din versiuni",
   "agentDetail.versionHistory.filter": "Filtrați versiunile",
@@ -408,8 +406,5 @@
   "roster.sort.lastModified": "Ultima modificare",
   "roster.sort.recentlyCreated": "Create recent",
   "roster.title": "Agenți",
-  "roster.usageStatus.draft": "Ciornă",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} fișier nu a putut fi încărcat.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} fișiere nu au putut fi încărcate.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Ciornă"
 }
