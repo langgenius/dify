@@ -115,7 +115,7 @@
   "iconPicker.ok": "確認",
   "importApp": "匯入應用",
   "importAppDescription": "應用套件或 DSL 檔案",
-  "importAppFormats": "支援 .ifpkg、.yaml 和 .yml",
+  "importAppFormats": "支援 .ifpkg、.zip、.yaml 和 .yml",
   "importAppUrlPlaceholder": "輸入應用套件（.ifpkg）或 DSL 檔案的 URL",
   "importDSL": "匯入 DSL 檔案",
   "importFromDSL": "從 DSL 導入",

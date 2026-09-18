@@ -408,7 +408,9 @@ def test_agent_export_can_explicitly_request_workflow_tool_bundle(app: Flask, mo
             app_module.AppExportApi(), app_module.AppExportQuery(include_workflow_tools=True), model
         )
     assert response == {"data": base64.b64encode(content).decode("ascii"), "format": "zip"}
-    export_bundle.assert_called_once_with(app_model=model, account=account, include_secret=False, workflow_id=None)
+    export_bundle.assert_called_once_with(
+        app_model=model, account=account, include_secret=False, workflow_id=None, version_id=None
+    )
     export_package.assert_not_called()
 
 
@@ -418,7 +420,10 @@ def test_ifpkg_export_rejects_non_agent_apps() -> None:
         unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), app_module.AppExportQuery(format="ifpkg"), model)
 
 
-@pytest.mark.parametrize("export_format", [None, "ifpkg", "yaml"])
+@pytest.mark.parametrize(
+    ("export_format", "include_workflow_tools"),
+    [(None, False), ("ifpkg", False), ("yaml", False), (None, True), ("ifpkg", True)],
+)
 @pytest.mark.parametrize(
     ("edition", "plan", "allowed"),
     [
@@ -434,6 +439,7 @@ def test_version_export_requires_cloud_paid_plan(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     export_format: str | None,
+    include_workflow_tools: bool,
     edition: DeploymentEdition,
     plan: CloudPlan,
     allowed: bool,
@@ -448,19 +454,37 @@ def test_version_export_requires_cloud_paid_plan(
     monkeypatch.setattr(app_module, "RosterAgentPackageExporter", lambda: SimpleNamespace(export=export))
     export_dsl = Mock(return_value="app: {}")
     monkeypatch.setattr(app_module.AppDslService, "export_dsl", export_dsl)
+    export_bundle = Mock(return_value=b"bundle")
+    monkeypatch.setattr(app_module.AppDslBundleService, "export_bundle", export_bundle)
+    account = _account()
+    monkeypatch.setattr(app_module, "current_account_with_tenant", lambda: (account, "tenant-1"))
     version_id = "11111111-1111-4111-8111-111111111111"
-    query = app_module.AppExportQuery.model_validate({"format": export_format, "version_id": version_id})
+    query = app_module.AppExportQuery.model_validate(
+        {"format": export_format, "version_id": version_id, "include_workflow_tools": include_workflow_tools}
+    )
     with app.test_request_context("/console/api/apps/app-1/export"):
         if not allowed:
             with pytest.raises(Forbidden, match="paid plan"):
                 unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), query, model)
             export.assert_not_called()
             export_dsl.assert_not_called()
+            export_bundle.assert_not_called()
         else:
             response = unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), query, model)
             if export_format == "yaml":
-                assert response == {"data": "app: {}"}
+                assert response == {"data": "app: {}", "format": "yaml"}
                 assert export_dsl.call_args.kwargs["version_id"] == UUID(version_id)
+            elif include_workflow_tools and export_format != "ifpkg":
+                assert response == {"data": base64.b64encode(b"bundle").decode("ascii"), "format": "zip"}
+                export_bundle.assert_called_once_with(
+                    app_model=model,
+                    account=account,
+                    include_secret=False,
+                    workflow_id=None,
+                    version_id=UUID(version_id),
+                )
+                export.assert_not_called()
+                export_dsl.assert_not_called()
             else:
                 export.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1", version_id=UUID(version_id))
                 response.close()

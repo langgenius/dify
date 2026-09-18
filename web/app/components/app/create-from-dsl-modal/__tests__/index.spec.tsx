@@ -957,9 +957,9 @@ describe('CreateFromDSLModal', () => {
     ).toHaveAccessibleDescription('app.importAppFormats')
     const panel = screen.getByRole('tabpanel', { name: 'app.importFromFile' })
     const dropTarget = screen.getByText('app.importAppFormats')
-    fireEvent.drop(dropTarget, { dataTransfer: { files: [new File(['no'], 'invalid.zip')] } })
+    fireEvent.drop(dropTarget, { dataTransfer: { files: [new File(['no'], 'invalid.json')] } })
     expect(getCreateButton()).toBeDisabled()
-    expect(panel).not.toHaveTextContent('invalid.zip')
+    expect(panel).not.toHaveTextContent('invalid.json')
     expect(toastMocks.error).toHaveBeenCalledWith(
       expect.stringContaining('dslUploader.invalidFileType'),
     )

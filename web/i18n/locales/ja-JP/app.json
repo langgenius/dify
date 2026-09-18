@@ -115,7 +115,7 @@
   "iconPicker.ok": "OK",
   "importApp": "アプリをインポート",
   "importAppDescription": "アプリパッケージまたは DSL ファイル",
-  "importAppFormats": "対応形式：.ifpkg、.yaml、.yml",
+  "importAppFormats": "対応形式：.ifpkg、.zip、.yaml、.yml",
   "importAppUrlPlaceholder": "アプリパッケージ（.ifpkg）または DSL ファイルのリンクをここに貼り付けます",
   "importDSL": "DSL ファイルをインポート",
   "importFromDSL": "DSL からインポート",

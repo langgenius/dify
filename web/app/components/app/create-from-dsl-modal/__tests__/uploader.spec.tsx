@@ -78,6 +78,23 @@ describe('Uploader', () => {
     expect(updateFile).toHaveBeenCalledWith(pipeline)
   })
 
+  it('accepts a workflow bundle from the picker and identifies its format', async () => {
+    const user = userEvent.setup()
+    const updateFile = vi.fn()
+    const file = new File(['PK'], 'workflow.ZIP')
+    const { rerender } = render(
+      <Uploader importType="workflow" file={undefined} updateFile={updateFile} />,
+    )
+
+    await user.upload(getHiddenInput(), file)
+    expect(updateFile).toHaveBeenCalledWith(file)
+
+    rerender(<Uploader importType="workflow" file={file} updateFile={updateFile} />)
+    expect(screen.getByRole('group', { name: 'workflow.ZIP' })).toHaveAccessibleDescription(
+      expect.stringContaining('ZIP'),
+    )
+  })
+
   it('updates App file metadata when replacing a package with DSL', () => {
     const updateFile = vi.fn()
     const { rerender } = render(

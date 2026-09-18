@@ -226,8 +226,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
                 file={currentFile}
                 updateFile={setDSLFile}
                 className="mt-0! w-full"
-                accept=".yaml,.yml,.zip"
-                displayName={currentFile?.name.toLowerCase().endsWith('.zip') ? 'ZIP' : 'YAML'}
+                importType="workflow"
                 disabled={loading}
               />
             </div>

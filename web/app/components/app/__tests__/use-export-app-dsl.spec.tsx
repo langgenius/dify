@@ -203,6 +203,22 @@ describe('useExportAppDsl', () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith('common.operation.downloadSuccess')
   })
 
+  it('preserves an explicit YAML export without requesting a workflow bundle', async () => {
+    mocks.exportAppDsl.mockResolvedValue({ data: 'kind: app\n' })
+    const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
+
+    await act(async () => {
+      await result.current.exportAppDsl({ appId: 'app-id', appName: 'App', format: 'yaml' })
+    })
+
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith(
+      { params: { app_id: 'app-id' }, query: { include_secret: false, format: 'yaml' } },
+      { context: { silent: true } },
+    )
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({ data: expect.any(Blob), fileName: 'App.yml' })
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('common.operation.downloadSuccess')
+  })
+
   it('downloads workflow bundles as binary ZIP files', async () => {
     mocks.exportAppDsl.mockResolvedValue({
       data: btoa('PK\u0003\u0004\u0000\u00FF'),

@@ -11,7 +11,7 @@ export const zAppImportPayload = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
-  mode: z.string(),
+  mode: z.enum(['bundle-content', 'yaml-content', 'yaml-url']),
   name: z.string().nullish(),
   yaml_content: z.string().nullish(),
   yaml_url: z.string().nullish(),
@@ -305,6 +305,7 @@ export const zNewAppResponse = z.object({
  */
 export const zAppExportResponse = z.object({
   data: z.string(),
+  format: z.enum(['yaml', 'zip']).optional().default('yaml'),
 })
 
 /**
@@ -5097,6 +5098,7 @@ export const zGetAppsByAppIdExportPath = z.object({
 export const zGetAppsByAppIdExportQuery = z.object({
   format: z.enum(['ifpkg', 'yaml']).optional(),
   include_secret: z.boolean().optional().default(false),
+  include_workflow_tools: z.boolean().optional().default(false),
   version_id: z.uuid().optional(),
   workflow_id: z.string().optional(),
 })

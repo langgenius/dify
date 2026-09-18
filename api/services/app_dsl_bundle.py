@@ -8,7 +8,7 @@ import json
 import zipfile
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any, Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -228,6 +228,7 @@ class AppDslBundleService:
         account: Account | None = None,
         include_secret: bool = False,
         workflow_id: str | None = None,
+        version_id: UUID | None = None,
     ) -> bytes:
         """Bundle any supported app and export each referenced workflow snapshot once."""
         from services.app_dsl_service import AppDslService
@@ -236,6 +237,8 @@ class AppDslBundleService:
             raise ValueError("App mode does not support DSL bundles")
         if account is not None and account.current_tenant_id != app_model.tenant_id:
             raise NoPermissionError("App is not in the current workspace")
+        if version_id is not None and app_model.mode != AppMode.AGENT:
+            raise ValueError("Only Agent apps support Agent versions")
         workflow = None
         if app_model.mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
             workflow = WorkflowService().get_draft_workflow(app_model, workflow_id, session=self._session)
@@ -270,6 +273,7 @@ class AppDslBundleService:
                     session=self._session,
                     include_secret=include_secret,
                     workflow_id=(snapshot.id if snapshot and snapshot.version != Workflow.VERSION_DRAFT else None),
+                    version_id=version_id if marker == manifest.entrypoint else None,
                 )
             )
             _validate_document_tree(document)

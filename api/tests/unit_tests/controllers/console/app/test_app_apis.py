@@ -295,12 +295,20 @@ class TestAppEndpoints:
             }
             if include_workflow_tools:
                 export_bundle.assert_called_once_with(
-                    app_model=app_model, account=account, include_secret=True, workflow_id="published-workflow"
+                    app_model=app_model,
+                    account=account,
+                    include_secret=True,
+                    workflow_id="published-workflow",
+                    version_id=None,
                 )
                 export_dsl.assert_not_called()
             else:
                 export_dsl.assert_called_once_with(
-                    app_model=app_model, session=db.session(), include_secret=True, workflow_id="published-workflow"
+                    app_model=app_model,
+                    session=db.session(),
+                    include_secret=True,
+                    workflow_id="published-workflow",
+                    version_id=None,
                 )
                 export_bundle.assert_not_called()
 

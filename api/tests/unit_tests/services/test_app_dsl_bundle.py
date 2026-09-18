@@ -4,7 +4,7 @@ import json
 import zipfile
 from typing import cast
 from unittest.mock import Mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 import yaml
@@ -17,6 +17,7 @@ from core.tools.entities.tool_entities import ToolProviderType, WorkflowToolPara
 from models import Account, App, AppMode, Tenant
 from models.account import TenantAccountRole
 from models.agent import Agent, AgentConfigDraft, AgentConfigSnapshot
+from models.agent_config_entities import AgentSoulConfig
 from models.model import AppModelConfig
 from models.tools import ToolLabelBinding, WorkflowToolProvider
 from models.workflow import Workflow, WorkflowContentDict
@@ -352,6 +353,44 @@ def test_each_app_mode_remaps_nested_workflow_tools_and_name_collisions(
         assert not imported.enable_site
     restored = service.parse_bundle(service.export_bundle(imported, account=account))
     assert {tool.name for tool in restored.manifest.tools.values()} == {"nested_2", "shared_2"}
+
+
+def test_agent_bundle_uses_selected_version_without_forwarding_it_to_nested_workflows(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    account, _, _ = _seed_bundle(sqlite_session, monkeypatch)
+    provider = sqlite_session.scalar(select(WorkflowToolProvider).where(WorkflowToolProvider.name == "nested"))
+    assert provider is not None
+    source = AppDslService(sqlite_session)._create_or_update_app(
+        app=None,
+        data=_app_document(AppMode.AGENT, {provider.id: provider.name}),
+        account=account,
+        commit=False,
+    )
+    agent = source.agent_app_binding_with_session(session=sqlite_session)
+    assert agent is not None
+    assert agent.active_config_snapshot_id is not None
+    version_id = UUID(agent.active_config_snapshot_id)
+    draft = sqlite_session.scalar(
+        select(AgentConfigDraft).where(
+            AgentConfigDraft.tenant_id == account.current_tenant_id, AgentConfigDraft.agent_id == agent.id
+        )
+    )
+    assert draft is not None
+    draft.config_snapshot = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "Changed draft"}})
+    sqlite_session.commit()
+    export_dsl = Mock(wraps=AppDslService.export_dsl)
+    monkeypatch.setattr(AppDslService, "export_dsl", export_dsl)
+    service = AppDslBundleService(sqlite_session)
+
+    bundle = service.parse_bundle(service.export_bundle(source, account=account, version_id=version_id))
+
+    assert len(bundle.documents) == 3
+    assert {tool.name for tool in bundle.manifest.tools.values()} == {"nested", "shared"}
+    soul = bundle.documents[bundle.manifest.entrypoint]["agent_packages"]["agent_1"]["soul"]
+    assert soul["prompt"]["system_prompt"] != "Changed draft"
+    assert export_dsl.call_args_list[0].kwargs["version_id"] == version_id
+    assert all(call.kwargs["version_id"] is None for call in export_dsl.call_args_list[1:])
 
 
 @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.AGENT])
@@ -778,6 +817,7 @@ def test_legacy_provider_reference_remapping_preserves_custom_display_name() -> 
         ("other_workspace", "not in the current workspace"),
         ("missing_workflow", "Workflow not found"),
         ("non_workflow_version", "Only workflow and chatflow apps"),
+        ("non_agent_version", "Only Agent apps support Agent versions"),
     ],
 )
 def test_export_rejects_invalid_source_or_workflow_version(
@@ -785,18 +825,23 @@ def test_export_rejects_invalid_source_or_workflow_version(
 ) -> None:
     account, app, _ = _seed_bundle(sqlite_session, monkeypatch)
     workflow_id = None
+    version_id = None
     if invalid_source == "unsupported_mode":
         app.mode = AppMode.CHANNEL
     elif invalid_source == "other_workspace":
         account = _account()
     elif invalid_source == "missing_workflow":
         workflow_id = str(uuid4())
+    elif invalid_source == "non_agent_version":
+        version_id = uuid4()
     else:
         app.mode = AppMode.CHAT
         workflow_id = str(uuid4())
 
     with pytest.raises(ValueError if invalid_source != "other_workspace" else NoPermissionError, match=message):
-        AppDslBundleService(sqlite_session).export_bundle(app, account=account, workflow_id=workflow_id)
+        AppDslBundleService(sqlite_session).export_bundle(
+            app, account=account, workflow_id=workflow_id, version_id=version_id
+        )
 
 
 @pytest.mark.parametrize("denial", ["other_workspace", "rbac", "member"])
