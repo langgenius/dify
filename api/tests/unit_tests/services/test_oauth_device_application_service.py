@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
 
@@ -8,20 +9,37 @@ from machinery.context import RequestContext
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.oauth_device_contracts import (
+    AccessDeniedError,
+    AlreadyResolvedError,
     ApprovalInProgressError,
     ApprovalOutcomeUnknownError,
+    ApprovalSessionConsumedError,
     ApprovalTransitionConfirmation,
+    AuthorizationPendingError,
     DeviceFlowStatus,
+    DeviceMutation,
     DeviceRequestContext,
     DeviceStateLostError,
     DeviceWorkspace,
+    ExpiredOrUnknownError,
+    ExpiredTokenError,
     ExternalApprovalCSRFError,
     ExternalApprovalGrant,
+    ExternalApprovalRateLimitError,
+    ExternalIdentityConflictError,
     ExternalSubjectAssertion,
+    ExternalUserCodeMismatchError,
+    ExternalUserCodeNotFoundError,
+    InvalidApprovalSessionError,
+    InvalidSSOAssertionError,
+    InvalidTransitionError,
+    InvalidUserCodeError,
     IssuedOAuthToken,
     OAuthDeviceSession,
     OAuthDeviceSessionNotFoundError,
     OAuthDeviceSessionPage,
+    OAuthDeviceSSOConfigurationError,
+    OAuthDeviceSSOInitiationError,
     OAuthDeviceTokenRotation,
     PollPayload,
     PollTooFastError,
@@ -110,7 +128,11 @@ class FakeStore:
         return ApprovalTransitionConfirmation.NOT_PUBLISHED
 
     def consume_on_poll(self, device_code: str) -> FakeState | None:
-        return self.load_by_device_code(device_code)
+        for user_code, (code, state) in self.states.items():
+            if code == device_code:
+                del self.states[user_code]
+                return state
+        return None
 
     def record_poll(self, device_code: str, interval_seconds: int) -> SlowDownDecision:
         _ = (device_code, interval_seconds)
@@ -291,7 +313,7 @@ def _account() -> AccountSnapshot:
     )
 
 
-def _harness() -> Harness:
+def _harness(*, settings: FakeSettings | None = None) -> Harness:
     account = _account()
     store = FakeStore(states={"ABCD-EFGH": ("device-1", FakeState())})
     accounts = FakeAccounts(account)
@@ -330,7 +352,7 @@ def _harness() -> Harness:
         sessions=tokens,
         sso=sso,
         external_approval_limiter=limiter,
-        settings=FakeSettings(),
+        settings=settings or FakeSettings(),
     )
     return Harness(
         service=service,
@@ -521,18 +543,21 @@ def test_sso_completion_exchanges_valid_assertion_for_approval_grant() -> None:
     assert result.approval_grant == "approval-grant"
 
 
-def test_external_approval_rejects_bad_csrf_before_minting() -> None:
+@pytest.mark.parametrize("csrf_token", ["", "wrong"])
+def test_external_approval_rejects_bad_csrf_before_minting(csrf_token: str) -> None:
     harness = _harness()
 
     with pytest.raises(ExternalApprovalCSRFError):
         harness.service.approve_external(
             DeviceRequestContext("request-1", None),
             approval_grant="grant",
-            csrf_token="wrong",
+            csrf_token=csrf_token,
             user_code="ABCD-EFGH",
         )
 
     assert harness.tokens.external_issues == 0
+    assert harness.sso.reserved_nonces == []
+    assert harness.store.acquired == []
 
 
 def test_external_approval_publishes_external_payload() -> None:
@@ -602,3 +627,384 @@ def test_rotation_guard_is_shared_across_device_codes_for_the_same_token_identit
     assert harness.store.acquired[0][0] == harness.store.acquired[1][0]
     assert harness.store.acquired[0][1] != harness.store.acquired[1][1]
     assert all(ttl == 60 for _, _, ttl in harness.store.acquired)
+
+
+@pytest.mark.parametrize("base_url", [None, "https://console.example/"])
+def test_start_returns_device_codes_with_configured_or_request_origin(base_url: str | None) -> None:
+    harness = _harness(settings=FakeSettings(verification_base_url=base_url))
+
+    result = harness.service.start(
+        client_id="difyctl", device_label="CLI", created_ip="127.0.0.1", request_origin="https://request.example/"
+    )
+
+    assert result.device_code == "device-1"
+    assert result.user_code == "ABCD-EFGH"
+    assert result.verification_uri == (base_url or "https://request.example/") + "device"
+    assert result.expires_in == 900
+    assert result.interval == 5
+
+
+@pytest.mark.parametrize(
+    ("state", "expected_error"),
+    [
+        (None, ExpiredTokenError),
+        (FakeState(), AuthorizationPendingError),
+        (FakeState(status=DeviceFlowStatus.DENIED), AccessDeniedError),
+        (FakeState(status=DeviceFlowStatus.APPROVED), ExpiredTokenError),
+    ],
+    ids=["expired", "pending", "denied", "approved-without-token"],
+)
+def test_poll_rejects_unavailable_tokens(state: FakeState | None, expected_error: type[Exception]) -> None:
+    harness = _harness()
+    harness.store.states = {} if state is None else {"ABCD-EFGH": ("device-1", state)}
+
+    with pytest.raises(expected_error):
+        harness.service.poll(device_code="device-1", poll_ip="127.0.0.1")
+
+    if state is not None and state.status is DeviceFlowStatus.PENDING:
+        assert harness.store.states["ABCD-EFGH"][1] is state
+    assert harness.tokens.account_issues == harness.tokens.external_issues == 0
+
+
+def test_poll_does_not_return_a_token_consumed_by_another_request() -> None:
+    harness = _harness()
+    harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
+
+    with patch.object(harness.store, "consume_on_poll", return_value=None), pytest.raises(ExpiredTokenError):
+        harness.service.poll(device_code="device-1", poll_ip="127.0.0.1")
+
+
+def test_approved_token_is_only_returned_once() -> None:
+    harness = _harness()
+    harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
+
+    result = harness.service.poll(device_code="device-1", poll_ip="127.0.0.1")
+
+    assert result["token"] == "secret-token"
+    assert result["account"] == {"id": "account-1", "email": "ada@example.com", "name": "Ada"}
+    with pytest.raises(ExpiredTokenError):
+        harness.service.poll(device_code="device-1", poll_ip="127.0.0.1")
+
+
+@pytest.mark.parametrize("status", [None, *DeviceFlowStatus])
+def test_lookup_only_accepts_pending_codes(status: DeviceFlowStatus | None) -> None:
+    harness = _harness()
+    harness.store.states = {} if status is None else {"ABCD-EFGH": ("device-1", FakeState(status=status))}
+
+    result = harness.service.lookup(user_code=" abcd-efgh ")
+
+    assert result.valid is (status is DeviceFlowStatus.PENDING)
+    assert result.expires_in_remaining == (900 if result.valid else 0)
+    assert result.client_id == (None if status is None else "difyctl")
+
+
+@pytest.mark.parametrize("operation", ["approve", "deny"])
+@pytest.mark.parametrize("status", [None, DeviceFlowStatus.APPROVED, DeviceFlowStatus.DENIED])
+def test_account_decisions_reject_expired_or_resolved_codes(operation: str, status: DeviceFlowStatus | None) -> None:
+    harness = _harness()
+    harness.store.states = {} if status is None else {"ABCD-EFGH": ("device-1", FakeState(status=status))}
+
+    expected_error = ExpiredOrUnknownError if status is None else AlreadyResolvedError
+    if operation == "approve":
+        with pytest.raises(expected_error):
+            harness.service.approve(
+                RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH"
+            )
+    else:
+        with pytest.raises(expected_error):
+            harness.service.deny(user_code="ABCD-EFGH")
+
+    assert harness.tokens.account_issues == 0
+    assert harness.store.acquired == []
+
+
+def test_denial_changes_poll_result_without_issuing_token() -> None:
+    harness = _harness()
+
+    result = harness.service.deny(user_code=" abcd-efgh ")
+
+    assert result.status == "denied"
+    with pytest.raises(AccessDeniedError):
+        harness.service.poll(device_code="device-1", poll_ip="127.0.0.1")
+    assert harness.tokens.account_issues == harness.tokens.external_issues == 0
+
+
+@pytest.mark.parametrize("error", [StateNotFoundError("expired"), InvalidTransitionError("already approved")])
+def test_deny_reports_state_lost_if_transition_races(error: Exception) -> None:
+    harness = _harness()
+
+    with patch.object(harness.store, "deny", side_effect=error), pytest.raises(DeviceStateLostError):
+        harness.service.deny(user_code="ABCD-EFGH")
+
+    assert harness.store.states["ABCD-EFGH"][1].status is DeviceFlowStatus.PENDING
+
+
+def test_account_approval_requires_existing_account() -> None:
+    harness = _harness()
+
+    with pytest.raises(DeviceStateLostError):
+        harness.service.approve(
+            RequestContext("request-1", None, "missing-account", "workspace-1"), user_code="ABCD-EFGH"
+        )
+
+    assert harness.tokens.account_issues == 0
+    assert harness.store.acquired == []
+
+
+def _approve(harness: Harness, *, external: bool) -> DeviceMutation:
+    if external:
+        return harness.service.approve_external(
+            DeviceRequestContext("request-1", None),
+            approval_grant="grant",
+            csrf_token="csrf-token",
+            user_code="ABCD-EFGH",
+        )
+    return harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
+
+
+@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
+@pytest.mark.parametrize("change", ["expired", "replaced", "approved", "denied"])
+def test_approval_revalidates_state_after_acquiring_guard(external: bool, change: str) -> None:
+    harness = _harness()
+    initial = harness.store.states["ABCD-EFGH"]
+    current: tuple[str, FakeState] | None
+    if change == "expired":
+        current = None
+        expected_error = ExternalUserCodeNotFoundError if external else DeviceStateLostError
+    elif change == "replaced":
+        current = ("another-device", FakeState())
+        expected_error = DeviceStateLostError
+    else:
+        current = ("device-1", FakeState(status=DeviceFlowStatus(change)))
+        expected_error = AlreadyResolvedError
+
+    with (
+        patch.object(harness.store, "load_by_user_code", side_effect=[initial, current]),
+        pytest.raises(expected_error),
+    ):
+        _approve(harness, external=external)
+
+    assert harness.tokens.account_issues == harness.tokens.external_issues == 0
+    assert harness.sso.reserved_nonces == []
+    assert harness.store.released == [harness.store.acquired[0][:2]]
+
+
+@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
+def test_unpublished_approval_rolls_back_token_and_allows_retry(external: bool) -> None:
+    harness = _harness()
+    harness.store.approve_error = ConnectionError("publish failed")
+    harness.store.confirmation = ApprovalTransitionConfirmation.NOT_PUBLISHED
+
+    with pytest.raises(ConnectionError, match="publish failed"):
+        _approve(harness, external=external)
+
+    assert harness.tokens.rollbacks == ["token-1"]
+    assert harness.store.released == [harness.store.acquired[0][:2]]
+    if external:
+        assert len(harness.sso.released_nonces) == 1
+        assert harness.sso.released_nonces == harness.sso.reserved_nonces
+
+
+@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
+def test_confirmation_failure_preserves_potentially_published_token(external: bool) -> None:
+    harness = _harness()
+    harness.store.approve_error = ConnectionError("response lost")
+    harness.store.confirm_error = ConnectionError("confirmation unavailable")
+
+    with pytest.raises(ApprovalOutcomeUnknownError):
+        _approve(harness, external=external)
+
+    assert harness.tokens.rollbacks == []
+    assert harness.sso.released_nonces == []
+    assert harness.store.released == [harness.store.acquired[0][:2]]
+
+
+def test_external_token_issuance_failure_releases_reserved_nonce() -> None:
+    harness = _harness()
+
+    with (
+        patch.object(harness.tokens, "issue_external_token", side_effect=RuntimeError("issuer unavailable")),
+        pytest.raises(RuntimeError, match="issuer unavailable"),
+    ):
+        _approve(harness, external=True)
+
+    assert harness.tokens.rollbacks == []
+    assert len(harness.sso.released_nonces) == 1
+    assert harness.sso.released_nonces == harness.sso.reserved_nonces
+    assert harness.store.released == [harness.store.acquired[0][:2]]
+
+
+def test_failed_token_compensation_does_not_prevent_nonce_and_guard_cleanup() -> None:
+    harness = _harness()
+    harness.store.approve_error = StateNotFoundError("expired")
+
+    with (
+        patch.object(harness.tokens, "rollback_token", side_effect=ConnectionError("database unavailable")),
+        pytest.raises(DeviceStateLostError),
+    ):
+        _approve(harness, external=True)
+
+    assert len(harness.sso.released_nonces) == 1
+    assert harness.sso.released_nonces == harness.sso.reserved_nonces
+    assert harness.store.released == [harness.store.acquired[0][:2]]
+
+
+@pytest.mark.parametrize(
+    "rejection", ["missing-grant", "invalid-grant", "rate-limit", "user-code", "identity", "replay", "busy"]
+)
+def test_external_approval_rejections_do_not_issue_tokens(rejection: str) -> None:
+    harness = _harness()
+    errors = {
+        "missing-grant": InvalidApprovalSessionError,
+        "invalid-grant": InvalidApprovalSessionError,
+        "rate-limit": ExternalApprovalRateLimitError,
+        "user-code": ExternalUserCodeMismatchError,
+        "identity": ExternalIdentityConflictError,
+        "replay": ApprovalSessionConsumedError,
+        "busy": ApprovalInProgressError,
+    }
+    harness.limiter.limited = rejection == "rate-limit"
+    harness.sso.approval_nonce_available = rejection != "replay"
+    harness.store.approval_acquired = rejection != "busy"
+    if rejection == "identity":
+        harness.accounts.active_external_emails.add(harness.sso.grant.subject_email)
+
+    with (
+        patch.object(
+            harness.sso,
+            "verify_approval_grant",
+            return_value=harness.sso.grant,
+            side_effect=InvalidApprovalSessionError if rejection == "invalid-grant" else None,
+        ),
+        pytest.raises(errors[rejection]),
+    ):
+        harness.service.approve_external(
+            DeviceRequestContext("request-1", None),
+            approval_grant="" if rejection == "missing-grant" else "grant",
+            csrf_token="csrf-token",
+            user_code="OTHER-CODE" if rejection == "user-code" else "ABCD-EFGH",
+        )
+
+    assert harness.tokens.external_issues == 0
+    assert harness.store.approved_payload is None
+    assert harness.sso.released_nonces == []
+    if rejection in {"identity", "replay"}:
+        assert harness.store.released == [harness.store.acquired[0][:2]]
+    else:
+        assert harness.store.released == []
+        assert harness.sso.reserved_nonces == []
+    if rejection == "rate-limit":
+        assert harness.limiter.recorded == []
+
+
+@pytest.mark.parametrize(
+    "rejection",
+    ["missing-assertion", "invalid-assertion", "replayed-assertion", "expired-code", "resolved-code", "identity"],
+)
+def test_sso_completion_rejections_never_mint_approval_grant(rejection: str) -> None:
+    harness = _harness()
+    harness.sso.assertion_nonce_available = rejection != "replayed-assertion"
+    if rejection == "expired-code":
+        harness.store.states.clear()
+    elif rejection == "resolved-code":
+        harness.store.states["ABCD-EFGH"][1].status = DeviceFlowStatus.APPROVED
+    elif rejection == "identity":
+        harness.accounts.active_external_emails.add(harness.sso.assertion.subject_email)
+
+    with (
+        patch.object(
+            harness.sso,
+            "verify_assertion",
+            return_value=harness.sso.assertion,
+            side_effect=InvalidSSOAssertionError("invalid signature") if rejection == "invalid-assertion" else None,
+        ),
+        patch.object(harness.sso, "mint_approval_grant") as mint,
+    ):
+        result = harness.service.complete_sso(
+            DeviceRequestContext("request-1", None),
+            inbound_error=None,
+            inbound_user_code=None,
+            assertion=None if rejection == "missing-assertion" else "signed-assertion",
+        )
+
+    assert result.error_code == ("email_belongs_to_dify_account" if rejection == "identity" else "sso_failed")
+    assert result.approval_grant is None
+    mint.assert_not_called()
+
+
+def test_sso_completion_preserves_upstream_error_without_consuming_assertion() -> None:
+    harness = _harness()
+    with patch.object(harness.sso, "verify_assertion") as verify:
+        result = harness.service.complete_sso(
+            DeviceRequestContext("request-1", None),
+            inbound_error="sso_failed",
+            inbound_user_code="ABCD-EFGH",
+            assertion="signed-assertion",
+        )
+
+    assert result.error_code == "sso_failed"
+    assert result.user_code == "ABCD-EFGH"
+    assert result.approval_grant is None
+    verify.assert_not_called()
+
+
+@pytest.mark.parametrize("status", [None, DeviceFlowStatus.APPROVED, DeviceFlowStatus.DENIED])
+def test_sso_initiation_requires_pending_user_code(status: DeviceFlowStatus | None) -> None:
+    harness = _harness()
+    harness.store.states = {} if status is None else {"ABCD-EFGH": ("device-1", FakeState(status=status))}
+
+    with patch.object(harness.sso, "initiate") as initiate, pytest.raises(InvalidUserCodeError):
+        harness.service.initiate_sso(DeviceRequestContext("request-1", None), user_code="ABCD-EFGH")
+
+    initiate.assert_not_called()
+
+
+def test_sso_initiation_requires_configured_callback_origin() -> None:
+    harness = _harness(settings=FakeSettings(sso_base_url=None))
+
+    with patch.object(harness.sso, "initiate") as initiate, pytest.raises(OAuthDeviceSSOConfigurationError):
+        harness.service.initiate_sso(DeviceRequestContext("request-1", None), user_code="ABCD-EFGH")
+
+    initiate.assert_not_called()
+
+
+def test_sso_initiation_rejects_empty_provider_redirect() -> None:
+    harness = _harness()
+
+    with patch.object(harness.sso, "initiate", return_value=""), pytest.raises(OAuthDeviceSSOInitiationError):
+        harness.service.initiate_sso(DeviceRequestContext("request-1", None), user_code="ABCD-EFGH")
+
+
+def test_sso_completion_reports_configuration_error_without_grant() -> None:
+    harness = _harness(settings=FakeSettings(sso_base_url=None))
+
+    result = harness.service.complete_sso(
+        DeviceRequestContext("request-1", None),
+        inbound_error=None,
+        inbound_user_code=None,
+        assertion="signed-assertion",
+    )
+
+    assert result.error_code == "sso_failed"
+    assert result.user_code == "ABCD-EFGH"
+    assert result.approval_grant is None
+
+
+def test_approval_context_requires_verified_grant() -> None:
+    harness = _harness()
+    context = DeviceRequestContext("request-1", None)
+
+    with pytest.raises(InvalidApprovalSessionError):
+        harness.service.get_approval_context(context, approval_grant="")
+    with (
+        patch.object(harness.sso, "verify_approval_grant", side_effect=InvalidApprovalSessionError),
+        pytest.raises(InvalidApprovalSessionError),
+    ):
+        harness.service.get_approval_context(context, approval_grant="invalid")
+
+    result = harness.service.get_approval_context(context, approval_grant="valid")
+    assert result.subject_email == harness.sso.grant.subject_email
+    assert result.subject_issuer == harness.sso.grant.subject_issuer
+    assert result.user_code == harness.sso.grant.user_code
+    assert result.csrf_token == harness.sso.grant.csrf_token
+    assert result.expires_at == harness.sso.grant.expires_at
