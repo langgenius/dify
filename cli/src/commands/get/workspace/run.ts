@@ -33,12 +33,12 @@ export async function runGetWorkspace(
   const env = await runWithSpinner({ io, label: 'Fetching workspaces' }, () =>
     wsFactory(deps.http).list(),
   )
-  if (env.workspaces.length === 0) return { kind: 'empty', message: EMPTY_WORKSPACES_MESSAGE }
+  if (env.data.length === 0) return { kind: 'empty', message: EMPTY_WORKSPACES_MESSAGE }
   const currentId = deps.active.ctx.workspace?.id ?? ''
   return {
     kind: 'output',
     data: new WorkspaceListOutput(
-      env.workspaces.map(
+      env.data.map(
         (w) =>
           new WorkspaceRow(
             w.id,
