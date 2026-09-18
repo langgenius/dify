@@ -20,7 +20,7 @@ import {
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 import { ModelStatusEnum } from '../declarations'
@@ -241,7 +241,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               </div>
               {isRulesLoading ? (
                 <div className="py-5">
-                  <Loading />
+                  <LoadingPlaceholder />
                 </div>
               ) : (
                 [...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map(
@@ -265,7 +265,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           )}
           {!parameterRules.length && isRulesLoading && (
             <div className="px-4 py-5">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
         </div>

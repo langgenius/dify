@@ -214,7 +214,7 @@ describe('ModelLoadBalancingModal', () => {
       />,
     )
 
-    expect(screen.getByRole('status'))!.toBeInTheDocument()
+    expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
   })
 
   it('should render predefined model content', () => {

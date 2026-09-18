@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import type { ChatProps } from '../chat'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { createTheme } from '../embedded-chatbot/theme/theme'
@@ -110,7 +110,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
           {!isMobile && (
             <Header toggleButtonRef={isSidebarCollapsed ? sidebarToggleRef : undefined} />
           )}
-          {appChatListDataLoading && <Loading type="app" />}
+          {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
           {!appChatListDataLoading && <ChatWrapper key={chatShouldReloadKey} />}
         </div>
       </div>
