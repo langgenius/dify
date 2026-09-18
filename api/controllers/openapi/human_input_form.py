@@ -2,21 +2,28 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import override
+from collections.abc import Generator, Iterable, Mapping
+from typing import Any, override
 
 from flask import Response
 from flask_restx import Resource
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.human_input import stringify_form_default_values
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Kind, endpoint
+from controllers.openapi._contract import Kind, endpoint, op_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
-from controllers.openapi._files import form_file_rows, materialize_files
-from controllers.openapi._hints import FORM_SUBMIT_OP
-from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse, OpenApiFormSubmitPayload
+from controllers.openapi._files import merge_files
+from controllers.openapi._hints import attach_stream_hints
+from controllers.openapi._models import (
+    FormSubmitResponse,
+    Hint,
+    HumanInputFormDefinitionResponse,
+    OpenApiFormSubmitPayload,
+)
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import PathParam, load_app
 from controllers.openapi.auth.requirements import (
@@ -29,6 +36,7 @@ from controllers.openapi.auth.requirements import (
     Requirement,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
+from core.app.entities.task_entities import HumanInputRequiredResponse, StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
@@ -113,7 +121,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>:submit")
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @endpoint(
-        op=FORM_SUBMIT_OP,
+        op="run.form.submit",
         kind=Kind.OBJECT,
         summary="Submit a human-input form",
         requirements=(
@@ -147,13 +155,7 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             logger.warning("Recipient type is None for form, form_token=%s", form_token)
             raise BadRequest("Form recipient type is invalid")
 
-        inputs, _ = materialize_files(
-            app=ctx.app,
-            caller=ctx.caller,
-            inputs=body.inputs,
-            files=body.files,
-            rows=form_file_rows(form.get_definition()),
-        )
+        inputs = merge_files(body.inputs, body.files, ctx.caller)
 
         try:
             service.submit_form_by_token(
@@ -168,3 +170,43 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             raise HumanInputFormNotFound()
 
         return FormSubmitResponse()
+
+
+def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) -> list[Hint]:
+    """One hint per action button of a paused form, its `inputs` blanked to the form's fields."""
+
+    data = response.data
+    if not data.form_token:
+        return []
+    fields = [field.model_dump(mode="json") for field in data.inputs]
+    blank = {field.output_variable_name: None for field in data.inputs}
+    return [
+        Hint(
+            summary=action.title or action.id,
+            op=op,
+            input={"app_id": app_id, "form_token": data.form_token, "action": action.id, "inputs": dict(blank)},
+            form=fields,
+        )
+        for action in data.actions
+    ]
+
+
+def with_form_hints(events: Iterable[str], *, app_id: str) -> Generator[str, None, None]:
+    """A run stream whose `human_input_required` events carry hints that target the submit route above.
+
+    The event is read back through the core's own entity. One that does not validate (a
+    form input type this server does not know) is passed through without hints; the raw
+    event still carries the form token, so the caller can read the form instead.
+    """
+
+    op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
+
+    def build(event: Mapping[str, Any]) -> list[Hint]:
+        try:
+            response = HumanInputRequiredResponse.model_validate(event)
+        except ValidationError:
+            logger.warning("human_input_required event did not validate; no hints attached, app_id=%s", app_id)
+            return []
+        return form_hints(op=op, app_id=app_id, response=response)
+
+    return attach_stream_hints(events, event=StreamEvent.HUMAN_INPUT_REQUIRED.value, build=build)

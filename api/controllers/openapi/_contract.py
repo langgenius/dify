@@ -29,12 +29,13 @@ from controllers.openapi._errors import ErrorBody
 from controllers.openapi._hints import next_page_hint
 from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
+from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import EndpointSpec, Kind
 from enums import DeploymentEdition
 
-__all__ = ["Kind", "accepts", "endpoint", "returns"]
+__all__ = ["Kind", "accepts", "endpoint", "op_of", "returns"]
 
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
 
@@ -59,13 +60,15 @@ def accepts(
     """
 
     def decorator(view: Callable) -> Callable:
+        body_file_fields = file_fields(body) if body is not None else frozenset()
+
         @wraps(view)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 if query is not None:
                     kwargs["query"] = query_params_from_request(query)
                 if body is not None:
-                    kwargs["body"] = body.model_validate(body_from_request())
+                    kwargs["body"] = body.model_validate(body_from_request(file_fields=body_file_fields))
             except ValidationError as exc:
                 # Sanitized 422 — no pydantic `url` (version) or `input` (user payload) leak.
                 abort(
@@ -130,6 +133,15 @@ def _normalize_returns(returns: ReturnSpec | Sequence[ReturnSpec] | None) -> tup
     if isinstance(returns[0], int):
         return (cast(ReturnSpec, returns),)  # pyrefly: ignore[redundant-cast]
     return tuple(cast(Sequence[ReturnSpec], returns))  # pyrefly: ignore[redundant-cast]
+
+
+def op_of(view: Any) -> str:
+    """The op id a route declared on ``endpoint``; a hint targeting that route reads it here."""
+
+    spec = getattr(view, "__spec__", None)
+    if not isinstance(spec, EndpointSpec):
+        raise TypeError(f"{getattr(view, '__qualname__', view)} is not an @endpoint view")
+    return spec.op
 
 
 def endpoint(
