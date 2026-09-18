@@ -4,4 +4,5 @@ import { atom } from 'jotai'
 export const difyBuilderPendingCreationAtom = atom<{
   appId: string
   prompt: string
+  deriveAppName?: boolean
 } | null>(null)

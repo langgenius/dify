@@ -2,6 +2,7 @@ import { useAtomValue, useStore } from 'jotai'
 import { useEffect } from 'react'
 import { difyBuilderPendingCreationAtom } from '../creation'
 import {
+  difyBuilderDeriveAppNameAtom,
   difyBuilderDraftAtom,
   difyBuilderLocalErrorAtom,
   difyBuilderRuntimeAtom,
@@ -35,6 +36,7 @@ export const DifyBuilderCreationStart = ({
 
     // Consume before starting async work so remounts cannot submit the same request twice.
     store.set(difyBuilderPendingCreationAtom, null)
+    store.set(difyBuilderDeriveAppNameAtom, creation.deriveAppName ?? false)
     const restorePrompt = () => {
       if (!store.get(difyBuilderDraftAtom)) store.set(difyBuilderDraftAtom, creation.prompt)
     }

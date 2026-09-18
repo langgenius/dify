@@ -2,6 +2,7 @@ import type { ConversationItem } from '../../types'
 import { act, waitFor } from '@testing-library/react'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import {
   builderModel,
@@ -59,6 +60,46 @@ describe('useDifyBuilderSessionController lifecycle', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     clientMocks.conversation.mockResolvedValue(conversationPage())
+  })
+
+  it('opts into deriving the app name for a starter build and refreshes app metadata', async () => {
+    const waiting = createSessionView({ run_status: 'waiting_input', canvas_read_only: false })
+    clientMocks.create.mockResolvedValue(
+      streamOf(commandStartedEvent(waiting), stateEvent(waiting)),
+    )
+    const { result, store } = renderSessionHook()
+    const queryClient = createBuilderQueryClient()
+    store.set(queryClientAtom, queryClient)
+    const appKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    })
+    queryClient.setQueryData(appKey, {
+      id: 'app-1',
+      name: 'Initial name',
+      mode: 'workflow',
+      enable_api: false,
+      enable_site: false,
+      icon_url: null,
+    })
+
+    await act(async () => {
+      expect(
+        await result.current.startBuild('app-1', 'Build an assistant', builderModel, true),
+      ).toBe(true)
+    })
+
+    expect(clientMocks.create).toHaveBeenCalledWith(
+      {
+        body: expect.objectContaining({
+          app_id: 'app-1',
+          scenario: 'build',
+          goal_text: 'Build an assistant',
+          derive_app_name: true,
+        }),
+      },
+      { context: { silent: true }, signal: expect.any(AbortSignal) },
+    )
+    expect(queryClient.getQueryState(appKey)?.isInvalidated).toBe(true)
   })
 
   it('refreshes model availability after a rejected creation and can retry in the same app', async () => {
