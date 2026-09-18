@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "Bu pakette SKILL.md yok. Dosyayı ekleyin ve tekrar içe aktarın.",
   "skillManagement.errors.nameConflict": "\"{{name}}\" adlı bir beceri zaten mevcut. SKILL.md'de yeniden adlandırın ve tekrar içe aktarın.",
   "skillManagement.errors.workspaceLimit": "Çalışma alanınız 500 beceri sınırına ulaştı. Yeni bir beceri eklemek için bir beceriyi silin.",
-  "skillManagement.exportDialog.description": "Becerinizin geçerli kayıtlı taslağı dışa aktarılacaktır. Düzenleyicide kaydedilmemiş değişiklikler varsa dışa aktarmadan önce kaydedin.",
-  "skillManagement.exportDialog.title": "Geçerli Kayıtlı Taslağı Dışa Aktar",
   "skillManagement.import": "İçe Aktar",
   "skillManagement.importFailed": "Beceri içe aktarılamadı.",
   "skillManagement.importSuccess": "Skill içe aktarıldı.",

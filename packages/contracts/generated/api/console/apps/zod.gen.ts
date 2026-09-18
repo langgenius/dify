@@ -5058,6 +5058,7 @@ export const zGetAppsByAppIdExportPath = z.object({
 export const zGetAppsByAppIdExportQuery = z.object({
   format: z.enum(['ifpkg', 'yaml']).optional(),
   include_secret: z.boolean().optional().default(false),
+  version_id: z.uuid().optional(),
   workflow_id: z.string().optional(),
 })
 

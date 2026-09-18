@@ -8,23 +8,23 @@ import type {
 import type { useAgentConfigureData } from '../hooks'
 import type { AgentConfigureRightPanelMode } from '../state'
 import type { AgentPreviewChatController } from './preview/chat-conversation'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { rebaseAgentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import {
   AgentScope,
   trackAgentBuildModeRun,
   trackAgentPreviewModeRun,
 } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
-import { useAgentConfigureModelOptions } from '../hooks'
 import {
   agentConfigureConversationIdsAtom,
   agentConfigureShowChatFeaturesAtom,
@@ -349,13 +349,11 @@ function AgentConfigurePageComposerContent({
     },
     [rebaseComposerDraft],
   )
-  const { currentModel, setConfigureModel, textGenerationModelList } =
-    useAgentConfigureModelOptions()
+  const [currentModel, setConfigureModel] = useAtom(agentComposerModelAtom)
   const { isPublishing, publishDraft, saveDraft } = useAgentConfigureSync({
     agentId,
     agentName: agentQuery.data?.name,
     baseConfig: agentSoulConfig,
-    currentModel,
     enabled:
       capabilities.canEdit && composerQuery.isSuccess && !selectedVersionId && !buildDraft.isActive,
     publishEnabled:
@@ -484,7 +482,6 @@ function AgentConfigurePageComposerContent({
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={agentQuery.data?.name}
           currentModel={currentModel}
-          textGenerationModelList={textGenerationModelList}
           isPublishing={isPublishing}
           readOnly={
             !capabilities.canEdit ||

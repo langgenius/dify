@@ -7,13 +7,13 @@ import type {
 } from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import {
   datasetDefaultPermissionKeysAtom,
   refreshWorkspacePermissionKeysAfterMutationDenialAtom,

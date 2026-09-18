@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "Acest pachet nu are SKILL.md. Adăugați fișierul și importați-l din nou.",
   "skillManagement.errors.nameConflict": "O abilitate numită „{{name}}” există deja. Redenumiți-l în SKILL.md și importați din nou.",
   "skillManagement.errors.workspaceLimit": "Spațiul tău de lucru a atins limita de 500 de aptitudini. Ștergeți o abilitate pentru a adăuga una nouă.",
-  "skillManagement.exportDialog.description": "Se va exporta schița salvată curentă a abilității. Dacă există modificări nesalvate în editor, salvează-le înainte de export.",
-  "skillManagement.exportDialog.title": "Exportă schița salvată curentă",
   "skillManagement.import": "Importați",
   "skillManagement.importFailed": "Nu s-a putut importa abilitate.",
   "skillManagement.importSuccess": "Skill importat.",

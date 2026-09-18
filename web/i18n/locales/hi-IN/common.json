@@ -450,6 +450,8 @@
   "operation.confirmAction": "कृपया अपनी क्रिया की पुष्टि करें।",
   "operation.copied": "कॉपी किया गया",
   "operation.copy": "कॉपी करें",
+  "operation.copyErrorDetails": "त्रुटि का विवरण कॉपी करें",
+  "operation.copyErrorFailed": "कॉपी नहीं हुआ। फिर कोशिश करें",
   "operation.copyImage": "छवि कॉपी करें",
   "operation.create": "बनाएं",
   "operation.deSelectAll": "सभी चयन हटाएँ",

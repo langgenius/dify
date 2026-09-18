@@ -450,6 +450,8 @@
   "operation.confirmAction": "لطفاً اقدام خود را تأیید کنید.",
   "operation.copied": "کپی",
   "operation.copy": "کپی",
+  "operation.copyErrorDetails": "کپی جزئیات خطا",
+  "operation.copyErrorFailed": "کپی ناموفق بود. تلاش مجدد",
   "operation.copyImage": "کپی تصویر",
   "operation.create": "ایجاد",
   "operation.deSelectAll": "همه را انتخاب نکنید",

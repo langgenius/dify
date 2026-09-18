@@ -10,7 +10,7 @@ from typing import Protocol, override
 from pydantic import BaseModel, Field, ValidationError
 
 from configs import dify_config
-from constants.oauth_bearer import MINTABLE_PROFILES, SubjectType
+from constants.oauth_bearer import TokenType
 from extensions.ext_redis import RedisClientWrapper
 from libs import jws
 from libs.device_flow_security import (
@@ -136,7 +136,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         device_label: str,
     ) -> IssuedOAuthToken:
         return self._issue_token(
-            subject_type=SubjectType.ACCOUNT,
+            token_type=TokenType.OAUTH_ACCOUNT,
             subject_email=account.email,
             subject_issuer=ACCOUNT_ISSUER_SENTINEL,
             account_id=account.id,
@@ -157,7 +157,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         if not subject_issuer.strip():
             raise ValueError("external-SSO token requires non-empty subject_issuer")
         return self._issue_token(
-            subject_type=SubjectType.EXTERNAL_SSO,
+            token_type=TokenType.OAUTH_EXTERNAL_SSO,
             subject_email=subject_email,
             subject_issuer=subject_issuer,
             account_id=None,
@@ -169,7 +169,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
     def _issue_token(
         self,
         *,
-        subject_type: SubjectType,
+        token_type: TokenType,
         subject_email: str,
         subject_issuer: str,
         account_id: str | None,
@@ -177,8 +177,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         device_label: str,
         workspace_id: str | None,
     ) -> IssuedOAuthToken:
-        profile = MINTABLE_PROFILES[subject_type]
-        plaintext = profile.prefix + secrets.token_urlsafe(_OAUTH_TOKEN_BODY_BYTES)
+        plaintext = token_type.prefix + secrets.token_urlsafe(_OAUTH_TOKEN_BODY_BYTES)
         expires_at = datetime.now(UTC) + timedelta(days=self._ttl_policy.ttl_days(workspace_id))
         rotation = self._tokens.rotate_token(
             OAuthDeviceTokenWrite(
@@ -187,7 +186,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
                 account_id=account_id,
                 client_id=client_id,
                 device_label=device_label,
-                prefix=profile.prefix,
+                prefix=token_type.prefix,
                 token_hash=sha256_hex(plaintext),
                 expires_at=expires_at,
             )
