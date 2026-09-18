@@ -6,7 +6,7 @@ const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
 }))
 
-let ensureAmplitudeInitialized: typeof import('../init').ensureAmplitudeInitialized
+let ensureAmplitudeInitialized: typeof import('../init-sdk').ensureAmplitudeInitialized
 
 vi.mock('@/config', () => ({
   get AMPLITUDE_API_KEY() {
@@ -29,7 +29,7 @@ describe('amplitude init helper', () => {
     vi.resetModules()
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
-    ;({ ensureAmplitudeInitialized } = await import('../init'))
+    ;({ ensureAmplitudeInitialized } = await import('../init-sdk'))
   })
 
   describe('ensureAmplitudeInitialized', () => {
@@ -44,7 +44,7 @@ describe('amplitude init helper', () => {
     })
 
     it('should expose readiness after initialization completes', async () => {
-      const { getIsAmplitudeInitialized } = await import('../init')
+      const { getIsAmplitudeInitialized } = await import('../init-state')
 
       expect(getIsAmplitudeInitialized()).toBe(false)
       ensureAmplitudeInitialized()
@@ -53,7 +53,7 @@ describe('amplitude init helper', () => {
     })
 
     it('should notify readiness subscribers after plugins are registered', async () => {
-      const { subscribeAmplitudeInitialization } = await import('../init')
+      const { subscribeAmplitudeInitialization } = await import('../init-state')
       const listener = vi.fn()
       const unsubscribe = subscribeAmplitudeInitialization(listener)
 
@@ -76,7 +76,7 @@ describe('amplitude init helper', () => {
 
   describe('setAmplitudeOptOut', () => {
     it('only updates opt-out after amplitude has initialized', async () => {
-      const { setAmplitudeOptOut } = await import('../init')
+      const { setAmplitudeOptOut } = await import('../init-sdk')
 
       setAmplitudeOptOut(true)
       expect(amplitude.setOptOut).not.toHaveBeenCalled()

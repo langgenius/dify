@@ -1,9 +1,9 @@
 'use client'
 
-import type { AmplitudeInitializationOptions } from './init'
+import type { AmplitudeInitializationOptions } from './init-state'
 import { useEffect } from 'react'
 import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
-import { ensureAmplitudeInitialized, setAmplitudeOptOut } from './init'
+import { ensureAmplitudeInitialized, setAmplitudeOptOut } from './init-sdk'
 
 export type IAmplitudeProps = AmplitudeInitializationOptions & {
   active?: boolean

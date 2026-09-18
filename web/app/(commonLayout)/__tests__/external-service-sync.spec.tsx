@@ -52,8 +52,9 @@ vi.mock('@/app/components/base/amplitude/utils', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
-vi.mock('@/app/components/base/amplitude/init', () => ({
+vi.mock('@/app/components/base/amplitude/init-state', () => ({
   getIsAmplitudeInitialized: () => true,
+  subscribeAmplitudeInitialization: () => () => {},
 }))
 
 vi.mock('@/app/components/base/analytics-consent/consent-store', async (importOriginal) => {

@@ -23,21 +23,25 @@ const MockIdentify = vi.hoisted(
     },
 )
 
-vi.mock('@/app/components/base/analytics-consent/consent-store', () => ({
-  getAnalyticsConsent: () => mockState.consent,
-}))
-
-vi.mock('../init', () => ({
-  getIsAmplitudeInitialized: () => mockState.initialized,
-}))
-
-vi.mock('@amplitude/analytics-browser', () => ({
+const mockAmplitudeSdk = vi.hoisted(() => ({
   track: (...args: unknown[]) => mockTrack(...args),
   flush: (...args: unknown[]) => mockFlush(...args),
   setUserId: (...args: unknown[]) => mockSetUserId(...args),
   identify: (...args: unknown[]) => mockIdentify(...args),
   reset: (...args: unknown[]) => mockReset(...args),
   Identify: MockIdentify,
+}))
+
+vi.mock('@/app/components/base/analytics-consent/consent-store', () => ({
+  getAnalyticsConsent: () => mockState.consent,
+}))
+
+vi.mock('../init-state', () => ({
+  getIsAmplitudeInitialized: () => mockState.initialized,
+}))
+
+vi.mock('../sdk-binding', () => ({
+  getBoundAmplitudeSdk: () => (mockState.initialized ? mockAmplitudeSdk : null),
 }))
 
 describe('amplitude utils', () => {
