@@ -8,7 +8,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { getNodeCatalogType } from '@/app/components/workflow/utils/node'
 import { useGetLanguage } from '@/context/i18n'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 
 export const useNodesMetaData = () => {
   const availableNodesMetaData = useHooksStore((s) => s.availableNodesMetaData)
@@ -37,13 +37,15 @@ export const useNodeMetaData = (node: Node) => {
     if (data.type === BlockEnum.Tool) {
       if (data.provider_type === CollectionType.builtIn)
         return buildInTools?.find((toolWithProvider) =>
-          canFindTool(toolWithProvider.id, data.provider_id),
+          matchesProviderReference(toolWithProvider, data.provider_id),
         )?.author
       if (data.provider_type === CollectionType.workflow)
-        return workflowTools?.find((toolWithProvider) => toolWithProvider.id === data.provider_id)
-          ?.author
-      return customTools?.find((toolWithProvider) => toolWithProvider.id === data.provider_id)
-        ?.author
+        return workflowTools?.find((toolWithProvider) =>
+          matchesProviderReference(toolWithProvider, data.provider_id),
+        )?.author
+      return customTools?.find((toolWithProvider) =>
+        matchesProviderReference(toolWithProvider, data.provider_id),
+      )?.author
     }
     return nodeMetaData?.metaData.author
   }, [data, buildInTools, customTools, workflowTools, nodeMetaData, dataSourceList])
@@ -55,13 +57,15 @@ export const useNodeMetaData = (node: Node) => {
     if (data.type === BlockEnum.Tool) {
       if (data.provider_type === CollectionType.builtIn)
         return buildInTools?.find((toolWithProvider) =>
-          canFindTool(toolWithProvider.id, data.provider_id),
+          matchesProviderReference(toolWithProvider, data.provider_id),
         )?.description[language]
       if (data.provider_type === CollectionType.workflow)
-        return workflowTools?.find((toolWithProvider) => toolWithProvider.id === data.provider_id)
-          ?.description[language]
-      return customTools?.find((toolWithProvider) => toolWithProvider.id === data.provider_id)
-        ?.description[language]
+        return workflowTools?.find((toolWithProvider) =>
+          matchesProviderReference(toolWithProvider, data.provider_id),
+        )?.description[language]
+      return customTools?.find((toolWithProvider) =>
+        matchesProviderReference(toolWithProvider, data.provider_id),
+      )?.description[language]
     }
     return nodeMetaData?.metaData.description
   }, [data, buildInTools, customTools, workflowTools, nodeMetaData, dataSourceList, language])

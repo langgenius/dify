@@ -19,7 +19,6 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from models import Account
-from models.account import Tenant
 from models.dataset import (
     Dataset,
     DatasetCollectionBinding,
@@ -36,6 +35,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
+from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
 
 from .dataset_service_test_helpers import (
     MagicMock,
@@ -51,13 +51,13 @@ def _account(
     tenant_id: str = "tenant-1",
     role: TenantAccountRole = TenantAccountRole.OWNER,
 ) -> Account:
-    account = Account(name=f"User {account_id}", email=f"{account_id}@example.com")
-    account.id = account_id
-    account.role = role
-    tenant = Tenant(name=f"Tenant {tenant_id}")
-    tenant.id = tenant_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name=f"User {account_id}",
+        email=f"{account_id}@example.com",
+        role=role,
+        tenant=make_tenant(tenant_id=tenant_id, name=f"Tenant {tenant_id}"),
+    )
 
 
 def _dataset(
@@ -71,8 +71,8 @@ def _dataset(
     indexing_technique: str = IndexTechniqueType.ECONOMY,
     chunk_structure: str | None = "text_model",
 ) -> Dataset:
-    return Dataset(
-        id=dataset_id,
+    return make_dataset(
+        dataset_id=dataset_id,
         tenant_id=tenant_id,
         name=name,
         description="",

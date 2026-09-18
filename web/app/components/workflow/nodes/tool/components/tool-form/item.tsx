@@ -5,7 +5,7 @@ import type { CredentialFormSchema } from '@/app/components/header/account-setti
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -78,6 +78,7 @@ const ToolFormItem: FC<Props> = ({
   providerType = 'tool',
 }) => {
   const language = useLanguage()
+  const labelId = useId()
   const { name, label, type, required, tooltip, input_schema } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
   const showDescription =
@@ -91,7 +92,10 @@ const ToolFormItem: FC<Props> = ({
     <div className="space-y-0.5 py-1">
       <div>
         <div className="flex min-h-6 min-w-0 items-center">
-          <div className="min-w-0 system-sm-medium wrap-break-word text-text-secondary">
+          <div
+            id={labelId}
+            className="min-w-0 system-sm-medium wrap-break-word text-text-secondary"
+          >
             {label[language] || label.en_US}
           </div>
           {required && (
@@ -128,6 +132,7 @@ const ToolFormItem: FC<Props> = ({
         )}
       </div>
       <FormInputItem
+        labelId={labelId}
         readOnly={readOnly}
         nodeId={nodeId}
         schema={schema}

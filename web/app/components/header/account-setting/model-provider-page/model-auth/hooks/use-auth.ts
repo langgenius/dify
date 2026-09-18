@@ -6,13 +6,13 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '../../declarations'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useModelModalHandler,
   useRefreshModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import { useDeleteModel } from '@/service/use-models'
 import { useAuthService } from './use-auth-service'
 

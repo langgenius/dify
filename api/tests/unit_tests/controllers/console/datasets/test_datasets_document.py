@@ -489,7 +489,6 @@ class TestDatasetInitApi(_UsesSQLiteSession):
             patch(
                 "controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
             ),
-            patch("controllers.console.datasets.datasets_document.initialize_created_app_rbac_access_task.delay"),
         ):
             response = method(api, session, tenant_id, user)
         assert response["dataset"]["id"] == "ds-1"

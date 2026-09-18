@@ -10,7 +10,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE_OPTIONS } from '@/service/access-control/constants'
 import AddAccessSubjectPopover from './add-access-subject-popover'
 import AutomaticIncludeWorkspaceMembersSection from './automatic-include-workspace-members-section'
@@ -303,7 +303,7 @@ function AccessRulesEditor({
                     colSpan={3}
                     className="flex flex-1 items-center justify-center px-4 py-8 text-center"
                   >
-                    <Loading type="app" />
+                    <LoadingPlaceholder className="h-full" />
                   </td>
                 </tr>
               ) : userAccessSettings.length === 0 ? (

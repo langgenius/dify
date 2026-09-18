@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Alert from '@/app/components/base/alert'
 import AppIcon from '@/app/components/base/app-icon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Res from '@/app/components/share/text-generation/result'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
 import { appDefaultIconBackground } from '@/config'
@@ -173,7 +173,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   if (!siteInfo || !promptConfig) {
     return (
       <div className={cn('flex h-screen items-center', className)}>
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }

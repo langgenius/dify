@@ -1,10 +1,10 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { flushEvents } from '@/app/components/base/amplitude/utils'
 import { reportOAuthRegistrationIfNewUser } from '@/app/components/oauth-registration-attribution'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 
 export function buildReturnUrl(pathname: string, search: string) {

@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AgentFileTree } from '../files/tree'
 
 type AgentSkillFileNode = AgentFileNode
@@ -109,7 +109,7 @@ function AgentSkillFileList({
           </h3>
         )}
         <div className="flex min-h-0 flex-1 items-center justify-center">
-          <Loading type="area" />
+          <LoadingPlaceholder />
         </div>
       </div>
     )
@@ -233,7 +233,7 @@ function AgentFilePreviewContent({
   if (isLoading || isDownloadLoading) {
     return (
       <div className="flex min-h-40 flex-1 items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }

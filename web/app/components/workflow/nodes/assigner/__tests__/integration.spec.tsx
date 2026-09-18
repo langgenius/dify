@@ -1,6 +1,6 @@
 import type { AssignerNodeOperation, AssignerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -288,10 +288,12 @@ describe('assigner path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated text' } })
+      await user.click(screen.getByRole('textbox', { name: 'node-1.count' }))
+      await user.keyboard('{Control>}a{/Control}')
+      await user.paste('updated text')
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.set, value: 'updated text' })],
-        'updated text',
+        undefined,
       )
 
       onChange.mockClear()
@@ -311,10 +313,12 @@ describe('assigner path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByDisplayValue('3'), { target: { value: '5' } })
+      await user.click(screen.getByRole('textbox', { name: 'node-1.count' }))
+      await user.keyboard('{Control>}a{/Control}')
+      await user.paste('5')
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.set, value: 5 })],
-        5,
+        undefined,
       )
 
       onChange.mockClear()
@@ -337,7 +341,7 @@ describe('assigner path', () => {
       await user.click(screen.getByRole('button', { name: 'bool:false' }))
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.set, value: true })],
-        true,
+        undefined,
       )
 
       onChange.mockClear()
@@ -357,10 +361,12 @@ describe('assigner path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '{"a":2}' } })
+      await user.click(screen.getByRole('textbox', { name: 'code-editor' }))
+      await user.keyboard('{Control>}a{/Control}')
+      await user.paste('{"a":2}')
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.set, value: '{"a":2}' })],
-        '{"a":2}',
+        undefined,
       )
 
       onChange.mockClear()
@@ -380,10 +386,12 @@ describe('assigner path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByDisplayValue('2'), { target: { value: '4' } })
+      await user.click(screen.getByRole('textbox', { name: 'node-1.count' }))
+      await user.keyboard('{Control>}a{/Control}')
+      await user.paste('4')
       expect(onChange).toHaveBeenLastCalledWith(
         [createOperation({ operation: WriteMode.increment, value: 4 })],
-        4,
+        undefined,
       )
 
       const buttons = screen.getAllByRole('button')

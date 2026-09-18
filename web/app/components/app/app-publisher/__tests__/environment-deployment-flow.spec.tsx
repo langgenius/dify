@@ -489,7 +489,7 @@ describe('PublisherEnvironmentFlow', () => {
     )
 
     expect(screen.getByText('Environment tabs')).toBeInTheDocument()
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
   it('formats deployed_at as a Unix timestamp in seconds', () => {

@@ -5,7 +5,7 @@ import { usePrefetchQuery, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
@@ -28,7 +28,7 @@ const Billing: FC = () => {
       <div className="grid min-h-132 xl:min-h-120">
         <React.Suspense
           fallback={
-            <Loading className="rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn" />
+            <LoadingPlaceholder className="rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn" />
           }
         >
           <PlanComp loc="billing-page" />

@@ -182,7 +182,7 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: () => true,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -587,7 +587,7 @@ describe('useFormState', () => {
 
   describe('handleSave', () => {
     it('should show error toast when name is empty', async () => {
-      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { toast } = await import('@/app/notifications')
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -602,7 +602,7 @@ describe('useFormState', () => {
     })
 
     it('should show error toast when name is whitespace only', async () => {
-      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { toast } = await import('@/app/notifications')
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -650,7 +650,7 @@ describe('useFormState', () => {
     })
 
     it('should show success toast on successful save', async () => {
-      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { toast } = await import('@/app/notifications')
       const { result } = renderHook(() => useFormState())
 
       await act(async () => {
@@ -725,7 +725,7 @@ describe('useFormState', () => {
 
     it('should show error toast on save failure', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
-      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { toast } = await import('@/app/notifications')
       vi.mocked(updateDatasetSetting).mockRejectedValueOnce(new Error('Network error'))
 
       const { result } = renderHook(() => useFormState())

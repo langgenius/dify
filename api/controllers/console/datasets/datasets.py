@@ -43,10 +43,15 @@ from core.rag.graph.graph_index_service import GraphIndexService
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from fields.base import ResponseModel
-from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from fields.dataset_fields import (
+    DatasetDetailResponse,
+    build_dataset_detail_prefetch,
+    dataset_detail_response_source,
+)
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
+from libs.pagination import clamp_pagination
 from libs.url_utils import normalize_api_base_url
 from models import Account, ApiToken, App, Dataset, Document, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
@@ -58,7 +63,6 @@ from services.app_service import AppService
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
 
@@ -542,6 +546,7 @@ class DatasetListApi(Resource):
             if filtered_dataset_ids is not None:
                 accessible_dataset_ids = sorted(filtered_dataset_ids)
 
+        effective_page, effective_limit = clamp_pagination(query.page, query.limit, 100)
         if query.ids:
             datasets, total = DatasetService.get_datasets_by_ids(
                 query.ids,
@@ -551,10 +556,13 @@ class DatasetListApi(Resource):
                 include_own_datasets=include_own_datasets,
                 session=session,
             )
+            # This branch resolves the ids it was handed in a single page
+            # (`per_page=len(ids)`), so there is never a next one to ask for.
+            has_more = False
         else:
             datasets, total = DatasetService.get_datasets(
-                query.page,
-                query.limit,
+                effective_page,
+                effective_limit,
                 session,
                 current_tenant_id,
                 current_user,
@@ -564,6 +572,7 @@ class DatasetListApi(Resource):
                 accessible_dataset_ids=accessible_dataset_ids,
                 include_own_datasets=include_own_datasets,
             )
+            has_more = effective_page * effective_limit < total
 
         permission_keys_map = {}
         if datasets:
@@ -580,8 +589,11 @@ class DatasetListApi(Resource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
+        prefetch = build_dataset_detail_prefetch(datasets, session=session)
         data = [
-            dump_response(DatasetDetailResponse, dataset_detail_response_source(dataset, session=session))
+            dump_response(
+                DatasetDetailResponse, dataset_detail_response_source(dataset, session=session, prefetch=prefetch)
+            )
             for dataset in datasets
         ]
         dataset_ids = [item["id"] for item in data if item.get("permission") == "partial_members"]
@@ -616,10 +628,10 @@ class DatasetListApi(Resource):
 
         response = {
             "data": data,
-            "has_more": len(datasets) == query.limit,
-            "limit": query.limit,
+            "has_more": has_more,
+            "limit": effective_limit,
             "total": total,
-            "page": query.page,
+            "page": effective_page,
         }
         return dump_response(DatasetListResponse, response), 200
 
@@ -680,9 +692,8 @@ class DatasetListApi(Resource):
                 current_tenant_id,
                 current_user.id,
                 dataset.id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
 
         return item, 201
 
@@ -909,16 +920,17 @@ class DatasetQueryApi(Resource):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
 
+        effective_page, effective_limit = clamp_pagination(page, limit, 100)
         dataset_queries, total = DatasetService.get_dataset_queries(
-            dataset_id=dataset.id, page=page, per_page=limit, session=session
+            dataset_id=dataset.id, page=effective_page, per_page=effective_limit, session=session
         )
 
         response = {
             "data": [_DatasetQueryResponseSource(query=query, session=session) for query in dataset_queries],
-            "has_more": len(dataset_queries) == limit,
-            "limit": limit,
+            "has_more": effective_page * effective_limit < total,
+            "limit": effective_limit,
             "total": total,
-            "page": page,
+            "page": effective_page,
         }
         return dump_response(DatasetQueryListResponse, response), 200
 
