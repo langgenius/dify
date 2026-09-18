@@ -245,6 +245,8 @@ ADMIT_NO_MOUNT = Expect(
 )
 
 
+_RUN_TRAITS = frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE})
+
 ROUTES: tuple[Route, ...] = (
     Route("account.get", "GET", "/account", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("account.sessions.revoke_self", "DELETE", "/account/sessions/self", frozenset({Trait.ACCOUNT_PRIMARY})),
@@ -314,30 +316,10 @@ ROUTES: tuple[Route, ...] = (
         "/apps/{app_id}:run",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
-    Route(
-        "app_run.workflow",
-        "POST",
-        "/apps/{app_id}/workflow:run",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
-    ),
-    Route(
-        "app_run.chat",
-        "POST",
-        "/apps/{app_id}/chat:run",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
-    ),
-    Route(
-        "app_run.advanced_chat",
-        "POST",
-        "/apps/{app_id}/advanced-chat:run",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
-    ),
-    Route(
-        "app_run.completion",
-        "POST",
-        "/apps/{app_id}/completion:run",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
-    ),
+    Route("app_run.workflow", "POST", "/apps/{app_id}/workflow:run", _RUN_TRAITS),
+    Route("app_run.chat", "POST", "/apps/{app_id}/chat:run", _RUN_TRAITS),
+    Route("app_run.advanced_chat", "POST", "/apps/{app_id}/advanced-chat:run", _RUN_TRAITS),
+    Route("app_run.completion", "POST", "/apps/{app_id}/completion:run", _RUN_TRAITS),
     Route(
         "app_run.stop",
         "POST",

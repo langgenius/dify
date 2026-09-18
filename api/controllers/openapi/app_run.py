@@ -180,8 +180,6 @@ def _respond(ctx: Context, stream: Any):
 
 
 class _ChatMessageEnd(MessageEndStreamResponse):
-    """The wire shape of a chat run's `message_end`: the core entity plus the ids the converter merges in."""
-
     conversation_id: str
 
 
