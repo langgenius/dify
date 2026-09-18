@@ -34,7 +34,7 @@ def uploads(monkeypatch: pytest.MonkeyPatch) -> Mock:
     return service
 
 
-def test_parts_become_mappings_the_core_file_factory_accepts():
+def test_parts_become_mappings_the_core_file_factory_accepts() -> None:
     original = {"q": "hi"}
     inputs = merge_files(original, {"doc": _fs("r.pdf", "application/pdf"), "pages": [_fs("1.png", "image/png")]}, None)
     assert original == {"q": "hi"}
@@ -51,6 +51,6 @@ def test_parts_become_mappings_the_core_file_factory_accepts():
     )
 
 
-def test_a_name_given_in_both_inputs_and_files_is_refused():
+def test_a_name_given_in_both_inputs_and_files_is_refused() -> None:
     with pytest.raises(InvalidFilePart, match="doc"):
         merge_files({"doc": "https://x/a.pdf"}, {"doc": _fs("a.pdf", "application/pdf")}, None)

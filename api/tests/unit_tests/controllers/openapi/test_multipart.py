@@ -1,9 +1,11 @@
 """Multipart bodies become the same dict a JSON body would be; file parts land where their name says."""
 
+from collections.abc import Mapping
 from io import BytesIO
 
 import pytest
 from flask import Flask
+from flask.ctx import RequestContext
 from werkzeug.datastructures import FileStorage
 
 from controllers.openapi._errors import InvalidFilePart
@@ -23,16 +25,16 @@ def _part(name: str = "x.txt") -> tuple[BytesIO, str]:
     return (BytesIO(b"x"), name)
 
 
-def _multipart(app: Flask, data: dict):
+def _multipart(app: Flask, data: Mapping[str, object]) -> RequestContext:
     return app.test_request_context("/x", method="POST", data=data, content_type="multipart/form-data")
 
 
-def test_json_request_passes_through(app: Flask):
+def test_json_request_passes_through(app: Flask) -> None:
     with app.test_request_context("/x", method="POST", json={"inputs": {"q": "hi"}}):
         assert body_from_request(file_fields=_FILE_FIELDS) == {"inputs": {"q": "hi"}}
 
 
-def test_multipart_places_every_part_name_shape(app: Flask):
+def test_multipart_places_every_part_name_shape(app: Flask) -> None:
     data = {
         "inputs": '{"q": "refund 42"}',
         "file": _part("one.txt"),
@@ -61,6 +63,6 @@ def test_multipart_places_every_part_name_shape(app: Flask):
         pytest.param({"files": '{"doc": "x"}', "files[doc]": _part()}, "file parts", id="json_text_in_file_field"),
     ],
 )
-def test_multipart_rejects_malformed_bodies(app: Flask, data: dict, reason: str):
+def test_multipart_rejects_malformed_bodies(app: Flask, data: Mapping[str, object], reason: str) -> None:
     with _multipart(app, data), pytest.raises(InvalidFilePart, match=reason):
         body_from_request(file_fields=_FILE_FIELDS)

@@ -11,7 +11,14 @@ from flask_restx.model import ModelBase
 from configs import dify_config
 from controllers.common.fields import EventStreamResponse
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi._catalog import CATALOG_HEADER, CATALOG_PATH, build_catalog, catalog_for, iter_handlers
+from controllers.openapi._catalog import (
+    CATALOG_HEADER,
+    CATALOG_PATH,
+    CatalogOp,
+    build_catalog,
+    catalog_for,
+    iter_handlers,
+)
 from controllers.openapi._models import Hinted
 from controllers.openapi.auth.spec import EndpointSpec, Kind, spec_of
 
@@ -36,16 +43,18 @@ def app() -> Flask:
 
 
 @pytest.fixture
-def ops(app: Flask) -> dict[str, dict]:
+def ops(app: Flask) -> dict[str, CatalogOp]:
     return build_catalog(app)["ops"]
 
 
-def _response_model_names(fn) -> set[str]:
-    responses = fn.__apidoc__.get("responses", {}) if hasattr(fn, "__apidoc__") else {}
+def _response_model_names(fn: object) -> set[str]:
+    responses: dict[str, tuple[object, ...]] = vars(fn).get("__apidoc__", {}).get("responses", {})
     return {entry[1].name for entry in responses.values() if isinstance(entry[1], ModelBase)}
 
 
-def _walk(node: object, path: tuple[str, ...] = (), depth: int = 0) -> Iterator[tuple[tuple[str, ...], int, dict]]:
+def _walk(
+    node: object, path: tuple[str, ...] = (), depth: int = 0
+) -> Iterator[tuple[tuple[str, ...], int, dict[str, object]]]:
     if isinstance(node, dict):
         yield path, depth, node
         for key in ("properties", "$defs"):
@@ -58,7 +67,7 @@ def _walk(node: object, path: tuple[str, ...] = (), depth: int = 0) -> Iterator[
             yield from _walk(alt, path, depth)
 
 
-def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[str, dict]):
+def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[str, CatalogOp]) -> None:
     seen: dict[str, str] = {}
     streaming: set[str] = set()
     for rule, verb, fn in iter_handlers(app):
@@ -81,7 +90,7 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
     assert streaming == per_mode | {"console_app.run", "run.events"}
 
 
-def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, dict]):
+def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -> None:
     chat = ops["console_app.chat.run"]
     assert set(chat) == {"summary", "method", "path", "kind", "input", "bind", "tags", "internal", "deprecated"}
     assert (chat["method"], chat["path"], chat["kind"], chat["tags"]) == (
@@ -105,7 +114,7 @@ def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, dict]):
     assert ops["workspace.switch"]["internal"] is True
 
 
-def test_input_schemas_are_flat_shallow_and_described(ops: dict[str, dict]):
+def test_input_schemas_are_flat_shallow_and_described(ops: dict[str, CatalogOp]) -> None:
     bad = [
         (op, p, k)
         for op, e in ops.items()
@@ -131,7 +140,7 @@ def test_input_schemas_are_flat_shallow_and_described(ops: dict[str, dict]):
     assert "input_schema" in desc
 
 
-def test_catalog_route_serves_canonical_bytes_and_every_response_carries_the_fingerprint(app: Flask):
+def test_catalog_route_serves_canonical_bytes_and_every_response_carries_the_fingerprint(app: Flask) -> None:
     client = app.test_client()
     raw, fingerprint = catalog_for(app)
     res = client.get(CATALOG_PATH)
