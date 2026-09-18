@@ -184,50 +184,55 @@ describe('i18n build check', () => {
     await expect(buildFixture()).resolves.toBeDefined()
   })
 
-  it('checks the union of client, SSR and RSC graphs only after every environment builds', async () => {
-    writeFileSync(localeFile, JSON.stringify({ client: 'Client', ssr: 'SSR', rsc: 'RSC' }))
-    for (const name of ['client', 'ssr', 'rsc']) {
-      writeFileSync(
-        path.join(root, `${name}.ts`),
-        `
+  // Six real environment builds plus graph analysis need headroom under CI contention.
+  it(
+    'checks the union of client, SSR and RSC graphs only after every environment builds',
+    { timeout: 15_000 },
+    async () => {
+      writeFileSync(localeFile, JSON.stringify({ client: 'Client', ssr: 'SSR', rsc: 'RSC' }))
+      for (const name of ['client', 'ssr', 'rsc']) {
+        writeFileSync(
+          path.join(root, `${name}.ts`),
+          `
         export function translate(t: (key: string) => string) { return t('app:${name}') }
       `,
-      )
-    }
-    const completed: string[] = []
-    const builder = await createBuilder({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      plugins: [i18nAnalysisPlugin()],
-      environments: Object.fromEntries(
-        ['client', 'ssr', 'rsc'].map((name) => [
-          name,
-          {
-            build: {
-              write: false,
-              lib: { entry: path.join(root, `${name}.ts`), formats: ['es'] },
+        )
+      }
+      const completed: string[] = []
+      const builder = await createBuilder({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [i18nAnalysisPlugin()],
+        environments: Object.fromEntries(
+          ['client', 'ssr', 'rsc'].map((name) => [
+            name,
+            {
+              build: {
+                write: false,
+                lib: { entry: path.join(root, `${name}.ts`), formats: ['es'] },
+              },
             },
+          ]),
+        ),
+        builder: {
+          async buildApp(builder) {
+            for (const environment of Object.values(builder.environments)) {
+              await builder.build(environment)
+              completed.push(environment.name)
+            }
           },
-        ]),
-      ),
-      builder: {
-        async buildApp(builder) {
-          for (const environment of Object.values(builder.environments)) {
-            await builder.build(environment)
-            completed.push(environment.name)
-          }
         },
-      },
-    })
+      })
 
-    await expect(builder.buildApp()).resolves.toBeUndefined()
-    expect(completed).toEqual(['client', 'ssr', 'rsc'])
+      await expect(builder.buildApp()).resolves.toBeUndefined()
+      expect(completed).toEqual(['client', 'ssr', 'rsc'])
 
-    // A second build must not inherit the first build's server usage.
-    writeFileSync(path.join(root, 'ssr.ts'), 'export const value = 1')
-    await expect(builder.buildApp()).rejects.toThrow('app:ssr')
-  })
+      // A second build must not inherit the first build's server usage.
+      writeFileSync(path.join(root, 'ssr.ts'), 'export const value = 1')
+      await expect(builder.buildApp()).rejects.toThrow('app:ssr')
+    },
+  )
 
   it('retains usages from environment-specific versions of the same module', async () => {
     writeFileSync(localeFile, JSON.stringify({ client: 'Client', ssr: 'SSR' }))
