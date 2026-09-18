@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from functools import partial
 
 import pytest
 from sqlalchemy import select
@@ -100,15 +101,16 @@ def test_issue_rotates_matching_live_token_and_invalidates_old_cache(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory)
-    kwargs = {
-        "account": _account(),
-        "workspace_id": "workspace-1",
-        "client_id": "difyctl",
-        "device_label": "Laptop",
-    }
+    issue_token = partial(
+        issuer.issue_account_token,
+        account=_account(),
+        workspace_id="workspace-1",
+        client_id="difyctl",
+        device_label="Laptop",
+    )
 
-    first = issuer.issue_account_token(**kwargs)
-    second = issuer.issue_account_token(**kwargs)
+    first = issue_token()
+    second = issue_token()
 
     sqlite_session.expire_all()
     records = list(sqlite_session.scalars(select(OAuthAccessToken).order_by(OAuthAccessToken.created_at)).all())
@@ -123,14 +125,15 @@ def test_rollback_rotation_removes_new_token_and_restores_previous_session(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory)
-    kwargs = {
-        "account": _account(),
-        "workspace_id": "workspace-1",
-        "client_id": "difyctl",
-        "device_label": "Laptop",
-    }
-    first = issuer.issue_account_token(**kwargs)
-    second = issuer.issue_account_token(**kwargs)
+    issue_token = partial(
+        issuer.issue_account_token,
+        account=_account(),
+        workspace_id="workspace-1",
+        client_id="difyctl",
+        device_label="Laptop",
+    )
+    first = issue_token()
+    second = issue_token()
 
     assert issuer.rollback_token(second) is True
 
@@ -151,15 +154,16 @@ def test_rollback_does_not_restore_predecessor_after_later_rotation(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory)
-    kwargs = {
-        "account": _account(),
-        "workspace_id": "workspace-1",
-        "client_id": "difyctl",
-        "device_label": "Laptop",
-    }
-    first = issuer.issue_account_token(**kwargs)
-    second = issuer.issue_account_token(**kwargs)
-    third = issuer.issue_account_token(**kwargs)
+    issue_token = partial(
+        issuer.issue_account_token,
+        account=_account(),
+        workspace_id="workspace-1",
+        client_id="difyctl",
+        device_label="Laptop",
+    )
+    first = issue_token()
+    second = issue_token()
+    third = issue_token()
 
     assert issuer.rollback_token(second) is False
 
