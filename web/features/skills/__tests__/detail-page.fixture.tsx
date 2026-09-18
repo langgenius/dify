@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { vi } from 'vite-plus/test'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { SkillDetailPage } from '../detail/page'
 
 export const primaryModifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }
@@ -27,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   publishSkillMutationFn: vi.fn(),
   publishSkillMutationOptions: vi.fn(),
   routerPush: vi.fn(),
+  routeSkillId: 'skill-1',
   restoreSkillMutationFn: vi.fn(),
   saveDraftFileMutationFn: vi.fn(),
   sendSkillAssistMessage: vi.fn(),
@@ -175,6 +177,7 @@ vi.mock('@/next/link', () => ({
 }))
 
 vi.mock('@/next/navigation', () => ({
+  useParams: () => ({ skillId: mocks.routeSkillId }),
   useRouter: () => ({
     push: mocks.routerPush,
   }),
@@ -489,11 +492,15 @@ export function renderSkillDetailPage({
       mutations: { retry: false },
     },
   }),
+  searchParams = '',
   strict = false,
 }: {
   queryClient?: QueryClient
+  searchParams?: string
   strict?: boolean
 } = {}) {
+  const { wrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
+
   return {
     ...render(
       <QueryClientProvider client={queryClient}>
@@ -505,7 +512,9 @@ export function renderSkillDetailPage({
           <SkillDetailPage skillId="skill-1" />
         )}
       </QueryClientProvider>,
+      { wrapper },
     ),
+    onUrlUpdate,
     queryClient,
   }
 }
@@ -676,6 +685,7 @@ export function getMocks() {
 export function resetDetailPageFixture() {
   vi.useRealTimers()
   vi.resetAllMocks()
+  mocks.routeSkillId = 'skill-1'
   mocks.defaultTextGenerationModel = {
     provider: {
       provider: 'langgenius/openai/openai',

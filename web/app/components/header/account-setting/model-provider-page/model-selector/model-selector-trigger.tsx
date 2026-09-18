@@ -98,7 +98,6 @@ function ModelSelectorTrigger({
             render={
               <button
                 type="button"
-                aria-label={t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
                 data-deprecated={isDeprecated ? '' : undefined}
                 data-model-status={status}
                 data-shape={shape}

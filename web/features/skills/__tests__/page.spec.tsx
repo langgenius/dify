@@ -251,6 +251,14 @@ function renderSkillsPage(queryClient = createTestQueryClient()) {
   )
 }
 
+async function openImportDialog(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.import' }))
+
+  return screen.findByRole('dialog', {
+    name: 'skill.skillManagement.importDialog.title',
+  })
+}
+
 describe('SkillsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -769,35 +777,200 @@ describe('SkillsPage', () => {
     })
   })
 
-  it('imports a package file and navigates to the imported skill', async () => {
-    const user = userEvent.setup()
-    const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
-    const { container } = renderSkillsPage()
+  it.each(['toolbar', 'empty state'])(
+    'shows package requirements from the %s import entry',
+    async (entry) => {
+      const user = userEvent.setup()
+      if (entry === 'empty state') mocks.skillPages = [[]]
+      renderSkillsPage()
 
-    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')
-    expect(fileInput).not.toBeNull()
-    const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
-
-    await user.upload(fileInput!, file)
-
-    await waitFor(() => {
-      expect(mocks.importSkillMutationFn).toHaveBeenCalledWith(
-        {
-          body: {
-            file,
-          },
-        },
-        expect.anything(),
+      await user.click(
+        await screen.findByRole('button', {
+          name:
+            entry === 'toolbar'
+              ? 'skill.skillManagement.import'
+              : /skill\.skillManagement\.emptyAction\.importTitle/,
+        }),
       )
+
+      const dialog = await screen.findByRole('dialog', {
+        name: 'skill.skillManagement.importDialog.title',
+      })
+      expect(dialog).toHaveAccessibleDescription('skill.skillManagement.importDialog.description')
+      expect(
+        within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }),
+      ).toBeDisabled()
+      expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['refund.skill', 'refund.zip'])(
+    'stages %s until confirmation, then navigates to the imported skill',
+    async (fileName) => {
+      const user = userEvent.setup()
+      const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+      renderSkillsPage()
+
+      const dialog = await openImportDialog(user)
+      const file = new File(['skill'], fileName, { type: 'application/zip' })
+
+      await user.upload(
+        within(dialog).getByLabelText('skill.skillManagement.importDialog.browse'),
+        file,
+      )
+      expect(within(dialog).getByText(fileName)).toBeInTheDocument()
+      expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+      await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+
+      await waitFor(() => {
+        expect(mocks.importSkillMutationFn).toHaveBeenCalledWith(
+          {
+            body: {
+              file,
+            },
+          },
+          expect.anything(),
+        )
+      })
+      expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.importSuccess')
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['skill-tags', { type: 'query' }],
+      })
+      expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill')
+      invalidateQueries.mockRestore()
+    },
+  )
+
+  it.each(['common.operation.cancel', 'common.operation.close'])(
+    'clears the staged package when dismissed with %s and reopened',
+    async (closeAction) => {
+      const user = userEvent.setup()
+      renderSkillsPage()
+      const dialog = await openImportDialog(user)
+      await user.upload(
+        within(dialog).getByLabelText('skill.skillManagement.importDialog.browse'),
+        new File(['skill'], 'refund.skill', { type: 'application/zip' }),
+      )
+
+      await user.click(within(dialog).getByRole('button', { name: closeAction }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      const reopenedDialog = await openImportDialog(user)
+
+      expect(within(reopenedDialog).queryByText('refund.skill')).not.toBeInTheDocument()
+      expect(
+        within(reopenedDialog).getByRole('button', { name: 'skill.skillManagement.import' }),
+      ).toBeDisabled()
+      expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+    },
+  )
+
+  it('removes a staged package and allows selecting that same file again', async () => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
+    const fileInput = within(dialog).getByLabelText('skill.skillManagement.importDialog.browse')
+    await user.upload(fileInput, file)
+
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.remove' }))
+    expect(within(dialog).queryByText('refund.skill')).not.toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }),
+    ).toBeDisabled()
+    await user.upload(fileInput, file)
+
+    expect(within(dialog).getByText('refund.skill')).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }),
+    ).toBeEnabled()
+    expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['an unsupported extension', ['refund.txt']],
+    ['multiple packages', ['refund.skill', 'support.zip']],
+  ])('rejects dropping %s and allows correction before importing', async (_label, fileNames) => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const dropZone = within(dialog).getByRole('group', {
+      name: 'skill.skillManagement.importDialog.title',
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.importSuccess')
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['skill-tags', { type: 'query' }],
+
+    fireEvent.drop(dropZone, {
+      dataTransfer: {
+        files: fileNames.map((fileName) => new File(['skill'], fileName)),
+        types: ['Files'],
+      },
     })
-    expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill')
-    invalidateQueries.mockRestore()
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'skill.skillManagement.importDialog.invalidFile',
+    )
+    expect(
+      within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }),
+    ).toBeDisabled()
+    expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+
+    const file = new File(['skill'], 'refund.zip', { type: 'application/zip' })
+    fireEvent.drop(dropZone, { dataTransfer: { files: [file], types: ['Files'] } })
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('refund.zip')).toBeInTheDocument()
+    expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+
+    await waitFor(() =>
+      expect(mocks.importSkillMutationFn).toHaveBeenCalledWith(
+        { body: { file } },
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('keeps the package stable and prevents repeat submission or dismissal while importing', async () => {
+    const user = userEvent.setup()
+    let completeImport: ((skill: SkillResponse) => void) | undefined
+    mocks.importSkillMutationFn.mockImplementationOnce(
+      () =>
+        new Promise<SkillResponse>((resolve) => {
+          completeImport = resolve
+        }),
+    )
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const fileInput = within(dialog).getByLabelText('skill.skillManagement.importDialog.browse')
+    const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
+    await user.upload(fileInput, file)
+    const importButton = within(dialog).getByRole('button', {
+      name: 'skill.skillManagement.import',
+    })
+    await user.click(importButton)
+
+    await waitFor(() => expect(importButton).toHaveAttribute('aria-disabled', 'true'))
+    expect(fileInput).toBeDisabled()
+    const cancelButton = within(dialog).getByRole('button', { name: 'common.operation.cancel' })
+    const closeButton = within(dialog).getByRole('button', { name: 'common.operation.close' })
+    expect(cancelButton).toBeDisabled()
+    expect(closeButton).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'common.operation.remove' })).toBeDisabled()
+    await user.click(importButton)
+    await user.click(cancelButton)
+    await user.click(closeButton)
+    await user.keyboard('{Escape}')
+    fireEvent.drop(
+      within(dialog).getByRole('group', { name: 'skill.skillManagement.importDialog.title' }),
+      {
+        dataTransfer: { files: [new File(['other'], 'replacement.zip')], types: ['Files'] },
+      },
+    )
+
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getByText('refund.skill')).toBeInTheDocument()
+    expect(within(dialog).queryByText('replacement.zip')).not.toBeInTheDocument()
+    expect(mocks.importSkillMutationFn).toHaveBeenCalledTimes(1)
+    completeImport?.(createSkill({ id: 'imported-skill' }))
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill'))
   })
 
   it.each([
@@ -831,35 +1004,54 @@ describe('SkillsPage', () => {
   ])('explains import errors for $error.code', async ({ error, message }) => {
     const user = userEvent.setup()
     mocks.importSkillMutationFn.mockRejectedValueOnce(error)
-    const { container } = renderSkillsPage()
-    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
     const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
 
-    await user.upload(fileInput!, file)
+    await user.upload(
+      within(dialog).getByLabelText('skill.skillManagement.importDialog.browse'),
+      file,
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(message)
     })
   })
 
-  it('explains an import error returned as a Response body', async () => {
+  it('keeps the package available for retry after explaining an error returned as a Response body', async () => {
     const user = userEvent.setup()
     mocks.importSkillMutationFn.mockRejectedValueOnce(
       new Response(JSON.stringify({ message: 'Skill package must contain SKILL.md' }), {
         status: 400,
       }),
     )
-    const { container } = renderSkillsPage()
-    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
 
-    await user.upload(fileInput!, new File(['skill'], 'refund.skill', { type: 'application/zip' }))
+    await user.upload(
+      within(dialog).getByLabelText('skill.skillManagement.importDialog.browse'),
+      file,
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.errors.missingSkillMd')
     })
+    expect(within(dialog).getByText('refund.skill')).toBeInTheDocument()
+    expect(mocks.push).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill'))
+    expect(mocks.importSkillMutationFn).toHaveBeenCalledTimes(2)
+    expect(mocks.importSkillMutationFn).toHaveBeenLastCalledWith(
+      { body: { file } },
+      expect.anything(),
+    )
   })
 
-  it('duplicates a skill from the card action menu', async () => {
+  it('opens the returned duplicate for inline rename from the card action menu', async () => {
     const user = userEvent.setup()
     renderSkillsPage()
 
@@ -881,6 +1073,25 @@ describe('SkillsPage', () => {
       )
     })
     expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.duplicateSuccess')
+    expect(mocks.push).toHaveBeenCalledWith('/skills/duplicated-skill?rename=true')
+  })
+
+  it('stays on the skill list when duplication fails', async () => {
+    const user = userEvent.setup()
+    mocks.duplicateSkillMutationFn.mockRejectedValue(new Error('Duplicate failed'))
+    renderSkillsPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    await user.click(await screen.findByText('common.operation.duplicate'))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.duplicateFailed')
+    })
+    expect(mocks.push).not.toHaveBeenCalled()
   })
 
   it('exports a published skill from the card action menu', async () => {

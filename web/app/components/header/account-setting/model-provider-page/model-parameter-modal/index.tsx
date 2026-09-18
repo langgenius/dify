@@ -10,7 +10,13 @@ import type { ParameterValue } from './parameter-item'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -187,9 +193,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         className={cn(popupClassName, 'w-100 rounded-2xl')}
       >
         <div className="relative px-3 pt-3.5 pb-1">
-          <div className="pr-8 pl-1 system-xl-semibold text-text-primary">
+          <PopoverTitle className="pr-8 pl-1 system-xl-semibold text-text-primary">
             {t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
-          </div>
+          </PopoverTitle>
           <PopoverClose
             render={
               <IconButton
