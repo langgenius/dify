@@ -450,6 +450,8 @@
   "operation.confirmAction": "Будь ласка, підтвердіть свої дії.",
   "operation.copied": "Скопійовані",
   "operation.copy": "Копіювати",
+  "operation.copyErrorDetails": "Копіювати відомості про помилку",
+  "operation.copyErrorFailed": "Не вдалося скопіювати. Повторити",
   "operation.copyImage": "Скопіювати зображення",
   "operation.create": "Створити",
   "operation.deSelectAll": "Вимкнути все",

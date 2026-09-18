@@ -450,6 +450,8 @@
   "operation.confirmAction": "ກະລຸນາຢືນຢັນການດຳເນີນການຂອງທ່ານ.",
   "operation.copied": "ຄັດລອກແລ້ວ",
   "operation.copy": "ຄັດລອກ",
+  "operation.copyErrorDetails": "ສຳເນົາລາຍລະອຽດຂໍ້ຜິດພາດ",
+  "operation.copyErrorFailed": "ສຳເນົາບໍ່ສຳເລັດ. ລອງໃໝ່",
   "operation.copyImage": "ຄັດລອກຮູບພາບ",
   "operation.create": "ສ້າງ",
   "operation.deSelectAll": "ຍົກເລີກການເລືອກທັງໝົດ",

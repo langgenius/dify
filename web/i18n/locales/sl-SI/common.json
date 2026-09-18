@@ -450,6 +450,8 @@
   "operation.confirmAction": "Prosimo, potrdite svoje dejanje.",
   "operation.copied": "Kopirati",
   "operation.copy": "Kopiraj",
+  "operation.copyErrorDetails": "Kopiraj podrobnosti napake",
+  "operation.copyErrorFailed": "Kopiranje ni uspelo. Poskusi znova",
   "operation.copyImage": "Kopiraj sliko",
   "operation.create": "Ustvari",
   "operation.deSelectAll": "Odberi vse",

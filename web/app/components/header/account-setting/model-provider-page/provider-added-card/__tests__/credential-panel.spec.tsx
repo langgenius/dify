@@ -29,7 +29,7 @@ const {
   mockChangePriorityFn: vi.fn().mockResolvedValue({ result: 'success' }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: { notify: mockToastNotify },
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),

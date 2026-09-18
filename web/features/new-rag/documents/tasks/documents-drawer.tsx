@@ -14,12 +14,12 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'

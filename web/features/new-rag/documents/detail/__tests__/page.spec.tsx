@@ -483,7 +483,7 @@ vi.mock('@/context/permission-state', () => ({
   refreshWorkspacePermissionKeysAfterMutationDenialAtom: permissionState.refreshAtom,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastState }))
+vi.mock('@/app/notifications', () => ({ toast: toastState }))
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn(() => true) }))
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/documents/document-1',

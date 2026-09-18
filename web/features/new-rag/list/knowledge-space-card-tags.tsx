@@ -2,10 +2,10 @@
 
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 import { consoleQuery } from '@/service/console'
 

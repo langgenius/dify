@@ -10,10 +10,10 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'

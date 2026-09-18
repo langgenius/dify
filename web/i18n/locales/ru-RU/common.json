@@ -450,6 +450,8 @@
   "operation.confirmAction": "Пожалуйста, подтвердите ваше действие.",
   "operation.copied": "Скопированы",
   "operation.copy": "Копировать",
+  "operation.copyErrorDetails": "Копировать сведения об ошибке",
+  "operation.copyErrorFailed": "Не удалось скопировать. Повторить",
   "operation.copyImage": "Скопировать изображение",
   "operation.create": "Создать",
   "operation.deSelectAll": "Снять выделение со всех",

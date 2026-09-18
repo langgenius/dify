@@ -12,7 +12,7 @@ import { base } from './fetch'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     add: vi.fn(),
     error: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock('./refresh-token', () => ({
   refreshAccessTokenOrReLogin: refreshAccessTokenOrReLoginMock,
 }))
 
-const { toast } = await import('@langgenius/dify-ui/toast')
+const { toast } = await import('@/app/notifications')
 
 describe('base', () => {
   beforeEach(() => {

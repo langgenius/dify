@@ -138,7 +138,7 @@ const connectionApiResponse = vi.hoisted(() => (connection: SourceConnection) =>
   version: connection.version,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { info: toastInfoMock },
 }))
 

@@ -28,7 +28,7 @@ const knowledgeTags: Tag[] = [
   { binding_count: '0', id: 'tag-3', name: 'Public docs', type: 'knowledge' },
 ]
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastMock }))
+vi.mock('@/app/notifications', () => ({ toast: toastMock }))
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')

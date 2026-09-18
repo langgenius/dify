@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
+import { AppToastHost } from '@/app/notifications/host'
 import {
   AppSourceType,
   fetchChatList,
@@ -111,7 +111,7 @@ const createQueryClient = () =>
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <ToastHost />
+      <AppToastHost />
       {children}
     </QueryClientProvider>
   )

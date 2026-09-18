@@ -7,12 +7,12 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import { useAtomValueRawSync } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
+import { toast } from '@/app/notifications'
 import { DocumentMetadataCard } from './metadata/card'
 import { chunkCharacterCount, placeDocumentMultimodalItems } from './model'
 import { DocumentMultimodalAsset } from './multimodal-asset'

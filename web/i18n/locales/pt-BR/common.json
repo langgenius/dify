@@ -450,6 +450,8 @@
   "operation.confirmAction": "Por favor, confirme sua ação.",
   "operation.copied": "Copiado",
   "operation.copy": "Copiar",
+  "operation.copyErrorDetails": "Copiar detalhes do erro",
+  "operation.copyErrorFailed": "Falha ao copiar. Tentar novamente",
   "operation.copyImage": "Copiar imagem",
   "operation.create": "Criar",
   "operation.deSelectAll": "Desmarcar tudo",

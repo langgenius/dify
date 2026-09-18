@@ -58,7 +58,7 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMock,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 

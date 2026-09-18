@@ -18,11 +18,11 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { editAnnotation } from '@/service/annotation'
 import EditItem, { EditItemType } from './edit-item'

@@ -2,10 +2,10 @@
 
 import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { KnowledgeModelCapability } from './routes'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { newKnowledgeSettingsReturnPath } from './routes'

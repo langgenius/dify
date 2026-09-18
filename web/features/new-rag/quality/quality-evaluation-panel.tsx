@@ -15,12 +15,12 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'

@@ -315,7 +315,7 @@ vi.mock('jotai', async (importOriginal) => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastMock }))
+vi.mock('@/app/notifications', () => ({ toast: toastMock }))
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/documents',
   useRouter: () => routerMock,

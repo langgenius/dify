@@ -75,7 +75,7 @@ const sourceApiResponse = vi.hoisted(() => (source: Source) => ({
   version: source.version ?? null,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { error: toastErrorMock, info: toastInfoMock },
 }))
 

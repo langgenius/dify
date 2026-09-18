@@ -11,13 +11,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValueRawSync } from 'jotai'
 import { createContext, use, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { Link as MarkdownLink, ThinkBlock } from '@/app/components/base/markdown-blocks'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
+import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { resolveLogicalDocumentCitation } from '../documents/resolve-logical-document-id'

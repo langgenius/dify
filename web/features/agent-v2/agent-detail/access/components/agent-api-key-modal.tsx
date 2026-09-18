@@ -18,11 +18,11 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 

@@ -1,11 +1,11 @@
 'use client'
 
 import type { DocumentBulkAction } from '../state/bulk'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import { createRequestId } from '../../request-id'

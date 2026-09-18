@@ -250,7 +250,7 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
     ) : null,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 

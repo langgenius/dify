@@ -1,10 +1,10 @@
 'use client'
 
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useLayoutEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { documentTaskPermissionGuardFactsAtom } from '../state/recovery'

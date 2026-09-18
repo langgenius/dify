@@ -21,11 +21,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { useKnowledgeSpacePermission } from '../space/context'
 import { SourceEditDialog } from './source-edit-dialog'

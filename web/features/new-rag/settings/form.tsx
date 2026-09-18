@@ -2,9 +2,9 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { Form } from '@langgenius/dify-ui/form'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { KnowledgeModelReadinessNotice } from '../components/knowledge-model-readiness-notice'
 import { BasicInformationSection } from './basic-information'
 import { DeleteKnowledgeAction } from './delete-knowledge'

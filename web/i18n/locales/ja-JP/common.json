@@ -450,6 +450,8 @@
   "operation.confirmAction": "操作を確認してください。",
   "operation.copied": "コピーしました",
   "operation.copy": "コピー",
+  "operation.copyErrorDetails": "エラーの詳細をコピー",
+  "operation.copyErrorFailed": "コピーに失敗しました。再試行",
   "operation.copyImage": "画像をコピー",
   "operation.create": "作成",
   "operation.deSelectAll": "すべて選択解除",

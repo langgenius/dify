@@ -1,10 +1,10 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
 import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
