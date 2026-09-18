@@ -13,7 +13,7 @@ import {
   dehydrateSystemFeatures,
   getOptionalSystemFeatures,
 } from '@/features/system-features/server'
-import { getLocaleOnServer } from '@/i18n-config/server'
+import { getLocaleOnServer } from '@/i18n/server'
 import { headers } from '@/next/headers'
 import { getApplicationTitle } from '@/utils/document-title'
 import { basePath } from '@/utils/var'

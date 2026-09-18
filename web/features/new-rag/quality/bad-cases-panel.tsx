@@ -14,7 +14,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { newKnowledgeRetrievalTestPath } from '../routes'
@@ -382,7 +382,7 @@ export function BadCasesPanel() {
     <>
       {query.isLoading ? (
         <div className="flex min-h-105 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       ) : query.isError ? (
         <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">

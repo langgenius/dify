@@ -10,7 +10,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { useInfiniteScroll } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { toControlSpaceSummary } from '../config-helpers'
 
@@ -135,7 +135,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
 
           {spacesQuery.isLoading && spaces.length === 0 && (
             <div className="flex h-50">
-              <Loading type="area" />
+              <LoadingPlaceholder />
             </div>
           )}
 
@@ -180,7 +180,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
                   </button>
                 )
               })}
-              {spacesQuery.isFetchingNextPage && <Loading />}
+              {spacesQuery.isFetchingNextPage && <LoadingPlaceholder />}
             </div>
           )}
 

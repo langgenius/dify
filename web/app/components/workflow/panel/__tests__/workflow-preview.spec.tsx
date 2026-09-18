@@ -308,7 +308,7 @@ describe('WorkflowPreview', () => {
       },
     })
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
   it('should show a loading state for an empty tracing panel', () => {
@@ -321,7 +321,7 @@ describe('WorkflowPreview', () => {
     })
 
     expect(screen.getByTestId('tracing-panel')).toHaveTextContent('0')
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
   it('should keep inert tabs disabled without run data and switch among result, detail, and tracing when data exists', async () => {

@@ -204,10 +204,6 @@ vi.mock('@/app/components/base/zendesk/runtime', () => ({
   },
 }))
 
-vi.mock('@/app/components/header/maintenance-notice', () => ({
-  default: () => null,
-}))
-
 function ConsoleBootstrapProbe() {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)

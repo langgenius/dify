@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DocumentRevisionData } from './revision-content'
 import { documentDetailRequestedRevisionAtom } from './state/inputs'
 import {
@@ -24,7 +24,7 @@ function RevisionLoadingState() {
 
   return (
     <div className="flex min-h-80 min-w-0 flex-1 items-center justify-center">
-      <Loading />
+      <LoadingPlaceholder />
       <span className="sr-only">{tCommon(($) => $.loading)}</span>
     </div>
   )

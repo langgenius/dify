@@ -34,7 +34,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { useLocale } from '#i18n'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
@@ -44,10 +45,9 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import { getLanguage } from '@/i18n-config/language'
+import { getPluginLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import {
   deleteWorkflowTool,
@@ -77,7 +77,7 @@ type Props = Readonly<{
 const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const language = getLanguage(locale)
+  const language = getPluginLanguage(locale)
 
   const needAuth = collection.allow_delete || collection.type === CollectionType.model
   const isAuthed = collection.is_team_authorization
@@ -377,7 +377,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                 <div className="flex min-h-0 flex-1 flex-col pt-3">
                   {isDetailLoading && (
                     <div className="flex h-50">
-                      <Loading type="app" />
+                      <LoadingPlaceholder className="h-full" />
                     </div>
                   )}
                   {!isDetailLoading && (

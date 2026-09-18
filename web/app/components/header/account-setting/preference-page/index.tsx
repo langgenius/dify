@@ -1,5 +1,5 @@
 'use client'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import {
   Select,
   SelectContent,
@@ -13,10 +13,10 @@ import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { setLocaleOnClient } from '@/i18n-config'
-import { languages } from '@/i18n-config/language'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { timezones } from '@/utils/timezone'

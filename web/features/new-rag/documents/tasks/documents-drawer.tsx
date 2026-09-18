@@ -19,7 +19,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -528,7 +528,7 @@ function DocumentsTaskRows() {
   if (rowsState.isPending && !orderedTasks.length)
     return (
       <div className="flex min-h-40 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
 

@@ -7,7 +7,7 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useMemo } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -116,7 +116,7 @@ const WorkflowAppWithAdditionalContext = () => {
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
       <div className="relative flex size-full items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }

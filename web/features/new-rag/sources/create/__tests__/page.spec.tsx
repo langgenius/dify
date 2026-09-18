@@ -636,7 +636,7 @@ describe('AddSourcePage', () => {
     })
     expect(options.getNextPageParam({ data: [], next_cursor: 'next' })).toBe('next')
     expect(options.initialPageParam).toBeNull()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('continues loading connection pages automatically', async () => {

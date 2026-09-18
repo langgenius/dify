@@ -27,7 +27,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { GoldenQuestionDialog } from './golden-question-dialog'
@@ -306,7 +306,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
 
       {query.isLoading ? (
         <div className="flex min-h-105 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       ) : query.isError ? (
         <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">

@@ -14,7 +14,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleClient } from '@/service/console'
 import { connectedInitialSource } from './connected-source-selection'
 import { DatasourceParameterForm } from './datasource-parameter-form'
@@ -374,7 +374,7 @@ function ConnectedSourceConfigurationFields({
         )}
         {loading && (
           <div className="flex min-h-40 items-center justify-center rounded-lg border border-divider-subtle">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         {error && (

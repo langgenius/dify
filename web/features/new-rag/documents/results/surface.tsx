@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
 import { DocumentsEmpty, DocumentsList } from '../list'
 import {
@@ -235,7 +235,7 @@ function DocumentCollectionState() {
   if (recovery.isPending && canRead)
     return (
       <div className="flex min-h-64 flex-1 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   if (!canRead) return <DocumentReadPermissionRecovery />

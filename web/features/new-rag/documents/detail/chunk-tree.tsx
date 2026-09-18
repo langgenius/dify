@@ -2,11 +2,11 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { chunkTreeLabel, visibleDocumentChunkNodes } from './model'
 import {
   documentChunksQueryErrorAtom,
@@ -247,7 +247,7 @@ export function DocumentChunkTreePanel() {
       )}
       {isPending ? (
         <div className="flex min-h-40 items-center justify-center" role="status">
-          <Loading />
+          <SpinnerIcon />
           <span className="sr-only">{tCommon(($) => $.loading)}</span>
         </div>
       ) : error && !isFetchNextPageError && !chunkCount ? (
@@ -311,7 +311,7 @@ export function DocumentChunkTreePanel() {
           <div className="shrink-0 border-t border-divider-subtle p-3">
             {isFetchingNextPage ? (
               <div aria-hidden>
-                <Loading />
+                <SpinnerIcon />
               </div>
             ) : (
               <AutomaticChunkPageLoader

@@ -3,7 +3,7 @@ import type { Source, SourceSyncPolicy, SourceWorkflowRun } from '../source-mode
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import knowledgeSpaceTranslations from '@/i18n/en-US/knowledge-space.json'
+import knowledgeSpaceTranslations from '@/i18n/locales/en-US/knowledge-space.json'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { SourcesPage } from '../page'
 
@@ -715,7 +715,7 @@ describe('SourcesPage', () => {
         },
       }),
     ).toBe(false)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('polls an empty list every two seconds while awaiting the Initial Source', () => {
@@ -3100,7 +3100,7 @@ describe('SourcesPage', () => {
 
     expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(screen.queryByText('knowledgeSpace.noMatchingSources')).not.toBeInTheDocument()
   })
 

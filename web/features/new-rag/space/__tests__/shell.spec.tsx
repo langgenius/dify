@@ -171,7 +171,7 @@ describe('KnowledgeSpaceShell', () => {
       input: { params: { control_space_id: 'space-1' } },
       context: { silent: true },
     })
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('renders a refresh-safe header and route navigation when loaded', () => {
@@ -368,7 +368,7 @@ describe('KnowledgeSpaceShell', () => {
 
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.queryByText('source content')).not.toBeInTheDocument()
 
     const options = useQueryOptionsMock.mock.calls[0]?.[0] as {

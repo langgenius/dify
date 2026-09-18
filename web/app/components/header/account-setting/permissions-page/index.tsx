@@ -7,9 +7,9 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import {
   useCreateWorkspaceRole,
   useUpdateWorkspaceRole,

@@ -16,7 +16,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { taskCanCancel, taskCanRetry } from '../../model'
 import { logicalDocumentListFromApi } from '../../models'
@@ -245,7 +245,7 @@ export function DocumentDetailTasksDrawer({
                 )}
                 {taskQueryPending && !orderedTasks.length ? (
                   <div className="flex min-h-40 items-center justify-center">
-                    <Loading />
+                    <LoadingPlaceholder />
                   </div>
                 ) : orderedTasks.length ? (
                   <ul>

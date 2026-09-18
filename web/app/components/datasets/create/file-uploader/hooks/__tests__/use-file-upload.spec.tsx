@@ -38,7 +38,7 @@ vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({ data: mockFileUploadConfig }),
   useFileSupportTypes: () => ({ data: mockSupportTypes }),
 }))
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
 

@@ -20,7 +20,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
@@ -110,7 +110,7 @@ export function EvaluationReport({
   if (detailQuery.isLoading)
     return (
       <div className="flex min-h-105 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
 
@@ -340,7 +340,7 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
       <div className="min-h-40 flex-1 overflow-y-auto px-6 pt-5 pb-6">
         {evidenceDetailQuery.isLoading ? (
           <div className="flex min-h-40 items-center justify-center" role="status">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         ) : evidenceDetailQuery.isError ? (
           <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
@@ -628,7 +628,7 @@ export function QualityEvaluationPanel({
 
         {listQuery.isLoading ? (
           <div className="flex min-h-105 items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         ) : listQuery.isError ? (
           <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">

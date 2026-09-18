@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -129,7 +129,7 @@ export function KnowledgeSpaceShell({
       <>
         {pageTitleElement}
         <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       </>
     )

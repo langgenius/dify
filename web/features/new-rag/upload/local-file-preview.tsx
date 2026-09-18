@@ -5,7 +5,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DynamicPdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { documentUploadFileExtension } from './policy'
 
 function LocalPdfFilePreview({ file, onClose }: { file: File; onClose: () => void }) {
@@ -89,7 +89,7 @@ function LocalTextFilePreview({ file, onClose }: { file: File; onClose: () => vo
         <div className="min-h-0 flex-1 bg-background-default-subtle p-4">
           {content === undefined && !readFailed && (
             <div className="flex size-full items-center justify-center">
-              <Loading type="area" />
+              <LoadingPlaceholder />
             </div>
           )}
           {readFailed && (

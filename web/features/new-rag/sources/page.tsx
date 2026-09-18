@@ -19,7 +19,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SearchInput } from '@/app/components/base/search-input'
 import Link from '@/next/link'
 import { useSearchParams } from '@/next/navigation'
@@ -155,7 +155,7 @@ function SourcesPageContent({
       )}
       {sourcesQueryPending ? (
         <div className="flex min-h-64 flex-1 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       ) : sourcesQueryError && !sourcesQueryHasData ? (
         <div className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center">
@@ -172,7 +172,7 @@ function SourcesPageContent({
         </div>
       ) : waitingForInitialSource && !sources?.length ? (
         <div className="flex min-h-64 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-          <Loading />
+          <LoadingPlaceholder />
           <p className="body-sm-regular text-text-tertiary">{t(($) => $.awaitingInitialSource)}</p>
         </div>
       ) : !sources?.length && !sourcesQueryHasNextPage ? (
@@ -385,7 +385,7 @@ function SourcesTable({
         )}
       {!filteredSources.length && completingFilteredResults && (
         <div className="flex min-h-40 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       )}
     </div>

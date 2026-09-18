@@ -22,7 +22,7 @@ import {
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -510,7 +510,7 @@ function ManagedProviderConnection({
         </>
       ) : (
         <>
-          <Loading />
+          <LoadingPlaceholder />
           <p role="status" className="mt-3 system-xs-medium text-text-secondary">
             {t(($) => $.connectingProvider)}
           </p>
@@ -742,7 +742,7 @@ export function AddSourcePage(props: AddSourcePageProps) {
   if (!canManageSources)
     return (
       <div className="flex min-h-80 min-w-0 flex-1 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
 
@@ -1037,7 +1037,7 @@ function AddSourcePageContent({
   )
     return (
       <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
 
@@ -1129,7 +1129,7 @@ function AddSourcePageContent({
                 />
               ) : activeConnection ? (
                 <div className="flex min-h-64 items-center justify-center">
-                  <Loading />
+                  <LoadingPlaceholder />
                 </div>
               ) : connection?.status === 'provisioning' ? (
                 <ProvisioningConnection

@@ -24,7 +24,7 @@ import {
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SearchInput } from '@/app/components/base/search-input'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -590,7 +590,7 @@ function DocumentsTable() {
         )}
         {completingResults && (
           <div className="flex min-h-32 items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
       </div>

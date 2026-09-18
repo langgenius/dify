@@ -30,7 +30,7 @@ import {
 } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
@@ -1329,7 +1329,7 @@ function ResourceConfiguration({
     <div className="flex flex-col gap-4">
       {!previewSource && !previewError ? (
         <div className="flex min-h-44 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       ) : previewError ? (
         <div className="rounded-xl bg-background-section p-4">
@@ -1363,7 +1363,7 @@ function ResourceConfiguration({
             </div>
             {queryPending ? (
               <div className="flex min-h-44 items-center justify-center rounded-xl border border-divider-regular">
-                <Loading />
+                <LoadingPlaceholder />
               </div>
             ) : queryError ? (
               <div className="rounded-xl bg-background-section p-4">
@@ -1788,7 +1788,7 @@ function ConnectedSourceWorkflowSession({
       datasourceAuthQuery.isPending ||
       loadingConnections ? (
         <div className="flex min-h-44 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       ) : queryError ? (
         <div className="rounded-xl bg-background-section p-4">
@@ -1886,7 +1886,7 @@ function ConnectedSourceWorkflowSession({
       ) : provisioningConnection ? (
         <div className="flex min-h-44 items-center justify-center rounded-xl bg-background-section">
           <div className="text-center">
-            <Loading />
+            <LoadingPlaceholder />
             <p className="mt-2 system-xs-regular text-text-tertiary">
               {t(($) => $.connectingProvider)}
             </p>

@@ -5,10 +5,9 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from pydantic import Field, WithJsonSchema, field_validator, model_validator
-from sqlalchemy.orm import Session
 
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from fields.base import ResponseModel
+from fields.base import ResponseModel, SessionResponseSource
 from graphon.file import File
 from libs.helper import to_timestamp
 from models.account import Account
@@ -32,22 +31,13 @@ Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
 URLString = Annotated[str, WithJsonSchema({"format": "url", "type": "string"})]
 
 
-class _SessionResponseSource[SourceT]:
-    def __init__(self, source: SourceT, *, session: Session) -> None:
-        self._source = source
-        self._session = session
-
-    def __getattr__(self, name: str) -> object:
-        return getattr(self._source, name)  # guard-ignore: no-new-getattr -- delegates model fields
-
-
-class _FeedbackResponseSource(_SessionResponseSource[MessageFeedback]):
+class _FeedbackResponseSource(SessionResponseSource[MessageFeedback]):
     @property
     def from_account(self) -> Account | None:
         return self._source.from_account_with_session(session=self._session)
 
 
-class _AnnotationResponseSource(_SessionResponseSource[MessageAnnotation]):
+class _AnnotationResponseSource(SessionResponseSource[MessageAnnotation]):
     @property
     def account(self) -> Account | None:
         return self._source.account_with_session(session=self._session)
@@ -57,7 +47,7 @@ class _AnnotationResponseSource(_SessionResponseSource[MessageAnnotation]):
         return self._source.annotation_create_account_with_session(session=self._session)
 
 
-class MessageResponseSource(_SessionResponseSource[MessageModel]):
+class MessageResponseSource(SessionResponseSource[MessageModel]):
     @property
     def inputs(self) -> dict[str, Any]:
         return self._source.inputs_with_session(session=self._session)
@@ -92,7 +82,7 @@ class MessageResponseSource(_SessionResponseSource[MessageModel]):
         return self._source.message_files_with_session(session=self._session)
 
 
-class ConversationResponseSource(_SessionResponseSource[ConversationModel]):
+class ConversationResponseSource(SessionResponseSource[ConversationModel]):
     @property
     def inputs(self) -> dict[str, Any]:
         return self._source.inputs_with_session(session=self._session)

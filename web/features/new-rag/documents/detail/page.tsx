@@ -2,7 +2,7 @@
 
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DocumentErrorState } from './error-state'
 import { responseStatus } from './model'
 import { DocumentDetailStateBoundary } from './state/boundary'
@@ -28,7 +28,7 @@ function DocumentDetailContent() {
   if (documentIsPending)
     return (
       <div className="flex min-h-80 min-w-0 flex-1 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
         <span className="sr-only">{tCommon(($) => $.loading)}</span>
       </div>
     )
