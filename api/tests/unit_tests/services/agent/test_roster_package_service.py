@@ -4,6 +4,7 @@ import hashlib
 import io
 import zipfile
 from collections.abc import Callable, Generator
+from uuid import UUID
 
 import pytest
 import yaml
@@ -925,7 +926,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     app_model = sqlite_session.get(App, agent.app_id)
     assert app_model is not None
     standalone_dsl = yaml.safe_load(AppDslService.export_dsl(app_model, session=sqlite_session))
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         archive_bytes = exported.archive.read()
         assert exported.filename == "research-agent.ifpkg"
         with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
@@ -998,26 +999,26 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     max_entries = dify_config.AGENT_PACKAGE_MAX_ENTRIES
     max_manifest_bytes = dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=4)
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         with zipfile.ZipFile(exported.archive) as archive:
             assert len(archive.infolist()) == 4
 
     reads_before_limit_check = storage.read_count
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=3)
     with pytest.raises(RosterAgentPackageTooLargeError):
-        exporter.export(tenant_id="tenant-1", agent_id=agent.id)
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None)
     assert storage.read_count == reads_before_limit_check
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=max_entries)
 
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_MANIFEST_BYTES=1)
     with pytest.raises(RosterAgentPackageTooLargeError):
-        exporter.export(tenant_id="tenant-1", agent_id=agent.id)
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None)
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_MANIFEST_BYTES=max_manifest_bytes)
 
     file_bytes_before_limit_check = storage.bytes_yielded["tools/guide.pdf"]
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_BYTES=len(skill_payload) + 1)
     with pytest.raises(RosterAgentPackageTooLargeError):
-        exporter.export(tenant_id="tenant-1", agent_id=agent.id)
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None)
     assert storage.bytes_yielded["tools/guide.pdf"] - file_bytes_before_limit_check == 7
 
 
@@ -1113,7 +1114,7 @@ def test_export_uses_current_workspace_skill_bindings(
         storage_backend=storage,
         dependency_provider=lambda _tenant_id, _dependencies: [],
     )
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         with RosterAgentPackageReader().read(exported.archive) as prepared:
             assert len(prepared.manifest.skills) == 1
             assert prepared.manifest.skills[0].scope == "workspace"
@@ -1147,12 +1148,12 @@ def test_export_uses_current_workspace_skill_bindings(
     sqlite_session.add(draft)
     sqlite_session.commit()
 
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         with RosterAgentPackageReader().read(exported.archive) as prepared:
             assert prepared.apps["app.yaml"].package.soul.prompt.system_prompt == "current draft"
             assert prepared.manifest.skills == []
 
-    historical_version_id = snapshot.id
+    historical_version_id = UUID(snapshot.id)
     active_snapshot = AgentConfigSnapshot(
         tenant_id="tenant-1",
         agent_id=agent.id,
@@ -1167,7 +1168,7 @@ def test_export_uses_current_workspace_skill_bindings(
         AgentConfigRevision(
             tenant_id="tenant-1",
             agent_id=agent.id,
-            current_snapshot_id=historical_version_id,
+            current_snapshot_id=str(historical_version_id),
             revision=1,
             operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
             created_by="account-1",
@@ -1210,11 +1211,11 @@ def test_export_rejects_unavailable_agent_versions(sqlite_session: Session, sour
         updated_by="account-1",
     )
     agent.id = "55555555-5555-4555-8555-555555555555"
-    version_id = "66666666-6666-4666-8666-666666666666"
+    version_id = UUID("66666666-6666-4666-8666-666666666666")
     sqlite_session.add_all([app_model, agent])
     if source != "missing":
         snapshot = AgentConfigSnapshot(
-            id=version_id,
+            id=str(version_id),
             tenant_id="other-tenant" if source == "other_tenant" else agent.tenant_id,
             agent_id="other-agent" if source == "other_agent" else agent.id,
             version=1,

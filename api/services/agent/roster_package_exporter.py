@@ -10,6 +10,7 @@ import zipfile
 from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
 from typing import BinaryIO, Literal, Protocol, cast
+from uuid import UUID
 
 import yaml
 from sqlalchemy import or_, select
@@ -98,7 +99,7 @@ class RosterAgentPackageExporter:
         self._storage = storage_backend
         self._dependency_provider = dependency_provider or DependenciesAnalysisService.generate_dependencies
 
-    def export(self, *, tenant_id: str, agent_id: str, version_id: str | None = None) -> RosterAgentPackageExport:
+    def export(self, *, tenant_id: str, agent_id: str, version_id: UUID | None) -> RosterAgentPackageExport:
         """Export a visible version, or the shared draft with an active snapshot fallback."""
         with session_factory.create_session() as session:
             row = session.execute(

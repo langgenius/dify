@@ -751,7 +751,7 @@ class AppDslService:
         session: Session,
         include_secret: bool = False,
         workflow_id: str | None = None,
-        version_id: str | None = None,
+        version_id: uuid.UUID | None = None,
     ) -> str:
         """
         Export app

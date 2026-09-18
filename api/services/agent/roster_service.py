@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 from typing import Any, TypedDict
+from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -1380,7 +1381,7 @@ class AgentRosterService:
         )
 
     def get_visible_agent_version_snapshot(
-        self, *, tenant_id: str, agent_id: str, version_id: str
+        self, *, tenant_id: str, agent_id: str, version_id: UUID
     ) -> AgentConfigSnapshot:
         """Resolve a version exposed in the roster history within its complete owner scope."""
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
@@ -1389,7 +1390,7 @@ class AgentRosterService:
             select(AgentConfigSnapshot).where(
                 AgentConfigSnapshot.tenant_id == tenant_id,
                 AgentConfigSnapshot.agent_id == agent_id,
-                AgentConfigSnapshot.id == version_id,
+                AgentConfigSnapshot.id == str(version_id),
                 AgentConfigSnapshot.id.in_(select(visible_version_ids.c.current_snapshot_id)),
             )
         )
