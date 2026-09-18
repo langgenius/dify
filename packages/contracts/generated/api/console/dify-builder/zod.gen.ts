@@ -82,6 +82,7 @@ export const zSessionModel = z.object({
  */
 export const zDifyBuilderCreateBuildSessionPayload = z.object({
   app_id: z.string().min(1),
+  derive_app_name: z.boolean().optional().default(false),
   goal_text: z.string().min(1),
   model_config: zSessionModel.nullish(),
   scenario: z.literal('build'),
@@ -434,6 +435,7 @@ export const zDifyBuilderCheckpointConversationItemResponse = z.object({
  */
 export const zErrorCard = z.object({
   body: z.string(),
+  diagnostics: z.array(z.record(z.string(), z.unknown())).optional(),
   node_id: z.string().nullish(),
   title: z.string(),
   tone: z.string().optional().default('danger'),
@@ -548,6 +550,40 @@ export const zCanvasEventData = z.object({
 export const zDifyBuilderCanvasEventResponse = z.object({
   data: zCanvasEventData,
   event: z.literal('canvas'),
+})
+
+/**
+ * OptionInput
+ */
+export const zOptionInput = z.object({
+  max_length: z.int().optional().default(100),
+  min_length: z.int().optional().default(0),
+  placeholder: z.string().optional().default(''),
+  required: z.boolean().optional().default(true),
+})
+
+/**
+ * CardOption
+ */
+export const zCardOption = z.object({
+  canvas_event: z.string().nullish(),
+  description: z.string().optional().default(''),
+  id: z.string(),
+  input: zOptionInput.nullish(),
+  is_default: z.boolean().optional().default(false),
+  label: z.string(),
+  next_state: z.string().nullish(),
+  tone: z.string().optional().default('neutral'),
+})
+
+/**
+ * Decision
+ */
+export const zDecision = z.object({
+  cancel: zAction.nullish(),
+  confirm: zAction.nullish(),
+  default_option_id: z.string().optional().default(''),
+  options: z.array(zCardOption).optional(),
 })
 
 /**
@@ -945,6 +981,7 @@ export const zDifyBuilderSessionViewResponse = z.object({
   canvas_read_only: z.boolean(),
   checkpoint: zCheckpointRef.nullish(),
   conversation_last_seq: z.int(),
+  decision: zDecision.nullish(),
   entry_mode: zEntryMode.optional().default('fix'),
   interrupted: z.boolean(),
   model: zSessionModel.nullish(),
@@ -967,6 +1004,7 @@ export const zDifyBuilderCommandStartedEventData = z.object({
   canvas_read_only: z.boolean(),
   checkpoint: zCheckpointRef.nullish(),
   conversation_last_seq: z.int(),
+  decision: zDecision.nullish(),
   entry_mode: zEntryMode.optional().default('fix'),
   interrupted: z.boolean(),
   kind: z.literal('command_started').optional().default('command_started'),
@@ -1109,6 +1147,7 @@ export const zDifyBuilderStateEventData = z.object({
   canvas_read_only: z.boolean(),
   checkpoint: zCheckpointRef.nullish(),
   conversation_last_seq: z.int(),
+  decision: zDecision.nullish(),
   entry_mode: zEntryMode.optional().default('fix'),
   interrupted: z.boolean(),
   kind: z.literal('state').optional().default('state'),
