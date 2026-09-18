@@ -76,7 +76,7 @@ export const ResourceCard = memo(
               </label>
             )
           })}
-          {policies.length > 0 && (
+          {resources.length > 0 && policies.length > 0 && (
             <label className="flex flex-col gap-1 system-xs-medium text-text-secondary">
               <span>{t(($) => $['difyBuilder.conflictPolicy'], { ns: 'workflow' })}</span>
               <select

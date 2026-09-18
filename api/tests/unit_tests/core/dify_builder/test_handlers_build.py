@@ -1474,3 +1474,57 @@ def test_the_built_card_title_is_localizable():
 
     assert matched is not None
     assert matched[1]["name"] == "Refund approval"
+
+
+class _ResourceAgent(PlaceholderAgent):
+    def __init__(self, options) -> None:
+        self.options = options
+
+    def discover_resources(self, _plan_items):
+        return self.options
+
+
+def _find_resources(options):
+    from core.dify_builder.handlers_build import handle_initial_plan
+
+    env, repo = _new_env(agent=_ResourceAgent(options))
+    s = _seed_build_session(repo, PcState.BUILD_INITIAL_PLAN, plan_items=["Send a notification"])
+    turn = Turn(action=Action(kind="find_resources", base_version=1), actor=_actor())
+    return handle_initial_plan(env, turn, *repo.get_session(s.id))
+
+
+def test_an_empty_recommendation_is_explained_rather_than_shown_blank():
+    res = _find_resources([])
+
+    card = next(i for i in res.items if i.kind == "resource_select")
+    assert card.payload["recommended"] == []
+    notice = next(i for i in res.items if i.kind == "notice")
+    assert "No workspace resources matched" in notice.payload["text"]
+
+
+def test_the_card_is_still_emitted_when_nothing_matched():
+    # The confirm gate resolves its active interaction from the latest
+    # resource_select card; dropping the card would let a later pass inherit a
+    # stale one.
+    res = _find_resources([])
+
+    assert any(i.kind == "resource_select" for i in res.items)
+
+
+def test_a_real_recommendation_carries_no_such_notice():
+    from core.dify_builder.contract import ResourceOption
+
+    res = _find_resources([ResourceOption(id="kb-1", label="KB", meta="", kind="knowledge", readiness="ready")])
+
+    card = next(i for i in res.items if i.kind == "resource_select")
+    assert [r["id"] for r in card.payload["recommended"]] == ["kb-1"]
+    assert all("No workspace resources matched" not in str(i.payload) for i in res.items)
+
+
+def test_the_empty_recommendation_notice_is_localizable():
+    from core.dify_builder import strings
+
+    res = _find_resources([])
+    notice = next(i for i in res.items if i.kind == "notice")
+
+    assert notice.payload["text"] in strings.PLAIN

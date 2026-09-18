@@ -272,6 +272,15 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             ],
         ),
     )
+    if not options:
+        # An empty card on its own reads as a failure. Say why: nothing here
+        # matched, the build continues, and resources can still be added on the
+        # canvas. The card is still emitted so the confirm gate keeps its active
+        # interaction and a later pass cannot inherit a stale one.
+        rs_items += append_card(
+            fc,
+            NoticeItem(text="No workspace resources matched this plan — continuing without any."),
+        )
     execution = progress.finish()
     turn_items = append_card(
         fc,
