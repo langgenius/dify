@@ -474,6 +474,7 @@
   "operation.fill": "ملء تلقائي",
   "operation.format": "تنسيق",
   "operation.imageCopied": "تم نسخ الصورة",
+  "operation.imageCopyFailed": "تعذّر نسخ الصورة. يرجى تنزيلها بدلاً من ذلك.",
   "operation.imageDownloaded": "تم تنزيل الصورة",
   "operation.in": "في",
   "operation.learnMore": "تعرف على المزيد",

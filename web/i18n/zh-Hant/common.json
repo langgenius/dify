@@ -474,6 +474,7 @@
   "operation.fill": "一鍵填入",
   "operation.format": "格式",
   "operation.imageCopied": "複製的圖片",
+  "operation.imageCopyFailed": "無法複製圖片，請嘗試下載圖片。",
   "operation.imageDownloaded": "圖片已下載",
   "operation.in": "在",
   "operation.learnMore": "瞭解更多",

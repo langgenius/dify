@@ -35,6 +35,7 @@ from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
 from libs.helper import dump_response
 from libs.login import login_required
+from libs.pagination import clamp_pagination
 from models import Account
 from models.dataset import ExternalKnowledgeApis
 from services.dataset_service import DatasetService
@@ -168,15 +169,16 @@ class ExternalApiTemplateListApi(Resource):
     @model_validate(ExternalApiTemplateListQuery)
     def get(self, req_data: ExternalApiTemplateListQuery, session: Session, current_tenant_id: str):
 
+        effective_page, effective_limit = clamp_pagination(req_data.page, req_data.limit, 100)
         external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(
-            req_data.page, req_data.limit, current_tenant_id, req_data.keyword, session=session
+            effective_page, effective_limit, current_tenant_id, req_data.keyword, session=session
         )
         return ExternalKnowledgeApiListResponse(
             data=[external_knowledge_api_response(item, session=session) for item in external_knowledge_apis],
-            has_more=len(external_knowledge_apis) == req_data.limit,
-            limit=req_data.limit,
+            has_more=effective_page * effective_limit < total,
+            limit=effective_limit,
             total=total,
-            page=req_data.page,
+            page=effective_page,
         ).model_dump(mode="json"), 200
 
     @console_ns.doc("create_external_api_template")

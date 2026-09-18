@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ModelParameterModal from '../index'
 
 let parameterRules: Array<Record<string, unknown>> | undefined = [
@@ -206,10 +207,14 @@ describe('ModelParameterModal', () => {
     ]
   })
 
-  it('should render trigger and open modal content when trigger is clicked', () => {
+  it('should open settings with the visible title as its accessible name', async () => {
+    const user = userEvent.setup()
     render(<ModelParameterModal {...defaultProps} />)
 
-    openSettings()
+    await user.click(screen.getByRole('button', { name: 'common.modelProvider.modelSettings' }))
+    expect(
+      screen.getByRole('dialog', { name: 'common.modelProvider.modelSettings' }),
+    ).toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
     expect(screen.getByTestId('param-temperature')).toBeInTheDocument()
   })

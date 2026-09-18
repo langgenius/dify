@@ -474,6 +474,7 @@
   "operation.fill": "Automatisch invullen",
   "operation.format": "Format",
   "operation.imageCopied": "Image copied",
+  "operation.imageCopyFailed": "De afbeelding kon niet worden gekopieerd. Download deze in plaats daarvan.",
   "operation.imageDownloaded": "Image downloaded",
   "operation.in": "in",
   "operation.learnMore": "Meer informatie",

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 
@@ -9,6 +9,7 @@ type TitleInputProps = {
 
 export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
   const { t } = useTranslation()
+  const inputId = useId()
   const [localValue, setLocalValue] = useState(value)
 
   const handleBlur = () => {
@@ -40,14 +41,20 @@ export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
   }, [value])
 
   return (
-    <input
-      value={localValue}
-      onChange={handleChange}
-      onKeyDown={handleKeyDown}
-      className={`mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 system-xl-semibold text-text-primary outline-hidden focus:shadow-xs`}
-      placeholder={t(($) => $['common.addTitle'], { ns: 'workflow' }) || ''}
-      onBlur={handleBlur}
-    />
+    <div className="mr-2 min-w-0 grow">
+      <label htmlFor={inputId} className="block px-1 system-xs-medium text-text-secondary">
+        {t(($) => $['common.nodeTitle'], { ns: 'workflow' })}
+      </label>
+      <input
+        id={inputId}
+        value={localValue}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        className={`h-7 w-full min-w-0 appearance-none rounded-md border border-transparent bg-transparent px-1 system-xl-semibold text-text-primary outline-hidden focus:shadow-xs focus-visible:ring-1 focus-visible:ring-components-input-border-hover`}
+        placeholder={t(($) => $['common.addTitle'], { ns: 'workflow' }) || ''}
+        onBlur={handleBlur}
+      />
+    </div>
   )
 })
 TitleInput.displayName = 'TitleInput'
@@ -58,6 +65,7 @@ type DescriptionInputProps = {
 }
 export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps) => {
   const { t } = useTranslation()
+  const inputId = useId()
   const [focus, setFocus] = useState(false)
   const handleFocus = useCallback(() => {
     setFocus(true)
@@ -67,18 +75,24 @@ export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps
   }, [])
 
   return (
-    <div
-      className={`group flex max-h-15 overflow-y-auto rounded-lg bg-components-panel-bg px-2 py-1.25 leading-0 ${focus && 'shadow-xs!'} `}
-    >
-      <Textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        minRows={1}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        className={`w-full resize-none appearance-none bg-transparent text-xs leading-4.5 text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-quaternary`}
-        placeholder={t(($) => $['common.addDescription'], { ns: 'workflow' }) || ''}
-      />
+    <div>
+      <label htmlFor={inputId} className="mx-2 mb-1 block system-xs-medium text-text-secondary">
+        {t(($) => $['common.nodeDescription'], { ns: 'workflow' })}
+      </label>
+      <div
+        className={`group flex max-h-15 overflow-y-auto rounded-lg bg-components-panel-bg px-2 py-1.25 leading-0 ${focus && 'shadow-xs!'} `}
+      >
+        <Textarea
+          id={inputId}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          minRows={1}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          className={`w-full resize-none appearance-none bg-transparent text-xs leading-4.5 text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-hover`}
+          placeholder={t(($) => $['common.addDescription'], { ns: 'workflow' }) || ''}
+        />
+      </div>
     </div>
   )
 })

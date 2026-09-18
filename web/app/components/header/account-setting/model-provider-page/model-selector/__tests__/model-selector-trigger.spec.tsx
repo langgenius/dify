@@ -15,7 +15,8 @@ import {
 import { ModelSelectorTrigger } from '../model-selector-trigger'
 
 const render = (node: ReactNode) => renderComponent(<Popover>{node}</Popover>)
-const getTrigger = () => screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
+const getTrigger = () =>
+  screen.getByRole('button', { name: /GPT-4|plugin.detailPanel.configureModel/ })
 
 const mockUseQuery = vi.hoisted(() => vi.fn())
 const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
@@ -90,6 +91,7 @@ describe('ModelSelectorTrigger', () => {
 
       expect(screen.getByText('GPT-4')).toBeInTheDocument()
       expect(screen.getByText('CHAT')).toBeInTheDocument()
+      expect(getTrigger()).toHaveAccessibleName('GPT-4 CHAT')
       expect(getTrigger()).toBeEnabled()
     })
 
@@ -98,6 +100,11 @@ describe('ModelSelectorTrigger', () => {
 
       expect(screen.getByText('legacy-model')).toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'legacy-model common.modelProvider.selector.incompatible',
+        }),
+      ).toBeEnabled()
     })
   })
 
