@@ -286,7 +286,7 @@ class TestQAIndexProcessor:
 
         with (
             patch(
-                "core.rag.index_processor.processor.qa_index_processor.SummaryIndexService.delete_summaries_for_segments"
+                "core.rag.index_processor.processor.qa_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls,
         ):
@@ -302,7 +302,7 @@ class TestQAIndexProcessor:
         session = sqlite_session
         with (
             patch(
-                "core.rag.index_processor.processor.qa_index_processor.SummaryIndexService.delete_summaries_for_segments"
+                "core.rag.index_processor.processor.qa_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls,
         ):

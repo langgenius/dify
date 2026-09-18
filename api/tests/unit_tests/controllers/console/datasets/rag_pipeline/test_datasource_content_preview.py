@@ -1,5 +1,5 @@
 from inspect import unwrap
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -61,6 +61,7 @@ class TestDataSourceContentPreviewApi:
             datasource_type=payload["datasource_type"],
             is_published=True,
             credential_id=payload["credential_id"],
+            datasource_providers=ANY,
         )
         assert status == 200
         assert response == preview_result

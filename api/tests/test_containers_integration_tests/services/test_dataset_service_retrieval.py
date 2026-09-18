@@ -28,7 +28,7 @@ from models.dataset import (
 )
 from models.enums import DatasetQuerySource, DataSourceType, ProcessRuleMode, TagType
 from models.model import Tag, TagBinding
-from services.dataset_service import DatasetService, DocumentService
+from services.knowledge.dataset_service import DatasetService, DocumentService
 
 
 class DatasetRetrievalTestDataFactory:

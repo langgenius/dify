@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from sqlalchemy import event
@@ -15,6 +15,7 @@ from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
+from models.account import Account, TenantAccountRole
 from models.provider import (
     Provider,
     ProviderCredential,
@@ -22,9 +23,10 @@ from models.provider import (
     ProviderType,
     TenantPreferredModelProvider,
 )
-from services import model_provider_service as service_module
+from services.credentials.query import CredentialQuery, ModelCredentialRecord
 from services.errors.app_model_config import ProviderNotFoundError
-from services.model_provider_service import ModelProviderService, _ProviderSummaryState
+from services.model_provider import service as service_module
+from services.model_provider.service import ModelProviderService, _ProviderSummaryState
 
 
 def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMock]:
@@ -32,6 +34,21 @@ def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMo
     service = ModelProviderService()
     service._get_provider_manager = MagicMock(return_value=manager)
     return service, manager
+
+
+def test_available_credentials_use_injected_query_for_admin_viewer() -> None:
+    service, manager = _create_service_with_mocked_manager()
+    user = Account(name="Admin", email="admin@example.com")
+    user.id = "actor"
+    user.role = TenantAccountRole.ADMIN
+    query = create_autospec(CredentialQuery, instance=True, spec_set=True)
+    query.list_models.return_value = [ModelCredentialRecord(id="credential", name="Shared credential")]
+
+    result = service.get_provider_available_credentials("tenant", "openai", user=user, credential_query=query)
+
+    query.list_models.assert_called_once_with(workspace_id="tenant", provider="openai", actor_id="actor")
+    assert result == [CredentialConfiguration(credential_id="credential", credential_name="Shared credential")]
+    assert manager.mock_calls == []
 
 
 def _build_provider_configuration(

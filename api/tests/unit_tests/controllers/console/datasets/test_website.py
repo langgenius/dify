@@ -11,7 +11,7 @@ from controllers.console.datasets.website import (
     WebsiteCrawlStatusApi,
     WebsiteCrawlStatusQuery,
 )
-from services.website_service import (
+from services.data_source.website_service import (
     WebsiteCrawlApiRequest,
     WebsiteCrawlStatusApiRequest,
     WebsiteService,

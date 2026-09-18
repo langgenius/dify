@@ -59,7 +59,7 @@ class TestBatchCreateSegmentToIndexTask:
                 "tasks.batch_create_segment_to_index_task.ModelManager.for_tenant",
                 autospec=True,
             ) as mock_model_manager,
-            patch("tasks.batch_create_segment_to_index_task.VectorService", autospec=True) as mock_vector_service,
+            patch("extensions.ext_application_services.application_services") as mock_services,
         ):
             # Setup default mock returns
             mock_storage.download.return_value = None
@@ -71,13 +71,13 @@ class TestBatchCreateSegmentToIndexTask:
             mock_model_manager_instance.get_model_instance.return_value = mock_embedding_model
             mock_model_manager.return_value = mock_model_manager_instance
 
-            # Mock vector service
-            mock_vector_service.create_segments_vector.return_value = None
+            mutations = mock_services.return_value.knowledge.segments.mutations
+            mutations.index_segments.return_value = None
 
             yield {
                 "storage": mock_storage,
                 "model_manager": mock_model_manager,
-                "vector_service": mock_vector_service,
+                "segment_mutations": mutations,
                 "embedding_model": mock_embedding_model,
             }
 
@@ -314,8 +314,8 @@ class TestBatchCreateSegmentToIndexTask:
         assert document.word_count > 0
 
         # Verify vector service was called
-        mock_vector_service = mock_external_service_dependencies["vector_service"]
-        mock_vector_service.create_segments_vector.assert_called_once()
+        mutations = mock_external_service_dependencies["segment_mutations"]
+        mutations.index_segments.assert_called_once()
 
         # Check Redis cache was set
         from extensions.ext_redis import redis_client
@@ -750,8 +750,8 @@ class TestBatchCreateSegmentToIndexTask:
         assert document.word_count > 0
 
         # Verify vector service was called
-        mock_vector_service = mock_external_service_dependencies["vector_service"]
-        mock_vector_service.create_segments_vector.assert_called_once()
+        mutations = mock_external_service_dependencies["segment_mutations"]
+        mutations.index_segments.assert_called_once()
 
         # Check Redis cache was set
         from extensions.ext_redis import redis_client

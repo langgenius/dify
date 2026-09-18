@@ -1,18 +1,17 @@
 import json
 from datetime import datetime
 
-import pytest
 from sqlalchemy.orm import Session
 
 from extensions.storage.storage_type import StorageType
-from fields.document_fields import DocumentWithSession
+from fields.document_fields import DocumentResponse
 from models.dataset import Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
+from services.knowledge.dataset_read_service import load_document_details
 
 
-@pytest.mark.parametrize("sqlite_session", [(Document, DocumentSegment, UploadFile)], indirect=True)
-def test_document_with_session_uses_explicit_getters(sqlite_session: Session) -> None:
+def test_document_detail_serializes_after_session_closes(sqlite_session: Session) -> None:
     upload = UploadFile(
         tenant_id="tenant-1",
         storage_type=StorageType.LOCAL,
@@ -52,8 +51,11 @@ def test_document_with_session_uses_explicit_getters(sqlite_session: Session) ->
     )
     sqlite_session.add_all([upload, document, segment])
     sqlite_session.flush()
-    source = DocumentWithSession(document=document, session=sqlite_session)
+    source = load_document_details([document], session=sqlite_session)[0]
+    sqlite_session.expire_all()
+    sqlite_session.close()
+    response = DocumentResponse.model_validate(source).model_dump(mode="json")
 
-    assert source.data_source_detail_dict["upload_file"]["name"] == "source.txt"
-    assert source.hit_count == 3
-    assert source.doc_metadata_details is None
+    assert response["data_source_detail_dict"]["upload_file"]["name"] == "source.txt"
+    assert response["hit_count"] == 3
+    assert response["doc_metadata"] == []

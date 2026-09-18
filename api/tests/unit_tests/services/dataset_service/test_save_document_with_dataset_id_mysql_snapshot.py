@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import inspect
 
-from services.dataset_service import DocumentService
+from services.knowledge.dataset_service import DocumentService
 
 
 def test_session_committed_before_upload_file_lookup() -> None:

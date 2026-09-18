@@ -171,6 +171,8 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.rag_pipeline.rag_pipeline_run_task",  # regular RAG pipeline execution
+        "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.new_agent_beta_task",  # New Agent Beta eligibility checks

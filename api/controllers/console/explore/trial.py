@@ -81,7 +81,6 @@ from services.app_generate_service import AppGenerateService
 from services.app_ref_service import AppRefService
 from services.app_service import AppResponseView, AppService
 from services.audio_service import AudioService
-from services.dataset_service import DatasetService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -95,6 +94,7 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
+from services.knowledge.dataset_service import DatasetService
 from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)

@@ -6738,7 +6738,7 @@ def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch, sql
         captured["ids"] = ids
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
     from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
@@ -6767,7 +6767,7 @@ def test_composer_save_rejects_malformed_knowledge_dataset_ids(
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 
@@ -6806,7 +6806,7 @@ def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 
@@ -6865,7 +6865,7 @@ def test_save_agent_composer_allows_incomplete_knowledge_draft(
 
     event.listen(session, "after_flush", count_flush)
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(
         dataset_service_module.DatasetService,

@@ -194,6 +194,42 @@ def test_openapi_json_endpoints_render():
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
 
+def test_console_segment_mutation_contracts_survive_admission() -> None:
+    from controllers.console import bp as console_bp
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    paths = payload["paths"]
+    document_path = "/datasets/{dataset_id}/documents/{document_id}"
+    mutations = (
+        (f"{document_path}/segment", "post", "SegmentCreatePayload", "SegmentDetailResponse"),
+        (f"{document_path}/segments/{{segment_id}}", "patch", "SegmentUpdatePayload", "SegmentDetailResponse"),
+        (
+            f"{document_path}/segments/{{segment_id}}/child_chunks",
+            "patch",
+            "ChildChunkBatchUpdatePayload",
+            "ChildChunkBatchUpdateResponse",
+        ),
+    )
+    for path, method, request_schema, response_schema in mutations:
+        operation = paths[path][method]
+        assert operation["requestBody"]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{request_schema}"
+        }
+        assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{response_schema}"
+        }
+
+    delete_operation = paths[f"{document_path}/segments"]["delete"]
+    assert set(delete_operation["responses"]) == {"204"}
+    parameters = _parameters_by_name(delete_operation)
+    assert parameters["segment_id"]["in"] == "query"
+    assert parameters["segment_id"]["schema"]["type"] == "array"
+
+
 def test_service_document_file_routes_document_multipart_form_data():
     from controllers.service_api import bp as service_api_bp
 

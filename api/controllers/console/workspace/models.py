@@ -24,6 +24,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.entities.provider_entities import CredentialConfiguration
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
@@ -37,7 +38,7 @@ from services.entities.model_provider_entities import (
     ProviderWithModelsResponse,
 )
 from services.model_load_balancing_service import ModelLoadBalancingService
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 logger = logging.getLogger(__name__)
 
@@ -384,6 +385,7 @@ class ModelProviderModelCredentialApi(Resource):
                 tenant_id=tenant_id,
                 provider=provider,
                 user=user,
+                credential_query=application_services().credential_queries,
             )
         else:
             available_credentials = model_provider_service.get_provider_model_available_credentials(

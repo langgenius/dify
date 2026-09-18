@@ -32,6 +32,7 @@ from models.trigger import (
     TriggerSubscription,
     WorkflowPluginTrigger,
 )
+from repositories.credentials.query_repository import CredentialQueryRepository
 from services.trigger import trigger_provider_service as service_module
 from services.trigger.trigger_provider_service import TriggerProviderService
 
@@ -183,7 +184,12 @@ def test_provider_manager_entities_are_forwarded(mocker, trigger_db: TriggerData
 
 def test_list_subscriptions_empty_state(trigger_db: TriggerDatabase) -> None:
     assert (
-        TriggerProviderService.list_trigger_provider_subscriptions(trigger_db.tenant_id, trigger_db.provider_id) == []
+        TriggerProviderService.list_trigger_provider_subscriptions(
+            trigger_db.tenant_id,
+            trigger_db.provider_id,
+            credential_query=CredentialQueryRepository(session_factory=trigger_db.session_maker),
+        )
+        == []
     )
 
 
@@ -231,7 +237,9 @@ def test_list_subscriptions_masks_and_counts_distinct_apps(
     )
 
     subscriptions = TriggerProviderService.list_trigger_provider_subscriptions(
-        trigger_db.tenant_id, trigger_db.provider_id
+        trigger_db.tenant_id,
+        trigger_db.provider_id,
+        credential_query=CredentialQueryRepository(session_factory=trigger_db.session_maker),
     )
 
     assert [item.id for item in subscriptions] == [target.id]

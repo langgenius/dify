@@ -15,9 +15,10 @@ from models import Account
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
-from services.dataset_ref_service import DatasetRefService
-from services.dataset_service import DocumentService
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from services.errors.account import NoPermissionError
+from services.knowledge.dataset_service import DocumentService
+from services.knowledge.resource_scope import DatasetRef
 
 FIXED_UPLOAD_CREATED_AT = datetime.datetime(2024, 1, 1, 0, 0, 0)
 
@@ -116,7 +117,9 @@ class DocumentServiceIntegrationFactory:
 
 @pytest.fixture
 def current_user_mock():
-    with patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as current_user:
+    with patch(
+        "services.knowledge.dataset_service.current_user", create_autospec(Account, instance=True)
+    ) as current_user:
         current_user.id = str(uuid4())
         current_user.current_tenant_id = str(uuid4())
         current_user.current_role = None
@@ -143,7 +146,7 @@ def test_get_documents_by_ids_returns_empty_for_empty_input(db_session_with_cont
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
 
     result = DocumentService.get_documents_by_ids(
-        DatasetRefService.create_dataset_ref(dataset), [], session=db_session_with_containers
+        DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id), [], session=db_session_with_containers
     )
 
     assert result == []
@@ -160,7 +163,7 @@ def test_get_documents_by_ids_uses_single_batch_query(db_session_with_containers
     )
 
     result = DocumentService.get_documents_by_ids(
-        DatasetRefService.create_dataset_ref(dataset), [doc_a.id, doc_b.id], db_session_with_containers
+        DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id), [doc_a.id, doc_b.id], db_session_with_containers
     )
 
     assert {document.id for document in result} == {doc_a.id, doc_b.id}
@@ -217,7 +220,9 @@ def test_get_document_download_url_uses_signed_url_helper(db_session_with_contai
         data_source_info={"upload_file_id": upload_file.id},
     )
 
-    with patch("services.dataset_service.file_helpers.get_signed_file_url", return_value="signed-url") as get_url:
+    with patch(
+        "services.knowledge.dataset_service.file_helpers.get_signed_file_url", return_value="signed-url"
+    ) as get_url:
         result = DocumentService.get_document_download_url(document, session=db_session_with_containers)
 
     assert result == "signed-url"
@@ -286,7 +291,7 @@ def test_get_upload_file_for_upload_file_document_raises_when_file_service_retur
         data_source_info={"upload_file_id": "missing-file"},
     )
 
-    with patch("services.dataset_service.FileService.get_upload_files_by_ids", return_value={}):
+    with patch("services.knowledge.dataset_service.FileService.get_upload_files_by_ids", return_value={}):
         with pytest.raises(NotFound, match="Uploaded file not found"):
             DocumentService._get_upload_file_for_upload_file_document(document, session=db_session_with_containers)
 
@@ -431,7 +436,7 @@ def test_prepare_document_batch_download_zip_translates_permission_error_to_forb
     )
 
     with patch(
-        "services.dataset_service.DatasetService.check_dataset_permission",
+        "services.knowledge.dataset_service.DatasetService.check_dataset_permission",
         side_effect=NoPermissionError("denied"),
     ):
         with pytest.raises(Forbidden, match="denied"):
@@ -551,7 +556,7 @@ def test_get_error_documents_by_dataset_ref_returns_error_and_paused_documents(d
         indexing_status=IndexingStatus.COMPLETED,
     )
 
-    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+    dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
     result = DocumentService.get_error_documents_by_dataset_ref(dataset_ref, session=db_session_with_containers)
 
     assert {document.id for document in result} == {error_document.id, paused_document.id}
@@ -573,7 +578,9 @@ def test_get_batch_documents_filters_by_current_user_tenant(db_session_with_cont
         batch=batch,
     )
 
-    with patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as current_user:
+    with patch(
+        "services.knowledge.dataset_service.current_user", create_autospec(Account, instance=True)
+    ) as current_user:
         current_user.current_tenant_id = dataset.tenant_id
         result = DocumentService.get_batch_documents(dataset.id, batch, session=db_session_with_containers)
 
@@ -607,7 +614,7 @@ def test_delete_document_emits_signal_and_commits(db_session_with_containers: Se
         data_source_info={"upload_file_id": upload_file.id},
     )
 
-    with patch("services.dataset_service.document_was_deleted.send") as signal_send:
+    with patch("services.knowledge.dataset_service.document_was_deleted.send") as signal_send:
         DocumentService.delete_document(document, session=db_session_with_containers)
 
     assert db_session_with_containers.get(Document, document.id) is None
@@ -621,13 +628,13 @@ def test_delete_document_emits_signal_and_commits(db_session_with_containers: Se
 
 def test_delete_documents_ignores_empty_input(db_session_with_containers: Session):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
-    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+    dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
-    with patch("services.dataset_service.batch_clean_document_task.delay") as delay:
+    with patch("services.knowledge.dataset_service.batch_clean_document_task.delay") as delay:
         DocumentService.delete_documents(
             dataset_ref,
             [],
-            dataset.get_doc_form(session=db_session_with_containers),
+            get_dataset_doc_form(dataset, session=db_session_with_containers),
             session=db_session_with_containers,
         )
 
@@ -661,13 +668,13 @@ def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(db_session_wi
         position=2,
         data_source_info={"upload_file_id": upload_file_b.id},
     )
-    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+    dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
-    with patch("services.dataset_service.batch_clean_document_task.delay") as delay:
+    with patch("services.knowledge.dataset_service.batch_clean_document_task.delay") as delay:
         DocumentService.delete_documents(
             dataset_ref,
             [document_a.id, document_b.id],
-            dataset.get_doc_form(session=db_session_with_containers),
+            get_dataset_doc_form(dataset, session=db_session_with_containers),
             session=db_session_with_containers,
         )
 

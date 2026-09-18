@@ -7,7 +7,7 @@ import importlib
 from collections.abc import Callable
 from contextlib import ExitStack, contextmanager
 from inspect import unwrap
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import NAMESPACE_URL, uuid5
 
@@ -24,6 +24,8 @@ from models import Account, BuiltinToolProvider, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.credential_permission import CredentialPermission
 from models.enums import PermissionEnum
+from repositories.credentials.query_repository import CredentialQueryRepository
+from services.credentials.query import CredentialQuery
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -79,6 +81,9 @@ def controller_module(monkeypatch: pytest.MonkeyPatch, config_overrides: Callabl
 
     login_module = importlib.import_module("libs.login")
     monkeypatch.setattr(login_module, "check_csrf_token", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        module, "application_services", lambda: SimpleNamespace(credential_queries=MagicMock(spec=CredentialQuery))
+    )
     return module
 
 
@@ -128,11 +133,18 @@ def _provider_credential(
 
 @contextmanager
 def _bind_database_session(session: Session):
-    database_session = scoped_session(
-        sessionmaker(bind=session.get_bind(), expire_on_commit=False),
-    )
+    session_factory = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+    database_session = scoped_session(session_factory)
     try:
-        with patch("extensions.ext_database.db.session", database_session):
+        with (
+            patch("extensions.ext_database.db.session", database_session),
+            patch(
+                "controllers.console.workspace.tool_providers.application_services",
+                return_value=SimpleNamespace(
+                    credential_queries=CredentialQueryRepository(session_factory=session_factory)
+                ),
+            ),
+        ):
             yield
     finally:
         database_session.remove()
