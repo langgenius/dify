@@ -113,6 +113,7 @@ jobs:
 
       - name: Build Docker image
         id: build
+        continue-on-error: true
         uses: depot/build-push-action@98e78adca7817480b8185f474a400b451d74e287 # v1.18.0
         with:
           project: ${{ vars.DEPOT_PROJECT_ID }}
@@ -124,9 +125,27 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env[matrix.image_name_env] }},push-by-digest=true,name-canonical=true,push=true
 
+      - name: Retry Docker build once
+        if: steps.build.outcome == 'failure'
+        id: build_retry
+        uses: depot/build-push-action@98e78adca7817480b8185f474a400b451d74e287 # v1.18.0
+        with:
+          project: ${{ vars.DEPOT_PROJECT_ID }}
+          context: ${{ matrix.build_context }}
+          file: ${{ matrix.file }}
+          platforms: ${{ matrix.platform }}
+          build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+          build-contexts: ${{ matrix.build_contexts }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env[matrix.image_name_env] }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Fail if Docker build retry also fails
+        if: steps.build.outcome == 'failure' && steps.build_retry.outcome == 'failure'
+        run: exit 1
+
       - name: Export digest
         env:
-          DIGEST: ${{ steps.build.outputs.digest }}
+          DIGEST: ${{ steps.build.outputs.digest || steps.build_retry.outputs.digest }}
         run: |
           mkdir -p /tmp/digests
           sanitized_digest=${DIGEST#sha256:}
