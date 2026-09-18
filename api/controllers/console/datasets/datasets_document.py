@@ -697,6 +697,12 @@ class DatasetInitApi(Resource):
                 dataset.id,
                 enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
+            enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+                current_tenant_id,
+                current_user.id,
+                enterprise_rbac_service.RBACResourceType.DATASET,
+                dataset.id,
+            )
 
         return dump_response(
             DatasetAndDocumentResponse,
