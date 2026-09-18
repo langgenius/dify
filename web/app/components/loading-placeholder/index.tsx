@@ -20,4 +20,3 @@ function LoadingPlaceholder({ label, className }: LoadingPlaceholderProps) {
 }
 
 export { LoadingPlaceholder }
-export type { LoadingPlaceholderProps }
