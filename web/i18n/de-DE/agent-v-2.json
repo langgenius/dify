@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Befehle werden ausgeführt",
   "agentDetail.configure.answer.duration.minute": "{{count}} Min.",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
+  "agentDetail.configure.answer.responseEnded": "Antwort beendet",
   "agentDetail.configure.answer.thinking": "Denkt nach",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition bietet zwar Versionierung für extrahierte Konfigurationen, unterstützt aber keine Versionierung des Dateisystems selbst. Seien Sie bei Aktionen im Build-Modus vorsichtig, da Änderungen am Dateisystem in Echtzeit erfolgen und nicht immer sauber rückgängig gemacht werden können. Community Edition ist nicht die ideale Wahl, um große externe Zielgruppen zu bedienen.",
   "agentDetail.configure.build.empty.description": "Beschreiben Sie, was Sie möchten, und das Formular links wird während des Chats ausgefüllt.",

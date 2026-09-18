@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "कमांड चलाए जा रहे हैं",
   "agentDetail.configure.answer.duration.minute": "{{count}} मिनट",
   "agentDetail.configure.answer.duration.second": "{{count}} सेकंड",
+  "agentDetail.configure.answer.responseEnded": "उत्तर समाप्त हुआ",
   "agentDetail.configure.answer.thinking": "सोच रहा है",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition निकाले गए कॉन्फ़िगरेशन के लिए वर्शनिंग प्रदान करता है, लेकिन फ़ाइल सिस्टम पर स्वयं वर्शनिंग का समर्थन नहीं करता। Build मोड में अपनी कार्रवाइयों के साथ सावधान रहें, क्योंकि फ़ाइल सिस्टम में किए गए बदलाव वास्तविक समय में होते हैं और हमेशा साफ़-सुथरे ढंग से वापस नहीं किए जा सकते। बड़े पैमाने पर बाहरी दर्शकों को सेवा देने के लिए Community Edition आदर्श विकल्प नहीं है।",
   "agentDetail.configure.build.empty.description": "आप जो चाहते हैं उसका वर्णन करें और बाईं ओर का फ़ॉर्म बातचीत के साथ भरता जाएगा।",
