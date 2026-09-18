@@ -10,6 +10,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import {
   getStepByStepTourPermissionVariant,
@@ -25,7 +26,6 @@ import {
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/tasks'
-import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'

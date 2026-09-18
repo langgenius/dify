@@ -27,7 +27,6 @@
   "list.emptyTitle": "Belum ada penerapan",
   "overview.chip.latest": "terbaru",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Menerapkan",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Penerapan gagal",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Tidak valid",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Berjalan",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Belum diterapkan",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Nilai versi",
   "studio.versionsBehind_one": "Tertinggal {{count}} versi",
   "studio.versionsBehind_other": "Tertinggal {{count}} versi",
-  "versions.checkingReleaseContent": "Memeriksa konten rilis...",
   "versions.deployTo": "Terapkan ke {{name}}"
 }

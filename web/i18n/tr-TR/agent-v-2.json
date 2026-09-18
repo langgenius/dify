@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Komutlar çalıştırılıyor",
   "agentDetail.configure.answer.duration.minute": "{{count}} dk",
   "agentDetail.configure.answer.duration.second": "{{count}} sn",
+  "agentDetail.configure.answer.responseEnded": "Yanıt sona erdi",
   "agentDetail.configure.answer.thinking": "Düşünüyor",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition, çıkarılan yapılandırmalar için sürümleme sunsa da dosya sisteminin kendisi için sürümleme desteklemez. Build modundaki işlemlerinizde dikkatli olun; dosya sisteminde yapılan değişiklikler gerçek zamanlı gerçekleşir ve her zaman temiz bir şekilde geri alınamayabilir. Community Edition, kitlesel dış hedef kitlelere hizmet vermek için ideal seçiminiz değildir.",
   "agentDetail.configure.build.empty.description": "Ne istediğinizi açıklayın; soldaki form ilerledikçe doldurulur.",
@@ -269,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Dosya sistemi yolu",
   "agentDetail.configure.workingDirectory.description": "Agent çalışırken okuduğu ve yazdığı dosyalar. qna_report.pdf gibi ürettiği her şey burada görünür.",
   "agentDetail.configure.workingDirectory.fileSystem": "Dosya sistemi",
-  "agentDetail.configure.workingDirectory.open": "Çalışma dizinini aç",
   "agentDetail.configure.workingDirectory.persistentFiles": "Kalıcı",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Agent'ın sakladığı ve son kullanıcı görüşmeleri ile iş akışları dahil olmak üzere çalıştığı her yerde kullanabildiği dosyalar. Bu oluşturma sohbeti sırasında burada yaptığınız değişiklikler “Uygula”ya tıkladığınızda geçerli olur.",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Geçici",
@@ -348,7 +348,6 @@
   "agentDetail.sections.logs": "Günlükler",
   "agentDetail.sections.monitoring": "İzleme",
   "agentDetail.title": "Ajan",
-  "agentDetail.type": "AJAN",
   "agentDetail.versionHistory.empty": "Henüz sürüm yok",
   "agentDetail.versionHistory.exitVersions": "Sürümlerden çık",
   "agentDetail.versionHistory.filter": "Sürümleri filtrele",
@@ -408,8 +407,5 @@
   "roster.sort.lastModified": "Son değiştirilme",
   "roster.sort.recentlyCreated": "Yeni oluşturulanlar",
   "roster.title": "Ajanlar",
-  "roster.usageStatus.draft": "Taslak",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} dosya yüklenemedi.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} dosya yüklenemedi.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Taslak"
 }

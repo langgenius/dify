@@ -6,7 +6,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -55,7 +55,7 @@ const NormalForm = () => {
       <div
         className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
       >
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }

@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "ການເຊື່ອມຕໍ່ນີ້ຖືກຕິດຕັ້ງຈາກ GitHub. ກະລຸນາໄປທີ່ການເຊື່ອມຕໍ່ເພື່ອຕິດຕັ້ງໃໝ່",
   "nodes.agent.roster.change": "ປ່ຽນ",
   "nodes.agent.roster.editInConsole": "ແກ້ໄຂໃນ Agents",
-  "nodes.agent.roster.editInConsoleDisabled": "ການແກ້ໄຂ Agent ຕ້ອງໃຊ້ບົດບາດ Editor ຫຼືສູງກວ່າ.",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "ສະເພາະສະມາຊິກທີ່ມີບົດບາດ Editor ຫຼືສູງກວ່າ ຫຼືສິດ ຈັດການ Agents ເທົ່ານັ້ນທີ່ສາມາດແກ້ໄຂ Agent ໄດ້.",
   "nodes.agent.roster.inlineSetup.description": "ການຕັ້ງຄ່າຄັ້ງດຽວທີ່ມີຜົນສະເພາະໃນໂນດນີ້",
   "nodes.agent.roster.inlineSetup.name": "ການຕັ້ງຄ່າພາຍໃນ (Inline)",
   "nodes.agent.roster.inlineSetup.type": "ສະເພາະໃນໂນດນີ້ເທົ່ານັ້ນ",

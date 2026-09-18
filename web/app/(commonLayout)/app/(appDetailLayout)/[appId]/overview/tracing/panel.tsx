@@ -37,7 +37,7 @@ import {
   TencentIcon,
   WeaveIcon,
 } from '@/app/components/base/icons/src/public/tracing'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname } from '@/next/navigation'
@@ -257,7 +257,7 @@ const Panel: FC = () => {
     return (
       <div className="mb-3 flex items-center justify-between">
         <div className="w-50">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       </div>
     )

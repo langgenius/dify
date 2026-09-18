@@ -27,7 +27,6 @@
   "list.emptyTitle": "Пока нет развертываний",
   "overview.chip.latest": "последний",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Развертывание",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Ошибка развертывания",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Недействительный",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Запущено",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Не развернуто",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Значение версии",
   "studio.versionsBehind_one": "Отставание на {{count}} версию",
   "studio.versionsBehind_other": "Отставание на {{count}} версий",
-  "versions.checkingReleaseContent": "Проверка содержимого Релиза...",
   "versions.deployTo": "Развернуть в {{name}}"
 }

@@ -405,8 +405,6 @@
   "nodes.agent.pluginNotInstalledDesc": "Este integración se instala desde GitHub. Por favor, vaya a Integraciones para reinstalar",
   "nodes.agent.roster.change": "Cambiar",
   "nodes.agent.roster.editInConsole": "Editar en Agents",
-  "nodes.agent.roster.editInConsoleDisabled": "Para editar agentes se requiere el rol Editor o uno superior.",
-  "nodes.agent.roster.editInConsoleDisabledRbac": "Solo los miembros con el rol Editor o uno superior, o con el permiso Gestionar Agents, pueden editar agentes.",
   "nodes.agent.roster.inlineSetup.description": "Una configuración puntual que existe solo en este nodo",
   "nodes.agent.roster.inlineSetup.name": "Configuración inline",
   "nodes.agent.roster.inlineSetup.type": "Solo en este nodo",

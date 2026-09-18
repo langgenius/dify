@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "コマンドを実行中",
   "agentDetail.configure.answer.duration.minute": "{{count}}分",
   "agentDetail.configure.answer.duration.second": "{{count}}秒",
+  "agentDetail.configure.answer.responseEnded": "応答が終了しました",
   "agentDetail.configure.answer.thinking": "思考中",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition は抽出された設定のバージョン管理を提供しますが、ファイルシステム自体のバージョン管理には対応していません。Build モードでの操作には注意してください。ファイルシステムへの変更はリアルタイムで発生し、常にきれいに元に戻せるとは限りません。Community Edition は大規模な外部利用者向けサービスには理想的な選択ではありません。",
   "agentDetail.configure.build.empty.description": "やりたいことを説明すると、左側のフォームが会話に合わせて入力されます。",
@@ -269,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "ファイルシステムのパス",
   "agentDetail.configure.workingDirectory.description": "エージェントが実行中に読み書きするファイルです。qna_report.pdf など、生成されたものはここに表示されます。",
   "agentDetail.configure.workingDirectory.fileSystem": "ファイルシステム",
-  "agentDetail.configure.workingDirectory.open": "作業ディレクトリを開く",
   "agentDetail.configure.workingDirectory.persistentFiles": "永続ファイル",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Agent が保持し続けるファイルです。エンドユーザーとの会話やワークフローを含め、Agent が実行されるあらゆる場所で使えます。このビルドチャットでこれらのファイルに加えた変更は、「適用」を押すと反映されます。",
   "agentDetail.configure.workingDirectory.temporaryFiles": "一時ファイル",
@@ -348,7 +348,6 @@
   "agentDetail.sections.logs": "ログ",
   "agentDetail.sections.monitoring": "モニタリング",
   "agentDetail.title": "エージェント",
-  "agentDetail.type": "エージェント",
   "agentDetail.versionHistory.empty": "バージョンはまだありません",
   "agentDetail.versionHistory.exitVersions": "バージョンを終了",
   "agentDetail.versionHistory.filter": "バージョンをフィルター",
@@ -408,8 +407,5 @@
   "roster.sort.lastModified": "最終更新",
   "roster.sort.recentlyCreated": "最近作成",
   "roster.title": "エージェント",
-  "roster.usageStatus.draft": "ドラフト",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} 件のファイルのアップロードに失敗しました。",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} 件のファイルのアップロードに失敗しました。",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "ドラフト"
 }

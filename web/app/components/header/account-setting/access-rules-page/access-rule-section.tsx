@@ -8,7 +8,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
 import AccessRuleRow from './access-rule-row'
@@ -150,7 +150,7 @@ const AccessRuleSection = ({
           </div>
         ) : isLoadingRules ? (
           <div className="px-1 py-8 text-center">
-            <Loading type="app" />
+            <LoadingPlaceholder className="h-full" />
           </div>
         ) : rules.length === 0 ? (
           <div className="px-1 py-8 text-center system-sm-regular text-text-tertiary">
@@ -171,7 +171,7 @@ const AccessRuleSection = ({
             <div ref={anchorRef} className="h-1" />
             {isFetchingNextPage && (
               <div className="px-1 py-3 text-center system-xs-regular text-text-tertiary">
-                <Loading type="app" />
+                <LoadingPlaceholder className="h-full" />
               </div>
             )}
           </>

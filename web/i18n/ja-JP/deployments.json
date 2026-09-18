@@ -27,7 +27,6 @@
   "list.emptyTitle": "デプロイはまだありません",
   "overview.chip.latest": "最新",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "デプロイ中",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "デプロイ失敗",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "無効",
   "status.RUNTIME_INSTANCE_STATUS_READY": "実行中",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "未デプロイ",
@@ -87,6 +86,5 @@
   "studio.versionValue": "バージョンの値",
   "studio.versionsBehind_one": "{{count}} バージョン遅れ",
   "studio.versionsBehind_other": "{{count}} バージョン遅れ",
-  "versions.checkingReleaseContent": "リリース内容を確認中...",
   "versions.deployTo": "{{name}} にデプロイ"
 }

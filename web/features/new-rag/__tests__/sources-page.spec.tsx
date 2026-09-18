@@ -135,7 +135,7 @@ describe('SourcesPage', () => {
         state: { data: { pages: [{ items: [source({ status: 'active' })] }] } },
       }),
     ).toBe(false)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('renders the designed empty state and enters the real add-source route', () => {
@@ -711,7 +711,7 @@ describe('SourcesPage', () => {
 
     expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(screen.queryByText('dataset.newKnowledge.noMatchingSources')).not.toBeInTheDocument()
   })
 

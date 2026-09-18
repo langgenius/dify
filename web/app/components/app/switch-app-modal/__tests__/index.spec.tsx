@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
 import SwitchAppModal from '../index'
 
@@ -295,13 +296,13 @@ describe('SwitchAppModal', () => {
 
       await user.click(screen.getByText('open-icon-picker'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
       })
 
       await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
       await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
       })
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
@@ -325,13 +326,13 @@ describe('SwitchAppModal', () => {
 
       await user.click(screen.getByText('open-icon-picker'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
       })
       await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
       })
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('app.removeOriginal'))
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
@@ -398,3 +399,5 @@ describe('SwitchAppModal', () => {
     })
   })
 })
+
+mockEmojiData()
