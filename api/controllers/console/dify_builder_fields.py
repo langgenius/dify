@@ -16,6 +16,7 @@ from core.dify_builder.contract import (
     ChangeSetCard,
     CheckpointCard,
     CheckpointRef,
+    Decision,
     DecisionItem,
     ErrorCard,
     ErrorEventData,
@@ -52,6 +53,10 @@ class DifyBuilderCreateBuildSessionPayload(DifyBuilderPayload):
     app_id: NonEmptyString
     scenario: Literal["build"]
     goal_text: NonEmptyString
+    # True when the app was created from this same prompt and still carries the
+    # name cut from it, so Builder may rewrite it once it understands the goal.
+    # False is create-from-blank: the user named the app, Builder inherits it.
+    derive_app_name: bool = False
     model_config_data: SessionModel | None = Field(default=None, alias="model_config")
 
 
@@ -252,6 +257,7 @@ class DifyBuilderSessionViewResponse(ResponseModel):
     entry_mode: EntryMode = EntryMode.FIX
     phase: Phase = Phase.UNDERSTAND
     actions: list[Action] = Field(default_factory=list)
+    decision: Decision | None = None
     active_interaction: DifyBuilderActiveInteractionResponse | None = None
     checkpoint: CheckpointRef | None = None
     recovery: RecoveryRef | None = None

@@ -24133,7 +24133,42 @@ You cannot transfer ownership to yourself.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| CannotTransferOwnerToSelfError |  | You cannot transfer ownership to yourself. |  |
+| CanvasEvent | string | Granular canvas-mutation signals (spec §6).  Exactly 22 members, snake_cased from the mock's ``DifyBuilderCanvasEvent`` union. Presentation of committed backend state: replaying these from a snapshot must reconstruct the same canvas. |  |
+
+#### CanvasEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| edge | [CanvasEdge](#canvasedge) |  | No |
+| event | [CanvasEvent](#canvasevent) |  | Yes |
+| kind | string, <br>**Default:** canvas |  | No |
+| node_id | string |  | No |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| session_id | string |  | Yes |
+| stage_id | string |  | Yes |
+
+#### CardOption
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canvas_event | string |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| input | [OptionInput](#optioninput) |  | No |
+| is_default | boolean |  | No |
+| label | string |  | Yes |
+| next_state | string |  | No |
+| tone | string, <br>**Default:** neutral |  | No |
+
+#### ChallengeCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| body | string |  | Yes |
+| title | string |  | Yes |
+| tone | string, <br>**Default:** warning |  | No |
 
 #### ChangeEmailResetPayload
 
@@ -25029,7 +25064,8 @@ The conversation was not found for this user and app.
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
-| name | string | App name | Yes |
+| name | string | App name; derived from prompt when omitted | No |
+| prompt | string | Goal prompt the app was created from; used to derive the name | No |
 
 #### CreateIMBindingRequest
 
@@ -25941,9 +25977,16 @@ Enum class for datasource provider
 | start_node_id | string |  | Yes |
 | start_node_title | string |  | Yes |
 
-#### DebugChannel
+#### Decision
 
-Delivery selection for editor debugging, resolved to current channel configuration.
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cancel | [Action](#action) |  | No |
+| confirm | [Action](#action) |  | No |
+| default_option_id | string |  | No |
+| options | [ [CardOption](#cardoption) ] |  | No |
+
+#### DecisionItem
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -26148,10 +26191,399 @@ Enum representing the deployment edition of the platform.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| client_id | [_Identifier](#_identifier)<br>[UnchangedInput](#unchangedinput) |  | Yes |
-| client_secret | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
-| corp_id | [_Identifier](#_identifier)<br>[UnchangedInput](#unchangedinput) |  | Yes |
-| provider | string |  | Yes |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [AssistantTurnItem](#assistantturnitem) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderBuildLearningConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [BuildLearningCard](#buildlearningcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderCanvasEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [CanvasEventData](#canvaseventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderChallengeConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [ChallengeCard](#challengecard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderChangeSetConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [ChangeSetCard](#changesetcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderChecklistErrorPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| messages | [ string ] |  | Yes |
+| node_id | string |  | Yes |
+| node_type | string |  | Yes |
+| plugin_missing | boolean |  | Yes |
+| title | string |  | Yes |
+| unconnected | boolean |  | Yes |
+
+#### DifyBuilderCheckpointConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [CheckpointCard](#checkpointcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderCommandStartedEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [Action](#action) ] |  | No |
+| active_interaction | [DifyBuilderActiveInteractionResponse](#difybuilderactiveinteractionresponse) |  | No |
+| app_id | string |  | Yes |
+| app_revision | [AppRevision](#apprevision) |  | No |
+| canvas_read_only | boolean |  | Yes |
+| checkpoint | [CheckpointRef](#checkpointref) |  | No |
+| conversation_last_seq | integer |  | Yes |
+| decision | [Decision](#decision) |  | No |
+| entry_mode | [EntryMode](#entrymode) |  | No |
+| interrupted | boolean |  | Yes |
+| kind | string, <br>**Default:** command_started |  | No |
+| model | [SessionModel](#sessionmodel) |  | No |
+| phase | [Phase](#phase) |  | No |
+| recovery | [RecoveryRef](#recoveryref) |  | No |
+| run_status | [RunStatus](#runstatus) |  | Yes |
+| session_id | string |  | Yes |
+| state | string |  | Yes |
+| version | integer |  | Yes |
+
+#### DifyBuilderCommandStartedEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderCommandStartedEventData](#difybuildercommandstartedeventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderCommitEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| items | [ [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderAssistantTurnConversationItemResponse](#difybuilderassistantturnconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderChallengeConversationItemResponse](#difybuilderchallengeconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderCheckpointConversationItemResponse](#difybuildercheckpointconversationitemresponse)<br>[DifyBuilderChangeSetConversationItemResponse](#difybuilderchangesetconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse)<br>[DifyBuilderErrorConversationItemResponse](#difybuildererrorconversationitemresponse)<br>[DifyBuilderSummaryConversationItemResponse](#difybuildersummaryconversationitemresponse)<br>[DifyBuilderPublishConversationItemResponse](#difybuilderpublishconversationitemresponse)<br>[DifyBuilderBuildLearningConversationItemResponse](#difybuilderbuildlearningconversationitemresponse) ] |  | Yes |
+| kind | string, <br>**Default:** commit |  | No |
+| operation_id | string |  | Yes |
+| session_id | string |  | Yes |
+| settled | boolean |  | Yes |
+| stage_id | string |  | Yes |
+| state | string |  | Yes |
+| version | integer |  | Yes |
+
+#### DifyBuilderCommitEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderCommitEventData](#difybuildercommiteventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderConversationListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| after_seq | integer | Load groups after this sequence | No |
+| before_seq | integer | Load groups before this sequence | No |
+| limit | integer, <br>**Default:** 20 | Number of conversation groups to return | No |
+
+#### DifyBuilderConversationPageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderAssistantTurnConversationItemResponse](#difybuilderassistantturnconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderChallengeConversationItemResponse](#difybuilderchallengeconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderCheckpointConversationItemResponse](#difybuildercheckpointconversationitemresponse)<br>[DifyBuilderChangeSetConversationItemResponse](#difybuilderchangesetconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse)<br>[DifyBuilderErrorConversationItemResponse](#difybuildererrorconversationitemresponse)<br>[DifyBuilderSummaryConversationItemResponse](#difybuildersummaryconversationitemresponse)<br>[DifyBuilderPublishConversationItemResponse](#difybuilderpublishconversationitemresponse)<br>[DifyBuilderBuildLearningConversationItemResponse](#difybuilderbuildlearningconversationitemresponse) ] |  | Yes |
+| first_seq | integer |  | Yes |
+| has_more | boolean |  | Yes |
+| last_seq | integer |  | Yes |
+
+#### DifyBuilderCreateBuildSessionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| derive_app_name | boolean |  | No |
+| goal_text | string |  | Yes |
+| model_config | [SessionModel](#sessionmodel) |  | No |
+| scenario | string |  | Yes |
+
+#### DifyBuilderCreateChecklistFixSessionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| checklist_errors | [ [DifyBuilderChecklistErrorPayload](#difybuilderchecklisterrorpayload) ] |  | Yes |
+| failed_run_id | string |  | No |
+| model_config | [SessionModel](#sessionmodel) |  | No |
+| scenario | string |  | Yes |
+
+#### DifyBuilderCreateEditSessionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| goal_text | string |  | Yes |
+| model_config | [SessionModel](#sessionmodel) |  | No |
+| scenario | string |  | Yes |
+
+#### DifyBuilderCreateFixSessionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| failed_run_id | string |  | Yes |
+| model_config | [SessionModel](#sessionmodel) |  | No |
+| scenario | string |  | Yes |
+
+#### DifyBuilderCreateSessionPayload
+
+Create a Build, Edit, failed-run Fix, or checklist Fix session.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DifyBuilderCreateSessionPayload | [DifyBuilderCreateBuildSessionPayload](#difybuildercreatebuildsessionpayload)<br>[DifyBuilderCreateEditSessionPayload](#difybuildercreateeditsessionpayload)<br>[DifyBuilderCreateFixSessionPayload](#difybuildercreatefixsessionpayload)<br>[DifyBuilderCreateChecklistFixSessionPayload](#difybuildercreatechecklistfixsessionpayload) | Create a Build, Edit, failed-run Fix, or checklist Fix session. |  |
+
+#### DifyBuilderDecisionConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [DecisionItem](#decisionitem) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderErrorConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [ErrorCard](#errorcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderErrorEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ErrorEventData](#erroreventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | [BuilderErrorCode](#buildererrorcode) |  | Yes |
+| message | string |  | No |
+| recoverable | boolean |  | No |
+
+#### DifyBuilderFormConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [FormCard](#formcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderNodeEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [NodeEventData](#nodeeventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderNoticeConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [NoticeItem](#noticeitem) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderPlanConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [PlanCard](#plancard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderPreflightContextConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [PreflightContextCard](#preflightcontextcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderProgressEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ProgressEventData](#progresseventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderPublishConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [PublishCard](#publishcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderReasoningEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ReasoningEventData](#reasoningeventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderResourceSelectConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [ResourceSelectCard](#resourceselectcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderRunContextConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [RunContextCard](#runcontextcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderSessionViewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [Action](#action) ] |  | No |
+| active_interaction | [DifyBuilderActiveInteractionResponse](#difybuilderactiveinteractionresponse) |  | No |
+| app_id | string |  | Yes |
+| app_revision | [AppRevision](#apprevision) |  | No |
+| canvas_read_only | boolean |  | Yes |
+| checkpoint | [CheckpointRef](#checkpointref) |  | No |
+| conversation_last_seq | integer |  | Yes |
+| decision | [Decision](#decision) |  | No |
+| entry_mode | [EntryMode](#entrymode) |  | No |
+| interrupted | boolean |  | Yes |
+| model | [SessionModel](#sessionmodel) |  | No |
+| phase | [Phase](#phase) |  | No |
+| recovery | [RecoveryRef](#recoveryref) |  | No |
+| run_status | [RunStatus](#runstatus) |  | Yes |
+| session_id | string |  | Yes |
+| state | string |  | Yes |
+| version | integer |  | Yes |
+
+#### DifyBuilderStateEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [Action](#action) ] |  | No |
+| active_interaction | [DifyBuilderActiveInteractionResponse](#difybuilderactiveinteractionresponse) |  | No |
+| app_id | string |  | Yes |
+| app_revision | [AppRevision](#apprevision) |  | No |
+| canvas_read_only | boolean |  | Yes |
+| checkpoint | [CheckpointRef](#checkpointref) |  | No |
+| conversation_last_seq | integer |  | Yes |
+| decision | [Decision](#decision) |  | No |
+| entry_mode | [EntryMode](#entrymode) |  | No |
+| interrupted | boolean |  | Yes |
+| kind | string, <br>**Default:** state |  | No |
+| model | [SessionModel](#sessionmodel) |  | No |
+| phase | [Phase](#phase) |  | No |
+| recovery | [RecoveryRef](#recoveryref) |  | No |
+| run_status | [RunStatus](#runstatus) |  | Yes |
+| session_id | string |  | Yes |
+| state | string |  | Yes |
+| version | integer |  | Yes |
+
+#### DifyBuilderStateEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderStateEventData](#difybuilderstateeventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderStreamEventResponse
+
+One JSON object carried by an SSE ``data:`` frame.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DifyBuilderStreamEventResponse | [DifyBuilderCommandStartedEventResponse](#difybuildercommandstartedeventresponse)<br>[DifyBuilderNodeEventResponse](#difybuildernodeeventresponse)<br>[DifyBuilderCanvasEventResponse](#difybuildercanvaseventresponse)<br>[DifyBuilderAgentMessageEventResponse](#difybuilderagentmessageeventresponse)<br>[DifyBuilderReasoningEventResponse](#difybuilderreasoningeventresponse)<br>[DifyBuilderProgressEventResponse](#difybuilderprogresseventresponse)<br>[DifyBuilderCommitEventResponse](#difybuildercommiteventresponse)<br>[DifyBuilderStateEventResponse](#difybuilderstateeventresponse)<br>[DifyBuilderErrorEventResponse](#difybuildererroreventresponse) | One JSON object carried by an SSE ``data:`` frame. |  |
+
+#### DifyBuilderSubmitActionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action_id | string |  | Yes |
+| base_app_revision | string |  | Yes |
+| base_version | integer |  | Yes |
+| payload | object |  | No |
+
+#### DifyBuilderSubmitMessagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| base_version | integer |  | Yes |
+| client_turn_id | string |  | Yes |
+| text | string |  | Yes |
+
+#### DifyBuilderSummaryConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [SummaryCard](#summarycard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderTestResultConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [TestResultCard](#testresultcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderUserConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [UserItem](#useritem) |  | Yes |
+| seq | integer |  | Yes |
 
 #### DismissNotificationPayload
 
@@ -27043,6 +27475,16 @@ declaration of an endpoint group
 | deleted_environment_variable_ids | [ string ] | Environment variable IDs to delete when patch is true | No |
 | environment_variables | [ [EnvironmentVariableItemPayload](#environmentvariableitempayload) ] | Environment variables for the draft workflow | Yes |
 | patch | boolean | Treat environment_variables as per-ID upserts instead of replacing the full collection | No |
+
+#### ErrorCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| body | string |  | Yes |
+| diagnostics | [ object ] |  | No |
+| node_id | string |  | No |
+| title | string |  | Yes |
+| tone | string, <br>**Default:** danger |  | No |
 
 #### ErrorDocsResponse
 
@@ -33402,26 +33844,14 @@ OAuth schema
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
 | value | string | The value of the option | Yes |
 
-#### OrganizationCandidate
-
-One organization member candidate that may become a platform contact.
+#### OptionInput
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| avatar_url | string | Signed avatar URL if one is available. | No |
-| email | string | Primary organization email used for matching. | Yes |
-| id | string | Organization candidate identifier. | Yes |
-| name | string | Display name shown in the candidate list. | Yes |
-
-#### OrganizationCandidatesQuery
-
-Query params for searching organization member candidates.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword | string | Free-text search against candidate name or email. | No |
-| limit | integer, <br>**Default:** 20 | Maximum number of records returned per page. | No |
-| page | integer, <br>**Default:** 1 | 1-based page number. | No |
+| max_length | integer, <br>**Default:** 100 |  | No |
+| min_length | integer |  | No |
+| placeholder | string |  | No |
+| required | boolean, <br>**Default:** true |  | No |
 
 #### OutputErrorStrategy
 

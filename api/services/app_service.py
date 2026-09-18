@@ -3,11 +3,12 @@ import logging
 from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import cached_property
 from types import EllipsisType
 from typing import Any, NotRequired, TypedDict, cast
 
+import pytz
 from pydantic import JsonValue
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -18,6 +19,7 @@ from constants.model_template import default_app_templates
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.agent.tool_configuration import mask_agent_tool_parameters
+from core.dify_builder import naming
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from enums import DeploymentEdition
@@ -98,6 +100,11 @@ def _initialize_created_agent_access(created: _CreatedApp) -> None:
 _CREATED_APP_ACCESS_INITIALIZERS: dict[AppMode, Callable[[_CreatedApp], None]] = {
     AppMode.AGENT: _initialize_created_agent_access,
 }
+
+
+# Only a prompt's opening clause can become a name, so nothing past this point
+# can affect the result.
+_NAME_PROMPT_SCAN_LIMIT = 2000
 
 
 class AppModelConfigResponseView:
@@ -227,6 +234,27 @@ class AppService:
         default_model = ModelProviderService().get_default_model_selection(tenant_id, ModelType.LLM, session=session)
         return build_initial_agent_soul(tenant_id, default_model)
 
+    @staticmethod
+    def _resolve_app_name(params: CreateAppParams, account: Account) -> str:
+        """The name to store (App Builder spec, board N).
+
+        A name the user gave wins outright -- that is create-from-blank, where
+        Builder only inherits. Otherwise it is cut out of the goal prompt, with
+        the account's timezone and console language shaping the
+        ``New app · Sep 7, 14:02`` fallback.
+        """
+        if params.name:
+            return params.name
+        try:
+            now = datetime.now(pytz.timezone(account.timezone or "UTC"))
+        except Exception:
+            now = datetime.now(UTC)
+        return naming.derive_app_name(
+            (params.prompt or "")[:_NAME_PROMPT_SCAN_LIMIT],
+            now=now,
+            language=account.interface_language or "en-US",
+        )
+
     def create_app(
         self,
         tenant_id: str,
@@ -312,7 +340,7 @@ class AppService:
             default_model_config["model"] = json.dumps(default_model_dict)
 
         app = App(**app_template["app"])
-        app.name = params.name
+        app.name = self._resolve_app_name(params, account)
         app.description = params.description or ""
         app.mode = app_mode
         app.icon_type = IconType(params.icon_type) if params.icon_type else IconType.EMOJI
@@ -540,6 +568,28 @@ class AppService:
             icon=app.icon,
             icon_background=app.icon_background,
             account_id=current_user.id,
+            updated_at=app.updated_at,
+            session=session,
+        )
+        self._commit_app_identity_update(app, session=session)
+
+        app_was_updated.send(app)
+
+        return app
+
+    def rename_app(self, app: App, name: str, *, account_id: str, session: Session) -> App:
+        """Rename an app on behalf of ``account_id``.
+
+        For callers outside a request context -- the Dify Builder advance
+        task -- that cannot read the actor off ``current_user``.
+        """
+        app.name = name
+        app.updated_by = account_id
+        app.updated_at = naive_utc_now()
+        self._sync_backing_agent_identity(
+            app,
+            name=app.name,
+            account_id=account_id,
             updated_at=app.updated_at,
             session=session,
         )

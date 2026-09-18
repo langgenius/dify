@@ -46,7 +46,7 @@ from core.dify_builder.runner import CommittedTransition, Env, Runner
 from core.dify_builder.state import PcState, is_terminal
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from services.dify_builder import progress_bus, session_lock
+from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.agent.localize import Localizer
 from services.dify_builder.agent_factory import build_dify_builder_agent
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
@@ -217,6 +217,17 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         # `model_or_none` is part of the DifyBuilderAgent protocol; the Localizer
         # uses it as its model provider (None -> reply-language localization is a no-op).
         localizer = Localizer(agent.model_or_none)
+
+        def rename_app(proposed: str) -> None:
+            assert actor is not None
+            assert loaded_session is not None
+            app_naming.rename_app_from_proposal(
+                app_id=loaded_session.app_id,
+                tenant_id=actor.tenant_id,
+                account_id=actor.account_id,
+                proposed=proposed,
+            )
+
         env = Env(
             dify=dify,
             agent=agent,
@@ -230,6 +241,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             emit_reasoning=emit_reasoning,
             detect_language=localizer.detect_language,
             localize_items=localizer.localize_items,
+            rename_app=rename_app,
         )
         runner = Runner(env, fix_registry() | build_registry() | edit_registry())
         env.begin_operation(loaded_session)
