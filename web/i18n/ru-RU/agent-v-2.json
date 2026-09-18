@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Выполнение команд",
   "agentDetail.configure.answer.duration.minute": "{{count}} мин",
   "agentDetail.configure.answer.duration.second": "{{count}} с",
+  "agentDetail.configure.answer.responseEnded": "Ответ завершён",
   "agentDetail.configure.answer.thinking": "Размышляет",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition предоставляет версионирование извлеченных конфигураций, но не поддерживает версионирование самой файловой системы. Будьте осторожны с действиями в режиме Build: изменения файловой системы происходят в реальном времени и не всегда могут быть аккуратно отменены. Community Edition не является идеальным выбором для обслуживания массовой внешней аудитории.",
   "agentDetail.configure.build.empty.description": "Опишите, что вам нужно, и форма слева будет заполняться по ходу диалога.",

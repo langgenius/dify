@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "ກຳລັງປະຕິບັດຄຳສັ່ງ",
   "agentDetail.configure.answer.duration.minute": "{{count}} ນາທີ",
   "agentDetail.configure.answer.duration.second": "{{count}} ວິນາທີ",
+  "agentDetail.configure.answer.responseEnded": "ການຕອບກັບສິ້ນສຸດແລ້ວ",
   "agentDetail.configure.answer.thinking": "ກຳລັງຄິດ",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition ເຖິງວ່າຈະມີລະບົບເວີຊັນໃຫ້ກັບການຕັ້ງຄ່າທີ່ສະກັດອອກມາ ແຕ່ບໍ່ຮອງຮັບລະບົບເວີຊັນໃນລະບົບໄຟລ໌ໂດຍກົງ. ກະລຸນາລະມັດລະວັງໃນການໃຊ້ໂໝດສ້າງ (Build mode) ເພາະການປ່ຽນແປງໃນລະບົບໄຟລ໌ຈະເກີດຂຶ້ນທັນທີ ແລະ ບາງຄັ້ງບໍ່ສາມາດຍ້ອນກັບໄດ້. Community Edition ບໍ່ແມ່ນທາງເລືອກທີ່ດີທີ່ສຸດສຳລັບການໃຫ້ບໍລິການຜູ້ໃຊ້ພາຍນອກຈຳນວນຫຼາຍ.",
   "agentDetail.configure.build.empty.description": "ອະທິບາຍສິ່ງທີ່ທ່ານຕ້ອງການ ແລ້ວລະບົບຈະຕື່ມຂໍ້ມູນໃສ່ແບບຟອມດ້ານຊ້າຍໃຫ້ເອງ.",

@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Se execută comenzile",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
+  "agentDetail.configure.answer.responseEnded": "Răspunsul s-a încheiat",
   "agentDetail.configure.answer.thinking": "Se gândește",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition, deși oferă versionare pentru configurațiile extrase, nu acceptă versionarea sistemului de fișiere în sine. Fii atent la acțiunile din modul Build, deoarece modificările făcute în sistemul de fișiere au loc în timp real și nu pot fi întotdeauna anulate curat. Community Edition nu este alegerea ideală pentru servirea unor audiențe externe numeroase.",
   "agentDetail.configure.build.empty.description": "Descrie ce dorești, iar formularul din stânga se completează pe măsură ce avansezi.",

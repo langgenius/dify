@@ -3,7 +3,7 @@ import type { InstalledAppResponse } from '@dify/contracts/api/console/installed
 import type { FC } from 'react'
 import type { ChatProps } from '../chat'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -25,10 +25,23 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
   const site = appData?.site
 
   const [showSidePanel, setShowSidePanel] = useState(false)
+  const sidebarToggleRef = useRef<HTMLButtonElement>(null)
+  const sidePanelHasFocusRef = useRef(false)
+  const previousSidebarCollapsedRef = useRef(isSidebarCollapsed)
+
+  useLayoutEffect(() => {
+    if (previousSidebarCollapsedRef.current !== isSidebarCollapsed) {
+      sidebarToggleRef.current?.focus()
+      previousSidebarCollapsedRef.current = isSidebarCollapsed
+    }
+  }, [isSidebarCollapsed])
 
   useEffect(() => {
-    if (!isSidebarCollapsed) setShowSidePanel(false)
-  }, [isSidebarCollapsed])
+    if (!isSidebarCollapsed || isMobile) {
+      setShowSidePanel(false)
+      sidePanelHasFocusRef.current = false
+    }
+  }, [isSidebarCollapsed, isMobile])
 
   useDocumentTitle(site?.title || 'Chat')
 
@@ -38,26 +51,38 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
     >
       {!isMobile && (
         <div
+          inert={isSidebarCollapsed}
           className={cn(
             'flex w-59 flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
             isSidebarCollapsed && 'w-0 overflow-hidden p-0!',
           )}
         >
-          <Sidebar />
+          <Sidebar toggleButtonRef={!isSidebarCollapsed ? sidebarToggleRef : undefined} />
         </div>
       )}
       {isMobile && <HeaderInMobile />}
       <div className={cn('relative grow p-2', isMobile && 'h-[calc(100%-56px)] p-0')}>
-        {isSidebarCollapsed && (
+        {!isMobile && isSidebarCollapsed && (
           <div
             className={cn(
               'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
               showSidePanel ? 'left-0' : '-left-62',
             )}
             onMouseEnter={() => setShowSidePanel(true)}
-            onMouseLeave={() => setShowSidePanel(false)}
+            onFocusCapture={() => {
+              // React focus events include the sidebar's portalled menus and dialogs.
+              sidePanelHasFocusRef.current = true
+            }}
+            onBlurCapture={() => {
+              sidePanelHasFocusRef.current = false
+            }}
+            onMouseLeave={() => {
+              if (!sidePanelHasFocusRef.current) setShowSidePanel(false)
+            }}
           >
-            <Sidebar isPanel panelVisible={showSidePanel} />
+            <div inert={!showSidePanel} className="flex min-h-0 grow">
+              <Sidebar isPanel panelVisible={showSidePanel} />
+            </div>
           </div>
         )}
         <div
@@ -66,7 +91,9 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
             isMobile ? 'rounded-t-2xl' : 'rounded-2xl',
           )}
         >
-          {!isMobile && <Header />}
+          {!isMobile && (
+            <Header toggleButtonRef={isSidebarCollapsed ? sidebarToggleRef : undefined} />
+          )}
           {appChatListDataLoading && <Loading type="app" />}
           {!appChatListDataLoading && <ChatWrapper key={chatShouldReloadKey} />}
         </div>

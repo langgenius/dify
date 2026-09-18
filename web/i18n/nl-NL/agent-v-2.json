@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Opdrachten uitvoeren",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
+  "agentDetail.configure.answer.responseEnded": "Antwoord beëindigd",
   "agentDetail.configure.answer.thinking": "Aan het nadenken",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition biedt wel versiebeheer voor geëxtraheerde configuraties, maar ondersteunt geen versiebeheer van het bestandssysteem zelf. Wees voorzichtig met je acties in de Build-modus, omdat wijzigingen aan het bestandssysteem in realtime plaatsvinden en niet altijd netjes kunnen worden teruggedraaid. Community Edition is niet de ideale keuze voor het bedienen van grote externe doelgroepen.",
   "agentDetail.configure.build.empty.description": "Beschrijf wat je wilt en het formulier links wordt gaandeweg ingevuld.",
