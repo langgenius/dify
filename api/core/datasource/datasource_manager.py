@@ -266,7 +266,7 @@ class DatasourceManager:
                 if wanted_ds_type and isinstance(message.message, DatasourceMessage.TextMessage):
                     url = message.message.text
 
-                    datasource_file_id = str(url).split("/")[-1].split(".")[0]
+                    datasource_file_id = url.split("/")[-1].split(".")[0]
                     with session_factory.create_session() as session:
                         stmt = select(ToolFile).where(
                             ToolFile.id == datasource_file_id, ToolFile.tenant_id == tenant_id
@@ -359,7 +359,7 @@ class DatasourceManager:
             file_type=FileType.CUSTOM,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             remote_url=upload_file.source_url,
-            reference=build_file_reference(record_id=str(upload_file.id)),
+            reference=build_file_reference(record_id=upload_file.id),
             size=upload_file.size,
             storage_key=upload_file.key,
             url=upload_file.source_url,
