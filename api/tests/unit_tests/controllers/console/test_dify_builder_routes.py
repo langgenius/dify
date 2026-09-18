@@ -127,7 +127,7 @@ def test_conversation_get_rejects_competing_cursors(monkeypatch):
         (
             {"scenario": "build", "app_id": "a1", "goal_text": "Build it"},
             "create_build_session_stream",
-            {"app_id": "a1", "goal_text": "Build it", "model_config": None},
+            {"app_id": "a1", "goal_text": "Build it", "model_config": None, "derive_app_name": False},
         ),
         (
             {"scenario": "edit", "app_id": "a1", "goal_text": "Tighten risk"},
@@ -543,3 +543,64 @@ def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch):
 def test_session_routes_require_legacy_edit_permission(method):
     gate = unwrap(method, stop=lambda wrapper: "edit_permission_required" in wrapper.__code__.co_qualname)
     assert "edit_permission_required" in gate.__code__.co_qualname
+
+
+def test_create_build_defaults_to_not_renaming_the_app(monkeypatch):
+    service = MagicMock()
+    service.create_build_session_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    mod._create({"scenario": "build", "app_id": "a1", "goal_text": "Build it"}, _actor())
+
+    assert service.create_build_session_stream.call_args.kwargs["derive_app_name"] is False
+
+
+def test_create_build_forwards_the_rename_opt_in(monkeypatch):
+    service = MagicMock()
+    service.create_build_session_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    mod._create(
+        {"scenario": "build", "app_id": "a1", "goal_text": "Build it", "derive_app_name": True},
+        _actor(),
+    )
+
+    assert service.create_build_session_stream.call_args.kwargs["derive_app_name"] is True
+
+
+def test_action_resolves_confirm_through_the_option_the_client_chose(monkeypatch):
+    service = MagicMock()
+    service.submit_action_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    response = mod._action(
+        "s1",
+        {
+            "action_id": "confirm",
+            "payload": {"option_id": "run_validation", "free_text": ""},
+            "base_version": 1,
+            "base_app_revision": "hash-1",
+        },
+        _actor(),
+    )
+
+    _assert_event_stream(response)
+
+    action = service.submit_action_stream.call_args.args[2]
+    assert action.kind == "run_verify"
+    # The chosen option and any free text travel on to the handler untouched.
+    assert action.payload == {"option_id": "run_validation", "free_text": ""}
+
+
+def test_action_still_accepts_a_client_posting_the_bare_action_id(monkeypatch):
+    service = MagicMock()
+    service.submit_action_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    mod._action(
+        "s1",
+        {"action_id": "run_validation", "payload": {}, "base_version": 1, "base_app_revision": "hash-1"},
+        _actor(),
+    )
+
+    assert service.submit_action_stream.call_args.args[2].kind == "run_verify"

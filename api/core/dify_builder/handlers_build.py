@@ -98,6 +98,30 @@ def _emit_completion(fc: DifyBuilderContext) -> list[ConversationItem]:
     return append_card(fc, SummaryCard(variant="completion", title="Build complete", rows=rows))
 
 
+def _refine_app_name(env: Env, fc: DifyBuilderContext) -> None:
+    """Replace the prompt-derived app name with a model-written one, once (spec N1).
+
+    Creation named the app by cutting the prompt's opening clause -- mechanical,
+    and English-shaped where it has to judge. The goal has just been understood
+    here and a model is in hand, so the name can be rewritten properly, in
+    whatever language the user wrote. Plan approval then freezes it (spec N3).
+
+    The flag is cleared whether or not the proposal was usable, so a session
+    never renames twice and never retries a model that gave nothing. It is
+    committed with the transition while the rename commits on its own, so an
+    advance that fails after this point proposes again next attempt and
+    overwrites with an equivalent title.
+    """
+    if not fc.app_name_auto:
+        return
+    fc.app_name_auto = False
+    if env.rename_app is None:
+        return
+    proposed = env.agent.propose_app_name(fc.goal_text, fc.requirements)
+    if proposed and proposed.strip():
+        env.rename_app(proposed)
+
+
 def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Entry state. On ``send_goal`` reset the canvas, analyze the
     goal into requirements, and transition to build.goal_analysis emitting its
@@ -125,6 +149,7 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     analysis = env.agent.analyze_goal(fc.goal_text)
     fc.form_fields = list(analysis.get("fields") or [])
     fc.requirements = dict(analysis.get("values") or {})
+    _refine_app_name(env, fc)
 
     progress.activate("build-prepare-requirements")
     form_items = append_card(

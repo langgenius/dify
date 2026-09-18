@@ -39,6 +39,7 @@ def test_session_view_to_dict_round_trips_fields():
         "entry_mode": "fix",
         "phase": "understand",
         "actions": [],
+        "decision": None,
         "active_interaction": None,
         "checkpoint": None,
         "recovery": None,

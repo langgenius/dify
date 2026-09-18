@@ -1038,3 +1038,49 @@ class TestAgentAppType:
         assert exc_info.value is error
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()
+
+
+class TestResolveAppName:
+    """Naming an app created from a goal prompt (App Builder spec, board N)."""
+
+    @staticmethod
+    def _account(*, timezone: str | None = "UTC", language: str | None = "en-US") -> Account:
+        account = Account(name="Namer", email=f"namer-{uuid4()}@example.com")
+        account.timezone = timezone
+        account.interface_language = language
+        return account
+
+    def test_a_user_supplied_name_wins_over_the_prompt(self):
+        # Create-from-blank: the user names the app and Builder only inherits it.
+        params = CreateAppParams(name="Refund approval", prompt="Something else entirely", mode="workflow")
+        assert AppService._resolve_app_name(params, self._account()) == "Refund approval"
+
+    def test_the_name_is_derived_from_the_prompt_when_omitted(self):
+        params = CreateAppParams(prompt="Refund approval for ecommerce orders", mode="workflow")
+        assert AppService._resolve_app_name(params, self._account()) == "Refund approval for ecommerce"
+
+    def test_a_prompt_with_nothing_nameable_falls_back_in_the_console_language(self):
+        params = CreateAppParams(prompt="???", mode="workflow")
+        name = AppService._resolve_app_name(params, self._account(language="zh-Hans"))
+        assert name.startswith("新应用 · ")
+
+    def test_neither_name_nor_prompt_still_names_the_app(self):
+        # Creation must never fail for want of a name.
+        params = CreateAppParams(mode="workflow")
+        assert AppService._resolve_app_name(params, self._account()).startswith("New app · ")
+
+    def test_an_unparseable_account_timezone_does_not_break_creation(self):
+        params = CreateAppParams(prompt="   ", mode="workflow")
+        name = AppService._resolve_app_name(params, self._account(timezone="Mars/Olympus_Mons"))
+        assert name.startswith("New app · ")
+
+    def test_the_fallback_stamp_uses_the_account_timezone(self):
+        params = CreateAppParams(prompt="!!!", mode="workflow")
+        tokyo = AppService._resolve_app_name(params, self._account(timezone="Asia/Tokyo"))
+        honolulu = AppService._resolve_app_name(params, self._account(timezone="Pacific/Honolulu"))
+        # 19 hours apart: the two stamps can never render the same clock time.
+        assert tokyo != honolulu
+
+    def test_only_the_opening_clause_of_a_long_prompt_is_scanned(self):
+        params = CreateAppParams(prompt="Refund approval for ecommerce orders. " + "x" * 50_000, mode="workflow")
+        assert AppService._resolve_app_name(params, self._account()) == "Refund approval for ecommerce"

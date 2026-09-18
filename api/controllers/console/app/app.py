@@ -156,7 +156,13 @@ class StarredAppListQuery(AppListBaseQuery):
 
 
 class CreateAppPayload(BaseModel):
-    name: str = Field(..., min_length=1, description="App name")
+    # Optional since App Builder: an app created from the homepage prompt sends
+    # ``prompt`` and no ``name``. A supplied name still wins -- that is
+    # create-from-blank, where the user names the app and Builder inherits it.
+    name: str | None = Field(default=None, min_length=1, description="App name; derived from prompt when omitted")
+    prompt: str | None = Field(
+        default=None, description="Goal prompt the app was created from; used to derive the name"
+    )
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
     icon_type: IconType | None = Field(default=None, description="Icon type")
@@ -708,6 +714,7 @@ class AppListApi(Resource):
         """Create app"""
         params = CreateAppParams(
             name=req_data.name,
+            prompt=req_data.prompt,
             description=req_data.description,
             mode=req_data.mode,
             icon_type=req_data.icon_type,

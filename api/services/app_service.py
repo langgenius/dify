@@ -2,9 +2,10 @@ import json
 import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
+import pytz
 import sqlalchemy as sa
 from pydantic import BaseModel, Field
 from sqlalchemy import ColumnElement, delete, select
@@ -15,6 +16,7 @@ from configs import dify_config
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from core.dify_builder import naming
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.tools.tool_manager import ToolManager
@@ -149,8 +151,17 @@ class RecentAppListItem:
     maintainer: str | None
 
 
+# Only a prompt's opening clause can become a name, so nothing past this point
+# can affect the result.
+_NAME_PROMPT_SCAN_LIMIT = 2000
+
+
 class CreateAppParams(BaseModel):
-    name: str = Field(min_length=1)
+    # Optional since App Builder: an app created from a goal prompt is named
+    # after it (``core.dify_builder.naming``). A blank pair still names the app
+    # rather than failing.
+    name: str | None = Field(default=None, min_length=1)
+    prompt: str | None = None
     description: str | None = None
     mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
     agent_role: str = Field(default="", max_length=255)
@@ -575,6 +586,27 @@ class AppService:
 
         session.delete(existing_star)
 
+    @staticmethod
+    def _resolve_app_name(params: CreateAppParams, account: Account) -> str:
+        """The name to store (App Builder spec, board N).
+
+        A name the user gave wins outright -- that is create-from-blank, where
+        Builder only inherits. Otherwise it is cut out of the goal prompt, with
+        the account's timezone and console language shaping the
+        ``New app · Sep 7, 14:02`` fallback.
+        """
+        if params.name:
+            return params.name
+        try:
+            now = datetime.now(pytz.timezone(account.timezone or "UTC"))
+        except Exception:
+            now = datetime.now(UTC)
+        return naming.derive_app_name(
+            (params.prompt or "")[:_NAME_PROMPT_SCAN_LIMIT],
+            now=now,
+            language=account.interface_language or "en-US",
+        )
+
     def create_app(
         self,
         tenant_id: str,
@@ -659,7 +691,7 @@ class AppService:
             default_model_config["model"] = json.dumps(default_model_dict)
 
         app = App(**app_template["app"])
-        app.name = params.name
+        app.name = self._resolve_app_name(params, account)
         app.description = params.description or ""
         app.mode = app_mode
         app.icon_type = IconType(params.icon_type) if params.icon_type else IconType.EMOJI
@@ -979,13 +1011,22 @@ class AppService:
         :return: App instance
         """
         assert current_user is not None
+        return self.rename_app(app, name, account_id=current_user.id, session=session)
+
+    def rename_app(self, app: App, name: str, *, account_id: str, session: Session) -> App:
+        """Rename an app on behalf of ``account_id``.
+
+        :meth:`update_app_name` with the actor passed in rather than read off the
+        request, so callers outside a request context -- the Dify Builder advance
+        task -- can rename without reaching for ``current_user``.
+        """
         app.name = name
-        app.updated_by = current_user.id
+        app.updated_by = account_id
         app.updated_at = naive_utc_now()
         self._sync_backing_agent_identity(
             app,
             name=app.name,
-            account_id=current_user.id,
+            account_id=account_id,
             updated_at=app.updated_at,
             session=session,
         )

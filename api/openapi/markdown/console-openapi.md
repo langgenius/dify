@@ -16452,6 +16452,19 @@ snapshot must reconstruct the same canvas.
 | session_id | string |  | Yes |
 | stage_id | string |  | Yes |
 
+#### CardOption
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canvas_event | string |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| input | [OptionInput](#optioninput) |  | No |
+| is_default | boolean |  | No |
+| label | string |  | Yes |
+| next_state | string |  | No |
+| tone | string, <br>**Default:** neutral |  | No |
+
 #### ChallengeCard
 
 | Name | Type | Description | Required |
@@ -17080,7 +17093,8 @@ Enum class for configurate method of provider model.
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
-| name | string | App name | Yes |
+| name | string | App name; derived from prompt when omitted | No |
+| prompt | string | Goal prompt the app was created from; used to derive the name | No |
 
 #### CreateSnippetPayload
 
@@ -17813,6 +17827,15 @@ Enum class for datasource provider
 | start_node_id | string |  | Yes |
 | start_node_title | string |  | Yes |
 
+#### Decision
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cancel | [Action](#action) |  | No |
+| confirm | [Action](#action) |  | No |
+| default_option_id | string |  | No |
+| options | [ [CardOption](#cardoption) ] |  | No |
+
 #### DecisionItem
 
 | Name | Type | Description | Required |
@@ -18044,6 +18067,7 @@ Enum representing the deployment edition of the platform.
 | canvas_read_only | boolean |  | Yes |
 | checkpoint | [CheckpointRef](#checkpointref) |  | No |
 | conversation_last_seq | integer |  | Yes |
+| decision | [Decision](#decision) |  | No |
 | entry_mode | [EntryMode](#entrymode) |  | No |
 | interrupted | boolean |  | Yes |
 | kind | string, <br>**Default:** command_started |  | No |
@@ -18105,6 +18129,7 @@ Enum representing the deployment edition of the platform.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | Yes |
+| derive_app_name | boolean |  | No |
 | goal_text | string |  | Yes |
 | model_config | [SessionModel](#sessionmodel) |  | No |
 | scenario | string |  | Yes |
@@ -18273,6 +18298,7 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | canvas_read_only | boolean |  | Yes |
 | checkpoint | [CheckpointRef](#checkpointref) |  | No |
 | conversation_last_seq | integer |  | Yes |
+| decision | [Decision](#decision) |  | No |
 | entry_mode | [EntryMode](#entrymode) |  | No |
 | interrupted | boolean |  | Yes |
 | model | [SessionModel](#sessionmodel) |  | No |
@@ -18294,6 +18320,7 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | canvas_read_only | boolean |  | Yes |
 | checkpoint | [CheckpointRef](#checkpointref) |  | No |
 | conversation_last_seq | integer |  | Yes |
+| decision | [Decision](#decision) |  | No |
 | entry_mode | [EntryMode](#entrymode) |  | No |
 | interrupted | boolean |  | Yes |
 | kind | string, <br>**Default:** state |  | No |
@@ -18930,6 +18957,7 @@ declaration of an endpoint group
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | body | string |  | Yes |
+| diagnostics | [ object ] |  | No |
 | node_id | string |  | No |
 | title | string |  | Yes |
 | tone | string, <br>**Default:** danger |  | No |
@@ -20852,6 +20880,15 @@ OAuth schema
 | ---- | ---- | ----------- | -------- |
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
 | value | string | The value of the option | Yes |
+
+#### OptionInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| max_length | integer, <br>**Default:** 100 |  | No |
+| min_length | integer |  | No |
+| placeholder | string |  | No |
+| required | boolean, <br>**Default:** true |  | No |
 
 #### OutputErrorStrategy
 
