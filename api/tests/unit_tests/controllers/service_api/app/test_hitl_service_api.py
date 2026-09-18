@@ -52,6 +52,7 @@ from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
 from services.workflow_event_snapshot_service import _build_snapshot_events
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_workflow
 
 
 class _DummyRateLimit:
@@ -111,14 +112,14 @@ def _end_user(*, user_id: str = "end-user-1", app_id: str = "app-1", tenant_id: 
 
 
 def _workflow(*, workflow_id: str = "workflow-id", app_id: str = "app-id", tenant_id: str = "tenant-id") -> Workflow:
-    return Workflow(
-        id=workflow_id,
+    return make_workflow(
+        workflow_id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type=WorkflowType.WORKFLOW,
+        workflow_type=WorkflowType.WORKFLOW,
         version="1",
-        graph=json.dumps({"nodes": [], "edges": []}),
-        features="{}",
+        graph={"nodes": [], "edges": []},
+        features={},
         created_by="owner-id",
         environment_variables=[],
         conversation_variables=[],
