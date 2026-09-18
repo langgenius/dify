@@ -91,14 +91,53 @@ def test_discover_resources_grounds_real_ids(monkeypatch):
     assert opts[0].kind == "knowledge"
 
 
-def test_discover_resources_degrades_on_boom(monkeypatch):
-    monkeypatch.setattr(build.resources, "list_tenant_resources", lambda t: resources.TenantResources(  # noqa: ARG005
-        models=[], datasets=[resources.ResourceRef(id="kb-1", label="Company KB")], tools=[]))
-    m = _BoomInstance()
+def _stub_inventory(monkeypatch, *, datasets=(), models=(), tools=()):
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda _t: resources.TenantResources(models=list(models), datasets=list(datasets), tools=list(tools)),
+    )
+
+
+def test_discover_resources_recommends_nothing_when_the_call_fails(monkeypatch):
+    # Previously degraded to the whole inventory, which the client pre-checks
+    # and submits by default -- binding resources nobody chose.
+    _stub_inventory(monkeypatch, datasets=[resources.ResourceRef(id="kb-1", label="Company KB")])
+
+    assert build.discover_resources(_BoomInstance(), "t1", ["Retrieve knowledge"]) == []
+
+
+def test_discover_resources_recommends_nothing_without_a_model(monkeypatch):
+    # A degraded agent has no signal at all, so it must not claim a recommendation.
+    _stub_inventory(monkeypatch, datasets=[resources.ResourceRef(id="kb-1", label="Company KB")])
+
+    assert build.discover_resources(None, "t1", ["Retrieve knowledge"]) == []
+
+
+def test_discover_resources_never_falls_back_to_the_whole_inventory(monkeypatch):
+    # The regression that made this visible: a large workspace whose model picks
+    # nothing. The old single-resource test could not tell "all" from "none".
+    _stub_inventory(
+        monkeypatch,
+        datasets=[resources.ResourceRef(id=f"kb-{i}", label=f"KB {i}") for i in range(20)],
+        models=[resources.ResourceRef(id=f"prov/model-{i}", label=f"Model {i}") for i in range(30)],
+        tools=[resources.ResourceRef(id=f"tool-{i}/run", label=f"Tool {i}") for i in range(7)],
+    )
+    picked_none = _FakeInstance([json.dumps({"resource_ids": []})])
+
+    assert build.discover_resources(picked_none, "t1", ["Send a notification"]) == []
+
+
+def test_discover_resources_keeps_only_ids_the_model_actually_picked(monkeypatch):
+    _stub_inventory(
+        monkeypatch,
+        datasets=[resources.ResourceRef(id=f"kb-{i}", label=f"KB {i}") for i in range(20)],
+    )
+    m = _FakeInstance([json.dumps({"resource_ids": ["kb-3", "not-in-catalog"]})])
+
     opts = build.discover_resources(m, "t1", ["Retrieve knowledge"])
-    assert len(opts) == 1
-    assert opts[0].id == "kb-1"
-    assert opts[0].kind == "knowledge"
+
+    assert [o.id for o in opts] == ["kb-3"]
 
 
 def test_bind_resources_names_bound_label(monkeypatch):
