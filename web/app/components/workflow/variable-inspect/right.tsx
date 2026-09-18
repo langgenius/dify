@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import Badge from '@/app/components/base/badge'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -315,7 +315,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
         {!currentNodeVar?.var && <Empty />}
         {isValueFetching && (
           <div className="flex h-full items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         {currentNodeVar?.var && !isValueFetching && (

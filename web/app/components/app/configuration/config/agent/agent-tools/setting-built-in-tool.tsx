@@ -18,7 +18,7 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -183,7 +183,7 @@ const SettingBuiltInTool: FC<Props> = ({
             )}
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-              {isLoading && <Loading type="app" />}
+              {isLoading && <LoadingPlaceholder className="h-full" />}
               {!isLoading && (
                 <>
                   {/* header */}

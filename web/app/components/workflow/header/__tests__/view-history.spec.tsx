@@ -56,8 +56,8 @@ vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading" />,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div data-testid="loading" />,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({

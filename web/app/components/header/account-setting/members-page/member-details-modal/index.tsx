@@ -8,7 +8,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
 import AssignRolesModal from '../assign-roles-modal'
@@ -156,7 +156,7 @@ const MemberDetailsModal = ({
 
             {isLoadingRolesOfMember ? (
               <div className="mt-4">
-                <Loading />
+                <LoadingPlaceholder />
               </div>
             ) : (
               <>

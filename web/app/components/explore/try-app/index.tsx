@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import App from './app'
 import AppInfo from './app-info'
@@ -49,7 +49,7 @@ function TryApp({
       <DialogContent className="h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-full max-w-[calc(100vw-32px)] min-w-7xl overflow-hidden overflow-x-auto border-none p-2 text-left align-middle">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         ) : isError ? (
           <div className="flex h-full items-center justify-center">

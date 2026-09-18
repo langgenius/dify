@@ -35,7 +35,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
@@ -377,7 +377,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                 <div className="flex min-h-0 flex-1 flex-col pt-3">
                   {isDetailLoading && (
                     <div className="flex h-50">
-                      <Loading type="app" />
+                      <LoadingPlaceholder className="h-full" />
                     </div>
                   )}
                   {!isDetailLoading && (
