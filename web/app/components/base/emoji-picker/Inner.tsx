@@ -1,14 +1,14 @@
 'use client'
 import type { EmojiMartData } from '@emoji-mart/data'
-import type { ChangeEvent } from 'react'
 import data from '@emoji-mart/data'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { init } from 'emoji-mart'
 import * as React from 'react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
 import { searchEmoji } from '@/utils/emoji'
 import { backgroundColors, defaultEmojiBackground } from './constants'
 
@@ -22,6 +22,7 @@ type IEmojiPickerInnerProps = {
 }
 
 function EmojiPickerInner({ emoji, background, onSelect, className }: IEmojiPickerInnerProps) {
+  const { t } = useTranslation()
   const { categories } = data as EmojiMartData
   const [selectedEmoji, setSelectedEmoji] = useState(emoji || '')
   const [selectedBackground, setSelectedBackground] = useState(background || defaultEmojiBackground)
@@ -45,26 +46,25 @@ function EmojiPickerInner({ emoji, background, onSelect, className }: IEmojiPick
   return (
     <div className={cn(className, 'flex flex-col')}>
       <div className="flex w-full flex-col items-center px-3 pb-2">
-        <div className="relative w-full">
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3">
-            <MagnifyingGlassIcon className="size-5 text-text-quaternary" aria-hidden="true" />
-          </div>
-          <Input
-            className="pl-10"
+        <InputGroup>
+          <InputGroupInput
             type="search"
-            id="search"
+            aria-label={t(($) => $['operation.search'], { ns: 'common' })}
             placeholder="Search emojis..."
-            onChange={async (e: ChangeEvent<HTMLInputElement>) => {
-              if (e.target.value === '') {
+            onValueChange={async (value) => {
+              if (value === '') {
                 setIsSearching(false)
               } else {
                 setIsSearching(true)
-                const emojis = await searchEmoji(e.target.value)
+                const emojis = await searchEmoji(value)
                 setSearchedEmojis(emojis)
               }
             }}
           />
-        </div>
+          <InputGroupAddon className="ps-3 pe-2">
+            <MagnifyingGlassIcon className="size-5 text-text-quaternary" aria-hidden="true" />
+          </InputGroupAddon>
+        </InputGroup>
       </div>
       <Divider className="my-3" />
 

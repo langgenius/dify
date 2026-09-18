@@ -173,6 +173,28 @@ describe('TagSelector', () => {
     }
   })
 
+  it('keeps dataset tag popup option interactions inside the tag trigger', async () => {
+    const user = userEvent.setup()
+    const onOuterClick = vi.fn()
+    mockUseQueryData.current = [
+      { id: 'knowledge-tag-1', name: 'Knowledge', type: 'knowledge', binding_count: '' },
+    ]
+
+    document.addEventListener('click', onOuterClick)
+    try {
+      render(
+        <DatasetCardTags datasetId="dataset-1" embeddingAvailable tags={[]} canBindOrUnbindTags />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: i18n.addTag }))
+      await user.click(await screen.findByRole('option', { name: 'Knowledge' }))
+
+      expect(onOuterClick).not.toHaveBeenCalled()
+    } finally {
+      document.removeEventListener('click', onOuterClick)
+    }
+  })
+
   it('renders the no tag trigger when no current tag is visible and binding is unavailable', () => {
     render(
       <TagSelector

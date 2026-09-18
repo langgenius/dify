@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
-import { DrawerCloseButton } from '@langgenius/dify-ui/drawer'
+import { DrawerCloseButton, DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
@@ -76,9 +76,9 @@ const NewFeaturePanel = ({
         {/* header */}
         <div className="flex shrink-0 justify-between p-4 pb-3">
           <div>
-            <div className="system-xl-semibold text-text-primary">
+            <DrawerTitle className="system-xl-semibold text-text-primary">
               {title ?? t(($) => $['common.features'], { ns: 'workflow' })}
-            </div>
+            </DrawerTitle>
             <div className="body-xs-regular text-text-tertiary">
               {description ?? t(($) => $['common.featuresDescription'], { ns: 'workflow' })}
             </div>

@@ -474,6 +474,7 @@
   "operation.fill": "Isi otomatis",
   "operation.format": "Format",
   "operation.imageCopied": "Gambar yang disalin",
+  "operation.imageCopyFailed": "Gambar tidak dapat disalin. Silakan unduh sebagai gantinya.",
   "operation.imageDownloaded": "Gambar diunduh",
   "operation.in": "di",
   "operation.learnMore": "Pelajari lebih lanjut",

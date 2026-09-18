@@ -227,6 +227,8 @@
   "skillManagement.errors.missingSkillMd": "此 Skill 包中没有 SKILL.md。请添加该文件后重新导入。",
   "skillManagement.errors.nameConflict": "名为「{{name}}」的 Skill 已存在。请在 SKILL.md 中修改名称后重新导入。",
   "skillManagement.errors.workspaceLimit": "工作空间最多可添加 500 个 Skill。请先删除一个 Skill，再添加新 Skill。",
+  "skillManagement.exportDialog.description": "此操作将导出此 Skill 当前已保存的草稿。如果编辑器中有未保存的更改，请先保存后再导出。",
+  "skillManagement.exportDialog.title": "导出当前已保存的草稿",
   "skillManagement.import": "导入",
   "skillManagement.importFailed": "Skill 导入失败。",
   "skillManagement.importSuccess": "Skill 已导入。",

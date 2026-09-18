@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import datetime
 from decimal import Decimal
 from inspect import unwrap
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
+import sqlalchemy as sa
 from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
@@ -288,3 +290,109 @@ def test_completion_conversation_delete_maps_not_found(
     session = unbound_session
     with pytest.raises(NotFound):
         method(api, session, _make_account(), app_model=_app(), conversation_id="c1")
+
+
+# ── Regression tests for the < vs <= end-time boundary bug ──────────────────
+
+
+def _captured_where_clauses(
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    endpoint_class,
+    query_instance,
+    app_mode,
+) -> list[str]:
+    """
+    Run the endpoint's GET handler with a fixed end_datetime and capture the
+    SQLAlchemy WHERE clause strings that were applied so we can assert on the
+    comparison operator used for the end-time boundary.
+
+    ``query_instance`` is passed directly to the unwrapped handler, so callers
+    can pre-configure it (e.g. ``ChatConversationQuery(sort_by="created_at")``).
+    """
+    # 2024-01-15 14:30:00 UTC — parse_time_range returns second=0; the handler
+    # then calls .replace(second=59) giving 14:30:59.
+    boundary_dt = datetime.datetime(2024, 1, 15, 14, 30, 0)
+
+    monkeypatch.setattr(
+        conversation_module,
+        "parse_time_range",
+        lambda *_args, **_kwargs: (None, boundary_dt),
+    )
+
+    captured: list[str] = []
+    original_where = sa.sql.selectable.Select.where
+
+    def spy_where(self, *criteria, **kwargs):
+        for c in criteria:
+            captured.append(str(c.compile(compile_kwargs={"literal_binds": True})))
+        return original_where(self, *criteria, **kwargs)
+
+    paginate_result = MagicMock()
+    paginate_result.page = 1
+    paginate_result.per_page = 20
+    paginate_result.total = 0
+    paginate_result.has_next = False
+    paginate_result.items = []
+    monkeypatch.setattr(conversation_module, "paginate_query", lambda *_args, **_kwargs: paginate_result)
+
+    api = endpoint_class()
+    method = unwrap(api.get)
+    account = _make_account()
+
+    with app.test_request_context("/", method="GET"):
+        with patch.object(sa.sql.selectable.Select, "where", spy_where):
+            method(
+                api,
+                query_instance,
+                MagicMock(spec=Session),
+                account,
+                app_model=_app(mode=app_mode),
+            )
+
+    return captured
+
+
+def test_completion_conversation_end_time_filter_is_inclusive(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """CompletionConversationApi must use <= (not <) for the end-time boundary.
+
+    Regression test for the bug where `created_at < end_datetime_utc` was used
+    instead of `created_at <= end_datetime_utc`, silently dropping conversations
+    created at exactly the boundary second (HH:MM:59).
+    """
+    clauses = _captured_where_clauses(
+        monkeypatch,
+        app,
+        conversation_module.CompletionConversationApi,
+        conversation_module.CompletionConversationQuery(),
+        AppMode.COMPLETION,
+    )
+    # Filter by the boundary timestamp value — field name not assumed.
+    end_clauses = [c for c in clauses if "14:30:59" in c]
+    assert end_clauses, "No end-time WHERE clause found for CompletionConversationApi"
+    for clause in end_clauses:
+        assert "<=" in clause, f"CompletionConversationApi end-time filter must use <= (inclusive), got: {clause!r}"
+        assert clause.count("<") == 1, f"Expected exactly one <= operator (no stray < without =), got: {clause!r}"
+
+
+def test_chat_conversation_end_time_filter_is_inclusive(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """ChatConversationApi must use <= for the end-time boundary (control test).
+
+    ChatConversationQuery defaults to sort_by='-updated_at', which routes the
+    end-time filter through the updated_at branch. We explicitly request
+    sort_by='created_at' to exercise the created_at branch and confirm it also
+    uses <=, mirroring what CompletionConversationApi does after the fix.
+    """
+    clauses = _captured_where_clauses(
+        monkeypatch,
+        app,
+        conversation_module.ChatConversationApi,
+        # Use created_at sort so the WHERE clause hits created_at, not updated_at.
+        conversation_module.ChatConversationQuery(sort_by="created_at"),
+        AppMode.ADVANCED_CHAT,
+    )
+    # Filter by the boundary timestamp value — field name not assumed.
+    end_clauses = [c for c in clauses if "14:30:59" in c]
+    assert end_clauses, "No end-time WHERE clause found for ChatConversationApi"
+    for clause in end_clauses:
+        assert "<=" in clause, f"ChatConversationApi end-time filter must use <= (inclusive), got: {clause!r}"
