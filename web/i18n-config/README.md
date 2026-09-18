@@ -24,6 +24,10 @@ Do not copy the language registry into documentation. Read the current source fi
 
 `supportedLocales` is populated from the supported entries in `languages.ts`. `language.ts` exposes the existing `LanguagesSupported` and `I18nText` contracts.
 
+## Initial client namespaces
+
+The root layout serializes only shell and route-matched namespaces into the client i18n instance. Additional namespaces load on demand through the existing locale resource backend when a route changes or a component requests them. Route rules live in `initial-namespaces.ts`.
+
 ## Locale selection
 
 A nonempty locale cookie takes priority over `Accept-Language`. An unusable cookie falls back to English without consulting the header. Header negotiation preserves valid preferences and their quality order while ignoring malformed tags and wildcards.

@@ -12,7 +12,7 @@ import { LOCALE_COOKIE_NAME } from '@/config'
 import { cookies, headers } from '@/next/headers'
 import { loadI18nResource } from './load-resource'
 import { canonicalizeLanguageTag, defaultLocale, supportedLocales } from './locale'
-import { namespacesInFileName } from './resources'
+import { getInitialNamespacesForPath } from './initial-namespaces'
 import { getInitOptions } from './settings'
 
 const getOrCreateI18next = cache(async (lng: Locale) => {
@@ -57,15 +57,28 @@ export const getLocaleOnServer = cache(async (): Promise<Locale> => {
   return match(languages, supportedLocales, defaultLocale) as Locale
 })
 
-export const getResources = cache(async (lng: Locale): Promise<Resource> => {
+async function loadResourceNamespaces(
+  lng: Locale,
+  namespacesToLoad: readonly Namespace[],
+): Promise<Resource> {
   const messages = {} as ResourceLanguage
 
   await Promise.all(
-    namespacesInFileName.map(async (ns) => {
+    namespacesToLoad.map(async (ns) => {
       const mod = await loadI18nResource(lng, ns)
       messages[camelCase(ns)] = mod.default
     }),
   )
 
   return { [lng]: messages }
+}
+
+export const getResources = cache(async (
+  lng: Locale,
+  namespacesToLoad: readonly Namespace[],
+): Promise<Resource> => loadResourceNamespaces(lng, namespacesToLoad))
+
+export const getResourcesForPath = cache(async (lng: Locale, pathname: string): Promise<Resource> => {
+  const namespacesToLoad = getInitialNamespacesForPath(pathname)
+  return loadResourceNamespaces(lng, namespacesToLoad)
 })

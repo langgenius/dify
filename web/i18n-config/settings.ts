@@ -1,8 +1,15 @@
 import type { InitOptions } from 'i18next'
 import { defaultLocale } from './locale'
 import { defaultNS, namespaces } from './resources'
+import type { Namespace } from './resources'
 
-export function getInitOptions(): InitOptions {
+type GetInitOptionsParams = {
+  namespaces?: readonly Namespace[]
+}
+
+export function getInitOptions(params?: GetInitOptionsParams): InitOptions {
+  const activeNamespaces = params?.namespaces ?? namespaces
+
   return {
     // We do not have en for fallback
     load: 'currentOnly',
@@ -11,7 +18,7 @@ export function getInitOptions(): InitOptions {
     defaultNS,
     enableSelector: 'optimize',
     keySeparator: false,
-    ns: namespaces,
+    ns: [...activeNamespaces],
     interpolation: {
       escapeValue: false,
     },

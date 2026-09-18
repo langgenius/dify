@@ -36,7 +36,7 @@ export const decorators: Decorator[] = [
   (Story) => {
     return (
       <QueryClientProvider client={queryClient}>
-        <I18N locale="en-US" resource={storyResources}>
+        <I18N locale="en-US" resource={storyResources} initialNamespaces={['common', 'app']}>
           <>
             <ToastHost />
             <Story />

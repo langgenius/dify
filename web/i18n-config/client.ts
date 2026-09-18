@@ -9,7 +9,11 @@ import { loadI18nResource } from './load-resource'
 import { normalizeLocale } from './locale'
 import { getInitOptions } from './settings'
 
-export function createI18nextInstance(lng: Locale, resources: Resource) {
+export function createI18nextInstance(
+  lng: Locale,
+  resources: Resource,
+  options?: { namespaces?: readonly Namespace[] },
+) {
   const instance = createInstance()
   instance
     .use(initReactI18next)
@@ -19,7 +23,7 @@ export function createI18nextInstance(lng: Locale, resources: Resource) {
       ),
     )
     .init({
-      ...getInitOptions(),
+      ...getInitOptions({ namespaces: options?.namespaces }),
       lng,
       resources,
     })
