@@ -3,13 +3,17 @@ import type { ModuleDependencies } from './i18n-analysis/routes'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizePath } from 'vite'
-import { analyzeRouteNamespaces } from './i18n-analysis/routes'
+import { analyzeRouteNamespaces, validateRouteNamespaces } from './i18n-analysis/routes'
 
 const SOURCE_META = 'dify:i18n-source'
 
 // Vite shares these instances across client, SSR, and RSC environments. Each
 // completed graph replaces its preceding scan build; only buildApp finalizes it.
-export function i18nAnalysisPlugin(): Plugin[] {
+export function i18nAnalysisPlugin(
+  options: {
+    getDeclaredNamespaces?: (route: string) => readonly string[] | undefined
+  } = {},
+): Plugin[] {
   let root: string
   let logger: Logger
   let reportPath: string | undefined
@@ -79,6 +83,8 @@ export function i18nAnalysisPlugin(): Plugin[] {
       await fs.writeFile(reportPath, `${JSON.stringify({ version: 1, routes }, null, 2)}\n`)
       logger.info(`[i18n] Full namespace sources: ${reportPath}`)
     }
+    if (options.getDeclaredNamespaces)
+      validateRouteNamespaces(routes, options.getDeclaredNamespaces)
     const keys = Object.entries(unused ?? {}).flatMap(([namespace, unused]) =>
       unused.map((key) => `${namespace}:${key}`),
     )

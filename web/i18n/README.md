@@ -75,3 +75,82 @@ not load Vite plugins.
 Changes to `web/i18n/locales/en-US/*.json` on `main` trigger the scoped translation workflow. The workflow derives target locales from `languages.ts`, translates only the changed namespaces and keys, verifies them with `i18n:check`, and opens a pull request when translations change.
 
 Use the `Translate i18n Files with Claude Code` workflow dispatch for a manual scoped sync. Full mode requires an explicit file list.
+
+## Initial route resources
+
+`route-namespaces.ts` owns the explicit `routeNamespaceDeclarations` opt-in map
+shared by server selection, client navigation and production build validation. `/signin` and its child routes use `common` and
+`login`. Other routes retain the complete registry until they are migrated.
+
+The server reads the pathname that `proxy.ts` overwrites on every request. Missing
+or unknown paths conservatively use the full registry. Base paths are supported.
+For sign-in, the serialized resources include the requested locale and, when it
+differs, English fallback resources for those same two namespaces. Unmigrated
+routes retain their existing fallback loading behavior.
+
+Client initialization uses only the provided namespaces. The default namespace is
+`common` for sign-in, so a bare `useTranslation()` does not request `app`. The
+provider keeps the same i18next instance across rerenders and locale changes.
+A namespace-set change resets only the translation readiness component; the
+provider and business subtree retain their state, including active notifications.
+Suspense reveals children after the destination's namespaces are loaded. The current route's namespace list also
+controls language switching, without discarding previously loaded bundles.
+
+Server metadata requests initialize an empty instance and load their requested
+namespace. Existing server consumers without a namespace keep the full-catalog
+behavior for cross-namespace calls.
+
+### Build validation
+
+Production Vite builds check every opted-in route against its declaration using
+the combined client, SSR and RSC module graphs. The check includes page imports,
+shared layouts and boundaries, dynamic imports and conservative parallel slots.
+An undeclared namespace fails the build and lists the route and source files.
+The JSON analysis report is written before validation, so it remains available
+when validation fails. Unregistered routes are not checked against a restricted
+list and continue to load the full catalog.
+
+Add a subtree to `routeNamespaceDeclarations` after auditing its dependencies;
+more specific declarations override ancestor declarations. The check covers
+statically recognized translation usage, including namespace constants, imported
+arrays and nested static spreads passed to translation hooks or server loaders,
+not arbitrary runtime imports or
+unknown translation APIs. Consult the analyzer README for its limitations.
+
+### Production validation of the sign-in migration
+
+Measured locally on 2026-09-18 against layer 2 (`b6405a857a`), using production
+Vinext standalone builds and fresh Chromium contexts. Both builds used the same
+controlled API fixture: `createSystemFeaturesFixture({ is_allow_register: true })`,
+completed setup/init, and an unauthenticated account-profile response. These are
+frontend transfer diagnostics, not production-backend latency measurements.
+
+| `/signin` metric                              |  Before |   After |
+| --------------------------------------------- | ------: | ------: |
+| English HTML response body, bytes             | 438,163 |  95,915 |
+| Chinese HTML response body, bytes             | 424,123 | 148,172 |
+| English RSC response body, bytes              | 380,526 |  59,829 |
+| Chinese RSC response body, bytes              | 366,751 | 108,608 |
+| English initial translation-module requests   |       0 |       0 |
+| Chinese initial translation-module requests   |      36 |       0 |
+| English → Chinese translation-module requests |      37 |       2 |
+
+HTML includes embedded RSC and other page data; HTML and standalone RSC sizes
+must not be added. RSC was requested separately using `RSC: 1` on `/signin?_rsc`
+with an explicit locale cookie. Body sizes are decoded bytes, not compressed
+wire transfer sizes. Estimated gzip sizes for the HTML bodies were approximately
+106 KB → 23 KB (English) and 112 KB → 38 KB (Chinese).
+
+Translation requests were identified using the production client manifest's
+`i18n/locales/` entries, rather than chunk-name guesses. The new language-switch
+waterfall loads the locale loader module, then the common and login modules in
+parallel. No translation modules are requested on initial English or Chinese
+sign-in hydration. Rendered page text matched the baseline and no browser runtime
+errors were recorded. Client navigation to `/signup` and back rendered correctly;
+unmigrated destinations still load their complete namespace set on entry.
+
+Unit coverage uses real i18next/react-i18next to check initial loading, missing-key
+fallback, locale persistence, route transitions and active-route language changes.
+The route-analysis report is diagnostic guidance, not an automatic resource manifest.
+Datasets and authenticated feature-navigation/network validation remain follow-up
+work for issue #42442; this migration does not close that issue.
