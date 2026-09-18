@@ -466,6 +466,23 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     }
   }
 
+  function recordLoadedNamespaces(expression: ts.Expression, seen = new Set<ts.Node>()) {
+    const node = unwrap(expression)
+    if (seen.has(node)) return
+    const next = new Set(seen).add(node)
+    if (ts.isStringLiteralLike(node)) currentNamespaces.add(node.text)
+    else if (ts.isArrayLiteralExpression(node))
+      node.elements.forEach((element) => recordLoadedNamespaces(element, next))
+    else if (ts.isSpreadElement(node)) recordLoadedNamespaces(node.expression, next)
+    else {
+      // Resolve values, not type unions: a route parameter's type lists possible
+      // namespaces rather than requests made on every route by a shared provider.
+      for (const value of alternatives(node)) {
+        if (value && !ts.isFunctionDeclaration(value)) recordLoadedNamespaces(value, next)
+      }
+    }
+  }
+
   function visit(node: ts.Node) {
     if (ts.isStringLiteralLike(node) && (node.text.includes('.') || node.text.includes(':'))) {
       const contextual = checker.getContextualType(node)
@@ -485,15 +502,7 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
         // Do not mark translation keys as used merely because a namespace loads.
         const nsIndex = name.endsWith('getTranslation') ? 1 : 0
         const argument = node.arguments[nsIndex]
-        for (const value of argument ? alternatives(argument) : []) {
-          if (!value || ts.isFunctionDeclaration(value)) continue
-          const entries = ts.isArrayLiteralExpression(value) ? value.elements : [value]
-          for (const entry of entries) {
-            // A route-dependent array's element type describes possible values,
-            // not the namespaces loaded on every route by the shared provider.
-            if (ts.isStringLiteralLike(entry)) currentNamespaces.add(entry.text)
-          }
-        }
+        if (argument) recordLoadedNamespaces(argument)
       }
       const info = translation(node.expression, node)
       const argument = info && node.arguments[info.argument]
