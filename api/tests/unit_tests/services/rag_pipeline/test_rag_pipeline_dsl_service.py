@@ -7,7 +7,6 @@ service branch that owns the behavior under test.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
@@ -29,7 +28,7 @@ from models.dataset import (
     PipelineCustomizedTemplate,
 )
 from models.enums import DataSourceType
-from models.workflow import Workflow, WorkflowKind, WorkflowType
+from models.workflow import Workflow, WorkflowType
 from services.dsl_version import check_version_compatibility
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline import rag_pipeline_dsl_service as module
