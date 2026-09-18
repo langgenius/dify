@@ -159,7 +159,10 @@ function ModelSelectorTrigger({
                   />
                 )}
                 {isDeprecated && (
-                  <span className="grow truncate system-sm-regular text-components-input-text-filled line-through">
+                  <span
+                    className="grow truncate system-sm-regular text-components-input-text-filled line-through"
+                    title={defaultModel.model}
+                  >
                     {defaultModel.model}
                   </span>
                 )}
