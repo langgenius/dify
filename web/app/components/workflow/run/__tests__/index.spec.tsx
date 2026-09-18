@@ -1,6 +1,6 @@
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../types'
@@ -158,16 +158,17 @@ describe('RunPanel', () => {
     await screen.findByText('Workflow failed')
     expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'runLog.detail' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.detail' }))
     expect(screen.getByRole('status')).toHaveTextContent('FAIL')
     expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
     await screen.findByText('Trace Node')
     expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
   })
 
   it('switches between detail, tracing, and result tabs with real child panels', async () => {
+    const user = userEvent.setup()
     renderWorkflowComponent(
       <RunPanel
         activeTab="RESULT"
@@ -185,13 +186,18 @@ describe('RunPanel', () => {
       expect(screen.getAllByText('SUCCESS').length).toBeGreaterThan(0)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+    expect(screen.getByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+
+    await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
 
     await waitFor(() => {
       expect(screen.getByText('Trace Node')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'runLog.result' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
 
     await waitFor(() => {
       expect(mockFetchRunDetail).toHaveBeenCalledTimes(2)
@@ -199,6 +205,38 @@ describe('RunPanel', () => {
         'workflow output',
       )
     })
+  })
+
+  it('lets keyboard users switch the logs detail and tracing panels when result is hidden', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(
+      <RunPanel
+        hideResult
+        activeTab="DETAIL"
+        runDetailUrl="/console/api/runs/run-1"
+        tracingListUrl="/console/api/runs/run-1/tracing"
+      />,
+    )
+
+    const detailPanel = await screen.findByRole('tabpanel', { name: 'runLog.detail' })
+    await waitFor(() =>
+      expect(within(detailPanel).getAllByText('SUCCESS').length).toBeGreaterThan(0),
+    )
+    expect(screen.queryByRole('tab', { name: 'runLog.result' })).not.toBeInTheDocument()
+
+    await user.tab()
+    expect(screen.getByRole('tab', { name: 'runLog.detail' })).toHaveFocus()
+    await user.keyboard('{ArrowRight}')
+
+    const tracingTab = screen.getByRole('tab', { name: 'runLog.tracing' })
+    expect(tracingTab).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(tracingTab).toHaveAttribute('aria-selected', 'true')
+    const tracingPanel = screen.getByRole('tabpanel', { name: 'runLog.tracing' })
+    expect(tracingTab).toHaveAttribute('aria-controls', tracingPanel.id)
+    expect(within(tracingPanel).getByText('Trace Node')).toBeInTheDocument()
+    expect(screen.queryByRole('tabpanel', { name: 'runLog.detail' })).not.toBeInTheDocument()
+    await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(2))
   })
 
   it('reports run-detail and tracing failures through toast.error', async () => {
@@ -217,4 +255,24 @@ describe('RunPanel', () => {
       expect(mockToastError).toHaveBeenCalledWith('Error: tracing boom')
     })
   })
+
+  it.each(['RESULT', 'DETAIL', 'TRACING'] as const)(
+    'refreshes data when the already selected %s tab is clicked',
+    async (activeTab) => {
+      const user = userEvent.setup()
+      renderWorkflowComponent(
+        <RunPanel
+          activeTab={activeTab}
+          runDetailUrl="/console/api/runs/run-1"
+          tracingListUrl="/console/api/runs/run-1/tracing"
+        />,
+      )
+
+      await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(1))
+      await user.click(screen.getByRole('tab', { name: `runLog.${activeTab.toLowerCase()}` }))
+
+      await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(2))
+      expect(mockFetchRunDetail).toHaveBeenCalledTimes(activeTab === 'RESULT' ? 2 : 1)
+    },
+  )
 })

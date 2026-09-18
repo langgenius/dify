@@ -91,6 +91,7 @@
   "table.header.updatedTime": "更新時間",
   "table.header.user": "エンドユーザーまたはアカウント",
   "table.header.userRate": "ユーザーレート",
+  "table.unread": "未読",
   "title": "ログ",
   "triggerBy.appRun": "ウェブアプリ",
   "triggerBy.debugging": "デバッグ",

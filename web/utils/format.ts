@@ -1,6 +1,7 @@
 import type { Dayjs } from 'dayjs'
 import type { Locale } from '@/i18n-config'
 import { localeMap } from '@/i18n-config/language'
+import 'dayjs/locale/az'
 import 'dayjs/locale/de'
 import 'dayjs/locale/es'
 import 'dayjs/locale/fa'

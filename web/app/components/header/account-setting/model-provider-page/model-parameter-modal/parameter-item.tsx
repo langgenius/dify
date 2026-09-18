@@ -343,6 +343,7 @@ function ParameterItem({
 
       return (
         <input
+          aria-labelledby={labelId}
           className={cn(
             isInWorkflow ? 'w-37.5' : 'w-full',
             'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 system-sm-regular text-components-input-text-filled outline-hidden',
@@ -377,6 +378,7 @@ function ParameterItem({
 
       return (
         <textarea
+          aria-labelledby={labelId}
           className="ml-4 h-20 w-full rounded-lg bg-components-input-bg-normal px-1 system-sm-regular text-components-input-text-filled"
           value={renderValue as string}
           onChange={handleStringInputChange}

@@ -227,6 +227,8 @@
   "skillManagement.errors.missingSkillMd": "このスキルパッケージには SKILL.md がありません。SKILL.md を追加してから、もう一度インポートしてください。",
   "skillManagement.errors.nameConflict": "「{{name}}」という名前のスキルはすでに存在します。SKILL.md で名前を変更してから、もう一度インポートしてください。",
   "skillManagement.errors.workspaceLimit": "ワークスペースに追加できるスキルは 500 個までです。スキルを 1 つ削除してから、新しいスキルを追加してください。",
+  "skillManagement.exportDialog.description": "このスキルの保存済みの現在の下書きをエクスポートします。エディターに未保存の変更がある場合は、エクスポートする前に保存してください。",
+  "skillManagement.exportDialog.title": "保存済みの現在の下書きをエクスポート",
   "skillManagement.import": "インポート",
   "skillManagement.importFailed": "スキルのインポートに失敗しました。",
   "skillManagement.importSuccess": "Skill がインポートされました。",
