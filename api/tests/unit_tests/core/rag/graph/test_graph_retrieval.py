@@ -5,6 +5,7 @@ from collections.abc import Callable, Iterator
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.rag.datasource.graph.graph_base import StoredChunkLink, StoredRelation
 from core.rag.datasource.graph.postgres.postgres_graph_store import PostgresGraphStore
 from core.rag.datasource.keyword.jieba import jieba_keyword_table_handler as jieba_handler_module
 from core.rag.graph import graph_retrieval as graph_retrieval_module
@@ -451,3 +452,395 @@ class TestRetrieve:
         documents = GraphRetrieval.retrieve(dataset, "Tell me about Acme", top_k=10, session=session)
 
         assert documents[0].metadata["doc_id"] == "node-1"
+
+
+def _configured_dataset(**setting_overrides: object) -> Dataset:
+    """A dataset whose graph is enabled *and* has an extraction model."""
+    setting: dict[str, object] = {
+        "enabled": True,
+        "model_provider_name": "openai",
+        "model_name": "gpt-4o-mini",
+        "max_depth": 2,
+        "hop_decay": 0.5,
+        "max_seed_entities": 8,
+    }
+    setting.update(setting_overrides)
+    return Dataset(
+        id=DATASET_ID,
+        tenant_id=TENANT_ID,
+        name="kb",
+        created_by="user-1",
+        graph_index_setting=setting,
+    )
+
+
+@pytest.fixture
+def llm_seeds(monkeypatch: pytest.MonkeyPatch) -> Callable[..., list[str]]:
+    """Install a stand-in extractor for the LLM seed fallback.
+
+    Returns the list of queries it was asked about, so a test can assert the
+    fallback was -- or was not -- reached.
+    """
+    asked: list[str] = []
+
+    def _install(*, mentions: list[str] | None = None, error: Exception | None = None) -> list[str]:
+        class _Extractor:
+            def __init__(self, *, tenant_id: str, setting: object) -> None:
+                self.tenant_id = tenant_id
+                self.setting = setting
+
+            def extract_query_entities(self, query: str) -> list[str]:
+                asked.append(query)
+                if error:
+                    raise error
+                return mentions or []
+
+        monkeypatch.setattr(graph_retrieval_module, "EntityRelationExtractor", _Extractor)
+        return asked
+
+    return _install
+
+
+class _BrokenKeywordHandler:
+    """A tokenizer that cannot load its model."""
+
+    def extract_keywords(self, _text: str, _max_keywords_per_chunk: int | None = 10) -> set[str]:
+        raise RuntimeError("the tokenizer model failed to load")
+
+
+class TestTokenizerFallback:
+    def test_a_broken_tokenizer_degrades_to_a_whitespace_split(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(jieba_handler_module, "JiebaKeywordTableHandler", _BrokenKeywordHandler)
+
+        # A broken tokenizer must degrade to a usable probe rather than take
+        # graph retrieval down with it.
+        assert set(extract_query_keywords("Acme Globex")) == {"acme", "globex"}
+
+    def test_the_fallback_still_normalizes_and_filters(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(jieba_handler_module, "JiebaKeywordTableHandler", _BrokenKeywordHandler)
+
+        # Entity names are stored normalized, so the fallback probe has to be too.
+        assert set(extract_query_keywords('a "Acme Corp." X')) == {"acme", "corp"}
+
+
+class TestSettingResolution:
+    def test_a_dataset_with_an_extraction_model_retrieves_normally(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _configured_dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords(["acme"])
+
+        documents = GraphRetrieval.retrieve(dataset, "What did Acme buy?", 10, session=session)
+
+        assert [document.metadata["doc_id"] for document in documents][0] == "node-1"
+
+    def test_retrieval_survives_a_dataset_whose_setting_cannot_be_parsed(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _configured_dataset(max_depth=99)
+        _build_chain_graph(session, dataset)
+        seed_keywords(["acme"])
+
+        # max_depth is bounded; a row that violates it disables the graph rather
+        # than raising through the retrieval path a user is waiting on.
+        assert GraphRetrieval.retrieve(dataset, "What did Acme buy?", 10, session=session) == []
+
+    def test_a_graph_without_an_extraction_model_still_retrieves(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords(["acme"])
+
+        # Only the LLM seed fallback needs a model; lexical retrieval does not,
+        # so an existing graph keeps working while the model is reconfigured.
+        assert GraphRetrieval.retrieve(dataset, "What did Acme buy?", 10, session=session) != []
+
+
+class TestLlmSeedFallback:
+    """The paid fallback for queries that match no entity name lexically."""
+
+    def test_mentions_the_model_extracts_become_seeds(
+        self,
+        session: Session,
+        seed_keywords: Callable[[list[str]], None],
+        llm_seeds: Callable[..., list[str]],
+    ) -> None:
+        dataset = _configured_dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords([])
+        asked = llm_seeds(mentions=["acme"])
+
+        documents = GraphRetrieval.retrieve(dataset, "Who bought the widget maker?", 10, session=session)
+
+        assert asked == ["Who bought the widget maker?"]
+        assert [document.metadata["doc_id"] for document in documents][0] == "node-1"
+
+    def test_a_partial_mention_falls_back_to_name_matching(
+        self,
+        session: Session,
+        seed_keywords: Callable[[list[str]], None],
+        llm_seeds: Callable[..., list[str]],
+    ) -> None:
+        dataset = _configured_dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords([])
+        # "acm" is nobody's stored name, so the exact lookup misses and the
+        # partial match is what rescues the query.
+        llm_seeds(mentions=["acm"])
+
+        documents = GraphRetrieval.retrieve(dataset, "Who bought the widget maker?", 10, session=session)
+
+        assert documents != []
+
+    def test_a_failing_model_leaves_the_query_empty_rather_than_erroring(
+        self,
+        session: Session,
+        seed_keywords: Callable[[list[str]], None],
+        llm_seeds: Callable[..., list[str]],
+    ) -> None:
+        dataset = _configured_dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords([])
+        llm_seeds(error=RuntimeError("the provider is down"))
+
+        # This is a fallback for a query that already matched nothing; an
+        # exception here would fail a search that was going to be empty anyway.
+        assert GraphRetrieval.retrieve(dataset, "Who bought the widget maker?", 10, session=session) == []
+
+    def test_a_model_that_names_nothing_leaves_the_query_empty(
+        self,
+        session: Session,
+        seed_keywords: Callable[[list[str]], None],
+        llm_seeds: Callable[..., list[str]],
+    ) -> None:
+        dataset = _configured_dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords([])
+        llm_seeds(mentions=[])
+
+        assert GraphRetrieval.retrieve(dataset, "Who bought the widget maker?", 10, session=session) == []
+
+    def test_the_fallback_can_be_turned_off_per_dataset(
+        self,
+        session: Session,
+        seed_keywords: Callable[[list[str]], None],
+        llm_seeds: Callable[..., list[str]],
+    ) -> None:
+        dataset = _configured_dataset(llm_query_fallback=False)
+        _build_chain_graph(session, dataset)
+        seed_keywords([])
+        asked = llm_seeds(mentions=["acme"])
+
+        # It costs one LLM call per query that misses, so a dataset must be able
+        # to keep retrieval free.
+        assert GraphRetrieval.retrieve(dataset, "Who bought the widget maker?", 10, session=session) == []
+        assert asked == []
+
+    def test_a_dataset_without_a_model_never_reaches_the_fallback(
+        self,
+        session: Session,
+        seed_keywords: Callable[[list[str]], None],
+        llm_seeds: Callable[..., list[str]],
+    ) -> None:
+        dataset = _dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords([])
+        asked = llm_seeds(mentions=["acme"])
+
+        assert GraphRetrieval.retrieve(dataset, "Who bought the widget maker?", 10, session=session) == []
+        assert asked == []
+
+    def test_an_excluded_document_cannot_seed_through_the_model_either(
+        self,
+        session: Session,
+        seed_keywords: Callable[[list[str]], None],
+        llm_seeds: Callable[..., list[str]],
+    ) -> None:
+        dataset = _configured_dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords([])
+        llm_seeds(mentions=["acme"])
+
+        # Acme is mentioned only by doc-1. The document filter has to bound the
+        # LLM-derived seeds exactly as it bounds the lexical ones, or the model
+        # becomes a way around the caller's permissions.
+        documents = GraphRetrieval.retrieve(
+            dataset, "Who bought the widget maker?", 10, session=session, document_ids_filter=["doc-3"]
+        )
+
+        assert documents == []
+
+
+class TestWalkTermination:
+    def test_an_entity_with_no_edges_still_returns_its_own_chunk(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _dataset()
+        PostgresGraphStore(dataset).add_chunk_graphs(
+            [
+                ChunkGraph(
+                    index_node_id="node-1",
+                    document_id="doc-1",
+                    extraction=GraphExtraction(entities=[_entity("acme")]),
+                )
+            ],
+            session=session,
+        )
+        _segment(session, "node-1", "doc-1", "Acme ships widgets.")
+        seed_keywords(["acme"])
+
+        documents = GraphRetrieval.retrieve(dataset, "Tell me about Acme", 10, session=session)
+
+        # The walk has nowhere to go, but the seed itself is still a citable hit.
+        assert [document.metadata["doc_id"] for document in documents] == ["node-1"]
+
+    def test_facts_whose_chunks_have_no_segment_yield_nothing(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _dataset()
+        store = PostgresGraphStore(dataset)
+        store.add_chunk_graphs([_link("node-1", "doc-1", "acme", "globex", "acquired")], session=session)
+        seed_keywords(["acme"])
+
+        # The graph can outlive the segments it was built from; a fact with no
+        # chunk to cite must not surface as a result.
+        assert GraphRetrieval.retrieve(dataset, "What did Acme buy?", 10, session=session) == []
+
+
+class TestEdgeOrientation:
+    def test_an_edge_between_two_seeds_is_walked_from_the_better_scoring_end(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _dataset()
+        _build_chain_graph(session, dataset)
+        # Both endpoints of the acme->globex edge are seeds, so the walk has to
+        # pick an end rather than counting the edge twice or dropping it.
+        seed_keywords(["acme", "globex"])
+
+        documents = GraphRetrieval.retrieve(dataset, "Acme and Globex", 10, session=session)
+
+        node_ids = [document.metadata["doc_id"] for document in documents]
+        assert "node-1" in node_ids
+        # Reached from the Globex seed in one hop, so it still ranks.
+        assert "node-2" in node_ids
+
+    def test_a_two_seed_walk_reports_one_path_per_chunk(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords(["acme", "globex"])
+
+        documents = GraphRetrieval.retrieve(dataset, "Acme and Globex", 10, session=session)
+
+        for document in documents:
+            path = document.metadata["graph_path"]
+            assert path is not None
+            # The explanation names a seed the caller was allowed to match.
+            assert path["seed_entity"] in {"Acme", "Globex"}
+
+
+def _stored_relation(relation_id: str, source: str, target: str) -> StoredRelation:
+    return StoredRelation(
+        id=relation_id,
+        source_entity_id=source,
+        target_entity_id=target,
+        predicate="acquired",
+    )
+
+
+def _entity_hit(entity_id: str, score: float) -> graph_retrieval_module._EntityHit:
+    return graph_retrieval_module._EntityHit(
+        entity_id=entity_id,
+        score=score,
+        hop=0,
+        seed_display_name=entity_id.title(),
+        path_entities=[entity_id.title()],
+    )
+
+
+class TestOrientDirectly:
+    """`_orient` decides which end of an edge the walk came from.
+
+    Its tie-break and its give-up branch are unreachable from `retrieve` -- the
+    walk only ever asks the store for edges touching the frontier, and a uniform
+    hop decay gives every entity in one hop the same score -- so they are pinned
+    here against the contract they document.
+    """
+
+    def test_the_better_scoring_endpoint_becomes_the_parent(self) -> None:
+        relation = _stored_relation("relation-1", "acme", "globex")
+        hits = {"acme": _entity_hit("acme", 0.25), "globex": _entity_hit("globex", 1.0)}
+
+        parent, child = GraphRetrieval._orient(relation, {"acme", "globex"}, hits)
+
+        # The child should inherit the strongest path available, not whichever
+        # end happens to be the edge's source.
+        assert (parent, child) == ("globex", "acme")
+
+    def test_a_tie_keeps_the_edge_pointing_forwards(self) -> None:
+        relation = _stored_relation("relation-1", "acme", "globex")
+        hits = {"acme": _entity_hit("acme", 1.0), "globex": _entity_hit("globex", 1.0)}
+
+        assert GraphRetrieval._orient(relation, {"acme", "globex"}, hits) == ("acme", "globex")
+
+    def test_an_edge_touching_the_frontier_is_walked_from_that_end(self) -> None:
+        relation = _stored_relation("relation-1", "acme", "globex")
+        hits = {"globex": _entity_hit("globex", 1.0)}
+
+        assert GraphRetrieval._orient(relation, {"globex"}, hits) == ("globex", "acme")
+
+    def test_an_edge_touching_neither_end_of_the_frontier_is_skipped(self) -> None:
+        relation = _stored_relation("relation-1", "acme", "globex")
+
+        # Nothing to inherit a score from, so the edge cannot be scored at all.
+        assert GraphRetrieval._orient(relation, {"initech"}, {}) == (None, None)
+
+
+class TestScoreChunksDirectly:
+    """`_score_chunks` refuses to score anything it cannot explain.
+
+    Every guard below is unreachable through `retrieve`, which only ever asks
+    for links belonging to entities and relations it already scored, but each
+    one keeps an unexplainable chunk out of the ranking.
+    """
+
+    def test_a_link_to_an_unscored_entity_is_ignored(self) -> None:
+        links = [StoredChunkLink(index_node_id="node-1", document_id="doc-1", entity_id="unknown")]
+
+        scores, paths = GraphRetrieval._score_chunks(links, {}, {}, visible={"node-1"})
+
+        assert scores == {}
+        assert paths == {}
+
+    def test_a_link_to_an_unscored_relation_is_ignored(self) -> None:
+        links = [StoredChunkLink(index_node_id="node-1", document_id="doc-1", relation_id="unknown")]
+
+        assert GraphRetrieval._score_chunks(links, {}, {}, visible={"node-1"}) == ({}, {})
+
+    def test_a_link_that_cites_neither_a_node_nor_an_edge_is_ignored(self) -> None:
+        links = [StoredChunkLink(index_node_id="node-1", document_id="doc-1")]
+
+        assert GraphRetrieval._score_chunks(links, {}, {}, visible={"node-1"}) == ({}, {})
+
+    def test_an_invisible_chunk_cannot_influence_the_ranking(self) -> None:
+        links = [StoredChunkLink(index_node_id="node-1", document_id="doc-1", entity_id="acme")]
+        hits = {"acme": _entity_hit("acme", 1.0)}
+
+        # A disabled or still-indexing chunk must not even set the maximum the
+        # other chunks are normalized against.
+        assert GraphRetrieval._score_chunks(links, hits, {}, visible=set()) == ({}, {})
+
+    def test_scores_are_normalized_against_the_strongest_chunk(self) -> None:
+        links = [
+            StoredChunkLink(index_node_id="node-1", document_id="doc-1", entity_id="acme"),
+            StoredChunkLink(index_node_id="node-2", document_id="doc-2", entity_id="globex"),
+        ]
+        hits = {"acme": _entity_hit("acme", 1.0), "globex": _entity_hit("globex", 0.5)}
+
+        scores, paths = GraphRetrieval._score_chunks(links, hits, {}, visible={"node-1", "node-2"})
+
+        assert scores == {"node-1": 1.0, "node-2": 0.5}
+        assert paths["node-1"].seed_entity == "Acme"
