@@ -91,8 +91,9 @@ routes retain their existing fallback loading behavior.
 Client initialization uses only the provided namespaces. The default namespace is
 `common` for sign-in, so a bare `useTranslation()` does not request `app`. The
 provider keeps the same i18next instance across rerenders and locale changes.
-A namespace-set change starts a new readiness boundary; children render after
-the destination's namespaces are loaded. The current route's namespace list also
+A namespace-set change resets only the translation readiness component; the
+provider and business subtree retain their state, including active notifications.
+Suspense reveals children after the destination's namespaces are loaded. The current route's namespace list also
 controls language switching, without discarding previously loaded bundles.
 
 Server metadata requests initialize an empty instance and load their requested
@@ -111,7 +112,9 @@ list and continue to load the full catalog.
 
 Add a subtree to `routeNamespaceDeclarations` after auditing its dependencies;
 more specific declarations override ancestor declarations. The check covers
-statically recognized translation usage, not arbitrary runtime imports or
+statically recognized translation usage, including namespace constants, imported
+arrays and nested static spreads passed to translation hooks or server loaders,
+not arbitrary runtime imports or
 unknown translation APIs. Consult the analyzer README for its limitations.
 
 ### Production validation of the sign-in migration

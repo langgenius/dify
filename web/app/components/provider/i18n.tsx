@@ -21,27 +21,27 @@ export function I18nClientProvider({
 }) {
   const requiredNamespaces = getRouteNamespaces(usePathname(), basePath)
   const [i18n] = useState(() => createI18nextInstance(locale, resource))
+  const defaultNamespace = requiredNamespaces.includes('app') ? 'app' : 'common'
   return (
-    <Suspense fallback={null}>
-      <RouteTranslations
-        key={requiredNamespaces.join(':')}
-        i18n={i18n}
-        requiredNamespaces={requiredNamespaces}
-      >
+    <I18nextProvider i18n={i18n} defaultNS={defaultNamespace}>
+      <Suspense fallback={null}>
+        <RouteTranslations
+          key={requiredNamespaces.join(':')}
+          i18n={i18n}
+          requiredNamespaces={requiredNamespaces}
+        />
         {children}
-      </RouteTranslations>
-    </Suspense>
+      </Suspense>
+    </I18nextProvider>
   )
 }
 
 function RouteTranslations({
   i18n,
-  children,
   requiredNamespaces,
 }: {
   requiredNamespaces: readonly Namespace[]
   i18n: ReturnType<typeof createI18nextInstance>
-  children: React.ReactNode
 }) {
   const defaultNamespace = requiredNamespaces.includes('app') ? 'app' : 'common'
   useTranslation([...requiredNamespaces], { i18n })
@@ -51,9 +51,5 @@ function RouteTranslations({
     i18n.options.ns = [...requiredNamespaces]
     i18n.setDefaultNamespace(defaultNamespace)
   }, [i18n, requiredNamespaces, defaultNamespace])
-  return (
-    <I18nextProvider i18n={i18n} defaultNS={defaultNamespace}>
-      {children}
-    </I18nextProvider>
-  )
+  return null
 }

@@ -1,6 +1,8 @@
+import { createToast, createToastManager } from '@langgenius/dify-ui/toast'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { useTranslation } from 'react-i18next'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
+import { AppToastHost } from '@/app/notifications/host'
 import { changeLanguage } from '../client'
 import { getDeclaredRouteNamespaces, getRouteNamespaces } from '../route-namespaces'
 
@@ -9,13 +11,14 @@ const mocks = vi.hoisted(() => ({ pathname: '/signin', loadResource: vi.fn() }))
 vi.mock('@/next/navigation', () => ({ usePathname: () => mocks.pathname }))
 vi.mock('../load-resource', () => ({ loadI18nResource: mocks.loadResource }))
 
-const resources = {
+const makeResources = () => ({
   'en-US': {
     common: { 'operation.save': 'Save', 'operation.cancel': 'Cancel' },
     login: { signBtn: 'Sign in' },
   },
   'zh-Hans': { common: { 'operation.save': '保存' }, login: { signBtn: '登录' } },
-}
+})
+let resources = makeResources()
 function Label() {
   const { t } = useTranslation()
   return (
@@ -28,6 +31,7 @@ function Label() {
 
 describe('route translation loading', () => {
   beforeEach(() => {
+    resources = makeResources()
     mocks.pathname = '/signin'
     mocks.loadResource.mockReset()
     mocks.loadResource.mockImplementation(
@@ -90,6 +94,44 @@ describe('route translation loading', () => {
     await act(() => changeLanguage('zh-Hans'))
     expect(await screen.findByText('保存 / Cancel')).toBeVisible()
     expect(mocks.loadResource.mock.calls.map(([, ns]) => ns).sort()).toEqual(['common', 'login'])
+  })
+
+  it('preserves global notifications across namespace changes, including suspended navigation', async () => {
+    const manager = createToastManager()
+    const toast = createToast(manager)
+    const content = () => (
+      <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
+        <AppToastHost manager={manager} timeout={0} />
+        <Label />
+      </I18nClientProvider>
+    )
+    const view = render(content())
+    await screen.findByText('Save / Cancel')
+    act(() => {
+      toast.success('Still relevant after navigation')
+    })
+    await screen.findByText('Still relevant after navigation')
+
+    let finishLoading!: () => void
+    const pending = new Promise<void>((resolve) => {
+      finishLoading = resolve
+    })
+    mocks.loadResource.mockImplementation(async () => {
+      await pending
+      return { default: {} }
+    })
+    mocks.pathname = '/apps'
+    view.rerender(content())
+    await waitFor(() => expect(mocks.loadResource).toHaveBeenCalled())
+    await act(async () => {
+      finishLoading()
+      await pending
+    })
+    expect(await screen.findByText('Still relevant after navigation')).toBeVisible()
+
+    mocks.pathname = '/signin'
+    view.rerender(content())
+    expect(await screen.findByText('Still relevant after navigation')).toBeVisible()
   })
 
   it('matches signin segments with a base path and keeps unknown routes complete', () => {
