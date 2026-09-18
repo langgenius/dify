@@ -20,7 +20,7 @@ import {
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
@@ -491,7 +491,7 @@ export function ProcessingTasksDrawer({
                 )}
                 {taskQueryPending && !orderedTasks.length ? (
                   <div className="flex min-h-40 items-center justify-center">
-                    <Loading />
+                    <LoadingPlaceholder />
                   </div>
                 ) : orderedTasks.length ? (
                   <ul className="divide-y divide-divider-subtle">

@@ -122,7 +122,7 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
       </div>
     ) : null,
 }))
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
@@ -415,7 +415,7 @@ describe('Apps', () => {
 
     render(<Apps onClose={vi.fn()} />)
 
-    expect(screen.getByRole('status'))!.toBeInTheDocument()
+    expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
   })
 
   it('should handle an undefined template payload by falling back to the empty state', () => {

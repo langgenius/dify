@@ -1,7 +1,7 @@
 import type { SelectorTranslate } from '@/app/components/app/configuration/utils'
 import type { CodeBasedExtensionItem, ExternalDataTool } from '@/models/common'
 import { getStringSelectorTranslate } from '@/app/components/app/configuration/utils'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 const systemTypes = ['api'] as const
 

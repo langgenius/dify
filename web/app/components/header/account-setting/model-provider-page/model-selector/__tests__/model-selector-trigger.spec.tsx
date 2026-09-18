@@ -63,7 +63,7 @@ const createModel = (
 describe('ModelSelectorTrigger', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseQuery.mockReturnValue({ data: createModel() })
+    mockUseQuery.mockReturnValue({ data: { data: [createModel()] } })
     mockUseCredentialPanelState.mockReturnValue({
       variant: 'credits-active',
       priority: 'credits',
@@ -74,6 +74,33 @@ describe('ModelSelectorTrigger', () => {
       credentialName: undefined,
       credits: 100,
     })
+  })
+
+  it('keeps an existing model neutral while its catalog is unresolved', () => {
+    const { rerender } = render(
+      <ModelSelectorTrigger loading defaultModel={{ provider: 'openai', model: 'legacy-model' }} />,
+    )
+    expect(screen.getByRole('button', { name: 'legacy-model' })).toBeDisabled()
+    expect(screen.queryByText('common.modelProvider.selector.incompatible')).not.toBeInTheDocument()
+    rerender(
+      <Popover>
+        <ModelSelectorTrigger defaultModel={{ provider: 'openai', model: 'legacy-model' }} />
+      </Popover>,
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'legacy-model common.modelProvider.selector.incompatible',
+      }),
+    ).toBeEnabled()
+  })
+
+  it('does not report incompatibility before provider metadata is available', () => {
+    mockUseQuery.mockReturnValue({ data: undefined })
+    render(
+      <ModelSelectorTrigger currentProvider={createModel()} currentModel={createModelItem()} />,
+    )
+    expect(screen.getByRole('button', { name: 'GPT-4' })).toBeEnabled()
+    expect(screen.queryByText('common.modelProvider.selector.incompatible')).not.toBeInTheDocument()
   })
 
   describe('Rendering', () => {

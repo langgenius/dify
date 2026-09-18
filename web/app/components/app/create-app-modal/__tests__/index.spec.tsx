@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter } from '@/next/navigation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -73,7 +74,7 @@ const toastMocks = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
 }))
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: toastMocks.mockToastSuccess,
     error: toastMocks.mockToastError,
@@ -386,12 +387,12 @@ describe('CreateAppModal', () => {
     fireEvent.click(screen.getByText('app.types.chatbot'))
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.captionName' }))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
     })
     fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
       target: { value: 'Keyboard App' },
@@ -430,14 +431,14 @@ describe('CreateAppModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.captionName' }))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
     })
 
-    expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
 
     ahooksMocks.keyPressHandlers.at(-1)?.()
 
@@ -500,3 +501,5 @@ describe('CreateAppModal', () => {
     })
   })
 })
+
+mockEmojiData()

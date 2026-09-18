@@ -152,8 +152,12 @@ vi.mock('../../data-source/online-drive', () => ({
 }))
 
 // Mock locale context
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en'),
+}))
+
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 

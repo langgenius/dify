@@ -3,9 +3,9 @@ import type { ChangeEvent, DragEvent, MouseEvent, RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { formatFileSize } from '@/utils/format'
 
 type Props = Readonly<{

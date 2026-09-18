@@ -22,12 +22,11 @@ from services.errors.file import (
     UnsupportedFileTypeError,
 )
 from services.file_service import FileService
+from tests.unit_tests.model_factories import make_account
 
 
 def _account() -> Account:
-    account = Account(name="Test Account", email="test@example.com")
-    account.id = "user_id"
-    return account
+    return make_account(account_id="user_id", name="Test Account", email="test@example.com")
 
 
 class TestFileService:

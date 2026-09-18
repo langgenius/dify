@@ -17,7 +17,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import ModelIcon from '../../header/account-setting/model-provider-page/model-icon'
 

@@ -15,13 +15,14 @@ import type {
 import type { ModelModalType } from '@/context/modal-context'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocale } from '#i18n'
 import {
   useMarketplacePlugins,
   useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useLocale } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
+import { getModelLanguage } from '@/i18n/metadata'
 import { fetchDefaultModal } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys, modelProviderDetailsQueryOptions } from '@/service/use-common'
@@ -74,7 +75,7 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 
 export const useLanguage = () => {
   const locale = useLocale()
-  return locale.replace('-', '_')
+  return getModelLanguage(locale)
 }
 
 type ModelQueryOptions = {

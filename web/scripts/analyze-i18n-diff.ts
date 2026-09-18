@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const I18N_DIR = path.join(__dirname, '../i18n/en-US')
+const I18N_DIR = path.join(__dirname, '../i18n/locales/en-US')
 const LOCALE = 'en-US'
 
 type TranslationValue = string | string[]
@@ -117,7 +117,7 @@ function parseTsContent(content: string): NestedTranslation {
  */
 function getMainBranchFile(filePath: string): string | null {
   try {
-    const relativePath = `./i18n/${LOCALE}/${filePath}`
+    const relativePath = `./i18n/locales/${LOCALE}/${filePath}`
 
     return execSync(`git show main:${relativePath}`, {
       encoding: 'utf-8',
@@ -141,7 +141,7 @@ function getTranslationFiles(): string[] {
  */
 function getMainBranchNamespaces(): string[] {
   try {
-    const relativePath = `./i18n/${LOCALE}`
+    const relativePath = `./i18n/locales/${LOCALE}`
 
     const output = execSync(`git ls-tree --name-only main ${relativePath}/`, {
       encoding: 'utf-8',

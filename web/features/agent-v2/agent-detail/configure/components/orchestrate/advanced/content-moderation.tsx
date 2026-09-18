@@ -7,9 +7,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import {
   useAppFeatures,

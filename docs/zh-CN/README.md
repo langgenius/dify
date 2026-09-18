@@ -147,7 +147,7 @@ Dify 欢迎各种形式的贡献：
 
 - **代码**：阅读[贡献指南](./CONTRIBUTING.md)，然后浏览[适合新手的问题](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)。
 - **想法与反馈**：发起或加入 [GitHub Discussions](https://github.com/langgenius/dify/discussions)。
-- **翻译**：按照[国际化指南](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)添加或更新语言。
+- **翻译**：按照[国际化指南](https://github.com/langgenius/dify/blob/main/web/i18n/README.md)添加或更新语言。
 - **社区**：分享您构建的应用、帮助其他用户，并向更多人介绍 Dify。
 
 ### 贡献者
