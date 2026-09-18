@@ -157,15 +157,28 @@ def test_config_update_rejects_stale_revision_after_verification(
 ) -> None:
     _persist_app(sqlite_session)
     repository = _repository(sqlite_session_factory)
-    arguments = {"workspace_id": _WORKSPACE_ID, "app_id": _APP_ID, "tracing_provider": _PROVIDER}
-    assert repository.create(**arguments, tracing_config={"public_key": "first"})
-    original = repository.get(**arguments)
+    assert repository.create(
+        workspace_id=_WORKSPACE_ID, app_id=_APP_ID, tracing_provider=_PROVIDER, tracing_config={"public_key": "first"}
+    )
+    original = repository.get(workspace_id=_WORKSPACE_ID, app_id=_APP_ID, tracing_provider=_PROVIDER)
     assert original is not None
     assert original.revision == 1
-    assert repository.update(**arguments, expected_revision=original.revision, tracing_config={"public_key": "second"})
+    assert repository.update(
+        workspace_id=_WORKSPACE_ID,
+        app_id=_APP_ID,
+        tracing_provider=_PROVIDER,
+        expected_revision=original.revision,
+        tracing_config={"public_key": "second"},
+    )
     with pytest.raises(AppTracingConfigChangedError):
-        repository.update(**arguments, expected_revision=original.revision, tracing_config={"public_key": "stale"})
-    updated = repository.get(**arguments)
+        repository.update(
+            workspace_id=_WORKSPACE_ID,
+            app_id=_APP_ID,
+            tracing_provider=_PROVIDER,
+            expected_revision=original.revision,
+            tracing_config={"public_key": "stale"},
+        )
+    updated = repository.get(workspace_id=_WORKSPACE_ID, app_id=_APP_ID, tracing_provider=_PROVIDER)
     assert updated is not None
     assert updated.tracing_config == {"public_key": "second"}
     assert updated.revision == 2

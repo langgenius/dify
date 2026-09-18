@@ -131,7 +131,8 @@ class OpsTraceDeliveryRepository:
                     OpsTraceDelivery.attempt_token == delivery.attempt_token,
                     OpsTraceDelivery.lease_expires_at > now,
                 )
-                .values(status="pending", attempt_token=None, lease_expires_at=None, updated_at=now)
+                .values(status="pending", attempt_token=None, lease_expires_at=None)
+                .values({OpsTraceDelivery.updated_at: now})
             )
             session.commit()
             return cast(CursorResult, result).rowcount == 1
@@ -170,8 +171,8 @@ class OpsTraceDeliveryRepository:
                     attempt_token=None,
                     lease_expires_at=None,
                     finished_at=now,
-                    updated_at=now,
                 )
+                .values({OpsTraceDelivery.updated_at: now})
             )
             if cast(CursorResult, exhausted).rowcount == 1:
                 session.commit()
@@ -184,8 +185,8 @@ class OpsTraceDeliveryRepository:
                     attempt_token=attempt_token,
                     lease_expires_at=now + timedelta(seconds=lease_seconds),
                     attempt_count=OpsTraceDelivery.attempt_count + 1,
-                    updated_at=now,
                 )
+                .values({OpsTraceDelivery.updated_at: now})
             )
             if cast(CursorResult, result).rowcount != 1:
                 session.rollback()
@@ -228,10 +229,10 @@ class OpsTraceDeliveryRepository:
                     attempt_token=None,
                     lease_expires_at=None,
                     next_attempt_at=now + timedelta(seconds=retry_delay_seconds),
-                    updated_at=now,
                     finished_at=None if status == "pending" else now,
                     parent_references=parent_references,
                 )
+                .values({OpsTraceDelivery.updated_at: now})
             )
             session.commit()
             return cast(CursorResult, result).rowcount == 1
@@ -249,7 +250,8 @@ class OpsTraceDeliveryRepository:
                     OpsTraceDelivery.attempt_token == delivery.attempt_token,
                     OpsTraceDelivery.lease_expires_at > now,
                 )
-                .values(lease_expires_at=now + timedelta(seconds=lease_seconds), updated_at=now)
+                .values(lease_expires_at=now + timedelta(seconds=lease_seconds))
+                .values({OpsTraceDelivery.updated_at: now})
             )
             session.commit()
             return cast(CursorResult, result).rowcount == 1
@@ -391,7 +393,7 @@ class OpsTraceDeliveryRepository:
                 OpsTraceDelivery.attempt_token == delivery.attempt_token,
                 OpsTraceDelivery.lease_expires_at > now,
             )
-            .values(updated_at=now)
+            .values({OpsTraceDelivery.updated_at: now})
         )
         if cast(CursorResult, result).rowcount != 1:
             raise TraceExportError("trace_attempt_expired", retryable=True)
@@ -544,10 +546,10 @@ class OpsTraceDeliveryRepository:
                         status="cancelled",
                         error_code="upload_expired",
                         finished_at=now,
-                        updated_at=now,
                         attempt_token=None,
                         lease_expires_at=None,
                     )
+                    .values({OpsTraceDelivery.updated_at: now})
                 )
             session.commit()
 
@@ -598,7 +600,8 @@ class OpsTraceDeliveryRepository:
                     OpsTraceDelivery.id == delivery.id,
                     OpsTraceDelivery.status.in_(("succeeded", "failed", "cancelled")),
                 )
-                .values(trace_deleted_at=now, updated_at=now)
+                .values(trace_deleted_at=now)
+                .values({OpsTraceDelivery.updated_at: now})
             )
             session.commit()
 
@@ -704,8 +707,8 @@ class OpsTraceDeliveryRepository:
                     next_attempt_at=now if parent_unavailable else now + timedelta(seconds=5),
                     finished_at=now if error_code == "parent_owner_mismatch" else None,
                     parent_delivery_id=parent_delivery.id if parent_delivery else None,
-                    updated_at=now,
                 )
+                .values({OpsTraceDelivery.updated_at: now})
             )
             session.commit()
             return parent_unavailable, None

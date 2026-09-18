@@ -167,26 +167,29 @@ def test_noop_and_inactive_config_changes_preserve_pending_destination(
     settings = trace_source.get_trace_provider_settings(tenant.id, app.id)[0]
     monkeypatch.setattr(trace_source, "decrypt_provider_config", lambda *args: args[-1])
     repository = SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory)
-    owner = {"workspace_id": tenant.id, "app_id": app.id}
     update_app_trace_settings(tenant_id=tenant.id, app_id=app.id, enabled=True, tracing_provider="langfuse")
-    selected = repository.get(**owner, tracing_provider="langfuse")
+    selected = repository.get(workspace_id=tenant.id, app_id=app.id, tracing_provider="langfuse")
     assert selected is not None
     assert repository.update(
-        **owner,
+        workspace_id=tenant.id,
+        app_id=app.id,
         tracing_provider="langfuse",
         tracing_config=dict(config.tracing_config or {}),
         expected_revision=selected.revision,
     )
-    assert repository.create(**owner, tracing_provider="opik", tracing_config={"project": "inactive"})
-    inactive = repository.get(**owner, tracing_provider="opik")
+    assert repository.create(
+        workspace_id=tenant.id, app_id=app.id, tracing_provider="opik", tracing_config={"project": "inactive"}
+    )
+    inactive = repository.get(workspace_id=tenant.id, app_id=app.id, tracing_provider="opik")
     assert inactive is not None
     assert repository.update(
-        **owner,
+        workspace_id=tenant.id,
+        app_id=app.id,
         tracing_provider="opik",
         tracing_config={"project": "changed"},
         expected_revision=inactive.revision,
     )
-    assert repository.delete(**owner, tracing_provider="opik")
+    assert repository.delete(workspace_id=tenant.id, app_id=app.id, tracing_provider="opik")
     assert trace_source.get_trace_provider_settings(tenant.id, app.id)[0] == settings
     assert trace_source.load_trace_provider_config(settings) == config.tracing_config
 
