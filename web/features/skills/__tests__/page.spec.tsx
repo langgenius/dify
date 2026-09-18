@@ -1104,14 +1104,7 @@ describe('SkillsPage', () => {
       }),
     )
     await user.click(await screen.findByText('common.operation.export'))
-    const dialog = await screen.findByRole('alertdialog', {
-      name: 'skill.skillManagement.exportDialog.title',
-    })
-    expect(
-      within(dialog).getByText('skill.skillManagement.exportDialog.description'),
-    ).toBeInTheDocument()
-    expect(mocks.exportSkillArchiveBlob).not.toHaveBeenCalled()
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
 
     await waitFor(() => {
       expect(mocks.exportSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
@@ -1135,35 +1128,10 @@ describe('SkillsPage', () => {
     )
 
     await user.click(await screen.findByText('common.operation.export'))
-    const dialog = await screen.findByRole('alertdialog', {
-      name: 'skill.skillManagement.exportDialog.title',
-    })
-    expect(
-      within(dialog).getByText('skill.skillManagement.exportDialog.description'),
-    ).toBeInTheDocument()
-    expect(mocks.exportSkillArchiveBlob).not.toHaveBeenCalled()
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     await waitFor(() => {
       expect(mocks.exportSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
     })
-  })
-
-  it('cancels export without downloading the skill', async () => {
-    const user = userEvent.setup()
-    renderSkillsPage()
-
-    await user.click(
-      await screen.findByRole('button', {
-        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
-      }),
-    )
-    await user.click(await screen.findByText('common.operation.export'))
-    const dialog = await screen.findByRole('alertdialog')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(mocks.exportSkillArchiveBlob).not.toHaveBeenCalled()
-    expect(mocks.downloadBlob).not.toHaveBeenCalled()
   })
 
   it('confirms deletion with the skill name and refreshes list data', async () => {
