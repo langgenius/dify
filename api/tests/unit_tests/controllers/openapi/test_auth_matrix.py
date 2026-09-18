@@ -315,6 +315,30 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
     Route(
+        "app_run.workflow",
+        "POST",
+        "/apps/{app_id}/workflow:run",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
+    ),
+    Route(
+        "app_run.chat",
+        "POST",
+        "/apps/{app_id}/chat:run",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
+    ),
+    Route(
+        "app_run.advanced_chat",
+        "POST",
+        "/apps/{app_id}/advanced-chat:run",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
+    ),
+    Route(
+        "app_run.completion",
+        "POST",
+        "/apps/{app_id}/completion:run",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
+    ),
+    Route(
         "app_run.stop",
         "POST",
         "/apps/{app_id}/tasks/{task_id}:stop",
@@ -619,6 +643,10 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.RBAC_ON_DENIED: DENY_RBAC,
     },
     "app_run.run": dict(_DUAL_SUBJECT_RUN),
+    "app_run.workflow": dict(_DUAL_SUBJECT_RUN),
+    "app_run.chat": dict(_DUAL_SUBJECT_RUN),
+    "app_run.advanced_chat": dict(_DUAL_SUBJECT_RUN),
+    "app_run.completion": dict(_DUAL_SUBJECT_RUN),
     "human_input_form.get": dict(_DUAL_SUBJECT_RUN),
     "files.upload": {
         **_DUAL_SUBJECT_RUN,
@@ -755,6 +783,10 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_dsl.export": _REQ_DSL_APP,
     "app_dsl.check_dependencies": _REQ_DSL_APP,
     "app_run.run": _REQ_RUN,
+    "app_run.workflow": _REQ_RUN,
+    "app_run.chat": _REQ_RUN,
+    "app_run.advanced_chat": _REQ_RUN,
+    "app_run.completion": _REQ_RUN,
     "app_run.stop": _REQ_RUN,
     "files.upload": _REQ_FILES,
     "human_input_form.get": _REQ_RUN_FORM,
@@ -1269,6 +1301,10 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/apps/{app_id}/tasks/{task_id}/events"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/tasks/{task_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/workflow:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/advanced-chat:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/completion:run"): frozenset({"200", "422", "default"}),
     # The five device-flow rows are the only operations with no `default`: they
     # document their 200 with a raw `openapi_ns.response` rather than `@returns`,
     # so no `ErrorBody` schema is registered for them.

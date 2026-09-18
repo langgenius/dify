@@ -304,32 +304,9 @@ class AppListQuery(PageQuery):
     name: str | None = Field(None, max_length=200)
 
 
-class AppRunRequest(BaseModel):
-    inputs: dict[str, Any] = Field(
-        description=(
-            "Variables declared by the app. The exact shape is per app: read `input_schema` from "
-            "console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, "
-            "or a local file in `files`, not both."
-        )
-    )
-    query: str | None = Field(
-        default=None, description="User message. Required for chat-family apps, rejected for workflow apps"
-    )
-    files: UploadParts | None = Field(
-        default=None,
-        description=(
-            "Local files keyed by the app's file variable name; the server uploads each one and sets "
-            "`inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable"
-        ),
-    )
-    attachments: list[UploadPart] | None = Field(
-        default=None,
-        description="Local files attached to the message itself (chat-family apps with vision), not to a variable",
-    )
+class _ConversationFields(BaseModel):
     conversation_id: UUIDStrOrEmpty | None = Field(default=None, description="Continue an existing conversation")
     auto_generate_name: bool = Field(default=True, description="Let the server name a new conversation")
-    workflow_id: str | None = Field(default=None, description="Pin a published workflow version")
-    workspace_id: UUIDStrOrEmpty | None = Field(default=None, description="Workspace that owns the app")
 
     @field_validator("conversation_id", mode="before")
     @classmethod
@@ -342,6 +319,71 @@ class AppRunRequest(BaseModel):
             return uuid_value(value)
         except ValueError as exc:
             raise ValueError("conversation_id must be a valid UUID") from exc
+
+
+class _WorkflowVersionFields(BaseModel):
+    workflow_id: str | None = Field(default=None, description="Pin a published workflow version")
+
+
+class RunPayloadBase(BaseModel):
+    """What every run takes; each mode's payload adds its own fields and forbids the rest."""
+
+    inputs: dict[str, Any] = Field(
+        description=(
+            "Variables declared by the app. The exact shape is per app: read `input_schema` from "
+            "console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, "
+            "or a local file in `files`, not both."
+        )
+    )
+    files: UploadParts | None = Field(
+        default=None,
+        description=(
+            "Local files keyed by the app's file variable name; the server uploads each one and sets "
+            "`inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable"
+        ),
+    )
+    attachments: list[UploadPart] | None = Field(
+        default=None, description="Local files attached to the run itself (the app's `sys.files`), not to a variable"
+    )
+    workspace_id: UUIDStrOrEmpty | None = Field(default=None, description="Workspace that owns the app")
+
+
+class WorkflowRunPayload(RunPayloadBase, _WorkflowVersionFields):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ChatRunPayload(RunPayloadBase, _ConversationFields):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(description="User message")
+
+    @field_validator("query")
+    @classmethod
+    def _non_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("query must not be blank")
+        return value
+
+
+class AdvancedChatRunPayload(ChatRunPayload, _WorkflowVersionFields):
+    """A chat run against an advanced-chat (chatflow) app, which can also pin a workflow version."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CompletionRunPayload(RunPayloadBase):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(default="", description="Prompt text; most completion apps take their input through `inputs`")
+
+
+class AppRunRequest(RunPayloadBase, _ConversationFields, _WorkflowVersionFields):
+    """Deprecated union of every mode's body, taken by `POST /apps/{app_id}:run`."""
+
+    query: str | None = Field(
+        default=None, description="User message. Required for chat-family apps, rejected for workflow apps"
+    )
 
 
 class FileUploadRequest(BaseModel):

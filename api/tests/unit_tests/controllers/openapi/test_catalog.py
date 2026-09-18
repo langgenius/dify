@@ -87,26 +87,36 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
             streaming.add(spec.op)
             assert spec.kind is Kind.SSE, spec.op
     assert set(ops) <= set(seen)
-    assert streaming == {"console_app.run", "run.events"}
+    assert streaming == {
+        "console_app.run",
+        "console_app.workflow.run",
+        "console_app.chat.run",
+        "console_app.advanced_chat.run",
+        "console_app.completion.run",
+        "run.events",
+    }
 
 
-def test_run_entry_carries_path_bind_kind_and_flags(ops: dict[str, dict]):
-    run = ops["console_app.run"]
-    assert set(run) == {"summary", "method", "path", "kind", "input", "bind", "tags", "internal", "deprecated"}
-    assert (run["method"], run["path"], run["kind"], run["tags"]) == (
+def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, dict]):
+    chat = ops["console_app.chat.run"]
+    assert set(chat) == {"summary", "method", "path", "kind", "input", "bind", "tags", "internal", "deprecated"}
+    assert (chat["method"], chat["path"], chat["kind"], chat["tags"]) == (
         "POST",
-        "/openapi/v1/apps/{app_id}:run",
+        "/openapi/v1/apps/{app_id}/chat:run",
         "sse",
         ["console_app"],
     )
-    assert {"app_id", "inputs"} <= set(run["input"]["required"])
-    assert set(run["bind"]) == set(run["input"]["properties"])
-    assert {k: run["bind"][k] for k in ("app_id", "inputs", "files", "attachments")} == {
+    assert {"app_id", "inputs", "query"} <= set(chat["input"]["required"])
+    assert set(chat["bind"]) == set(chat["input"]["properties"])
+    assert {k: chat["bind"][k] for k in ("app_id", "inputs", "files", "attachments")} == {
         "app_id": "path",
         "inputs": "body",
         "files": "file",
         "attachments": "file",
     }
+    assert "query" not in ops["console_app.workflow.run"]["input"]["properties"]
+    assert "conversation_id" not in ops["console_app.completion.run"]["input"]["properties"]
+    assert (ops["console_app.run"]["deprecated"], chat["deprecated"]) == (True, False)
     assert ops["console_app.file.upload"]["bind"]["file"] == "file"
     assert ops["console_app.list"]["bind"]["page"] == "query"
     assert ops["run.events"]["bind"]["continue_on_pause"] == "query"
@@ -134,7 +144,7 @@ def test_input_schemas_are_flat_shallow_and_described(ops: dict[str, dict]):
         op for op, e in ops.items() if e["kind"] == "list" and not {"page", "limit"} <= set(e["input"]["properties"])
     ] == []
     assert [op for op, e in ops.items() if set(Hinted.model_fields) & set(e["input"]["properties"])] == []
-    desc = ops["console_app.run"]["input"]["properties"]["inputs"]["description"]
+    desc = ops["console_app.chat.run"]["input"]["properties"]["inputs"]["description"]
     assert "console_app.describe" in desc
     assert "input_schema" in desc
 
