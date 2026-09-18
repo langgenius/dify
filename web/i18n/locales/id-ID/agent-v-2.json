@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Menjalankan perintah",
   "agentDetail.configure.answer.duration.minute": "{{count}} mnt",
   "agentDetail.configure.answer.duration.second": "{{count}} dtk",
+  "agentDetail.configure.answer.responseEnded": "Respons berakhir",
   "agentDetail.configure.answer.thinking": "Sedang berpikir",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition, meskipun menawarkan versioning untuk konfigurasi yang diekstrak, tidak mendukung versioning pada sistem file itu sendiri. Berhati-hatilah dengan tindakan Anda dalam mode Build, karena perubahan pada sistem file terjadi secara real time dan tidak selalu dapat dikembalikan dengan rapi. Community Edition bukan pilihan ideal untuk melayani audiens eksternal dalam skala besar.",
   "agentDetail.configure.build.empty.description": "Jelaskan yang Anda inginkan dan formulir di kiri akan terisi seiring percakapan.",

@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Uruchamianie poleceń",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
+  "agentDetail.configure.answer.responseEnded": "Odpowiedź zakończona",
   "agentDetail.configure.answer.thinking": "Myśli",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition oferuje wersjonowanie wyodrębnionych konfiguracji, ale nie obsługuje wersjonowania samego systemu plików. Zachowaj ostrożność podczas działań w trybie Build, ponieważ zmiany w systemie plików zachodzą w czasie rzeczywistym i nie zawsze można je czysto cofnąć. Community Edition nie jest idealnym wyborem do obsługi masowej publiczności zewnętrznej.",
   "agentDetail.configure.build.empty.description": "Opisz, czego chcesz, a formularz po lewej będzie wypełniany w trakcie rozmowy.",
