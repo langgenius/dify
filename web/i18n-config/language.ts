@@ -1,5 +1,6 @@
 import type { DocLanguage } from '@/types/doc-paths'
 import data from './languages'
+import { supportedLocales } from './locale'
 
 export type I18nText = Record<(typeof LanguagesSupported)[number], string>
 
@@ -8,9 +9,7 @@ export const languages = data.languages
 // for compatibility
 export type Locale = 'ja_JP' | 'zh_Hans' | 'en_US' | (typeof languages)[number]['value']
 
-export const LanguagesSupported: Locale[] = languages
-  .filter((item) => item.supported)
-  .map((item) => item.value)
+export const LanguagesSupported: Locale[] = supportedLocales
 
 export const getLanguage = (locale: Locale): Locale => {
   // Plugin metadata supports only en_US, zh_Hans, ja_JP, and pt_BR; otherwise use en_US.

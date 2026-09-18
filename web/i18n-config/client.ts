@@ -6,6 +6,7 @@ import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import { getI18n, initReactI18next } from 'react-i18next'
 import { loadI18nResource } from './load-resource'
+import { normalizeLocale } from './locale'
 import { getInitOptions } from './settings'
 
 export function createI18nextInstance(lng: Locale, resources: Resource) {
@@ -25,8 +26,8 @@ export function createI18nextInstance(lng: Locale, resources: Resource) {
   return instance
 }
 
-export const changeLanguage = async (lng?: Locale) => {
+export const changeLanguage = async (lng?: string) => {
   if (!lng) return
   const i18n = getI18n()
-  await i18n.changeLanguage(lng)
+  await i18n.changeLanguage(normalizeLocale(lng))
 }
