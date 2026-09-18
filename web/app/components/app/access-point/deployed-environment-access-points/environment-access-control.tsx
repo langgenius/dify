@@ -6,11 +6,11 @@ import type {
   AccessControlSubjectsStatus,
 } from '@/app/components/app/app-access-control/specific-groups-or-members'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessControlForm } from '@/app/components/app/app-access-control/access-control-form'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'

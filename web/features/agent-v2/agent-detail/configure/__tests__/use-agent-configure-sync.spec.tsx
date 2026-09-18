@@ -147,7 +147,7 @@ const configuredModel = {
   model: 'gpt-4o-mini',
 }
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 

@@ -87,7 +87,7 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
 
 // Mock toast
 const mockToastSuccess = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (title: string) => mockToastSuccess(title),
   },

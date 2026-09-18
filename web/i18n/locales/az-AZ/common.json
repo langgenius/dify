@@ -449,6 +449,8 @@
   "operation.confirmAction": "Əməliyyatını təsdiqlə.",
   "operation.copied": "Kopyalandı",
   "operation.copy": "Kopyala",
+  "operation.copyErrorDetails": "Xəta təfərrüatlarını kopyala",
+  "operation.copyErrorFailed": "Kopyalama alınmadı. Yenidən cəhd et",
   "operation.copyImage": "Şəkli kopyala",
   "operation.create": "Yarat",
   "operation.deSelectAll": "Bütün seçimləri ləğv et",

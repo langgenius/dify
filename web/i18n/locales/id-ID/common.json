@@ -450,6 +450,8 @@
   "operation.confirmAction": "Silakan konfirmasi tindakan Anda.",
   "operation.copied": "Disalin",
   "operation.copy": "Menyalin",
+  "operation.copyErrorDetails": "Salin detail kesalahan",
+  "operation.copyErrorFailed": "Gagal menyalin. Coba lagi",
   "operation.copyImage": "Salin Gambar",
   "operation.create": "Menciptakan",
   "operation.deSelectAll": "Batalkan pilihan Semua",

@@ -13,11 +13,11 @@ import type {
   SummaryIndexSetting as SummaryIndexSettingType,
 } from '@/models/datasets'
 import type { RetrievalConfig, RETRIEVE_METHOD } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import { toast } from '@/app/notifications'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import {

@@ -102,7 +102,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string, options?: Record<string, unknown>) =>
       toastMocks.notify({ type: 'success', message, ...options }),

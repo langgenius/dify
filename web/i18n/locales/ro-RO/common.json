@@ -450,6 +450,8 @@
   "operation.confirmAction": "Vă rugăm să confirmați acțiunea dumneavoastră.",
   "operation.copied": "Copiat",
   "operation.copy": "Copiază",
+  "operation.copyErrorDetails": "Copiază detaliile erorii",
+  "operation.copyErrorFailed": "Copierea a eșuat. Reîncearcă",
   "operation.copyImage": "Copiere imagine",
   "operation.create": "Creează",
   "operation.deSelectAll": "Deselectați tot",

@@ -20,7 +20,7 @@ vi.mock('@/app/components/base/file-uploader/hooks', () => ({
   useFileSizeLimit: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),

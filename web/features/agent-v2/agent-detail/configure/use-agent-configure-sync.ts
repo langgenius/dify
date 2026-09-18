@@ -2,7 +2,6 @@
 
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { toast } from '@langgenius/dify-ui/toast'
 import { mutationOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
@@ -11,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
+import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import {
