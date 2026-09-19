@@ -1057,7 +1057,7 @@ class ClickzettaVector(BaseVector):
         if not doc_id:
             return str(uuid.uuid4())
         # Remove or replace potentially problematic characters
-        safe_id = str(doc_id)
+        safe_id = doc_id
         # Only allow alphanumeric, hyphens, underscores
         safe_id = "".join(c for c in safe_id if c.isalnum() or c in "-_")
         if not safe_id:  # If all characters were removed
