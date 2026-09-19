@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import services.human_input_service as human_input_service_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.app.entities.workflow_pause_state import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,

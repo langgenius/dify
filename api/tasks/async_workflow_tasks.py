@@ -17,7 +17,7 @@ from typing_extensions import TypedDict
 from configs import dify_config
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
+from core.app.entities.workflow_pause_state import PauseStateConfig, WorkflowResumptionContext
 from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
@@ -157,7 +157,7 @@ def _execute_workflow_common(
             if trigger_data.workflow_id:
                 args["workflow_id"] = str(trigger_data.workflow_id)
 
-            pause_config = PauseStateLayerConfig(
+            pause_config = PauseStateConfig(
                 session_factory=session_factory.get_session_maker(),
                 state_owner_user_id=workflow.created_by,
             )
@@ -260,7 +260,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    pause_config = PauseStateLayerConfig(
+    pause_config = PauseStateConfig(
         session_factory=session_factory,
         state_owner_user_id=workflow.created_by,
     )

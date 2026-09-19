@@ -31,7 +31,7 @@ from core.app.entities.task_entities import (
     WorkflowAppPausedBlockingResponse,
     WorkflowAppStreamResponse,
 )
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.app.entities.workflow_pause_state import PauseStateConfig
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import (
     extract_external_trace_id_from_args,
@@ -108,7 +108,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
     ) -> Generator[Mapping[str, Any] | str, None, None]: ...
 
     @overload
@@ -126,7 +126,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -144,7 +144,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
 
     def generate(
@@ -161,7 +161,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
@@ -282,7 +282,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
@@ -333,7 +333,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
@@ -364,15 +364,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             )
 
             resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
-            if pause_state_config is not None:
-                graph_layers.append(
-                    PauseStatePersistenceLayer(
-                        session_factory=pause_state_config.session_factory,
-                        generate_entity=application_generate_entity,
-                        state_owner_user_id=pause_state_config.state_owner_user_id,
-                        response_stream_filter=resolved_response_stream_filter,
-                    )
-                )
 
             # new thread with request context and contextvars
             context = contextvars.copy_context()
@@ -394,6 +385,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     "graph_engine_layers": tuple(graph_layers),
                     "graph_runtime_state": graph_runtime_state,
                     "response_stream_filter": resolved_response_stream_filter,
+                    "pause_state_config": pause_state_config,
                 },
             )
 
@@ -626,6 +618,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        pause_state_config: PauseStateConfig | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -681,6 +674,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
                 response_stream_filter=response_stream_filter,
+                pause_state_config=pause_state_config,
             )
 
             try:

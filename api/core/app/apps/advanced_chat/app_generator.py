@@ -40,7 +40,7 @@ from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
 )
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.app.entities.workflow_pause_state import PauseStateConfig
 from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
@@ -85,7 +85,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         workflow_run_id: str,
         streaming: Literal[False],
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
         *,
         session: Session,
     ) -> Mapping[str, Any]: ...
@@ -100,7 +100,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         workflow_run_id: str,
         streaming: Literal[True],
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
         *,
         session: Session,
     ) -> Generator[Mapping | str, None, None]: ...
@@ -115,7 +115,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         workflow_run_id: str,
         streaming: bool,
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
         *,
         session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]: ...
@@ -129,7 +129,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         workflow_run_id: str,
         streaming: bool = True,
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
         *,
         session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]:
@@ -282,7 +282,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_runtime_state: GraphRuntimeState,
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ):
         """
@@ -519,7 +519,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         message: Message | None = None,
         stream: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateConfig | None = None,
         graph_runtime_state: GraphRuntimeState | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         response_stream_filter: ResponseStreamFilter | None = None,
@@ -576,15 +576,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
             graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
             resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
-            if pause_state_config is not None:
-                graph_layers.append(
-                    PauseStatePersistenceLayer(
-                        session_factory=pause_state_config.session_factory,
-                        generate_entity=application_generate_entity,
-                        state_owner_user_id=pause_state_config.state_owner_user_id,
-                        response_stream_filter=resolved_response_stream_filter,
-                    )
-                )
 
             # new thread with request context and contextvars
             context = contextvars.copy_context()
@@ -604,6 +595,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     "graph_engine_layers": tuple(graph_layers),
                     "graph_runtime_state": graph_runtime_state,
                     "response_stream_filter": resolved_response_stream_filter,
+                    "pause_state_config": pause_state_config,
                 },
             )
 
@@ -659,6 +651,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        pause_state_config: PauseStateConfig | None = None,
     ):
         """
         Generate worker in a new thread.
@@ -725,6 +718,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
                 response_stream_filter=response_stream_filter,
+                pause_state_config=pause_state_config,
             )
 
             try:

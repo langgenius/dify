@@ -7,7 +7,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
+from core.app.entities.workflow_pause_state import PauseStateConfig
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from models import Account, Tenant, TenantAccountJoin
@@ -296,7 +296,7 @@ class TestPluginAppBackwardsInvocation:
         call_kwargs = generator_spy.call_args.kwargs
         assert call_kwargs["session"] is session
         pause_state_config = call_kwargs.get("pause_state_config")
-        assert isinstance(pause_state_config, PauseStateLayerConfig)
+        assert isinstance(pause_state_config, PauseStateConfig)
         assert pause_state_config.state_owner_user_id == "owner-id"
 
     def test_invoke_chat_app_advanced_chat_without_workflow_raises(self, mocker: MockerFixture):
@@ -355,7 +355,7 @@ class TestPluginAppBackwardsInvocation:
         assert result == {"result": "ok"}
         call_kwargs = generator_spy.call_args.kwargs
         pause_state_config = call_kwargs.get("pause_state_config")
-        assert isinstance(pause_state_config, PauseStateLayerConfig)
+        assert isinstance(pause_state_config, PauseStateConfig)
         assert pause_state_config.state_owner_user_id == "owner-id"
 
     def test_invoke_app_workflow_without_workflow_raises(self, mocker: MockerFixture):

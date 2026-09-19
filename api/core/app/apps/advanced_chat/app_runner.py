@@ -27,6 +27,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
 )
+from core.app.entities.workflow_pause_state import PauseStateConfig
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
@@ -83,6 +84,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        pause_state_config: PauseStateConfig | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -101,6 +103,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._workflow_node_execution_repository = workflow_node_execution_repository
         self._resume_graph_runtime_state = graph_runtime_state
         self._response_stream_filter = response_stream_filter
+        self._pause_state_config = pause_state_config
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -273,7 +276,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,
             trace_manager=self.application_generate_entity.trace_manager,
+            pause_state_config=self._pause_state_config,
+            response_stream_filter=self._response_stream_filter,
         )
+        if persistence_layer.owns_pause_transaction:
+            self._workflow_persistence_layer = persistence_layer
 
         workflow_entry.graph_engine.layer(persistence_layer)
         workflow_entry.graph_engine.layer(

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+from core.app.entities.workflow_pause_state import WorkflowResumptionContext
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,

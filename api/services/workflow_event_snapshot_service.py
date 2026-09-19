@@ -23,7 +23,7 @@ from core.app.entities.task_entities import (
     WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+from core.app.entities.workflow_pause_state import WorkflowResumptionContext
 from core.workflow.human_input_forms import (
     load_form_dispositions_by_form_id,
 )

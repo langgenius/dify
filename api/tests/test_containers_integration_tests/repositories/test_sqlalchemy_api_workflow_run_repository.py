@@ -316,9 +316,9 @@ class TestCountRunsWithRelated:
 
 
 class TestCreateWorkflowPause:
-    """Integration tests for create_workflow_pause."""
+    """Integration tests for pause_workflow_run."""
 
-    def test_create_workflow_pause_success(
+    def test_pause_workflow_run_success(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
         db_session_with_containers: Session,
@@ -333,11 +333,15 @@ class TestCreateWorkflowPause:
         )
         state = '{"test": "state"}'
 
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=test_scope.user_id,
             state=state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
@@ -364,11 +368,15 @@ class TestCreateWorkflowPause:
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
-        previous_pause = repository.create_workflow_pause(
+        previous_pause = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=test_scope.user_id,
             state='{"pause": "previous"}',
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
         previous_pause_model = db_session_with_containers.get(WorkflowPause, previous_pause.id)
         assert previous_pause_model is not None
@@ -386,11 +394,15 @@ class TestCreateWorkflowPause:
             "delete",
             side_effect=PermissionError("DeleteObject denied"),
         ) as delete_state_object:
-            current_pause = repository.create_workflow_pause(
+            current_pause = repository.pause_workflow_run(
                 workflow_run_id=workflow_run.id,
                 state_owner_user_id=test_scope.user_id,
                 state='{"pause": "current"}',
                 pause_reasons=[],
+                outputs=None,
+                total_tokens=0,
+                total_steps=0,
+                exceptions_count=0,
             )
 
         delete_state_object.assert_called_once_with(previous_state_object_key)
@@ -420,7 +432,7 @@ class TestCreateWorkflowPause:
         db_session_with_containers.refresh(workflow_run)
         assert workflow_run.status == WorkflowExecutionStatus.RUNNING
 
-    def test_create_workflow_pause_not_found(
+    def test_pause_workflow_run_not_found(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
         test_scope: _TestScope,
@@ -428,14 +440,18 @@ class TestCreateWorkflowPause:
         """Raise ValueError when the workflow run does not exist."""
 
         with pytest.raises(ValueError, match="WorkflowRun not found"):
-            repository.create_workflow_pause(
+            repository.pause_workflow_run(
                 workflow_run_id=str(uuid4()),
                 state_owner_user_id=test_scope.user_id,
                 state='{"test": "state"}',
                 pause_reasons=[],
+                outputs=None,
+                total_tokens=0,
+                total_steps=0,
+                exceptions_count=0,
             )
 
-    def test_create_workflow_pause_invalid_status(
+    def test_pause_workflow_run_invalid_status(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
         db_session_with_containers: Session,
@@ -450,14 +466,18 @@ class TestCreateWorkflowPause:
         )
 
         with pytest.raises(_WorkflowRunError, match="Only WorkflowRun with RUNNING or PAUSED status can be paused"):
-            repository.create_workflow_pause(
+            repository.pause_workflow_run(
                 workflow_run_id=workflow_run.id,
                 state_owner_user_id=test_scope.user_id,
                 state='{"test": "state"}',
                 pause_reasons=[],
+                outputs=None,
+                total_tokens=0,
+                total_steps=0,
+                exceptions_count=0,
             )
 
-    def test_create_workflow_pause_writes_hitl_type_for_dify_human_input_reason(
+    def test_pause_workflow_run_writes_hitl_type_for_dify_human_input_reason(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
         db_session_with_containers: Session,
@@ -494,7 +514,7 @@ class TestCreateWorkflowPause:
         db_session_with_containers.add(form_model)
         db_session_with_containers.commit()
 
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=test_scope.user_id,
             state='{"test": "state"}',
@@ -545,7 +565,7 @@ class TestCreateWorkflowPause:
         assert reloaded_reason.node_id == "node-1"
         assert reloaded_reason.node_title == "Ask Name"
 
-    def test_create_workflow_pause_round_trips_graphon_hitl_reason(
+    def test_pause_workflow_run_round_trips_graphon_hitl_reason(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
         db_session_with_containers: Session,
@@ -582,7 +602,7 @@ class TestCreateWorkflowPause:
         db_session_with_containers.add(form_model)
         db_session_with_containers.commit()
 
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=test_scope.user_id,
             state='{"test": "state"}',
@@ -700,11 +720,15 @@ class TestResumeWorkflowPause:
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=test_scope.user_id,
             state='{"test": "state"}',
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
@@ -758,11 +782,15 @@ class TestResumeWorkflowPause:
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=test_scope.user_id,
             state='{"test": "state"}',
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
@@ -795,11 +823,15 @@ class TestDeleteWorkflowPause:
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=test_scope.user_id,
             state='{"test": "state"}',
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
         pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
         assert pause_model is not None

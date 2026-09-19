@@ -19,6 +19,7 @@ from core.app.entities.app_invoke_entities import (
     WorkflowAppGenerateEntity,
     get_credit_usage_app_type,
 )
+from core.app.entities.workflow_pause_state import PauseStateConfig
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
@@ -61,6 +62,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        pause_state_config: PauseStateConfig | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -76,6 +78,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._workflow_node_execution_repository = workflow_node_execution_repository
         self._resume_graph_runtime_state = graph_runtime_state
         self._response_stream_filter = response_stream_filter
+        self._pause_state_config = pause_state_config
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -207,7 +210,11 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,
             trace_manager=self.application_generate_entity.trace_manager,
+            pause_state_config=self._pause_state_config,
+            response_stream_filter=self._response_stream_filter,
         )
+        if persistence_layer.owns_pause_transaction:
+            self._workflow_persistence_layer = persistence_layer
 
         workflow_entry.graph_engine.layer(persistence_layer)
         workflow_entry.graph_engine.layer(

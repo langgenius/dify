@@ -14,7 +14,7 @@ from core.app.entities.app_invoke_entities import (
     get_credit_usage_app_type,
     get_credit_usage_created_by,
 )
-from core.app.layers.pause_state_persist_layer import (
+from core.app.entities.workflow_pause_state import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
