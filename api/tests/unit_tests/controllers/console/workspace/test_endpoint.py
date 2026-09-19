@@ -1,10 +1,12 @@
 import inspect
 from datetime import UTC, datetime
+from types import FunctionType
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
 
+from controllers.common.rbac import Workspace
 from controllers.console import console_ns
 from controllers.console.workspace.endpoint import (
     DeprecatedEndpointCreateApi,
@@ -23,9 +25,11 @@ from controllers.console.workspace.endpoint import (
     EndpointUpdatePayload,
     LegacyEndpointUpdatePayload,
 )
+from controllers.console.wraps import RBACPermission
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.entities.endpoint import EndpointEntityWithInstance, EndpointProviderDeclaration
 from core.plugin.impl.exc import PluginPermissionDeniedError
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 def _endpoint_entity() -> EndpointEntityWithInstance:
@@ -54,6 +58,18 @@ def _endpoint_entity() -> EndpointEntityWithInstance:
         url="https://example.test/hook-1",
         hook_id="hook-1",
     )
+
+
+@pytest.mark.parametrize("method", [EndpointListApi.get, EndpointListForSinglePluginApi.get])
+def test_endpoint_lists_require_management_permission(method: FunctionType) -> None:
+    legacy_wrapper = inspect.unwrap(
+        method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname
+    )
+    assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.PLUGIN_MODEL_CONFIG
+    assert isinstance(check.locator, Workspace)
 
 
 class TestEndpointCollectionApi:

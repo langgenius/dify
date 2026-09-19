@@ -16,18 +16,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useDefaultModel,
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -65,9 +62,14 @@ import {
   useAgentConfigureBuildDraftData,
 } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-build-draft'
 import { useAgentConfigureSessionController } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-session-controller'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import {
+  trackAgentBuildModeRun,
+  trackAgentPreviewModeRun,
+  useInlineAgentScope,
+} from '@/features/agent-v2/analytics'
+import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 
@@ -118,7 +120,7 @@ export function WorkflowRosterAgentOrchestratePanelContent(
   if (!agentId || !agentSoulConfig) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -153,8 +155,7 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
     } | null
   }
 }) {
-  const { currentModel, setConfigureModel, textGenerationModelList } =
-    useAgentOrchestrateModelOptions()
+  const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
 
   return (
     <AgentOrchestratePanel
@@ -162,7 +163,6 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
       agentSoulConfig={agentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}
-      textGenerationModelList={textGenerationModelList}
       readOnly
       showHeader={false}
       showPublishBar={false}
@@ -188,10 +188,10 @@ export function WorkflowInlineAgentConfigureWorkspace(
           | undefined)
       : undefined
 
-  if (!agentId || !agentSoulConfig) {
+  if (!agentId) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -222,7 +222,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
 }: Omit<WorkflowInlineAgentConfigureWorkspaceProps, 'agentId'> & {
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
-  agentSoulConfig: AgentSoulConfig
+  agentSoulConfig?: AgentSoulConfig
 }) {
   const soulSourceOverride = useAtomValue(agentConfigureSoulSourceOverrideAtom)
   const rightPanelMode = useAtomValue(agentConfigureRightPanelModeAtom)
@@ -231,7 +231,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
     agentId,
     activeVersionId: activeConfigSnapshot?.id,
     composerAgentSoulConfig: agentSoulConfig,
-    isBuildMode: rightPanelMode === 'build',
+    isBuildMode: props.open && rightPanelMode === 'build',
     isViewingVersion: false,
     normalAgentSoulConfig: agentSoulConfig,
     setSoulSourceOverride,
@@ -239,10 +239,10 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
   })
   const composerSessionKey = `${props.nodeId}:${agentId}`
 
-  if (buildDraft.isPending) {
+  if (!agentSoulConfig || buildDraft.isPending) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -294,6 +294,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
 }) {
   const { t } = useTranslation('common')
   const { t: tAgent } = useTranslation('agentV2')
+  const agentScope = useInlineAgentScope()
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()
   const setBuildDraftSoulSourceOverride = buildDraft.setSoulSourceOverride
@@ -319,8 +320,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
   const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
-  const { currentModel, setConfigureModel, textGenerationModelList } =
-    useAgentOrchestrateModelOptions()
+  const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
   const [isApplyingInlineBuildDraft, setIsApplyingInlineBuildDraft] = useState(false)
   const { saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
     nodeId,
@@ -681,7 +681,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={composerState?.agent?.name}
           currentModel={currentModel}
-          textGenerationModelList={textGenerationModelList}
           readOnly={buildDraft.isActive}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
@@ -779,15 +778,18 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               }}
               onSaveDraftBeforeRun={
                 rightPanelMode === 'build'
-                  ? () => {
-                      return runBuildPreparation({
+                  ? async () => {
+                      const preparedBuildDraft = await runBuildPreparation({
                         generation: buildCallbackGeneration,
                         markBuildChatStarted: true,
                         prepare: prepareInlineBuildDraftBeforeRun,
                       })
+                      trackAgentBuildModeRun(agentScope)
+                      return preparedBuildDraft
                     }
                   : async () => {
                       await saveDraft()
+                      trackAgentPreviewModeRun(agentScope)
                     }
               }
               onSendInterrupted={() => {
@@ -818,9 +820,9 @@ function WorkflowInlineAgentConfigureMoreAction({
   onSaveInlineToRoster: () => void
 }) {
   const { t } = useTranslation('common')
-  const canManageAgents = useCanManageAgents()
+  const canCreateAgents = useCanCreateAgents()
 
-  if (!canManageAgents) return null
+  if (!canCreateAgents) return null
 
   return (
     <DropdownMenu modal={false}>
@@ -835,7 +837,7 @@ function WorkflowInlineAgentConfigureMoreAction({
           </button>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-44 w-max">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-max min-w-44">
         <DropdownMenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
           <span
             aria-hidden
@@ -858,12 +860,9 @@ function useAgentOrchestrateModelOptions() {
       }
     : undefined
   const currentModel = model ?? defaultModel
-  const { textGenerationModelList } =
-    useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
 
   return {
     currentModel,
     setConfigureModel: setModel,
-    textGenerationModelList,
   }
 }

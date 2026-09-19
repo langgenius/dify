@@ -3,6 +3,7 @@ import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -177,6 +178,7 @@ describe('RunOnce', () => {
   })
 
   it('should update inputs when user edits fields', async () => {
+    const user = userEvent.setup()
     const { onInputsChange, getInputsRef } = setup()
 
     await waitFor(() => {
@@ -184,15 +186,17 @@ describe('RunOnce', () => {
     })
     onInputsChange.mockClear()
 
-    fireEvent.change(screen.getByPlaceholderText('Text Input'), {
-      target: { value: 'new text' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Paragraph Input'), {
-      target: { value: 'paragraph value' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Number Input'), {
-      target: { value: '99' },
-    })
+    const textInput = screen.getByRole('textbox', { name: 'Text Input' })
+    await user.clear(textInput)
+    await user.type(textInput, 'new text')
+
+    const paragraphInput = screen.getByRole('textbox', { name: 'Paragraph Input' })
+    await user.clear(paragraphInput)
+    await user.type(paragraphInput, 'paragraph value')
+
+    const numberInput = screen.getByRole('spinbutton', { name: 'Number Input' })
+    await user.clear(numberInput)
+    await user.type(numberInput, '99')
 
     const label = screen.getByText('Checkbox Input')
     const checkbox = label.closest('div')?.parentElement?.querySelector('div')
@@ -290,7 +294,7 @@ describe('RunOnce', () => {
           selectInput: 'Option A',
         })
       })
-      expect(screen.getByText('Select Input'))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Select Input' })).toBeInTheDocument()
     })
   })
 
@@ -512,7 +516,7 @@ describe('RunOnce', () => {
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
-      const input = screen.getByPlaceholderText('Text Input')
+      const input = screen.getByRole('textbox', { name: 'Text Input' })
       expect(input).not.toHaveAttribute('maxLength')
     })
 
@@ -535,7 +539,7 @@ describe('RunOnce', () => {
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
-      const input = screen.getByPlaceholderText('Text Input')
+      const input = screen.getByRole('textbox', { name: 'Text Input' })
       expect(input)!.toHaveAttribute('maxLength', '100')
     })
   })

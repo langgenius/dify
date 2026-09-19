@@ -273,10 +273,9 @@ def _make_lock_context() -> MagicMock:
     return context_manager
 
 
-def _make_features(*, enabled: bool, plan: str = CloudPlan.PROFESSIONAL) -> SimpleNamespace:
+def _make_features(*, plan: str = CloudPlan.PROFESSIONAL) -> SimpleNamespace:
     return SimpleNamespace(
         billing=SimpleNamespace(
-            enabled=enabled,
             subscription=SimpleNamespace(plan=plan),
         ),
         documents_upload_quota=SimpleNamespace(limit=1000, size=0),

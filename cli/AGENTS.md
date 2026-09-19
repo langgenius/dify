@@ -1,6 +1,6 @@
 # AGENTS.md — difyctl (TypeScript CLI)
 
-This package is the Node 22+, ESM TypeScript implementation of `difyctl`. Development also requires the Bun version pinned in `.bun-version`; command-tree generation and the `dev`, `test`, and `build` pre-scripts invoke it. Read [`ARD.md`] before adding a command or changing shared CLI infrastructure. Read `src/commands/AGENTS.md` for command-folder and registry rules.
+This package is the Node 24+, ESM TypeScript implementation of `difyctl`. Development also requires the Bun version pinned in `.bun-version`; command-tree generation and the `dev`, `test`, and `build` pre-scripts invoke it. Read [`ARD.md`] before adding a command or changing shared CLI infrastructure. Read `src/commands/AGENTS.md` for command-folder and registry rules.
 
 ## Architecture Boundaries
 
@@ -17,6 +17,7 @@ Run package scripts from `cli/`:
 - Source CLI: `pnpm dev <command> [args...]`
 - Tests: `pnpm test`
 - Build: `pnpm build`
+- Build a local binary: `pnpm build:bin:local` (pins `DIFYCTL_CHANNEL=dev` so it does not self-report the release channel)
 - Regenerate and verify the registry: `pnpm tree:gen` and `pnpm tree:check`
 
 Run the scoped static check from the repository root with `vp check cli`.

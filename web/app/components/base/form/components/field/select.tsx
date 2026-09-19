@@ -75,7 +75,7 @@ const SelectField = ({
             {(nextValue) => getDisplayLabel(nextValue, options, placeholderText)}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent popupClassName={cn('bg-components-panel-bg-blur', popupProps?.className)}>
+        <SelectContent className={cn('bg-components-panel-bg-blur', popupProps?.className)}>
           {popupProps?.title && (
             <div
               className={cn(

@@ -26,7 +26,7 @@
   @apply mb-8;
 }
 .form .label {
-  @apply mb-2 text-text-primary;
+  @apply py-0 text-text-primary;
   font-weight: 500;
   font-size: 14px;
   line-height: 20px;

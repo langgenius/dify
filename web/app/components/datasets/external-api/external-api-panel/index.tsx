@@ -5,10 +5,10 @@ import { RiAddLine, RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 
 type ExternalAPIPanelProps = {
@@ -95,7 +95,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
         )}
         <div className="flex grow flex-col items-start gap-1 self-stretch px-4 py-0">
           {isLoading ? (
-            <Loading />
+            <LoadingPlaceholder />
           ) : (
             externalKnowledgeApiList.map((api, index) => (
               <ExternalKnowledgeAPICard

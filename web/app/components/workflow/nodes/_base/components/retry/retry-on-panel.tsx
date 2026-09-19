@@ -6,7 +6,14 @@ import {
   NumberFieldInput,
   NumberFieldUnit,
 } from '@langgenius/dify-ui/number-field'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -82,8 +89,19 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
                 onValueChange={handleMaxRetriesChange}
                 min={1}
                 max={10}
-                aria-label={maxRetriesLabel}
-              />
+              >
+                <SliderLabel className="sr-only">{maxRetriesLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb
+                      getAriaValueText={(_formattedValue, sliderValue) =>
+                        `${sliderValue} ${t(($) => $['nodes.common.retry.times'], { ns: 'workflow' })}`
+                      }
+                    />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
               <NumberField
                 className="w-25 shrink-0"
                 value={retry_config?.max_retries || 3}
@@ -111,8 +129,19 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
                 onValueChange={handleRetryIntervalChange}
                 min={100}
                 max={5000}
-                aria-label={retryIntervalLabel}
-              />
+              >
+                <SliderLabel className="sr-only">{retryIntervalLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb
+                      getAriaValueText={(_formattedValue, sliderValue) =>
+                        `${sliderValue} ${t(($) => $['nodes.common.retry.ms'], { ns: 'workflow' })}`
+                      }
+                    />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
               <NumberField
                 className="w-25 shrink-0"
                 value={retry_config?.retry_interval || 1000}

@@ -128,6 +128,13 @@ export const zEducationActivatePayload = z.object({
 })
 
 /**
+ * EducationActivateResponse
+ */
+export const zEducationActivateResponse = z.object({
+  message: z.string(),
+})
+
+/**
  * EducationAutocompleteResponse
  */
 export const zEducationAutocompleteResponse = z.object({
@@ -181,6 +188,19 @@ export const zAccountPasswordPayload = z.object({
   password: z.string().nullish(),
   repeat_new_password: z.string(),
 })
+
+/**
+ * AccountProfilePatchPayload
+ */
+export const zAccountProfilePatchPayload = z
+  .object({
+    avatar: z.string().optional(),
+    interface_language: z.string().optional(),
+    interface_theme: z.enum(['dark', 'light']).optional(),
+    name: z.string().min(3).max(30).optional(),
+    timezone: z.string().optional(),
+  })
+  .strict()
 
 /**
  * AccountTimezonePayload
@@ -296,7 +316,7 @@ export const zPostAccountEducationBody = zEducationActivatePayload
 /**
  * Success
  */
-export const zPostAccountEducationResponse = z.record(z.string(), z.unknown())
+export const zPostAccountEducationResponse = zEducationActivateResponse
 
 export const zGetAccountEducationAutocompleteQuery = z.object({
   keywords: z.string(),
@@ -358,6 +378,13 @@ export const zPostAccountPasswordResponse = zAccountResponse
  * Success
  */
 export const zGetAccountProfileResponse = zAccountResponse
+
+export const zPatchAccountProfileBody = zAccountProfilePatchPayload
+
+/**
+ * Success
+ */
+export const zPatchAccountProfileResponse = zAccountResponse
 
 export const zPostAccountTimezoneBody = zAccountTimezonePayload
 

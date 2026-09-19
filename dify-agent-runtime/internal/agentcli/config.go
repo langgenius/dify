@@ -3,16 +3,38 @@ package agentcli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
-const defaultConfigBase = ".dify_conf"
+const (
+	defaultConfigBase          = ".dify_conf"
+	configPullConcurrencyLimit = 4
+)
 
 type ConfigFileRef struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id"`
+}
+
+func runConfigPulls(count int, task func(index int) error) error {
+	errs := make([]error, count)
+	semaphore := make(chan struct{}, configPullConcurrencyLimit)
+
+	var waitGroup sync.WaitGroup
+	for index := 0; index < count; index++ {
+		semaphore <- struct{}{}
+		waitGroup.Go(func() {
+			defer func() { <-semaphore }()
+			errs[index] = task(index)
+		})
+	}
+	waitGroup.Wait()
+
+	return errors.Join(errs...)
 }
 
 // RunConfigManifest executes the `config manifest` command.
@@ -77,8 +99,12 @@ func RunConfigSkillsPull(env *Environment, names []string, localDir string, json
 		SkillMD       string `json:"skill_md"`
 	}
 	var items []pullItem
+	if len(names) > 0 {
+		items = make([]pullItem, len(names))
+	}
 
-	for _, name := range names {
+	err = runConfigPulls(len(names), func(index int) error {
+		name := names[index]
 		download, err := client.CreateConfigDownloadURL(ctx, "skill", name)
 		if err != nil {
 			return fmt.Errorf("request config skill %q download URL: %w", name, err)
@@ -108,12 +134,16 @@ func RunConfigSkillsPull(env *Environment, names []string, localDir string, json
 			skillMD = string(data)
 		}
 
-		items = append(items, pullItem{
+		items[index] = pullItem{
 			Name:          name,
 			ArchivePath:   archivePath,
 			DirectoryPath: skillDir,
 			SkillMD:       skillMD,
-		})
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	if jsonOutput {
@@ -175,8 +205,12 @@ func RunConfigFilesPull(env *Environment, names []string, localDir string, jsonO
 		Path string `json:"path"`
 	}
 	var items []fileItem
+	if len(names) > 0 {
+		items = make([]fileItem, len(names))
+	}
 
-	for _, name := range names {
+	err = runConfigPulls(len(names), func(index int) error {
+		name := names[index]
 		download, err := client.CreateConfigDownloadURL(ctx, "file", name)
 		if err != nil {
 			return fmt.Errorf("request config file %q download URL: %w", name, err)
@@ -193,7 +227,11 @@ func RunConfigFilesPull(env *Environment, names []string, localDir string, jsonO
 		if err := os.WriteFile(targetPath, payload, 0o644); err != nil {
 			return fmt.Errorf("write file: %w", err)
 		}
-		items = append(items, fileItem{Name: name, Path: targetPath})
+		items[index] = fileItem{Name: name, Path: targetPath}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	if jsonOutput {

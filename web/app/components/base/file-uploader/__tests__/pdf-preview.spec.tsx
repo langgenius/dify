@@ -67,7 +67,7 @@ describe('PdfPreview', () => {
     expect(getScaleContainer()).not.toHaveAttribute('aria-label')
     expect(screen.getByTestId('pdf-loader')).toBeInTheDocument()
     expect(screen.getByTestId('pdf-highlighter')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('should zoom in when zoom in control is clicked', () => {

@@ -41,6 +41,7 @@ class AppSiteConfiguration(NamedTuple):
     input_placeholder: str | None
     custom_disclaimer: str | None
     default_language: str
+    prompt_public: bool
     show_workflow_steps: bool
     use_icon_as_answer_icon: bool
 

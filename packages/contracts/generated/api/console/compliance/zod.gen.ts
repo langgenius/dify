@@ -5,7 +5,45 @@ import * as z from 'zod'
 /**
  * ComplianceDownloadResponse
  */
-export const zComplianceDownloadResponse = z.record(z.string(), z.unknown())
+export const zComplianceDownloadResponse = z.object({
+  url: z.string(),
+})
+
+/**
+ * BillingUnprocessableEntityErrorResponse
+ */
+export const zBillingUnprocessableEntityErrorResponse = z.object({
+  code: z.literal('unprocessable_entity'),
+  message: z.string(),
+  status: z.literal(422),
+})
+
+/**
+ * ComplianceRateLimitErrorResponse
+ */
+export const zComplianceRateLimitErrorResponse = z.object({
+  code: z.literal('compliance_rate_limit'),
+  message: z.string(),
+  status: z.literal(429),
+})
+
+/**
+ * BillingOperationFailedErrorResponse
+ */
+export const zBillingOperationFailedErrorResponse = z.object({
+  code: z.literal('billing_operation_failed'),
+  message: z.string(),
+  status: z.literal(502),
+})
+
+/**
+ * BillingUnavailableErrorResponse
+ */
+export const zBillingUnavailableErrorResponse = z.object({
+  code: z.literal('billing_unavailable'),
+  message: z.string(),
+  status: z.literal(503),
+})
 
 export const zGetComplianceDownloadQuery = z.object({
   doc_name: z.string(),

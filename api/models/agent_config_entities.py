@@ -4,9 +4,19 @@ import re
 from enum import StrEnum
 from typing import Annotated, Any, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 
-from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
+from core.rag.entities.metadata_entities import (
+    ConditionValue,
+    SupportedComparisonOperator,
+)
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod, FileType
@@ -695,7 +705,9 @@ class AgentSoulDifyToolConfig(BaseModel):
         if not self.provider_id and not (self.plugin_id and self.provider):
             raise ValueError("Dify tool requires provider_id or plugin_id + provider")
         if self.credential_type != "unauthorized" and (self.credential_ref is None or not self.credential_ref.id):
-            raise ValueError("credential_ref.id is required for credentialed Dify tools")
+            # credential resolved by provider_id, see ``ToolManager``
+            if self.provider_type not in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
+                raise ValueError("credential_ref.id is required for credentialed Dify tools")
         # ``name`` is reserved for a future user-rename UX. Until that lands
         # the model-visible name is forced to match ``tool_name``; reject
         # explicit values so a frontend bug surfaces immediately instead of
@@ -1050,45 +1062,26 @@ class DeclaredOutputConfig(BaseModel):
         )
 
 
-# PRD §OUTPUT 配置框 0522 共识: "Output 如果没有配置，则 text, files, json"
-# The runtime injects these when ``declared_outputs`` is empty (stage 4 §4.1, D-3).
-# Not persisted; mutating this constant changes UI defaults globally.
-DEFAULT_DECLARED_OUTPUTS: Final[tuple[DeclaredOutputConfig, ...]] = (
+# ``text`` is a system-owned workflow output. It is derived for consumers and
+# never persisted in ``WorkflowNodeJobConfig.declared_outputs``.
+SYSTEM_DECLARED_OUTPUTS: Final[tuple[DeclaredOutputConfig, ...]] = (
     DeclaredOutputConfig(
         name="text",
         type=DeclaredOutputType.STRING,
         required=False,
         description="Free-form text answer.",
     ),
-    DeclaredOutputConfig(
-        name="files",
-        type=DeclaredOutputType.ARRAY,
-        required=False,
-        description="Files produced by the agent.",
-        array_item=DeclaredArrayItem(type=DeclaredOutputType.FILE),
-    ),
-    DeclaredOutputConfig(
-        name="json",
-        type=DeclaredOutputType.OBJECT,
-        required=False,
-        description="Free-form JSON object.",
-    ),
 )
+# ``switch`` and ``_session`` are reserved for future system output contracts.
+RESERVED_DECLARED_OUTPUT_NAMES: Final[frozenset[str]] = frozenset({"text", "switch", "_session"})
 
 
 def effective_declared_outputs(
     declared_outputs: list[DeclaredOutputConfig] | tuple[DeclaredOutputConfig, ...],
 ) -> tuple[DeclaredOutputConfig, ...]:
-    """Return the outputs the runtime actually presents.
+    """Project the system ``text`` output followed by custom declarations."""
 
-    Returns ``declared_outputs`` unchanged when non-empty, otherwise the PRD
-    defaults from ``DEFAULT_DECLARED_OUTPUTS``. Shared helper so Composer load
-    responses, runtime request builder, and the Node Output Inspector all use
-    the same fallback (stage 4 §4.1, decision D-3).
-    """
-    if declared_outputs:
-        return tuple(declared_outputs)
-    return DEFAULT_DECLARED_OUTPUTS
+    return SYSTEM_DECLARED_OUTPUTS + tuple(declared_outputs)
 
 
 class WorkflowNodeJobConfig(BaseModel):
@@ -1101,3 +1094,13 @@ class WorkflowNodeJobConfig(BaseModel):
     declared_outputs: list[DeclaredOutputConfig] = Field(default_factory=list)
     human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
     metadata: WorkflowNodeJobMetadata = Field(default_factory=WorkflowNodeJobMetadata)
+
+    @field_validator("declared_outputs")
+    @classmethod
+    def _reject_reserved_declared_output_names(
+        cls, declared_outputs: list[DeclaredOutputConfig]
+    ) -> list[DeclaredOutputConfig]:
+        for output in declared_outputs:
+            if output.name in RESERVED_DECLARED_OUTPUT_NAMES:
+                raise ValueError(f"declared output name {output.name!r} is reserved")
+        return declared_outputs

@@ -11,6 +11,25 @@ const getStringConfig = (envVar: string | undefined, defaultValue: string) => {
   return defaultValue
 }
 
+const isLocalMarketplaceApiUrl = (url: string | undefined) =>
+  /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::|\/)/i.test(url ?? '')
+
+// Docker entrypoint sets NEXT_PUBLIC_MARKETPLACE_API_PREFIX=${MARKETPLACE_API_URL}/api/v1.
+// MARKETPLACE_API_URL itself is the site origin (no /api/v1). Standalone marketplace
+// images may set MARKETPLACE_API_URL at runtime for SSR; normalize the same way
+// entrypoint does so console SSR does not call the HTML origin and fail Templates.
+const marketplaceApiPrefixFromUrl = (url: string) => {
+  const trimmed = url.replace(/\/$/, '')
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`
+}
+
+const runtimeMarketplaceApiUrl =
+  typeof globalThis.window === 'undefined' &&
+  process.env.MARKETPLACE_API_URL &&
+  !isLocalMarketplaceApiUrl(process.env.MARKETPLACE_API_URL)
+    ? marketplaceApiPrefixFromUrl(process.env.MARKETPLACE_API_URL)
+    : undefined
+
 export const API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_API_PREFIX,
   'http://localhost:5001/console/api',
@@ -20,7 +39,7 @@ export const PUBLIC_API_PREFIX = getStringConfig(
   'http://localhost:5001/api',
 )
 export const MARKETPLACE_API_PREFIX = getStringConfig(
-  env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
+  runtimeMarketplaceApiUrl || env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
   'http://localhost:5002/api',
 )
 export const MARKETPLACE_URL_PREFIX = getStringConfig(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX, '')
@@ -271,6 +290,8 @@ export const MAX_ITERATIONS_NUM = env.NEXT_PUBLIC_MAX_ITERATIONS_NUM
 export const MAX_TREE_DEPTH = env.NEXT_PUBLIC_MAX_TREE_DEPTH
 export const MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS =
   env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
+export const MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH =
+  env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH
 
 export const ALLOW_INLINE_STYLES = env.NEXT_PUBLIC_ALLOW_INLINE_STYLES
 export const ALLOW_UNSAFE_DATA_SCHEME = env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME

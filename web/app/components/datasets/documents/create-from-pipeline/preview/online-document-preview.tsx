@@ -1,12 +1,12 @@
 'use client'
 import type { NotionPage } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Notion } from '@/app/components/base/icons/src/public/common'
 import { Markdown } from '@/app/components/base/markdown'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { usePreviewOnlineDocument } from '@/service/use-pipeline'
 import { formatNumberAbbreviated } from '@/utils/format'
@@ -59,7 +59,7 @@ const OnlineDocumentPreview = ({
           <div className="system-2xs-semibold-uppercase text-text-accent">
             {t(($) => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}
           </div>
-          <div className="text-tex-primary title-md-semi-bold">{currentPage?.page_name}</div>
+          <div className="title-md-semi-bold">{currentPage?.page_name}</div>
           <div className="flex items-center gap-x-1 system-xs-medium text-text-tertiary">
             <Notion className="size-3.5" />
             <span>{currentPage.type}</span>

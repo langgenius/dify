@@ -20,7 +20,8 @@ from graphon.file import FileTransferMethod, FileType
 from models import model as model_module
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
+from models.model import App, Conversation, MessageAnnotation, MessageFile
+from tests.unit_tests.model_factories import make_app, make_conversation
 
 
 @dataclass(frozen=True)
@@ -46,29 +47,18 @@ def cycle_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator
 
 
 def _app(*, app_id: str = "app-id", tenant_id: str = "tenant-1") -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name="Test App",
-        description="",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=0,
-    )
+    return make_app(app_id=app_id, tenant_id=tenant_id, icon_type=None, max_active_requests=0)
 
 
 def _conversation(*, conversation_id: str = "conv-1", app_id: str = "app-id") -> Conversation:
-    conversation = Conversation(
+    return make_conversation(
+        conversation_id=conversation_id,
         app_id=app_id,
-        mode=AppMode.CHAT,
         name="",
         status="normal",
         from_source=ConversationFromSource.API,
         inputs={},
     )
-    conversation.id = conversation_id
-    return conversation
 
 
 def _message_file(
@@ -291,7 +281,9 @@ class TestMessageCycleManagerOptimization:
             ),
             patch("core.app.task_pipeline.message_cycle_manager.Timer", DummyTimer),
         ):
-            thread = message_cycle_manager.generate_conversation_name(conversation_id="conv-1", query="hello")
+            thread = message_cycle_manager.generate_conversation_name(
+                conversation_id="conv-1", query="hello", message_id="message-1"
+            )
 
         assert isinstance(thread, DummyTimer)
         assert thread.interval == 1
@@ -301,6 +293,7 @@ class TestMessageCycleManagerOptimization:
         assert thread.kwargs["flask_app"] is flask_app
         assert thread.kwargs["conversation_id"] == "conv-1"
         assert thread.kwargs["query"] == "hello"
+        assert thread.kwargs["message_id"] == "message-1"
         assert message_cycle_manager._application_generate_entity.is_new_conversation is False
 
     def test_generate_conversation_name_skips_thread_when_auto_generate_disabled(self, message_cycle_manager):
@@ -377,13 +370,18 @@ class TestMessageCycleManagerOptimization:
             mock_redis.get.return_value = None
             mock_llm_generator.generate_conversation_name.return_value = "generated-title"
 
-            message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "hello")
+            message_cycle_manager._generate_conversation_name_worker(
+                flask_app, "conv-1", "hello", message_id="message-1"
+            )
 
         assert cycle_db.in_transaction() is False
         with Session(sqlite_engine) as verification_session:
             conversation = verification_session.get(Conversation, "conv-1")
         assert conversation is not None
         assert conversation.name == "generated-title"
+        mock_llm_generator.generate_conversation_name.assert_called_once_with(
+            "tenant-1", "hello", "conv-1", "app-id", message_id="message-1"
+        )
         mock_redis.setex.assert_called_once()
 
     def test_generate_conversation_name_worker_falls_back_when_generation_fails(

@@ -44,6 +44,9 @@ const isUserInputFormItem = (value: unknown): value is ChatConfig['user_input_fo
   ].some((key) => isRecord(getValue(value, key)))
 }
 
+const normalizeUserInputForm = (items: readonly unknown[]): ChatConfig['user_input_form'] =>
+  items.filter(isUserInputFormItem)
+
 const isModel = (
   value: unknown,
 ): value is NonNullable<ChatConfig['suggested_questions_after_answer']['model']> => isRecord(value)
@@ -121,7 +124,7 @@ export const toInstalledAppParameters = (response: InstalledAppParametersRespons
   suggested_questions: response.suggested_questions,
   pre_prompt: '',
   prompt_type: PromptMode.simple,
-  user_input_form: response.user_input_form.filter(isUserInputFormItem),
+  user_input_form: normalizeUserInputForm(response.user_input_form),
   more_like_this: normalizeEnabledConfig(response.more_like_this),
   suggested_questions_after_answer: normalizeSuggestedQuestionsAfterAnswer(
     response.suggested_questions_after_answer,

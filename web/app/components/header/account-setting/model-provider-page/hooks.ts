@@ -1,4 +1,7 @@
-import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  ModelType,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   ConfigurationMethodEnum,
   Credential,
@@ -6,29 +9,29 @@ import type {
   CustomModel,
   DefaultModel,
   DefaultModelResponse,
-  Model,
   ModelModalModeEnum,
   ModelProvider,
 } from './declarations'
 import type { ModelModalType } from '@/context/modal-context'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocale } from '#i18n'
 import {
   useMarketplacePlugins,
   useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useLocale } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
-import { fetchDefaultModal, fetchModelList } from '@/service/common'
+import { getModelLanguage } from '@/i18n/metadata'
+import { fetchDefaultModal } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { commonQueryKeys, modelProviderDetailsQueryOptions } from '@/service/use-common'
 import { useExpandModelProviderList } from './atoms'
 import { CustomConfigurationStatusEnum, ModelStatusEnum, ModelTypeEnum } from './declarations'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
-  modelList: Model[],
+  modelList: ProviderWithModelsResponse[],
 ) => [DefaultModel | undefined, (model: DefaultModel) => void]
 export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
   defaultModel,
@@ -47,7 +50,12 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
         provider: currentProvider.provider,
       }
 
-    return currentDefaultModel
+    return (
+      currentDefaultModel ??
+      (defaultModel
+        ? { model: defaultModel.model, provider: defaultModel.provider.provider }
+        : undefined)
+    )
   }, [defaultModel, modelList])
   const currentDefaultModelKey = currentDefaultModel
     ? `${currentDefaultModel.provider}:${currentDefaultModel.model}`
@@ -72,49 +80,29 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 
 export const useLanguage = () => {
   const locale = useLocale()
-  return locale.replace('-', '_')
+  return getModelLanguage(locale)
 }
 
-type UseModelListOptions = {
+type ModelQueryOptions = {
   enabled?: boolean
 }
 
-export const useModelList = (type: ModelTypeEnum, { enabled = true }: UseModelListOptions = {}) => {
-  const { data, refetch, isPending } = useQuery({
-    queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-      input: {
-        params: {
-          model_type: type,
-        },
-      },
-    }),
-    queryFn: () => fetchModelList(`/workspaces/current/models/model-types/${type}`),
-    enabled,
-  })
-
-  return {
-    data: data?.data || [],
-    mutate: refetch,
-    isLoading: isPending,
-  }
-}
-
-export const useDefaultModel = (type: ModelTypeEnum) => {
+export const useDefaultModel = (
+  type: ModelTypeEnum,
+  { enabled = true }: ModelQueryOptions = {},
+) => {
   const { data, refetch, isPending } = useQuery({
     queryKey: commonQueryKeys.defaultModel(type),
     queryFn: () => fetchDefaultModal(`/workspaces/current/default-model?model_type=${type}`),
+    enabled,
   })
 
   return {
     data: data?.data,
     mutate: refetch,
-    isLoading: isPending,
+    isLoading: enabled && isPending,
   }
 }
-
-type ModelFromProvider<TProvider> = TProvider extends { models: Array<infer TModel> }
-  ? TModel
-  : never
 
 export const getCurrentProviderAndModel = <
   TProvider extends { models: Array<{ model: string }>; provider: string },
@@ -123,9 +111,9 @@ export const getCurrentProviderAndModel = <
   defaultModel?: DefaultModel,
 ) => {
   const currentProvider = modelList.find((provider) => provider.provider === defaultModel?.provider)
-  const currentModel = currentProvider?.models.find(
+  const currentModel: TProvider['models'][number] | undefined = currentProvider?.models.find(
     (model) => model.model === defaultModel?.model,
-  ) as ModelFromProvider<TProvider> | undefined
+  )
 
   return {
     currentProvider,
@@ -138,7 +126,12 @@ export { getCurrentProviderAndModel as useCurrentProviderAndModel }
 export const useTextGenerationCurrentProviderAndModelAndModelList = (
   defaultModel?: DefaultModel,
 ) => {
-  const { data: textGenerationModelList } = useModelList(ModelTypeEnum.textGeneration)
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
   const activeTextGenerationModelList = textGenerationModelList.filter(
     (model) => model.status === ModelStatusEnum.active,
   )
@@ -156,7 +149,12 @@ export const useTextGenerationCurrentProviderAndModelAndModelList = (
 }
 
 export const useModelListAndDefaultModel = (type: ModelTypeEnum) => {
-  const { data: modelList } = useModelList(type)
+  const { data: modelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: type } },
+      select: (response) => response.data,
+    }),
+  )
   const { data: defaultModel } = useDefaultModel(type)
 
   return {
@@ -236,7 +234,7 @@ export const useLazyModelProviderDetail = (providerName: string) => {
   const loadProviderDetail = useCallback(async () => {
     setEnabled(true)
     try {
-      const response = await queryClient.fetchQuery(modelProviderDetailsQueryOptions())
+      const response = await queryClient.query(modelProviderDetailsQueryOptions())
       return response.data.find((provider) => provider.provider === providerName)
     } catch {
       return undefined
@@ -264,12 +262,14 @@ export const useMarketplaceAllPlugins = (
     queryPlugins,
     queryPluginsWithDebounced,
     cancelQueryPluginsWithDebounced = () => {},
+    resetQueryParams = () => {},
     isLoading: isPluginsLoading,
   } = useMarketplacePlugins(enabled)
 
   useEffect(() => {
     if (!enabled) {
       cancelQueryPluginsWithDebounced()
+      resetQueryParams()
       return
     }
 
@@ -298,6 +298,7 @@ export const useMarketplaceAllPlugins = (
     enabled,
     queryPlugins,
     queryPluginsWithDebounced,
+    resetQueryParams,
     searchText,
     exclude,
   ])

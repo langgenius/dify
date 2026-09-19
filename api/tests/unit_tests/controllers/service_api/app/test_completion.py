@@ -36,14 +36,17 @@ from controllers.service_api.app.completion import (
 from controllers.service_api.app.error import (
     AgentNotPublishedError,
     AppUnavailableError,
+    CompletionRequestError,
     ConversationCompletedError,
     NotChatAppError,
     WorkflowVersionExecutionNotAllowedError,
 )
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import QuotaExceededError
 from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeRateLimitError as ProviderInvokeRateLimitError
 from models.base import TypeBase
 from models.enums import ConversationFromSource, EndUserType
 from models.model import App, AppMode, Conversation, EndUser, IconType, Message
@@ -54,6 +57,7 @@ from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -552,13 +556,50 @@ class TestCompletionStopApiController:
 
 
 class TestChatApiController:
+    @pytest.mark.parametrize(
+        ("source_error", "http_error", "status_code", "error_code"),
+        [
+            pytest.param(InvokeRateLimitError, InvokeRateLimitHttpError, 429, "rate_limit_error", id="cloud-quota"),
+            pytest.param(
+                ProviderInvokeRateLimitError, CompletionRequestError, 400, "completion_request_error", id="provider"
+            ),
+        ],
+    )
+    def test_maps_rate_limits_by_source(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        orm_session: Session,
+        source_error: type[InvokeRateLimitError | ProviderInvokeRateLimitError],
+        http_error: type[InvokeRateLimitHttpError | CompletionRequestError],
+        status_code: int,
+        error_code: str,
+    ) -> None:
+        generate = Mock(side_effect=source_error("rate limit reached"))
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
+        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.ADVANCED_CHAT)
+
+        api = ChatApi()
+        handler = unwrap(api.post)
+
+        with app.test_request_context(
+            "/chat-messages", method="POST", json={"inputs": {}, "query": "hi", "response_mode": "blocking"}
+        ):
+            with pytest.raises(http_error) as exc_info:
+                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+
+        generate.assert_called_once()
+        assert exc_info.value.code == status_code
+        assert exc_info.value.error_code == error_code
+        assert exc_info.value.description == "rate limit reached"
+
     def test_rejects_sandbox_plan_workflow_version(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
     ) -> None:
         completion_module = sys.modules["controllers.service_api.app.completion"]
-        monkeypatch.setattr(completion_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+        apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
-        billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
+        billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock()
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(AppGenerateService, "generate", generate)
@@ -582,13 +623,12 @@ class TestChatApiController:
         assert exc_info.value.error_code == "workflow_version_execution_not_allowed"
 
     @pytest.mark.parametrize(
-        ("deployment_edition", "billing_enabled", "plan", "workflow_id"),
+        ("deployment_edition", "plan", "workflow_id"),
         [
-            (DeploymentEdition.COMMUNITY, True, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (DeploymentEdition.ENTERPRISE, True, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (DeploymentEdition.CLOUD, False, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (DeploymentEdition.CLOUD, True, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
-            (DeploymentEdition.CLOUD, True, CloudPlan.SANDBOX, None),
+            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, str(uuid.uuid4())),
+            (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, str(uuid.uuid4())),
+            (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
+            (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, None),
         ],
     )
     def test_allows_default_or_entitled_workflow_version_execution(
@@ -597,14 +637,13 @@ class TestChatApiController:
         monkeypatch: pytest.MonkeyPatch,
         orm_session: Session,
         deployment_edition: DeploymentEdition,
-        billing_enabled: bool,
         plan: CloudPlan,
         workflow_id: str | None,
     ) -> None:
         completion_module = sys.modules["controllers.service_api.app.completion"]
-        monkeypatch.setattr(completion_module.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
+        apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=deployment_edition)
 
-        billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
+        billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
         generate = Mock(return_value={"result": "ok"})
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(AppGenerateService, "generate", generate)

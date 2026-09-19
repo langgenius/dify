@@ -3,13 +3,14 @@ import type { NodeDefault } from '../../types'
 import type { AgentNodeType } from './types'
 import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import { BlockEnum } from '../../types'
 import { genNodeMetaData } from '../../utils'
 
 const metaData = genNodeMetaData({
   sort: 3,
   type: BlockEnum.Agent,
+  helpLinkUri: 'agent#classic-agent',
 })
 
 const nodeDefault: NodeDefault<AgentNodeType> = {

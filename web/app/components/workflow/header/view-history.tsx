@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -43,7 +43,6 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
           render={
             <button
               type="button"
-              aria-label={t(($) => $['common.showRunHistory'], { ns: 'workflow' })}
               className={cn(
                 'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
                 'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
@@ -82,7 +81,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
         placement={withText ? 'bottom-start' : 'bottom-end'}
         sideOffset={4}
         alignOffset={withText ? -8 : 10}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div
           className="ml-2 flex w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
@@ -106,7 +105,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
           </div>
           {isLoading && (
             <div className="flex h-10 items-center justify-center">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
           {!isLoading && (

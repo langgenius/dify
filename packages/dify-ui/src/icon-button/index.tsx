@@ -2,8 +2,8 @@
 
 import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import { Button as BaseButton } from '@base-ui/react/button'
+import * as React from 'react'
 import { cn } from '../cn'
 import { iconButtonVariants } from './variants'
 
@@ -47,6 +47,6 @@ function IconButton({
   )
 }
 
-export { IconButton }
+export { IconButton, iconButtonVariants }
 
 export type { IconButtonProps }

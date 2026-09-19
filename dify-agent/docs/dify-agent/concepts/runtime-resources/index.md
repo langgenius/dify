@@ -118,10 +118,12 @@ product use without performing network I/O inside the caller's transaction.
 Product lifecycle paths commit this transition synchronously. After the
 transaction commits, one Celery task asks Dify Agent to destroy the physical
 resources. A successful collector deletes the corresponding ledger row. If a
-collector raises, the task logs the tenant, resource type, and resource ID,
-re-raises the exception so collection stops and Celery records the task as
-failed, and leaves the RETIRED row intact. No automatic retry or reconciliation
-is performed.
+collector raises, the task logs the tenant, resource type, and resource ID and
+continues with the other independent resources in the batch. After all resources
+have been attempted, any failure makes the Celery task fail and prevents Agent
+aggregate deletion. Failed RETIRED rows remain available for a later retry. A
+failure to publish the Celery task is also propagated to the product caller. No
+automatic retry or reconciliation is performed.
 
 The unified `collect_agent_resources` task is registered on normal Celery
 workers and explicitly uses the existing `retention` queue. Standard workers
@@ -130,14 +132,26 @@ is required. At a Workflow terminal event, the graph layer synchronously retires
 and commits the run's Workspaces before enqueueing collection. When a Workflow
 change may orphan Workflow-only Agents, the main product transaction commits
 first; a fresh session then rechecks effective ownership and retires only Agents
-that remain unowned.
+that remain unowned. An effective reference is a binding in a normal App's
+current draft or current published Workflow. This ownership check applies only
+to implicit retirement of Workflow-only Agents. Explicit deletion of a roster
+Agent or Agent App proceeds even while Workflows reference it.
 
 Retiring a final Binding also retires its Workspace. Workspace collection
 destroys the physical Workspace through one Binding and then collects remaining
 materialized Homes. Home Snapshots are retired when their owning Agent is
-retired and are collected only after no draft or config snapshot references
-them. Celery performs physical collection only; it does not decide or perform
-the initial retirement. Dify Agent itself remains stateless.
+retired. `RETIRED` is the sole physical-deletion condition for a Home Snapshot;
+Draft and Config Snapshot references are historical pointers and do not keep it
+alive. After every external resource in a deletion batch succeeds, Dify API
+hard-deletes the archived Agent together with its Drafts, Config Snapshots,
+Config Revisions, debug-conversation mappings, and resource ledgers in one
+database transaction. Workflow Agent bindings belong to
+their Workflows and remain unchanged, so they may hold a dangling Agent ID after
+explicit deletion. Dify Agent itself remains stateless.
+
+A `RETIRED` Workspace without a `RETIRED` Binding cannot identify a backend
+participant through which to destroy the Workspace. That state is a lifecycle
+invariant violation and fails collection instead of being logged as success.
 
 There is currently no age-based TTL, periodic GC, or global orphan reconciler.
 Backend destroy operations are idempotent where supported. Dify API does not
@@ -173,12 +187,20 @@ directly from the runtime to Dify's existing ToolFile endpoint. Dify Agent
 returns only the canonical ToolFile reference and releases the lease before
 Dify API signs a browser URL.
 
+The default Binding-download deadline chain leaves each caller time to receive
+and normalize the lower layer's result: the sandbox CLI upload is 180 seconds,
+`DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS` is 210 seconds,
+Dify API's `AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS` is 240 seconds,
+and `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` is 3600 seconds.
+
 `RuntimeLayout.home_dir` and `RuntimeLayout.workspace_dir` are canonical paths
 inside the backend execution namespace. They are not host paths, product ids,
 or request configuration. Shell commands start in `workspace_dir`, and `HOME`
-is forced to `home_dir`. On Local, sibling materialized Homes may exist in the
-same shellctl namespace, while path isolation restricts the active lease to its
-own Home plus the shared Workspace.
+is forced to `home_dir`. The standard temp variables `TMPDIR`, `TMP`, and `TEMP`
+also point directly to `workspace_dir`, so the Workspace is both the command
+`cwd` and temp space. On Local, sibling materialized Homes may exist in the same
+shellctl namespace, while path isolation restricts the active lease to its own
+Home plus the shared Workspace.
 
 ## Backend support
 
@@ -187,12 +209,15 @@ own Home plus the shared Workspace.
 | Local | Supported | Supported, including default empty Homes and attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
 | E2B | Supported | Supported with template-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; checkpoints use E2B snapshots. |
 | Enterprise | Not implemented | Default-Home Binding creation, acquire, and coupled destroy are supported | Binding and Workspace refs map to one Gateway sandbox. Explicit Home Snapshot materialization fails fast. |
+| OpenShell | Supported via directory copies on an operator-provided shared volume | Supported with image-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same OpenShell sandbox, addressed by its stable name; snapshots live under `home-snapshots/<tenant-digest>/` on the shared volume. Production deployments must use one workspace and one dedicated volume per tenant. |
 
 Local creates a new Home for every Binding id. Destroying one Binding without
 the Workspace leaves sibling Homes and the shared Workspace intact. Current E2B
 rejects `existing_workspace_ref` with `shared_workspace_unsupported`, because
 its Binding and Workspace are one Sandbox. It also rejects binding-only destroy.
-Neither path creates a fallback Workspace or switches backends.
+OpenShell shares the E2B shape: one sandbox per Binding, no
+`existing_workspace_ref`, no binding-only destroy. Neither path creates a
+fallback Workspace or switches backends.
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
 resource to one hour. The limit covers the complete Agent run held by one
@@ -203,5 +228,6 @@ resource setting does not own the Agent run terminal state. It is not a retentio
 TTL and does not delete paused resources or immutable snapshots.
 
 See the [Shell layer](../../user-manual/shell-layer/index.md) for request
-composition and the [Operations Guide](../../guide/index.md) for Local and E2B
-validation.
+composition, the [Operations Guide](../../guide/index.md) for Local and E2B
+validation, and the [OpenShell guide](../../guide/openshell.md) for OpenShell
+configuration and validation.

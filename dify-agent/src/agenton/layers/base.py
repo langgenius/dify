@@ -226,7 +226,7 @@ class Layer(
             if deps_type is None and is_generic_template:
                 return
             if deps_type is not None:
-                cls.deps_type = deps_type  # pyright: ignore[reportAttributeAccessIssue]
+                cls.deps_type = cast(type[_DepsT], deps_type)
         if deps_type is None:
             raise TypeError(f"{cls.__name__} must define deps_type or inherit from Layer[DepsT].")
         if not isinstance(deps_type, type) or not issubclass(deps_type, LayerDeps):

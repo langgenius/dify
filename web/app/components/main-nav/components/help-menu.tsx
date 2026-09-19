@@ -1,7 +1,7 @@
 'use client'
 
 import type { IconButtonProps } from '@langgenius/dify-ui/icon-button'
-import type { ReactElement } from 'react'
+import type { ReactElement, Ref } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -29,6 +29,7 @@ import {
   MenuItemContent,
 } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
+import { useCreatorCenterUrl } from '@/app/components/plugins/marketplace/creator-center-url'
 import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/analytics'
 import {
   disableStepByStepTourForCurrentWorkspaceAtom,
@@ -38,6 +39,7 @@ import {
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -48,7 +50,7 @@ import {
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import styles from './help-menu.module.css'
 import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
@@ -56,6 +58,7 @@ import SupportMenu from './support-menu'
 type HelpMenuProps = {
   triggerIcon?: ReactElement
   triggerClassName?: string
+  triggerRef?: Ref<HTMLButtonElement>
   triggerSize?: IconButtonProps['size']
 }
 
@@ -87,9 +90,10 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
   />
 )
 
-const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps) => {
+const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: HelpMenuProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: profileMeta } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -152,12 +156,14 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
     <>
       <DropdownMenu onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
+          ref={triggerRef}
           data-learn-dify-help-target
           render={
             <IconButton
               size={triggerSize ?? 'lg'}
               aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
               className={cn(
+                'focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
                 usesDefaultTrigger && [
                   'rounded-full border border-components-card-border bg-components-card-bg text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted',
                   !triggerSize && 'size-7 p-0',
@@ -176,7 +182,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
         <DropdownMenuContent
           placement="top-end"
           sideOffset={8}
-          popupClassName="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
+          className="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           <>
             <DropdownMenuGroup className="p-1">
@@ -249,6 +255,18 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
+              <DropdownMenuLinkItem
+                href={creatorCenterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mx-0 h-8 gap-1 px-3 py-1.5"
+              >
+                <MenuItemContent
+                  iconClassName="i-ri-user-star-line"
+                  label={t(($) => $['mainNav.help.creatorCenter'], { ns: 'common' })}
+                  trailing={<ExternalLinkIndicator />}
+                />
+              </DropdownMenuLinkItem>
               <DropdownMenuLinkItem
                 href="https://github.com/langgenius/dify"
                 target="_blank"

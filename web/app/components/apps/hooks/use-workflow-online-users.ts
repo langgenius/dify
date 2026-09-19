@@ -1,6 +1,6 @@
 import type { WorkflowOnlineUser, WorkflowOnlineUsersResponse } from '@/models/app'
 import { useQuery } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type WorkflowOnlineUsersMap = Record<string, WorkflowOnlineUser[]>
 

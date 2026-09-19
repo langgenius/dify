@@ -1,49 +1,28 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { UpgradeModal } from '../upgrade-modal'
 
-const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
-
-const mockUseModalContextSelector = vi.hoisted(() => vi.fn())
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (selector: (state: { setShowPricingModal: () => void }) => () => void) =>
-    mockUseModalContextSelector(selector),
-}))
-
-describe('human-input/delivery-method/upgrade-modal', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render upgrade copy and handle hide and upgrade actions', () => {
-    const handleClose = vi.fn()
-    const handleShowPricingModal = vi.fn()
-
-    mockUseModalContextSelector.mockImplementation((selector) =>
-      selector({
-        setShowPricingModal: handleShowPricingModal,
-      }),
-    )
-
-    render(<UpgradeModal open onOpenChange={handleClose} />)
-
-    expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.upgradeTip'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.upgradeTipContent'),
-    ).toBeInTheDocument()
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.upgradeTipHide',
-      }),
-    )
-    expect(handleClose).toHaveBeenCalledWith(false)
-
-    fireEvent.click(screen.getByRole('button', { name: /billing.upgradeBtn.encourageShort/i }))
-    expect(handleShowPricingModal).toHaveBeenCalledTimes(1)
-  })
+it('renders upgrade copy and handles hide and pricing actions', async () => {
+  const user = userEvent.setup()
+  const onUrlUpdate = vi.fn()
+  const onOpenChange = vi.fn()
+  renderWithConsoleQuery(
+    <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
+      <UpgradeModal open onOpenChange={onOpenChange} />
+    </NuqsTestingAdapter>,
+    { systemFeatures: { deployment_edition: 'CLOUD' } },
+  )
+  expect(screen.getByRole('dialog')).toHaveTextContent(
+    'workflow.nodes.humanInput.deliveryMethod.upgradeTipContent',
+  )
+  await user.click(
+    screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.upgradeTipHide' }),
+  )
+  expect(onOpenChange).toHaveBeenCalledWith(false)
+  await user.click(screen.getByRole('button', { name: /billing.upgradeBtn.encourageShort/i }))
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+  )
 })

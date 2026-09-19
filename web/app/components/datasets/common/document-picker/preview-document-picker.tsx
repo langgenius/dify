@@ -8,7 +8,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import FileIcon from '../document-file-icon'
 
 type Props = Readonly<{
@@ -61,7 +61,7 @@ const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange })
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-98 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
           {files?.length > 1 && (
@@ -73,7 +73,7 @@ const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange })
             <PreviewDocumentList list={files} onChange={handleChange} />
           ) : (
             <div className="mt-2 flex h-25 w-90 items-center justify-center">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
         </div>

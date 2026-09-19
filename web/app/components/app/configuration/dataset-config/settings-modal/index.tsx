@@ -5,21 +5,21 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { isEqual } from 'es-toolkit/predicate'
 import { useQueryState } from 'nuqs'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import Input from '@/app/components/base/input'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
 import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
   settingsQueryParamName,
@@ -27,6 +27,7 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import { useDocLink } from '@/context/i18n'
 import { DatasetPermission } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
@@ -52,12 +53,23 @@ const SettingsModal: FC<SettingsModalProps> = ({
   onCancel,
   onSave,
 }) => {
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const { t } = useTranslation()
   const translateRetrieval: RetrievalTranslate = (selector, options) => t(selector, options)
   const docLink = useDocLink()
   const ref = useRef(null)
+  const nameInputId = useId()
   const isExternal = currentDataset.provider === 'external'
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const [loading, setLoading] = useState(false)
@@ -232,13 +244,14 @@ const SettingsModal: FC<SettingsModalProps> = ({
       <div className="overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-17">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">
+            <label htmlFor={nameInputId} className="system-sm-semibold text-text-secondary">
               {t(($) => $['form.name'], { ns: 'datasetSettings' })}
-            </div>
+            </label>
           </div>
           <Input
+            id={nameInputId}
             value={localeCurrentDataset.name}
-            onChange={(e) => handleValueChange('name', e.target.value)}
+            onValueChange={(value) => handleValueChange('name', value)}
             className="block h-9"
             placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
           />

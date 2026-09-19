@@ -1,7 +1,6 @@
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
 
 import contextlib
-import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -22,7 +21,8 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
-from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
+from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _workflow(
@@ -32,19 +32,13 @@ def _workflow(
     tenant_id: str = "tenant",
     kind: WorkflowKind = WorkflowKind.STANDARD,
 ) -> Workflow:
-    return Workflow(
-        id=workflow_id,
+    return make_workflow(
+        workflow_id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type=WorkflowType.WORKFLOW,
         kind=kind,
         version="1",
-        graph=json.dumps({"nodes": [], "edges": []}),
-        features="{}",
         created_by="creator",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
     )
 
 
@@ -109,19 +103,18 @@ def _runtime_state() -> GraphRuntimeState:
 
 
 def _repositories(
-    sqlite_session: Session, app: App, end_user: EndUser
+    sqlite_session_factory: sessionmaker[Session], app: App, end_user: EndUser
 ) -> tuple[SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository]:
-    session_factory = sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
     return (
         SQLAlchemyWorkflowExecutionRepository(
-            session_factory=session_factory,
+            session_factory=sqlite_session_factory,
             tenant_id=app.tenant_id,
             user=end_user,
             app_id=app.id,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         ),
         SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=session_factory,
+            session_factory=sqlite_session_factory,
             tenant_id=app.tenant_id,
             user=end_user,
             app_id=app.id,
@@ -292,7 +285,11 @@ def test_generate_includes_parent_trace_context_in_extras(
     assert repository_tenant_ids == {"workflow": app.tenant_id, "node": app.tenant_id}
 
 
-def test_resume_delegates_to_generate(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+def test_resume_delegates_to_generate(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     generator = WorkflowAppGenerator()
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
     mock_generate = MagicMock(return_value="ok")
@@ -306,9 +303,11 @@ def test_resume_delegates_to_generate(monkeypatch: pytest.MonkeyPatch, sqlite_se
         stream=False,
     )
     runtime_state = _runtime_state()
-    workflow_execution_repository, workflow_node_execution_repository = _repositories(sqlite_session, app, end_user)
+    workflow_execution_repository, workflow_node_execution_repository = _repositories(
+        sqlite_session_factory, app, end_user
+    )
     pause_config = PauseStateLayerConfig(
-        session_factory=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        session_factory=sqlite_session_factory,
         state_owner_user_id="owner",
     )
 
@@ -334,7 +333,9 @@ def test_resume_delegates_to_generate(monkeypatch: pytest.MonkeyPatch, sqlite_se
 
 
 def test_generate_appends_pause_layer_and_forwards_state(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     generator = WorkflowAppGenerator()
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
@@ -366,9 +367,8 @@ def test_generate_appends_pause_layer_and_forwards_state(
         staticmethod(get_recording_draft_var_saver_factory),
     )
 
-    engine = sqlite_session.get_bind()
-    scoped_session = Session(engine, expire_on_commit=False)
-    monkeypatch.setattr(app_generator_module.db, "session", scoped_session)
+    db_session = sqlite_session_factory()
+    monkeypatch.setattr(app_generator_module.db, "session", db_session)
 
     worker_kwargs: dict[str, object] = {}
 
@@ -391,7 +391,9 @@ def test_generate_appends_pause_layer_and_forwards_state(
 
     application_generate_entity = _generate_entity(app, workflow, end_user)
     graph_runtime_state = _runtime_state()
-    workflow_execution_repository, workflow_node_execution_repository = _repositories(sqlite_session, app, end_user)
+    workflow_execution_repository, workflow_node_execution_repository = _repositories(
+        sqlite_session_factory, app, end_user
+    )
 
     flask_app = Flask(__name__)
     with flask_app.app_context():
@@ -407,7 +409,7 @@ def test_generate_appends_pause_layer_and_forwards_state(
             graph_engine_layers=("base-layer",),
             graph_runtime_state=graph_runtime_state,
             pause_state_config=PauseStateLayerConfig(
-                session_factory=sessionmaker(bind=engine, expire_on_commit=False),
+                session_factory=sqlite_session_factory,
                 state_owner_user_id="owner",
             ),
         )
@@ -422,7 +424,11 @@ def test_generate_appends_pause_layer_and_forwards_state(
     assert draft_factory_tenant_ids == [app.tenant_id]
 
 
-def test_resume_path_runs_worker_with_runtime_state(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+def test_resume_path_runs_worker_with_runtime_state(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     generator = WorkflowAppGenerator()
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
     workflow_run = WorkflowRun(
@@ -455,13 +461,8 @@ def test_resume_path_runs_worker_with_runtime_state(monkeypatch: pytest.MonkeyPa
         MagicMock(side_effect=lambda response, invoke_from: response),
     )
 
-    engine = sqlite_session.get_bind()
-    monkeypatch.setattr(app_generator_module.db, "session", Session(engine, expire_on_commit=False))
-    monkeypatch.setattr(
-        app_generator_module.session_factory,
-        "create_session",
-        lambda: Session(engine, expire_on_commit=False),
-    )
+    db_session = sqlite_session_factory()
+    monkeypatch.setattr(app_generator_module.db, "session", db_session)
 
     runner_instance = MagicMock()
 
@@ -496,12 +497,14 @@ def test_resume_path_runs_worker_with_runtime_state(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr("core.app.apps.workflow.app_generator.threading.Thread", ImmediateThread)
 
     pause_config = PauseStateLayerConfig(
-        session_factory=sessionmaker(bind=engine, expire_on_commit=False),
+        session_factory=sqlite_session_factory,
         state_owner_user_id="owner",
     )
 
     application_generate_entity = _generate_entity(app, workflow, end_user)
-    workflow_execution_repository, workflow_node_execution_repository = _repositories(sqlite_session, app, end_user)
+    workflow_execution_repository, workflow_node_execution_repository = _repositories(
+        sqlite_session_factory, app, end_user
+    )
 
     result = generator.resume(
         app_model=app,

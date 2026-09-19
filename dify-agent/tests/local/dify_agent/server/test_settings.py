@@ -8,11 +8,20 @@ from pydantic import ValidationError
 
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
-from dify_agent.server.settings import ServerSettings
+from dify_agent.server.settings import (
+    DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH,
+    DEFAULT_RUN_RETENTION_SECONDS,
+    ServerSettings,
+)
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS, E2BExecutionBindingBackend
-from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend
+from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend, EnterpriseHomeSnapshotBackend
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.openshell import (
+    OpenShellExecutionBindingBackend,
+    OpenShellHomeSnapshotBackend,
+    OpenShellSDKControlPlane,
+)
 
 
 def _base64url_secret(value: bytes) -> str:
@@ -77,6 +86,78 @@ def test_server_settings_run_and_e2b_timeouts_default_align_and_override_indepen
 def test_server_settings_rejects_non_positive_run_timeout() -> None:
     with pytest.raises(ValidationError, match="greater than 0"):
         _ = ServerSettings(run_timeout_seconds=0)
+
+
+def test_server_settings_defaults_to_bounded_short_lived_run_events(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_RUN_RETENTION_SECONDS", raising=False)
+    monkeypatch.delenv("DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH", raising=False)
+    monkeypatch.delenv("DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED", raising=False)
+    monkeypatch.delenv("DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS", raising=False)
+    monkeypatch.delenv("DIFY_AGENT_STREAM_TEXT_DELTA_MAX_CHARS", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    settings = ServerSettings()
+
+    assert settings.run_retention_seconds == DEFAULT_RUN_RETENTION_SECONDS == 7200
+    assert settings.run_event_stream_max_length == DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH == 5000
+    assert settings.stream_text_delta_coalescing_enabled is True
+    assert settings.stream_text_delta_flush_interval_ms == 100
+    assert settings.stream_text_delta_max_chars == 4096
+
+
+def test_server_settings_reads_run_event_bounds_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH", "1234")
+    monkeypatch.setenv("DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED", "false")
+    monkeypatch.setenv("DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS", "250")
+    monkeypatch.setenv("DIFY_AGENT_STREAM_TEXT_DELTA_MAX_CHARS", "2048")
+
+    settings = ServerSettings()
+
+    assert settings.run_event_stream_max_length == 1234
+    assert settings.stream_text_delta_coalescing_enabled is False
+    assert settings.stream_text_delta_flush_interval_ms == 250
+    assert settings.stream_text_delta_max_chars == 2048
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("run_event_stream_max_length", 0),
+        ("stream_text_delta_flush_interval_ms", 0),
+        ("stream_text_delta_max_chars", 0),
+    ],
+)
+def test_server_settings_rejects_invalid_run_event_bounds(field: str, value: int) -> None:
+    with pytest.raises(ValidationError):
+        _ = ServerSettings(**{field: value})  # pyright: ignore[reportArgumentType]
+
+
+def test_server_settings_reads_binding_file_download_command_timeout_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS", "123.5")
+
+    settings = ServerSettings()
+
+    assert settings.binding_file_download_command_timeout_seconds == 123.5
+
+
+def test_server_settings_defaults_binding_file_download_command_timeout_to_210_seconds(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    assert ServerSettings().binding_file_download_command_timeout_seconds == 210.0
+
+
+def test_server_settings_rejects_non_positive_binding_file_download_command_timeout() -> None:
+    with pytest.raises(ValidationError, match="greater than 0"):
+        _ = ServerSettings(binding_file_download_command_timeout_seconds=0)
 
 
 def test_server_settings_defaults_shellctl_auth_token_to_none(
@@ -308,6 +389,7 @@ def test_build_runtime_backend_profile_returns_enterprise_drivers_when_selected(
         enterprise_sandbox_gateway_auth_token="gateway-secret",
         enterprise_sandbox_gateway_timeout=45,
         enterprise_sandbox_proxy_timeout=90,
+        enterprise_sandbox_snapshot_timeout=120,
     )
 
     profile = settings.build_runtime_backend_profile()
@@ -318,6 +400,20 @@ def test_build_runtime_backend_profile_returns_enterprise_drivers_when_selected(
     assert profile.execution_bindings.auth_token == "gateway-secret"
     assert profile.execution_bindings.gateway_timeout == 45
     assert profile.execution_bindings.proxy_timeout == 90
+    assert isinstance(profile.home_snapshots, EnterpriseHomeSnapshotBackend)
+    assert profile.home_snapshots.gateway_endpoint == "https://gateway.example"
+    assert profile.home_snapshots.auth_token == "gateway-secret"
+    assert profile.home_snapshots.snapshot_timeout == 120
+    assert profile.execution_bindings.snapshot_timeout == 120
+
+
+def test_enterprise_snapshot_timeout_defaults_above_the_gateway_budget() -> None:
+    settings = ServerSettings(
+        runtime_backend="enterprise",
+        enterprise_sandbox_gateway_endpoint="https://gateway.example",
+    )
+
+    assert settings.enterprise_sandbox_snapshot_timeout > settings.enterprise_sandbox_gateway_timeout
 
 
 def test_build_runtime_backend_profile_passes_e2b_active_timeout() -> None:
@@ -333,6 +429,48 @@ def test_build_runtime_backend_profile_passes_e2b_active_timeout() -> None:
     assert isinstance(profile.execution_bindings, E2BExecutionBindingBackend)
     assert profile.execution_bindings.active_timeout_seconds == 900
     assert profile.execution_bindings.template == "difys-default-team/dify-agent-local-sandbox"
+
+
+_OPENSHELL_DRIVER_CONFIG = (
+    '{"docker": {"mounts": [{"type": "volume", "source": "dify-agent-shared", "target": "/mnt/dify-agent-shared"}]}}'
+)
+
+
+def test_build_runtime_backend_profile_returns_openshell_drivers_when_selected() -> None:
+    settings = ServerSettings(
+        runtime_backend="openshell",
+        openshell_gateway_endpoint="gateway.example:17670",
+        openshell_driver_config=_OPENSHELL_DRIVER_CONFIG,
+        openshell_shared_mount_path="/mnt/shared",
+        openshell_shellctl_auth_token="token-1",
+        openshell_shellctl_port=6006,
+        openshell_exec_timeout_seconds=90,
+        openshell_egress_allow="agent.example.com:5050",
+    )
+
+    profile = settings.build_runtime_backend_profile()
+
+    assert profile is not None
+    assert isinstance(profile.execution_bindings, OpenShellExecutionBindingBackend)
+    assert isinstance(profile.home_snapshots, OpenShellHomeSnapshotBackend)
+    control_plane = profile.execution_bindings.control_plane
+    assert isinstance(control_plane, OpenShellSDKControlPlane)
+    assert control_plane.endpoint == "gateway.example:17670"
+    assert control_plane.shared_mount_path == "/mnt/shared"
+    assert control_plane.exec_timeout_seconds == 90
+    assert control_plane.egress_allow == (("agent.example.com", 5050),)
+    assert profile.execution_bindings.shellctl_auth_token == "token-1"
+    assert profile.execution_bindings.shellctl_port == 6006
+
+
+def test_build_runtime_backend_profile_rejects_empty_openshell_driver_config() -> None:
+    with pytest.raises(ValidationError, match="must mount the shared Home Snapshot volume"):
+        _ = ServerSettings(
+            runtime_backend="openshell",
+            openshell_gateway_endpoint="gateway.example:17670",
+            openshell_driver_config="{}",
+            openshell_shellctl_auth_token="token-1",
+        ).build_runtime_backend_profile()
 
 
 def test_build_runtime_backend_profile_rejects_missing_enterprise_endpoint(

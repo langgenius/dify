@@ -1,12 +1,11 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { ReactElement } from 'react'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useMemo, useState } from 'react'
@@ -15,6 +14,7 @@ import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ToolBrowser from '@/app/components/workflow/block-selector/tool-browser'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { createCustomCollection } from '@/service/tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
@@ -29,14 +29,14 @@ import {
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
 
-type Props = Readonly<{
-  disabled: boolean
-  trigger: ReactElement
-  placement?: Placement
-  sideOffset?: number
-  isShow: boolean
-  onShowChange: (isShow: boolean) => void
-}> &
+type Props = Readonly<
+  Pick<PopoverContentProps, 'placement' | 'sideOffset'> & {
+    disabled: boolean
+    trigger: ReactElement
+    isShow: boolean
+    onShowChange: (isShow: boolean) => void
+  }
+> &
   ToolPickerContentProps
 
 export type ToolPickerContentProps = Readonly<{
@@ -70,6 +70,10 @@ export function ToolPickerContent({
     select: (s) => s.enable_marketplace,
   })
   const { data: buildInTools } = useAllBuiltInTools()
+  const installedPluginIds = useMemo(
+    () => new Set(buildInTools?.map((provider) => provider.plugin_id || provider.id)),
+    [buildInTools],
+  )
   const shouldFetchCustomTools = scope !== 'plugins' && scope !== 'workflow'
   const { data: customTools } = useAllCustomTools(shouldFetchCustomTools)
   const invalidateCustomTools = useInvalidateAllCustomTools()
@@ -176,6 +180,7 @@ export function ToolPickerContent({
         onSelect={handleSelect as OnSelectBlock}
         onSelectMultiple={handleSelectMultiple}
         buildInTools={builtinToolList || []}
+        installedPluginIds={installedPluginIds}
         customTools={customToolList || []}
         workflowTools={workflowToolList || []}
         mcpTools={mcpTools || []}
@@ -216,7 +221,7 @@ function ToolPicker({
       <PopoverContent
         placement={placement}
         sideOffset={sideOffset}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <PopoverTitle className="sr-only">
           {t(($) => $['detailPanel.toolSelector.title'], { ns: 'plugin' })}

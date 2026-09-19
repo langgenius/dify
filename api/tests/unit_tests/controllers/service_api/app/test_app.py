@@ -312,6 +312,7 @@ def test_get_site_configuration_queries_authenticated_app(
         input_placeholder="Ask anything",
         custom_disclaimer=None,
         default_language="en-US",
+        prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
     )

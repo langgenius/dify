@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import OutputVars from '../../../_base/components/output-vars'
+import { AGENT_V2_RESERVED_OUTPUT_NAMES } from '../../output-variables'
 import { OutputEditCard } from './edit-card'
 import {
   canOutputHaveChildren,
@@ -275,6 +276,7 @@ export function AgentOutputVariables({
                     key={`${output.name}-editing`}
                     editingIndex={index}
                     existingOutputs={outputs}
+                    reservedNames={AGENT_V2_RESERVED_OUTPUT_NAMES}
                     state={editingState}
                     onCancel={() => setEditingState(null)}
                     onConfirm={handleConfirm}
@@ -315,6 +317,7 @@ export function AgentOutputVariables({
           {editingState && editingState.outputIndex == null ? (
             <OutputEditCard
               existingOutputs={outputs}
+              reservedNames={AGENT_V2_RESERVED_OUTPUT_NAMES}
               state={editingState}
               onCancel={() => setEditingState(null)}
               onConfirm={handleConfirm}

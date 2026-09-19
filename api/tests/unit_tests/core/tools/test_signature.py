@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+from collections.abc import Callable
 from typing import Literal
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from typing_extensions import TypedDict
 
 from core.tools.signature import (
     bind_file_uri,
@@ -16,6 +21,26 @@ from core.tools.signature import (
     verify_plugin_file_signature,
     verify_tool_file_signature,
 )
+
+
+class _SignedPluginFile(TypedDict, closed=True):
+    filename: str
+    mimetype: str
+    tenant_id: str
+    user_id: str
+    timestamp: str
+    nonce: str
+    sign: str
+
+
+@pytest.fixture(autouse=True)
+def _signature_config(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        SECRET_KEY="unit-secret",
+        FILES_URL="https://files.example.com",
+        INTERNAL_FILES_URL="https://internal.example.com",
+        FILES_ACCESS_TIMEOUT=120,
+    )
 
 
 def test_bind_file_uri_uses_selected_base_and_preserves_remote_url() -> None:
@@ -31,7 +56,6 @@ def test_bind_file_uri_uses_selected_base_and_preserves_remote_url() -> None:
 def test_sign_tool_file_uri_has_no_origin(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x08" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
 
     uri = sign_tool_file_uri("tool-file-id", ".png")
     parsed = urlparse(uri)
@@ -45,10 +69,6 @@ def test_sign_tool_file_uri_has_no_origin(monkeypatch: pytest.MonkeyPatch) -> No
 def test_sign_tool_file_and_verify_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x01" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "https://internal.example.com")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 120)
 
     url = sign_tool_file("tool-file-id", ".png", for_external=False)
     parsed = urlparse(url)
@@ -66,10 +86,6 @@ def test_sign_tool_file_and_verify_roundtrip(monkeypatch: pytest.MonkeyPatch) ->
 def test_sign_tool_file_for_external_uses_files_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x04" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "https://internal.example.com")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 120)
 
     url = sign_tool_file("tool-file-id", ".png", for_external=True)
     parsed = urlparse(url)
@@ -79,13 +95,12 @@ def test_sign_tool_file_for_external_uses_files_url(monkeypatch: pytest.MonkeyPa
     assert parsed.path == "/files/tools/tool-file-id.png"
 
 
-def test_verify_tool_file_signature_rejects_invalid_sign(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_verify_tool_file_signature_rejects_invalid_sign(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(INTERNAL_FILES_URL="", FILES_ACCESS_TIMEOUT=10)
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x02" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 10)
 
     url = sign_tool_file("tool-file-id", ".txt")
     parsed = urlparse(url)
@@ -97,13 +112,12 @@ def test_verify_tool_file_signature_rejects_invalid_sign(monkeypatch: pytest.Mon
     assert verify_tool_file_signature("tool-file-id", timestamp, nonce, "bad-signature") is False
 
 
-def test_verify_tool_file_signature_rejects_expired_signature(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_verify_tool_file_signature_rejects_expired_signature(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(INTERNAL_FILES_URL="", FILES_ACCESS_TIMEOUT=10)
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x02" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 10)
 
     url = sign_tool_file("tool-file-id", ".txt")
     parsed = urlparse(url)
@@ -119,9 +133,6 @@ def test_verify_tool_file_signature_rejects_expired_signature(monkeypatch: pytes
 def test_sign_upload_file_preview_url_uses_files_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x03" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "https://internal.example.com")
 
     url = sign_upload_file_preview_url("upload-id", ".png")
     parsed = urlparse(url)
@@ -137,9 +148,6 @@ def test_sign_upload_file_preview_url_uses_files_url(monkeypatch: pytest.MonkeyP
 def test_sign_upload_file_preview_url_ignores_internal_files_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x05" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "https://internal.example.com")
 
     url = sign_upload_file_preview_url("upload-id", ".png")
     parsed = urlparse(url)
@@ -152,11 +160,12 @@ def test_sign_upload_file_preview_url_ignores_internal_files_url(monkeypatch: py
     assert query["sign"][0]
 
 
-def test_get_signed_file_uri_for_plugin_and_verify_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_signed_file_uri_for_plugin_and_verify_roundtrip(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(FILES_ACCESS_TIMEOUT=60)
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x06" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 60)
 
     uri = get_signed_file_uri_for_plugin(
         filename="report.pdf",
@@ -198,13 +207,13 @@ def test_get_signed_file_uri_for_plugin_and_verify_roundtrip(monkeypatch: pytest
 )
 def test_plugin_upload_signature_binds_max_size_without_legacy_payload_ambiguity(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     user_from: Literal["account", "end-user"] | None,
     forged_nonce_suffix: str,
 ) -> None:
+    config_overrides(FILES_ACCESS_TIMEOUT=60)
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x0a" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 60)
 
     uri = get_signed_file_uri_for_plugin(
         filename="report.pdf",
@@ -215,7 +224,7 @@ def test_plugin_upload_signature_binds_max_size_without_legacy_payload_ambiguity
         max_size=1024,
     )
     query = parse_qs(urlparse(uri).query)
-    signed = {
+    signed: _SignedPluginFile = {
         "filename": "report.pdf",
         "mimetype": "application/pdf",
         "tenant_id": "tenant-id",
@@ -229,15 +238,16 @@ def test_plugin_upload_signature_binds_max_size_without_legacy_payload_ambiguity
     assert verify_plugin_file_signature(**signed, user_from=user_from, max_size=1024) is True
     assert verify_plugin_file_signature(**signed, user_from=user_from, max_size=2048) is False
     assert verify_plugin_file_signature(**signed, user_from=user_from) is False
-    forged = {**signed, "nonce": f"{signed['nonce']}{forged_nonce_suffix}"}
+    forged: _SignedPluginFile = {**signed, "nonce": f"{signed['nonce']}{forged_nonce_suffix}"}
     assert verify_plugin_file_signature(**forged) is False
 
 
-def test_plugin_upload_signature_binds_account_user_from(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_plugin_upload_signature_binds_account_user_from(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(FILES_ACCESS_TIMEOUT=60)
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x09" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 60)
 
     uri = get_signed_file_uri_for_plugin(
         filename="report.pdf",
@@ -249,7 +259,7 @@ def test_plugin_upload_signature_binds_account_user_from(monkeypatch: pytest.Mon
     query = parse_qs(urlparse(uri).query)
 
     assert query["user_from"] == ["account"]
-    signed = {
+    signed: _SignedPluginFile = {
         "filename": "report.pdf",
         "mimetype": "application/pdf",
         "tenant_id": "tenant-id",
@@ -263,11 +273,12 @@ def test_plugin_upload_signature_binds_account_user_from(monkeypatch: pytest.Mon
     assert verify_plugin_file_signature(**signed) is False
 
 
-def test_verify_plugin_file_signature_rejects_invalid_signatures(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_verify_plugin_file_signature_rejects_invalid_signatures(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(FILES_ACCESS_TIMEOUT=30)
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x07" * 16)
-    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.tools.signature.dify_config.FILES_ACCESS_TIMEOUT", 30)
 
     uri = get_signed_file_uri_for_plugin(
         filename="report.pdf",
@@ -300,6 +311,26 @@ def test_verify_plugin_file_signature_rejects_invalid_signatures(monkeypatch: py
             timestamp=query["timestamp"][0],
             nonce=query["nonce"][0],
             sign=query["sign"][0],
+        )
+        is False
+    )
+
+
+def test_verify_plugin_file_signature_rejects_malformed_signed_timestamp() -> None:
+    timestamp = "not-a-timestamp"
+    nonce = "nonce"
+    payload = f"upload|report.pdf|application/pdf|tenant-id|user-id||{timestamp}|{nonce}"
+    sign = base64.urlsafe_b64encode(hmac.new(b"unit-secret", payload.encode(), hashlib.sha256).digest()).decode()
+
+    assert (
+        verify_plugin_file_signature(
+            filename="report.pdf",
+            mimetype="application/pdf",
+            tenant_id="tenant-id",
+            user_id="user-id",
+            timestamp=timestamp,
+            nonce=nonce,
+            sign=sign,
         )
         is False
     )

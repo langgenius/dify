@@ -60,7 +60,7 @@ function AgentBuildChatEmptyState({
         <CommunityEditionTip
           tip={communityEditionBuildModeTip}
           placement="top"
-          popupClassName="max-w-[340px]"
+          className="max-w-85"
         />
       </div>
       <p className="mt-1 max-w-full body-md-regular text-text-tertiary">

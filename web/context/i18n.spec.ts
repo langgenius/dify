@@ -1,9 +1,9 @@
 import type { DocPathMap } from './i18n'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { renderHook } from '@testing-library/react'
-import { useTranslation } from '#i18n'
-import { getDocLanguage } from '@/i18n-config/language'
-import { defaultDocBaseUrl, useDocLink } from './i18n'
+import { useLocale } from '#i18n'
+import { getDocLanguage } from '@/i18n/language'
+import { defaultDocBaseUrl, enterpriseDocBaseUrl, useDocLink } from './i18n'
 
 const mockDeploymentEdition = vi.hoisted(() => ({
   value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD',
@@ -11,9 +11,7 @@ const mockDeploymentEdition = vi.hoisted(() => ({
 
 // Mock dependencies
 vi.mock('#i18n', () => ({
-  useTranslation: vi.fn(() => ({
-    i18n: { language: 'en-US' },
-  })),
+  useLocale: vi.fn(() => 'en-US'),
 }))
 
 vi.mock('jotai', async (importOriginal) => ({
@@ -21,7 +19,7 @@ vi.mock('jotai', async (importOriginal) => ({
   useAtomValue: () => mockDeploymentEdition.value,
 }))
 
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   getDocLanguage: vi.fn((locale: string) => {
     const map: Record<string, string> = {
       'zh-Hans': 'zh',
@@ -30,17 +28,18 @@ vi.mock('@/i18n-config/language', () => ({
     }
     return map[locale] || 'en'
   }),
-  getLanguage: vi.fn(),
-  getPricingPageLanguage: vi.fn(),
+}))
+
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
+  getPluginLanguage: vi.fn(),
 }))
 
 describe('useDocLink', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDeploymentEdition.value = 'CLOUD'
-    vi.mocked(useTranslation).mockReturnValue({
-      i18n: { language: 'en-US' },
-    } as ReturnType<typeof useTranslation>)
+    vi.mocked(useLocale).mockReturnValue('en-US')
     vi.mocked(getDocLanguage).mockReturnValue('en')
   })
 
@@ -109,9 +108,7 @@ describe('useDocLink', () => {
 
   describe('PathMap handling', () => {
     it('should use path from pathMap when locale matches', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
       vi.mocked(getDocLanguage).mockReturnValue('zh')
 
       const pathMap: DocPathMap = {
@@ -125,9 +122,7 @@ describe('useDocLink', () => {
     })
 
     it('should use default path when locale not in pathMap', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'ja-JP' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('ja-JP')
       vi.mocked(getDocLanguage).mockReturnValue('ja')
 
       const pathMap: DocPathMap = {
@@ -148,6 +143,25 @@ describe('useDocLink', () => {
   })
 
   describe('Product prefix handling', () => {
+    it.each([
+      ['CLOUD', 'cloud'],
+      ['COMMUNITY', 'self-host'],
+    ] as const)(
+      'should route New Agent docs in %s edition to %s product docs',
+      (deploymentEdition, docsProduct) => {
+        mockDeploymentEdition.value = deploymentEdition
+
+        const { result } = renderHook(() => useDocLink())
+
+        expect(result.current('/use-dify/build/new-agent/overview')).toBe(
+          `${defaultDocBaseUrl}/en/${docsProduct}/use-dify/build/new-agent/overview`,
+        )
+        expect(result.current('/use-dify/build/new-agent/build#prompt')).toBe(
+          `${defaultDocBaseUrl}/en/${docsProduct}/use-dify/build/new-agent/build#prompt`,
+        )
+      },
+    )
+
     it('should add cloud product prefix for product docs available in both editions', () => {
       mockDeploymentEdition.value = 'CLOUD'
 
@@ -215,11 +229,105 @@ describe('useDocLink', () => {
     })
   })
 
+  describe('Enterprise documentation', () => {
+    beforeEach(() => {
+      mockDeploymentEdition.value = 'ENTERPRISE'
+    })
+
+    it('should route use documentation to the versioned enterprise documentation', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current('/use-dify/build/workflow-chatflow')).toBe(
+        `${enterpriseDocBaseUrl}/en/use/build/workflow-chatflow`,
+      )
+    })
+
+    it.each([
+      ['/use-dify/getting-started/introduction', '/use/build/workflow-chatflow'],
+      ['/cli/overview', '/develop/cli/introduction'],
+      ['/cli/authenticate', '/develop/cli/account-users/authenticate'],
+      ['/cli/common-tasks', '/develop/cli/account-users/common-tasks'],
+      ['/cli/quick-start', '/develop/cli/account-users/quick-start'],
+    ] as const)('should map the renamed %s page to %s', (communityPath, enterprisePath) => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current(communityPath)).toBe(`${enterpriseDocBaseUrl}/en${enterprisePath}`)
+    })
+
+    it('should convert API, plugin, and CLI documentation prefixes', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current('/api-reference/guides/knowledge')).toBe(
+        `${enterpriseDocBaseUrl}/en/develop/api/guides/knowledge`,
+      )
+      expect(result.current('/develop-plugin/getting-started/getting-started-dify-plugin')).toBe(
+        `${enterpriseDocBaseUrl}/en/develop/plugins/getting-started/getting-started-dify-plugin`,
+      )
+      expect(result.current('/cli/install')).toBe(`${enterpriseDocBaseUrl}/en/develop/cli/install`)
+    })
+
+    it('should remove public product prefixes and preserve anchors', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current('/self-host/use-dify/workspace/tools#mcp' as DocPathWithoutLang)).toBe(
+        `${enterpriseDocBaseUrl}/en/use/workspace/tools#mcp`,
+      )
+      expect(result.current('/cloud/use-dify/nodes/start' as DocPathWithoutLang)).toBe(
+        `${enterpriseDocBaseUrl}/en/use/nodes/start`,
+      )
+    })
+
+    it.each(['/cloud', '/self-host'] as const)(
+      'should map the bare %s product prefix to the enterprise documentation home',
+      (productPrefix) => {
+        const { result } = renderHook(() => useDocLink())
+
+        expect(result.current(productPrefix as DocPathWithoutLang)).toBe(
+          `${enterpriseDocBaseUrl}/en/`,
+        )
+      },
+    )
+
+    it.each([
+      '/use-dify/knowledge/knowledge-request-rate-limit',
+      '/cloud/use-dify/knowledge/knowledge-storage-limit',
+      '/cloud/use-dify/workspace/subscription-management#dify-for-education',
+    ] as const)('should fall back to the enterprise documentation home for %s', (communityPath) => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current(communityPath as DocPathWithoutLang)).toBe(
+        `${enterpriseDocBaseUrl}/en/`,
+      )
+    })
+
+    it('should open the enterprise documentation home when no path is provided', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current()).toBe(`${enterpriseDocBaseUrl}/en/`)
+    })
+
+    it('should use Chinese and Japanese enterprise documentation languages', () => {
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
+      vi.mocked(getDocLanguage).mockReturnValue('zh')
+
+      const { result, rerender } = renderHook(() => useDocLink())
+      expect(result.current('/use-dify/nodes/start')).toBe(
+        `${enterpriseDocBaseUrl}/zh/use/nodes/start`,
+      )
+
+      vi.mocked(useLocale).mockReturnValue('ja-JP')
+      vi.mocked(getDocLanguage).mockReturnValue('ja')
+      rerender()
+
+      expect(result.current('/use-dify/nodes/start')).toBe(
+        `${enterpriseDocBaseUrl}/ja/use/nodes/start`,
+      )
+    })
+  })
+
   describe('Language prefix handling', () => {
     it('should add /en prefix for English locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'en-US' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('en-US')
       vi.mocked(getDocLanguage).mockReturnValue('en')
 
       const { result } = renderHook(() => useDocLink())
@@ -228,9 +336,7 @@ describe('useDocLink', () => {
     })
 
     it('should add /zh prefix for Chinese locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
       vi.mocked(getDocLanguage).mockReturnValue('zh')
 
       const { result } = renderHook(() => useDocLink())
@@ -239,9 +345,7 @@ describe('useDocLink', () => {
     })
 
     it('should add /ja prefix for Japanese locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'ja-JP' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('ja-JP')
       vi.mocked(getDocLanguage).mockReturnValue('ja')
 
       const { result } = renderHook(() => useDocLink())
@@ -252,9 +356,7 @@ describe('useDocLink', () => {
 
   describe('API reference path handling', () => {
     it('should add language prefix for Chinese API reference paths', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
       vi.mocked(getDocLanguage).mockReturnValue('zh')
 
       const { result } = renderHook(() => useDocLink())
@@ -263,9 +365,7 @@ describe('useDocLink', () => {
     })
 
     it('should add language prefix for Japanese API reference paths', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'ja-JP' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('ja-JP')
       vi.mocked(getDocLanguage).mockReturnValue('ja')
 
       const { result } = renderHook(() => useDocLink())
@@ -274,9 +374,7 @@ describe('useDocLink', () => {
     })
 
     it('should not translate API reference path for English locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'en-US' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('en-US')
       vi.mocked(getDocLanguage).mockReturnValue('en')
 
       const { result } = renderHook(() => useDocLink())
@@ -285,9 +383,7 @@ describe('useDocLink', () => {
     })
 
     it('should keep the API reference slug unchanged for non-English locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
       vi.mocked(getDocLanguage).mockReturnValue('zh')
 
       const { result } = renderHook(() => useDocLink())
@@ -296,9 +392,7 @@ describe('useDocLink', () => {
     })
 
     it('should keep language prefix for API reference paths', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
       vi.mocked(getDocLanguage).mockReturnValue('zh')
 
       const { result } = renderHook(() => useDocLink())
@@ -307,9 +401,7 @@ describe('useDocLink', () => {
     })
 
     it('should use the current knowledge API guide path directly', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
       vi.mocked(getDocLanguage).mockReturnValue('zh')
 
       const { result } = renderHook(() => useDocLink())
@@ -318,9 +410,7 @@ describe('useDocLink', () => {
     })
 
     it('should not translate non-API-reference paths', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
       vi.mocked(getDocLanguage).mockReturnValue('zh')
 
       const { result } = renderHook(() => useDocLink())

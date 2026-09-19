@@ -17,7 +17,7 @@ import {
 import { useInfiniteScroll } from 'ahooks'
 import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import { BlockSelectorPreviewCardContent } from '../preview-card'
 import SnippetDetailCard from './snippet-detail-card'
@@ -154,7 +154,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
     ) : !snippets.length ? (
       <SnippetEmptyState />
     ) : (
-      <ScrollArea className="relative max-h-120 max-w-125 overflow-hidden">
+      <ScrollArea className="max-h-120 max-w-125 overflow-hidden">
         <ScrollAreaViewport ref={viewportRef}>
           <ScrollAreaContent className="p-1">
             {snippets.map((item) => {
@@ -175,7 +175,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
             })}
             {isFetchingNextPage && (
               <div className="flex justify-center px-3 py-2">
-                <Loading />
+                <LoadingPlaceholder />
               </div>
             )}
           </ScrollAreaContent>

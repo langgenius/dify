@@ -46,6 +46,8 @@ describe('Splash', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     webAppState.shareCode = 'share-app'
+    webAppState.webAppAccessMode = 'public'
+    webAppState.embeddedUserId = 'embedded-user'
     navigationMocks.pathname = '/chatbot/share-app'
     window.history.replaceState({}, '', navigationMocks.pathname)
     navigationMocks.searchParams = new URLSearchParams({
@@ -138,6 +140,74 @@ describe('Splash', () => {
     )
 
     expect(await screen.findByText('share.common.appUnavailable')).toBeInTheDocument()
+  })
+
+  it('should redirect an unauthenticated sso verified environment to the sign-in page', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    navigationMocks.pathname = '/environment/chat/environment-app'
+    window.history.replaceState({}, '', navigationMocks.pathname)
+    webAppState.shareCode = 'environment-app'
+    webAppState.webAppAccessMode = 'sso_verified'
+
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+
+    await waitFor(() => {
+      expect(navigationMocks.replace).toHaveBeenCalledWith(
+        '/webapp-signin?redirect_url=%2Fenvironment%2Fchat%2Fenvironment-app',
+      )
+    })
+    expect(fetchAccessTokenMock).not.toHaveBeenCalled()
+    expect(screen.queryByText('share application')).not.toBeInTheDocument()
+  })
+
+  it('should redirect an sso verified environment when its passport cannot be issued', async () => {
+    navigationMocks.searchParams = new URLSearchParams({
+      query: 'keep-me',
+      web_sso_token: 'expired-token',
+    })
+    navigationMocks.pathname = '/environment/chat/environment-app'
+    window.history.replaceState({}, '', navigationMocks.pathname)
+    webAppState.shareCode = 'environment-app'
+    webAppState.webAppAccessMode = 'sso_verified'
+    webAppAuthMocks.webAppLoginStatus.mockResolvedValue({
+      userLoggedIn: true,
+      appLoggedIn: false,
+    })
+    fetchAccessTokenMock.mockRejectedValue(new Response(null, { status: 401 }))
+
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+
+    await waitFor(() => {
+      expect(navigationMocks.replace).toHaveBeenCalledWith(
+        '/webapp-signin?redirect_url=%2Fenvironment%2Fchat%2Fenvironment-app%3Fquery%3Dkeep-me',
+      )
+    })
+    expect(webAppAuthMocks.webAppLogout).toHaveBeenCalledWith({
+      kind: 'environment',
+      code: 'environment-app',
+    })
+    expect(screen.queryByText('share application')).not.toBeInTheDocument()
+  })
+
+  it('should keep the existing authentication surface for an ordinary Web App', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+
+    expect(await screen.findByText('share application')).toBeInTheDocument()
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
   })
 
   it('should expose the unavailable-state action as a button', () => {

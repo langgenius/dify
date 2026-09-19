@@ -1,4 +1,5 @@
 import importlib
+import json
 import sys
 import types
 from types import SimpleNamespace
@@ -7,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_tencent_modules():
@@ -279,14 +281,29 @@ def test_create_add_delete_and_search_behaviour(tencent_module):
     vector._client.drop_collection.assert_called_once()
 
 
+def test_add_texts_converts_only_true_summary_marker(tencent_module):
+    vector = tencent_module.TencentVector("collection_1", _config(tencent_module))
+    summary_metadata = {"doc_id": "summary", "is_summary": True, "published": False}
+    regular_metadata = {"doc_id": "regular", "published": False}
+    docs = [
+        Document(page_content="summary", metadata=summary_metadata),
+        Document(page_content="regular", metadata=regular_metadata),
+    ]
+
+    vector.add_texts(docs, [[0.1], [0.2]])
+
+    upserted = vector._client.upsert.call_args.kwargs["documents"]
+    assert upserted[0].metadata == {"doc_id": "summary", "is_summary": 1, "published": False}
+    assert upserted[1].metadata == regular_metadata
+    assert summary_metadata["is_summary"] is True
+
+
 def test_tencent_factory_existing_and_generated_collection(tencent_module, monkeypatch: pytest.MonkeyPatch):
     factory = tencent_module.TencentVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(tencent_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(tencent_module.dify_config, "TENCENT_VECTOR_DB_URL", "http://vdb.local")

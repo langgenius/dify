@@ -98,9 +98,9 @@ def _binding_file_download_request(path: str = "report.txt") -> BindingFileDownl
     )
 
 
-def _assert_binding_download_timeout(request: httpx.Request) -> None:
+def _assert_binding_download_timeout(request: httpx.Request, expected: float = 240.0) -> None:
     timeout = cast(dict[str, float], request.extensions["timeout"])
-    assert timeout == {"connect": 90.0, "read": 90.0, "write": 90.0, "pool": 90.0}
+    assert timeout == {"connect": expected, "read": expected, "write": expected, "pool": expected}
 
 
 def _function_tool_result_payload(key: str) -> dict[str, object]:
@@ -398,13 +398,17 @@ def test_async_binding_file_methods_post_dtos_and_parse_responses() -> None:
                 200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
             )
         if request.url.path == "/execution-bindings/files/download":
-            _assert_binding_download_timeout(request)
+            _assert_binding_download_timeout(request, expected=123.5)
             return httpx.Response(200, json={"reference": "dify-file-ref:file-1"})
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-        client = Client(base_url="http://testserver", async_http_client=http_client)
+        client = Client(
+            base_url="http://testserver",
+            binding_file_download_timeout=123.5,
+            async_http_client=http_client,
+        )
 
         listing = await client.list_binding_files("binding-ref", ".")
         preview = await client.read_binding_file("binding-ref", "note.txt")

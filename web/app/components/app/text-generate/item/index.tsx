@@ -5,7 +5,6 @@ import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiPlayList2Line, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -13,8 +12,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
+import { toast } from '@/app/notifications'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import {
@@ -205,7 +205,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               !inSidePanel && 'rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg',
             )}
           >
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         )}
         {!isLoading && (

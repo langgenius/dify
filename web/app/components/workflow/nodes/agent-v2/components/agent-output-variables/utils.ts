@@ -3,7 +3,7 @@ import type {
   DeclaredOutputType,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
-import { defaultAgentV2DeclaredOutputs } from '../../output-variables'
+import { agentV2SystemTextOutput } from '../../output-variables'
 
 export type DeclaredOutputChildConfig = NonNullable<DeclaredOutputConfig['children']>[number]
 
@@ -279,19 +279,15 @@ export function getDefaultValueErrorKey(draft: OutputDraft) {
 }
 
 export function isDefaultOutput(output: DeclaredOutputConfig) {
-  return defaultAgentV2DeclaredOutputs.some(
-    (defaultOutput) =>
-      defaultOutput.name === output.name &&
-      defaultOutput.type === output.type &&
-      getOutputTypeOptionValue(defaultOutput) === getOutputTypeOptionValue(output),
+  return (
+    agentV2SystemTextOutput.name === output.name &&
+    agentV2SystemTextOutput.type === output.type &&
+    getOutputTypeOptionValue(agentV2SystemTextOutput) === getOutputTypeOptionValue(output)
   )
 }
 
 export function getOutputDescription(output: EditableOutputConfig, t: TFunction) {
   if (output.name === 'text') return t(($) => $['nodes.agent.outputVars.text'], { ns: 'workflow' })
-  if (output.name === 'files')
-    return t(($) => $['nodes.agent.outputVars.files.title'], { ns: 'workflow' })
-  if (output.name === 'json') return t(($) => $['nodes.agent.outputVars.json'], { ns: 'workflow' })
   return output.description || ''
 }
 

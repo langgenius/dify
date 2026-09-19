@@ -12,7 +12,8 @@ from typing import Any, override
 from unittest.mock import MagicMock
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
+from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
+from agenton.layers import LifecycleState
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
     AgentRunUsage,
@@ -52,7 +53,8 @@ from clients.agent_backend import (
 )
 from core.app.apps.agent_app import app_runner as app_runner_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
-from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
+from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
+from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext, AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
@@ -625,6 +627,34 @@ def _dify_ctx() -> DifyRunContext:
         user_id="user-1",
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
+    )
+
+
+def _compatible_session_snapshot() -> CompositorSessionSnapshot:
+    request = (
+        AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        .build(
+            AgentAppRuntimeBuildContext(
+                dify_context=_dify_ctx(),
+                agent_id="agent-1",
+                agent_config_snapshot_id="snap-1",
+                agent_soul=_soul(),
+                conversation_id="conv-1",
+                user_query="hello",
+                idempotency_key="msg-1",
+                binding_id="binding-1",
+                backend_binding_ref="backend-binding-1",
+            )
+        )
+        .request
+    )
+    return CompositorSessionSnapshot(
+        layers=[
+            LayerSessionSnapshot(name=layer.name, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
+            for layer in request.composition.layers
+        ]
     )
 
 
@@ -1314,7 +1344,7 @@ def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_di
 
 
 def test_prior_session_snapshot_is_threaded_into_request() -> None:
-    prior = CompositorSessionSnapshot(layers=[])
+    prior = _compatible_session_snapshot()
     client = FakeAgentBackendRunClient()
     store = _FakeSessionStore(loaded=prior)
     qm = _FakeQueueManager()
@@ -1325,8 +1355,23 @@ def test_prior_session_snapshot_is_threaded_into_request() -> None:
     assert client.request.session_snapshot is prior
 
 
+def test_incompatible_session_snapshot_is_rejected_before_backend_invocation() -> None:
+    compatible = _compatible_session_snapshot()
+    stale = CompositorSessionSnapshot(
+        layers=[layer for layer in compatible.layers if layer.name != "agent_soul_prompt"]
+    )
+    client = FakeAgentBackendRunClient()
+    store = _FakeSessionStore(loaded=stale)
+
+    with pytest.raises(AgentSessionSnapshotIncompatibleError, match="Start a new conversation"):
+        _run(_runner(client, store), _FakeQueueManager())
+
+    assert client.request is None
+    assert store.saved == []
+
+
 def test_debug_session_scope_can_reuse_conversation_across_config_snapshots() -> None:
-    prior = CompositorSessionSnapshot(layers=[])
+    prior = _compatible_session_snapshot()
     client = FakeAgentBackendRunClient()
     store = _FakeSessionStore(loaded=prior)
     qm = _FakeQueueManager()
@@ -1599,7 +1644,7 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation() -> None:
 def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pytest.MonkeyPatch) -> None:
     # ENG-638: a turn that runs while a pending form is answered threads the
     # human's reply into the request as deferred_tool_results.
-    snapshot = CompositorSessionSnapshot(layers=[])
+    snapshot = _compatible_session_snapshot()
     stored = StoredAgentAppSession(
         scope=AgentAppSessionScope(
             tenant_id="tenant-1",

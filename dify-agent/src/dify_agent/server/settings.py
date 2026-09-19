@@ -21,9 +21,17 @@ from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_b
 from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
+from dify_agent.runtime.event_coalescer import (
+    DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
+    DEFAULT_TEXT_DELTA_MAX_CHARS,
+)
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
 from dify_agent.runtime_backend import RuntimeBackendProfile
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
+from dify_agent.runtime_backend.openshell import (
+    DEFAULT_OPENSHELL_SANDBOX_IMAGE,
+    DEFAULT_OPENSHELL_SHARED_MOUNT_PATH,
+)
 from dify_agent.runtime_backend.profile import (
     DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT,
     DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT,
@@ -32,7 +40,8 @@ from dify_agent.runtime_backend.profile import (
     create_runtime_backend_profile,
 )
 
-DEFAULT_RUN_RETENTION_SECONDS = 3 * 24 * 60 * 60
+DEFAULT_RUN_RETENTION_SECONDS = 2 * 60 * 60
+DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH = 5000
 
 
 class ServerSettings(BaseSettings):
@@ -42,12 +51,19 @@ class ServerSettings(BaseSettings):
     redis_prefix: str = "dify-agent"
     shutdown_grace_seconds: float = 30
     run_retention_seconds: int = Field(default=DEFAULT_RUN_RETENTION_SECONDS, ge=1)
+    run_event_stream_max_length: int = Field(default=DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, ge=1)
+    stream_text_delta_coalescing_enabled: bool = True
+    stream_text_delta_flush_interval_ms: int = Field(
+        default=int(DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS * 1000),
+        ge=1,
+    )
+    stream_text_delta_max_chars: int = Field(default=DEFAULT_TEXT_DELTA_MAX_CHARS, ge=1)
     run_timeout_seconds: float = Field(default=DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, gt=0)
     plugin_daemon_url: str = "http://localhost:5002"
     plugin_daemon_api_key: str = ""
     inner_api_url: str = "http://localhost:5001"
     inner_api_key: str | None = None
-    runtime_backend: Literal["local", "enterprise", "e2b"] = "local"
+    runtime_backend: Literal["local", "enterprise", "e2b", "openshell"] = "local"
     local_sandbox_endpoint: str | None = Field(
         default=None,
         validation_alias=AliasChoices("DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT", "DIFY_AGENT_SHELLCTL_ENTRYPOINT"),
@@ -63,6 +79,7 @@ class ServerSettings(BaseSettings):
     enterprise_sandbox_gateway_auth_token: str | None = None
     enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
     enterprise_sandbox_proxy_timeout: float = Field(default=60.0, gt=0)
+    enterprise_sandbox_snapshot_timeout: float = Field(default=35.0, gt=0)
     e2b_api_key: str | None = None
     e2b_template: str = "difys-default-team/dify-agent-local-sandbox"
     e2b_active_timeout_seconds: int = Field(
@@ -71,6 +88,21 @@ class ServerSettings(BaseSettings):
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    openshell_gateway_endpoint: str | None = None
+    openshell_workspace: str = "default"
+    openshell_bearer_token: str | None = None
+    openshell_tls_ca_path: str | None = None
+    openshell_tls_client_cert_path: str | None = None
+    openshell_tls_client_key_path: str | None = None
+    openshell_insecure: bool = False
+    openshell_sandbox_image: str = DEFAULT_OPENSHELL_SANDBOX_IMAGE
+    openshell_driver_config: str | None = None
+    openshell_shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
+    openshell_egress_allow: str = ""
+    openshell_shellctl_auth_token: str = ""
+    openshell_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    openshell_ready_timeout_seconds: float = Field(default=300.0, gt=0)
+    openshell_exec_timeout_seconds: int = Field(default=120, ge=1)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     sandbox_files_base_url: str | None = Field(
         default=None,
@@ -82,6 +114,7 @@ class ServerSettings(BaseSettings):
         description="Maximum Agent Stub upload size in MiB",
         validation_alias="DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT",
     )
+    binding_file_download_command_timeout_seconds: float = Field(default=210.0, gt=0)
     server_secret_key: str | None = None
     api_token: str | None = None
     shell_redact_patterns: str = ""
@@ -206,10 +239,26 @@ class ServerSettings(BaseSettings):
                 enterprise_sandbox_gateway_auth_token=self.enterprise_sandbox_gateway_auth_token,
                 enterprise_sandbox_gateway_timeout=self.enterprise_sandbox_gateway_timeout,
                 enterprise_sandbox_proxy_timeout=self.enterprise_sandbox_proxy_timeout,
+                enterprise_sandbox_snapshot_timeout=self.enterprise_sandbox_snapshot_timeout,
                 e2b_api_key=self.e2b_api_key,
                 e2b_template=self.e2b_template,
                 e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,
                 e2b_shellctl_port=self.e2b_shellctl_port,
+                openshell_gateway_endpoint=self.openshell_gateway_endpoint,
+                openshell_workspace=self.openshell_workspace,
+                openshell_bearer_token=self.openshell_bearer_token,
+                openshell_tls_ca_path=self.openshell_tls_ca_path,
+                openshell_tls_client_cert_path=self.openshell_tls_client_cert_path,
+                openshell_tls_client_key_path=self.openshell_tls_client_key_path,
+                openshell_insecure=self.openshell_insecure,
+                openshell_sandbox_image=self.openshell_sandbox_image,
+                openshell_driver_config=self.openshell_driver_config,
+                openshell_shared_mount_path=self.openshell_shared_mount_path,
+                openshell_egress_allow=self.openshell_egress_allow,
+                openshell_shellctl_auth_token=self.openshell_shellctl_auth_token,
+                openshell_shellctl_port=self.openshell_shellctl_port,
+                openshell_ready_timeout_seconds=self.openshell_ready_timeout_seconds,
+                openshell_exec_timeout_seconds=self.openshell_exec_timeout_seconds,
             )
         )
 
@@ -252,4 +301,4 @@ class ServerSettings(BaseSettings):
         )
 
 
-__all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "ServerSettings"]
+__all__ = ["DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH", "DEFAULT_RUN_RETENTION_SECONDS", "ServerSettings"]

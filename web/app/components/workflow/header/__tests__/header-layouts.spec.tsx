@@ -1,6 +1,7 @@
 import type { Shape } from '../../store/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
@@ -85,7 +86,7 @@ vi.mock('../../collaboration/core/collaboration-manager', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -289,6 +290,8 @@ describe('Header layout components', () => {
       const deleteAllInspectVars = vi.fn()
       const currentVersion = createCurrentVersion()
       const currentUser = { id: 'user-1', name: 'Alice' }
+      const queryClient = createAccountProfileQueryClient(currentUser)
+      seedSystemFeatures(queryClient)
 
       const { store } = renderWorkflowComponent(
         <HeaderInRestoring onRestoreSettled={onRestoreSettled} />,
@@ -307,7 +310,7 @@ describe('Header layout components', () => {
               fileSettings: {},
             },
           },
-          queryClient: createAccountProfileQueryClient(currentUser),
+          queryClient,
         },
       )
 

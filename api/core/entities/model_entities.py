@@ -2,10 +2,10 @@ from collections.abc import Sequence
 from enum import StrEnum, auto
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType, ProviderModel
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType, ProviderModel
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
 
@@ -53,8 +53,16 @@ class ProviderModelWithStatusEntity(ProviderModel):
     Model class for model response.
     """
 
+    label: I18nObject = Field(description="Localized display name of the model.")
+    model_type: ModelType = Field(description="Type of the model, matching the `model_type` path parameter.")
+    fetch_from: FetchFrom = Field(
+        description=(
+            "Where the model definition comes from. `predefined-model` for built-in models, "
+            "`customizable-model` for user-configured models."
+        )
+    )
     model_properties: dict[ModelPropertyKey, Any]
-    status: ModelStatus
+    status: ModelStatus = Field(description="Model availability status. `active` when ready to use.")
     load_balancing_enabled: bool = False
     has_invalid_load_balancing_configs: bool = False
 

@@ -25,7 +25,10 @@ type HTTPClient struct {
 
 var errUploadRequestAborted = errors.New("upload request aborted")
 
-const agentStubAuthorizationExpiredCode = "agent_stub_authorization_expired"
+const (
+	agentStubAuthorizationExpiredCode = "agent_stub_authorization_expired"
+	defaultUploadRequestTimeout       = 180 * time.Second
+)
 
 type agentStubHTTPError struct {
 	statusCode int
@@ -70,7 +73,7 @@ func openUploadSource(path string) (io.ReadCloser, error) {
 }
 
 func doUploadRequest(req *http.Request) (*http.Response, error) {
-	return (&http.Client{Timeout: 120 * time.Second}).Do(req)
+	return (&http.Client{Timeout: defaultUploadRequestTimeout}).Do(req)
 }
 
 // postJSON sends a POST request with JSON body and returns the response body.

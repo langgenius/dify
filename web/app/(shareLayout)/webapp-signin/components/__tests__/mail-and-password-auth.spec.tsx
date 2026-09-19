@@ -14,7 +14,8 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => searchParams,
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 
@@ -70,7 +71,14 @@ describe('MailAndPasswordAuth', () => {
     await user.type(passwordInput, 'strong-password{Enter}')
 
     await waitFor(() => {
-      expect(webAppLoginMock).toHaveBeenCalledTimes(1)
+      expect(webAppLoginMock).toHaveBeenCalledWith({
+        url: '/login',
+        body: {
+          email: 'user@example.com',
+          password: expect.any(String),
+          remember_me: true,
+        },
+      })
     })
   })
 

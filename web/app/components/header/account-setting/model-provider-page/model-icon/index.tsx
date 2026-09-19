@@ -1,16 +1,23 @@
-import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  ModelProviderSummaryResponse,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type { Model, ModelProvider } from '../declarations'
+import type { ModelProvider } from '../declarations'
 import type { ModelSelectorProvider } from '../model-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
 import useTheme from '@/hooks/use-theme'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import { Theme } from '@/types/app'
 import { useLanguage } from '../hooks'
 
 type ModelIconProps = {
-  provider?: Model | ModelProvider | ModelProviderSummaryResponse | ModelSelectorProvider
+  provider?:
+    | ProviderWithModelsResponse
+    | ModelProvider
+    | ModelProviderSummaryResponse
+    | ModelSelectorProvider
   modelName?: string
   className?: string
   iconClassName?: string

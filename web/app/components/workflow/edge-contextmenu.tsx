@@ -16,7 +16,7 @@ export function EdgeContextmenu({ onClose }: { onClose: () => void }) {
   if (!edgeId || !currentEdgeExists) return null
 
   return (
-    <ContextMenuContent popupClassName="rounded-lg" sideOffset={4}>
+    <ContextMenuContent className="rounded-lg" sideOffset={4}>
       <ContextMenuItem
         variant="destructive"
         className="justify-between gap-4 px-3"

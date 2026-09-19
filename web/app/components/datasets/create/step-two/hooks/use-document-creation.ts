@@ -1,7 +1,5 @@
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NotionPage } from '@/models/common'
 import type {
   ChunkingMode,
@@ -15,11 +13,11 @@ import type {
   SummaryIndexSetting as SummaryIndexSettingType,
 } from '@/models/datasets'
 import type { RetrievalConfig, RETRIEVE_METHOD } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import { toast } from '@/app/notifications'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import {
@@ -60,7 +58,7 @@ type ValidationParams = {
   overlap: number
   indexType: IndexingType
   embeddingModel: DefaultModel
-  rerankModelList: Model[]
+  rerankModelList: ProviderWithModelsResponse[]
   retrievalConfig: RetrievalConfig
 }
 export const useDocumentCreation = (options: UseDocumentCreationOptions) => {

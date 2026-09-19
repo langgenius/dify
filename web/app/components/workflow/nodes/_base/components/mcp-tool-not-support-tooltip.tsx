@@ -18,7 +18,7 @@ const McpToolNotSupportTooltip: FC = () => {
       >
         <RiAlertFill className="size-4 text-text-warning-secondary" />
       </PopoverTrigger>
-      <PopoverContent popupClassName="w-[256px] px-3 py-2 system-xs-regular text-text-tertiary">
+      <PopoverContent className="w-[256px] px-3 py-2 system-xs-regular text-text-tertiary">
         {tip}
       </PopoverContent>
     </Popover>

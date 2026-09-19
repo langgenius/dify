@@ -1,14 +1,13 @@
-/* eslint-disable style/multiline-ternary */
 'use client'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import App from './app'
 import AppInfo from './app-info'
@@ -50,7 +49,7 @@ function TryApp({
       <DialogContent className="h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-full max-w-[calc(100vw-32px)] min-w-7xl overflow-hidden overflow-x-auto border-none p-2 text-left align-middle">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         ) : isError ? (
           <div className="flex h-full items-center justify-center">
@@ -90,15 +89,14 @@ function TryApp({
                   </span>
                 </TabsTab>
               </TabsList>
-              <Button
-                size="large"
+              <IconButton
+                size="lg"
                 variant="tertiary"
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
                 onClick={onClose}
               >
                 <span aria-hidden className="i-ri-close-line size-5" />
-              </Button>
+              </IconButton>
             </div>
             {/* Main content */}
             <div className="mt-2 flex h-0 grow justify-between space-x-2">

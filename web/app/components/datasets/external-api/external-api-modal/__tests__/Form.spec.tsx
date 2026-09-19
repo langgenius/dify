@@ -40,6 +40,8 @@ describe('Form', () => {
   }
 
   const defaultProps = {
+    id: 'external-api-form',
+    onSubmit: vi.fn(),
     value: defaultValue,
     onChange: vi.fn(),
     formSchemas: defaultFormSchemas,

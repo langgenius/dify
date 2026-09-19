@@ -1,9 +1,7 @@
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { TFunction } from 'i18next'
 import type { KnowledgeBaseNodeType } from '../types'
-import type {
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
@@ -18,9 +16,10 @@ import {
   KnowledgeBaseValidationIssueCode,
 } from '../utils'
 
-const makeEmbeddingModelList = (status: ModelStatusEnum): Model[] => {
+const makeEmbeddingModelList = (status: ModelStatusEnum): ProviderWithModelsResponse[] => {
   return [
     {
+      tenant_id: 'test-workspace',
       provider: 'openai',
       icon_small: { en_US: '', zh_Hans: '' },
       label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -35,7 +34,7 @@ const makeEmbeddingModelList = (status: ModelStatusEnum): Model[] => {
           load_balancing_enabled: false,
         },
       ],
-      status,
+      status: 'active',
     },
   ]
 }

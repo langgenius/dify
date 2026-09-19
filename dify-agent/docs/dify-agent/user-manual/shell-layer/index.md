@@ -39,10 +39,10 @@ the opaque Binding ref belongs to `DifyRuntimeLayerConfig`.
 
 ## Runtime requirements
 
-The server constructs one coherent runtime backend profile. Local and E2B
-implement Home Snapshot and Execution Binding operations. Enterprise implements
-default-Home Binding creation, acquisition, and coupled destruction, while
-immutable Home Snapshot operations fail fast; there is no compatibility
+The server constructs one coherent runtime backend profile. Local, E2B, and
+OpenShell implement Home Snapshot and Execution Binding operations. Enterprise
+implements default-Home Binding creation, acquisition, and coupled destruction,
+while immutable Home Snapshot operations fail fast; there is no compatibility
 fallback to the retired Sandbox protocol.
 
 ```python
@@ -257,7 +257,9 @@ The resource part serializes as:
 backend execution namespace. They are not host filesystem paths and are not
 sent in the run request. Shell commands start in `workspace_dir`, while `HOME`
 is forced to `home_dir`; `~` therefore resolves to the current Binding's
-materialized Home.
+materialized Home. The runner also sets `TMPDIR`, `TMP`, and `TEMP` directly to
+`workspace_dir`, making the active Workspace both the default `cwd` and the
+temporary working space.
 
 Workspace content persists with the Workspace until Dify API retires and
 collects it. Releasing a RuntimeLease ends only the current operation. Dify API can later
@@ -270,10 +272,11 @@ only its canonical reference to Dify API.
 
 On Local, multiple Bindings may share a Workspace while each receives a
 separate materialized Home. Those directories may be siblings in one shellctl
-namespace; path isolation restricts a lease to its Home and Workspace. On E2B,
-one physical E2B resource currently represents both Binding and Workspace, so
-shared Workspace attachment is unsupported.
+namespace; path isolation restricts a lease to its Home and Workspace. On E2B
+and OpenShell, one physical sandbox currently represents both Binding and
+Workspace, so shared Workspace attachment is unsupported.
 
 See [Runtime resources](../../concepts/runtime-resources/index.md) for the
 ledger and lifecycle contract. The [Operations Guide](../../guide/index.md)
-covers Local and E2B validation.
+covers Local and E2B validation; the [OpenShell guide](../../guide/openshell.md)
+covers OpenShell configuration and validation.

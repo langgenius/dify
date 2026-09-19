@@ -6,16 +6,14 @@ import { useTranslation } from 'react-i18next'
 import { FullScreenLoading } from '@/app/components/full-screen-loading'
 import { isLegacyBase401 } from '@/features/account-profile/client'
 
-type Props = {
+type Props = Readonly<{
   error: Error & { digest?: string }
-  reset?: () => void
-  unstable_retry?: () => void
-}
+  retry: () => void
+}>
 
-export default function AppError({ error, reset, unstable_retry }: Props) {
+export default function AppError({ error, retry }: Props) {
   const { t } = useTranslation('common')
   const { reset: resetQueries } = useQueryErrorResetBoundary()
-  const retry = reset ?? unstable_retry
 
   console.error(error)
 
@@ -26,18 +24,16 @@ export default function AppError({ error, reset, unstable_retry }: Props) {
       <div className="system-sm-regular text-text-tertiary">
         {t(($) => $['errorBoundary.message'])}
       </div>
-      {retry && (
-        <Button
-          size="small"
-          variant="secondary"
-          onClick={() => {
-            resetQueries()
-            retry()
-          }}
-        >
-          {t(($) => $['errorBoundary.tryAgain'])}
-        </Button>
-      )}
+      <Button
+        size="small"
+        variant="secondary"
+        onClick={() => {
+          resetQueries()
+          retry()
+        }}
+      >
+        {t(($) => $['errorBoundary.tryAgain'])}
+      </Button>
     </div>
   )
 }
