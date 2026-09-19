@@ -115,7 +115,7 @@
   "iconPicker.ok": "باشه",
   "importApp": "وارد کردن برنامه",
   "importAppDescription": "بستهٔ برنامه یا فایل DSL",
-  "importAppFormats": "از .ifpkg، .yaml و .yml پشتیبانی می‌کند",
+  "importAppFormats": "از .ifpkg، .zip، .yaml و .yml پشتیبانی می‌کند",
   "importAppUrlPlaceholder": "پیوند بستهٔ برنامه (.ifpkg) یا فایل DSL را اینجا جای‌گذاری کنید",
   "importDSL": "وارد کردن فایل DSL",
   "importFromDSL": "وارد کردن از DSL",

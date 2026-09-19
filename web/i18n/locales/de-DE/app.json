@@ -115,7 +115,7 @@
   "iconPicker.ok": "OK",
   "importApp": "App importieren",
   "importAppDescription": "App-Paket oder DSL-Datei",
-  "importAppFormats": "Unterstützt .ifpkg, .yaml und .yml",
+  "importAppFormats": "Unterstützt .ifpkg, .zip, .yaml und .yml",
   "importAppUrlPlaceholder": "Link zu einem App-Paket (.ifpkg) oder einer DSL-Datei hier einfügen",
   "importDSL": "DSL-Datei importieren",
   "importFromDSL": "Import von DSL",

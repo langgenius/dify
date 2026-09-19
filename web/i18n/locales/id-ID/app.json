@@ -115,7 +115,7 @@
   "iconPicker.ok": "OK",
   "importApp": "Impor Aplikasi",
   "importAppDescription": "Paket aplikasi atau file DSL",
-  "importAppFormats": "Mendukung .ifpkg, .yaml, dan .yml",
+  "importAppFormats": "Mendukung .ifpkg, .zip, .yaml, dan .yml",
   "importAppUrlPlaceholder": "Tempel tautan paket aplikasi (.ifpkg) atau DSL di sini",
   "importDSL": "Impor file DSL",
   "importFromDSL": "Impor dari DSL",

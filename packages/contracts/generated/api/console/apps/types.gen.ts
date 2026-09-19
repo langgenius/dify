@@ -58,7 +58,7 @@ export type AppImportPayload = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
-  mode: string
+  mode: 'bundle-content' | 'yaml-content' | 'yaml-url'
   name?: string | null
   yaml_content?: string | null
   yaml_url?: string | null
@@ -499,6 +499,7 @@ export type AppImportResponse = {
 
 export type AppExportResponse = {
   data: string
+  format?: 'yaml' | 'zip'
 }
 
 export type MessageFeedbackPayload = {
@@ -4466,6 +4467,7 @@ export type GetAppsByAppIdExportData = {
   query?: {
     format?: 'ifpkg' | 'yaml'
     include_secret?: boolean
+    include_workflow_tools?: boolean
     version_id?: string
     workflow_id?: string
   }

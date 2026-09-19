@@ -685,7 +685,9 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
+        emit_event: bool = True,
     ) -> Workflow:
+        """Publish a draft; bundle imports defer publication events until their transaction commits."""
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
@@ -761,7 +763,8 @@ class WorkflowService:
             )
 
         # trigger app workflow events
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        if emit_event:
+            app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
 
         # return new workflow
         return workflow

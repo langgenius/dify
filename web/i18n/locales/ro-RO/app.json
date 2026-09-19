@@ -115,7 +115,7 @@
   "iconPicker.ok": "OK",
   "importApp": "Importați aplicația",
   "importAppDescription": "Pachet de aplicație sau fișier DSL",
-  "importAppFormats": "Acceptă .ifpkg, .yaml și .yml",
+  "importAppFormats": "Acceptă .ifpkg, .zip, .yaml și .yml",
   "importAppUrlPlaceholder": "Lipește aici un link către un pachet de aplicație (.ifpkg) sau un fișier DSL",
   "importDSL": "Importă fișier DSL",
   "importFromDSL": "Import din DSL",

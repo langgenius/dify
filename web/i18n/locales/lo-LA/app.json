@@ -115,7 +115,7 @@
   "iconPicker.ok": "ຕົກລົງ",
   "importApp": "ນຳເຂົ້າແອັບ",
   "importAppDescription": "ແພັກເກດແອັບ ຫຼື ໄຟລ໌ DSL",
-  "importAppFormats": "ຮອງຮັບ .ifpkg, .yaml ແລະ .yml",
+  "importAppFormats": "ຮອງຮັບ .ifpkg, .zip, .yaml ແລະ .yml",
   "importAppUrlPlaceholder": "ວາງລິ້ງແພັກເກດແອັບ (.ifpkg) ຫຼື DSL ທີ່ນີ້",
   "importDSL": "ນຳເຂົ້າໄຟລ໌ DSL",
   "importFromDSL": "ນຳເຂົ້າຈາກ DSL",

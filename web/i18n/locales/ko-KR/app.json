@@ -115,7 +115,7 @@
   "iconPicker.ok": "확인",
   "importApp": "앱 가져오기",
   "importAppDescription": "앱 패키지 또는 DSL 파일",
-  "importAppFormats": ".ifpkg, .yaml 및 .yml 지원",
+  "importAppFormats": ".ifpkg, .zip, .yaml 및 .yml 지원",
   "importAppUrlPlaceholder": "앱 패키지(.ifpkg) 또는 DSL 링크를 여기에 붙여넣으세요",
   "importDSL": "DSL 파일 가져오기",
   "importFromDSL": "DSL 에서 가져오기",

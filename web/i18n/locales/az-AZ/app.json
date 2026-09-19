@@ -115,7 +115,7 @@
   "iconPicker.ok": "Təsdiqlə",
   "importApp": "Tətbiq idxal et",
   "importAppDescription": "Tətbiq paketi və ya DSL faylı",
-  "importAppFormats": ".ifpkg, .yaml və .yml dəstəklənir",
+  "importAppFormats": ".ifpkg, .zip, .yaml və .yml dəstəklənir",
   "importAppUrlPlaceholder": "Tətbiq paketi (.ifpkg) və ya DSL faylının keçidini buraya yapışdırın",
   "importDSL": "DSL faylı idxal et",
   "importFromDSL": "DSL-dən idxal et",

@@ -58,6 +58,7 @@ jobs:
           uv run --project api pytest \
             -p no:benchmark \
             --timeout "${PYTEST_TIMEOUT:-20}" \
+            --maxfail=1 \
             -n auto \
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \

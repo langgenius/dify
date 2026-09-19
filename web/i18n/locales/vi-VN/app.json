@@ -115,7 +115,7 @@
   "iconPicker.ok": "Đồng ý",
   "importApp": "Nhập App",
   "importAppDescription": "Gói ứng dụng hoặc tệp DSL",
-  "importAppFormats": "Hỗ trợ .ifpkg, .yaml và .yml",
+  "importAppFormats": "Hỗ trợ .ifpkg, .zip, .yaml và .yml",
   "importAppUrlPlaceholder": "Dán liên kết gói ứng dụng (.ifpkg) hoặc DSL vào đây",
   "importDSL": "Nhập tệp DSL",
   "importFromDSL": "Nhập từ DSL",
