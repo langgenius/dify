@@ -172,7 +172,7 @@ class AccountService:
         roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
         for rbac_role in roles:
             if rbac_role.is_builtin and rbac_role.category == "global_system_default" and rbac_role.role_tag == tag:
-                return str(rbac_role.id)
+                return rbac_role.id
 
         raise ValueError(f"Builtin RBAC role not found for tag {tag!r} in tenant {tenant_id}")
 
@@ -1105,9 +1105,9 @@ class TenantService:
             )
         TenantService.create_tenant_member(tenant, account, session, role="owner")
         if dify_config.RBAC_ENABLED:
-            owner_role_id = AccountService._resolve_legacy_role_id(str(tenant.id), account.id, TenantAccountRole.OWNER)
+            owner_role_id = AccountService._resolve_legacy_role_id(tenant.id, account.id, TenantAccountRole.OWNER)
             RBACService.MemberRoles.replace(
-                tenant_id=str(tenant.id),
+                tenant_id=tenant.id,
                 account_id=account.id,
                 member_account_id=account.id,
                 role_ids=[owner_role_id],
@@ -1158,7 +1158,7 @@ class TenantService:
             from tasks.initialize_created_app_rbac_access_task import sync_joined_workspace_member_rbac_access_task
 
             sync_joined_workspace_member_rbac_access_task.delay(
-                str(tenant.id),
+                tenant.id,
                 str(account.id),
                 operator_account_id=operator_account_id,
             )
@@ -1453,7 +1453,7 @@ class TenantService:
 
         if dify_config.RBAC_ENABLED:
             workspace_permission_keys = AccountService.get_workspace_permission_keys(
-                str(tenant.id),
+                tenant.id,
                 str(operator.id),
                 session=session,
             )
@@ -1466,9 +1466,7 @@ class TenantService:
             if (
                 action == "remove"
                 and member
-                and AccountService.is_rbac_workspace_owner(
-                    str(tenant.id), str(operator.id), str(member.id), session=session
-                )
+                and AccountService.is_rbac_workspace_owner(tenant.id, str(operator.id), str(member.id), session=session)
             ):
                 raise NoPermissionError(f"No permission to {action} member.")
             return
@@ -1527,9 +1525,7 @@ class TenantService:
 
         owner_id: str | None
         if dify_config.RBAC_ENABLED:
-            owner_id = AccountService.get_rbac_workspace_owner_account_id(
-                str(tenant.id), str(operator.id), session=session
-            )
+            owner_id = AccountService.get_rbac_workspace_owner_account_id(tenant.id, str(operator.id), session=session)
         else:
             owner_id = session.scalar(
                 select(TenantAccountJoin.account_id)
@@ -1628,24 +1624,22 @@ class TenantService:
         if new_role == "owner":
             if dify_config.RBAC_ENABLED:
                 old_owner_id = AccountService.get_rbac_workspace_owner_account_id(
-                    str(tenant.id), operator.id, session=session
+                    tenant.id, operator.id, session=session
                 )
                 owner_role_id = AccountService._resolve_legacy_role_id(
-                    tenant_id=str(tenant.id),
+                    tenant_id=tenant.id,
                     account_id=operator.id,
                     role=TenantAccountRole.OWNER,
                 )
                 no_access_role_id = AccountService._resolve_role_id_by_tag(
-                    tenant_id=str(tenant.id),
+                    tenant_id=tenant.id,
                     account_id=operator.id,
                     tag="no_access",
                 )
-                current_roles = RBACService.MemberRoles.get(
-                    str(tenant.id), operator.id, old_owner_id, session=session
-                ).roles
-                remaining_role_ids = [str(r.id) for r in current_roles if str(r.id) != owner_role_id]
+                current_roles = RBACService.MemberRoles.get(tenant.id, operator.id, old_owner_id, session=session).roles
+                remaining_role_ids = [r.id for r in current_roles if r.id != owner_role_id]
                 RBACService.MemberRoles.replace(
-                    tenant_id=str(tenant.id),
+                    tenant_id=tenant.id,
                     account_id=operator.id,
                     member_account_id=old_owner_id,
                     role_ids=remaining_role_ids or [no_access_role_id],
@@ -1663,12 +1657,12 @@ class TenantService:
         # Update the role of the target member
         if dify_config.RBAC_ENABLED:
             resolved_role_id = AccountService._resolve_legacy_role_id(
-                tenant_id=str(tenant.id),
+                tenant_id=tenant.id,
                 account_id=operator.id,
                 role=TenantAccountRole.OWNER,
             )
             RBACService.MemberRoles.replace(
-                tenant_id=str(tenant.id),
+                tenant_id=tenant.id,
                 account_id=operator.id,
                 member_account_id=member.id,
                 role_ids=[resolved_role_id],
@@ -1885,7 +1879,7 @@ class RegisterService:
             if account.status != AccountStatus.PENDING:
                 if dify_config.RBAC_ENABLED and not ta:
                     RBACService.MemberRoles.replace(
-                        tenant_id=str(tenant.id),
+                        tenant_id=tenant.id,
                         account_id=inviter.id,
                         member_account_id=account.id,
                         role_ids=[role],
@@ -1897,7 +1891,7 @@ class RegisterService:
         # Assign RBAC role if RBAC is enabled
         if dify_config.RBAC_ENABLED:
             RBACService.MemberRoles.replace(
-                tenant_id=str(tenant.id),
+                tenant_id=tenant.id,
                 account_id=inviter.id,
                 member_account_id=account.id,
                 role_ids=[role],
@@ -1927,7 +1921,7 @@ class RegisterService:
             "account_id": account.id,
             "email": account.email,
             "workspace_id": tenant.id,
-            "role": str(role),
+            "role": role,
             "requires_setup": requires_setup,
         }
         expiry_hours = dify_config.INVITE_EXPIRY_HOURS
