@@ -18,6 +18,7 @@ import {
   BreadcrumbSeparator,
 } from '@langgenius/dify-ui/breadcrumb'
 import { cn } from '@langgenius/dify-ui/cn'
+import { iconButtonVariants } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from '#i18n'
 import Link from '@/next/link'
 import DefaultCreatorBackground from './assets/default-background.png'
@@ -68,7 +69,7 @@ export default function CreatorProfileView({
               <BreadcrumbLink
                 render={<Link href={homeHref} />}
                 aria-label={t(($) => $['marketplace.creatorProfile.home'], { ns: 'plugin' })}
-                className="size-6 justify-center rounded-md hover:bg-state-base-hover"
+                className={iconButtonVariants({ size: 'md' })}
               >
                 <span aria-hidden className="i-ri-home-4-line size-4" />
               </BreadcrumbLink>
