@@ -813,7 +813,7 @@ class TestSegmentServiceMutations:
         multimodel_update.assert_not_called()
 
     @pytest.mark.parametrize("summary", [None, "same summary"])
-    def test_update_segment_changed_content_regenerates_existing_summary(
+    def test_update_segment_changed_content_schedules_existing_summary_regeneration(
         self, sqlite_session: Session, summary: str | None
     ) -> None:
         dataset = _dataset()
@@ -840,6 +840,7 @@ class TestSegmentServiceMutations:
             patch(
                 "services.summary_index_service.SummaryIndexService.generate_and_vectorize_summary"
             ) as generate_summary,
+            patch("services.dataset_service.schedule_segment_summary_regeneration") as schedule_summary,
             patch("services.summary_index_service.SummaryIndexService.update_summary_for_segment") as update_summary,
         ):
             manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
@@ -852,7 +853,8 @@ class TestSegmentServiceMutations:
             )
 
         assert updated.content == "new content"
-        generate_summary.assert_called_once_with(segment, dataset, {"enable": True}, session=sqlite_session)
+        schedule_summary.assert_called_once_with(segment, dataset, summary_record, session=sqlite_session)
+        generate_summary.assert_not_called()
         update_summary.assert_not_called()
 
     def test_update_segment_same_parent_content_regenerates_children_and_manual_summary(
@@ -885,6 +887,7 @@ class TestSegmentServiceMutations:
             patch("services.dataset_service.ModelManager") as manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.summary_index_service.SummaryIndexService.update_summary_for_segment") as update_summary,
+            patch("services.dataset_service.cancel_segment_summary_regeneration") as cancel_summary_regeneration,
         ):
             manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
             updated = SegmentService.update_segment(
@@ -909,6 +912,7 @@ class TestSegmentServiceMutations:
             True,
             session=sqlite_session,
         )
+        cancel_summary_regeneration.assert_called_once_with(segment.id)
         update_summary.assert_called_once_with(segment, dataset, "new summary", session=sqlite_session)
         vector_service.update_multimodel_vector.assert_not_called()
 
@@ -948,6 +952,7 @@ class TestSegmentServiceMutations:
                 "services.summary_index_service.SummaryIndexService.update_summary_for_segment",
                 side_effect=RuntimeError("summary failed"),
             ) as update_summary,
+            patch("services.dataset_service.cancel_segment_summary_regeneration") as cancel_summary_regeneration,
         ):
             manager = manager_cls.for_tenant.return_value
             manager.get_model_instance.return_value = token_model
@@ -975,6 +980,7 @@ class TestSegmentServiceMutations:
             True,
             session=sqlite_session,
         )
+        cancel_summary_regeneration.assert_called_once_with(segment.id)
         update_summary.assert_called_once_with(segment, dataset, "new summary", session=sqlite_session)
         vector_service.update_multimodel_vector.assert_not_called()
 
