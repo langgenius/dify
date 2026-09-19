@@ -485,6 +485,45 @@ def test_handle_list_messages_splits_text_and_file_content():
     mock_to_prompt.assert_called_once()
 
 
+def test_handle_list_messages_skips_custom_file_types():
+    """LLM prompt assembly omits FileType.CUSTOM, which is why Other File Types
+    must be rewritten to the detected MIME type before reaching this path (#41236).
+    """
+    variable_pool = VariablePool.empty()
+    custom_file = File(
+        file_id="notes",
+        file_type=FileType.CUSTOM,
+        filename="notes.txt",
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.com/notes.txt",
+        related_id="notes-related",
+        extension=".txt",
+        mime_type="text/plain",
+        storage_key="",
+    )
+    variable_pool.add(["input", "file"], custom_file)
+
+    with mock.patch(
+        "graphon.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
+    ) as mock_to_prompt:
+        prompt_messages = llm_utils.handle_list_messages(
+            messages=[
+                LLMNodeChatModelMessage(
+                    text="Read {{#input.file#}}",
+                    role=PromptMessageRole.USER,
+                    edition_type="basic",
+                )
+            ],
+            context="",
+            jinja2_variables=[],
+            variable_pool=variable_pool,
+            vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+        )
+
+    mock_to_prompt.assert_not_called()
+    assert prompt_messages == [UserPromptMessage(content=[TextPromptMessageContent(data="Read ")])]
+
+
 def test_handle_list_messages_supports_array_file_segments():
     variable_pool = VariablePool.empty()
     first_file = _build_image_file(file_id="first", related_id="first-related", remote_url="https://example.com/1.png")
