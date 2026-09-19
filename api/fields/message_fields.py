@@ -41,6 +41,11 @@ class RetrieverResource(ResponseModel):
     content: str | None = None
     summary: str | None = None
     created_at: Int64 | None = None
+    retriever_from: str | None = None
+    page: int | None = None
+    doc_metadata: dict[str, JSONValueType] | None = None
+    title: str | None = None
+    files: list[dict[str, JSONValueType]] | None = None
 
     @field_validator("created_at", mode="before")
     @classmethod
