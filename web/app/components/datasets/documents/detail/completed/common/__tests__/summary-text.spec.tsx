@@ -26,6 +26,11 @@ describe('SummaryText', () => {
     expect(screen.getByTestId('textarea')).toHaveValue('My summary')
   })
 
+  it('should cap the auto-growing summary field', () => {
+    render(<SummaryText />)
+    expect(screen.getByTestId('textarea')).toHaveAttribute('maxRows', '6')
+  })
+
   it('should render empty string when value is undefined', () => {
     render(<SummaryText onChange={onChange} />)
     expect(screen.getByTestId('textarea')).toHaveValue('')
