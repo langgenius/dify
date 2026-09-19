@@ -20,6 +20,7 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
+from services.account_email import normalize_email
 from services.account_service import (
     AccountService,
     EnterpriseWorkspaceMemberAccountNotFoundError,
@@ -3001,11 +3002,27 @@ class TestSessionInjectedGetters:
 
 
 def test_get_account_by_email_with_case_fallback_uses_lowercase(sqlite_session: Session) -> None:
-    account = Account(name="Case User", email="case@test.com")
+    account = Account(name="Case User", email="case@test.com", normalized_email=normalize_email("case@test.com"))
     sqlite_session.add(account)
     sqlite_session.commit()
 
     result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=sqlite_session)
+
+    assert result is account
+
+
+def test_get_account_by_email_with_case_fallback_finds_uppercase_row_from_lowercase_input(
+    sqlite_session: Session,
+) -> None:
+    """Regression test for CUS-1658: an SSO-provisioned account keeps the IdP's original casing
+    (e.g. `User@Example.com`), but the workspace invite flow always looks it up with an
+    already-lowercased email. The lookup must still find that account.
+    """
+    account = Account(name="SSO User", email="User@Example.com", normalized_email=normalize_email("User@Example.com"))
+    sqlite_session.add(account)
+    sqlite_session.commit()
+
+    result = AccountService.get_account_by_email_with_case_fallback("user@example.com", session=sqlite_session)
 
     assert result is account
 
