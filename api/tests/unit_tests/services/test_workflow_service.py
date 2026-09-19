@@ -1276,7 +1276,7 @@ class TestWorkflowService:
         sqlite_session.commit()
 
         with (
-            patch("services.workflow_service.app_published_workflow_was_updated"),
+            patch("services.workflow_service.app_published_workflow_was_updated") as publish_event,
             patch(
                 "services.workflow_service.register_new_agent_beta_workflow_publish_after_commit"
             ) as register_workflow_publish,
@@ -1295,6 +1295,7 @@ class TestWorkflowService:
         assert result.marked_name == "Version 1"
         assert result.marked_comment == "Initial release"
         register_workflow_publish.assert_not_called()
+        publish_event.send.assert_called_once_with(app, published_workflow=result, session=sqlite_session)
 
     def test_publish_workflow_registers_inline_agent_after_commit(
         self, workflow_service: WorkflowService, sqlite_session: Session
