@@ -7,6 +7,7 @@ paused outcome must be published only after that transaction succeeds.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -18,8 +19,11 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.entities.queue_entities import QueueWorkflowFailedEvent, QueueWorkflowPausedEvent
 from core.app.entities.workflow_pause_state import PauseStateConfig, WorkflowResumptionContext
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
-from graphon.entities.pause_reason import SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.filters import GraphEventFilterContext, ResponseStreamFilter
 from graphon.graph_events import GraphRunPausedEvent, GraphRunStartedEvent
@@ -166,6 +170,37 @@ def _paused_event() -> GraphRunPausedEvent:
     )
 
 
+def _hitl_event() -> GraphRunPausedEvent:
+    return GraphRunPausedEvent(
+        reasons=[HitlRequired(session_id="form-123", node_id="node-1", node_title="Ask for approval")],
+        outputs={},
+    )
+
+
+def _stub_form_repository(monkeypatch, *, record: object | None) -> Mock:
+    """Route the layer's form lookups to `record` and return the stub repository."""
+    form_repository = Mock(spec=HumanInputFormSubmissionRepository)
+    form_repository.get_by_form_id.return_value = record
+    monkeypatch.setattr(
+        "core.app.workflow.layers.persistence.HumanInputFormSubmissionRepository",
+        Mock(return_value=form_repository),
+    )
+    return form_repository
+
+
+_HITL_FORM_RECORD = SimpleNamespace(
+    form_id="form-123",
+    node_id="node-1",
+    rendered_content="Please approve",
+    definition=FormDefinition(
+        form_content="Please approve",
+        rendered_content="Please approve",
+        expiration_time=datetime(2026, 1, 1, tzinfo=UTC),
+        node_title="Ask for approval",
+    ),
+)
+
+
 class TestOwnerPath:
     def test_on_event_does_not_commit_pause_when_layer_owns_it(self, monkeypatch):
         log = _CallLog()
@@ -203,6 +238,39 @@ class TestOwnerPath:
         assert context.serialized_graph_runtime_state
         entity = execution_repo.saved[0]
         assert entity.status == WorkflowExecutionStatus.PAUSED
+
+    def test_persist_pause_commits_enriched_hitl_reasons(self, monkeypatch):
+        log = _CallLog()
+        pause_repo = _PauseRepo(log)
+        layer, _, _ = _make_layer(log, pause_repo=pause_repo, monkeypatch=monkeypatch)
+        form_repository = _stub_form_repository(monkeypatch, record=_HITL_FORM_RECORD)
+
+        layer.persist_pause(_hitl_event())
+
+        form_repository.get_by_form_id.assert_called_once_with("form-123")
+        assert pause_repo.calls_kwargs is not None
+        reasons = pause_repo.calls_kwargs["pause_reasons"]
+        assert isinstance(reasons, list)
+        assert reasons == [
+            HumanInputRequired(
+                form_id="form-123",
+                form_content="Please approve",
+                node_id="node-1",
+                node_title="Ask for approval",
+            )
+        ]
+
+    def test_unresolvable_hitl_reason_aborts_the_pause_transaction(self, monkeypatch):
+        log = _CallLog()
+        pause_repo = _PauseRepo(log)
+        layer, execution_repo, _ = _make_layer(log, pause_repo=pause_repo, monkeypatch=monkeypatch)
+        _stub_form_repository(monkeypatch, record=None)
+
+        with pytest.raises(LookupError, match="form-123"):
+            layer.persist_pause(_hitl_event())
+
+        assert log.calls == []
+        assert execution_repo.saved == []
 
     def test_pause_failure_propagates_without_mirroring(self, monkeypatch):
         log = _CallLog()
