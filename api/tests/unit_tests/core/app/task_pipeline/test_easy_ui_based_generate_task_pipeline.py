@@ -103,16 +103,15 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
             name="Test Conversation",
             status="normal",
             from_source=ConversationFromSource.API,
-            inputs={},
+            _inputs={},
         )
 
     @pytest.fixture
     def message(self):
         """Create a transient mapped message."""
-        return Message(
-            id="test-message-id",
-            created_at=datetime.fromtimestamp(1234567890, tz=UTC),
-        )
+        message = Message(id="test-message-id")
+        message.created_at = datetime.fromtimestamp(1234567890, tz=UTC)
+        return message
 
     @pytest.fixture
     def mock_task_state(self):

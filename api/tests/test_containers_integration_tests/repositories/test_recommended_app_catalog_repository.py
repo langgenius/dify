@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
 from models.enums import CustomizeTokenStrategy
-from models.model import App, RecommendedApp, Site
+from models.model import App, AppMode, RecommendedApp, Site
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from services.recommended_app_query_service import RecommendedAppDetailRecord
 
@@ -21,7 +21,7 @@ def _add_catalog_app(
     app = App(
         tenant_id=str(uuid4()),
         name=f"app-{uuid4()}",
-        mode="chat",
+        mode=AppMode.CHAT,
         enable_site=True,
         enable_api=True,
         is_public=is_public,
