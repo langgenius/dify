@@ -3,7 +3,7 @@ name = "dify-vdb-clickzetta"
 version = "0.0.1"
 
 dependencies = [
-    "clickzetta-connector-python==0.8.104",
+    "clickzetta-connector-python==0.8.109",
 ]
 description = "Dify vector store backend (dify-vdb-clickzetta)."
 
