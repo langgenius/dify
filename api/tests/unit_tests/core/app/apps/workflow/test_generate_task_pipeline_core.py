@@ -468,7 +468,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._process_stream_response = lambda **kwargs: iter([PingStreamResponse(task_id="task")])
 
         class _Publisher:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 self.calls = 0
 
             def check_and_get_audio(self, *, block=False):
@@ -628,7 +628,7 @@ class TestWorkflowGenerateTaskPipeline:
         blocking_reads = []
 
         class _Publisher:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def check_and_get_audio(self, *, block=False):
@@ -662,7 +662,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._process_stream_response = lambda **kwargs: iter([])
 
         class _Publisher:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def check_and_get_audio(self, *, block=False):
