@@ -1,11 +1,11 @@
-"""Shared helpers for vector DB integration tests (used by workspace packages under ``api/packages``).
+"""Shared helpers for vector DB integration tests (used by workspaces under ``api/providers/vdb``).
 
 :class:`AbstractVectorTest` and helper functions live here so package tests can import
 ``core.rag.datasource.vdb.vector_integration_test_support`` without relying on the
 ``tests.*`` package.
 
-The ``setup_mock_redis`` fixture lives in ``api/packages/conftest.py`` and is
-auto-discovered by pytest for all package tests.
+The ``setup_real_redis`` fixture lives in ``api/providers/vdb/conftest.py`` and is
+auto-discovered by pytest for all vector DB provider tests.
 """
 
 import uuid
