@@ -12,6 +12,7 @@ from extensions.ext_storage import storage
 from models import WorkflowType
 from models.dataset import (
     AppDatasetJoin,
+    ChildChunk,
     Dataset,
     DatasetMetadata,
     DatasetMetadataBinding,
@@ -154,6 +155,14 @@ def clean_dataset_task(
                     SegmentAttachmentBinding.id.in_(binding_ids)
                 )
                 session.execute(binding_delete_stmt)
+
+            # The index processor only deletes child chunks for high-quality parent-child
+            # datasets, so economy-indexed datasets -- and datasets whose index cleanup
+            # above failed -- keep theirs forever. Both columns are matched so the delete
+            # can use the compound (tenant_id, dataset_id, ...) index.
+            session.execute(
+                delete(ChildChunk).where(ChildChunk.tenant_id == tenant_id, ChildChunk.dataset_id == dataset_id)
+            )
 
             session.execute(delete(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id))
             session.execute(delete(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id))
