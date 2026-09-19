@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
-from libs.oauth_bearer import TokenType
 from models import Account, EndUser, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.enums import EndUserType

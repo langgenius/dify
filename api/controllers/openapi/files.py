@@ -7,6 +7,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
 import services
+from constants.oauth_bearer import Scope
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FileTooLargeError,
@@ -28,7 +29,6 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
-from libs.oauth_bearer import Scope
 
 
 @openapi_ns.route("/apps/<string:app_id>/files")
