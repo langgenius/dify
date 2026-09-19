@@ -16,6 +16,7 @@ from core.mcp.server.streamable_http import (
     handle_list_tools,
     handle_mcp_request,
     handle_ping,
+    handle_server_discover,
     negotiate_protocol_version,
     prepare_tool_arguments,
     process_mapping_response,
@@ -129,6 +130,81 @@ class TestHandleMCPRequest:
         assert isinstance(result, types.JSONRPCResponse)
         tool = result.result["tools"][0]
         assert set(tool) == {"name", "description", "inputSchema"}
+
+    def test_handle_list_tools_request_stateless_serialization(self):
+        """A 2026-07-28 tools/list response carries resultType and the required cache hints."""
+        self.mock_request.root = Mock(spec=types.ListToolsRequest)
+        self.mock_request.root.id = 123
+
+        result = handle_mcp_request(
+            Mock(),
+            self.app,
+            self.mock_request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+            "2026-07-28",
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert result.result["resultType"] == "complete"
+        assert result.result["ttlMs"] == 300_000
+        assert result.result["cacheScope"] == "private"
+
+    def test_handle_list_tools_request_modern_session_based_has_no_result_type(self):
+        """Session-based (2025-06-18) responses stay free of stateless-only fields."""
+        self.mock_request.root = Mock(spec=types.ListToolsRequest)
+        self.mock_request.root.id = 123
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert "resultType" not in result.result
+        assert "ttlMs" not in result.result
+
+    def test_handle_discover_request(self):
+        """A stateless server/discover request returns supported versions and identity."""
+        request = types.ClientRequest.model_validate({"jsonrpc": "2.0", "id": "d1", "method": "server/discover"})
+
+        result = handle_mcp_request(
+            Mock(),
+            self.app,
+            request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            "d1",
+            types.STATELESS_PROTOCOL_VERSION,
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert result.result["resultType"] == "complete"
+        assert result.result["supportedVersions"] == sorted(types.SERVER_SUPPORTED_PROTOCOL_VERSIONS)
+        assert types.STATELESS_PROTOCOL_VERSION in result.result["supportedVersions"]
+        assert result.result["ttlMs"] == 3_600_000
+        assert result.result["cacheScope"] == "public"
+        assert result.result["_meta"][types.META_SERVER_INFO_KEY]["name"] == "Dify"
+
+    def test_handle_ping_request_stateless_is_removed(self):
+        """ping was removed in the stateless core and answers METHOD_NOT_FOUND."""
+        request = types.ClientRequest.model_validate({"jsonrpc": "2.0", "id": 9, "method": "ping"})
+
+        result = handle_mcp_request(
+            Mock(),
+            self.app,
+            request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            9,
+            types.STATELESS_PROTOCOL_VERSION,
+        )
+
+        assert isinstance(result, types.JSONRPCError)
+        assert result.error.code == types.METHOD_NOT_FOUND
 
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_request(self, mock_app_generate):
@@ -314,6 +390,31 @@ class TestIndividualHandlers:
         result = handle_initialize("Test server", 20250618)
 
         assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
+
+    def test_handle_initialize_does_not_echo_stateless_version(self):
+        """initialize selects legacy semantics, so the stateless version is never echoed."""
+        result = handle_initialize("Test server", types.STATELESS_PROTOCOL_VERSION)
+
+        assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
+
+    def test_handle_server_discover(self):
+        """The discovery result advertises versions, capabilities, and identity."""
+        result = handle_server_discover("Test server")
+
+        assert isinstance(result, types.DiscoverResult)
+        assert types.STATELESS_PROTOCOL_VERSION in result.supportedVersions
+        assert result.instructions == "Test server"
+        assert result.ttlMs == 3_600_000
+        assert result.cacheScope == "public"
+        assert result.meta is not None
+        assert result.meta[types.META_SERVER_INFO_KEY]["name"] == "Dify"
+
+    def test_handle_server_discover_empty_description_omits_instructions(self):
+        """An empty description serializes without an instructions field."""
+        result = handle_server_discover("")
+
+        assert result.instructions is None
+        assert "instructions" not in result.model_dump(by_alias=True, mode="json", exclude_none=True)
 
     def test_handle_list_tools(self):
         """Test list tools handler"""
@@ -858,6 +959,10 @@ class TestNegotiateProtocolVersion:
         assert negotiate_protocol_version("2025-06-18", False) == "2025-06-18"
         assert negotiate_protocol_version("2025-03-26", False) == "2025-03-26"
         assert negotiate_protocol_version("2024-11-05", False) == "2024-11-05"
+
+    def test_stateless_header_passes_through(self):
+        """The stateless 2026-07-28 header value is accepted on non-initialize requests."""
+        assert negotiate_protocol_version("2026-07-28", False) == "2026-07-28"
 
     def test_unsupported_header_returns_none(self):
         """An explicit but unsupported header signals an error (None)."""

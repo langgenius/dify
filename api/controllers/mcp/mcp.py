@@ -71,16 +71,20 @@ class MCPAppApi(Resource):
         request_id: Union[int, str] | None = args.id
         mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))
 
-        # Resolve the negotiated protocol version from the MCP-Protocol-Version header.
+        # Resolve the negotiated protocol version: MCP-Protocol-Version header first, then
+        # the per-request _meta key declared by stateless (2026-07-28) clients.
         is_initialize = isinstance(mcp_request.root, mcp_types.InitializeRequest)
         header_value = request.headers.get("MCP-Protocol-Version")
-        protocol_version = negotiate_protocol_version(header_value, is_initialize)
+        meta_version = self._meta_version(mcp_request)
+        protocol_version = negotiate_protocol_version(header_value or meta_version, is_initialize)
         if protocol_version is None:
-            # A notification never receives a response, even with an unsupported header.
+            # A notification never receives a response, even with an unsupported version.
             if isinstance(mcp_request, mcp_types.ClientNotification):
                 protocol_version = mcp_types.DEFAULT_NEGOTIATED_VERSION
             else:
-                return self._protocol_version_error_response(request_id, header_value)
+                return self._protocol_version_error_response(
+                    request_id, header_value or meta_version, is_modern=meta_version is not None
+                )
 
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             # Get MCP server and app
@@ -96,17 +100,28 @@ class MCPAppApi(Resource):
             )
 
     def _protocol_version_error_response(
-        self, request_id: Union[int, str] | None, header_value: str | None
+        self, request_id: Union[int, str] | None, requested_version: str | None, *, is_modern: bool
     ) -> Response:
-        """Return a JSON-RPC error for an unsupported MCP-Protocol-Version header.
+        """Return a JSON-RPC error for an unsupported declared protocol version.
 
-        Per JSON-RPC 2.0, an error whose request id is unknown uses a null id, so we echo the
-        offending request's id directly (None -> null) instead of fabricating a placeholder.
+        Modern (2026-07-28) requests get UnsupportedProtocolVersionError (-32022) listing the
+        versions the server supports, so the client can retry with a mutual version. Legacy
+        (handshake-era) requests keep the plain INVALID_REQUEST error.
         """
-        error_data = mcp_types.ErrorData(
-            code=mcp_types.INVALID_REQUEST,
-            message=f"Unsupported MCP-Protocol-Version: {header_value}",
-        )
+        if is_modern:
+            error_data = mcp_types.ErrorData(
+                code=mcp_types.UNSUPPORTED_PROTOCOL_VERSION,
+                message="Unsupported protocol version",
+                data={
+                    "supported": sorted(mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS),
+                    "requested": requested_version,
+                },
+            )
+        else:
+            error_data = mcp_types.ErrorData(
+                code=mcp_types.INVALID_REQUEST,
+                message=f"Unsupported MCP-Protocol-Version: {requested_version}",
+            )
         error_response = {
             "jsonrpc": "2.0",
             "id": request_id,
@@ -143,16 +158,18 @@ class MCPAppApi(Resource):
     ) -> Response:
         """Process MCP message (notification or request)"""
         if isinstance(mcp_request, mcp_types.ClientNotification):
-            return self._handle_notification(mcp_request)
+            return self._handle_notification(mcp_request, protocol_version)
         else:
             return self._handle_request(
                 mcp_request, request_id, app, mcp_server, user_input_form, session, protocol_version
             )
 
-    def _handle_notification(self, mcp_request: mcp_types.ClientNotification) -> Response:
+    def _handle_notification(self, mcp_request: mcp_types.ClientNotification, protocol_version: str) -> Response:
         """Handle MCP notification"""
-        # For notifications, only support init notification
-        if mcp_request.root.method != "notifications/initialized":
+        # Session-based servers only accept the initialized notification; the stateless core
+        # (2026-07-28) has no session to correlate with, so notifications are fire-and-forget.
+        is_session_based = protocol_version != mcp_types.STATELESS_PROTOCOL_VERSION
+        if is_session_based and mcp_request.root.method != "notifications/initialized":
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "Invalid notification method")
         # Return HTTP 202 Accepted for notifications (no response body)
         return Response("", status=202, content_type="application/json")
@@ -237,6 +254,36 @@ class MCPAppApi(Resource):
             except ValidationError as e:
                 raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid MCP request: {str(e)}")
 
+    def _request_meta(self, mcp_request: mcp_types.ClientRequest | mcp_types.ClientNotification) -> dict[str, Any]:
+        """Return the request's _meta payload as a dict (empty when absent).
+
+        Requests carry typed params (pydantic models); notifications carry raw dicts.
+        """
+        params = mcp_request.root.params
+        if params is None:
+            return {}
+        if isinstance(params, dict):
+            meta = params.get("_meta")
+            return meta if isinstance(meta, dict) else {}
+        if params.meta is None:
+            return {}
+        dumped = params.meta.model_dump()
+        return dumped if isinstance(dumped, dict) else {}
+
+    def _meta_version(self, mcp_request: mcp_types.ClientRequest | mcp_types.ClientNotification) -> str | None:
+        """Extract the stateless (2026-07-28) per-request protocol version from _meta, if declared."""
+        declared = self._request_meta(mcp_request).get(mcp_types.META_PROTOCOL_VERSION_KEY)
+        return declared if isinstance(declared, str) and declared else None
+
+    def _stateless_client_name(self, mcp_request: mcp_types.ClientRequest) -> str:
+        """Derive an end-user display name from the stateless per-request clientInfo."""
+        client_info = self._request_meta(mcp_request).get(mcp_types.META_CLIENT_INFO_KEY)
+        if isinstance(client_info, dict) and client_info.get("name"):
+            name = str(client_info["name"])
+            version = client_info.get("version")
+            return f"{name}@{version}" if version else name
+        return "stateless-client"
+
     def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str) -> EndUser | None:
         """Get end user - manages its own database session"""
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
@@ -281,6 +328,16 @@ class MCPAppApi(Resource):
             client_info = mcp_request.root.params.clientInfo
             client_name = f"{client_info.name}@{client_info.version}"
             end_user = self._create_end_user(client_name, app.tenant_id, app.id, mcp_server.id, session)
+        elif (
+            not end_user
+            and protocol_version == mcp_types.STATELESS_PROTOCOL_VERSION
+            and isinstance(mcp_request.root, mcp_types.CallToolRequest)
+        ):
+            # Stateless (2026-07-28) clients never send initialize; derive the caller identity
+            # from the per-request _meta clientInfo when available.
+            end_user = self._create_end_user(
+                self._stateless_client_name(mcp_request), app.tenant_id, app.id, mcp_server.id, session
+            )
 
         return handle_mcp_request(
             session, app, mcp_request, user_input_form, mcp_server, end_user, request_id, protocol_version

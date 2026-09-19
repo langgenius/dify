@@ -575,15 +575,24 @@ class TestMCPProtocolVersionNegotiationApi:
         with flask_app.test_request_context(headers=headers):
             return post_fn("server-1")
 
-    @pytest.mark.parametrize("version", sorted(module.mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS))
+    @pytest.mark.parametrize("version", sorted(module.mcp_types.SESSION_BASED_PROTOCOL_VERSIONS))
     def test_initialize_echoes_supported_body_version(self, app, version):
-        """Initialize echoes every supported client-requested version back unchanged."""
+        """Initialize echoes every supported session-based version back unchanged."""
         api = self._make_api()
 
         response = self._post(app, api, _initialize_payload(version))
 
         body = response.get_json()
         assert body["result"]["protocolVersion"] == version
+
+    def test_initialize_does_not_echo_stateless_version(self, app):
+        """initialize selects legacy semantics, so the stateless version is never echoed."""
+        api = self._make_api()
+
+        response = self._post(app, api, _initialize_payload(module.mcp_types.STATELESS_PROTOCOL_VERSION))
+
+        body = response.get_json()
+        assert body["result"]["protocolVersion"] == module.mcp_types.SERVER_LATEST_PROTOCOL_VERSION
 
     def test_initialize_falls_back_for_unsupported_body_version(self, app):
         """An unsupported requested version falls back to the server latest."""
@@ -729,3 +738,157 @@ class TestMCPProtocolVersionNegotiationApi:
         result = response.get_json()["result"]
         assert "structuredContent" not in result
         assert result["content"][0]["text"] == "test answer"
+
+
+def _discover_payload() -> dict[str, object]:
+    return {
+        "jsonrpc": "2.0",
+        "method": "server/discover",
+        "id": "discover-1",
+        "params": {"_meta": {module.mcp_types.META_PROTOCOL_VERSION_KEY: module.mcp_types.STATELESS_PROTOCOL_VERSION}},
+    }
+
+
+def _with_stateless_meta(payload: dict[str, object]) -> dict[str, object]:
+    params = payload.get("params") or {}
+    params["_meta"] = {module.mcp_types.META_PROTOCOL_VERSION_KEY: module.mcp_types.STATELESS_PROTOCOL_VERSION}
+    payload["params"] = params
+    return payload
+
+
+class TestMCPStatelessApi:
+    """Stateless (2026-07-28) clients served without the initialize handshake.
+
+    Covers per-request version resolution (header and _meta fallback), server/discover,
+    the modern UnsupportedProtocolVersionError, resultType/cache fields on responses,
+    fire-and-forget notifications, and identity auto-creation on tools/call.
+    """
+
+    def _make_api(self, end_user: EndUser | None) -> module.MCPAppApi:
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.CHAT, with_model_config=True)
+        api = module.MCPAppApi()
+        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+        api._retrieve_end_user = MagicMock(return_value=end_user)
+        return api
+
+    def _post(
+        self, flask_app: Flask, api: module.MCPAppApi, payload: dict[str, object], headers: dict[str, str] | None = None
+    ) -> Response:
+        fake_payload(payload)
+        post_fn = unwrap(api.post)
+        with flask_app.test_request_context(headers=headers):
+            return post_fn("server-1")
+
+    def test_tools_list_with_stateless_header(self, app):
+        """A 2026-07-28 client gets resultType plus the required list cache hints."""
+        api = self._make_api(_end_user())
+
+        response = self._post(
+            app,
+            api,
+            _tools_list_payload(),
+            headers={"MCP-Protocol-Version": module.mcp_types.STATELESS_PROTOCOL_VERSION},
+        )
+
+        result = response.get_json()["result"]
+        assert result["resultType"] == "complete"
+        assert result["ttlMs"] == 300_000
+        assert result["cacheScope"] == "private"
+        assert result["tools"][0]["outputSchema"] == {"type": "object"}
+
+    def test_tools_list_with_meta_version_only(self, app):
+        """A client that declares the version only in _meta is served statelessly too."""
+        api = self._make_api(_end_user())
+
+        response = self._post(app, api, _with_stateless_meta(_tools_list_payload()))
+
+        result = response.get_json()["result"]
+        assert result["resultType"] == "complete"
+        assert result["ttlMs"] == 300_000
+
+    def test_server_discover(self, app):
+        """server/discover advertises supported versions, capabilities, and identity."""
+        api = self._make_api(None)
+
+        response = self._post(app, api, _discover_payload())
+
+        result = response.get_json()["result"]
+        assert result["resultType"] == "complete"
+        assert module.mcp_types.STATELESS_PROTOCOL_VERSION in result["supportedVersions"]
+        assert "tools" in result["capabilities"]
+        assert result["ttlMs"] == 3_600_000
+        assert result["cacheScope"] == "public"
+        assert result["_meta"][module.mcp_types.META_SERVER_INFO_KEY]["name"] == "Dify"
+
+    def test_stateless_ping_removed(self, app):
+        """ping was removed in the stateless core and answers METHOD_NOT_FOUND."""
+        api = self._make_api(_end_user())
+
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "ping",
+            "id": 7,
+            "params": {
+                "_meta": {module.mcp_types.META_PROTOCOL_VERSION_KEY: module.mcp_types.STATELESS_PROTOCOL_VERSION}
+            },
+        }
+        response = self._post(app, api, payload)
+
+        body = response.get_json()
+        assert body["error"]["code"] == module.mcp_types.METHOD_NOT_FOUND
+
+    def test_modern_unsupported_version_returns_protocol_version_error(self, app):
+        """A modern request for an unknown version gets -32022 with the supported list."""
+        api = self._make_api(_end_user())
+
+        requested = "2030-01-01"
+        payload = _tools_list_payload()
+        payload["params"] = {"_meta": {module.mcp_types.META_PROTOCOL_VERSION_KEY: requested}}
+        response = self._post(app, api, payload)
+
+        body = response.get_json()
+        assert body["error"]["code"] == module.mcp_types.UNSUPPORTED_PROTOCOL_VERSION
+        assert body["error"]["data"]["requested"] == requested
+        assert module.mcp_types.STATELESS_PROTOCOL_VERSION in body["error"]["data"]["supported"]
+
+    def test_stateless_notification_accepted(self, app):
+        """The stateless core has no session, so any notification is fire-and-forget 202."""
+        api = self._make_api(None)
+
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "notifications/cancelled",
+            "params": {
+                "requestId": 5,
+                "_meta": {module.mcp_types.META_PROTOCOL_VERSION_KEY: module.mcp_types.STATELESS_PROTOCOL_VERSION},
+            },
+        }
+        response = self._post(app, api, payload)
+
+        assert response.status_code == 202
+
+    @patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True)
+    def test_stateless_tools_call_creates_end_user(self, mock_handle, app):
+        """A stateless client that never sent initialize gets an end user derived from _meta."""
+        api = self._make_api(None)
+        created = _end_user()
+
+        payload = _with_stateless_meta(_tools_call_payload())
+        payload["params"]["_meta"][module.mcp_types.META_CLIENT_INFO_KEY] = {"name": "my-app", "version": "2.1"}
+        with patch.object(module.MCPAppApi, "_create_end_user", return_value=created) as mock_create:
+            response = self._post(app, api, payload)
+
+        assert isinstance(response, Response)
+        mock_create.assert_called_once()
+        assert mock_create.call_args.args[0] == "my-app@2.1"
+
+    def test_stateless_tools_call_without_client_info_uses_fallback_name(self, app):
+        """Without _meta clientInfo the auto-created end user falls back to a stable name."""
+        api = self._make_api(None)
+        created = _end_user()
+
+        with patch.object(module.MCPAppApi, "_create_end_user", return_value=created) as mock_create:
+            self._post(app, api, _with_stateless_meta(_tools_call_payload()))
+
+        assert mock_create.call_args.args[0] == "stateless-client"
