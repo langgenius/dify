@@ -516,8 +516,9 @@ class APIWorkflowRunRepository(Protocol):
 
         The immutable snapshot object is written to storage *before* the
         transaction commits its reference; the superseded snapshot object is
-        deleted on a best-effort basis after the commit. A failed cleanup may
-        leave an orphan object but must not invalidate workflow state.
+        deleted on a best-effort basis while its record is replaced inside the
+        same transaction. A failed cleanup may leave an orphan object but must
+        not invalidate workflow state.
 
         Args:
             workflow_run_id: Identifier of the workflow run to pause
