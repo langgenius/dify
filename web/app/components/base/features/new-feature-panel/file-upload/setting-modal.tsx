@@ -32,7 +32,7 @@ const FileUploadSettings = ({
       <PopoverContent
         placement="left"
         sideOffset={32}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="max-h-[calc(100vh-20px)] w-90 overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-2xl">
           <SettingContent

@@ -205,4 +205,31 @@ describe('formatTopLevelHelp', () => {
     expect(obj.commands.every((c: { effect?: string }) => typeof c.effect === 'string')).toBe(true)
     expect(obj.topics.map((t: { name: string }) => t.name)).toContain('account')
   })
+
+  it('emits only command, description, and effect when compact', () => {
+    const tree: CommandTree = {
+      get: {
+        subcommands: {
+          app: {
+            command: makeCmd({
+              description: 'apps',
+              effect: 'read',
+              flags: { output: Flags.string({ description: 'format' }) },
+            }),
+            subcommands: {},
+          },
+        },
+      },
+    }
+    const obj = JSON.parse(formatTopLevelHelp(tree, 'json', { compact: true })) as {
+      commands: Array<Record<string, unknown>>
+      bin?: unknown
+      contract?: unknown
+    }
+    expect(obj).toEqual({
+      commands: [{ command: 'get app', description: 'apps', effect: 'read' }],
+    })
+    expect(obj.bin).toBeUndefined()
+    expect(obj.contract).toBeUndefined()
+  })
 })

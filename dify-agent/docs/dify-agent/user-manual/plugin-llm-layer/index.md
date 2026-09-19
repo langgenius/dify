@@ -72,8 +72,13 @@ model incrementally summarizes older history while retaining the latest twenty
 messages and the first user message.
 
 Compaction affects later runs only when the composition has a
-[history layer](../history-layer/index.md) and a successful run writes the
-rewritten history into its session snapshot.
+[history layer](../history-layer/index.md). Once pydantic-ai binds and builds
+messages in the run capture, successful, failed, timed-out, and cancelled runs
+write the captured rewritten history into their terminal session snapshot. A
+failure or cancellation before the capture contains any messages preserves the
+previously restored history. Interrupted partial messages may be included and
+repaired when that checkpoint is used by a later independent run; the interrupted
+run's terminal status remains unchanged.
 
 ## Complete minimal model composition
 

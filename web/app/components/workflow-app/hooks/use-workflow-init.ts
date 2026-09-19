@@ -96,9 +96,13 @@ export const useWorkflowInit = () => {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       const initialData = {
         ...res,
-        graph: getWorkflowDraftGraphForCanvas(res.graph, {
-          localStartPlaceholderNodes: nodesTemplate,
-        }),
+        graph: {
+          ...getWorkflowDraftGraphForCanvas(res.graph, {
+            localStartPlaceholderNodes: nodesTemplate,
+          }),
+          // Let the canvas fit the nodes when no saved viewport exists.
+          viewport: res.graph.viewport,
+        },
       }
 
       setData(initialData)
@@ -147,6 +151,7 @@ export const useWorkflowInit = () => {
                 ...getWorkflowDraftGraphForCanvas(initialGraph, {
                   localStartPlaceholderNodes: nodesTemplate,
                 }),
+                viewport: undefined,
               })
               setData(initialData)
               workflowStore.setState({
@@ -195,7 +200,7 @@ export const useWorkflowInit = () => {
   const handleFetchPreloadData = useCallback(async () => {
     const [nodesDefaultConfigsResult, publishedWorkflowResult] = await Promise.allSettled([
       fetchNodesDefaultConfigs(`/apps/${appDetail.id}/workflows/default-workflow-block-configs`),
-      queryClient.fetchQuery(appWorkflowQueryOptions(appDetail.id)),
+      queryClient.query(appWorkflowQueryOptions(appDetail.id)),
     ])
 
     if (nodesDefaultConfigsResult.status === 'fulfilled') {

@@ -95,12 +95,10 @@ let mockIsLoadingToolProviders = false
 const mockRefetch = vi.fn()
 const mockUseAllToolProviders = vi.hoisted(() => vi.fn())
 const mockUseAllCustomTools = vi.hoisted(() => vi.fn())
-const mockUseAllMCPTools = vi.hoisted(() => vi.fn())
 const mockUseAllWorkflowTools = vi.hoisted(() => vi.fn())
 vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: (enabled?: boolean) => mockUseAllToolProviders(enabled),
+  useAllToolProviders: (enabled?: boolean, type?: string) => mockUseAllToolProviders(enabled, type),
   useAllCustomTools: (enabled?: boolean) => mockUseAllCustomTools(enabled),
-  useAllMCPTools: (enabled?: boolean) => mockUseAllMCPTools(enabled),
   useAllWorkflowTools: (enabled?: boolean) => mockUseAllWorkflowTools(enabled),
 }))
 
@@ -314,10 +312,12 @@ vi.mock('@/app/components/tools/marketplace/hooks', () => ({
 
 vi.mock('@/app/components/tools/mcp', () => ({
   default: ({
+    providers,
     searchText,
     contentInset,
     showCreateCard,
   }: {
+    providers?: Array<{ id: string }>
     searchText: string
     contentInset?: string
     showCreateCard?: boolean
@@ -325,6 +325,7 @@ vi.mock('@/app/components/tools/mcp', () => ({
     <div
       data-testid="mcp-list"
       data-content-inset={contentInset}
+      data-provider-ids={providers?.map((provider) => provider.id).join(',')}
       data-show-create-card={String(showCreateCard)}
     >
       MCP List:
@@ -397,11 +398,6 @@ describe('ProviderList', () => {
       isLoading: enabled ? mockIsLoadingToolProviders : false,
       refetch: mockRefetch,
     }))
-    mockUseAllMCPTools.mockImplementation((enabled = true) => ({
-      data: enabled ? mockCollectionData.filter((collection) => collection.type === 'mcp') : [],
-      isLoading: enabled ? mockIsLoadingToolProviders : false,
-      refetch: mockRefetch,
-    }))
     mockUseAllWorkflowTools.mockImplementation((enabled = true) => ({
       data: enabled
         ? mockCollectionData.filter((collection) => collection.type === 'workflow')
@@ -470,10 +466,9 @@ describe('ProviderList', () => {
 
       renderProviderList({ category })
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false)
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false, undefined)
       expect(mockUseAllCustomTools).toHaveBeenCalledWith(category === 'api')
       expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(category === 'workflow')
-      expect(mockUseAllMCPTools).toHaveBeenCalledWith(false)
       expect(screen.getByTestId(cardTestId)).toBeInTheDocument()
       expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
@@ -956,6 +951,30 @@ describe('ProviderList', () => {
   })
 
   describe('MCP Tab', () => {
+    it('uses database provider IDs from the management list', () => {
+      const provider = {
+        id: '019d3f85-d61c-765e-9615-8f469d02689f',
+        name: 'mcp-server',
+        author: 'User',
+        description: { en_US: 'MCP Server', zh_Hans: 'MCP 服务' },
+        icon: { background: '#fff', content: 'M' },
+        label: { en_US: 'MCP Server', zh_Hans: 'MCP 服务' },
+        type: 'mcp' as const,
+        team_credentials: {},
+        is_team_authorization: false,
+        allow_delete: true,
+        labels: [],
+      }
+      mockCollectionData = [...createDefaultCollections(), provider]
+
+      renderProviderList({ category: 'mcp' })
+
+      expect(screen.getByTestId('mcp-list')).toHaveAttribute(
+        'data-provider-ids',
+        '019d3f85-d61c-765e-9615-8f469d02689f',
+      )
+    })
+
     it('renders MCPList component', () => {
       renderProviderList({ category: 'mcp' })
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
@@ -966,10 +985,9 @@ describe('ProviderList', () => {
 
       renderProviderList({ category: 'mcp' })
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false)
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(true, 'mcp')
       expect(mockUseAllCustomTools).toHaveBeenCalledWith(false)
       expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(false)
-      expect(mockUseAllMCPTools).toHaveBeenCalledWith(true)
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
       expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'false')
       expect(screen.queryByTestId('toolbar-add-mcp')).not.toBeInTheDocument()

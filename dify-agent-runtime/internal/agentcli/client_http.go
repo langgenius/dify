@@ -127,45 +127,6 @@ func (c *httpStubClient) CreateFileDownloadURL(_ context.Context, transferMethod
 	return &resp, nil
 }
 
-func (c *httpStubClient) GetDriveManifest(_ context.Context, prefix string, includeDownloadURL bool) (*DriveManifestResponse, error) {
-	params := map[string]string{
-		"prefix": prefix,
-	}
-	if includeDownloadURL {
-		params["include_download_url"] = "true"
-	} else {
-		params["include_download_url"] = "false"
-	}
-
-	body, statusCode, err := c.http.getJSON("/drive/manifest", params)
-	if err != nil {
-		return nil, err
-	}
-	if err := checkHTTPError(body, statusCode, "drive manifest"); err != nil {
-		return nil, err
-	}
-
-	var manifest DriveManifestResponse
-	if err := json.Unmarshal(body, &manifest); err != nil {
-		return nil, fmt.Errorf("parse drive manifest: %w", err)
-	}
-	return &manifest, nil
-}
-
-func (c *httpStubClient) CommitDrive(_ context.Context, items []DriveCommitItem) ([]byte, error) {
-	payload := map[string]any{
-		"items": items,
-	}
-	body, statusCode, err := c.http.postJSON("/drive/commit", payload)
-	if err != nil {
-		return nil, err
-	}
-	if err := checkHTTPError(body, statusCode, "drive commit"); err != nil {
-		return nil, err
-	}
-	return body, nil
-}
-
 func (c *httpStubClient) GetConfigManifest(_ context.Context) ([]byte, error) {
 	body, statusCode, err := c.http.getJSON("/config/manifest", nil)
 	if err != nil {

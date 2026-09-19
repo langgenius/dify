@@ -51,21 +51,16 @@ from graphon.node_events import NodeRunResult
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import StringSegment
 from graphon.variables.variables import StringVariable
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _workflow(graph: dict[str, object] | None = None) -> Workflow:
-    return Workflow.new(
+    return make_workflow(
         tenant_id="tenant",
         app_id="app",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
         graph=json.dumps(graph or {}, default=str),
-        features="{}",
         created_by="account",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
     )
 
 
@@ -602,6 +597,70 @@ class TestWorkflowBasedAppRunner:
         queue_event = published[-1]
         assert isinstance(queue_event, QueueHumanInputFormFilledEvent)
         assert queue_event.submitted_data == {"decision": StringSegment(value="approve")}
+
+    def test_handle_nested_answer_success_publishes_text_chunk(self):
+        published: list[object] = []
+
+        class _QueueManager:
+            def publish(self, event, publish_from):
+                published.append(event)
+
+        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+
+        runner._handle_event(
+            workflow_entry,
+            NodeRunSucceededEvent(
+                id="exec",
+                node_id="answer-in-iteration",
+                node_type=BuiltinNodeTypes.ANSWER,
+                start_at=datetime.now(UTC),
+                finished_at=datetime.now(UTC),
+                node_run_result=NodeRunResult(outputs={"answer": "inside iteration"}),
+                in_iteration_id="iteration",
+            ),
+        )
+
+        text_chunk = published[0]
+        assert isinstance(text_chunk, QueueTextChunkEvent)
+        assert text_chunk.text == "inside iteration"
+        assert text_chunk.from_variable_selector == ["answer-in-iteration", "answer"]
+        assert text_chunk.in_iteration_id == "iteration"
+        assert any(isinstance(event, QueueNodeSucceededEvent) for event in published)
+
+    def test_handle_root_answer_success_does_not_publish_extra_text_chunk(self):
+        published: list[object] = []
+
+        class _QueueManager:
+            def publish(self, event, publish_from):
+                published.append(event)
+
+        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+
+        runner._handle_event(
+            workflow_entry,
+            NodeRunSucceededEvent(
+                id="exec",
+                node_id="answer",
+                node_type=BuiltinNodeTypes.ANSWER,
+                start_at=datetime.now(UTC),
+                finished_at=datetime.now(UTC),
+                node_run_result=NodeRunResult(outputs={"answer": "root answer"}),
+            ),
+        )
+
+        assert not any(isinstance(event, QueueTextChunkEvent) for event in published)
+        assert len(published) == 1
+        assert isinstance(published[0], QueueNodeSucceededEvent)
 
     @pytest.mark.parametrize(
         ("event_factory", "queue_event_cls"),

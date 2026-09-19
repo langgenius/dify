@@ -6,11 +6,19 @@ import pytest
 
 import controllers.console.explore.parameter as module
 from controllers.console.app.error import AppUnavailableError
+from models.model import InstalledApp
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 
 
-def _installed_app() -> MagicMock:
-    return MagicMock(app_id="app-1")
+def _installed_app() -> InstalledApp:
+    return InstalledApp(
+        tenant_id="viewer-tenant",
+        app_id="app-1",
+        app_owner_tenant_id="owner-tenant",
+        position=0,
+        is_pinned=False,
+        last_used_at=None,
+    )
 
 
 def _application_services() -> tuple[SimpleNamespace, MagicMock]:

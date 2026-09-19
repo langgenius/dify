@@ -12,9 +12,12 @@ from socketio.exceptions import TimeoutError as SocketIOTimeoutError  # type: ig
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
+from core.rbac import RBACPermission, RBACResourceScope
 from models.account import Account
 from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
+from services.enterprise.rbac_service import RBACService
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +115,7 @@ class WorkflowCollaborationService:
         if not user_id or not tenant_id:
             return None
 
-        if not self._can_access_workflow(workflow_id, str(tenant_id), session=session):
+        if not self._can_access_workflow(workflow_id, str(tenant_id), str(user_id), session=session):
             logger.warning(
                 "Workflow collaboration join rejected: workflow_id=%s tenant_id=%s user_id=%s sid=%s",
                 workflow_id,
@@ -148,10 +151,27 @@ class WorkflowCollaborationService:
 
         return str(user_id), is_leader
 
-    def _can_access_workflow(self, workflow_id: str, tenant_id: str, *, session: Session) -> bool:
-        """Check room access without relying on Flask's app-context-bound scoped session."""
-        app_id = session.scalar(select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id).limit(1))
-        return app_id is not None
+    def _can_access_workflow(self, workflow_id: str, tenant_id: str, user_id: str, *, session: Session) -> bool:
+        """Check tenant and app permission without relying on Flask's scoped session."""
+        with session.begin():
+            app = session.execute(
+                select(App.id, App.maintainer).where(
+                    App.id == workflow_id, App.tenant_id == tenant_id, App.status == "normal"
+                )
+            ).one_or_none()
+        if app is None:
+            return False
+
+        app_id, maintainer = app
+        if not dify_config.RBAC_ENABLED or maintainer == user_id:
+            return True
+        return RBACService.CheckAccess.check(
+            tenant_id,
+            user_id,
+            scene=RBACPermission.APP_EDIT,
+            resource_type=RBACResourceScope.APP,
+            resource_id=app_id,
+        )
 
     def disconnect_session(self, sid: str) -> None:
         mapping = self._repository.get_sid_mapping(sid)

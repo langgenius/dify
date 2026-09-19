@@ -3,8 +3,7 @@
 Agent runtime configuration is split across immutable Soul snapshots and
 workflow-node bindings, while App and Snippet DSLs must be independent of the
 source workspace's database identifiers. This module owns that translation.
-It deliberately excludes drive payloads and stored credentials from portable
-packages; same-workspace copies may use the separate server-side clone path.
+It deliberately excludes stored credentials from portable packages.
 """
 
 from __future__ import annotations
@@ -13,6 +12,7 @@ import copy
 import json
 from collections.abc import Mapping
 from typing import Any, cast
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
@@ -39,20 +39,22 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.model import App, AppModelConfig
+from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot, Skill
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
+from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
     AgentPackage,
     AgentPackageMetadata,
+    AgentPackageWorkspaceSkill,
     make_portable_agent_package,
     portable_ref,
 )
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 from services.agent.roster_service import AgentRosterService
 from services.entities.dsl_entities import DslImportWarning
-from services.plugin.dependencies_analysis import DependenciesAnalysisService
 
 
 class AgentPackageImportResult(BaseModel):
@@ -71,8 +73,8 @@ class AgentDslService:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def export_agent_app(self, *, app: App) -> tuple[str, dict[str, AgentPackage]]:
-        """Export the editable shared Agent draft, falling back to the active snapshot."""
+    def export_agent_app(self, *, app: App, version_id: UUID | None) -> tuple[str, dict[str, AgentPackage]]:
+        """Export a visible version, or the shared draft with an active snapshot fallback."""
 
         agent = self.session.scalar(
             select(Agent)
@@ -88,28 +90,43 @@ class AgentDslService:
         if agent is None:
             raise ValueError("Agent App has no active backing Agent.")
 
-        draft = self.session.scalar(
-            select(AgentConfigDraft)
-            .where(
-                AgentConfigDraft.tenant_id == app.tenant_id,
-                AgentConfigDraft.agent_id == agent.id,
-                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
-                AgentConfigDraft.draft_owner_key == "",
+        draft = None
+        snapshot_id = agent.active_config_snapshot_id
+        if version_id is not None:
+            snapshot = AgentRosterService(self.session).get_visible_agent_version_snapshot(
+                tenant_id=app.tenant_id, agent_id=agent.id, version_id=version_id
             )
-            .limit(1)
-        )
-        if draft is not None:
-            soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-        else:
-            snapshot = self._require_snapshot(
-                tenant_id=app.tenant_id,
-                agent_id=agent.id,
-                snapshot_id=agent.active_config_snapshot_id,
-            )
+            snapshot_id = snapshot.id
             soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        else:
+            draft = self.session.scalar(
+                select(AgentConfigDraft)
+                .where(
+                    AgentConfigDraft.tenant_id == app.tenant_id,
+                    AgentConfigDraft.agent_id == agent.id,
+                    AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                    AgentConfigDraft.draft_owner_key == "",
+                )
+                .limit(1)
+            )
+            if draft is not None:
+                soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+            else:
+                snapshot = self._require_snapshot(
+                    tenant_id=app.tenant_id,
+                    agent_id=agent.id,
+                    snapshot_id=snapshot_id,
+                )
+                soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
 
         package_ref = "agent_1"
-        return package_ref, {package_ref: make_portable_agent_package(agent, soul)}
+        workspace_skills = self._workspace_skills_for_export(
+            tenant_id=app.tenant_id,
+            agent_id=agent.id,
+            snapshot_id=snapshot_id,
+            include_draft=draft is not None,
+        )
+        return package_ref, {package_ref: make_portable_agent_package(agent, soul, workspace_skills=workspace_skills)}
 
     def export_workflow_packages(
         self, *, workflow: Workflow, graph: Mapping[str, Any]
@@ -152,6 +169,12 @@ class AgentDslService:
                 packages[package_ref] = make_portable_agent_package(
                     agent,
                     AgentSoulConfig.model_validate(snapshot.config_snapshot_dict),
+                    workspace_skills=self._workspace_skills_for_export(
+                        tenant_id=workflow.tenant_id,
+                        agent_id=agent.id,
+                        snapshot_id=snapshot.id,
+                        include_draft=False,
+                    ),
                 )
             node_data["agent_binding"] = {
                 "binding_type": binding.binding_type.value,
@@ -185,12 +208,12 @@ class AgentDslService:
     ) -> AgentPackageImportResult:
         """Create the imported backing Agent and its editable unpublished draft."""
 
-        soul, warnings = self._resolve_package_soul(
+        soul, warnings = self.resolve_package_soul(
             tenant_id=app.tenant_id,
             package=package,
             package_path="agent",
         )
-        if app.app_model_config is None:
+        if app.app_model_config_with_session(session=self.session) is None:
             model_config = AppModelConfig(app_id=app.id, created_by=account.id, updated_by=account.id)
             self.session.add(model_config)
             self.session.flush()
@@ -215,6 +238,14 @@ class AgentDslService:
             tenant_id=app.tenant_id,
             agent_id=agent.id,
             snapshot_id=agent.active_config_snapshot_id,
+        )
+        self._restore_workspace_skill_bindings(
+            tenant_id=app.tenant_id,
+            agent=agent,
+            snapshot=snapshot,
+            package=package,
+            warnings=warnings,
+            account_id=account.id,
         )
         self.session.add(
             AgentConfigDraft(
@@ -327,7 +358,6 @@ class AgentDslService:
         node_id: str,
         source_agent: Agent,
         source_snapshot: AgentConfigSnapshot,
-        node_job: WorkflowNodeJobConfig,
         account_id: str,
     ) -> tuple[Agent, AgentConfigSnapshot]:
         """Clone a same-workspace Inline Agent for a pasted target node."""
@@ -350,46 +380,109 @@ class AgentDslService:
             source=AgentSource.WORKFLOW,
             operation=AgentConfigRevisionOperation.CREATE_VERSION,
         )
-        from services.agent.composer_service import AgentComposerService
-
-        AgentComposerService._copy_agent_drive_rows(
-            tenant_id=workflow.tenant_id,
-            source_agent_id=source_agent.id,
-            target_agent_id=agent.id,
-            account_id=account_id,
-            agent_soul=soul,
-            node_job=node_job,
-            session=self.session,
-        )
         return agent, snapshot
 
     def extract_package_dependencies(self, packages: Mapping[str, AgentPackage]) -> list[str]:
         dependencies: list[str] = []
         for package in packages.values():
-            soul = package.soul
-            if soul.model is not None:
-                dependencies.append(
-                    DependenciesAnalysisService.analyze_model_provider_dependency(soul.model.model_provider)
-                )
-            for tool in soul.tools.dify_tools:
-                provider_id = tool.provider_id or (
-                    f"{tool.plugin_id}/{tool.provider}" if tool.plugin_id and tool.provider else None
-                )
-                if provider_id:
-                    dependencies.append(DependenciesAnalysisService.analyze_tool_dependency(provider_id))
-            for knowledge_set in soul.knowledge.sets:
-                retrieval = knowledge_set.retrieval
-                if retrieval.model is not None:
-                    dependencies.append(
-                        DependenciesAnalysisService.analyze_model_provider_dependency(retrieval.model.provider)
-                    )
-                if retrieval.reranking_model is not None:
-                    dependencies.append(
-                        DependenciesAnalysisService.analyze_model_provider_dependency(
-                            retrieval.reranking_model.provider
-                        )
-                    )
+            dependencies.extend(extract_agent_soul_dependencies(package.soul))
         return dependencies
+
+    def _workspace_skills_for_export(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        snapshot_id: str | None,
+        include_draft: bool,
+    ) -> list[AgentPackageWorkspaceSkill]:
+        if include_draft:
+            rows = list(
+                self.session.execute(
+                    select(AgentSkillBinding, Skill)
+                    .join(Skill, Skill.id == AgentSkillBinding.skill_id)
+                    .where(AgentSkillBinding.tenant_id == tenant_id, AgentSkillBinding.agent_id == agent_id)
+                    .order_by(AgentSkillBinding.priority)
+                )
+            )
+            if rows or not snapshot_id:
+                return [
+                    AgentPackageWorkspaceSkill(
+                        name=skill.name,
+                        display_name=skill.display_name,
+                        description=skill.description,
+                        priority=binding.priority,
+                    )
+                    for binding, skill in rows
+                ]
+        if snapshot_id:
+            rows = list(
+                self.session.execute(
+                    select(AgentSkillBindingSnapshot, Skill)
+                    .join(Skill, Skill.id == AgentSkillBindingSnapshot.skill_id)
+                    .where(
+                        AgentSkillBindingSnapshot.tenant_id == tenant_id,
+                        AgentSkillBindingSnapshot.agent_id == agent_id,
+                        AgentSkillBindingSnapshot.config_snapshot_id == snapshot_id,
+                    )
+                    .order_by(AgentSkillBindingSnapshot.priority)
+                )
+            )
+        else:
+            return []
+        return [
+            AgentPackageWorkspaceSkill(
+                name=skill.name,
+                display_name=skill.display_name,
+                description=skill.description,
+                priority=binding.priority,
+            )
+            for binding, skill in rows
+        ]
+
+    def _restore_workspace_skill_bindings(
+        self,
+        *,
+        tenant_id: str,
+        agent: Agent,
+        snapshot: AgentConfigSnapshot,
+        package: AgentPackage,
+        warnings: list[DslImportWarning],
+        account_id: str,
+    ) -> None:
+        for workspace_skill in sorted(package.workspace_skills, key=lambda item: item.priority):
+            skill = self.session.scalar(
+                select(Skill).where(Skill.tenant_id == tenant_id, Skill.name == workspace_skill.name).limit(1)
+            )
+            if skill is None:
+                warnings.append(
+                    DslImportWarning(
+                        code="agent_workspace_skill_unresolved",
+                        path="agent.workspace_skills",
+                        message=f"Workspace Skill {workspace_skill.name!r} is unavailable in the target workspace.",
+                        details={"name": workspace_skill.name},
+                    )
+                )
+                continue
+            self.session.add(
+                AgentSkillBinding(
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    skill_id=skill.id,
+                    priority=workspace_skill.priority,
+                    created_by=account_id,
+                )
+            )
+            self.session.add(
+                AgentSkillBindingSnapshot(
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    config_snapshot_id=snapshot.id,
+                    skill_id=skill.id,
+                    priority=workspace_skill.priority,
+                    created_by=account_id,
+                )
+            )
 
     def _create_imported_inline_agent(
         self,
@@ -400,7 +493,7 @@ class AgentDslService:
         package: AgentPackage,
         package_path: str,
     ) -> AgentPackageImportResult:
-        soul, warnings = self._resolve_package_soul(
+        soul, warnings = self.resolve_package_soul(
             tenant_id=workflow.tenant_id,
             package=package,
             package_path=package_path,
@@ -413,6 +506,14 @@ class AgentDslService:
             soul=soul,
             source=AgentSource.IMPORTED,
             operation=AgentConfigRevisionOperation.IMPORT_PACKAGE,
+        )
+        self._restore_workspace_skill_bindings(
+            tenant_id=workflow.tenant_id,
+            agent=agent,
+            snapshot=snapshot,
+            package=package,
+            warnings=warnings,
+            account_id=account.id,
         )
         return AgentPackageImportResult(agent=agent, snapshot=snapshot, warnings=warnings)
 
@@ -470,7 +571,7 @@ class AgentDslService:
         self.session.flush()
         return agent, snapshot
 
-    def _resolve_package_soul(
+    def resolve_package_soul(
         self,
         *,
         tenant_id: str,

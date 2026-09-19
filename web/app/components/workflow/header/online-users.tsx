@@ -14,6 +14,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatar } from '@/service/common'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { getUserColor } from '../collaboration/utils/user-color'
+import { useHooksStore } from '../hooks-store'
 import { useStore } from '../store'
 
 const useAvatarUrls = (users: OnlineUser[]) => {
@@ -49,11 +50,12 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 const OnlineUsers = () => {
   const { t } = useTranslation()
   const appId = useStore((s) => s.appId)
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
     onlineUsers,
     cursors,
     isEnabled: isCollaborationEnabled,
-  } = useCollaboration(appId as string)
+  } = useCollaboration(appId as string, canEdit)
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -119,29 +121,43 @@ const OnlineUsers = () => {
             const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
             const avatarUrl = getAvatarUrl(user)
             const displayName = user.username || fallbackUsername
+            const avatar = (
+              <AvatarRoot size="sm" className="ring-1 ring-components-panel-bg">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
+                <AvatarFallback
+                  size="sm"
+                  style={userColor ? { backgroundColor: userColor } : undefined}
+                >
+                  {displayName?.[0]?.toLocaleUpperCase()}
+                </AvatarFallback>
+              </AvatarRoot>
+            )
+            const triggerClassName = cn(
+              'relative flex size-6 items-center justify-center',
+              index > 0 && '-ml-1.5',
+              !isCurrentUser && 'cursor-pointer transition-transform hover:scale-110',
+            )
+            const triggerStyle = { zIndex: visibleUsers.length - index }
             return (
-              <Tooltip key={`${user.sid}-${index}`}>
-                <TooltipTrigger>
-                  <div
-                    className={cn(
-                      'relative flex size-6 items-center justify-center',
-                      index > 0 && '-ml-1.5',
-                      !isCurrentUser && 'cursor-pointer transition-transform hover:scale-110',
-                    )}
-                    style={{ zIndex: visibleUsers.length - index }}
-                    onClick={() => !isCurrentUser && jumpToUserCursor(user.user_id)}
-                  >
-                    <AvatarRoot size="sm" className="ring-1 ring-components-panel-bg">
-                      {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-                      <AvatarFallback
-                        size="sm"
-                        style={userColor ? { backgroundColor: userColor } : undefined}
+              <Tooltip key={user.sid}>
+                <TooltipTrigger
+                  render={
+                    isCurrentUser ? (
+                      <div className={triggerClassName} style={triggerStyle}>
+                        {avatar}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className={triggerClassName}
+                        style={triggerStyle}
+                        onClick={() => jumpToUserCursor(user.user_id)}
                       >
-                        {displayName?.[0]?.toLocaleUpperCase()}
-                      </AvatarFallback>
-                    </AvatarRoot>
-                  </div>
-                </TooltipTrigger>
+                        {avatar}
+                      </button>
+                    )
+                  }
+                />
                 <TooltipContent
                   placement="bottom"
                   sideOffset={4}
@@ -177,7 +193,7 @@ const OnlineUsers = () => {
                 placement="bottom-start"
                 sideOffset={8}
                 alignOffset={-48}
-                popupClassName={cn(
+                className={cn(
                   'mt-1.5 flex max-h-50 w-60 flex-col overflow-y-auto',
                   'rounded-xl border-[0.5px] border-components-panel-border',
                   'bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]',
@@ -189,18 +205,18 @@ const OnlineUsers = () => {
                   const avatarUrl = getAvatarUrl(user)
                   const displayName = user.username || fallbackUsername
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={user.sid}
+                      disabled={isCurrentUser}
                       className={cn(
-                        'flex items-center gap-2 rounded-lg px-3 py-1.5',
+                        'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left',
                         !isCurrentUser &&
                           'cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover',
                       )}
                       onClick={() => {
-                        if (!isCurrentUser) {
-                          jumpToUserCursor(user.user_id)
-                          setDropdownOpen(false)
-                        }
+                        jumpToUserCursor(user.user_id)
+                        setDropdownOpen(false)
                       }}
                     >
                       <div className="relative">
@@ -219,7 +235,7 @@ const OnlineUsers = () => {
                         'system-xs-medium text-text-secondary',
                         'text-text-tertiary',
                       )}
-                    </div>
+                    </button>
                   )
                 })}
               </PopoverContent>

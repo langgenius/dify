@@ -1,17 +1,17 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin } from './types'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import usePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { getPluginLinkInMarketplace } from '@/app/components/plugins/marketplace/utils'
-import { useLocale } from '@/context/i18n'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import Badge from '../base/badge'
 import Icon from './card/base/card-icon'
@@ -79,16 +79,15 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
             {t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
           </Button>
         )}
-        <Button className="grow" variant="secondary">
-          <a
-            href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)}
-            target="_blank"
-            className="flex items-center gap-0.5"
-          >
-            {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
-            <span className="i-ri-arrow-right-up-line size-4" />
-          </a>
-        </Button>
+        <a
+          href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants({ variant: 'secondary' }), 'grow gap-0.5')}
+        >
+          {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
+          <span className="i-ri-arrow-right-up-line size-4" />
+        </a>
       </div>
       {isShowInstallFromMarketplace && (
         <InstallFromMarketplace

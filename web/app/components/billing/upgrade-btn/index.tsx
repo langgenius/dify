@@ -1,12 +1,17 @@
 'use client'
+
 import type { CSSProperties, FC } from 'react'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
-import { useModalContext } from '@/context/modal-context'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PremiumBadgeButton } from '../../base/premium-badge'
 
@@ -42,13 +47,13 @@ const UpgradeBtn: FC<Props> = ({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   if (deploymentEdition !== 'CLOUD') return null
 
   const handleClick = () => {
     if (_onClick) _onClick()
-    else setShowPricingModal()
+    else setPricing('open')
   }
   const onClick = () => {
     handleClick()

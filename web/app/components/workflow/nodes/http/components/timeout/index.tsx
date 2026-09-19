@@ -1,9 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { Timeout as TimeoutPayloadType } from '../../types'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -28,33 +29,26 @@ const InputField: FC<{
   max: number
 }> = ({ title, description, placeholder, value, onChange, readOnly, min, max }) => {
   return (
-    <div className="space-y-1">
+    <Field>
       <div className="flex h-4.5 items-center space-x-2">
-        <span className="text-[13px] font-medium text-text-primary">{title}</span>
-        <span className="text-xs font-normal text-text-tertiary">{description}</span>
+        <FieldLabel className="p-0 text-[13px] font-medium text-text-primary">{title}</FieldLabel>
+        <FieldDescription className="p-0 text-xs font-normal text-text-tertiary">
+          {description}
+        </FieldDescription>
       </div>
-      <Input
-        type="number"
-        value={value}
-        onChange={(e) => {
-          const inputValue = e.target.value
-          if (inputValue === '') {
-            // When user clears the input, set to undefined to let backend use default values
-            onChange(undefined)
-          } else {
-            const parsedValue = Number.parseInt(inputValue, 10)
-            if (!Number.isNaN(parsedValue)) {
-              const value = Math.max(min, Math.min(max, parsedValue))
-              onChange(value)
-            }
-          }
-        }}
-        placeholder={placeholder}
-        readOnly={readOnly}
+      <NumberField
+        value={value ?? null}
         min={min}
         max={max}
-      />
-    </div>
+        format={{ maximumFractionDigits: 0 }}
+        readOnly={readOnly}
+        onValueChange={(nextValue) => onChange(nextValue ?? undefined)}
+      >
+        <NumberFieldGroup>
+          <NumberFieldInput placeholder={placeholder} />
+        </NumberFieldGroup>
+      </NumberField>
+    </Field>
   )
 }
 

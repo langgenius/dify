@@ -8,6 +8,7 @@ from constants.languages import languages
 from extensions.ext_database import db
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
+from services.account_email import normalize_email
 from services.account_service import AccountService, RegisterService, TenantService
 
 
@@ -20,7 +21,7 @@ def reset_password(email, new_password, password_confirm):
     Reset password of owner account
     Only available in SELF_HOSTED mode
     """
-    if str(new_password).strip() != str(password_confirm).strip():
+    if new_password.strip() != password_confirm.strip():
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
     normalized_email = email.strip().lower()
@@ -62,7 +63,7 @@ def reset_email(email, new_email, email_confirm):
     Replace account email
     :return:
     """
-    if str(new_email).strip() != str(email_confirm).strip():
+    if new_email.strip() != email_confirm.strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
     normalized_new_email = new_email.strip().lower()
@@ -82,6 +83,7 @@ def reset_email(email, new_email, email_confirm):
     with Session(db.engine) as session:
         account = session.merge(account)
         account.email = normalized_new_email
+        account.normalized_email = normalize_email(normalized_new_email)
         session.commit()
     click.echo(click.style("Email updated successfully.", fg="green"))
 

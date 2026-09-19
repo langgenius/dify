@@ -39,7 +39,7 @@ export default function DeleteAccount(props: DeleteAccountProps) {
     >
       <DialogContent
         className="max-w-120 overflow-hidden!"
-        backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
+        backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
       >
         <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
           {t(($) => $['account.delete'], { ns: 'common' })}

@@ -15,7 +15,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   checkUsageExternalAPI,
   deleteExternalAPI,
@@ -121,7 +121,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   return (
     <>
       <div
-        className={`shadows-shadow-xs flex items-start self-stretch rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2 pl-3 ${isHovered ? 'border-state-destructive-border bg-state-destructive-hover' : ''}`}
+        className={`flex items-start self-stretch rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2 pl-3 ${isHovered ? 'border-state-destructive-border bg-state-destructive-hover' : ''}`}
       >
         <div className="flex grow flex-col items-start justify-center gap-1.5 py-1">
           <div className="flex items-center gap-1 self-stretch text-text-secondary">

@@ -49,7 +49,8 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 
@@ -211,6 +212,20 @@ describe('MailAndCodeAuth', () => {
 
     expect(screen.getByRole('button', { name: 'login.signup.verifyMail' })).toBeEnabled()
     expect(mocks.render).not.toHaveBeenCalled()
+  })
+
+  it('associates one localized error with an invalid email', async () => {
+    const user = userEvent.setup()
+    renderMailAndCodeAuth('COMMUNITY')
+
+    const emailInput = screen.getByRole('textbox', { name: 'login.email' })
+    await user.type(emailInput, 'invalid-email{Enter}')
+
+    const errors = await screen.findAllByText('login.error.emailInValid')
+    expect(errors).toHaveLength(1)
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true')
+    expect(emailInput).toHaveAccessibleDescription('login.error.emailInValid')
+    expect(mocks.sendEMailLoginCode).not.toHaveBeenCalled()
   })
 
   it('keeps SaaS email-code login disabled when the Turnstile site key is missing', async () => {

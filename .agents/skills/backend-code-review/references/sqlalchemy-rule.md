@@ -126,9 +126,7 @@
 
     # 3) Pessimistic lock with SELECT ... FOR UPDATE (high contention)
     run = session.execute(
-        select(WorkflowRun)
-        .where(WorkflowRun.id == run_id, WorkflowRun.tenant_id == tenant_id)
-        .with_for_update()
+        select(WorkflowRun).where(WorkflowRun.id == run_id, WorkflowRun.tenant_id == tenant_id).with_for_update()
     ).scalar_one()
     run.status = "cancelled"
     session.commit()

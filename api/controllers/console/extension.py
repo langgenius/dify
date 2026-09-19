@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
 
@@ -91,9 +90,8 @@ class CodeBasedExtensionAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        query = CodeBasedExtensionQuery.model_validate(request.args.to_dict(flat=True))
-
+    @model_validate(CodeBasedExtensionQuery)
+    def get(self, query: CodeBasedExtensionQuery):
         return CodeBasedExtensionResponse(
             module=query.module,
             data=CodeBasedExtensionService.get_code_based_extension(query.module),

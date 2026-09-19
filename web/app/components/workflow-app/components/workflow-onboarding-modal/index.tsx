@@ -3,11 +3,12 @@ import type { FC } from 'react'
 import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeSelectionPanel from './start-node-selection-panel'
@@ -29,9 +30,19 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
     <Dialog open={isShow} onOpenChange={onClose} disablePointerDismissal>
       <DialogContent
         className="w-154.5 max-w-154.5 rounded-2xl border border-effects-highlight bg-background-default-subtle shadow-lg"
-        backdropClassName="bg-workflow-canvas-canvas-overlay"
+        backdropProps={{ className: 'bg-workflow-canvas-canvas-overlay' }}
       >
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
 
         <div className="pb-4">
           <div className="mb-6">

@@ -7,36 +7,20 @@ action-based so callers do not replace server-side arrays with stale snapshots.
 """
 
 from datetime import datetime
-from typing import Literal, cast
 
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from extensions.ext_database import db
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
-from libs.login import login_required
-from models import Account
-from services.step_by_step_tour_service import StepByStepTourPatch, StepByStepTourService
+from machinery.context import RequestContext
+from services.entities.onboarding_entities import StepByStepTourAction, StepByStepTourPatch, StepByStepTourTaskId
 
 from . import console_ns
-from .wraps import (
-    account_initialization_required,
-    model_validate,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
-
-StepByStepTourAction = Literal[
-    "skip",
-    "complete_task",
-    "uncomplete_task",
-    "enable_current_workspace",
-    "disable_current_workspace",
-]
-StepByStepTourTaskId = Literal["home", "studio", "knowledge", "integration"]
 
 
 class StepByStepTourStatePatchPayload(BaseModel):
@@ -74,39 +58,22 @@ class StepByStepTourStateApi(Resource):
     @console_ns.doc("get_step_by_step_tour_state")
     @console_ns.doc(description="Get account-level Step-by-step Tour state")
     @console_ns.response(200, "Success", console_ns.models[StepByStepTourStateResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
         return dump_response(
             StepByStepTourStateResponse,
-            StepByStepTourService.get_state(
-                account=current_user,
-                current_tenant_id=current_tenant_id,
-                session=db.session,
-            ),
+            application_services().step_by_step_tour.get_state(request_context),
         )
 
     @console_ns.doc("patch_step_by_step_tour_state")
     @console_ns.doc(description="Update account-level Step-by-step Tour state")
     @console_ns.expect(console_ns.models[StepByStepTourStatePatchPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[StepByStepTourStateResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission()
     @model_validate(StepByStepTourStatePatchPayload)
-    def patch(self, req_data: StepByStepTourStatePatchPayload, current_tenant_id: str, current_user: Account):
-        patch = cast(StepByStepTourPatch, req_data.model_dump(exclude_unset=True, exclude_none=True))
+    def patch(self, req_data: StepByStepTourStatePatchPayload, request_context: RequestContext):
+        patch = StepByStepTourPatch(action=req_data.action, task_id=req_data.task_id)
         return dump_response(
             StepByStepTourStateResponse,
-            StepByStepTourService.patch_state(
-                account=current_user,
-                current_tenant_id=current_tenant_id,
-                patch=patch,
-                session=db.session,
-            ),
+            application_services().step_by_step_tour.patch_state(request_context, patch),
         )

@@ -273,7 +273,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_listen_audio_msg_returns_audio_stream(self):
         pipeline = _make_pipeline()
-        publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="stream", audio="data"))
+        publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="responding", audio="data"))
 
         response = pipeline._listen_audio_msg(publisher=publisher, task_id="task")
 

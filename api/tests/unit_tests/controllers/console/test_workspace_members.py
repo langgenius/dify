@@ -8,7 +8,12 @@ from flask import Flask, g
 from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import MemberInviteEmailApi
 from enums import DeploymentEdition
-from models.account import Account, TenantAccountRole
+from models.account import Account, Tenant, TenantAccountRole
+from tests.unit_tests.model_factories import make_tenant
+
+
+def _tenant() -> Tenant:
+    return make_tenant(name="Test Tenant")
 
 
 @pytest.fixture
@@ -23,7 +28,6 @@ def _build_feature_flags():
     placeholder_quota = SimpleNamespace(limit=0, size=0)
     workspace_members = SimpleNamespace(enabled=False, is_available=lambda count: True)
     return SimpleNamespace(
-        billing=SimpleNamespace(enabled=False),
         workspace_members=workspace_members,
         members=placeholder_quota,
         apps=placeholder_quota,
@@ -55,8 +59,7 @@ class TestMemberInviteEmailApi:
         mock_get_features.return_value = _build_feature_flags()
         mock_invite_member.return_value = "token-abc"
 
-        tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
-        inviter = SimpleNamespace(email="Owner@Example.com", current_tenant=tenant, status="active")
+        tenant = _tenant()
 
         with (
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
@@ -102,7 +105,7 @@ class TestMemberInviteEmailApi:
         mock_get_features.return_value = _build_feature_flags()
         mock_invite_member.return_value = "rbac-token"
 
-        tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
+        tenant = _tenant()
 
         with app.test_request_context(
             "/workspaces/current/members/invite-email",
@@ -133,7 +136,7 @@ class TestMemberInviteEmailApi:
         """When RBAC is disabled, an invalid role string should be rejected."""
         mock_get_features.return_value = _build_feature_flags()
 
-        tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
+        tenant = _tenant()
 
         with app.test_request_context(
             "/workspaces/current/members/invite-email",
@@ -163,7 +166,7 @@ class TestMemberInviteEmailApi:
         """When RBAC is disabled, owner role should be rejected for invite."""
         mock_get_features.return_value = _build_feature_flags()
 
-        tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
+        tenant = _tenant()
 
         with app.test_request_context(
             "/workspaces/current/members/invite-email",

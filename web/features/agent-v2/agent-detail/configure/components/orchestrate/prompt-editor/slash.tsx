@@ -32,6 +32,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { getProviderReference, matchesProviderReference } from '@/utils/provider-reference'
 import { useAgentPromptToolIconResolver } from './hooks'
 
 export type SlashMenuView = 'main' | 'skills' | 'files' | 'tools' | 'knowledge'
@@ -53,6 +54,7 @@ type AgentPromptSlashMenuProps = {
   onAddFile?: AgentOrchestrateAddAction
   onAddKnowledge?: AgentOrchestrateAddAction
   onAddSkill?: AgentOrchestrateAddAction
+  canAddWorkspaceSkill?: boolean
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   onBack: () => void
   onOpenCategory: (view: Exclude<SlashMenuView, 'main'>) => void
@@ -95,6 +97,7 @@ export function AgentPromptSlashMenu({
   onAddFile,
   onAddKnowledge,
   onAddSkill,
+  canAddWorkspaceSkill = true,
   knowledgeRetrievals,
   onBack,
   onOpenCategory,
@@ -102,9 +105,10 @@ export function AgentPromptSlashMenu({
 }: AgentPromptSlashMenuProps) {
   const { t } = useTranslation('agentV2')
   const title = categories.find((category) => category.key === view)?.label
-  const handleAddFromFooter = () => {
+  const handleAddFromFooter = (skillSource?: 'library' | 'upload') => {
     if (view === 'skills') {
       onAddSkill?.({
+        skillSource,
         onAdded: (item) => {
           if (isPromptReferenceItem(item))
             onInsertToken(createConfigReferenceToken('skill', item.id, item.name))
@@ -212,17 +216,31 @@ export function AgentPromptSlashMenu({
               : undefined
           }
         />
+      ) : view === 'skills' ? (
+        <div className="flex flex-col border-t border-divider-subtle p-1">
+          {canAddWorkspaceSkill && (
+            <AgentPromptSkillAddButton
+              icon="i-custom-vender-agent-v2-building-blocks"
+              label={t(($) => $['agentDetail.configure.skills.addMenu.workspace.label'])}
+              onClick={() => handleAddFromFooter('library')}
+            />
+          )}
+          <AgentPromptSkillAddButton
+            icon="i-ri-upload-cloud-2-line"
+            label={t(($) => $['agentDetail.configure.skills.addMenu.upload.label'])}
+            onClick={() => handleAddFromFooter('upload')}
+          />
+        </div>
       ) : (
         <div className="border-t border-divider-subtle p-1">
           <button
             type="button"
             {...agentPromptSlashMenuItemProps}
             className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
-            onClick={handleAddFromFooter}
+            onClick={() => handleAddFromFooter()}
           >
             <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
             <span className="system-sm-regular text-text-secondary">
-              {view === 'skills' && t(($) => $['agentDetail.configure.skills.add'])}
               {view === 'files' && t(($) => $['agentDetail.configure.files.add'])}
               {view === 'knowledge' && t(($) => $['agentDetail.configure.knowledgeRetrieval.add'])}
             </span>
@@ -230,6 +248,28 @@ export function AgentPromptSlashMenu({
         </div>
       )}
     </AgentPromptSlashPanel>
+  )
+}
+
+function AgentPromptSkillAddButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: string
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      {...agentPromptSlashMenuItemProps}
+      className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+      onClick={onClick}
+    >
+      <span aria-hidden className={`${icon} size-4 shrink-0 text-text-secondary`} />
+      <span className="system-sm-regular text-text-secondary">{label}</span>
+    </button>
   )
 }
 
@@ -383,7 +423,11 @@ function AgentPromptToolRows({
       provider.tools.map((tool) => toToolDefaultValue(provider, tool, language, icon, iconDark)),
     )
     onInsertToken(
-      createReferenceToken('tool', `${provider.id}/*`, getProviderLabel(provider, language)),
+      createReferenceToken(
+        'tool',
+        `${getProviderReference(provider)}/*`,
+        getProviderLabel(provider, language),
+      ),
     )
   }
 
@@ -392,7 +436,11 @@ function AgentPromptToolRows({
     const selectedTool = toToolDefaultValue(provider, tool, language, icon, iconDark)
     selectTools([selectedTool])
     onInsertToken(
-      createReferenceToken('tool', `${provider.id}/${tool.name}`, selectedTool.tool_label),
+      createReferenceToken(
+        'tool',
+        `${getProviderReference(provider)}/${tool.name}`,
+        selectedTool.tool_label,
+      ),
     )
   }
 
@@ -510,7 +558,7 @@ function toToolDefaultValue(
   const providerLabel = getLocalizedText(provider.label, language) || provider.name
 
   return {
-    provider_id: provider.id,
+    provider_id: getProviderReference(provider),
     provider_type: parseToolProviderType(provider.type),
     provider_name: provider.name,
     provider_show_name: providerLabel,
@@ -535,7 +583,7 @@ function isToolSelected(selectedTools: ToolValue[], provider: ToolWithProvider, 
   return selectedTools.some(
     (selectedTool) =>
       (selectedTool.provider_name === provider.name ||
-        selectedTool.provider_name === provider.id) &&
+        matchesProviderReference(provider, selectedTool.provider_name)) &&
       selectedTool.tool_name === tool.name,
   )
 }

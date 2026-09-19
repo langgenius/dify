@@ -201,7 +201,7 @@ class ApiToolManageService:
             auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
             # create provider entity
-            provider_controller = ApiToolProviderController.from_db(api_tool_provider, auth_type)
+            provider_controller = ApiToolProviderController.from_db(api_tool_provider, auth_type, session=db.session())
             # load tools into provider entity
             provider_controller.load_bundled_tools(tool_bundles)
 
@@ -352,7 +352,7 @@ class ApiToolManageService:
             auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
             # create provider entity
-            provider_controller = ApiToolProviderController.from_db(provider, auth_type)
+            provider_controller = ApiToolProviderController.from_db(provider, auth_type, session=db.session())
             # load tools into provider entity
             provider_controller.load_bundled_tools(tool_bundles)
 
@@ -494,7 +494,7 @@ class ApiToolManageService:
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
         # create provider entity
-        provider_controller = ApiToolProviderController.from_db(provider, auth_type)
+        provider_controller = ApiToolProviderController.from_db(provider, auth_type, session=db.session())
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
 
@@ -549,7 +549,7 @@ class ApiToolManageService:
             provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
             labels = ToolLabelManager.get_tool_labels(provider_controller)
             user_provider = ToolTransformService.api_provider_to_user_provider(
-                provider_controller, db_provider=provider, decrypt_credentials=True
+                provider_controller, db_provider=provider, decrypt_credentials=True, session=db.session()
             )
             user_provider.labels = labels
 

@@ -16,11 +16,6 @@ export const zRecommendedAppDetailResponse = z.object({
 })
 
 /**
- * RecommendedAppDetailNullableResponse
- */
-export const zRecommendedAppDetailNullableResponse = zRecommendedAppDetailResponse.nullable()
-
-/**
  * RecommendedAppInfoResponse
  */
 export const zRecommendedAppInfoResponse = z.object({
@@ -142,7 +137,7 @@ export const zLearnDifyAppListResponseWritable = z.object({
 })
 
 export const zGetExploreAppsQuery = z.object({
-  language: z.string().optional(),
+  language: z.string().optional().default('en-US'),
 })
 
 /**
@@ -151,7 +146,7 @@ export const zGetExploreAppsQuery = z.object({
 export const zGetExploreAppsResponse = zRecommendedAppListResponse
 
 export const zGetExploreAppsLearnDifyQuery = z.object({
-  language: z.string().optional(),
+  language: z.string().optional().default('en-US'),
 })
 
 /**
@@ -166,7 +161,7 @@ export const zGetExploreAppsByAppIdPath = z.object({
 /**
  * Success
  */
-export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailNullableResponse
+export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailResponse
 
 export const zGetExploreBannersQuery = z.object({
   language: z.string().optional().default('en-US'),

@@ -1,10 +1,10 @@
+import type { EmailCodeLoginPayload } from '@dify/contracts/api/console/email-code-login/types.gen'
 import type {
   PostWorkspacesInfoData,
   PostWorkspacesInfoResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   DefaultModelResponse,
-  Model,
   ModelParameterRule,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -152,10 +152,6 @@ export const activateMember = ({
   return post<LoginResponse>(url, { body })
 }
 
-export const fetchModelList = (url: string): Promise<{ data: Model[] }> => {
-  return get<{ data: Model[] }>(url)
-}
-
 export const fetchDefaultModal = (url: string): Promise<{ data: DefaultModelResponse }> => {
   return get<{ data: DefaultModelResponse }>(url)
 }
@@ -233,13 +229,8 @@ export const sendEMailLoginCode = (
     },
   })
 
-export const emailLoginWithCode = (data: {
-  email: string
-  code: string
-  token: string
-  language: string
-  timezone?: string
-}): Promise<LoginResponse> => post<LoginResponse>('/email-code-login/validity', { body: data })
+export const emailLoginWithCode = (data: EmailCodeLoginPayload): Promise<LoginResponse> =>
+  post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (
   email: string,
@@ -339,6 +330,6 @@ export const getAvatar = async ({
 }: {
   avatar: string
 }): Promise<{ avatar_url: string }> => {
-  const { consoleClient } = await import('./client')
+  const { consoleClient } = await import('@/service/console')
   return consoleClient.account.avatar.get({ query: { avatar } })
 }

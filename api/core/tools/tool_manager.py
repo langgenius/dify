@@ -42,7 +42,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     emoji_icon_adapter,
 )
-from core.tools.errors import ToolProviderNotFoundError
+from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.mcp_tool.provider import MCPToolProviderController
 from core.tools.mcp_tool.tool import MCPTool
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -233,7 +233,10 @@ class ToolManager:
                             builtin_provider = None
                             logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
                         if builtin_provider is None:
-                            raise ToolProviderNotFoundError(f"provider has been deleted: {credential_id}")
+                            raise ToolProviderCredentialValidationError(
+                                f"Tool credential {credential_id} has been deleted. "
+                                "Select or authorize another credential."
+                            )
 
                     if builtin_provider is None:
                         with Session(db.engine) as session:
@@ -247,7 +250,10 @@ class ToolManager:
                                 .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
                             )
                         if builtin_provider is None:
-                            raise ToolProviderNotFoundError(f"no default provider for {provider_id}")
+                            raise ToolProviderCredentialValidationError(
+                                f"No workspace credential is configured for tool provider {provider_id}. "
+                                "Authorize the provider or select a credential."
+                            )
                 else:
                     builtin_provider = db.session.scalar(
                         select(BuiltinToolProvider)
@@ -259,7 +265,10 @@ class ToolManager:
                     )
 
                     if builtin_provider is None:
-                        raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
+                        raise ToolProviderCredentialValidationError(
+                            f"No credential is configured for built-in tool provider {provider_id}. "
+                            "Authorize the provider or select a credential."
+                        )
 
                 from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
@@ -294,15 +303,24 @@ class ToolManager:
                     system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
 
                     oauth_handler = OAuthHandler()
-                    refreshed_credentials = oauth_handler.refresh_credentials(
-                        tenant_id=tenant_id,
-                        user_id=builtin_provider.user_id,
-                        plugin_id=tool_provider.plugin_id,
-                        provider=provider_name,
-                        redirect_uri=redirect_uri,
-                        system_credentials=system_credentials or {},
-                        credentials=decrypted_credentials,
-                    )
+                    try:
+                        refreshed_credentials = oauth_handler.refresh_credentials(
+                            tenant_id=tenant_id,
+                            user_id=builtin_provider.user_id,
+                            plugin_id=tool_provider.plugin_id,
+                            provider=provider_name,
+                            redirect_uri=redirect_uri,
+                            system_credentials=system_credentials or {},
+                            credentials=decrypted_credentials,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to refresh OAuth credentials for tool provider %s", provider_id, exc_info=True
+                        )
+                        raise ToolProviderCredentialValidationError(
+                            f"OAuth credential for tool provider {provider_id} could not be refreshed. "
+                            "Reauthorize or select another credential."
+                        ) from exc
                     # update the credentials
                     builtin_provider.encrypted_credentials = json.dumps(
                         encrypter.encrypt(refreshed_credentials.credentials)
@@ -763,6 +781,7 @@ class ToolManager:
                             db_provider=db_provider,
                             decrypt_credentials=False,
                             labels=provider_labels,
+                            session=db.session(),
                         )
                         result_providers[f"api_provider.{user_provider.name}"] = user_provider
 
@@ -800,7 +819,7 @@ class ToolManager:
 
             if "mcp" in filters:
                 mcp_service = MCPToolManageService(session=session)
-                mcp_providers = mcp_service.list_providers(tenant_id=tenant_id, for_list=True)
+                mcp_providers = mcp_service.list_providers(tenant_id=tenant_id)
                 for mcp_provider in mcp_providers:
                     result_providers[f"mcp_provider.{mcp_provider.name}"] = mcp_provider
 
@@ -840,6 +859,7 @@ class ToolManager:
         controller = ApiToolProviderController.from_db(
             provider,
             auth_type,
+            session=db.session(),
         )
         controller.load_bundled_tools(provider.tools)
 
@@ -851,14 +871,18 @@ class ToolManager:
         get the api provider
 
         :param tenant_id: the id of the tenant
-        :param provider_id: the id of the provider
+        :param provider_id: the persisted reference of the provider, normally its
+            server identifier, or the primary key for graphs written before that
+            convention
 
         :return: the provider controller, the credentials
         """
         with Session(db.engine) as session:
             mcp_service = MCPToolManageService(session=session)
             try:
-                provider = mcp_service.get_provider(server_identifier=provider_id, tenant_id=tenant_id)
+                provider = mcp_service.get_provider_by_persisted_reference(
+                    id_or_server_identifier=provider_id, tenant_id=tenant_id
+                )
             except ValueError:
                 raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
 
@@ -900,6 +924,7 @@ class ToolManager:
         controller = ApiToolProviderController.from_db(
             provider_obj,
             auth_type,
+            session=db.session(),
         )
         # init tool configuration
         encrypter, _ = create_tool_provider_encrypter(
@@ -1007,8 +1032,8 @@ class ToolManager:
             with Session(db.engine) as session:
                 mcp_service = MCPToolManageService(session=session)
                 try:
-                    mcp_provider = mcp_service.get_provider_entity(
-                        provider_id=provider_id, tenant_id=tenant_id, by_server_id=True
+                    mcp_provider = mcp_service.get_provider_entity_by_persisted_reference(
+                        id_or_server_identifier=provider_id, tenant_id=tenant_id
                     )
                     return cast(EmojiIconDict | str, mcp_provider.provider_icon)
                 except ValueError:

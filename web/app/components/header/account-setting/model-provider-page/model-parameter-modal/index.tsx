@@ -1,4 +1,4 @@
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { ComponentPropsWithRef, FC, ReactElement } from 'react'
 import type { FormValue, ModelParameterRule } from '../declarations'
 import type {
@@ -10,11 +10,17 @@ import type { ParameterValue } from './parameter-item'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 import { ModelStatusEnum } from '../declarations'
@@ -25,11 +31,11 @@ import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
 import { getSupportedPresetConfig } from './presets-parameter-utils'
 
-export type ModelParameterModalProps = {
+export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & {
   trigger?: ReactElement<ComponentPropsWithRef<'button'>>
+  triggerContainerClassName?: string
   popupClassName?: string
   modelSelectorPopupClassName?: string
-  placement?: Placement
   isAdvancedMode: boolean
   modelId: string
   provider: string
@@ -52,6 +58,7 @@ export type ModelParameterModalProps = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   modelList?: ModelSelectorProvider[]
+  modelListLoading?: boolean
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
@@ -59,6 +66,7 @@ export type ModelParameterModalProps = {
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   trigger,
+  triggerContainerClassName,
   popupClassName,
   modelSelectorPopupClassName,
   placement,
@@ -77,6 +85,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   nodesOutputVars,
   availableNodes,
   modelList,
+  modelListLoading,
   showModelMeta,
   modelPredicate,
   modelSuggestionPredicate,
@@ -157,10 +166,16 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       {trigger ? (
         <PopoverTrigger render={trigger} />
       ) : (
-        <div className="isolate flex h-8 min-w-74 items-center gap-px rounded-lg">
+        <div
+          className={cn(
+            'isolate flex h-8 min-w-74 items-center gap-px rounded-lg',
+            triggerContainerClassName,
+          )}
+        >
           <SplitModelSelector
             value={hasSelectedModel ? { provider, model: modelId } : undefined}
             models={selectableModelList}
+            loading={modelListLoading}
             popupClassName={modelSelectorPopupClassName}
             disabled={readonly || modelSelectorReadonly}
             showModelMeta={showModelMeta}
@@ -178,12 +193,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       <PopoverContent
         placement={placement ?? (isInWorkflow ? 'left' : trigger ? 'bottom-end' : 'left-start')}
         sideOffset={4}
-        popupClassName={cn(popupClassName, 'w-100 rounded-2xl')}
+        className={cn(popupClassName, 'w-100 rounded-2xl')}
       >
         <div className="relative px-3 pt-3.5 pb-1">
-          <div className="pr-8 pl-1 system-xl-semibold text-text-primary">
+          <PopoverTitle className="pr-8 pl-1 system-xl-semibold text-text-primary">
             {t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
-          </div>
+          </PopoverTitle>
           <PopoverClose
             render={
               <IconButton
@@ -203,6 +218,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               <ModelSelector
                 value={hasSelectedModel ? { provider, model: modelId } : undefined}
                 models={selectableModelList}
+                loading={modelListLoading}
                 disabled={modelSelectorReadonly}
                 onValueChange={handleChangeModel}
                 onHide={() => setOpen(false)}
@@ -229,7 +245,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               </div>
               {isRulesLoading ? (
                 <div className="py-5">
-                  <Loading />
+                  <LoadingPlaceholder />
                 </div>
               ) : (
                 [...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map(
@@ -253,7 +269,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           )}
           {!parameterRules.length && isRulesLoading && (
             <div className="px-4 py-5">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
         </div>

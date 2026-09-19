@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   fetchTryAppDatasets,
   fetchTryAppFlowPreview,

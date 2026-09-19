@@ -9,6 +9,7 @@ from flask import Flask
 from controllers.inner_api import bp as inner_api_bp
 from services.entities.agent_tool_inner import AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _headers(api_key: str | None = "inner-key") -> dict[str, str]:
@@ -48,8 +49,7 @@ def _payload() -> dict[str, object]:
 @contextmanager
 def _agent_inner_auth() -> Generator[None]:
     with (
-        patch("configs.dify_config.PLUGIN_DAEMON_KEY", "plugin-daemon-key"),
-        patch("configs.dify_config.INNER_API_KEY_FOR_PLUGIN", "inner-key"),
+        config_overrides_context(PLUGIN_DAEMON_KEY="plugin-daemon-key", INNER_API_KEY_FOR_PLUGIN="inner-key"),
     ):
         yield
 

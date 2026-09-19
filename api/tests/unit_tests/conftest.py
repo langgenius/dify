@@ -41,6 +41,7 @@ import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -69,7 +70,7 @@ def _provide_app_context(app: Flask) -> Iterator[None]:
 
 @pytest.fixture(autouse=True)
 def _patch_redis_clients() -> Iterator[None]:
-    """Patch redis_client to MagicMock only for unit test executions."""
+    """Patch and rebind loaded Redis clients to the shared mock for each unit test."""
 
     with (
         patch.object(ext_redis, "redis_client", redis_mock),
@@ -80,8 +81,8 @@ def _patch_redis_clients() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
-def reset_redis_mock() -> None:
-    """reset the Redis mock before each test"""
+def reset_redis_mock(_patch_redis_clients: None) -> None:
+    """Reset the shared Redis mock after per-test client rebinding."""
     redis_mock.reset_mock()
     redis_mock.get.return_value = None
     redis_mock.setex.return_value = None
@@ -94,22 +95,11 @@ def reset_redis_mock() -> None:
     redis_mock.hdel.return_value = None
     redis_mock.incr.return_value = 1
 
-    # Keep any imported modules pointing at the mock between tests
-    _patch_redis_clients_on_loaded_modules()
-
 
 @pytest.fixture(autouse=True)
-def reset_secret_key() -> Iterator[None]:
+def reset_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure SECRET_KEY-dependent logic sees an empty config value by default."""
-
-    from configs import dify_config
-
-    original = dify_config.SECRET_KEY
-    dify_config.SECRET_KEY = ""
-    try:
-        yield
-    finally:
-        dify_config.SECRET_KEY = original
+    apply_config_overrides(monkeypatch, SECRET_KEY="")
 
 
 @pytest.fixture
@@ -120,14 +110,9 @@ def config_overrides(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
     field names keeps tests scoped without replacing that instance with an
     unconstrained mock. ``monkeypatch`` restores every value after the test.
     """
-    from configs import dify_config
 
     def apply(**values: object) -> None:
-        unknown_fields = values.keys() - type(dify_config).model_fields.keys()
-        if unknown_fields:
-            raise ValueError(f"Unknown DifyConfig fields: {sorted(unknown_fields)}")
-        for name, value in values.items():
-            monkeypatch.setattr(dify_config, name, value)
+        apply_config_overrides(monkeypatch, **values)
 
     return apply
 

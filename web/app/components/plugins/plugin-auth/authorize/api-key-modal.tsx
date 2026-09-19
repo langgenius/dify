@@ -2,14 +2,15 @@ import type { PluginPayload } from '../types'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { PermissionLevel } from '@/models/permission'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
@@ -161,7 +162,17 @@ const ApiKeyModal = ({
             <div className="mt-1 system-xs-regular text-text-tertiary">
               {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
             </div>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute top-5 right-5"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginPayload.detail && (
@@ -169,7 +180,7 @@ const ApiKeyModal = ({
             )}
             {isLoading && (
               <div className="flex h-40 items-center justify-center">
-                <Loading />
+                <LoadingPlaceholder />
               </div>
             )}
             {!isLoading && !!mergedData.length && (

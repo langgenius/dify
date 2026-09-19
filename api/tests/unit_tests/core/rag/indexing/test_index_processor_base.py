@@ -16,6 +16,7 @@ from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _persist_upload(session: Session, *, upload_id: str, name: str) -> UploadFile:
@@ -115,9 +116,7 @@ class TestBaseIndexProcessor:
             processor.format_preview([])
 
     def test_get_splitter_validates_custom_length(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        with patch(
-            "core.rag.index_processor.index_processor_base.dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH", 1000
-        ):
+        with config_overrides_context(INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH=1000):
             with pytest.raises(ValueError, match="between 50 and 1000"):
                 processor._get_splitter("custom", 49, 0, "", None)
             with pytest.raises(ValueError, match="between 50 and 1000"):
@@ -206,6 +205,27 @@ class TestBaseIndexProcessor:
             files = processor._get_content_files(document, current_user=None, session=unbound_session)
 
         assert files == []
+
+    def test_get_content_files_skips_invalid_remote_image_references(
+        self, processor: _ForwardingBaseIndexProcessor, unbound_session: Session
+    ) -> None:
+        document = Document(page_content="ignored", metadata={"document_id": "doc-1", "dataset_id": "ds-1"})
+        images = [
+            "document_images/image.png",
+            "//example.com/image.png",
+            "data:image/png;base64,AAAA",
+            "ftp://example.com/image.png",
+            "http://[invalid",
+        ]
+
+        with (
+            patch.object(processor, "_extract_markdown_images", return_value=images),
+            patch.object(processor, "_download_image") as mock_image_download,
+        ):
+            files = processor._get_content_files(document, current_user=Mock(), session=unbound_session)
+
+        assert files == []
+        mock_image_download.assert_not_called()
 
     def test_get_content_files_ignores_missing_upload_records(
         self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session

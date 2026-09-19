@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ScheduleTriggerNodeType } from '../../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -72,7 +71,9 @@ describe('trigger-schedule components', () => {
       const onChange = vi.fn()
       render(<OnMinuteSelector value={15} onChange={onChange} />)
 
-      const slider = screen.getByLabelText('workflow.nodes.triggerSchedule.onMinute')
+      const slider = screen.getByRole('slider', {
+        name: 'workflow.nodes.triggerSchedule.onMinute',
+      })
       slider.focus()
       await user.keyboard('{ArrowRight}')
 

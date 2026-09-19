@@ -31,8 +31,21 @@ function TabsTab({ className, ...props }: TabsTabProps) {
   )
 }
 
-type TabsPanelProps = BaseTabsNS.Panel.Props
-const TabsPanel = BaseTabs.Panel
+type TabsPanelProps = Omit<BaseTabsNS.Panel.Props, 'className'> & {
+  className?: string
+}
+
+function TabsPanel({ className, ...props }: TabsPanelProps) {
+  return (
+    <BaseTabs.Panel
+      className={cn(
+        'outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
 
 const TabsIndicator = BaseTabs.Indicator
 type TabsIndicatorProps = BaseTabsNS.Indicator.Props

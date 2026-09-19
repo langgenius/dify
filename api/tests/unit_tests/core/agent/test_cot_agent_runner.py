@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+from core.credit_usage import CreditUsageAppType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, MessageStatus
@@ -404,7 +406,11 @@ class TestRun:
 
         results = list(runner.run(session, message, "query", {}))
         assert events == ["commit", "close", "first-chunk"]
-        assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app"}
+        assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {
+            "app_id": "app",
+            "app_type": CreditUsageAppType.AGENT,
+            "created_by": CreditUsageCreatedBy.APP.value,
+        }
         assert results[-1].delta.message.content == ""
 
     def test_run_usage_missing_key_branch(self, runner: DummyRunner, mocker: MockerFixture):

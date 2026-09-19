@@ -210,8 +210,8 @@ describe('ConfigContent', () => {
       await waitFor(() => {
         expect(onChange).toHaveBeenCalled()
       })
-      const [nextConfigs] = (onChange.mock.calls[0] ?? []) as [any]
-      expect(nextConfigs.retrieval_model).toBe(RETRIEVE_TYPE.multiWay)
+      const nextConfigs = onChange.mock.calls[0]?.[0]
+      expect(nextConfigs?.retrieval_model).toBe(RETRIEVE_TYPE.multiWay)
     })
   })
 
@@ -246,11 +246,10 @@ describe('ConfigContent', () => {
       )
 
       // Assert
-      // Assert
       expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
-      expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
-      expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()
+      expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
+      expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
     })
   })
 
@@ -296,7 +295,9 @@ describe('ConfigContent', () => {
         />,
       )
 
-      const weightedScoreSlider = screen.getByLabelText('dataset.weightedScore.semantic')
+      const weightedScoreSlider = screen.getByRole('slider', {
+        name: 'dataset.weightedScore.semantic',
+      })
       weightedScoreSlider.focus()
       const callsBefore = onChange.mock.calls.length
       await user.keyboard('{ArrowRight}')
