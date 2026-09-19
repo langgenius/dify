@@ -203,6 +203,36 @@ class TestDocumentCache:
         assert "Normalized embedding is nan" in caplog.text
         assert sqlite_embedding_session.scalar(select(Embedding)) is None
 
+    def test_nan_vector_does_not_shift_following_embedding_across_batches_and_cache_hits(
+        self, sqlite_embedding_session: Session, model_instance: Mock
+    ) -> None:
+        cached_vector = (_vector() / np.linalg.norm(_vector())).tolist()
+        _persist_embedding(sqlite_embedding_session, text="cached", vector=cached_vector)
+        valid_vector = _vector(offset=10)
+        expected = (valid_vector / np.linalg.norm(valid_vector)).tolist()
+        model_instance.model_type_instance.get_model_schema.return_value.model_properties = {
+            ModelPropertyKey.MAX_CHUNKS: 1
+        }
+        model_instance.invoke_text_embedding.side_effect = [
+            _result(np.array([np.nan, 1.0])),
+            _result(valid_vector),
+        ]
+
+        result = CacheEmbedding(model_instance).embed_documents(["cached", "invalid", "valid"])
+
+        assert result == [cached_vector, None, expected]
+        assert [call.kwargs["texts"] for call in model_instance.invoke_text_embedding.call_args_list] == [
+            ["invalid"],
+            ["valid"],
+        ]
+        persisted = sqlite_embedding_session.scalars(select(Embedding)).all()
+        assert len(persisted) == 2
+        persisted_by_hash = {row.hash: row.get_embedding() for row in persisted}
+        assert persisted_by_hash == {
+            helper.generate_text_hash("cached"): cached_vector,
+            helper.generate_text_hash("valid"): expected,
+        }
+
     def test_duplicate_text_is_cached_once(self, sqlite_embedding_session: Session, model_instance: Mock) -> None:
         model_instance.invoke_text_embedding.return_value = _result(_vector(), _vector())
 
@@ -250,6 +280,23 @@ class TestMultimodalDocumentCache:
             multimodel_documents=[document], input_type=EmbeddingInputType.DOCUMENT
         )
         assert sqlite_embedding_session.scalar(select(Embedding).where(Embedding.hash == "file-1")) is not None
+
+    def test_nan_vector_does_not_shift_following_embedding(
+        self, sqlite_embedding_session: Session, model_instance: Mock
+    ) -> None:
+        valid_vector = _vector(offset=10)
+        expected = (valid_vector / np.linalg.norm(valid_vector)).tolist()
+        model_instance.invoke_multimodal_embedding.return_value = _result(np.array([np.nan, 1.0]), valid_vector)
+
+        result = CacheEmbedding(model_instance).embed_multimodal_documents(
+            [{"file_id": "invalid"}, {"file_id": "valid"}]
+        )
+
+        assert result == [None, expected]
+        persisted = sqlite_embedding_session.scalars(select(Embedding)).all()
+        assert len(persisted) == 1
+        assert persisted[0].hash == "valid"
+        assert persisted[0].get_embedding() == expected
 
 
 class TestQueryCache:
