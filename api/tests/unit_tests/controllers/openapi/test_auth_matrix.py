@@ -103,7 +103,6 @@ from models.enums import EndUserType
 from models.model import App, EndUser
 from models.oauth import OAuthAccessToken
 from services.account_service import AccountService
-from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus, SystemFeatureModel
 from services.rbac_resource_service import RBACResourceService
@@ -1101,13 +1100,8 @@ def _run_case(
                 return_value={"data": [], "total": 0, "hasMore": False},
             )
         )
-        stack.enter_context(
-            patch.object(
-                EndUserService,
-                "get_or_create_end_user_by_type",
-                side_effect=_end_user,
-            )
-        )
+        services = stack.enter_context(patch("controllers.openapi.auth.subjects.application_services"))
+        services.return_value.app_scoped_end_users.commands.get_or_create_end_user_by_type.side_effect = _end_user
         stack.enter_context(patch.object(RBACResourceService, "get_app_agent_binding", return_value=None))
         stack.enter_context(patch.object(RBACResourceService, "get_app_maintainer", return_value=None))
         stack.enter_context(
