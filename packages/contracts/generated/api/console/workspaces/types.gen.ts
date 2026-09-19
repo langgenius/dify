@@ -243,10 +243,6 @@ export type ModelProviderPaymentCheckoutUrlResponse = {
   payment_link: string
 }
 
-export type ParserCredentialDelete = {
-  credential_id: string
-}
-
 export type ProviderCredentialsResponse = {
   credentials?: {
     [key: string]: unknown
@@ -3490,11 +3486,13 @@ export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse =
   GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponses[keyof GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponses]
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
-  body: ParserCredentialDelete
+  body?: never
   path: {
     provider: string
   }
-  query?: never
+  query: {
+    credential_id: string
+  }
   url: '/workspaces/current/model-providers/{provider}/credentials'
 }
 

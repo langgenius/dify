@@ -187,13 +187,6 @@ export const zModelProviderPaymentCheckoutUrlResponse = z.object({
 })
 
 /**
- * ParserCredentialDelete
- */
-export const zParserCredentialDelete = z.object({
-  credential_id: z.string(),
-})
-
-/**
  * ProviderCredentialsResponse
  */
 export const zProviderCredentialsResponse = z.object({
@@ -4286,11 +4279,12 @@ export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath = z.ob
 export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse =
   zModelProviderPaymentCheckoutUrlResponse
 
-export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody =
-  zParserCredentialDelete
-
 export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath = z.object({
   provider: z.string(),
+})
+
+export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsQuery = z.object({
+  credential_id: z.string(),
 })
 
 /**
