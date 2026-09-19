@@ -2218,6 +2218,38 @@ describe('useChatWithHistory', () => {
     })
   })
 
+  // Scenario: URL-provided sys.conversation_id deep-links /chat and /agent webapps (issue #41997).
+  describe('URL conversation_id deep linking', () => {
+    it('should prioritize URL conversation_id over localStorage', async () => {
+      setConversationIdInfo('app-1', 'stored-conv-id')
+      const { getProcessedSystemVariablesFromUrlParams } = await import('../../utils')
+      vi.mocked(getProcessedSystemVariablesFromUrlParams).mockResolvedValueOnce({
+        user_id: 'user-1',
+        conversation_id: 'url-conv-id',
+      })
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.currentConversationId).toBe('url-conv-id')
+      })
+    })
+
+    it('should fall back to localStorage when no URL conversation_id is provided', async () => {
+      setConversationIdInfo('app-1', 'stored-conv-id')
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.currentConversationId).toBe('stored-conv-id')
+      })
+    })
+  })
+
   // Scenario: conversation id update should no-op without appId and use DEFAULT key without userId.
   describe('handleConversationIdInfoChange fallback branches', () => {
     it('should no-op when appId is absent', async () => {

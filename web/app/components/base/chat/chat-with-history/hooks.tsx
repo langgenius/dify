@@ -168,9 +168,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const appId = useMemo(() => appData?.app_id, [appData])
   const conversationScopeId = getWebAppConversationScopeId(resolveWebAppAddress(), appId)
   const [userId, setUserId] = useState<string>()
+  const [conversationId, setConversationId] = useState<string>()
   useEffect(() => {
-    getProcessedSystemVariablesFromUrlParams().then(({ user_id }) => {
+    getProcessedSystemVariablesFromUrlParams().then(({ user_id, conversation_id }) => {
       setUserId(user_id)
+      setConversationId(conversation_id)
     })
   }, [])
   useEffect(() => {
@@ -191,6 +193,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const { currentConversationId, handleConversationIdInfoChange } = useConversationSelection({
     scopeId: isInstalledApp || appData?.end_user_id ? conversationScopeId : '',
     userId: isInstalledApp ? userId : appData?.end_user_id,
+    conversationId,
   })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
