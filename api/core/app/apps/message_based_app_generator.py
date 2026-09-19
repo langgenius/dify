@@ -126,11 +126,19 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         conversation: Conversation | None = None,
         *,
         session: Session,
+        provided_conversation_id: str | None = None,
     ) -> tuple[Conversation, Message]:
         """
-        Initialize generate records
+        Initialize generate records.
+
+        When ``conversation`` is None and ``provided_conversation_id`` is set, a new
+        conversation row is created using the caller-provided id. This lets external
+        callers (chatflow / completion / chat APIs) reuse their own conversation id
+        instead of having Dify mint one for them.
+
         :param application_generate_entity: application generate entity
-        :conversation conversation
+        :param conversation: existing conversation, when one was found
+        :param provided_conversation_id: caller-provided id to use when creating a new conversation
         :return:
         """
         app_config: EasyUIBasedAppConfig = cast(EasyUIBasedAppConfig, application_generate_entity.app_config)
@@ -173,6 +181,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         try:
             if not conversation:
                 conversation = Conversation(
+                    id=provided_conversation_id,
                     app_id=app_config.app_id,
                     app_model_config_id=app_model_config_id,
                     model_provider=model_provider,
