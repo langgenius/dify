@@ -33,6 +33,12 @@ from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
 
+# Word writes a text box twice inside ``mc:AlternateContent``: a ``wps:txbx``
+# under ``mc:Choice`` and the same text as a VML text box under ``mc:Fallback``.
+# Both hold a ``w:txbxContent``, so the fallback copy has to be skipped or the
+# text is extracted twice.
+_MC_FALLBACK = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Fallback"
+
 
 class WordExtractor(BaseExtractor):
     """Load docx files.
@@ -456,11 +462,33 @@ class WordExtractor(BaseExtractor):
                     process_hyperlink(child, paragraph_content)
             return "".join(paragraph_content) if paragraph_content else ""
 
+        def parse_text_boxes(paragraph) -> list[str]:
+            """Text of any text box anchored to this paragraph.
+
+            A text box keeps its own ``w:p`` elements under ``w:txbxContent``,
+            nested in the drawing inside a run, so ``Run.text`` never reaches
+            them and the callouts, sidebars and diagram labels a document puts
+            in text boxes are dropped.
+            """
+            blocks: list[str] = []
+            # Searched per child rather than off the paragraph, so the loop reads the
+            # same element sequence `parse_paragraph` iterates above.
+            for child in paragraph._element:
+                for text_box in child.findall(".//" + qn("w:txbxContent")):
+                    if any(ancestor.tag == _MC_FALLBACK for ancestor in text_box.iterancestors()):
+                        continue
+                    for p_element in text_box.findall(qn("w:p")):
+                        parsed = parse_paragraph(Paragraph(p_element, paragraph))
+                        if parsed.strip():
+                            blocks.append(parsed)
+            return blocks
+
         for block in doc.iter_inner_content():
             match block:
                 case Paragraph():
                     parsed_paragraph = parse_paragraph(block)
                     content.append(parsed_paragraph if parsed_paragraph.strip() else "\n")
+                    content.extend(parse_text_boxes(block))
                 case Table():
                     content.append(self._table_to_markdown(block, image_map))
         return "\n".join(content)
