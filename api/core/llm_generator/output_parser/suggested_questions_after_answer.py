@@ -7,6 +7,22 @@ from core.llm_generator.prompts import DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_
 
 logger = logging.getLogger(__name__)
 
+_CLOSED_REASONING_BLOCK_RE = re.compile(
+    r"<(think|thought)>.*?</\1>",
+    re.DOTALL | re.IGNORECASE,
+)
+_UNCLOSED_REASONING_BLOCK_RE = re.compile(
+    r"<(think|thought)>.*",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _strip_reasoning_blocks(text: str) -> str:
+    """Remove closed and unclosed ``<think>`` / ``<thought>`` blocks."""
+    stripped = _CLOSED_REASONING_BLOCK_RE.sub("", text)
+    stripped = _UNCLOSED_REASONING_BLOCK_RE.sub("", stripped)
+    return stripped.strip()
+
 
 class SuggestedQuestionsAfterAnswerOutputParser:
     def __init__(self, instruction_prompt: str | None = None) -> None:
@@ -23,7 +39,7 @@ class SuggestedQuestionsAfterAnswerOutputParser:
         return self._instruction_prompt
 
     def parse(self, text: str) -> Sequence[str]:
-        stripped_text = text.strip()
+        stripped_text = _strip_reasoning_blocks(text)
         action_match = re.search(r"\[.*?\]", stripped_text, re.DOTALL)
         questions: list[str] = []
         if action_match is not None:
