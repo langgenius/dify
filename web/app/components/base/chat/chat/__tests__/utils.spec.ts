@@ -80,6 +80,29 @@ describe('chat/chat/utils.ts', () => {
       expect(result.file2).toHaveProperty('processed', true)
     })
 
+    it('processes singleFile from stringified log history payload', () => {
+      const inputs = {
+        file1: JSON.stringify({
+          dify_model_identity: '__dify__file__',
+          type: 'custom',
+          transfer_method: 'local_file',
+          remote_url: '',
+          related_id: '5bed104b-203c-4e54-9e69-aa6c6082c3da',
+          filename: 'sql_result.zip',
+        }),
+      }
+      const inputsForm = [{ variable: 'file1', type: InputVarType.singleFile as string }]
+
+      const result = getProcessedInputs(inputs, inputsForm as InputForm[])
+
+      expect(result.file1).toEqual({
+        type: 'custom',
+        transfer_method: 'local_file',
+        url: '',
+        upload_file_id: '5bed104b-203c-4e54-9e69-aa6c6082c3da',
+      })
+    })
+
     it('processes multiFiles using transfer_method logic', () => {
       const inputs = {
         files1: [{ transfer_method: 'local_file', url: '1' }],
@@ -90,8 +113,32 @@ describe('chat/chat/utils.ts', () => {
         { variable: 'files2', type: InputVarType.multiFiles as string },
       ]
       const result = getProcessedInputs(inputs, inputsForm as InputForm[])
-      expect(result.files1[0]).toHaveProperty('transfer_method', 'local_file')
-      expect(result.files2[0]).toHaveProperty('processed', true)
+      expect((result.files1 as Array<Record<string, unknown>>)[0]).toHaveProperty(
+        'transfer_method',
+        'local_file',
+      )
+      expect((result.files2 as Array<Record<string, unknown>>)[0]).toHaveProperty('processed', true)
+    })
+
+    it('ignores cleared multiFiles entries from log history', () => {
+      const inputs = {
+        files1: [
+          undefined,
+          { transfer_method: 'local_file', remote_url: 'http://example.com/a.zip' },
+        ],
+      }
+      const inputsForm = [{ variable: 'files1', type: InputVarType.multiFiles as string }]
+
+      const result = getProcessedInputs(inputs, inputsForm as InputForm[])
+
+      expect(result.files1).toEqual([
+        {
+          transfer_method: 'local_file',
+          type: undefined,
+          url: 'http://example.com/a.zip',
+          upload_file_id: undefined,
+        },
+      ])
     })
 
     it('processes jsonObject parsing correct json', () => {
