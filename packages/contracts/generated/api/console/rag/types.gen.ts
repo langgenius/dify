@@ -17,6 +17,7 @@ export type SimpleDataResponse = {
 }
 
 export type RagPipelineDatasetImportPayload = {
+  icon_info?: IconInfo | null
   yaml_content: string
 }
 
@@ -306,6 +307,13 @@ export type RagPipelineWorkflowSyncResponse = {
   hash: string
   result: string
   updated_at: number
+}
+
+export type IconInfo = {
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: 'emoji' | 'image' | null
+  icon_url?: string | null
 }
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'

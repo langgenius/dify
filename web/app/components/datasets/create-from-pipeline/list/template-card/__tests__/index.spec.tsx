@@ -194,6 +194,7 @@ describe('TemplateCard', () => {
     mockGetPipelineTemplateInfo.mockResolvedValue({
       data: {
         export_data: 'yaml_content_here',
+        icon_info: createPipelineTemplate().icon,
       },
     })
   })
@@ -248,7 +249,13 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(mockCreateDataset).toHaveBeenCalled()
+        expect(mockCreateDataset).toHaveBeenCalledWith(
+          {
+            yaml_content: 'yaml_content_here',
+            icon_info: defaultProps.pipeline.icon,
+          },
+          expect.any(Object),
+        )
       })
     })
 

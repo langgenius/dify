@@ -19,13 +19,6 @@ export const zSimpleDataResponse = z.object({
 })
 
 /**
- * RagPipelineDatasetImportPayload
- */
-export const zRagPipelineDatasetImportPayload = z.object({
-  yaml_content: z.string(),
-})
-
-/**
  * PipelineTemplateDetailResponse
  */
 export const zPipelineTemplateDetailResponse = z.object({
@@ -163,6 +156,26 @@ export const zRagPipelineWorkflowSyncResponse = z.object({
   hash: z.string(),
   result: z.string(),
   updated_at: z.int(),
+})
+
+/**
+ * IconInfo
+ *
+ * Icon information model.
+ */
+export const zIconInfo = z.object({
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.enum(['emoji', 'image']).nullish(),
+  icon_url: z.string().nullish(),
+})
+
+/**
+ * RagPipelineDatasetImportPayload
+ */
+export const zRagPipelineDatasetImportPayload = z.object({
+  icon_info: zIconInfo.nullish(),
+  yaml_content: z.string(),
 })
 
 /**
