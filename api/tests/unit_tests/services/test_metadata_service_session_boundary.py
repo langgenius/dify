@@ -57,13 +57,15 @@ def _dataset(*, built_in_field_enabled: bool) -> Dataset:
 
 
 def _document() -> Document:
-    return make_document(
+    document = make_document(
         document_id=DOCUMENT_ID,
         created_from=DocumentCreatedFrom.API,
-        created_at=datetime(2026, 1, 1),
-        updated_at=datetime(2026, 1, 2),
+        created_by="account-1",
         doc_metadata={},
     )
+    document.created_at = datetime(2026, 1, 1)
+    document.updated_at = datetime(2026, 1, 2)
+    return document
 
 
 def test_enable_built_in_field_uses_caller_session_for_uploader(sqlite_session: Session) -> None:
