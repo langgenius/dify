@@ -2420,3 +2420,80 @@ class TestModelValidateDecorator(SQLiteEndpointTest):
                 call()
 
         assert exc_info.value.code == 422
+
+    @patch("controllers.service_api.dataset.segment.SegmentService.get_segments")
+    @patch("controllers.service_api.dataset.segment.DocumentService.get_document")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    @patch("controllers.service_api.wraps.FeatureService")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_segment_list_pagination_clamping(
+        self,
+        mock_validate_token: Mock,
+        mock_feature_svc: Mock,
+        mock_account_tenant: Mock,
+        mock_get_doc: Mock,
+        mock_get_segments: Mock,
+        app: Flask,
+        mock_tenant: Mock,
+    ) -> None:
+        token = _api_token(mock_tenant.id)
+        mock_validate_token.return_value = token
+        mock_account_tenant.return_value = (Mock(), mock_tenant.id)
+
+        doc = Document(id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()), doc_form="text_model")
+        mock_get_doc.return_value = doc
+
+        dataset = Dataset(
+            id=doc.dataset_id,
+            tenant_id=mock_tenant.id,
+            indexing_technique="economy",
+            embedding_model_provider="",
+            embedding_model="",
+        )
+
+        segment = DocumentSegment(
+            id=str(uuid.uuid4()),
+            tenant_id=mock_tenant.id,
+            dataset_id=dataset.id,
+            document_id=doc.id,
+            position=1,
+            content="test chunk",
+            word_count=2,
+            tokens=2,
+            keywords=[],
+            hit_count=0,
+            enabled=True,
+            status="completed",
+            created_by="acc-1",
+        )
+        mock_get_segments.return_value = ([segment], 1)
+
+        with app.test_request_context(
+            f"/datasets/{dataset.id}/documents/{doc.id}/segments?page=0&limit=0",
+            method="GET",
+            headers={"Authorization": "Bearer test_token"},
+        ):
+            session = Mock()
+            session.scalar.return_value = dataset
+            with (
+                patch(
+                    "controllers.service_api.dataset.segment.SummaryIndexService.get_segments_summaries",
+                    return_value={},
+                ),
+                patch(
+                    "controllers.service_api.dataset.segment.segment_responses_with_summaries",
+                    return_value=[],
+                ),
+            ):
+                resp, status = SegmentApi().get(
+                    session=session,
+                    tenant_id=mock_tenant.id,
+                    dataset_id=uuid.UUID(dataset.id),
+                    document_id=uuid.UUID(doc.id),
+                )
+
+        assert status == 200
+        data = resp.json if hasattr(resp, "json") else resp
+        assert data["limit"] == 1
+        assert data["page"] == 1
+        assert data["has_more"] is False
