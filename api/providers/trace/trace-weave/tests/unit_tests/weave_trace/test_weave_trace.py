@@ -689,6 +689,34 @@ class TestWorkflowTrace:
         # The key "messages" should be present (validator transforms the list)
         assert "messages" in node_run.inputs
 
+    def test_workflow_tool_invocations_keep_distinct_parent_calls(
+        self, trace_instance, monkeypatch: pytest.MonkeyPatch
+    ):
+        nodes = []
+        for index in range(2):
+            parent = _make_node(id=f"tool-{index}", node_type=BuiltinNodeTypes.TOOL)
+            child = _make_node(
+                id=f"child-{index}",
+                node_id="repeated-source-node",
+                process_data={"workflow_tool_parent_execution_id": parent.id},
+            )
+            nodes.extend([child, parent])
+        repo = self._setup_repo(monkeypatch, nodes=nodes)
+        monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
+        trace_instance.start_call = MagicMock()
+        trace_instance.finish_call = MagicMock()
+
+        trace_instance.workflow_trace(_make_workflow_trace_info(message_id=None))
+
+        repo.get_by_workflow_execution.assert_called_once_with(
+            workflow_execution_id="run-1", include_workflow_tools=True
+        )
+        parents = {call.args[0].id: call.kwargs["parent_run_id"] for call in trace_instance.start_call.call_args_list}
+        assert parents["child-0"] == "tool-0"
+        assert parents["child-1"] == "tool-1"
+        assert parents["tool-0"] == "run-1"
+        assert parents["tool-1"] == "run-1"
+
     def test_workflow_trace_with_non_llm_node_uses_inputs(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Non-LLM node uses node_execution.inputs directly."""
         node = _make_node(

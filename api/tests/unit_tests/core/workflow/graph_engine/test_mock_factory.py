@@ -5,10 +5,12 @@ The factory follows the same config adaptation path as production
 implementations before instantiation.
 """
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, override
 
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_factory import DifyNodeFactory
+from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.base.node import Node
@@ -29,8 +31,7 @@ from .test_mock_nodes import (
 )
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -46,18 +47,18 @@ class MockNodeFactory(DifyNodeFactory):
 
     def __init__(
         self,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
         mock_config: "MockConfig | None" = None,
     ) -> None:
         """
         Initialize the mock node factory.
 
-        :param graph_init_params: Graph initialization parameters
-        :param graph_runtime_state: Graph runtime state
+        :param init_params: Graph initialization parameters
+        :param runtime_state: Graph runtime state
         :param mock_config: Optional mock configuration for customizing mock behavior
         """
-        super().__init__(graph_init_params, graph_runtime_state)
+        super().__init__(init_params, runtime_state)
         self.mock_config = mock_config
 
         # Map of node types that should be mocked
@@ -77,11 +78,28 @@ class MockNodeFactory(DifyNodeFactory):
         }
 
     @override
-    def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "MockNodeFactory":
+    def with_runtime_state(self, runtime_state: "RuntimeState") -> "MockNodeFactory":
         return MockNodeFactory(
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=self.init_params,
+            runtime_state=runtime_state,
             mock_config=self.mock_config,
+        )
+
+    @override
+    def _resolve_node_class_for_factory(
+        self,
+        *,
+        node_type: NodeType,
+        node_version: str,
+        node_data: Mapping[str, Any] | BaseNodeData | None = None,
+    ) -> type[Node]:
+        mock_class = self._mock_node_types.get(node_type)
+        if mock_class is not None:
+            return mock_class
+        return super()._resolve_node_class_for_factory(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_data,
         )
 
     def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
@@ -105,8 +123,8 @@ class MockNodeFactory(DifyNodeFactory):
                 mock_instance = mock_class(
                     node_id=node_id,
                     data=resolved_node_data,
-                    graph_init_params=self.graph_init_params,
-                    graph_runtime_state=self.graph_runtime_state,
+                    init_params=self.init_params,
+                    runtime_state=self.runtime_state,
                     mock_config=self.mock_config,
                     code_executor=self._code_executor,
                     code_limits=self._code_limits,
@@ -115,8 +133,8 @@ class MockNodeFactory(DifyNodeFactory):
                 mock_instance = mock_class(
                     node_id=node_id,
                     data=resolved_node_data,
-                    graph_init_params=self.graph_init_params,
-                    graph_runtime_state=self.graph_runtime_state,
+                    init_params=self.init_params,
+                    runtime_state=self.runtime_state,
                     mock_config=self.mock_config,
                     http_request_config=self._http_request_config,
                     http_client=self._http_request_http_client,
@@ -131,8 +149,8 @@ class MockNodeFactory(DifyNodeFactory):
                 mock_instance = mock_class(
                     node_id=node_id,
                     data=resolved_node_data,
-                    graph_init_params=self.graph_init_params,
-                    graph_runtime_state=self.graph_runtime_state,
+                    init_params=self.init_params,
+                    runtime_state=self.runtime_state,
                     mock_config=self.mock_config,
                     credentials_provider=self._llm_credentials_provider,
                     model_factory=self._llm_model_factory,
@@ -141,8 +159,8 @@ class MockNodeFactory(DifyNodeFactory):
                 mock_instance = mock_class(
                     node_id=node_id,
                     data=resolved_node_data,
-                    graph_init_params=self.graph_init_params,
-                    graph_runtime_state=self.graph_runtime_state,
+                    init_params=self.init_params,
+                    runtime_state=self.runtime_state,
                     mock_config=self.mock_config,
                 )
 

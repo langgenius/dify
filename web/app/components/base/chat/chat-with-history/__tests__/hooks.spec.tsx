@@ -1339,7 +1339,7 @@ describe('useChatWithHistory', () => {
       expect(answerNode?.workflow_run_id).toBe('wf-run-1')
     })
 
-    it('should set workflow_run_id for normal messages with submitted human_input', async () => {
+    it('preserves distinct legacy submissions without form definitions', async () => {
       // Arrange
       const listData = createConversationData({
         data: [createConversationItem({ id: 'conversation-1' })],
@@ -1361,7 +1361,24 @@ describe('useChatWithHistory', () => {
               {
                 type: 'human_input',
                 submitted: true,
-                form_submission_data: { field: 'value' },
+                form_submission_data: {
+                  node_id: 'human-input',
+                  node_title: 'Approval',
+                  rendered_content: 'First approval',
+                  action_id: 'approve',
+                  action_text: 'Approve',
+                },
+              },
+              {
+                type: 'human_input',
+                submitted: true,
+                form_submission_data: {
+                  node_id: 'human-input',
+                  node_title: 'Approval',
+                  rendered_content: 'Second approval',
+                  action_id: 'approve',
+                  action_text: 'Approve',
+                },
               },
             ],
           },
@@ -1377,7 +1394,77 @@ describe('useChatWithHistory', () => {
       })
 
       const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
-      expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
+      const forms = answerNode!.humanInputFilledFormDataList!
+      expect(forms.map((form) => form.rendered_content)).toEqual([
+        'First approval',
+        'Second approval',
+      ])
+      expect(forms[0]!.form_id).not.toBe(forms[1]!.form_id)
+    })
+
+    it('restores distinct same-Tool forms without removing the unsubmitted sibling', async () => {
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      const first = {
+        form_id: 'first',
+        node_id: 'tool',
+        node_title: 'Tool',
+        form_content: 'First approval',
+        inputs: [],
+        actions: [],
+        form_token: 'first-token',
+        display_in_ui: true,
+        resolved_default_values: {},
+        expiration_time: 100,
+      }
+      const second = {
+        ...first,
+        form_id: 'second',
+        form_content: 'Second approval',
+        form_token: 'second-token',
+      }
+      const filled = {
+        node_id: 'tool',
+        node_title: 'Tool',
+        rendered_content: 'Approved',
+        action_id: 'approve',
+        action_text: 'Approve',
+      }
+      mockFetchChatList.mockResolvedValue({
+        data: [
+          {
+            id: 'message',
+            query: 'Approve both requests',
+            answer: '',
+            message_files: [],
+            status: 'paused',
+            extra_contents: [
+              {
+                type: 'human_input',
+                submitted: false,
+                workflow_run_id: 'run',
+                form_definition: first,
+              },
+              {
+                type: 'human_input',
+                submitted: true,
+                workflow_run_id: 'run',
+                form_definition: second,
+                form_submission_data: filled,
+              },
+            ],
+          },
+        ],
+      })
+      const { result } = await renderWithClient(() => useChatWithHistory())
+      await waitFor(() => {
+        const answer = result!.current.appPrevChatTree[0]?.children?.[0]
+        expect(answer?.humanInputFormDataList).toEqual([first])
+        expect(answer?.humanInputFilledFormDataList).toEqual([
+          { ...filled, form_id: 'second', form_content: 'Second approval', inputs: [] },
+        ])
+      })
     })
 
     it('should parse human input payloads regardless of message status', async () => {

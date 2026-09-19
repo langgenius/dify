@@ -12,14 +12,14 @@ from typing import override
 
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, NodeRunVariableUpdatedEvent
+from graphon.engine.layer import Layer
+from graphon.engine_events import EngineEvent, NodeRunVariableUpdatedEvent
 from services.conversation_variable_updater import ConversationVariableUpdater
 
 logger = logging.getLogger(__name__)
 
 
-class ConversationVariablePersistenceLayer(GraphEngineLayer):
+class ConversationVariablePersistenceLayer(Layer):
     def __init__(self, conversation_variable_updater: ConversationVariableUpdater) -> None:
         super().__init__()
         self._conversation_variable_updater = conversation_variable_updater
@@ -29,7 +29,7 @@ class ConversationVariablePersistenceLayer(GraphEngineLayer):
         pass
 
     @override
-    def on_event(self, event: GraphEngineEvent) -> None:
+    def on_event(self, event: EngineEvent) -> None:
         if not isinstance(event, NodeRunVariableUpdatedEvent):
             return
 
@@ -38,7 +38,7 @@ class ConversationVariablePersistenceLayer(GraphEngineLayer):
             logger.warning("Conversation variable selector invalid. selector=%s", selector)
             return
 
-        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
         if conversation_id is None:
             return
 

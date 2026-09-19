@@ -21,7 +21,7 @@ describe('useWorkflowNodeHumanInputFormTimeout', () => {
     })
 
     result.current.handleWorkflowNodeHumanInputFormTimeout({
-      data: { node_id: 'n1', node_title: 'Node 1', expiration_time: 1000 },
+      data: { form_id: 'f1', node_id: 'n1', node_title: 'Node 1', expiration_time: 1000 },
     } as HumanInputFormTimeoutResponse)
 
     expect(store.getState().workflowRunningData!.humanInputFormDataList![0]!.expiration_time).toBe(

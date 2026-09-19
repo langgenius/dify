@@ -2,7 +2,11 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import cast
 
-from core.ops.unified_trace.hierarchy import WorkflowExecutionLike, build_workflow_hierarchy
+from core.ops.unified_trace.hierarchy import WorkflowExecutionLike, build_workflow_hierarchy, workflow_tool_parent_ids
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+)
 
 
 def execution(**overrides: object) -> WorkflowExecutionLike:
@@ -105,3 +109,60 @@ def test_cycle_edges_are_removed_deterministically() -> None:
     result = build_workflow_hierarchy([first, second])
 
     assert result.parent_by_execution_id == {}
+
+
+def test_tool_invocations_keep_source_nodes_and_loop_wrappers_in_their_own_scope() -> None:
+    nodes = [execution(id="root-start", node_id="start", workflow_id="root")]
+    for invocation in ("first", "second"):
+        nodes.append(
+            execution(
+                id=f"{invocation}-tool-row",
+                node_execution_id=f"{invocation}-tool",
+                node_id="tool",
+                workflow_id="root",
+            )
+        )
+        ownership = {
+            WORKFLOW_TOOL_INVOCATION_ID_KEY: invocation,
+            WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: f"{invocation}-tool",
+        }
+        nodes.extend(
+            [
+                execution(id=f"{invocation}-start", node_id="start", workflow_id="source", process_data=ownership),
+                execution(
+                    id=f"{invocation}-loop",
+                    node_id="loop",
+                    workflow_id="source",
+                    process_data=ownership,
+                    node_type="loop",
+                    predecessor_node_id="start",
+                ),
+                execution(
+                    id=f"{invocation}-body",
+                    node_id="body",
+                    workflow_id="source",
+                    process_data=ownership,
+                    loop_id="loop",
+                    loop_index=0,
+                ),
+            ]
+        )
+
+    hierarchy = build_workflow_hierarchy(list(reversed(nodes)))
+
+    for invocation in ("first", "second"):
+        parents = hierarchy.parent_by_execution_id
+        assert parents[f"{invocation}-start"] == f"{invocation}-tool-row"
+        assert parents[f"{invocation}-loop"] == f"{invocation}-start"
+        assert parents[f"{invocation}-body"] == f"loop:{invocation}-loop:0"
+    assert len(hierarchy.wrappers) == 2
+
+
+def test_tool_parent_references_cannot_escape_the_loaded_trace_or_create_cycles() -> None:
+    nodes = [
+        execution(id="a", process_data={WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "b"}),
+        execution(id="b", process_data={WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "a"}),
+        execution(id="c", process_data={WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "another-run"}),
+    ]
+
+    assert workflow_tool_parent_ids(nodes) == {}

@@ -196,8 +196,6 @@ describe('TracingPanel', () => {
       expect.objectContaining({
         showRetryDetail: true,
         retryResultList: [{ id: 'retry-1' }],
-        showIteratingDetail: true,
-        showLoopingDetail: true,
         agentOrToolLogItemStack: [{ id: 'agent-1' }],
       }),
     )
