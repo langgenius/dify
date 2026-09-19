@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Tests for Langfuse TTFT reporting support."""
 
 from datetime import datetime, timedelta
@@ -13,7 +15,7 @@ from graphon.enums import BuiltinNodeTypes
 
 
 def _create_trace_instance() -> LangFuseDataTrace:
-    with patch("dify_trace_langfuse.langfuse_trace.LangfuseAPI", autospec=True):
+    with patch("dify_trace_langfuse.langfuse_trace.Langfuse", autospec=True):
         return LangFuseDataTrace(
             LangfuseConfig(
                 public_key="public-key",
