@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type * as React from 'react'
-import { useRef } from 'react'
+import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import {
   Breadcrumb,
@@ -108,7 +107,7 @@ function StoryLink({ children, ...props }: React.ComponentProps<'a'>) {
 }
 
 function RenderLinkExample() {
-  const ref = useRef<HTMLAnchorElement>(null)
+  const ref = React.useRef<HTMLAnchorElement>(null)
   return (
     <div className="flex flex-col gap-4">
       <Breadcrumb aria-label="Project path">
