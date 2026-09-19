@@ -760,6 +760,54 @@ class TestIndexingRunnerLoad:
         mock_future.result.assert_called()
         assert mock_update_status.call_args.kwargs["extra_update_params"][DatasetDocument.tokens] == 300
 
+    def test_load_uses_configured_indexing_max_workers(
+        self, mock_dependencies, sample_dataset, sample_dataset_document, sample_documents, config_overrides
+    ):
+        config_overrides(INDEXING_MAX_WORKERS_NUMBER=2)
+        runner = IndexingRunner()
+        mock_future = MagicMock()
+        mock_future.result.return_value = None
+        mock_executor_instance = MagicMock()
+        mock_executor_instance.__enter__.return_value = mock_executor_instance
+        mock_executor_instance.__exit__.return_value = None
+        mock_executor_instance.submit.return_value = mock_future
+        mock_dependencies["executor"].return_value = mock_executor_instance
+
+        with patch.object(runner, "_update_document_index_status"):
+            runner._load(
+                session=mock_dependencies["session"],
+                dataset=sample_dataset,
+                dataset_document=sample_dataset_document,
+                documents=sample_documents,
+                total_tokens=300,
+            )
+
+        mock_dependencies["executor"].assert_called_once_with(max_workers=2)
+
+    def test_load_defaults_to_ten_indexing_workers(
+        self, mock_dependencies, sample_dataset, sample_dataset_document, sample_documents, config_overrides
+    ):
+        config_overrides(INDEXING_MAX_WORKERS_NUMBER=10)
+        runner = IndexingRunner()
+        mock_future = MagicMock()
+        mock_future.result.return_value = None
+        mock_executor_instance = MagicMock()
+        mock_executor_instance.__enter__.return_value = mock_executor_instance
+        mock_executor_instance.__exit__.return_value = None
+        mock_executor_instance.submit.return_value = mock_future
+        mock_dependencies["executor"].return_value = mock_executor_instance
+
+        with patch.object(runner, "_update_document_index_status"):
+            runner._load(
+                session=mock_dependencies["session"],
+                dataset=sample_dataset,
+                dataset_document=sample_dataset_document,
+                documents=sample_documents,
+                total_tokens=300,
+            )
+
+        mock_dependencies["executor"].assert_called_once_with(max_workers=10)
+
     def test_load_propagates_worker_errors(
         self, mock_dependencies, sample_dataset, sample_dataset_document, sample_documents
     ):
