@@ -83,6 +83,19 @@ describe('MarketplaceDetailDialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
+  it('delegates clipboard-write permission to the marketplace detail iframe', () => {
+    render(
+      <ThemeProvider forcedTheme="dark">
+        <MarketplaceDetailDialog open isInstalled plugin={plugin} onOpenChange={vi.fn()} />
+      </ThemeProvider>,
+    )
+
+    expect(screen.getByTitle('Plugin A · plugin.detailPanel.operation.detail')).toHaveAttribute(
+      'allow',
+      'clipboard-write',
+    )
+  })
+
   it('installs from the embedded detail frame without opening a confirmation dialog', async () => {
     render(
       <ThemeProvider forcedTheme="dark">

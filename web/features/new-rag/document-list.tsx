@@ -13,10 +13,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { sourceName } from './document-model'
@@ -560,7 +560,7 @@ export function DocumentsList({
         )}
         {completingResults && (
           <div className="flex min-h-32 items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
       </div>

@@ -16,18 +16,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useDefaultModel,
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -123,7 +120,7 @@ export function WorkflowRosterAgentOrchestratePanelContent(
   if (!agentId || !agentSoulConfig) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -158,8 +155,7 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
     } | null
   }
 }) {
-  const { currentModel, setConfigureModel, textGenerationModelList } =
-    useAgentOrchestrateModelOptions()
+  const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
 
   return (
     <AgentOrchestratePanel
@@ -167,7 +163,6 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
       agentSoulConfig={agentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}
-      textGenerationModelList={textGenerationModelList}
       readOnly
       showHeader={false}
       showPublishBar={false}
@@ -196,7 +191,7 @@ export function WorkflowInlineAgentConfigureWorkspace(
   if (!agentId) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -247,7 +242,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
   if (!agentSoulConfig || buildDraft.isPending) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -325,8 +320,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
   const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
-  const { currentModel, setConfigureModel, textGenerationModelList } =
-    useAgentOrchestrateModelOptions()
+  const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
   const [isApplyingInlineBuildDraft, setIsApplyingInlineBuildDraft] = useState(false)
   const { saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
     nodeId,
@@ -687,7 +681,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={composerState?.agent?.name}
           currentModel={currentModel}
-          textGenerationModelList={textGenerationModelList}
           readOnly={buildDraft.isActive}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
@@ -867,12 +860,9 @@ function useAgentOrchestrateModelOptions() {
       }
     : undefined
   const currentModel = model ?? defaultModel
-  const { textGenerationModelList } =
-    useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
 
   return {
     currentModel,
     setConfigureModel: setModel,
-    textGenerationModelList,
   }
 }

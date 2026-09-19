@@ -320,7 +320,7 @@ class ModelProviderModelApi(Resource):
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
-    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserDeleteModels))
     @console_ns.response(204, "Model deleted successfully")
     @setup_required
     @login_required
@@ -469,7 +469,7 @@ class ModelProviderModelCredentialApi(Resource):
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
-    @console_ns.expect(console_ns.models[ParserDeleteCredential.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserDeleteCredential))
     @console_ns.response(204, "Credential deleted successfully")
     @setup_required
     @login_required

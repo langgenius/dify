@@ -4,6 +4,7 @@ from contextlib import ExitStack
 from types import TracebackType
 from unittest.mock import MagicMock, Mock, patch
 
+import httpx
 import pytest
 from sqlalchemy.orm import Session
 
@@ -210,6 +211,56 @@ class TestMCPClient:
 
         # Verify session was created with MCP
         assert client._session == mock_session
+
+    @patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect")
+    @patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_from_sse_transport_error_to_mcp(
+        self, mock_client_session, mock_streamable_client, mock_http_client, mock_sse_connect
+    ):
+        """A transport failure on the SSE probe must still fall back to streamable HTTP.
+
+        Uses the real sse_client so the exception translation between the two
+        layers is exercised: an httpx error leaking out of sse_client skips the
+        fallback entirely and reaches the console API as an opaque 500.
+        """
+        mock_sse_connect.side_effect = httpx.ConnectError("[Errno 111] Connection refused")
+
+        mock_read_stream = Mock()
+        mock_write_stream = Mock()
+        mock_client_context = Mock()
+        mock_streamable_client.return_value.__enter__.return_value = (
+            mock_read_stream,
+            mock_write_stream,
+            mock_client_context,
+        )
+
+        mock_session = Mock()
+        mock_client_session.return_value.__enter__.return_value = mock_session
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        mock_streamable_client.assert_called_once()
+        assert client._session == mock_session
+
+    @patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect")
+    @patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client")
+    def test_initialize_sse_transport_error_raises_mcp_error(self, mock_http_client, mock_sse_connect):
+        """When both transports fail the caller gets an MCPError, never a raw httpx error.
+
+        The console MCP endpoints only translate MCPError/ValueError into a 4xx;
+        anything else becomes `{"code": "unknown", "status": 500}`.
+        """
+        mock_sse_connect.side_effect = httpx.ConnectError("[Errno 111] Connection refused")
+
+        client = MCPClient(server_url="http://test.example.com/sse")
+
+        with pytest.raises(MCPConnectionError) as exc_info:
+            client._initialize()
+
+        assert "Connection refused" in str(exc_info.value)
 
     @patch("core.mcp.mcp_client.streamablehttp_client")
     @patch("core.mcp.mcp_client.ClientSession")
@@ -443,6 +494,7 @@ class TestMCPClientWithAuthRetry:
     def mock_provider(self):
         provider = MagicMock(spec=MCPProviderEntity)
         provider.id = "test-provider-id"
+        provider.server_identifier = "test-server-identifier"
         provider.tenant_id = "test-tenant-id"
         provider.retrieve_tokens.return_value = OAuthTokens(
             access_token="new-token",
@@ -459,7 +511,6 @@ class TestMCPClientWithAuthRetry:
             headers={"Authorization": "Bearer old-token"},
             provider_entity=mock_provider,
             authorization_code="test-code",
-            by_server_id=True,
         )
         return client
 
@@ -471,7 +522,6 @@ class TestMCPClientWithAuthRetry:
             timeout=30.0,
             provider_entity=mock_provider,
             authorization_code="initial-code",
-            by_server_id=True,
         )
 
         assert client.server_url == "http://test.example.com"
@@ -479,7 +529,6 @@ class TestMCPClientWithAuthRetry:
         assert client.timeout == 30.0
         assert client.provider_entity == mock_provider
         assert client.authorization_code == "initial-code"
-        assert client.by_server_id is True
         assert client._has_retried is False
 
     @patch("core.mcp.auth_client.db")
@@ -499,7 +548,7 @@ class TestMCPClientWithAuthRetry:
             expires_in=3600,
             refresh_token="new-refresh-token",
         )
-        mock_service.get_provider_entity.return_value = new_provider
+        mock_service.get_provider_entity_by_server_identifier.return_value = new_provider
 
         # MCPAuthError parses resource_metadata and scope from www_authenticate_header
         www_auth = 'Bearer resource_metadata="http://meta", scope="read"'
@@ -514,8 +563,8 @@ class TestMCPClientWithAuthRetry:
             resource_metadata_url="http://meta",
             scope_hint="read",
         )
-        mock_service.get_provider_entity.assert_called_once_with(
-            mock_provider.id, mock_provider.tenant_id, by_server_id=True
+        mock_service.get_provider_entity_by_server_identifier.assert_called_once_with(
+            server_identifier=mock_provider.server_identifier, tenant_id=mock_provider.tenant_id
         )
 
         # Verify client updates
@@ -556,7 +605,7 @@ class TestMCPClientWithAuthRetry:
 
         new_provider = MagicMock(spec=MCPProviderEntity)
         new_provider.retrieve_tokens.return_value = None
-        mock_service.get_provider_entity.return_value = new_provider
+        mock_service.get_provider_entity_by_server_identifier.return_value = new_provider
 
         error = MCPAuthError("Auth failed")
 

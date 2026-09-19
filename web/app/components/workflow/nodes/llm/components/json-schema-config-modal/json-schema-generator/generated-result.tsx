@@ -5,7 +5,7 @@ import { RiArrowLeftLine, RiCloseLine, RiSparklingLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '../../../utils'
 import CodeEditor from '../code-editor'
 import ErrorMessage from '../error-message'
@@ -59,7 +59,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
     <div className="flex w-120 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
       {isGenerating ? (
         <div className="flex h-150 flex-col items-center justify-center gap-y-3">
-          <Loading type="area" />
+          <LoadingPlaceholder />
           <div className="system-xs-regular text-text-tertiary">
             {t(($) => $['nodes.llm.jsonSchema.generating'], { ns: 'workflow' })}
           </div>

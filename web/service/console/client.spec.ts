@@ -199,6 +199,61 @@ describe('consoleQuery transport context', () => {
     vi.restoreAllMocks()
   })
 
+  it('uploads ifpkg imports as multipart files without decoding their bytes as YAML', async () => {
+    const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])
+    const file = new File([bytes], 'agent.ifpkg', { type: 'application/zip' })
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: 'import-1', status: 'completed' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const mutation = new MutationObserver(
+      new QueryClient(),
+      consoleQuery.apps.imports.post.mutationOptions(),
+    )
+    await mutation.mutate({ body: { file } })
+
+    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(outgoing.url).toContain('/apps/imports')
+    expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
+    const form = await outgoing.formData()
+    expect(Array.from(form.keys())).toEqual(['file'])
+    const uploaded = form.get('file')
+    expect(uploaded).toBeInstanceOf(File)
+    if (!(uploaded instanceof File)) throw new TypeError('Expected an uploaded archive')
+    expect(uploaded.name).toBe('agent.ifpkg')
+    expect(new Uint8Array(await uploaded.arrayBuffer())).toEqual(bytes)
+  })
+
+  it('preserves archive bytes and the download filename for App exports', async () => {
+    const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])
+    const request = vi.fn().mockResolvedValue(
+      new Response(bytes, {
+        status: 200,
+        headers: {
+          'content-type': 'application/zip',
+          'content-disposition': 'attachment; filename="agent.ifpkg"',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const options = consoleQuery.apps.byAppId.export.get.queryOptions({
+      input: { params: { app_id: 'app-1' } },
+      context: { silent: true },
+    })
+    const result = await options.queryFn({
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    expect(result).toBeInstanceOf(File)
+    if (!(result instanceof File)) throw new TypeError('Expected an archive download')
+    expect(result.name).toBe('agent.ifpkg')
+    expect(result.type).toBe('application/zip')
+    expect(new Uint8Array(await result.arrayBuffer())).toEqual(bytes)
+  })
+
   it('should forward silent context to the base request transport', async () => {
     const request = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({}), {
@@ -2015,5 +2070,71 @@ describe('consoleQuery apiBasedExtension mutation defaults', () => {
     )
 
     expect(queryClient.getQueryData(listKey)).toEqual([remainingExtension])
+  })
+})
+
+describe('workspace skill deletion cache', () => {
+  it.each([true, false])('refreshes agent bindings after deletion (active: %s)', async (active) => {
+    const consoleQuery = await loadConsoleQuery()
+    const client = new QueryClient({
+      defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+    })
+    const input = { params: { agent_id: 'agent-1' } }
+    const queryKey = consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryKey({ input })
+    const previousBindings = { agent_id: 'agent-1', skill_ids: ['skill-1'], data: [] }
+    const emptyBindings = { agent_id: 'agent-1', skill_ids: [], data: [] }
+    client.setQueryData(queryKey, previousBindings)
+    const queryFn = vi.fn(async () => emptyBindings)
+    const observer = new QueryObserver(client, { queryKey, queryFn })
+    let unsubscribe = active ? observer.subscribe(() => {}) : undefined
+    const onSuccess = vi.fn()
+    const mutation = new MutationObserver(
+      client,
+      consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+        mutationFn: async () => ({ id: 'skill-1', deleted: true }),
+        onSuccess,
+      }),
+    )
+
+    try {
+      await mutation.mutate({
+        params: { skill_id: 'skill-1' },
+        body: { confirmation_name: 'Skill' },
+      })
+      if (!active) unsubscribe = observer.subscribe(() => {})
+      await vi.waitFor(() => expect(observer.getCurrentResult().data).toEqual(emptyBindings))
+      expect(queryFn).toHaveBeenCalledTimes(1)
+      expect(onSuccess).toHaveBeenCalledTimes(1)
+    } finally {
+      unsubscribe?.()
+      client.clear()
+    }
+  })
+
+  it('preserves cached bindings when deletion fails', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const client = new QueryClient()
+    const queryKey = consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryKey({
+      input: { params: { agent_id: 'agent-1' } },
+    })
+    const bindings = { agent_id: 'agent-1', skill_ids: ['skill-1'], data: [] }
+    client.setQueryData(queryKey, bindings)
+    const mutation = new MutationObserver(
+      client,
+      consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+        mutationFn: async () => {
+          throw new Error('Deletion failed')
+        },
+      }),
+    )
+    try {
+      await expect(mutation.mutate({ params: { skill_id: 'skill-1' }, body: {} })).rejects.toThrow(
+        'Deletion failed',
+      )
+      expect(client.getQueryData(queryKey)).toEqual(bindings)
+      expect(client.getQueryState(queryKey)?.isInvalidated).toBe(false)
+    } finally {
+      client.clear()
+    }
   })
 })

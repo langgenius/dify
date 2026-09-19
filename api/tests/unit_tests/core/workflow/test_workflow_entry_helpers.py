@@ -1,4 +1,3 @@
-import json
 from collections import UserString
 from datetime import datetime
 from types import SimpleNamespace
@@ -21,8 +20,9 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _build_typed_node_config(node_type: NodeType):
@@ -31,16 +31,7 @@ def _build_typed_node_config(node_type: NodeType):
 
 def _workflow() -> Workflow:
     """Build a real transient workflow for single-step orchestration tests."""
-    return Workflow(
-        id="workflow-id",
-        tenant_id="tenant-id",
-        app_id="app-id",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps({"nodes": [], "edges": []}),
-        _features="{}",
-        created_by="user-id",
-    )
+    return make_workflow(workflow_id="workflow-id", tenant_id="tenant-id", app_id="app-id", created_by="user-id")
 
 
 def _build_minimal_workflow_entry(

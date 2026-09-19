@@ -3,7 +3,8 @@ import type { CredentialFormSchemaBase } from '../header/account-setting/model-p
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
 import type { ToolCredential } from '@/app/components/tools/types'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n/locale'
+import type { PluginLanguage } from '@/i18n/metadata'
 
 export enum PluginCategoryEnum {
   tool = 'tool',
@@ -25,9 +26,9 @@ type PluginToolDeclaration = {
   identity: {
     author: string
     name: string
-    description: Record<Locale, string>
+    description: Record<Locale | PluginLanguage, string>
     icon: string
-    label: Record<Locale, string>
+    label: Record<Locale | PluginLanguage, string>
     tags: string[]
   }
   credentials_schema: ToolCredential[] // TODO
@@ -73,8 +74,8 @@ export type PluginDeclaration = {
   icon_dark?: string
   name: string
   category: PluginCategoryEnum
-  label: Record<Locale, string>
-  description: Record<Locale, string>
+  label: Record<Locale | PluginLanguage, string>
+  description: Record<Locale | PluginLanguage, string>
   created_at: string
   resource: any // useless in frontend
   plugins: any // useless in frontend
@@ -104,16 +105,16 @@ type PluginTriggerDefinition = {
 
 type CredentialsSchema = {
   name: string
-  label: Record<Locale, string>
-  description: Record<Locale, string>
+  label: Record<Locale | PluginLanguage, string>
+  description: Record<Locale | PluginLanguage, string>
   type: FormTypeEnum
   scope: any
   required: boolean
   default: any
   options: any
-  help: Record<Locale, string>
+  help: Record<Locale | PluginLanguage, string>
   url: string
-  placeholder: Record<Locale, string>
+  placeholder: Record<Locale | PluginLanguage, string>
 }
 
 type OauthSchema = {
@@ -123,7 +124,7 @@ type OauthSchema = {
 
 export type ParametersSchema = {
   name: string
-  label: Record<Locale, string>
+  label: Record<Locale | PluginLanguage, string>
   type: FormTypeEnum
   auto_generate: any
   template: any
@@ -136,10 +137,10 @@ export type ParametersSchema = {
   precision: any
   options?: Array<{
     value: string
-    label: Record<Locale, string>
+    label: Record<Locale | PluginLanguage, string>
     icon?: string
   }>
-  description: Record<Locale, string>
+  description: Record<Locale | PluginLanguage, string>
 }
 
 export type TriggerEventParameter = {
@@ -181,11 +182,11 @@ export type PluginManifestInMarket = {
   name: string
   org: string
   icon: string
-  label: Record<Locale, string>
+  label: Record<Locale | PluginLanguage, string>
   category: PluginCategoryEnum
   version: string // combine the other place to it
   latest_version: string
-  brief: Record<Locale, string>
+  brief: Record<Locale | PluginLanguage, string>
   introduction: string
   verified: boolean
   install_count: number
@@ -244,9 +245,9 @@ export type Plugin = {
   icon: string
   icon_dark?: string
   verified: boolean
-  label: Partial<Record<Locale, string>>
-  brief: Partial<Record<Locale, string>>
-  description: Partial<Record<Locale, string>>
+  label: Partial<Record<Locale | PluginLanguage, string>>
+  brief: Partial<Record<Locale | PluginLanguage, string>>
+  description: Partial<Record<Locale | PluginLanguage, string>>
   // Repo readme.md content
   introduction: string
   repository: string
@@ -413,7 +414,7 @@ export type PluginStatus = {
   status: TaskStatus
   message: string
   icon: string
-  labels: Record<Locale, string>
+  labels: Record<Locale | PluginLanguage, string>
   taskId: string
 }
 
@@ -495,9 +496,9 @@ export type VersionProps = {
 
 export type StrategyParamItem = {
   name: string
-  label: Record<Locale, string>
-  help: Record<Locale, string>
-  placeholder: Record<Locale, string>
+  label: Record<Locale | PluginLanguage, string>
+  help: Record<Locale | PluginLanguage, string>
+  placeholder: Record<Locale | PluginLanguage, string>
   type: string
   scope: string
   required: boolean
@@ -516,11 +517,11 @@ export type StrategyDetail = {
     author: string
     name: string
     icon: string
-    label: Record<Locale, string>
+    label: Record<Locale | PluginLanguage, string>
     provider: string
   }
   parameters: StrategyParamItem[]
-  description: Record<Locale, string>
+  description: Record<Locale | PluginLanguage, string>
   output_schema: Record<string, any>
   features: AgentFeature[]
 }
@@ -534,8 +535,8 @@ type AgentFeature = (typeof AgentFeature)[keyof typeof AgentFeature]
 type Identity = {
   author: string
   name: string
-  label: Record<Locale, string>
-  description: Record<Locale, string>
+  label: Record<Locale | PluginLanguage, string>
+  description: Record<Locale | PluginLanguage, string>
   icon: string
   icon_dark?: string
   tags: string[]
