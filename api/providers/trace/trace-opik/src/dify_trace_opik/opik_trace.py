@@ -1,475 +1,288 @@
-import hashlib
-import logging
-import os
-import uuid
-from datetime import datetime, timedelta
-from typing import Any, cast, override
+"""Opik trace/span REST writes with explicit workspace and deterministic IDs."""
 
-from opik import Opik, Trace
-from opik.id_helpers import uuid4_to_uuid7
-from sqlalchemy.orm import sessionmaker
+from datetime import datetime
+from typing import Any
+from urllib.parse import quote, urlencode
+from uuid import UUID
 
-from core.ops.base_trace_instance import BaseTraceInstance
-from core.ops.entities.trace_entity import (
-    BaseTraceInfo,
-    DatasetRetrievalTraceInfo,
-    GenerateNameTraceInfo,
-    MessageTraceInfo,
-    ModerationTraceInfo,
-    SuggestedQuestionTraceInfo,
-    ToolTraceInfo,
-    TraceTaskName,
-    WorkflowTraceInfo,
+from pydantic import JsonValue
+
+from core.helper.ssl_context import create_ssl_context
+from core.ops.provider_export import (
+    TraceExportError,
+    TraceProviderHttpClient,
+    export_span_id,
+    json_text,
+    span_attributes,
 )
-from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
-from core.repositories import DifyCoreRepositoryFactory
+from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_opik.config import OpikConfig
-from extensions.ext_database import db
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
-from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
-
-logger = logging.getLogger(__name__)
 
 
-def wrap_dict(key_name, data):
-    """Make sure that the input data is a dict"""
-    if not isinstance(data, dict):
-        return {key_name: data}
-
-    return data
-
-
-def wrap_metadata(metadata, **kwargs):
-    """Add common metatada to all Traces and Spans"""
-    metadata["created_from"] = "dify"
-
-    metadata.update(kwargs)
-
-    return metadata
-
-
-def _seed_to_uuid4(seed: str) -> str:
-    """Derive a deterministic UUID4-formatted string from an arbitrary seed.
-
-    uuid4_to_uuid7 requires a valid UUID v4 string, but some Dify identifiers
-    are not UUIDs (e.g. a workflow_run_id with a "-root" suffix appended to
-    distinguish the root span from the trace).  This helper hashes the seed
-    with MD5 and patches the version/variant bits so the result satisfies the
-    UUID v4 contract.
-    """
-    raw = hashlib.md5(seed.encode()).digest()
-    ba = bytearray(raw)
-    ba[6] = (ba[6] & 0x0F) | 0x40  # version 4
-    ba[8] = (ba[8] & 0x3F) | 0x80  # variant 1
-    return str(uuid.UUID(bytes=bytes(ba)))
-
-
-def prepare_opik_uuid(user_datetime: datetime | None, user_uuid: str | None):
-    """Opik needs UUIDv7 while Dify uses UUIDv4 for identifier of most
-    messages and objects. The type-hints of BaseTraceInfo indicates that
-    objects start_time and message_id could be null which means we cannot map
-    it to a UUIDv7. Given that we have no way to identify that object
-    uniquely, generate a new random one UUIDv7 in that case.
-    """
-
-    if user_datetime is None:
-        user_datetime = datetime.now()
-
-    if user_uuid is None:
-        user_uuid = str(uuid.uuid4())
-
-    return uuid4_to_uuid7(user_datetime, user_uuid)
-
-
-class OpikDataTrace(BaseTraceInstance):
-    def __init__(
-        self,
-        opik_config: OpikConfig,
-    ):
-        super().__init__(opik_config)
-        self.opik_client = Opik(
-            project_name=opik_config.project,
-            workspace=opik_config.workspace,
-            host=opik_config.url,
-            api_key=opik_config.api_key,
-        )
-        self.project = opik_config.project
-        self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
-
-    @override
-    def trace(self, trace_info: BaseTraceInfo):
-        match trace_info:
-            case WorkflowTraceInfo():
-                self.workflow_trace(trace_info)
-            case MessageTraceInfo():
-                self.message_trace(trace_info)
-            case ModerationTraceInfo():
-                self.moderation_trace(trace_info)
-            case SuggestedQuestionTraceInfo():
-                self.suggested_question_trace(trace_info)
-            case DatasetRetrievalTraceInfo():
-                self.dataset_retrieval_trace(trace_info)
-            case ToolTraceInfo():
-                self.tool_trace(trace_info)
-            case GenerateNameTraceInfo():
-                self.generate_name_trace(trace_info)
-            case _:
-                pass
-
-    def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        workflow_metadata = wrap_metadata(
-            trace_info.metadata, message_id=trace_info.message_id, workflow_app_log_id=trace_info.workflow_app_log_id
-        )
-
-        if trace_info.message_id:
-            dify_trace_id = trace_info.trace_id or trace_info.message_id
-            trace_name = TraceTaskName.MESSAGE_TRACE
-            trace_tags = ["message", "workflow"]
-            root_span_seed = trace_info.workflow_run_id
-        else:
-            dify_trace_id = trace_info.trace_id or trace_info.workflow_run_id
-            trace_name = TraceTaskName.WORKFLOW_TRACE
-            trace_tags = ["workflow"]
-            root_span_seed = _seed_to_uuid4(trace_info.workflow_run_id + "-root")
-
-        opik_trace_id = prepare_opik_uuid(trace_info.start_time, dify_trace_id)
-
-        trace_data = {
-            "id": opik_trace_id,
-            "name": trace_name,
-            "start_time": trace_info.start_time,
-            "end_time": trace_info.end_time,
-            "metadata": workflow_metadata,
-            "input": wrap_dict("input", trace_info.workflow_run_inputs),
-            "output": wrap_dict("output", trace_info.workflow_run_outputs),
-            "thread_id": trace_info.conversation_id,
-            "tags": trace_tags,
-            "project_name": self.project,
-        }
-        self.add_trace(trace_data)
-
-        root_span_id = prepare_opik_uuid(trace_info.start_time, root_span_seed)
-        span_data = {
-            "id": root_span_id,
-            "parent_span_id": None,
-            "trace_id": opik_trace_id,
-            "name": TraceTaskName.WORKFLOW_TRACE,
-            "input": wrap_dict("input", trace_info.workflow_run_inputs),
-            "output": wrap_dict("output", trace_info.workflow_run_outputs),
-            "start_time": trace_info.start_time,
-            "end_time": trace_info.end_time,
-            "metadata": workflow_metadata,
-            "tags": ["workflow"],
-            "project_name": self.project,
-        }
-        self.add_span(span_data)
-
-        # through workflow_run_id get all_nodes_execution using repository
-        session_factory = sessionmaker(bind=db.engine)
-        # Find the app's creator account
-        app_id = trace_info.metadata.get("app_id")
-        if not app_id:
-            raise ValueError("No app_id found in trace_info metadata")
-
-        service_account = self.get_service_account_with_tenant(app_id)
-
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-            session_factory=session_factory,
-            tenant_id=trace_info.tenant_id,
-            user=service_account,
-            app_id=app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        )
-
-        # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
-            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
-        )
-        tool_parents = workflow_tool_parent_ids(workflow_node_executions)
-        node_span_ids = {item.id: prepare_opik_uuid(item.created_at, item.id) for item in workflow_node_executions}
-
-        for node_execution in workflow_node_executions:
-            node_execution_id = node_execution.id
-            tenant_id = trace_info.tenant_id  # Use from trace_info instead
-            app_id = trace_info.metadata.get("app_id")  # Use from trace_info instead
-            node_name = node_execution.title
-            node_type = node_execution.node_type
-            status = node_execution.status
-            if node_type == BuiltinNodeTypes.LLM:
-                inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
-            else:
-                inputs = node_execution.inputs or {}
-            outputs = node_execution.outputs or {}
-            created_at = node_execution.created_at or datetime.now()
-            elapsed_time = node_execution.elapsed_time
-            finished_at = created_at + timedelta(seconds=elapsed_time)
-
-            execution_metadata = node_execution.metadata or {}
-            metadata = {str(k): v for k, v in execution_metadata.items()}
-            metadata.update(
-                {
-                    "workflow_run_id": trace_info.workflow_run_id,
-                    "node_execution_id": node_execution_id,
-                    "tenant_id": tenant_id,
-                    "app_id": app_id,
-                    "app_name": node_name,
-                    "node_type": node_type,
-                    "status": status,
+def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
+    """Keep untimed details as marked instants at a captured endpoint, never export time."""
+    spans: dict[str, TraceSpan] = {}
+    for span in completed_trace.spans:
+        if span.started_at is None or span.ended_at is None:
+            parent = spans.get(span.parent_span_id or "")
+            anchor = span.started_at or span.ended_at or (parent.started_at if parent else None)
+            if anchor is None:
+                raise TraceExportError("opik_span_time_missing")
+            span = span.model_copy(
+                update={
+                    "started_at": anchor,
+                    "ended_at": anchor,
+                    "attributes": {
+                        **span.attributes,
+                        "dify.timing.estimated": True,
+                        "dify.timing.source": "captured_endpoint",
+                    },
                 }
             )
+        assert span.started_at is not None
+        assert span.ended_at is not None
+        if span.ended_at < span.started_at:
+            raise TraceExportError("opik_span_time_invalid")
+        spans[span.span_id] = span
+    return list(spans.values())
 
-            process_data = node_execution.process_data or {}
 
-            provider = None
-            model = None
-            total_tokens = 0
-            completion_tokens = 0
-            prompt_tokens = 0
+def _make_opik_id(identifier: str, started_at: datetime | None) -> str:
+    """Use Opik's UUID4-to-UUID7 layout while keeping every retry deterministic."""
+    value = UUID(identifier)
+    if value.version == 7:
+        return str(value)
+    if started_at is None:
+        raise TraceExportError("opik_span_time_missing")
+    encoded = bytearray(value.bytes)
+    encoded[:6] = int(started_at.timestamp() * 1000).to_bytes(6, "big")
+    encoded[6] = (encoded[6] & 0x0F) | 0x70
+    encoded[8] = (encoded[8] & 0x3F) | 0x80
+    return str(UUID(bytes=bytes(encoded)))
 
-            if process_data and process_data.get("model_mode") == "chat":
-                run_type = "llm"
-                provider = process_data.get("model_provider", None)
-                model = process_data.get("model_name", "")
-                metadata.update(
-                    {
-                        "ls_provider": provider,
-                        "ls_model_name": model,
-                    }
-                )
 
-                try:
-                    usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
-                    total_tokens = usage_data.get("total_tokens", 0)
-                    prompt_tokens = usage_data.get("prompt_tokens", 0)
-                    completion_tokens = usage_data.get("completion_tokens", 0)
-                except Exception:
-                    logger.error("Failed to extract usage", exc_info=True)
+def _make_span_tags(completed_trace: CompletedTrace, span: TraceSpan) -> list[JsonValue]:
+    tags = ["dify", span.span_type]
+    operation_type = span.attributes.get("operation_type", span.span_type)
+    if not isinstance(operation_type, str):
+        operation_type = span.span_type
+    mode = span.attributes.get("conversation_mode", span.attributes.get("app_mode"))
+    if span.node_execution_id or span.attributes.get("node_execution_id") or span.span_type == "node":
+        tags.append("node_execution")
+    elif operation_type in {"message", "llm"}:
+        tags.append(operation_type)
+        if operation_type == "message" and completed_trace.source.workflow_run_id:
+            tags.append("workflow")
+        elif isinstance(mode, str) and mode:
+            tags.append(mode)
+    elif operation_type in {"moderation", "suggested_question", "dataset_retrieval", "generate_name"}:
+        tags.append(operation_type)
+    elif operation_type == "tool" or span.span_type == "tool":
+        tags.append("tool")
+        if isinstance(tool_name := span.attributes.get("tool_name", span.span_name), str) and tool_name:
+            tags.append(tool_name)
+    return list(dict.fromkeys(tags))
 
-            else:
-                run_type = "tool"
 
-            if not total_tokens:
-                total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
+def _map_span_type(span: TraceSpan) -> str:
+    if span.node_execution_id and isinstance(span.attributes.get("node_type"), str):
+        process_data = span.attributes.get("process_data")
+        model_mode = span.attributes.get(
+            "model_mode", process_data.get("model_mode") if isinstance(process_data, dict) else None
+        )
+        return "llm" if model_mode == "chat" else "tool"
+    operation_type = span.attributes.get("operation_type")
+    if not isinstance(operation_type, str):
+        operation_type = span.span_type
+    if operation_type == "generate_name":
+        return "general"
+    if operation_type in {"moderation", "suggested_question", "dataset_retrieval", "tool"}:
+        return "tool"
+    if span.span_type == "llm":
+        return "llm"
+    if (
+        span.span_type in {"tool", "node", "retrieval", "knowledge-retrieval"}
+        or span.node_execution_id
+        or span.attributes.get("node_execution_id")
+    ):
+        return "tool"
+    return "general"
 
-            span_data = {
-                "trace_id": opik_trace_id,
-                "id": node_span_ids[node_execution_id],
-                "parent_span_id": node_span_ids.get(tool_parents.get(node_execution_id, ""), root_span_id),
-                "name": node_name,
-                "type": run_type,
-                "start_time": created_at,
-                "end_time": finished_at,
-                "metadata": wrap_metadata(metadata),
-                "input": wrap_dict("input", inputs),
-                "output": wrap_dict("output", outputs),
-                "tags": ["node_execution"],
-                "project_name": self.project,
-                "usage": {
-                    "total_tokens": total_tokens,
-                    "completion_tokens": completion_tokens,
-                    "prompt_tokens": prompt_tokens,
-                },
-                "model": model,
-                "provider": provider,
+
+def _map_span_usage(spans: list[TraceSpan]) -> dict[str, dict[str, JsonValue]]:
+    usages: dict[str, dict[str, JsonValue]] = {}
+    spans_with_agent_usage: set[str] = set()
+    for span in spans:
+        usage = span.usage if span.span_type == "llm" else {}
+        aggregate_usage = span.attributes.get("aggregate_usage")
+        is_agent = span.span_type == "agent" or span.attributes.get("node_type") == "agent"
+        if (
+            is_agent
+            and isinstance(aggregate_usage, dict)
+            and any(
+                key.endswith("tokens") and isinstance(value, int) and not isinstance(value, bool) and value > 0
+                for key, value in aggregate_usage.items()
+            )
+        ):
+            usage = aggregate_usage
+            spans_with_agent_usage.add(span.span_id)
+        if span.parent_span_id in spans_with_agent_usage:
+            spans_with_agent_usage.add(span.span_id)
+            # Agent log usage is part of the aggregate, even when only some logs were captured.
+            if span.attributes.get("metrics_from_parent"):
+                usage = {}
+        usages[span.span_id] = {
+            key: value
+            for key, value in usage.items()
+            if key.endswith("tokens") and isinstance(value, int) and not isinstance(value, bool)
+        }
+    return usages
+
+
+class OpikTraceClient:
+    def __init__(self, provider_config: dict[str, Any]):
+        self.config = OpikConfig.model_validate(provider_config)
+        runtime_settings = (
+            provider_config["_runtime_settings"]
+            if "_runtime_settings" in provider_config
+            else OpikConfig.load_runtime_settings(provider_config)
+        )
+        self.config = self.config.model_copy(
+            update={
+                key: runtime_settings[key] for key in ("api_key", "workspace", "project") if key in runtime_settings
             }
-
-            self.add_span(span_data)
-
-    def message_trace(self, trace_info: MessageTraceInfo):
-        # get message file data
-        file_list = cast(list[str], trace_info.file_list) or []
-        message_file_data: MessageFile | None = trace_info.message_file_data
-
-        if message_file_data is not None:
-            file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
-            file_list.append(file_url)
-
-        message_data = trace_info.message_data
-        if message_data is None:
-            return
-
-        metadata = trace_info.metadata
-        dify_trace_id = trace_info.trace_id or trace_info.message_id
-
-        user_id = message_data.from_account_id
-        metadata["user_id"] = user_id
-        metadata["file_list"] = file_list
-
-        if message_data.from_end_user_id:
-            end_user_data: EndUser | None = db.session.get(EndUser, message_data.from_end_user_id)
-            if end_user_data is not None:
-                end_user_id = end_user_data.session_id
-                metadata["end_user_id"] = end_user_id
-
-        trace_data = {
-            "id": prepare_opik_uuid(trace_info.start_time, dify_trace_id),
-            "name": TraceTaskName.MESSAGE_TRACE,
-            "start_time": trace_info.start_time,
-            "end_time": trace_info.end_time,
-            "metadata": wrap_metadata(metadata),
-            "input": trace_info.inputs,
-            "output": message_data.answer,
-            "thread_id": message_data.conversation_id,
-            "tags": ["message", str(trace_info.conversation_mode)],
-            "project_name": self.project,
-        }
-        trace = self.add_trace(trace_data)
-
-        span_data = {
-            "trace_id": trace.id,
-            "name": "llm",
-            "type": "llm",
-            "start_time": trace_info.start_time,
-            "end_time": trace_info.end_time,
-            "metadata": wrap_metadata(metadata),
-            "input": {"input": trace_info.inputs},
-            "output": {"output": message_data.answer},
-            "tags": ["llm", str(trace_info.conversation_mode)],
-            "usage": {
-                "completion_tokens": trace_info.answer_tokens,
-                "prompt_tokens": trace_info.message_tokens,
-                "total_tokens": trace_info.total_tokens,
+        )
+        self.http = TraceProviderHttpClient(
+            self.config.url,
+            {
+                **({"Authorization": self.config.api_key} if self.config.api_key else {}),
+                "Comet-Workspace": self.config.workspace or "default",
             },
-            "project_name": self.project,
+            ssl_context=create_ssl_context(
+                runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)
+            ),
+            request_timeout=100,
+            connect_timeout=20,
+            pool_timeout=20,
+        )
+
+    def verify_credentials(self) -> bool:
+        self.http.request("GET", "v1/private/projects", params={"size": 1})
+        return True
+
+    def get_project_url(self) -> str:
+        workspace = self.config.workspace or "default"
+        if workspace == "default":
+            try:
+                workspace_details = self.http.request("GET", "v1/private/auth/workspace").json()
+                if (
+                    isinstance(workspace_details, dict)
+                    and isinstance(workspace_name := workspace_details.get("workspace_name"), str)
+                    and workspace_name
+                ):
+                    workspace = workspace_name
+            except (TraceExportError, ValueError):
+                # An unavailable default-workspace lookup must not prevent reading saved settings.
+                pass
+        return (
+            self.config.url.removesuffix("api/").rstrip("/")
+            + f"/{quote(workspace, safe='')}/redirect/projects?"
+            + urlencode({"name": self.config.project or "Default Project"})
+        )
+
+    def export_trace(
+        self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
+    ) -> ExportedParentSpans:
+        spans = _prepare_timed_spans(completed_trace)
+        usages = _map_span_usage(spans)
+        root = spans[0]
+        trace_seed = completed_trace.trace_id
+        if external_id := completed_trace.source.external_trace_id:
+            try:
+                external_uuid = UUID(external_id)
+                if external_uuid.int:
+                    trace_seed = str(external_uuid)
+            except ValueError:
+                pass
+        trace_id = str(parent_span["trace_id"]) if parent_span else _make_opik_id(trace_seed, root.started_at)
+        if parent_span:
+            try:
+                if any(UUID(str(parent_span[key])).version != 7 for key in ("trace_id", "span_id")):
+                    raise ValueError("Opik requires UUIDv7")
+            except ValueError:
+                raise TraceExportError("opik_parent_id_invalid") from None
+        span_ids = {
+            span.span_id: _make_opik_id(export_span_id(completed_trace, span.span_id), span.started_at)
+            for span in spans
         }
-        self.add_span(span_data)
-
-    def moderation_trace(self, trace_info: ModerationTraceInfo):
-        if trace_info.message_data is None:
-            return
-
-        start_time = trace_info.start_time or trace_info.message_data.created_at
-
-        span_data = {
-            "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.MODERATION_TRACE,
-            "type": "tool",
-            "start_time": start_time,
-            "end_time": trace_info.end_time or trace_info.message_data.updated_at,
-            "metadata": wrap_metadata(trace_info.metadata),
-            "input": wrap_dict("input", trace_info.inputs),
-            "output": {
-                "action": trace_info.action,
-                "flagged": trace_info.flagged,
-                "preset_response": trace_info.preset_response,
-                "inputs": trace_info.inputs,
-            },
-            "tags": ["moderation"],
-        }
-
-        self.add_span(span_data)
-
-    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
-        message_data = trace_info.message_data
-        if message_data is None:
-            return
-
-        start_time = trace_info.start_time or message_data.created_at
-
-        span_data = {
-            "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.SUGGESTED_QUESTION_TRACE,
-            "type": "tool",
-            "start_time": start_time,
-            "end_time": trace_info.end_time or message_data.updated_at,
-            "metadata": wrap_metadata(trace_info.metadata),
-            "input": wrap_dict("input", trace_info.inputs),
-            "output": wrap_dict("output", trace_info.suggested_question),
-            "tags": ["suggested_question"],
-        }
-
-        self.add_span(span_data)
-
-    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
-        if trace_info.message_data is None:
-            return
-
-        start_time = trace_info.start_time or trace_info.message_data.created_at
-
-        span_data = {
-            "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.DATASET_RETRIEVAL_TRACE,
-            "type": "tool",
-            "start_time": start_time,
-            "end_time": trace_info.end_time or trace_info.message_data.updated_at,
-            "metadata": wrap_metadata(trace_info.metadata),
-            "input": wrap_dict("input", trace_info.inputs),
-            "output": {"documents": trace_info.documents},
-            "tags": ["dataset_retrieval"],
-        }
-
-        self.add_span(span_data)
-
-    def tool_trace(self, trace_info: ToolTraceInfo):
-        span_data = {
-            "trace_id": prepare_opik_uuid(trace_info.start_time, trace_info.trace_id or trace_info.message_id),
-            "name": trace_info.tool_name,
-            "type": "tool",
-            "start_time": trace_info.start_time,
-            "end_time": trace_info.end_time,
-            "metadata": wrap_metadata(trace_info.metadata),
-            "input": wrap_dict("input", trace_info.tool_inputs),
-            "output": wrap_dict("output", trace_info.tool_outputs),
-            "tags": ["tool", trace_info.tool_name],
-        }
-
-        self.add_span(span_data)
-
-    def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
-        trace_data = {
-            "id": prepare_opik_uuid(trace_info.start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.GENERATE_NAME_TRACE,
-            "start_time": trace_info.start_time,
-            "end_time": trace_info.end_time,
-            "metadata": wrap_metadata(trace_info.metadata),
-            "input": trace_info.inputs,
-            "output": trace_info.outputs,
-            "thread_id": trace_info.conversation_id,
-            "tags": ["generate_name"],
-            "project_name": self.project,
-        }
-
-        trace = self.add_trace(trace_data)
-
-        span_data = {
-            "trace_id": trace.id,
-            "name": TraceTaskName.GENERATE_NAME_TRACE,
-            "start_time": trace_info.start_time,
-            "end_time": trace_info.end_time,
-            "metadata": wrap_metadata(trace_info.metadata),
-            "input": wrap_dict("input", trace_info.inputs),
-            "output": wrap_dict("output", trace_info.outputs),
-            "tags": ["generate_name"],
-        }
-
-        self.add_span(span_data)
-
-    def add_trace(self, opik_trace_data: dict[str, Any]) -> Trace:
-        try:
-            trace = self.opik_client.trace(**opik_trace_data)
-            logger.debug("Opik Trace created successfully")
-            return trace
-        except Exception as e:
-            raise ValueError(f"Opik Failed to create trace: {str(e)}")
-
-    def add_span(self, opik_span_data: dict[str, Any]):
-        try:
-            self.opik_client.span(**opik_span_data)
-            logger.debug("Opik Span created successfully")
-        except Exception as e:
-            raise ValueError(f"Opik Failed to create span: {str(e)}")
-
-    def api_check(self):
-        try:
-            self.opik_client.auth_check()
-            return True
-        except Exception as e:
-            logger.info("Opik API check failed: %s", str(e), exc_info=True)
-            raise ValueError(f"Opik API check failed: {str(e)}")
-
-    def get_project_url(self):
-        try:
-            return self.opik_client.get_project_url(project_name=self.project)
-        except Exception as e:
-            logger.info("Opik get run url failed: %s", str(e), exc_info=True)
-            raise ValueError(f"Opik get run url failed: {str(e)}")
+        trace_values: dict[str, JsonValue] | None = None
+        span_values: list[dict[str, JsonValue]] = []
+        for span in spans:
+            assert span.started_at is not None
+            assert span.ended_at is not None
+            inputs = span.inputs
+            if span.node_execution_id and span.attributes.get("node_type") in (
+                "question-classifier",
+                "parameter-extractor",
+            ):
+                inputs = span.attributes.get("original_inputs", inputs)
+            values: dict[str, JsonValue] = {
+                "name": span.span_name,
+                "start_time": span.started_at.isoformat(),
+                "end_time": span.ended_at.isoformat() if span.ended_at else None,
+                "project_name": self.config.project or "Default Project",
+                "input": inputs
+                if isinstance(inputs, dict)
+                else {"messages" if span.span_type == "llm" else "input": inputs},
+                "output": span.outputs if isinstance(span.outputs, dict) else {"output": span.outputs},
+                "metadata": {**span_attributes(completed_trace, span), "created_from": "dify"},
+                "tags": _make_span_tags(completed_trace, span),
+            }
+            if span.error:
+                values["error_info"] = {"message": span.error, "exception_type": span.status, "traceback": ""}
+            if span.span_id == completed_trace.root_span_id and parent_span is None:
+                trace_values = {
+                    **values,
+                    "id": trace_id,
+                    "tags": ["dify", "message", "workflow"]
+                    if span.span_type == "workflow" and completed_trace.source.message_id
+                    else values["tags"],
+                    "thread_id": completed_trace.source.session_id or completed_trace.source.conversation_id,
+                }
+            values.update(
+                {
+                    "id": span_ids[span.span_id],
+                    "trace_id": trace_id,
+                    "parent_span_id": span_ids[span.parent_span_id]
+                    if span.parent_span_id
+                    else (parent_span["span_id"] if parent_span else None),
+                    "type": _map_span_type(span),
+                    "model": span.attributes.get("model_name"),
+                    "provider": span.attributes.get("model_provider"),
+                    "usage": usages[span.span_id],
+                }
+            )
+            if (
+                span.span_type == "llm"
+                and (cost := span.usage.get("total_price", span.usage.get("total_cost"))) is not None
+            ):
+                values["total_estimated_cost"] = float(str(cost))
+            span_values.append(values)
+        if trace_values is not None:
+            self.http.request("POST", "v1/private/traces", json=trace_values)
+        batch: list[dict[str, JsonValue]] = []
+        batch_bytes = 12  # {"spans":[]}
+        for values in span_values:
+            item_bytes = len(json_text(values).encode("utf-8")) + 1
+            # Opik's native batches hold up to 1,000 spans / 5 MiB; an oversized span is sent alone.
+            if batch and (len(batch) == 1000 or batch_bytes + item_bytes > 5 * 1024 * 1024):
+                self.http.request("POST", "v1/private/spans/batch", json={"spans": batch})
+                batch = []
+                batch_bytes = 12
+            batch.append(values)
+            batch_bytes += item_bytes
+        if batch:
+            self.http.request("POST", "v1/private/spans/batch", json={"spans": batch})
+        return ExportedParentSpans(
+            spans={span_id: {"trace_id": trace_id, "span_id": exported_id} for span_id, exported_id in span_ids.items()}
+        )

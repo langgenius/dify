@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine.command import RedisChannel
+from graphon.engine_events import GraphRunStartedEvent, GraphRunSucceededEvent
 from graphon.runtime import RuntimeState, VariablePool
 
 
@@ -90,7 +91,7 @@ class TestWorkflowEntryRedisChannel:
             assert call_args["command_channel"] == mock_inmemory_channel
             assert workflow_entry.command_channel == mock_inmemory_channel
 
-    def test_workflow_entry_run_with_redis_channel(self):
+    def test_workflow_entry_run_with_redis_channel(self) -> None:
         """Test that WorkflowEntry.run() works correctly with Redis channel."""
         # Mock dependencies
         mock_graph = MagicMock()
@@ -103,14 +104,13 @@ class TestWorkflowEntryRedisChannel:
         mock_redis_client = MagicMock()
         redis_channel = RedisChannel(mock_redis_client, "test:channel:key")
 
-        # Mock events to be generated
-        mock_event1 = MagicMock()
-        mock_event2 = MagicMock()
+        started_event = GraphRunStartedEvent()
+        succeeded_event = GraphRunSucceededEvent(outputs={"answer": ["original"]})
 
         # Patch Engine
         with patch("core.workflow.workflow_entry.Engine", autospec=True) as MockGraphEngine:
             mock_graph_engine = MagicMock()
-            mock_graph_engine.run.return_value = iter([mock_event1, mock_event2])
+            mock_graph_engine.run.return_value = iter([started_event, succeeded_event])
             MockGraphEngine.return_value = mock_graph_engine
 
             # Create WorkflowEntry with Redis channel
@@ -135,5 +135,13 @@ class TestWorkflowEntryRedisChannel:
 
             # Verify events were generated
             assert len(events) == 2
-            assert events[0] == mock_event1
-            assert events[1] == mock_event2
+            assert events[0] == started_event
+            assert events[0] is not started_event
+            assert events[1] == succeeded_event
+            assert events[1] is not succeeded_event
+
+            # Response consumers cannot mutate the engine's nested event values.
+            copied_event = events[1]
+            assert isinstance(copied_event, GraphRunSucceededEvent)
+            copied_event.outputs["answer"].append("consumer change")
+            assert succeeded_event.outputs == {"answer": ["original"]}

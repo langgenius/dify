@@ -173,7 +173,7 @@ class TestChatAppGenerator:
                 "core.app.apps.chat.app_generator.ChatAppGenerateEntity",
                 Mock(side_effect=DummyGenerateEntity),
             ) as generate_entity,
-            patch("core.app.apps.chat.app_generator.TraceQueueManager", return_value=SimpleNamespace()),
+            patch("core.app.apps.chat.app_generator.create_message_trace", return_value=SimpleNamespace()),
             patch("core.app.apps.chat.app_generator.MessageBasedAppQueueManager", DummyQueueManager),
             patch(
                 "core.app.apps.chat.app_generator.ChatAppGenerateResponseConverter.convert", return_value={"ok": True}

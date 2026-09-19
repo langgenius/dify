@@ -498,7 +498,7 @@ class TestHitlServiceApi:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
         pipeline = AdvancedChatAppGenerateTaskPipeline(
@@ -589,7 +589,7 @@ class TestHitlServiceApi:
             user_id="user",
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
-            trace_manager=None,
+            trace_recorder=None,
             workflow_execution_id="run-id",
             extras={},
             call_depth=0,

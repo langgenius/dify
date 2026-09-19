@@ -12,9 +12,7 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.utils import measure_time
+from core.ops.trace_source import create_message_trace
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -433,24 +431,22 @@ class MessageService:
             instruction_prompt = None
 
         configured_model = suggested_questions_after_answer_config.get("model")
-        with (
-            measure_time() as timer,
-            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}),
-        ):
+        trace_recorder = create_message_trace(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            user_id=user.id if isinstance(user, Account) else user.session_id,
+            message_id=message_id,
+            conversation_id=conversation.id,
+            workflow_run_id=message.workflow_run_id,
+        )
+        with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}):
             questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id,
                 histories=histories,
                 instruction_prompt=instruction_prompt,
                 model_config=configured_model,
+                trace_recorder=trace_recorder,
             )
             questions: list[str] = list(questions_sequence)
-
-        # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_model.id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.SUGGESTED_QUESTION_TRACE, message_id=message_id, suggested_question=questions, timer=timer
-            )
-        )
 
         return questions
