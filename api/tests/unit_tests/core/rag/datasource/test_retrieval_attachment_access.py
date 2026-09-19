@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import contextvars
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -7,6 +10,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from context.execution_context import ExecutionContext, NullAppContext
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import (
     DatabaseFileAccessController,
@@ -50,6 +54,64 @@ def test_file_access_grants_ignore_empty_inputs_and_missing_scope() -> None:
     assert current_scope is not None
     assert current_scope.granted_upload_file_ids == frozenset()
     assert current_scope.granted_retriever_segment_ids == frozenset()
+
+
+def test_file_access_grants_survive_execution_context_restore_between_nodes() -> None:
+    """Graph workers restore the run's starting context before every node.
+
+    Grants recorded by a knowledge retrieval node must still be visible when a
+    later LLM node runs on the same or another worker thread.
+    """
+    scope = FileAccessScope(
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.SERVICE_API,
+    )
+
+    with bind_file_access_scope(scope):
+        execution_context = ExecutionContext(app_context=NullAppContext(), context_vars=contextvars.copy_context())
+
+    def run_node(fn: Callable[[], bool | None]) -> bool | None:
+        with execution_context:
+            return fn()
+
+    def retrieval_node() -> None:
+        grant_retriever_segment_access(["segment-id"])
+        grant_upload_file_access(["upload-file-id"])
+
+    def llm_node() -> bool:
+        current_scope = get_current_file_access_scope()
+        assert current_scope is not None
+        return is_retriever_segment_access_granted("segment-id") and (
+            "upload-file-id" in current_scope.granted_upload_file_ids
+        )
+
+    with ThreadPoolExecutor(max_workers=1) as retrieval_worker, ThreadPoolExecutor(max_workers=1) as llm_worker:
+        retrieval_worker.submit(run_node, retrieval_node).result()
+        assert retrieval_worker.submit(run_node, llm_node).result() is True
+        assert llm_worker.submit(run_node, llm_node).result() is True
+
+
+def test_file_access_grants_do_not_leak_between_scopes() -> None:
+    first_scope = FileAccessScope(
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.SERVICE_API,
+    )
+    second_scope = FileAccessScope(
+        tenant_id=first_scope.tenant_id,
+        user_id=first_scope.user_id,
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.SERVICE_API,
+    )
+
+    with bind_file_access_scope(first_scope):
+        grant_retriever_segment_access(["segment-id"])
+
+    with bind_file_access_scope(second_scope):
+        assert is_retriever_segment_access_granted("segment-id") is False
 
 
 @pytest.mark.parametrize("sqlite_session", [(UploadFile, SegmentAttachmentBinding)], indirect=True)
