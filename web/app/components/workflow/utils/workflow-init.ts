@@ -201,6 +201,14 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     })
   }
 
+  nodes.forEach((node) => {
+    if (!node.parentId && node.data.isInLoop && node.data.loop_id) {
+      node.parentId = node.data.loop_id
+    } else if (!node.parentId && node.data.isInIteration && node.data.iteration_id) {
+      node.parentId = node.data.iteration_id
+    }
+  })
+
   const iterationOrLoopNodeMap = nodes.reduce(
     (acc, node) => {
       if (node.parentId) {
