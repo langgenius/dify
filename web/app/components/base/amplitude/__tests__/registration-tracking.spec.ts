@@ -19,7 +19,7 @@ vi.mock('../utils', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
-vi.mock('../init', () => ({
+vi.mock('../init-state', () => ({
   getIsAmplitudeInitialized: () => mockAmplitudeInitialized.value,
 }))
 

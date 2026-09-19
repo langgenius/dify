@@ -5,7 +5,7 @@ import type {
 } from './registration-session-state'
 import type { AnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { getAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
-import { getIsAmplitudeInitialized } from './init'
+import { getIsAmplitudeInitialized } from './init-state'
 import {
   ATTRIBUTION_KEYS,
   clearRegistrationFlushRetry,
