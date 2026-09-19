@@ -14,7 +14,7 @@ import copy
 import hashlib
 import json
 import re
-from collections.abc import Collection, Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from enum import StrEnum
 from typing import Any, Final
 
@@ -33,7 +33,6 @@ CATALOG_PATH: Final = f"{_PREFIX}_catalog"
 _VERBS: Final = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE"})
 _EXT_KEY: Final = "openapi_catalog"
 _PLACEHOLDER_RE: Final = re.compile(r"<(?:\w+:)?(\w+)>")
-_TEMPLATE_RE: Final = re.compile(r"\{(\w+)\}")
 _DEFS: Final = "$defs"
 _REF: Final = "$ref"
 _REF_PREFIX: Final = "#/$defs/"
@@ -52,22 +51,19 @@ class Bind(StrEnum):
 def inline_refs(schema: Mapping[str, Any]) -> dict[str, Any]:
     defs = schema.get(_DEFS) or {}
 
-    def walk(node: Any, stack: tuple[str, ...]) -> Any:
+    def walk(node: Any) -> Any:
         if isinstance(node, list):
-            return [walk(item, stack) for item in node]
+            return [walk(item) for item in node]
         if not isinstance(node, Mapping):
             return node
         ref = node.get(_REF)
         if isinstance(ref, str) and ref.startswith(_REF_PREFIX):
-            name = ref[len(_REF_PREFIX) :]
-            if name in stack:
-                raise ValueError(f"recursive $ref {name} cannot be inlined")
-            target = walk(defs[name], (*stack, name))
+            target = walk(defs[ref[len(_REF_PREFIX) :]])
             rest = {k: v for k, v in node.items() if k != _REF}
-            return {**target, **walk(rest, stack)}
-        return {k: walk(v, stack) for k, v in node.items() if k != _DEFS}
+            return {**target, **walk(rest)}
+        return {k: walk(v) for k, v in node.items() if k != _DEFS}
 
-    return walk(schema, ())
+    return walk(schema)
 
 
 def _model_properties(model: type[BaseModel] | None) -> tuple[dict[str, Any], list[str]]:
@@ -105,14 +101,8 @@ def derive_bind(*, method: str, path_params: Sequence[str], schema: Mapping[str,
     return bind
 
 
-def _catalog_path(rule: str, *, arguments: Collection[str]) -> str:
-    """Werkzeug converters this substitution does not understand (``<int(min=1):n>``)
-    would otherwise leave their raw syntax in the published path.
-    """
-    path = _PLACEHOLDER_RE.sub(r"{\1}", rule)
-    if set(_TEMPLATE_RE.findall(path)) != set(arguments):
-        raise ValueError(f"path placeholders of {rule} do not resolve to its arguments")
-    return path
+def _catalog_path(rule: str) -> str:
+    return _PLACEHOLDER_RE.sub(r"{\1}", rule)
 
 
 def iter_handlers(app: Flask) -> Iterator[tuple[Rule, str, Any]]:
@@ -136,12 +126,10 @@ def build_catalog(app: Flask) -> dict[str, Any]:
             continue
         path_params = sorted(rule.arguments)
         schema = op_input_schema(path_params=path_params, query=spec.query, body=spec.body)
-        if spec.op in ops:
-            raise RuntimeError(f"op id {spec.op} declared on two routes")
         ops[spec.op] = {
             "summary": spec.summary,
             "method": verb,
-            "path": _catalog_path(rule.rule, arguments=rule.arguments),
+            "path": _catalog_path(rule.rule),
             "kind": spec.kind.value,
             "input": schema,
             "bind": derive_bind(method=verb, path_params=path_params, schema=schema),

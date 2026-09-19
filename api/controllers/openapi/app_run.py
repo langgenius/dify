@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Generator, Iterable, Mapping
+from collections.abc import Callable, Collection, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from typing import Any, Final
 
 from flask_restx import Resource
-from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import (
     BadRequest,
@@ -148,8 +147,8 @@ def _generate(app: App, caller: Any, args: dict[str, Any], session: Session):
     )
 
 
-def _generate_args(caller: Any, payload: RunPayloadBase) -> dict[str, Any]:
-    args = payload.model_dump(exclude={"files", "attachments"}, exclude_none=True)
+def _generate_args(caller: Any, payload: RunPayloadBase, *, exclude: Collection[str] = ()) -> dict[str, Any]:
+    args = payload.model_dump(exclude={"files", "attachments", *exclude}, exclude_none=True)
     args["inputs"] = merge_files(payload.inputs, payload.files, caller)
     if payload.attachments:
         args["files"] = materialize(payload.attachments, caller)
@@ -185,11 +184,7 @@ class _ChatMessageEnd(MessageEndStreamResponse):
 
 def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generator[str, None, None]:
     def build(event: Mapping[str, Any]) -> list[Hint]:
-        try:
-            end = _ChatMessageEnd.model_validate(event)
-        except ValidationError:
-            logger.warning("message_end event did not validate; no hints attached, app_id=%s", app_id)
-            return []
+        end = _ChatMessageEnd.model_validate(event)
         return [
             Hint(
                 summary="Reply in this conversation",
@@ -201,24 +196,16 @@ def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generato
     return attach_stream_hints(events, event=StreamEvent.MESSAGE_END.value, build=build)
 
 
-def _args_with_files(caller: Any, payload: AppRunRequest, *, exclude: set[str]) -> dict[str, Any]:
-    args = payload.model_dump(exclude={"files", "attachments", *exclude}, exclude_none=True)
-    args["inputs"] = merge_files(payload.inputs, payload.files, caller)
-    if payload.attachments:
-        args["files"] = materialize(payload.attachments, caller)
-    return args
-
-
 def _run_chat(app: App, caller: Any, payload: AppRunRequest, session: Session):
     if not payload.query or not payload.query.strip():
         raise UnprocessableEntity("query_required_for_chat")
-    args = _args_with_files(caller, payload, exclude=set())
+    args = _generate_args(caller, payload)
     with _translate_service_errors():
         return _generate(app, caller, args, session)
 
 
 def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Session):
-    args = _args_with_files(caller, payload, exclude=set())
+    args = _generate_args(caller, payload)
     args["auto_generate_name"] = False
     args.setdefault("query", "")
     with _translate_service_errors():
@@ -228,7 +215,7 @@ def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Sess
 def _run_workflow(app: App, caller: Any, payload: AppRunRequest, session: Session):
     if payload.query is not None:
         raise UnprocessableEntity("query_not_supported_for_workflow")
-    args = _args_with_files(caller, payload, exclude={"query", "conversation_id", "auto_generate_name"})
+    args = _generate_args(caller, payload, exclude={"query", "conversation_id", "auto_generate_name"})
     with _translate_service_errors():
         return _generate(app, caller, args, session)
 

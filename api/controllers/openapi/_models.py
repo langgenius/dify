@@ -86,7 +86,6 @@ class PaginationEnvelope[T](Hinted):
     total: int
     has_more: bool
     data: list[T]
-    hints: list[Hint] = Field(default_factory=list, description="Next steps; one `Next page` entry while `has_more`")
 
     @classmethod
     def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> Self:
@@ -537,8 +536,6 @@ class AppDslExportResponse(BaseModel):
 
 class AppDslImportResponse(Import, Hinted):
     """`Import` plus the server-built next step for a pending import."""
-
-    hints: list[Hint] = Field(default_factory=list, description="Next steps; empty when the import finished")
 
 
 class FormSubmitResponse(BaseModel):

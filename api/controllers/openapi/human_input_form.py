@@ -7,7 +7,6 @@ from typing import Any, override
 
 from flask import Response
 from flask_restx import Resource
-from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
@@ -192,21 +191,11 @@ def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) ->
 
 
 def with_form_hints(events: Iterable[str], *, app_id: str) -> Generator[str, None, None]:
-    """A run stream whose `human_input_required` events carry hints that target the submit route above.
-
-    The event is read back through the core's own entity. One that does not validate (a
-    form input type this server does not know) is passed through without hints; the raw
-    event still carries the form token, so the caller can read the form instead.
-    """
+    """A run stream whose `human_input_required` events carry hints that target the submit route above."""
 
     op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
 
     def build(event: Mapping[str, Any]) -> list[Hint]:
-        try:
-            response = HumanInputRequiredResponse.model_validate(event)
-        except ValidationError:
-            logger.warning("human_input_required event did not validate; no hints attached, app_id=%s", app_id)
-            return []
-        return form_hints(op=op, app_id=app_id, response=response)
+        return form_hints(op=op, app_id=app_id, response=HumanInputRequiredResponse.model_validate(event))
 
     return attach_stream_hints(events, event=StreamEvent.HUMAN_INPUT_REQUIRED.value, build=build)

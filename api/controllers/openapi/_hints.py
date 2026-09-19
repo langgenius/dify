@@ -44,23 +44,19 @@ def next_page_hint(
 def attach_stream_hints(events: Iterable[str], *, event: str, build: HintBuilder) -> Generator[str, None, None]:
     """Yield the source SSE chunks, adding a top-level `hints` list to every `event` that `build` hints.
 
-    Chunks that are not `data:` JSON, other event kinds, and events `build` returns nothing
-    for are yielded as the original string so the wire bytes stay identical. Only chunks
-    that can be the wanted event are parsed — every other chunk of a long run is passed
-    through on a substring test. Closing this generator closes the source (the run stream
-    is a `RateLimitGenerator` that releases its slot on close).
+    `event: ping` chunks, other event kinds, and events `build` returns nothing for are
+    yielded as the original string so the wire bytes stay identical. Only chunks that can
+    be the wanted event are parsed — every other chunk of a long run is passed through on
+    a substring test. Closing this generator closes the source (the run stream is a
+    `RateLimitGenerator` that releases its slot on close).
     """
     try:
         for chunk in events:
             if not chunk.startswith(_DATA_PREFIX) or event not in chunk:
                 yield chunk
                 continue
-            try:
-                parsed = json.loads(chunk[len(_DATA_PREFIX) :])
-            except ValueError:
-                yield chunk
-                continue
-            if not isinstance(parsed, dict) or parsed.get(_EVENT_FIELD) != event:
+            parsed = json.loads(chunk[len(_DATA_PREFIX) :])
+            if parsed.get(_EVENT_FIELD) != event:
                 yield chunk
                 continue
             hints = build(parsed)

@@ -296,9 +296,3 @@ class TestFormHints:
                 "form": event["data"]["inputs"],
             },
         ]
-
-    def test_with_form_hints_passes_an_unknown_form_input_type_through_without_hints(self):
-        event = _paused(form_token="ft", inputs=[], actions=[UserActionConfig(id="ok", title="OK")])
-        event["data"]["inputs"] = [{"type": "signature-pad", "output_variable_name": "sig"}]
-        chunk = f"data: {json.dumps(event)}\n\n"
-        assert list(with_form_hints(iter([chunk]), app_id="a1")) == [chunk]

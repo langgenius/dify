@@ -41,8 +41,6 @@ def test_attach_stream_hints_decorates_only_the_wanted_event() -> None:
     passthrough = [
         "event: ping\n\n",
         _sse({"event": "message", "answer": "paused"}),
-        "not json\n\n",
-        "data: paused\n\n",
     ]
     wanted = {"event": "paused", "run_id": "r1", "data": {"x": 1}}
     out = list(attach_stream_hints(iter([*passthrough, _sse(wanted)]), event="paused", build=_build))

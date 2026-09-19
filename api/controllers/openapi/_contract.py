@@ -32,7 +32,7 @@ from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import EndpointSpec, Kind, spec_of
+from controllers.openapi.auth.spec import EndpointSpec, Kind
 from enums import DeploymentEdition
 
 __all__ = ["Kind", "accepts", "endpoint", "op_of", "returns"]
@@ -138,10 +138,7 @@ def _normalize_returns(returns: ReturnSpec | Sequence[ReturnSpec] | None) -> tup
 def op_of(view: Any) -> str:
     """The op id a route declared on ``endpoint``; a hint targeting that route reads it here."""
 
-    spec = spec_of(view)
-    if spec is None:
-        raise TypeError(f"{view!r} is not an @endpoint view")
-    return spec.op
+    return view.__spec__.op
 
 
 def endpoint(
@@ -181,7 +178,7 @@ def endpoint(
         edition=edition,
         op=op,
         kind=kind,
-        summary=summary.strip(),
+        summary=summary,
         query=query,
         body=body,
         internal=internal,
