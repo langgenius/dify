@@ -68,7 +68,7 @@ Here is the chat example between human and assistant, inside <example></example>
 User:{{"input_text": ["I want to know which company’s email address test@example.com is?"], "metadata_fields": [{{"name": "filename", "type": "string"}}, {{"name": "email", "type": "string"}}, {{"name": "phone", "type": "string"}}, {{"name": "address", "type": "string"}}]}}
 Assistant:{{"metadata_map": [{{"metadata_field_name": "email", "metadata_field_value": "test@example.com", "comparison_operator": "="}}]}}
 User:{{"input_text": "What are the movies released after 2024-01-01 with a score of more than 9?", "metadata_fields": [{{"name": "name", "type": "string"}}, {{"name": "release_date", "type": "time"}}, {{"name": "rating", "type": "number"}}, {{"name": "country", "type": "string"}}]}}
-Assistant:{{"metadata_map": [{{"metadata_field_name": "release_date", "metadata_field_value": 1704067200, "comparison_operator": "after"}, {{"metadata_field_name": "rating", "metadata_field_value": 9, "comparison_operator": ">"}}]}}
+Assistant:{{"metadata_map": [{{"metadata_field_name": "release_date", "metadata_field_value": 1704067200, "comparison_operator": "after"}}, {{"metadata_field_name": "rating", "metadata_field_value": 9, "comparison_operator": ">"}}]}}
 </example>
 ### User Input
 {{"input_text" : "{input_text}", "metadata_fields" : {metadata_fields}}}

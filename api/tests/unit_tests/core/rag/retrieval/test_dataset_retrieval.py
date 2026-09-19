@@ -1,3 +1,4 @@
+import json
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
@@ -24,6 +25,7 @@ from core.app.app_config.entities import ModelConfig as WorkflowModelConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
+from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.rag.data_post_processor.data_post_processor import WeightsDict
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities import Condition as AppCondition
@@ -4205,29 +4207,27 @@ class TestDatasetRetrievalAdditionalHelpers:
             stop=[],
         )
 
+        metadata_fields = [{"name": "author", "type": "string"}]
+
         with patch("core.rag.retrieval.dataset_retrieval.AdvancedPromptTransform") as mock_prompt_transform:
             mock_prompt_transform.return_value.get_prompt.return_value = ["prompt"]
             prompt_messages, stop = retrieval._get_prompt_template(
                 model_config=model_config_chat,
                 mode="chat",
-                metadata_fields=["author"],
+                metadata_fields=metadata_fields,
                 query="python",
             )
             assert prompt_messages == ["prompt"]
             assert stop == ["x"]
 
-            with patch(
-                "core.rag.retrieval.dataset_retrieval.METADATA_FILTER_COMPLETION_PROMPT",
-                "{input_text} {metadata_fields}",
-            ):
-                prompt_messages_completion, stop_completion = retrieval._get_prompt_template(
-                    model_config=model_config_completion,
-                    mode="completion",
-                    metadata_fields=["author"],
-                    query="python",
-                )
-                assert prompt_messages_completion == ["prompt"]
-                assert stop_completion == []
+            prompt_messages_completion, stop_completion = retrieval._get_prompt_template(
+                model_config=model_config_completion,
+                mode="completion",
+                metadata_fields=metadata_fields,
+                query="python",
+            )
+            assert prompt_messages_completion == ["prompt"]
+            assert stop_completion == []
 
         with pytest.raises(ValueError):
             retrieval._get_prompt_template(
@@ -4236,6 +4236,101 @@ class TestDatasetRetrievalAdditionalHelpers:
                 metadata_fields=[],
                 query="python",
             )
+
+    @pytest.mark.parametrize("mode", ["chat", "completion"])
+    def test_get_prompt_template_exposes_field_types_and_timestamp_rule(
+        self, retrieval: DatasetRetrieval, mode: str
+    ) -> None:
+        model_config = ModelConfigWithCredentialsEntity.model_construct(
+            provider="openai",
+            model="gpt",
+            model_schema=Mock(),
+            mode=mode,
+            provider_model_bundle=Mock(),
+            credentials={},
+            parameters={},
+            stop=[],
+        )
+        metadata_fields = [{"name": "release_date", "type": "time"}, {"name": "rating", "type": "number"}]
+
+        # Render the real templates: only the prompt transform is stubbed, so a malformed
+        # str.format() template (e.g. an unescaped brace in a few-shot example) fails here.
+        with patch("core.rag.retrieval.dataset_retrieval.AdvancedPromptTransform") as mock_prompt_transform:
+            mock_prompt_transform.return_value.get_prompt.return_value = ["prompt"]
+            retrieval._get_prompt_template(
+                model_config=model_config,
+                mode=mode,
+                metadata_fields=metadata_fields,
+                query="movies after 2024-01-01",
+            )
+
+        prompt_template = mock_prompt_transform.return_value.get_prompt.call_args.kwargs["prompt_template"]
+        if mode == "chat":
+            assert isinstance(prompt_template, list)
+            assert all(isinstance(message, ChatModelMessage) for message in prompt_template)
+            system_text = prompt_template[0].text
+            final_user_text = prompt_template[-1].text
+        else:
+            assert isinstance(prompt_template, CompletionModelPromptTemplate)
+            system_text = final_user_text = prompt_template.text
+
+        assert "Unix timestamp" in system_text
+        assert json.dumps(metadata_fields, ensure_ascii=False) in final_user_text
+        assert "movies after 2024-01-01" in final_user_text
+
+    def test_automatic_metadata_filter_func_passes_field_types_to_prompt(self, retrieval: DatasetRetrieval) -> None:
+        metadata_fields = [
+            SimpleNamespace(name="author", type="string"),
+            SimpleNamespace(name="published_at", type="time"),
+        ]
+        model_instance = Mock()
+        model_instance.invoke_llm.return_value = iter([Mock()])
+        model_config = ModelConfigWithCredentialsEntity.model_construct(
+            provider="openai",
+            model="gpt",
+            model_schema=Mock(),
+            mode="chat",
+            provider_model_bundle=Mock(),
+            credentials={},
+            parameters={},
+            stop=[],
+        )
+        usage = LLMUsage.from_metadata({"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = metadata_fields
+
+        with (
+            patch.object(retrieval, "_fetch_model_config", return_value=(model_instance, model_config)),
+            patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])) as mock_get_prompt_template,
+            patch.object(retrieval, "_handle_invoke_result", return_value=("{}", usage)),
+            patch("core.rag.retrieval.dataset_retrieval.parse_and_check_json_markdown") as mock_parse,
+            patch.object(retrieval, "_record_usage"),
+        ):
+            mock_parse.return_value = {
+                "metadata_map": [
+                    {
+                        "metadata_field_name": "published_at",
+                        "metadata_field_value": 1704067200,
+                        "comparison_operator": "after",
+                    },
+                ]
+            }
+            result = retrieval._automatic_metadata_filter_func(
+                session,
+                dataset_ids=["d1"],
+                query="published after 2024-01-01",
+                tenant_id="tenant-1",
+                user_id="u1",
+                metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
+            )
+
+        mock_get_prompt_template.assert_called_once_with(
+            model_config=model_config,
+            mode="chat",
+            metadata_fields=[{"name": "author", "type": "string"}, {"name": "published_at", "type": "time"}],
+            query="published after 2024-01-01",
+        )
+        assert result == [{"metadata_name": "published_at", "value": 1704067200, "condition": "after"}]
 
     def test_fetch_model_config_validation_and_success(self, retrieval: DatasetRetrieval) -> None:
         with pytest.raises(ValueError, match="single_retrieval_config is required"):
