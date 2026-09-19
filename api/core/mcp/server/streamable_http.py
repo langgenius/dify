@@ -224,10 +224,20 @@ def handle_call_tool(
         user=end_user,
         args=args,
         invoke_from=InvokeFrom.SERVICE_API,
-        streaming=app.mode == AppMode.AGENT_CHAT,
+        # Agent Apps run streaming-only, and agent_chat also needs streaming.
+        streaming=app.mode in {AppMode.AGENT_CHAT, AppMode.AGENT},
     )
 
-    answer = extract_answer_from_response(app, response)
+    try:
+        answer = extract_answer_from_response(app, response)
+    except AppStreamError as e:
+        # MCP reports a failed tool execution as a result flagged with isError, so the
+        # caller learns why the run failed instead of receiving an empty answer.
+        return mcp_types.CallToolResult(
+            content=[mcp_types.TextContent(text=str(e), type="text")],
+            isError=True,
+        )
+
     structured_content = None
     if _supports_structured_output(protocol_version):
         structured_content = extract_structured_output(app, response, answer)
@@ -292,19 +302,24 @@ def extract_structured_output(app: App, response: Any, answer: str) -> dict[str,
                     if isinstance(outputs, Mapping):
                         return dict(outputs)
             return None
-        case AppMode.ADVANCED_CHAT | AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
+        case AppMode.ADVANCED_CHAT | AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION | AppMode.AGENT:
             return {"answer": answer}
         case _:
             return None
 
 
 def extract_answer_from_response(app: App, response: Any) -> str:
-    """Extract answer from app generate response"""
+    """Extract answer from app generate response
+
+    Raises:
+        AppStreamError: the streaming run failed; ``handle_call_tool`` turns it into
+            an MCP tool result flagged with ``isError``.
+    """
     answer = ""
 
     match response:
         case RateLimitGenerator():
-            answer = process_streaming_response(response)
+            answer = process_streaming_response(response, app.mode)
         case Mapping():
             answer = process_mapping_response(app, response)
         case _:
@@ -313,25 +328,54 @@ def extract_answer_from_response(app: App, response: Any) -> str:
     return answer
 
 
-def process_streaming_response(response: RateLimitGenerator) -> str:
-    """Process streaming response for agent chat mode"""
+class AppStreamError(RuntimeError):
+    """An app run reported a failure on its stream instead of raising one."""
+
+
+def process_streaming_response(response: RateLimitGenerator, app_mode: str) -> str:
+    """Process a streaming response into the answer text for the calling app mode.
+
+    Legacy agent-chat carries its answer text in `agent_thought` entries. Agent Apps
+    answer through the chat `message` channel instead — the same chunks the pipeline
+    persists as ``Message.answer`` — while their `agent_thought` rows hold reasoning
+    and their `agent_message` events hold in-progress stream text that may differ
+    from the terminal answer, so neither of those contributes to the answer.
+
+    Raises:
+        AppStreamError: the run failed; the stream carries the reason.
+    """
     answer = ""
-    for item in response.generator:
-        if isinstance(item, str) and item.startswith("data: "):
-            try:
-                json_str = item[6:].strip()
-                parsed_data = json.loads(json_str)
-                if parsed_data.get("event") == "agent_thought":
-                    answer += parsed_data.get("thought", "")
-            except json.JSONDecodeError:
-                continue
+    # Iterating the wrapper (not ``response.generator``) and closing it releases the
+    # app-level rate-limit permit, including when a chunk fails mid-stream.
+    try:
+        for item in response:
+            if isinstance(item, str) and item.startswith("data: "):
+                try:
+                    json_str = item[6:].strip()
+                    parsed_data = json.loads(json_str)
+                    event = parsed_data.get("event")
+                    if event == "error":
+                        # The task pipeline ends the stream normally after an error event.
+                        raise AppStreamError(str(parsed_data.get("message") or "App run failed"))
+                    if app_mode == AppMode.AGENT:
+                        if event == "message":
+                            answer += parsed_data.get("answer", "")
+                        elif event == "message_replace":
+                            # Output moderation replaces the answer instead of appending to it.
+                            answer = parsed_data.get("answer", "")
+                    elif event == "agent_thought":
+                        answer += parsed_data.get("thought", "")
+                except json.JSONDecodeError:
+                    continue
+    finally:
+        response.close()
     return answer
 
 
 def process_mapping_response(app: App, response: Mapping) -> str:
     """Process mapping response based on app mode"""
     match app.mode:
-        case AppMode.ADVANCED_CHAT | AppMode.COMPLETION | AppMode.CHAT | AppMode.AGENT_CHAT:
+        case AppMode.ADVANCED_CHAT | AppMode.COMPLETION | AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.AGENT:
             return response.get("answer", "")
         case AppMode.WORKFLOW:
             return json.dumps(response["data"]["outputs"], ensure_ascii=False)
