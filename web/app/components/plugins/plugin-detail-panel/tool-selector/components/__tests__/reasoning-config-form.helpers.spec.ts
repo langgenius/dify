@@ -10,6 +10,7 @@ import {
   getVarKindType,
   getVisibleSelectOptions,
   mergeReasoningValue,
+  resetReasoningConfigEntry,
   resolveTargetVarType,
   updateInputAutoState,
   updateReasoningValue,
@@ -218,5 +219,27 @@ describe('reasoning-config-form helpers', () => {
 
   it('provides label helpers', () => {
     expect(getFieldTitle({ en_US: 'Prompt', zh_Hans: 'Prompt' }, 'en_US')).toBe('Prompt')
+  })
+
+  it('should reset reasoning fields to normalized defaults while preserving auto mode', () => {
+    const schema = {
+      variable: 'temperature',
+      type: FormTypeEnum.textNumber,
+      default: '0.7',
+    } as never
+
+    expect(
+      resetReasoningConfigEntry(schema, {
+        auto: 0,
+        value: { type: VarKindType.constant, value: '1' },
+      }),
+    ).toEqual({
+      auto: 0,
+      value: { type: VarKindType.constant, value: 0.7 },
+    })
+    expect(resetReasoningConfigEntry(schema, { auto: 1, value: null })).toEqual({
+      auto: 1,
+      value: null,
+    })
   })
 })
