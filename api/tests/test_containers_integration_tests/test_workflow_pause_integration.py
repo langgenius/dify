@@ -898,7 +898,14 @@ class TestWorkflowPauseIntegration:
         repository = self._get_workflow_run_repository()
 
         pause_entity = repository.pause_workflow_run(
-            workflow_run_id=workflow_run.id, state_owner_user_id=self.test_user_id, state=test_state, pause_reasons=[]
+            workflow_run_id=workflow_run.id,
+            state_owner_user_id=self.test_user_id,
+            state=test_state,
+            pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         # Get file info before deletion
@@ -975,7 +982,14 @@ class TestWorkflowPauseIntegration:
 
             # Pause
             pause_entity = repository.pause_workflow_run(
-                workflow_run_id=workflow_run.id, state_owner_user_id=self.test_user_id, state=state, pause_reasons=[]
+                workflow_run_id=workflow_run.id,
+                state_owner_user_id=self.test_user_id,
+                state=state,
+                pause_reasons=[],
+                outputs=None,
+                total_tokens=0,
+                total_steps=0,
+                exceptions_count=0,
             )
             assert pause_entity is not None
 

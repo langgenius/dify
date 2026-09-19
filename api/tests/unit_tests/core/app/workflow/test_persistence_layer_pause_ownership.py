@@ -7,22 +7,29 @@ paused outcome must be published only after that transaction succeeds.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowFailedEvent, QueueWorkflowPausedEvent
 from core.app.entities.workflow_pause_state import PauseStateConfig, WorkflowResumptionContext
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.entities import FormDefinition
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReason
 from core.workflow.system_variables import build_system_variables
+from core.workflow.workflow_entry import WorkflowEntry
+from graphon.entities import WorkflowExecution
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.filters import GraphEventFilterContext, ResponseStreamFilter
@@ -51,39 +58,65 @@ def _initialized_response_stream_filter() -> ResponseStreamFilter:
 
 
 class _ExecutionRepo:
+    """Stand-in for the observational execution repository (logstore/celery mirror)."""
+
     def __init__(self, log: _CallLog, *, fail: bool = False) -> None:
         self.log = log
         self.fail = fail
-        self.saved: list[object] = []
+        self.saved: list[WorkflowExecution] = []
 
-    def save(self, entity):
+    def save(self, execution: WorkflowExecution) -> None:
         self.log.calls.append("execution.save")
         if self.fail:
             raise RuntimeError("mirror storage backend down")
-        self.saved.append(entity)
+        self.saved.append(execution)
 
-    def save_synchronously(self, entity):
-        self.saved.append(entity)
 
-    def save_execution_data(self, entity):
-        pass
-
-    def get_by_workflow_execution(self, _workflow_execution_id):
-        return []
+@dataclass
+class _PauseCall:
+    workflow_run_id: str
+    state_owner_user_id: str
+    state: str
+    pause_reasons: Sequence[PauseReason]
+    outputs: Mapping[str, object] | None
+    total_tokens: int
+    total_steps: int
+    exceptions_count: int
 
 
 class _PauseRepo:
+    """Stand-in for the authoritative workflow run repository."""
+
     def __init__(self, log: _CallLog, *, fail: bool = False) -> None:
         self.log = log
         self.fail = fail
-        self.calls_kwargs: dict[str, object] | None = None
+        self.call: _PauseCall | None = None
 
-    def pause_workflow_run(self, workflow_run_id: str, **kwargs):
+    def pause_workflow_run(
+        self,
+        workflow_run_id: str,
+        state_owner_user_id: str,
+        state: str,
+        pause_reasons: Sequence[PauseReason],
+        *,
+        outputs: Mapping[str, object] | None,
+        total_tokens: int,
+        total_steps: int,
+        exceptions_count: int,
+    ) -> None:
         self.log.calls.append("pause_workflow_run")
         if self.fail:
             raise RuntimeError("db commit failed")
-        self.calls_kwargs = {"workflow_run_id": workflow_run_id, **kwargs}
-        return SimpleNamespace()
+        self.call = _PauseCall(
+            workflow_run_id=workflow_run_id,
+            state_owner_user_id=state_owner_user_id,
+            state=state,
+            pause_reasons=pause_reasons,
+            outputs=outputs,
+            total_tokens=total_tokens,
+            total_steps=total_steps,
+            exceptions_count=exceptions_count,
+        )
 
 
 def _make_layer(
@@ -91,10 +124,10 @@ def _make_layer(
     *,
     pause_repo: _PauseRepo | None = None,
     with_owner: bool = True,
-    monkeypatch=None,
+    monkeypatch: pytest.MonkeyPatch | None = None,
     total_tokens: int = 0,
     node_run_steps: int = 0,
-):
+) -> tuple[WorkflowPersistenceLayer, _ExecutionRepo, GraphRuntimeState]:
     system_variables = build_system_variables(workflow_execution_id=_RUN_ID, conversation_id="conv-id")
     llm_usage = LLMUsage.empty_usage().model_copy(update={"total_tokens": total_tokens})
     runtime_state = GraphRuntimeState(
@@ -122,17 +155,17 @@ def _make_layer(
         call_depth=0,
     )
     execution_repo = _ExecutionRepo(log)
-    kwargs: dict[str, object] = {}
-    if with_owner:
-        kwargs["pause_state_config"] = PauseStateConfig(
-            session_factory=object(),  # type: ignore[arg-type]
-            state_owner_user_id="owner",
-        )
-        kwargs["response_stream_filter"] = _initialized_response_stream_filter()
-        if monkeypatch is not None and pause_repo is not None:
 
-            def _factory(_session):
-                return pause_repo
+    pause_state_config: PauseStateConfig | None = None
+    response_stream_filter: ResponseStreamFilter | None = None
+    if with_owner:
+        pause_state_config = PauseStateConfig(session_factory=Mock(), state_owner_user_id="owner")
+        response_stream_filter = _initialized_response_stream_filter()
+        if monkeypatch is not None and pause_repo is not None:
+            captured = pause_repo
+
+            def _factory(_session: object) -> _PauseRepo:
+                return captured
 
             monkeypatch.setattr(
                 "core.app.workflow.layers.persistence.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
@@ -147,11 +180,12 @@ def _make_layer(
             version="1",
             graph_data={"nodes": [], "edges": []},
         ),
-        workflow_execution_repository=execution_repo,
-        workflow_node_execution_repository=execution_repo,
-        **kwargs,
+        workflow_execution_repository=cast(WorkflowExecutionRepository, execution_repo),
+        workflow_node_execution_repository=cast(WorkflowNodeExecutionRepository, Mock()),
+        pause_state_config=pause_state_config,
+        response_stream_filter=response_stream_filter,
     )
-    layer.initialize(ReadOnlyGraphRuntimeStateWrapper(runtime_state), command_channel=None)
+    layer.initialize(ReadOnlyGraphRuntimeStateWrapper(runtime_state), Mock())
     layer.on_event(_started_event())
     # Drop the run-start bookkeeping so each test observes only pause traffic.
     log.calls.clear()
@@ -177,17 +211,6 @@ def _hitl_event() -> GraphRunPausedEvent:
     )
 
 
-def _stub_form_repository(monkeypatch, *, record: object | None) -> Mock:
-    """Route the layer's form lookups to `record` and return the stub repository."""
-    form_repository = Mock(spec=HumanInputFormSubmissionRepository)
-    form_repository.get_by_form_id.return_value = record
-    monkeypatch.setattr(
-        "core.app.workflow.layers.persistence.HumanInputFormSubmissionRepository",
-        Mock(return_value=form_repository),
-    )
-    return form_repository
-
-
 _HITL_FORM_RECORD = SimpleNamespace(
     form_id="form-123",
     node_id="node-1",
@@ -201,8 +224,19 @@ _HITL_FORM_RECORD = SimpleNamespace(
 )
 
 
+def _stub_form_repository(monkeypatch: pytest.MonkeyPatch, *, record: object | None) -> Mock:
+    """Route the layer's form lookups to `record` and return the stub repository."""
+    form_repository = Mock(spec=HumanInputFormSubmissionRepository)
+    form_repository.get_by_form_id.return_value = record
+    monkeypatch.setattr(
+        "core.app.workflow.layers.persistence.HumanInputFormSubmissionRepository",
+        Mock(return_value=form_repository),
+    )
+    return form_repository
+
+
 class TestOwnerPath:
-    def test_on_event_does_not_commit_pause_when_layer_owns_it(self, monkeypatch):
+    def test_on_event_does_not_commit_pause_when_layer_owns_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
         log = _CallLog()
         pause_repo = _PauseRepo(log)
         layer, execution_repo, _ = _make_layer(log, pause_repo=pause_repo, monkeypatch=monkeypatch)
@@ -212,7 +246,7 @@ class TestOwnerPath:
         assert "pause_workflow_run" not in log.calls
         assert execution_repo.saved == []
 
-    def test_persist_pause_commits_pause_before_mirroring(self, monkeypatch):
+    def test_persist_pause_commits_pause_before_mirroring(self, monkeypatch: pytest.MonkeyPatch) -> None:
         log = _CallLog()
         pause_repo = _PauseRepo(log)
         layer, execution_repo, runtime_state = _make_layer(
@@ -227,19 +261,18 @@ class TestOwnerPath:
         layer.persist_pause(_paused_event())
 
         assert log.calls == ["pause_workflow_run", "execution.save"]
-        assert pause_repo.calls_kwargs is not None
-        assert pause_repo.calls_kwargs["workflow_run_id"] == _RUN_ID
-        assert pause_repo.calls_kwargs["state_owner_user_id"] == "owner"
-        assert pause_repo.calls_kwargs["total_tokens"] == 12
-        assert pause_repo.calls_kwargs["total_steps"] == 3
-        assert pause_repo.calls_kwargs["exceptions_count"] == 2
-        assert pause_repo.calls_kwargs["outputs"] == {"answer": "paused"}
-        context = WorkflowResumptionContext.loads(pause_repo.calls_kwargs["state"])
+        assert pause_repo.call is not None
+        assert pause_repo.call.workflow_run_id == _RUN_ID
+        assert pause_repo.call.state_owner_user_id == "owner"
+        assert pause_repo.call.total_tokens == 12
+        assert pause_repo.call.total_steps == 3
+        assert pause_repo.call.exceptions_count == 2
+        assert pause_repo.call.outputs == {"answer": "paused"}
+        context = WorkflowResumptionContext.loads(pause_repo.call.state)
         assert context.serialized_graph_runtime_state
-        entity = execution_repo.saved[0]
-        assert entity.status == WorkflowExecutionStatus.PAUSED
+        assert execution_repo.saved[0].status == WorkflowExecutionStatus.PAUSED
 
-    def test_persist_pause_commits_enriched_hitl_reasons(self, monkeypatch):
+    def test_persist_pause_commits_enriched_hitl_reasons(self, monkeypatch: pytest.MonkeyPatch) -> None:
         log = _CallLog()
         pause_repo = _PauseRepo(log)
         layer, _, _ = _make_layer(log, pause_repo=pause_repo, monkeypatch=monkeypatch)
@@ -248,10 +281,8 @@ class TestOwnerPath:
         layer.persist_pause(_hitl_event())
 
         form_repository.get_by_form_id.assert_called_once_with("form-123")
-        assert pause_repo.calls_kwargs is not None
-        reasons = pause_repo.calls_kwargs["pause_reasons"]
-        assert isinstance(reasons, list)
-        assert reasons == [
+        assert pause_repo.call is not None
+        assert pause_repo.call.pause_reasons == [
             HumanInputRequired(
                 form_id="form-123",
                 form_content="Please approve",
@@ -260,7 +291,7 @@ class TestOwnerPath:
             )
         ]
 
-    def test_unresolvable_hitl_reason_aborts_the_pause_transaction(self, monkeypatch):
+    def test_unresolvable_hitl_reason_aborts_the_pause_transaction(self, monkeypatch: pytest.MonkeyPatch) -> None:
         log = _CallLog()
         pause_repo = _PauseRepo(log)
         layer, execution_repo, _ = _make_layer(log, pause_repo=pause_repo, monkeypatch=monkeypatch)
@@ -270,9 +301,10 @@ class TestOwnerPath:
             layer.persist_pause(_hitl_event())
 
         assert log.calls == []
+        assert pause_repo.call is None
         assert execution_repo.saved == []
 
-    def test_pause_failure_propagates_without_mirroring(self, monkeypatch):
+    def test_pause_failure_propagates_without_mirroring(self, monkeypatch: pytest.MonkeyPatch) -> None:
         log = _CallLog()
         pause_repo = _PauseRepo(log, fail=True)
         layer, execution_repo, _ = _make_layer(log, pause_repo=pause_repo, monkeypatch=monkeypatch)
@@ -283,7 +315,7 @@ class TestOwnerPath:
         assert log.calls == ["pause_workflow_run"]
         assert execution_repo.saved == []
 
-    def test_mirror_failure_after_commit_does_not_fail_pause(self, monkeypatch):
+    def test_mirror_failure_after_commit_does_not_fail_pause(self, monkeypatch: pytest.MonkeyPatch) -> None:
         log = _CallLog()
         pause_repo = _PauseRepo(log)
         layer, execution_repo, _ = _make_layer(log, pause_repo=pause_repo, monkeypatch=monkeypatch)
@@ -292,21 +324,20 @@ class TestOwnerPath:
         layer.persist_pause(_paused_event())
 
         assert log.calls == ["pause_workflow_run", "execution.save"]
-        assert pause_repo.calls_kwargs is not None
+        assert pause_repo.call is not None
 
-    def test_fail_after_pause_persistence_error_converges_to_failed(self, monkeypatch):
+    def test_fail_after_pause_persistence_error_converges_to_failed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         log = _CallLog()
         layer, execution_repo, _ = _make_layer(log, pause_repo=_PauseRepo(log), monkeypatch=monkeypatch)
 
         layer.fail_after_pause_persistence_error("boom")
 
-        entity = execution_repo.saved[0]
-        assert entity.status == WorkflowExecutionStatus.FAILED
-        assert entity.error_message == "boom"
+        assert execution_repo.saved[0].status == WorkflowExecutionStatus.FAILED
+        assert execution_repo.saved[0].error_message == "boom"
 
 
 class TestNoOwnerFallback:
-    def test_on_event_keeps_legacy_pause_save_without_config(self):
+    def test_on_event_keeps_legacy_pause_save_without_config(self) -> None:
         log = _CallLog()
         layer, execution_repo, _ = _make_layer(log, with_owner=False)
 
@@ -316,23 +347,30 @@ class TestNoOwnerFallback:
         assert execution_repo.saved[0].status == WorkflowExecutionStatus.PAUSED
 
 
+class _QueueManager:
+    def __init__(self, published: list[object]) -> None:
+        self.published = published
+
+    def publish(self, event: object, _pub_from: object) -> None:
+        self.published.append(event)
+
+
 class TestRunnerGating:
-    def _make_runner(self, layer):
-        published = []
-
-        class _QueueManager:
-            def publish(self, event, _source):
-                published.append(event)
-
-        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+    @staticmethod
+    def _make_runner(layer: WorkflowPersistenceLayer | None) -> tuple[WorkflowBasedAppRunner, list[object]]:
+        published: list[object] = []
+        runner = WorkflowBasedAppRunner(queue_manager=cast(AppQueueManager, _QueueManager(published)), app_id="app")
         runner._workflow_persistence_layer = layer
         return runner, published
 
     @staticmethod
-    def _workflow_entry(runtime_state):
-        return SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=runtime_state))
+    def _workflow_entry(runtime_state: GraphRuntimeState) -> WorkflowEntry:
+        return cast(
+            WorkflowEntry,
+            SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=runtime_state)),
+        )
 
-    def test_paused_outcome_published_only_after_commit(self, monkeypatch):
+    def test_paused_outcome_published_only_after_commit(self, monkeypatch: pytest.MonkeyPatch) -> None:
         log = _CallLog()
         pause_repo = _PauseRepo(log)
         layer, _, runtime_state = _make_layer(log, pause_repo=pause_repo, monkeypatch=monkeypatch)
@@ -340,10 +378,10 @@ class TestRunnerGating:
 
         runner._handle_event(self._workflow_entry(runtime_state), _paused_event())
 
-        assert [type(e) for e in published] == [QueueWorkflowPausedEvent]
+        assert [type(event) for event in published] == [QueueWorkflowPausedEvent]
         assert log.calls == ["pause_workflow_run", "execution.save"]
 
-    def test_failed_pause_converges_to_failed_outcome(self, monkeypatch):
+    def test_failed_pause_converges_to_failed_outcome(self, monkeypatch: pytest.MonkeyPatch) -> None:
         log = _CallLog()
         pause_repo = _PauseRepo(log, fail=True)
         layer, _, runtime_state = _make_layer(log, pause_repo=pause_repo, monkeypatch=monkeypatch)
@@ -351,14 +389,15 @@ class TestRunnerGating:
 
         runner._handle_event(self._workflow_entry(runtime_state), _paused_event())
 
-        assert [type(e) for e in published] == [QueueWorkflowFailedEvent]
-        assert "db commit failed" in published[0].error
+        assert [type(event) for event in published] == [QueueWorkflowFailedEvent]
+        failure = cast(QueueWorkflowFailedEvent, published[0])
+        assert "db commit failed" in failure.error
 
-    def test_runner_without_owner_keeps_legacy_publish(self):
+    def test_runner_without_owner_keeps_legacy_publish(self) -> None:
         log = _CallLog()
         _, _, runtime_state = _make_layer(log, with_owner=False)
         runner, published = self._make_runner(None)
 
         runner._handle_event(self._workflow_entry(runtime_state), _paused_event())
 
-        assert [type(e) for e in published] == [QueueWorkflowPausedEvent]
+        assert [type(event) for event in published] == [QueueWorkflowPausedEvent]

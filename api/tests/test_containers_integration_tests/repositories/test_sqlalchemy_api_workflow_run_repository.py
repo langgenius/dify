@@ -528,6 +528,10 @@ class TestCreateWorkflowPause:
                     node_title="Ask Name",
                 )
             ],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
@@ -613,6 +617,10 @@ class TestCreateWorkflowPause:
                     node_title="Ask Name",
                 )
             ],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
