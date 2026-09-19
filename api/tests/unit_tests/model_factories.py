@@ -321,7 +321,6 @@ def make_dataset(
         "indexing_technique": indexing_technique,
         "index_struct": index_struct,
         "maintainer": maintainer,
-        "created_at": created_at,
         "embedding_model": embedding_model,
         "embedding_model_provider": embedding_model_provider,
         "keyword_number": keyword_number,
@@ -332,7 +331,10 @@ def make_dataset(
         "enable_api": enable_api,
     }
     values.update({key: value for key, value in optional.items() if value is not None})
-    return Dataset(**values)
+    result = Dataset(**values)
+    if created_at is not None:
+        result.created_at = created_at
+    return result
 
 
 def make_conversation(
