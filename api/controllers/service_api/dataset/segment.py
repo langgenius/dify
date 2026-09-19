@@ -39,6 +39,7 @@ from fields.segment_fields import (
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant
+from libs.pagination import clamp_pagination
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_ref_service import DatasetRefService, SegmentRef
 from services.dataset_service import DatasetService, DocumentService, SegmentService
@@ -280,8 +281,7 @@ class SegmentApi(DatasetApiResource):
             list_fields=("status",),
             use_defaults_for_malformed_ints=True,
         )
-        page = args.page
-        limit = min(args.limit, 100)
+        effective_page, effective_limit = clamp_pagination(args.page, args.limit, 100)
         dataset_id_str = str(dataset_id)
         dataset = session.scalar(
             select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str).limit(1)
@@ -316,8 +316,8 @@ class SegmentApi(DatasetApiResource):
             tenant_id=current_tenant_id,
             status_list=args.status,
             keyword=args.keyword,
-            page=page,
-            limit=limit,
+            page=effective_page,
+            limit=effective_limit,
         )
         segment_ids = [segment.id for segment in segments]
         summaries: dict[str, str | None] = {}
@@ -331,9 +331,9 @@ class SegmentApi(DatasetApiResource):
             "data": segment_responses_with_summaries(segments, summaries, session=session),
             "doc_form": document.doc_form,
             "total": total,
-            "has_more": page * limit < total,
-            "limit": limit,
-            "page": page,
+            "has_more": effective_page * effective_limit < total,
+            "limit": effective_limit,
+            "page": effective_page,
         }
 
         return dump_response(SegmentListResponse, response), 200
