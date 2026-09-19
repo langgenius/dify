@@ -21,7 +21,7 @@ from core.app.entities.app_invoke_entities import (
     WorkflowAppGenerateEntity,
 )
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
+from core.app.entities.workflow_pause_state import PauseStateConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
@@ -163,7 +163,7 @@ class _AppRunner:
                 logger.warning("App %s not found for workflow %s", workflow.app_id, exec_params.workflow_id)
                 return None
 
-        pause_config = PauseStateLayerConfig(
+        pause_config = PauseStateConfig(
             session_factory=self._session_factory,
             state_owner_user_id=workflow.created_by,
         )
@@ -206,7 +206,7 @@ class _AppRunner:
         app: App,
         workflow: Workflow,
         user: Account | EndUser,
-        pause_state_config: PauseStateLayerConfig,
+        pause_state_config: PauseStateConfig,
         session: Session,
     ):
         exec_params = self._exec_params
@@ -567,7 +567,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
 
     workflow_run_repo.resume_workflow_pause(workflow_run_id, pause_entity)
 
-    pause_config = PauseStateLayerConfig(
+    pause_config = PauseStateConfig(
         session_factory=session_factory,
         state_owner_user_id=workflow.created_by,
     )
@@ -620,7 +620,7 @@ def _resume_advanced_chat(
     graph_runtime_state: GraphRuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
-    pause_state_config: PauseStateLayerConfig,
+    pause_state_config: PauseStateConfig,
     workflow_run_id: str,
     workflow_run: WorkflowRun,
     session: Session,
@@ -688,7 +688,7 @@ def _resume_workflow(
     graph_runtime_state: GraphRuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
-    pause_state_config: PauseStateLayerConfig,
+    pause_state_config: PauseStateConfig,
     workflow_run_id: str,
     workflow_run: WorkflowRun,
     workflow_run_repo,

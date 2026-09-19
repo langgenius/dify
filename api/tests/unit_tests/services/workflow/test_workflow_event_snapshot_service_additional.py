@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import StreamEvent
-from core.app.layers.pause_state_persist_layer import (
+from core.app.entities.workflow_pause_state import (
     WorkflowResumptionContext,
     _WorkflowGenerateEntityWrapper,
 )

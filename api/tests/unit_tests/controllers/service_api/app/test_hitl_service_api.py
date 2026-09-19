@@ -31,7 +31,7 @@ from core.app.entities.task_entities import (
     WorkflowAppPausedBlockingResponse,
     WorkflowPauseStreamResponse,
 )
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.app.entities.workflow_pause_state import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus

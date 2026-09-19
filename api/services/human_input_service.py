@@ -8,8 +8,8 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.entities.workflow_pause_state import WorkflowResumptionContext
 from core.app.file_access import DatabaseFileAccessController
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,

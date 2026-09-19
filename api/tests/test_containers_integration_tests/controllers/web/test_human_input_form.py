@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.app.entities.workflow_pause_state import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.human_input_adapter import DeliveryMethodType
 from core.workflow.nodes.human_input.entities import (
     FormDefinition,
@@ -211,11 +211,15 @@ def test_get_human_input_form_resolves_runtime_select_options(
     workflow_run_repo = DifyAPISQLAlchemyWorkflowRunRepository(
         session_maker=sessionmaker(bind=engine, expire_on_commit=False)
     )
-    workflow_run_repo.create_workflow_pause(
+    workflow_run_repo.pause_workflow_run(
         workflow_run_id=workflow_run.id,
         state_owner_user_id=account.id,
         state=context.dumps(),
         pause_reasons=[reason],
+        outputs=None,
+        total_tokens=0,
+        total_steps=0,
+        exceptions_count=0,
     )
 
     def mock_get_features(tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
