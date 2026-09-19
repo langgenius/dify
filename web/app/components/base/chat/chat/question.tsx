@@ -155,7 +155,7 @@ const Question: FC<QuestionProps> = ({
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             data-testid="action-container"
-            className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
+            className="absolute flex gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs [@media(hover:hover)]:hidden [@media(hover:hover)]:group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
             <IconButton
