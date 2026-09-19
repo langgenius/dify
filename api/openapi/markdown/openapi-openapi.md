@@ -718,7 +718,7 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | app_mode | string |  | No |
 | current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
 | error | string |  | No |
-| hints | [ [Hint](#hint) ] | Next steps; empty when the import finished | No |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
 | permission_keys | [ string ] |  | No |
@@ -752,7 +752,7 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | data | [ [AppListRow](#applistrow) ] |  | Yes |
 | has_more | boolean |  | Yes |
-| hints | [ [Hint](#hint) ] | Next steps; one `Next page` entry while `has_more` | No |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
@@ -1074,7 +1074,7 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | data | [ [MemberResponse](#memberresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
-| hints | [ [Hint](#hint) ] | Next steps; one `Next page` entry while `has_more` | No |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
@@ -1143,7 +1143,7 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | data | [ [AppListRow](#applistrow) ] |  | Yes |
 | has_more | boolean |  | Yes |
-| hints | [ [Hint](#hint) ] | Next steps; one `Next page` entry while `has_more` | No |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
@@ -1192,7 +1192,7 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | data | [ [SessionRow](#sessionrow) ] |  | Yes |
 | has_more | boolean |  | Yes |
-| hints | [ [Hint](#hint) ] | Next steps; one `Next page` entry while `has_more` | No |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
@@ -1308,7 +1308,7 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | data | [ [WorkspaceSummaryResponse](#workspacesummaryresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
-| hints | [ [Hint](#hint) ] | Next steps; one `Next page` entry while `has_more` | No |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
