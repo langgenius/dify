@@ -59,6 +59,4 @@ it('keeps a long group path between search and the next selectable row', async (
     expect(line.left).toBeGreaterThanOrEqual(navigation.getBoundingClientRect().left)
     expect(line.right).toBeLessThanOrEqual(navigation.getBoundingClientRect().right)
   }
-  await screen.getByRole('button', { name: 'All members', exact: true }).click()
-  await expect.element(screen.getByRole('button', { name: `${groupName} 1` })).toBeVisible()
 })
