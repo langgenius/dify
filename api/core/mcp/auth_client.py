@@ -7,6 +7,7 @@ authentication failures and retries operations after refreshing tokens.
 
 import logging
 from collections.abc import Callable
+from contextlib import ExitStack
 from typing import Any, override
 
 from sqlalchemy.orm import Session
@@ -146,14 +147,19 @@ class MCPClientWithAuthRetry(MCPClient):
         except MCPAuthError as e:
             self._handle_auth_error(e)
 
-            # Re-initialize the connection with new headers
-            if self._initialized:
-                # Clean up existing connection
-                self._exit_stack.close()
-                self._session = None
-                self._initialized = False
+            # Always tear down before reconnecting with refreshed headers.
+            # MCPAuthError can fire during ClientSession.initialize() after the
+            # transport/session were already entered on _exit_stack, while
+            # MCPClient.__enter__ has not yet flipped _initialized.
+            was_initialized = self._initialized
+            self._exit_stack.close()
+            self._session = None
+            self._initialized = False
+            self._exit_stack = ExitStack()
 
-                # Re-initialize with new headers
+            if was_initialized:
+                # list_tools / invoke_tool path: restore a live session first.
+                # __enter__ retry path re-initializes itself via func().
                 self._initialize()
                 self._initialized = True
 
