@@ -2,6 +2,13 @@
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine } from '@remixicon/react'
 import * as React from 'react'
@@ -56,18 +63,29 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
   return (
     <>
       {showBackButton && (
-        <div className="flex items-center p-4 pb-1">
-          <button
-            type="button"
-            className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left system-sm-semibold-uppercase text-text-accent"
-            onClick={handleBack}
-          >
-            <RiArrowLeftLine className="mr-1 size-4" aria-hidden />
-            {t(($) => $['nodes.humanInput.singleRun.back'], { ns: 'workflow' })}
-          </button>
-          <div className="mx-1 system-xs-regular text-divider-deep">/</div>
-          <div className="system-sm-semibold-uppercase text-text-secondary">{nodeName}</div>
-        </div>
+        <Breadcrumb aria-label={nodeName} className="p-4 pb-1">
+          <BreadcrumbList className="gap-0">
+            <BreadcrumbItem>
+              <button
+                type="button"
+                className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left system-sm-semibold-uppercase text-text-accent"
+                onClick={handleBack}
+              >
+                <RiArrowLeftLine className="mr-1 size-4" aria-hidden />
+                {t(($) => $['nodes.humanInput.singleRun.back'], { ns: 'workflow' })}
+              </button>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator className="mx-1 system-xs-regular text-divider-deep" />
+            <BreadcrumbItem>
+              <BreadcrumbPage
+                aria-current="location"
+                className="system-sm-semibold-uppercase text-text-secondary"
+              >
+                {nodeName}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       )}
       <div className="px-4 py-3">
         {contentList.map((content, index) => (
