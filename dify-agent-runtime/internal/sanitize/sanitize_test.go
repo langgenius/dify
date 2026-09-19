@@ -81,3 +81,14 @@ func TestInvalidUTF8(t *testing.T) {
 		t.Errorf("got %q, want %q", string(out), expected)
 	}
 }
+
+func TestFeedIntoMatchesFeed(t *testing.T) {
+	input := []byte("first\n\x1b[31msecond\x1b[0m\n50%\r100%\n")
+	allocated := New()
+	reusable := New()
+	want := allocated.Feed(input)
+	buffer := reusable.FeedInto(input, make([]byte, 0, len(input)))
+	if string(buffer) != string(want) {
+		t.Fatalf("FeedInto = %q, Feed = %q", buffer, want)
+	}
+}
