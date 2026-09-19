@@ -66,7 +66,8 @@ def _installed_app_cursor_filter(cursor: InstalledAppCursor):
 def _installed_app_order_by():
     return (
         InstalledApp.is_pinned.desc(),
-        InstalledApp.last_used_at.desc().nulls_last(),
+        InstalledApp.last_used_at.is_(None),
+        InstalledApp.last_used_at.desc(),
         InstalledApp.id.asc(),
     )
 
