@@ -567,6 +567,7 @@ const renderHomeContent = ({
       deployment_edition: options.deploymentEdition ?? 'COMMUNITY',
       enable_explore_banner: options.enableExploreBanner ?? false,
       enable_learn_app: options.enableLearnApp ?? true,
+      enable_step_by_step_tour: options.deploymentEdition === 'CLOUD',
     },
   })
   if (mockExploreData) {

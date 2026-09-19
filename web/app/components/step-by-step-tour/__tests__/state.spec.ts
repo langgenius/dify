@@ -81,7 +81,7 @@ vi.mock('@/context/workspace-state', async () => {
 
 vi.mock('@/features/system-features/state', async () => {
   const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
-  return { deploymentEditionAtom: atom('CLOUD') }
+  return { enableStepByStepTourAtom: atom(true) }
 })
 
 vi.mock('@/service/console', () => ({

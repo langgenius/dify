@@ -15,7 +15,7 @@ import { atom } from 'jotai'
 import { atomWithMutation, atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
-import { deploymentEditionAtom } from '@/features/system-features/state'
+import { enableStepByStepTourAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 
 const stepByStepTourStateQueryKey = () =>
@@ -27,7 +27,7 @@ const stepByStepTourStateMutationScope = {
 
 const stepByStepTourStateQueryAtom = atomWithQuery((get) =>
   consoleQuery.onboarding.stepByStepTour.state.get.queryOptions({
-    enabled: get(deploymentEditionAtom) === 'CLOUD',
+    enabled: get(enableStepByStepTourAtom),
   }),
 )
 
@@ -311,7 +311,7 @@ const patchStepByStepTourState = async (
   body: StepByStepTourStatePatchPayload,
   options?: StepByStepTourStateCommandOptions,
 ) => {
-  if (get(deploymentEditionAtom) !== 'CLOUD') return
+  if (!get(enableStepByStepTourAtom)) return
 
   const command: PendingStepByStepTourStateCommand = {
     body,

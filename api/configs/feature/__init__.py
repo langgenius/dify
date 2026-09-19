@@ -1243,7 +1243,7 @@ class HomepageConfig(BaseSettings):
 
     ENABLE_STEP_BY_STEP_TOUR: bool = Field(
         description="Enable account-level Step-by-step Tour eligibility checks",
-        default=False,
+        default=True,
     )
 
     STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT: datetime | None = Field(

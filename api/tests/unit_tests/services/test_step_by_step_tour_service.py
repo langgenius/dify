@@ -113,6 +113,20 @@ def test_get_state_does_not_create_state_for_ineligible_account() -> None:
     assert states.mutation_account_ids == []
 
 
+def test_get_state_eligible_for_all_accounts_when_rollout_is_not_configured() -> None:
+    states = StateRepositoryStub()
+    service = _service(
+        states=states,
+        account=_account(started_at=datetime(2026, 5, 31)),
+        rollout_started_at=None,
+    )
+
+    result = service.get_state(_context())
+
+    assert result.first_workspace_id == "workspace-1"
+    assert states.initialize_calls == [("account-1", "workspace-1")]
+
+
 def test_get_state_does_not_create_state_when_tour_is_disabled() -> None:
     states = StateRepositoryStub()
 

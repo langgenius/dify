@@ -87,6 +87,8 @@ const getApiEnvironment = async (): Promise<Record<string, string>> => {
     ...envFromExample,
     ...(agentBackendBaseUrl ? { AGENT_BACKEND_BASE_URL: agentBackendBaseUrl } : {}),
     ...(marketplaceApiUrl ? { MARKETPLACE_API_URL: marketplaceApiUrl } : {}),
+    // E2E specs do not cover the Step-by-Step Tour; keep it off so config default changes don't affect E2E flows
+    ENABLE_STEP_BY_STEP_TOUR: 'false',
     FLASK_APP: 'app.py',
     HTTP_PROXY: process.env.HTTP_PROXY || '',
     HTTPS_PROXY: process.env.HTTPS_PROXY || '',
