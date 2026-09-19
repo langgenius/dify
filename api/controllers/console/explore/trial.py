@@ -71,6 +71,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
+from libs.login import login_required
 from models import Account, App
 from models.account import TenantStatus
 from models.model import AppMode, Site
@@ -824,6 +825,7 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
+    @login_required
     @with_session(write=False)
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
@@ -848,6 +850,7 @@ class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
+    @login_required
     @with_session(write=False)
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
@@ -866,6 +869,7 @@ class TrialAppParameterApi(Resource):
 
 class AppApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
+    @login_required
     @with_session(write=False)
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
@@ -882,6 +886,7 @@ class AppApi(Resource):
 
 class AppWorkflowApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
+    @login_required
     @with_session(write=False)
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
@@ -902,6 +907,7 @@ class AppWorkflowApi(Resource):
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
+    @login_required
     @with_session(write=False)
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
