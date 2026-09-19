@@ -175,7 +175,6 @@ project-excludes = [
   "controllers/openapi/test_oauth_sso_csrf.py",
   "controllers/openapi/test_oauth_sso_host_header.py",
   "controllers/openapi/test_supported_app_type.py",
-  "controllers/openapi/test_version_gate.py",
   "controllers/openapi/test_workflow_events_openapi.py",
   "controllers/openapi/test_workspaces.py",
   "controllers/openapi/test_workspaces_members.py",

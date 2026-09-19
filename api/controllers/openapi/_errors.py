@@ -45,7 +45,6 @@ class OpenApiErrorCode(StrEnum):
     TOO_MANY_REQUESTS = "too_many_requests"
     INTERNAL_ERROR = "internal_server_error"
     BAD_GATEWAY = "bad_gateway"
-    UPGRADE_REQUIRED = "upgrade_required"
     UNKNOWN = "unknown"
     # domain codes (must match the error_code attribute of the exception
     # classes raised on the openapi surface)
@@ -257,3 +256,9 @@ class RecipientSurfaceMismatch(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.RECIPIENT_SURFACE_MISMATCH
     description = "This form's recipient can't be submitted via the OpenAPI surface."
     hint = "Action it through its channel (web app or console)."
+
+
+class InvalidFilePart(OpenApiError):  # noqa: N818
+    code = 422
+    error_code = OpenApiErrorCode.INVALID_PARAM
+    description = "A request part could not be used"

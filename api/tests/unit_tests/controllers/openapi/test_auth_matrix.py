@@ -245,6 +245,8 @@ ADMIT_NO_MOUNT = Expect(
 )
 
 
+_RUN_TRAITS = frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE})
+
 ROUTES: tuple[Route, ...] = (
     Route("account.get", "GET", "/account", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("account.sessions.revoke_self", "DELETE", "/account/sessions/self", frozenset({Trait.ACCOUNT_PRIMARY})),
@@ -314,6 +316,10 @@ ROUTES: tuple[Route, ...] = (
         "/apps/{app_id}:run",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
+    Route("app_run.workflow", "POST", "/apps/{app_id}/workflow:run", _RUN_TRAITS),
+    Route("app_run.chat", "POST", "/apps/{app_id}/chat:run", _RUN_TRAITS),
+    Route("app_run.advanced_chat", "POST", "/apps/{app_id}/advanced-chat:run", _RUN_TRAITS),
+    Route("app_run.completion", "POST", "/apps/{app_id}/completion:run", _RUN_TRAITS),
     Route(
         "app_run.stop",
         "POST",
@@ -619,6 +625,10 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.RBAC_ON_DENIED: DENY_RBAC,
     },
     "app_run.run": dict(_DUAL_SUBJECT_RUN),
+    "app_run.workflow": dict(_DUAL_SUBJECT_RUN),
+    "app_run.chat": dict(_DUAL_SUBJECT_RUN),
+    "app_run.advanced_chat": dict(_DUAL_SUBJECT_RUN),
+    "app_run.completion": dict(_DUAL_SUBJECT_RUN),
     "human_input_form.get": dict(_DUAL_SUBJECT_RUN),
     "files.upload": {
         **_DUAL_SUBJECT_RUN,
@@ -755,6 +765,10 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_dsl.export": _REQ_DSL_APP,
     "app_dsl.check_dependencies": _REQ_DSL_APP,
     "app_run.run": _REQ_RUN,
+    "app_run.workflow": _REQ_RUN,
+    "app_run.chat": _REQ_RUN,
+    "app_run.advanced_chat": _REQ_RUN,
+    "app_run.completion": _REQ_RUN,
     "app_run.stop": _REQ_RUN,
     "files.upload": _REQ_FILES,
     "human_input_form.get": _REQ_RUN_FORM,
@@ -1192,10 +1206,10 @@ def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:
 
     expected = {(route.method, _rule_path(route)) for route in ROUTES}
     assert guarded == expected
-    # The remainder is the device-flow and documentation surface. Its size is pinned
-    # rather than enumerated: a list of exemptions rots silently — the one this
+    # The remainder is the device-flow, documentation and catalog surface. Its size is
+    # pinned rather than enumerated: a list of exemptions rots silently — the one this
     # replaced still named `swagger.json`, a route that is not registered at all.
-    assert len(unguarded) == 13
+    assert len(unguarded) == 14
 
 
 @singledispatch
@@ -1252,6 +1266,7 @@ ERROR_DEFAULT_RESPONSE: dict[str, object] = {
 """Exactly what `@returns` registers as `("default", "Error", ErrorBody)`."""
 
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
+    ("get", "/_catalog"): frozenset({"200"}),
     ("get", "/_health"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
@@ -1262,12 +1277,16 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/apps/{app_id}"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/dependencies:check"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/dsl"): frozenset({"200", "422", "default"}),
-    ("post", "/apps/{app_id}/files"): frozenset({"201", "400", "401", "413", "415", "default"}),
+    ("post", "/apps/{app_id}/files"): frozenset({"201", "400", "401", "413", "415", "422", "default"}),
     ("get", "/apps/{app_id}/human-input-forms/{form_token}"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/human-input-forms/{form_token}:submit"): frozenset({"200", "422", "default"}),
-    ("get", "/apps/{app_id}/tasks/{task_id}/events"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/tasks/{task_id}/events"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/tasks/{task_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/workflow:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/advanced-chat:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/completion:run"): frozenset({"200", "422", "default"}),
     # The five device-flow rows are the only operations with no `default`: they
     # document their 200 with a raw `openapi_ns.response` rather than `@returns`,
     # so no `ErrorBody` schema is registered for them.
@@ -1278,7 +1297,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/oauth/device/token"): frozenset({"200"}),
     ("get", "/permitted-external-apps"): frozenset({"200", "422", "default"}),
     ("get", "/permitted-external-apps/{app_id}"): frozenset({"200", "422", "default"}),
-    ("get", "/workspaces"): frozenset({"200", "default"}),
+    ("get", "/workspaces"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports"): frozenset({"200", "202", "400", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports/{import_id}:confirm"): frozenset({"200", "400", "default"}),
