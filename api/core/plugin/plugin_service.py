@@ -1243,6 +1243,72 @@ class PluginService:
         return result
 
     @staticmethod
+    def _cleanup_plugin_credentials(tenant_id: str, plugin_id: str) -> None:
+        """Delete plugin-owned credentials and invalidate their provider caches."""
+        provider_name_pattern = f"{plugin_id}/%"
+
+        with Session(db.engine) as session, session.begin():
+            session.execute(
+                delete(TenantPreferredModelProvider).where(
+                    TenantPreferredModelProvider.tenant_id == tenant_id,
+                    TenantPreferredModelProvider.provider_name.like(provider_name_pattern),
+                )
+            )
+
+            provider_ids = session.scalars(
+                select(Provider.id).where(
+                    Provider.tenant_id == tenant_id,
+                    Provider.provider_name.like(provider_name_pattern),
+                )
+            ).all()
+            credential_ids = session.scalars(
+                select(ProviderCredential.id).where(
+                    ProviderCredential.tenant_id == tenant_id,
+                    ProviderCredential.provider_name.like(provider_name_pattern),
+                )
+            ).all()
+
+            if not credential_ids:
+                logger.info("No credentials found for plugin: %s", plugin_id)
+            else:
+                session.execute(
+                    update(Provider)
+                    .where(
+                        Provider.tenant_id == tenant_id,
+                        Provider.provider_name.like(provider_name_pattern),
+                        Provider.credential_id.in_(credential_ids),
+                    )
+                    .values(credential_id=None)
+                )
+                session.execute(
+                    delete(ProviderCredential).where(
+                        ProviderCredential.tenant_id == tenant_id,
+                        ProviderCredential.id.in_(credential_ids),
+                    )
+                )
+                logger.info(
+                    "Completed deleting credentials and cleaning provider associations for plugin: %s",
+                    plugin_id,
+                )
+
+        for provider_id in provider_ids:
+            ProviderCredentialsCache(
+                tenant_id=tenant_id,
+                identity_id=provider_id,
+                cache_type=ProviderCredentialsCacheType.PROVIDER,
+            ).delete()
+
+        from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
+
+        ProviderManager.invalidate_configurations_cache(
+            tenant_id,
+            sources=(
+                ProviderConfigurationCacheSource.PREFERRED_MODEL_PROVIDERS,
+                ProviderConfigurationCacheSource.PROVIDER_CREDENTIALS,
+            ),
+        )
+
+    @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str, *, preserve_credentials: bool = False) -> bool:
         """Uninstall a plugin and optionally retain model-provider credentials for replacement."""
         manager = PluginInstaller()
@@ -1274,62 +1340,24 @@ class PluginService:
         else:
             plugin_id = plugin.plugin_id
             logger.info("Deleting credentials after uninstalling plugin: %s", plugin_id)
-            provider_ids: Sequence[str] = []
-
-            with Session(db.engine) as session, session.begin():
-                session.execute(
-                    delete(TenantPreferredModelProvider).where(
-                        TenantPreferredModelProvider.tenant_id == tenant_id,
-                        TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
-                    )
+            try:
+                PluginService._cleanup_plugin_credentials(tenant_id, plugin_id)
+            except Exception:
+                logger.exception(
+                    "Plugin credential cleanup failed after uninstall: tenant_id=%s plugin_id=%s",
+                    tenant_id,
+                    plugin_id,
                 )
+                try:
+                    from tasks.plugin_credential_cleanup_task import cleanup_plugin_credentials_task
 
-                credential_ids = session.scalars(
-                    select(ProviderCredential.id).where(
-                        ProviderCredential.tenant_id == tenant_id,
-                        ProviderCredential.provider_name.like(f"{plugin_id}/%"),
-                    )
-                ).all()
-
-                if not credential_ids:
-                    logger.info("No credentials found for plugin: %s", plugin_id)
-                else:
-                    provider_ids = session.scalars(
-                        select(Provider.id).where(
-                            Provider.tenant_id == tenant_id,
-                            Provider.provider_name.like(f"{plugin_id}/%"),
-                            Provider.credential_id.in_(credential_ids),
-                        )
-                    ).all()
-
-                    session.execute(update(Provider).where(Provider.id.in_(provider_ids)).values(credential_id=None))
-                    session.execute(
-                        delete(ProviderCredential).where(
-                            ProviderCredential.id.in_(credential_ids),
-                        )
-                    )
-
-                    logger.info(
-                        "Completed deleting credentials and cleaning provider associations for plugin: %s",
+                    cleanup_plugin_credentials_task.delay(tenant_id, plugin_id)
+                except Exception:
+                    logger.exception(
+                        "Failed to schedule plugin credential cleanup retry: tenant_id=%s plugin_id=%s",
+                        tenant_id,
                         plugin_id,
                     )
-
-            for provider_id in provider_ids:
-                ProviderCredentialsCache(
-                    tenant_id=tenant_id,
-                    identity_id=provider_id,
-                    cache_type=ProviderCredentialsCacheType.PROVIDER,
-                ).delete()
-
-            from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
-
-            ProviderManager.invalidate_configurations_cache(
-                tenant_id,
-                sources=(
-                    ProviderConfigurationCacheSource.PREFERRED_MODEL_PROVIDERS,
-                    ProviderConfigurationCacheSource.PROVIDER_CREDENTIALS,
-                ),
-            )
 
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
