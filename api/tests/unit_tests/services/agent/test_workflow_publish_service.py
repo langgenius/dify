@@ -17,24 +17,14 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _workflow(*, workflow_id: str = "workflow-1", version: str = Workflow.VERSION_DRAFT) -> Workflow:
-    return Workflow(
-        id=workflow_id,
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=WorkflowType.WORKFLOW,
-        version=version,
-        graph={"nodes": [], "edges": []},
-        features={},
-        created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-    )
+    return make_workflow(workflow_id=workflow_id, version=version)
 
 
 def _inline_agent(

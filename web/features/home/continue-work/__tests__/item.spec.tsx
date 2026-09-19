@@ -28,7 +28,7 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     warning: toastMocks.warning,
   },
@@ -168,10 +168,15 @@ describe('ContinueWorkItem', () => {
     )
   })
 
-  it('should fall back to access point when RBAC is disabled for an access-config-only app', () => {
-    renderItem(createApp({ permission_keys: [AppACLPermission.AccessConfig] }), {
-      rbac_enabled: false,
-    })
+  it('should fall back to access point when RBAC is disabled and Access Point is viewable', () => {
+    renderItem(
+      createApp({
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPointView],
+      }),
+      {
+        rbac_enabled: false,
+      },
+    )
 
     expect(screen.getByRole('link', { name: /Continue App/ })).toHaveAttribute(
       'href',

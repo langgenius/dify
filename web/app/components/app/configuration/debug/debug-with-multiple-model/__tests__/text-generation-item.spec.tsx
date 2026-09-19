@@ -5,7 +5,7 @@ import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../types'
 import TextGenerationItem from '../text-generation-item'
 
 const mockUseDebugConfigurationContext = vi.fn()
-const mockUseProviderContext = vi.fn()
+const mockModelListQuery = vi.fn()
 const mockUseFeatures = vi.fn()
 const mockUseTextGeneration = vi.fn()
 const mockUseEventEmitterContextContext = vi.fn()
@@ -30,8 +30,9 @@ vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => mockModelListQuery(),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
@@ -105,8 +106,8 @@ const createDefaultMocks = () => {
     datasetConfigs: { retrieval_model: 'single' },
   })
 
-  mockUseProviderContext.mockReturnValue({
-    textGenerationModelList: [
+  mockModelListQuery.mockReturnValue({
+    data: [
       {
         provider: 'openai',
         models: [
@@ -597,8 +598,8 @@ describe('TextGenerationItem', () => {
         messageId: null,
       })
 
-      mockUseProviderContext.mockReturnValue({
-        textGenerationModelList: [
+      mockModelListQuery.mockReturnValue({
+        data: [
           {
             provider: 'openai',
             models: [
@@ -643,8 +644,8 @@ describe('TextGenerationItem', () => {
         messageId: null,
       })
 
-      mockUseProviderContext.mockReturnValue({
-        textGenerationModelList: [],
+      mockModelListQuery.mockReturnValue({
+        data: [],
       })
 
       renderComponent()

@@ -14,7 +14,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ApiBasedExtensionModal } from './modal'
 
 type ApiBasedExtensionSelectorProps = {

@@ -10,7 +10,7 @@ import {
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 
 type Props = Readonly<{
   currentModel: any
@@ -55,7 +55,7 @@ const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="w-[354px]">
+          <SelectContent className="w-88.5">
             {supportedLanguages.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
@@ -82,7 +82,7 @@ const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="w-[354px]">
+          <SelectContent className="w-88.5">
             {voiceList.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.label}</SelectItemText>

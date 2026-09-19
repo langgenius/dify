@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
@@ -41,6 +41,7 @@ const ConditionNumberInput = ({
   isShort,
   unit,
 }: ConditionNumberInputProps) => {
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation()
   const [numberVarTypeVisible, setNumberVarTypeVisible] = useState(false)
   const [variableSelectorVisible, setVariableSelectorVisible] = useState(false)
@@ -64,7 +65,7 @@ const ConditionNumberInput = ({
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={2}
-          className="w-[112px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+          className="w-28 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
         >
           <DropdownMenuRadioGroup value={numberVarType} onValueChange={onNumberVarTypeChange}>
             {options.map((option) => (
@@ -106,6 +107,7 @@ const ConditionNumberInput = ({
               )}
             </PopoverTrigger>
             <PopoverContent
+              initialFocus={searchInputRef}
               placement="bottom-start"
               sideOffset={2}
               className="border-none bg-transparent shadow-none"
@@ -116,7 +118,11 @@ const ConditionNumberInput = ({
                   isShort && 'w-50',
                 )}
               >
-                <VarReferenceVars vars={variables} onChange={handleSelectVariable} />
+                <VarReferenceVars
+                  searchInputRef={searchInputRef}
+                  vars={variables}
+                  onChange={handleSelectVariable}
+                />
               </div>
             </PopoverContent>
           </Popover>

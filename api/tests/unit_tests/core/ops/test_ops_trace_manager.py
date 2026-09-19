@@ -14,7 +14,7 @@ from uuid import UUID
 import pytest
 from flask import Flask
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import core.ops.ops_trace_manager as module
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
@@ -26,6 +26,7 @@ from models.model import App, AppMode, AppModelConfig, Conversation, Message, Me
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_app
 
 
 class DummyConfig:
@@ -144,8 +145,9 @@ class RecordingDispatcher:
 
 @pytest.fixture
 def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session]:
+    session_proxy = scoped_session(lambda: sqlite_session)
     with (
-        patch.object(module.db, "session", sqlite_session),
+        patch.object(module.db, "session", session_proxy),
         patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
     ):
         yield sqlite_session
@@ -182,20 +184,7 @@ def encryption_functions(
 
 
 def _app(session: Session, *, app_id: str = "app-id", tracing: str | None = None) -> App:
-    app = App(
-        id=app_id,
-        tenant_id="tenant-1",
-        name="App",
-        description="description",
-        mode=AppMode.CHAT,
-        icon_type=None,
-        icon=None,
-        icon_background=None,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-        tracing=tracing,
-    )
+    app = make_app(app_id=app_id, name="App", description="description", icon_type=None, tracing=tracing)
     session.add(app)
     session.commit()
     return app
@@ -289,7 +278,11 @@ def _message_data(**overrides):
         "inputs": "inputs",
     }
     data.update(overrides)
-    return SimpleNamespace(**data, to_dict=lambda: data)
+    return SimpleNamespace(
+        **data,
+        agent_thoughts_with_session=lambda *, session: data["agent_thoughts"],
+        to_dict=lambda: data,
+    )
 
 
 def test_encrypt_decrypt_obfuscate_and_cache(

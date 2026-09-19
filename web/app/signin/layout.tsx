@@ -15,15 +15,15 @@ export default function SignInLayout({ children }: any) {
           )}
         >
           <Header />
-          <div
+          <main
             className={cn('flex w-full grow flex-col items-center justify-center px-6 md:px-27')}
           >
             <div className="flex w-full flex-col md:w-100">{children}</div>
-          </div>
+          </main>
           {systemFeatures.branding.enabled === false && (
-            <div className="px-8 py-6 system-xs-regular text-text-tertiary">
+            <footer className="px-8 py-6 system-xs-regular text-text-tertiary">
               © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
-            </div>
+            </footer>
           )}
         </div>
       </div>

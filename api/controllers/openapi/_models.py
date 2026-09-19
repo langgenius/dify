@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
+from libs.oauth_bearer import SubjectType
 from models.model import AppMode
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
@@ -51,7 +52,7 @@ class MessageMetadata(BaseModel):
 
 
 class PaginationEnvelope[T](BaseModel):
-    """Canonical pagination envelope for `/openapi/v1/*` list endpoints."""
+    """The one shape every paginated list on this surface answers with."""
 
     page: int
     limit: int
@@ -60,7 +61,7 @@ class PaginationEnvelope[T](BaseModel):
     data: list[T]
 
     @classmethod
-    def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> PaginationEnvelope[T]:
+    def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> Self:
         return cls(page=page, limit=limit, total=total, has_more=page * limit < total, data=items)
 
 
@@ -74,20 +75,12 @@ class AppListRow(BaseModel):
     workspace_name: str | None = None
 
 
-class AppListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[AppListRow]
+class AppListResponse(PaginationEnvelope[AppListRow]):
+    pass
 
 
-class PermittedExternalAppsListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[AppListRow]
+class PermittedExternalAppsListResponse(PaginationEnvelope[AppListRow]):
+    pass
 
 
 class AppInfo(BaseModel):
@@ -109,29 +102,6 @@ class AppDescribeResponse(BaseModel):
     input_schema: dict[str, Any] | None = Field(default=None)
 
 
-class ChatMessageResponse(BaseModel):
-    event: str
-    task_id: str
-    id: str
-    message_id: str
-    conversation_id: str
-    mode: str
-    answer: str
-    metadata: MessageMetadata = Field(default_factory=MessageMetadata)
-    created_at: int
-
-
-class CompletionMessageResponse(BaseModel):
-    event: str
-    task_id: str
-    id: str
-    message_id: str
-    mode: str
-    answer: str
-    metadata: MessageMetadata = Field(default_factory=MessageMetadata)
-    created_at: int
-
-
 class WorkflowRunData(BaseModel):
     id: str
     workflow_id: str
@@ -143,13 +113,6 @@ class WorkflowRunData(BaseModel):
     total_steps: int | None = None
     created_at: int | None = None
     finished_at: int | None = None
-
-
-class WorkflowRunResponse(BaseModel):
-    workflow_run_id: str
-    task_id: str
-    mode: Literal["workflow"] = "workflow"
-    data: WorkflowRunData
 
 
 class AccountPayload(BaseModel):
@@ -167,7 +130,7 @@ class WorkspacePayload(BaseModel):
 class DeviceTokenResponse(BaseModel):
     token: str
     expires_at: str
-    subject_type: Literal["account", "external_sso"]
+    subject_type: SubjectType
     account: AccountPayload | None = None
     workspaces: list[WorkspacePayload] = []
     default_workspace_id: str | None = None
@@ -177,7 +140,7 @@ class DeviceTokenResponse(BaseModel):
 
 
 class AccountResponse(BaseModel):
-    subject_type: str
+    subject_type: SubjectType
     subject_email: str | None = None
     subject_issuer: str | None = None
     account: AccountPayload | None = None
@@ -195,12 +158,8 @@ class SessionRow(BaseModel):
     expires_at: str | None = None
 
 
-class SessionListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[SessionRow]
+class SessionListResponse(PaginationEnvelope[SessionRow]):
+    pass
 
 
 class SessionListQuery(BaseModel):
@@ -398,12 +357,8 @@ class MemberResponse(BaseModel):
     avatar: str | None = None
 
 
-class MemberListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[MemberResponse]
+class MemberListResponse(PaginationEnvelope[MemberResponse]):
+    pass
 
 
 class MemberListQuery(BaseModel):

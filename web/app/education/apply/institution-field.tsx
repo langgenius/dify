@@ -14,13 +14,13 @@ import {
   AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
-import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const EDUCATION_AUTOCOMPLETE_PAGE_SIZE = 40
 
@@ -138,7 +138,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
                         {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
                       </span>
                     ) : (
-                      <Loading className="h-10" />
+                      <SpinnerIcon />
                     )}
                   </div>
                 ) : null}

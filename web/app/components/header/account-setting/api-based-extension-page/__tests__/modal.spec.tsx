@@ -27,7 +27,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apiBasedExtension: {
       post: {
@@ -51,7 +51,7 @@ vi.mock('@tanstack/react-query', () => ({
   })),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 

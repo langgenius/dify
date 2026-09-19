@@ -19,6 +19,9 @@ type CheckboxListOption = {
 
 type CheckboxListProps = {
   name?: string
+  'aria-labelledby'?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   title?: string
   label?: string
   description?: string
@@ -35,6 +38,9 @@ type CheckboxListProps = {
 
 export const CheckboxList = ({
   name,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   title = '',
   label,
   description,
@@ -73,7 +79,10 @@ export const CheckboxList = ({
       <Fieldset
         render={
           <CheckboxGroup
-            aria-label={!label && title ? title : undefined}
+            {...(ariaLabelledBy ? { 'aria-labelledby': ariaLabelledBy } : {})}
+            {...(ariaDescribedBy ? { 'aria-describedby': ariaDescribedBy } : {})}
+            {...(ariaInvalid !== undefined ? { 'aria-invalid': ariaInvalid } : {})}
+            aria-label={!ariaLabelledBy && !label && title ? title : undefined}
             value={value}
             onValueChange={(nextValue) => onChange?.(nextValue)}
             allValues={selectableOptionValues}
@@ -148,7 +157,7 @@ export const CheckboxList = ({
               <div className="px-3 py-6 text-center text-sm text-text-tertiary">
                 {searchQuery ? (
                   <div className="flex flex-col items-center justify-center gap-2">
-                    <img alt="search menu" src={SearchMenu.src} width={32} />
+                    <img alt="" src={SearchMenu.src} width={32} />
                     <span className="system-sm-regular text-text-secondary">
                       {t(($) => $['operation.noSearchResults'], { ns: 'common', content: title })}
                     </span>

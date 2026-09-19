@@ -8,7 +8,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DocumentChunkDetail } from './document-chunk-detail'
 import { DocumentChunkTreePanel } from './document-chunk-tree'
 import { buildDocumentChunkTree } from './document-detail-model'
@@ -41,7 +41,7 @@ export function DocumentRevisionContent({
   if (effectiveRevision === undefined && revisionHistoryPending)
     return (
       <div className="flex min-h-80 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
 

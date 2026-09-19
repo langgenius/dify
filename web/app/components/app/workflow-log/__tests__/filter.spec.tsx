@@ -7,44 +7,37 @@
  * - Keyword search
  */
 
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
 import type { QueryParam } from '../index'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import Filter, { TIME_PERIOD_MAPPING } from '../filter'
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-const mockRuntime = vi.hoisted(() => ({
-  deploymentEdition: 'CLOUD',
-  enableBilling: true,
-  isFetchedPlan: true,
-  isFetchedPlanInfo: true,
-  planType: 'professional',
-}))
+const scenario = {
+  deploymentEdition: 'CLOUD' as DeploymentEdition,
+  planType: 'professional' as CloudPlan,
+}
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({ data: mockRuntime.deploymentEdition }),
-  }
-})
-
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: () => ({
-      enableBilling: mockRuntime.enableBilling,
-      isFetchedPlan: mockRuntime.isFetchedPlan,
-      isFetchedPlanInfo: mockRuntime.isFetchedPlanInfo,
-      plan: { type: mockRuntime.planType },
-    }),
-  }
-})
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedFeatures(queryClient, { billing: { subscription: { plan: scenario.planType } } })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: scenario.deploymentEdition },
+  })
+}
 
 const mockTrackEvent = vi.fn()
 vi.mock('@/app/components/base/amplitude/utils', () => ({
@@ -70,11 +63,8 @@ describe('Filter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockRuntime.deploymentEdition = 'CLOUD'
-    mockRuntime.enableBilling = true
-    mockRuntime.isFetchedPlan = true
-    mockRuntime.isFetchedPlanInfo = true
-    mockRuntime.planType = 'professional'
+    scenario.deploymentEdition = 'CLOUD'
+    scenario.planType = 'professional'
   })
 
   // --------------------------------------------------------------------------
@@ -214,8 +204,8 @@ describe('Filter', () => {
   describe('Time Period Filter', () => {
     it('should only show supported periods for Cloud sandbox workspaces', async () => {
       const user = userEvent.setup()
-      mockRuntime.deploymentEdition = 'CLOUD'
-      mockRuntime.planType = 'sandbox'
+      scenario.deploymentEdition = 'CLOUD'
+      scenario.planType = 'sandbox'
 
       render(
         <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
@@ -237,8 +227,8 @@ describe('Filter', () => {
 
     it('should keep all periods for sandbox workspaces outside Cloud', async () => {
       const user = userEvent.setup()
-      mockRuntime.deploymentEdition = 'COMMUNITY'
-      mockRuntime.planType = 'sandbox'
+      scenario.deploymentEdition = 'COMMUNITY'
+      scenario.planType = 'sandbox'
 
       render(
         <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
@@ -253,8 +243,8 @@ describe('Filter', () => {
     it('should reset the Cloud sandbox period to today when cleared', async () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
-      mockRuntime.deploymentEdition = 'CLOUD'
-      mockRuntime.planType = 'sandbox'
+      scenario.deploymentEdition = 'CLOUD'
+      scenario.planType = 'sandbox'
 
       render(
         <Filter

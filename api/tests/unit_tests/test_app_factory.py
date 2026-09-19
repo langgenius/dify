@@ -1,9 +1,13 @@
-"""Enterprise license gating performed by the global ``before_request`` hook."""
+"""Behaviour the Flask application factory installs app-wide.
+
+Enterprise license gating through the global ``before_request`` hook, and the
+flask-restx defaults every API surface inherits from the app config.
+"""
 
 from unittest.mock import patch
 
 import pytest
-from flask import Blueprint, Flask
+from flask import Blueprint, Flask, abort
 from flask_restx import Resource
 
 from app_factory import create_flask_app_with_configs
@@ -318,3 +322,30 @@ class TestSessionSurfaceLicenseGate:
             response = gated_app.test_client().get("/health")
 
         assert response.status_code == 200
+
+
+class TestRestxRoute404Help:
+    """flask-restx appends url-map suggestions to 404 bodies unless the factory opts out."""
+
+    @pytest.fixture
+    def gated_route_app(self) -> Flask:
+        app = create_flask_app_with_configs()
+        bp = Blueprint("console_test", __name__, url_prefix="/console/api")
+        api = ExternalApi(bp)
+
+        # An admission gate (edition, license) answers 404 on a route that exists.
+        @api.route("/account/education")
+        class EducationGated(Resource):
+            def get(self):
+                abort(404)
+
+        app.register_blueprint(bp)
+        return app
+
+    def test_404_body_carries_no_route_suggestions(self, gated_route_app: Flask):
+        response = gated_route_app.test_client().get("/console/api/account/education")
+
+        assert response.status_code == 404
+        message = response.get_json()["message"]
+        assert "did you mean" not in message.lower()
+        assert "/console/api/account/education" not in message

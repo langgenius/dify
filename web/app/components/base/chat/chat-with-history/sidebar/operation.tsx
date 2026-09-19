@@ -46,7 +46,7 @@ const Operation: FC<Props> = ({
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             data-active={isActive ? '' : undefined}
             className={cn(
-              'pointer-events-none opacity-0 data-active:bg-state-accent-active data-active:text-text-accent data-active:hover:bg-state-accent-active-alt data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:opacity-100 data-active:data-popup-open:bg-state-accent-active data-active:data-popup-open:text-text-accent',
+              'pointer-events-none opacity-0 focus-visible:pointer-events-auto focus-visible:opacity-100 data-active:bg-state-accent-active data-active:text-text-accent data-active:hover:bg-state-accent-active-alt data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:opacity-100 data-active:data-popup-open:bg-state-accent-active data-active:data-popup-open:text-text-accent',
               isItemHovering && 'pointer-events-auto opacity-100',
             )}
           >
@@ -58,7 +58,7 @@ const Operation: FC<Props> = ({
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        className="min-w-[120px]"
+        className="min-w-30"
         onClick={(e) => e.stopPropagation()}
       >
         <DropdownMenuItem

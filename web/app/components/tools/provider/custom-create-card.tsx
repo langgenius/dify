@@ -1,11 +1,11 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
 import CreateEntryCard from './create-entry-card'
@@ -56,7 +56,6 @@ export const NewCustomToolButton = ({ onRefreshData }: Props) => {
         className="px-3!"
         onClick={() => setIsShowEditCustomCollectionModal(true)}
         title={addSwaggerAPIAsToolLabel}
-        aria-label={addSwaggerAPIAsToolLabel}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
         {addSwaggerAPIAsToolLabel}

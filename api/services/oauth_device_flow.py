@@ -10,12 +10,12 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Any, NotRequired, TypedDict
+from typing import NotRequired, TypedDict
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType
+from libs.oauth_bearer import SubjectType, TokenType, invalidate_oauth_token_cache
 from models.oauth import OAuthAccessToken
 
 logger = logging.getLogger(__name__)
@@ -300,8 +300,6 @@ class DeviceFlowRedis:
 
 
 OAUTH_BODY_BYTES = 32  # ~256 bits entropy
-PREFIX_OAUTH_ACCOUNT = "dfoa_"
-PREFIX_OAUTH_EXTERNAL_SSO = "dfoe_"
 
 # Sentinel issuer for account-flow rows. Postgres' default partial unique
 # index treats NULLs as distinct, which would let two live `dfoa_` rows
@@ -342,7 +340,7 @@ def mint_oauth_token(
     account_id: str | None,
     client_id: str,
     device_label: str,
-    prefix: str,
+    token_type: TokenType,
     ttl_days: int,
     session: Session,
 ) -> MintResult:
@@ -351,21 +349,18 @@ def mint_oauth_token(
     index predicate so re-login INSERTs fresh. Pre-rotate Redis entry is
     deleted so stale AuthContext drops immediately.
     """
-    if prefix == PREFIX_OAUTH_ACCOUNT:
-        # Account flow always writes the sentinel — caller may pass None
+    if token_type.subject.bound_to_account:
+        # Account-bound flows always write the sentinel — caller may pass None
         # (for clarity) or the sentinel itself; nothing else is valid.
         if subject_issuer not in (None, ACCOUNT_ISSUER_SENTINEL):
             raise ValueError(f"account-flow token must use ACCOUNT_ISSUER_SENTINEL, got {subject_issuer!r}")
         subject_issuer = ACCOUNT_ISSUER_SENTINEL
-    elif prefix == PREFIX_OAUTH_EXTERNAL_SSO:
+    elif not subject_issuer or not subject_issuer.strip():
         # Defense in depth: enterprise canonicalises + rejects empty,
         # but a regression there must not yield a NULL composite key here.
-        if not subject_issuer or not subject_issuer.strip():
-            raise ValueError("external-SSO token requires non-empty subject_issuer")
-    else:
-        raise ValueError(f"unknown oauth prefix: {prefix!r}")
+        raise ValueError("external-SSO token requires non-empty subject_issuer")
 
-    token = generate_token(prefix)
+    token = generate_token(token_type.prefix)
     new_hash = sha256_hex(token)
     expires_at = datetime.now(UTC) + timedelta(days=ttl_days)
 
@@ -376,13 +371,13 @@ def mint_oauth_token(
         account_id=account_id,
         client_id=client_id,
         device_label=device_label,
-        prefix=prefix,
+        prefix=token_type.prefix,
         new_hash=new_hash,
         expires_at=expires_at,
     )
 
     if outcome.rotated and outcome.old_hash:
-        redis_client.delete(TOKEN_CACHE_KEY_FMT.format(hash=outcome.old_hash))
+        invalidate_oauth_token_cache(redis_client, outcome.old_hash)
 
     return MintResult(token=token, token_id=outcome.token_id, expires_at=expires_at)
 
@@ -487,70 +482,3 @@ def oauth_ttl_days(tenant_id: str | None = None) -> int:
         logger.warning("%s=%d above max %d; clamping", _TTL_ENV_VAR, value, MAX_TTL_DAYS)
         return MAX_TTL_DAYS
     return value
-
-
-def subject_match_clauses(ctx: AuthContext) -> tuple[Any, ...]:
-    if ctx.subject_type == SubjectType.ACCOUNT:
-        return (OAuthAccessToken.account_id == str(ctx.account_id),)
-    return (
-        OAuthAccessToken.subject_email == ctx.subject_email,
-        OAuthAccessToken.subject_issuer == ctx.subject_issuer,
-        OAuthAccessToken.account_id.is_(None),
-    )
-
-
-def list_active_sessions(ctx: AuthContext, now: datetime, *, session: Session) -> list[OAuthAccessToken]:
-    return list(
-        session.execute(
-            select(OAuthAccessToken)
-            .where(
-                and_(
-                    *subject_match_clauses(ctx),
-                    OAuthAccessToken.revoked_at.is_(None),
-                    OAuthAccessToken.token_hash.is_not(None),
-                    OAuthAccessToken.expires_at > now,
-                )
-            )
-            .order_by(OAuthAccessToken.created_at.desc())
-        )
-        .scalars()
-        .all()
-    )
-
-
-def token_belongs_to_subject(token_id: str, ctx: AuthContext, *, session: Session) -> bool:
-    row = session.execute(
-        select(OAuthAccessToken.id).where(
-            and_(
-                OAuthAccessToken.id == token_id,
-                *subject_match_clauses(ctx),
-            )
-        )
-    ).first()
-    return row is not None
-
-
-def revoke_oauth_token(redis_client: Any, token_id: str, *, session: Session) -> None:
-    row = (
-        session.query(OAuthAccessToken.token_hash)
-        .filter(
-            OAuthAccessToken.id == token_id,
-            OAuthAccessToken.revoked_at.is_(None),
-        )
-        .one_or_none()
-    )
-    pre_revoke_hash = row[0] if row else None
-
-    stmt = (
-        update(OAuthAccessToken)
-        .where(
-            OAuthAccessToken.id == token_id,
-            OAuthAccessToken.revoked_at.is_(None),
-        )
-        .values(revoked_at=datetime.now(UTC), token_hash=None)
-    )
-    session.execute(stmt)
-    session.commit()
-
-    if pre_revoke_hash:
-        redis_client.delete(TOKEN_CACHE_KEY_FMT.format(hash=pre_revoke_hash))

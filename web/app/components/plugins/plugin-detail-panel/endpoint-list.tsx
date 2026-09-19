@@ -2,12 +2,12 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import {
   useCreateEndpoint,
@@ -88,7 +88,7 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
             />
             <PopoverContent
               placement="right"
-              className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4"
+              className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4"
             >
               <div className="flex flex-col gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">

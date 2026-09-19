@@ -11,7 +11,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type ItemProps = {
   apiBasedExtension: ApiBasedExtensionResponse

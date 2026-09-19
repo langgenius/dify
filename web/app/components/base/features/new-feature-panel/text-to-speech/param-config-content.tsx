@@ -20,9 +20,9 @@ import { replace } from 'string-ts'
 import { AudioBtn } from '@/app/components/base/audio-btn'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Infotip } from '@/app/components/base/infotip'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 import { usePathname } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { TtsAutoPlay } from '@/types/app'
 
 type SelectOption = {

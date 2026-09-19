@@ -9,13 +9,13 @@ import {
   SelectItemIndicator,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Infotip } from '@/app/components/base/infotip'
+import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useInitiateTriggerOAuth,

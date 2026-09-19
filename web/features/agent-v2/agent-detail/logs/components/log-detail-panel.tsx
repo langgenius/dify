@@ -5,15 +5,15 @@ import type {
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function AgentLogDetailPanel({
   agentId,
@@ -124,11 +124,7 @@ export function AgentLogDetailPanel({
         <div className="rounded-t-xl bg-background-section-burn p-3 pb-2" />
       </div>
       <div className="mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn">
-        {messagesQuery.isPending && (
-          <div className="flex h-full items-center justify-center">
-            <Loading />
-          </div>
-        )}
+        {messagesQuery.isPending && <LoadingPlaceholder className="h-full" />}
         {messagesQuery.isError && (
           <div className="flex h-full items-center justify-center text-center system-sm-regular text-text-tertiary">
             {t(($) => $['agentDetail.logs.loadFailed'], { ns: 'agentV2' })}

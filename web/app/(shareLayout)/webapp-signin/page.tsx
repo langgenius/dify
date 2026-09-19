@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
@@ -54,7 +54,7 @@ function WebSSOForm() {
   if (!loginRedirect) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }

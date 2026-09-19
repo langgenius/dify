@@ -12,14 +12,14 @@ import json
 from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import PropertyMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from models import model as model_module
 from models.dataset import DatasetCollectionBinding
-from models.enums import CollectionBindingType, ConversationFromSource
+from models.enums import CollectionBindingType, ConversationFromSource, CustomizeTokenStrategy
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -33,6 +33,7 @@ from models.model import (
     Site,
     load_annotation_reply_config,
 )
+from models.workflow import Workflow, WorkflowType
 
 
 class TestAppModelValidation:
@@ -122,8 +123,9 @@ class TestAppModelValidation:
         # Assert
         assert {t.value for t in IconType} == {"image", "emoji", "link"}
 
-    def test_app_desc_or_prompt_with_description(self):
-        """Test desc_or_prompt property when description exists."""
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_desc_or_prompt_with_description(self, sqlite_session: Session):
+        """Test desc_or_prompt_with_session when description exists."""
         # Arrange
         app = App(
             tenant_id=str(uuid4()),
@@ -136,7 +138,7 @@ class TestAppModelValidation:
         )
 
         # Act
-        result = app.desc_or_prompt
+        result = app.desc_or_prompt_with_session(session=sqlite_session)
 
         # Assert
         assert result == "App description"
@@ -165,8 +167,8 @@ class TestAppModelValidation:
         assert result == ""
 
     @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-    def test_app_is_agent_property_false(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
-        """Test is_agent property returns False when not configured as agent."""
+    def test_app_is_agent_false_when_not_configured_as_agent(self, sqlite_session: Session):
+        """`is_agent_with_session` returns False when the config has no agent mode."""
         # Arrange
         app = App(
             tenant_id=str(uuid4()),
@@ -179,11 +181,9 @@ class TestAppModelValidation:
         )
         sqlite_session.add(app)
         sqlite_session.flush()
-        session_registry = scoped_session(lambda: sqlite_session)
-        monkeypatch.setattr(model_module.db, "session", session_registry)
 
         # Act
-        result = app.is_agent
+        result = app.is_agent_with_session(session=sqlite_session)
 
         # Assert
         assert result is False
@@ -239,6 +239,139 @@ class TestAppModelValidation:
 
         # Assert
         assert result == AppMode.CHAT
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_mode_compatible_with_agent_reports_agent_chat(self, sqlite_session: Session):
+        """A CHAT app whose own config enables agent mode reports AGENT_CHAT."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+        app.app_model_config_id = str(uuid4())
+        config = AppModelConfig(
+            app_id=app.id,
+            agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
+        )
+        config.id = app.app_model_config_id
+        sqlite_session.add(config)
+        sqlite_session.flush()
+
+        # Act
+        result = app.mode_compatible_with_agent_with_session(session=sqlite_session)
+
+        # Assert
+        assert result == AppMode.AGENT_CHAT
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_model_config_with_session_reads_through_the_caller_session(self, sqlite_session: Session):
+        """`app_model_config_with_session` resolves the linked config through the caller's session."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+        model_config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": False}))
+        sqlite_session.add(model_config)
+        sqlite_session.flush()
+        app.app_model_config_id = model_config.id
+        sqlite_session.commit()
+
+        # Act: a session the model never owns, proving the lookup does not reach for a global one
+        with Session(sqlite_session.get_bind(), expire_on_commit=False) as caller_session:
+            result = app.app_model_config_with_session(session=caller_session)
+
+            # Assert
+            assert result is not None
+            assert result.id == model_config.id
+            assert result in caller_session
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_model_config_with_session_returns_none_when_unlinked(self, sqlite_session: Session):
+        """An app without `app_model_config_id` resolves to None without querying."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+
+        # Act / Assert: an unbound session would raise if the guard were dropped
+        with Session(expire_on_commit=False) as unbound_session:
+            assert app.app_model_config_with_session(session=unbound_session) is None
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_workflow_with_session_reads_through_the_caller_session(self, sqlite_session: Session):
+        """`workflow_with_session` resolves the published workflow through the caller's session."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.WORKFLOW,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+        workflow = Workflow(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW,
+            version="1",
+            graph=json.dumps({"nodes": [], "edges": []}),
+            created_by=app.created_by,
+        )
+        workflow._features = "{}"
+        sqlite_session.add(workflow)
+        sqlite_session.flush()
+        app.workflow_id = workflow.id
+        sqlite_session.commit()
+
+        # Act: a session the model never owns, proving the lookup does not reach for a global one
+        with Session(sqlite_session.get_bind(), expire_on_commit=False) as caller_session:
+            result = app.workflow_with_session(session=caller_session)
+
+            # Assert
+            assert result is not None
+            assert result.id == workflow.id
+            assert result in caller_session
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_workflow_with_session_returns_none_when_unpublished(self, sqlite_session: Session):
+        """An app without `workflow_id` resolves to None without querying."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.WORKFLOW,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+
+        # Act / Assert: an unbound session would raise if the guard were dropped
+        with Session(expire_on_commit=False) as unbound_session:
+            assert app.workflow_with_session(session=unbound_session) is None
 
     @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
     def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self, sqlite_session: Session):
@@ -501,8 +634,8 @@ class TestConversationModel:
         assert conversation.from_source == "api"
         assert conversation.from_end_user_id == from_end_user_id
 
-    def test_conversation_with_inputs(self):
-        """Test conversation inputs property."""
+    def test_conversation_with_inputs(self, sqlite_session: Session):
+        """Test conversation inputs round-trip through the session-aware accessor."""
         # Arrange
         inputs = {"query": "Hello", "context": "test"}
         conversation = Conversation(
@@ -516,10 +649,17 @@ class TestConversationModel:
         conversation._inputs = inputs
 
         # Act
-        result = conversation.inputs
+        result = conversation.inputs_with_session(session=sqlite_session)
 
         # Assert
         assert result == inputs
+
+    def test_conversation_inputs_is_write_only(self):
+        """Reading conversation.inputs must fail loudly; reads go through inputs_with_session."""
+        conversation = Conversation(app_id=str(uuid4()), _inputs={})
+
+        with pytest.raises(AttributeError, match="no getter"):
+            _ = conversation.inputs
 
     def test_conversation_inputs_setter(self):
         """Test conversation inputs setter."""
@@ -540,8 +680,9 @@ class TestConversationModel:
         # Assert
         assert conversation._inputs == inputs
 
-    def test_conversation_summary_or_query_with_summary(self):
-        """Test summary_or_query property when summary exists."""
+    @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
+    def test_conversation_summary_or_query_with_summary(self, sqlite_session: Session):
+        """Test summary_or_query_with_session when summary exists."""
         # Arrange
         conversation = Conversation(
             app_id=str(uuid4()),
@@ -554,14 +695,14 @@ class TestConversationModel:
         )
 
         # Act
-        result = conversation.summary_or_query
+        result = conversation.summary_or_query_with_session(session=sqlite_session)
 
         # Assert
         assert result == "Test summary"
 
     @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
     def test_conversation_summary_or_query_without_summary(self, sqlite_session: Session):
-        """Test summary_or_query property when summary is empty."""
+        """Test summary_or_query_with_session when summary is empty."""
         # Arrange
         conversation = Conversation(
             app_id=str(uuid4()),
@@ -744,8 +885,8 @@ class TestMessageModel:
         assert message.currency == "USD"
         assert message.from_source == "api"
 
-    def test_message_with_inputs(self):
-        """Test message inputs property."""
+    def test_message_with_inputs(self, sqlite_session: Session):
+        """Test message inputs round-trip through the session-aware accessor."""
         # Arrange
         inputs = {"query": "Hello", "context": "test"}
         message = Message(
@@ -762,10 +903,17 @@ class TestMessageModel:
         )
 
         # Act
-        result = message.inputs
+        result = message.inputs_with_session(session=sqlite_session)
 
         # Assert
         assert result == inputs
+
+    def test_message_inputs_is_write_only(self):
+        """Reading message.inputs must fail loudly; reads go through inputs_with_session."""
+        message = Message(app_id=str(uuid4()), _inputs={})
+
+        with pytest.raises(AttributeError, match="no getter"):
+            _ = message.inputs
 
     def test_message_inputs_setter(self):
         """Test message inputs setter."""
@@ -1123,6 +1271,28 @@ class TestAppAnnotationHitHistory:
 class TestSiteModel:
     """Test suite for Site model."""
 
+    def test_site_core_bulk_insert_generates_ids(self, sqlite_session: Session):
+        """Core bulk inserts generate an ID for every site row."""
+        app_ids = [str(uuid4()), str(uuid4())]
+
+        sqlite_session.execute(
+            Site.__table__.insert(),
+            [
+                {
+                    "app_id": app_id,
+                    "title": f"Site {index}",
+                    "default_language": "en-US",
+                    "customize_token_strategy": CustomizeTokenStrategy.UUID,
+                }
+                for index, app_id in enumerate(app_ids)
+            ],
+        )
+
+        site_ids = sqlite_session.scalars(select(Site.id).where(Site.app_id.in_(app_ids))).all()
+        assert len(site_ids) == len(app_ids)
+        assert len(set(site_ids)) == len(app_ids)
+        assert all(UUID(site_id).version == 4 for site_id in site_ids)
+
     def test_site_creation_with_required_fields(self):
         """Test creating a site with required fields."""
         # Arrange
@@ -1133,14 +1303,14 @@ class TestSiteModel:
             app_id=app_id,
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
 
         # Assert
         assert site.app_id == app_id
         assert site.title == "Test Site"
         assert site.default_language == "en-US"
-        assert site.customize_token_strategy == "uuid"
+        assert site.customize_token_strategy == CustomizeTokenStrategy.UUID
 
     def test_site_creation_with_optional_fields(self):
         """Test creating a site with optional fields."""
@@ -1149,7 +1319,7 @@ class TestSiteModel:
             app_id=str(uuid4()),
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
             icon_type=IconType.EMOJI,
             icon="🌐",
             icon_background="#0066CC",
@@ -1173,7 +1343,7 @@ class TestSiteModel:
             app_id=str(uuid4()),
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
 
         # Act
@@ -1189,7 +1359,7 @@ class TestSiteModel:
             app_id=str(uuid4()),
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
         long_disclaimer = "x" * 513  # Exceeds 512 character limit
 
@@ -1380,7 +1550,7 @@ class TestModelIntegration:
             app_id=app_id,
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
 
         # Assert

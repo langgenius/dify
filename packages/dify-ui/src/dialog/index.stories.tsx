@@ -363,7 +363,9 @@ export const FormDialog: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'Configure API extension' }))
 
-    await expect(body.getByRole('textbox', { name: 'Name' })).toHaveFocus()
+    await waitFor(async () => {
+      await expect(body.getByRole('textbox', { name: 'Name' })).toHaveFocus()
+    })
   },
 }
 

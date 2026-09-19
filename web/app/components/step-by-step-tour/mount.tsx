@@ -26,6 +26,10 @@ import { useQueryState } from 'nuqs'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
@@ -143,6 +147,7 @@ export default function StepByStepTourMount({
   className,
   recoveryAnchorRef,
 }: StepByStepTourMountProps) {
+  const [pricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const router = useRouter()
   const pathname = usePathname()
   const docLink = useDocLink()
@@ -260,6 +265,7 @@ export default function StepByStepTourMount({
   const overlayVisible =
     visible &&
     !hasBlockingModalOpen &&
+    pricing !== 'open' &&
     !settingsDestination &&
     !(pathname === '/apps' && educationExpireNotice)
   const completionPromptVisible = visible && allTasksCompleted && !activeTask

@@ -22,7 +22,6 @@ import pytest
 from werkzeug.exceptions import InternalServerError
 
 from enums import CloudPlan
-from models import Account, Tenant
 from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
@@ -31,15 +30,6 @@ from services.errors.billing import (
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
-
-
-def _account(*, account_id: str = ACCOUNT_ID, email: str = "user@example.com", tenant_id: str = TENANT_ID) -> Account:
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = tenant_id
-    account = Account(name="Test User", email=email)
-    account.id = account_id
-    account._current_tenant = tenant
-    return account
 
 
 class TestBillingServiceSendRequest:
@@ -430,21 +420,22 @@ class TestBillingServiceSubscriptionInfo:
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {
-            "enabled": True,
             "subscription": {"plan": "professional", "interval": "month", "education": False},
             "members": {"size": 1, "limit": 50},
             "apps": {"size": 1, "limit": 200},
             "vector_space": {"size": 0.0, "limit": 20480},
-            "knowledge_rate_limit": {"limit": 1000},
             "documents_upload_quota": {"size": 0, "limit": 1000},
             "annotation_quota_limit": {"size": 0, "limit": 5000},
-            "docs_processing": "top-priority",
             "can_replace_logo": True,
             "model_load_balancing_enabled": True,
             "knowledge_pipeline_publish_enabled": True,
             "next_credit_reset_date": 1775952000,
         }
-        mock_send_request.return_value = expected_response
+        mock_send_request.return_value = {
+            **expected_response,
+            "docs_processing": "top-priority",
+            "knowledge_rate_limit": {"limit": 1000},
+        }
 
         # Act
         result = BillingService.get_info(tenant_id)
@@ -458,14 +449,11 @@ class TestBillingServiceSubscriptionInfo:
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {
-            "enabled": True,
             "subscription": {"plan": "professional", "interval": "month", "education": False},
             "members": {"size": 1, "limit": 50},
             "apps": {"size": 1, "limit": 200},
-            "knowledge_rate_limit": {"limit": 1000},
             "documents_upload_quota": {"size": 0, "limit": 1000},
             "annotation_quota_limit": {"size": 0, "limit": 5000},
-            "docs_processing": "top-priority",
             "can_replace_logo": True,
             "model_load_balancing_enabled": True,
             "knowledge_pipeline_publish_enabled": True,
@@ -488,15 +476,12 @@ class TestBillingServiceSubscriptionInfo:
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {
-            "enabled": True,
             "subscription": {"plan": "professional", "interval": "month", "education": False},
             "members": {"size": 1, "limit": 50},
             "apps": {"size": 1, "limit": 200},
             "vector_space": None,
-            "knowledge_rate_limit": {"limit": 1000},
             "documents_upload_quota": {"size": 0, "limit": 1000},
             "annotation_quota_limit": {"size": 0, "limit": 5000},
-            "docs_processing": "top-priority",
             "can_replace_logo": True,
             "model_load_balancing_enabled": True,
             "knowledge_pipeline_publish_enabled": True,
@@ -544,15 +529,12 @@ class TestBillingServiceSubscriptionInfo:
     def test_get_info_preserves_unknown_vector_space_usage(self, mock_send_request):
         tenant_id = "tenant-123"
         expected_response = {
-            "enabled": True,
             "subscription": {"plan": "sandbox", "interval": "", "education": False},
             "members": {"size": 1, "limit": 1},
             "apps": {"size": 1, "limit": 10},
             "vector_space": {"size": 0.0, "limit": 50, "usage_unknown": True},
-            "knowledge_rate_limit": {"limit": 10},
             "documents_upload_quota": {"size": 1, "limit": 50},
             "annotation_quota_limit": {"size": 0, "limit": 10},
-            "docs_processing": "standard",
             "can_replace_logo": False,
             "model_load_balancing_enabled": False,
             "knowledge_pipeline_publish_enabled": False,
@@ -1750,15 +1732,12 @@ class TestBillingServiceIntegrationScenarios:
 
         # Step 1: Get current billing info
         mock_send_request.return_value = {
-            "enabled": True,
             "subscription": {"plan": "sandbox", "interval": "", "education": False},
             "members": {"size": 0, "limit": 1},
             "apps": {"size": 0, "limit": 5},
             "vector_space": {"size": 0.0, "limit": 50},
-            "knowledge_rate_limit": {"limit": 10},
             "documents_upload_quota": {"size": 0, "limit": 50},
             "annotation_quota_limit": {"size": 0, "limit": 10},
-            "docs_processing": "standard",
             "can_replace_logo": False,
             "model_load_balancing_enabled": False,
             "knowledge_pipeline_publish_enabled": False,
@@ -1822,7 +1801,6 @@ class TestBillingServiceSubscriptionInfoDataType:
     @pytest.fixture
     def normal_billing_response(self) -> dict:
         return {
-            "enabled": True,
             "subscription": {
                 "plan": "team",
                 "interval": "year",
@@ -1831,10 +1809,8 @@ class TestBillingServiceSubscriptionInfoDataType:
             "members": {"size": 10, "limit": 50},
             "apps": {"size": 80, "limit": 200},
             "vector_space": {"size": 5120.75, "limit": 20480},
-            "knowledge_rate_limit": {"limit": 1000},
             "documents_upload_quota": {"size": 450, "limit": 1000},
             "annotation_quota_limit": {"size": 1200, "limit": 5000},
-            "docs_processing": "top-priority",
             "can_replace_logo": True,
             "model_load_balancing_enabled": True,
             "knowledge_pipeline_publish_enabled": True,
@@ -1844,7 +1820,6 @@ class TestBillingServiceSubscriptionInfoDataType:
     @pytest.fixture
     def string_billing_response(self) -> dict:
         return {
-            "enabled": True,
             "subscription": {
                 "plan": "team",
                 "interval": "year",
@@ -1853,10 +1828,8 @@ class TestBillingServiceSubscriptionInfoDataType:
             "members": {"size": "10", "limit": "50"},
             "apps": {"size": "80", "limit": "200"},
             "vector_space": {"size": 5120.75, "limit": "20480"},
-            "knowledge_rate_limit": {"limit": "1000"},
             "documents_upload_quota": {"size": "450", "limit": "1000"},
             "annotation_quota_limit": {"size": "1200", "limit": "5000"},
-            "docs_processing": "top-priority",
             "can_replace_logo": True,
             "model_load_balancing_enabled": True,
             "knowledge_pipeline_publish_enabled": True,
@@ -1865,7 +1838,6 @@ class TestBillingServiceSubscriptionInfoDataType:
 
     @staticmethod
     def _assert_billing_info_types(result: dict):
-        assert isinstance(result["enabled"], bool)
         assert isinstance(result["subscription"]["plan"], str)
         assert isinstance(result["subscription"]["interval"], str)
         assert isinstance(result["subscription"]["education"], bool)
@@ -1882,15 +1854,12 @@ class TestBillingServiceSubscriptionInfoDataType:
             if "usage_unknown" in result["vector_space"]:
                 assert isinstance(result["vector_space"]["usage_unknown"], bool)
 
-        assert isinstance(result["knowledge_rate_limit"]["limit"], int)
-
         assert isinstance(result["documents_upload_quota"]["size"], int)
         assert isinstance(result["documents_upload_quota"]["limit"], int)
 
         assert isinstance(result["annotation_quota_limit"]["size"], int)
         assert isinstance(result["annotation_quota_limit"]["limit"], int)
 
-        assert isinstance(result["docs_processing"], str)
         assert isinstance(result["can_replace_logo"], bool)
         assert isinstance(result["model_load_balancing_enabled"], bool)
         assert isinstance(result["knowledge_pipeline_publish_enabled"], bool)
