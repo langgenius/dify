@@ -189,7 +189,7 @@ def test_continue_adjusting_still_reaches_resource_discovery():
     assert "conflict_policy_options" not in rs.payload
 
 
-def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v2():
+def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v1():
     from core.dify_builder.handlers_build import handle_resource_recommendation
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -208,7 +208,10 @@ def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v2():
     res = handle_resource_recommendation(env, turn, *repo.get_session(s.id))
 
     assert res.next == PcState.BUILD_PLAN_APPROVAL
-    assert res.context.plan_version_tag == "v2"
+    # Task 3: the only plan card a build emits is now v1 -- the duplicate
+    # "v2" card that used to redisplay the same plan under a second version
+    # number is gone (collapsed into task 2's straight-through path).
+    assert res.context.plan_version_tag == "v1"
     assert res.context.resource_selection == {"resource_ids": ["kb-company"]}
     assert res.context.checkpoint_id
     assert res.context.last_structure_fingerprint != ""
@@ -227,7 +230,7 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes():
     dify = FakeBuildDifyPort()
     env, repo = _new_env(dify=dify, emit_canvas=events.append)
     s = _seed_build_session(
-        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve", "Summarize"], plan_version_tag="v2"
+        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve", "Summarize"], plan_version_tag="v1"
     )
     # approve_plan resolves (via service.resolve_action_kind) to "approve_repair".
     turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
@@ -257,7 +260,7 @@ def test_plan_approval_ignores_non_approve_action():
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     env, repo = _new_env(dify=FakeBuildDifyPort())
-    s = _seed_build_session(repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v2")
+    s = _seed_build_session(repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v1")
     turn = Turn(action=Action(kind="message", base_version=1), actor=_actor())
     res = handle_plan_approval(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_PLAN_APPROVAL
@@ -1446,7 +1449,7 @@ def _approve_plan(**fc_kwargs):
 
     env, repo = _new_env(dify=FakeBuildDifyPort())
     s = _seed_build_session(
-        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v2", **fc_kwargs
+        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v1", **fc_kwargs
     )
     turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
     res = handle_plan_approval(env, turn, *repo.get_session(s.id))
