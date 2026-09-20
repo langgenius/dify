@@ -267,6 +267,19 @@ class TestParentChildIndexProcessor:
         mock_vector_cls.return_value.create.assert_called_once()
         mock_keyword_cls.assert_not_called()
 
+    def test_load_skips_empty_child_batches(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
+        parent_doc = Document(page_content="parent", metadata={}, children=[])
+
+        with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
+        ):
+            processor.load(dataset, [parent_doc], session=self.session)
+
+        mock_vector_cls.assert_called_once_with(dataset, session=self.session)
+        mock_vector_cls.return_value.create.assert_not_called()
+        mock_keyword_cls.assert_not_called()
+
     def test_load_economy_indexes_keywords_without_vectors(
         self, processor: ParentChildIndexProcessor, dataset: Dataset
     ) -> None:
@@ -580,6 +593,45 @@ class TestParentChildIndexProcessor:
         mock_files.assert_called_once()
         load_user.assert_called_once_with(dataset_document.created_by, account_session)
         assert account_session is not session
+
+    def test_index_skips_child_indexes_when_parent_has_no_children(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
+    ) -> None:
+        parent_childs = SimpleNamespace(
+            parent_mode=ParentMode.PARAGRAPH,
+            parent_child_chunks=[
+                SimpleNamespace(
+                    parent_content="parent",
+                    child_contents=[],
+                    files=[SimpleNamespace(id="file-1", filename="image.png")],
+                )
+            ],
+        )
+        session = self.session
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.ParentChildStructureChunk.model_validate",
+                return_value=parent_childs,
+            ),
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
+                return_value="hash",
+            ),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.DatasetDocumentStore"),
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.calculate_segment_token_counts",
+                return_value=[11],
+            ),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
+        ):
+            processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)
+
+        mock_vector_cls.assert_called_once_with(dataset, session=session)
+        mock_vector_cls.return_value.create.assert_not_called()
+        mock_vector_cls.return_value.create_multimodal.assert_called_once()
+        mock_keyword_cls.assert_not_called()
 
     def test_index_raises_when_account_missing(
         self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument

@@ -245,6 +245,35 @@ def test_search_returns_documents_in_rank_order_and_applies_filter(monkeypatch: 
     assert [document.metadata["doc_hash"] for document in documents] == ["hash-1", "hash-2"]
 
 
+def test_search_does_not_warn_when_all_unfiltered_hits_are_materialized(
+    monkeypatch: pytest.MonkeyPatch, patched_runtime
+):
+    keyword = Jieba(_dataset(_dataset_keyword_table()))
+    logger = MagicMock()
+    monkeypatch.setattr(jieba_module, "logger", logger)
+    segment = _segment(index_node_id="segment-node")
+    child_chunk = ChildChunk(
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        document_id="doc-2",
+        segment_id=segment.id,
+        position=1,
+        content="child-content",
+        word_count=1,
+        created_by="user-1",
+        index_node_id="child-node",
+        index_node_hash="child-hash",
+    )
+    patched_runtime.session.add_all([segment, child_chunk])
+    patched_runtime.session.flush()
+    monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=["child-node", "segment-node"]))
+
+    documents = keyword.search("query", session=patched_runtime.session, top_k=2)
+
+    assert [document.page_content for document in documents] == ["child-content", "segment-content"]
+    logger.warning.assert_not_called()
+
+
 def test_search_applies_document_filter_to_child_chunks(monkeypatch: pytest.MonkeyPatch, patched_runtime):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     logger = MagicMock()
