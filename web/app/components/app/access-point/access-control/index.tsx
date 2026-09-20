@@ -107,6 +107,7 @@ function AccessControlSession({
   const [showBack, setShowBack] = useState(false)
   const [draft, setDraft] = useState<AccessControlDraft | null>(null)
   const [createPolicyOpen, setCreatePolicyOpen] = useState(false)
+  const [policySelectOpen, setPolicySelectOpen] = useState(false)
   const [confirmation, setConfirmation] = useState<{
     draft: AccessControlDraft
     clientIp: string
@@ -209,6 +210,7 @@ function AccessControlSession({
     saveAttemptRef.current += 1
     saveCheck.reset()
     setConfirmation(null)
+    setPolicySelectOpen(false)
     setDraft(null)
     setShowBack(false)
   }
@@ -445,6 +447,8 @@ function AccessControlSession({
                   saveCheck.reset()
                   void ipCheck.refetch()
                 }}
+                policySelectOpen={policySelectOpen}
+                onPolicySelectOpenChange={setPolicySelectOpen}
                 canManagePolicies={canManagePolicies}
                 baseline={baseline}
                 showBack={showBack}
@@ -496,12 +500,9 @@ function AccessControlSession({
                       }
                     },
                   )
-                  setDraft({
-                    ...resolvedDraft,
-                    selectedPolicyId: data.group.id,
-                  })
                   setCreatePolicyOpen(false)
                   setView('config')
+                  setPolicySelectOpen(true)
                   setOpen(true)
                 },
               },

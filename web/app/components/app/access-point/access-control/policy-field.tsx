@@ -27,6 +27,8 @@ type AccessControlPolicyFieldProps = {
   ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
   ipCheckStatus?: 'loading' | 'error'
   onRetryIpCheck?: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   readOnly?: boolean
   canManagePolicies: boolean
   onCreatePolicy: () => void
@@ -40,6 +42,8 @@ export function AccessControlPolicyField({
   ipCheck,
   ipCheckStatus,
   onRetryIpCheck,
+  open,
+  onOpenChange,
   readOnly = false,
   canManagePolicies,
   onCreatePolicy,
@@ -143,7 +147,10 @@ export function AccessControlPolicyField({
                 disabled={readOnly}
                 className="flex h-8 w-full cursor-pointer items-center rounded-lg px-2 text-left system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 onClick={() => {
-                  if (!readOnly) onSelectPolicy(policy.id)
+                  if (!readOnly) {
+                    onSelectPolicy(policy.id)
+                    onOpenChange?.(false)
+                  }
                 }}
               >
                 <span className="min-w-0 flex-1 truncate px-1">{policy.name}</span>
@@ -179,6 +186,8 @@ export function AccessControlPolicyField({
       <div className="flex w-full items-center gap-1">
         <Select
           value={selectedPolicyId}
+          open={open}
+          onOpenChange={onOpenChange}
           disabled={readOnly}
           onValueChange={(value) => {
             if (readOnly) return

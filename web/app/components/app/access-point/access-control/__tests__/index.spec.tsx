@@ -344,6 +344,13 @@ describe('AccessControlEntry', () => {
         },
       })
     })
+    expect(await screen.findByRole('option', { name: /Office/ })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
+    expect(posted.filter((request) => request.method === 'PUT')).toHaveLength(0)
     expect(mockSetSettingsDestination).not.toHaveBeenCalled()
   })
 
@@ -1232,6 +1239,51 @@ describe('immediate pause and resume', () => {
           finish(Response.json({ message: 'Unable to pause' }, { status: 500 })),
         )
       }
+    },
+  )
+})
+
+describe('returning from policy creation', () => {
+  it.each(['create', 'cancel', 'failure'] as const)(
+    'preserves the selected policy and scope draft after %s',
+    async (action) => {
+      const user = userEvent.setup()
+      const server = setupBindingServer()
+      renderEntry({ plan: 'professional', groups: server.groups })
+      await openSelectedConfig(user)
+      await screen.findByText(lockoutWarning)
+      await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+      await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
+      await user.click(screen.getByRole('option', { name: 'Add IP Policy' }))
+      const dialog = await screen.findByRole('dialog')
+      if (action !== 'cancel') {
+        await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'New Office')
+        await user.type(within(dialog).getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
+        if (action === 'failure') server.createStatus = 500
+        await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+      }
+      if (action === 'failure') {
+        await waitFor(() =>
+          expect(within(dialog).getByRole('button', { name: 'Create' })).not.toHaveAttribute(
+            'aria-disabled',
+            'true',
+          ),
+        )
+        expect(dialog).toBeInTheDocument()
+      }
+      if (action !== 'create')
+        await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+      const select = await screen.findByRole('combobox', { name: 'IP Policy' })
+      expect(select).toHaveTextContent('Internal Network')
+      if (action === 'create') {
+        expect(await screen.findByRole('option', { name: /New Office/ })).toHaveAttribute(
+          'aria-selected',
+          'false',
+        )
+        await user.keyboard('{Escape}')
+      }
+      expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toBeChecked()
+      expect(server.writes).toHaveLength(0)
     },
   )
 })

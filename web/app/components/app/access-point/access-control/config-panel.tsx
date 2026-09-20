@@ -22,6 +22,8 @@ type AccessControlConfigPanelProps = {
   ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
   ipCheckStatus?: 'loading' | 'error'
   onRetryIpCheck?: () => void
+  policySelectOpen?: boolean
+  onPolicySelectOpenChange?: (open: boolean) => void
   availableAccessPoints: readonly AccessPoint[]
   appIcon: AccessControlAppIcon
   readOnly?: boolean
@@ -43,6 +45,8 @@ export function AccessControlConfigPanel({
   ipCheck,
   ipCheckStatus,
   onRetryIpCheck,
+  policySelectOpen,
+  onPolicySelectOpenChange,
   availableAccessPoints,
   appIcon,
   readOnly = false,
@@ -127,6 +131,8 @@ export function AccessControlConfigPanel({
             ipCheck={ipCheck}
             ipCheckStatus={ipCheckStatus}
             onRetryIpCheck={onRetryIpCheck}
+            open={policySelectOpen}
+            onOpenChange={onPolicySelectOpenChange}
             readOnly={readOnly || saving}
             canManagePolicies={canManagePolicies}
             onCreatePolicy={onCreatePolicy}
