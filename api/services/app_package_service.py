@@ -13,10 +13,10 @@ from typing import BinaryIO, Literal, cast
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from configs import dify_config
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.roster_package_entities import RosterAgentPackageApp, RosterAgentPackageExport
 from services.agent.roster_package_reader import RosterAgentPackageReader
+from services.dsl_content import DSL_MAX_SIZE
 
 
 class AppPackageManifest(BaseModel):
@@ -48,7 +48,9 @@ class AppPackageService(RosterAgentPackageReader):
                     resource = manifest.apps[0]
                     if set(infos) != {"manifest.yaml", resource.path}:
                         raise InvalidRosterAgentPackageError("App package members do not match the manifest")
-                    app_data, _ = self._read_yaml_document(archive, infos, resource.path, resource=resource)
+                    app_data, _ = self._read_yaml_document(
+                        archive, infos, resource.path, resource=resource, max_bytes=DSL_MAX_SIZE
+                    )
                     if (
                         not isinstance(app_data, dict)
                         or app_data.get("kind") != "app"
@@ -76,7 +78,7 @@ class AppPackageService(RosterAgentPackageReader):
 
     def export(self, *, dsl: str, name: str) -> RosterAgentPackageExport:
         payload = dsl.encode("utf-8")
-        if len(payload) > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
+        if len(payload) > DSL_MAX_SIZE:
             raise RosterAgentPackageTooLargeError("App package DSL exceeds the size limit")
         manifest = AppPackageManifest(
             format="dify.app",

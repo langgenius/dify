@@ -301,17 +301,20 @@ class RosterAgentPackageReader:
         path: str,
         *,
         resource: RosterAgentPackageApp | None = None,
+        max_bytes: int | None = None,
     ) -> tuple[Any, int]:
+        if max_bytes is None:
+            max_bytes = dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES
         info = infos.get(path)
         if info is None:
             raise InvalidRosterAgentPackageError(f"Roster Agent package is missing {path}")
-        if info.file_size > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
+        if info.file_size > max_bytes:
             raise RosterAgentPackageTooLargeError(f"Roster Agent package {path} exceeds the size limit")
         payload, digest, size = self._read_member(
             archive,
             info,
             collect=True,
-            max_bytes=dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES,
+            max_bytes=max_bytes,
             expected_size=resource.size if resource is not None else info.file_size,
         )
         if resource is not None and digest != resource.sha256:
