@@ -1261,6 +1261,24 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | ---- | ----------- | ------ |
 | 200 | Agent monitoring summary and chart data | **application/json**: [AgentStatisticSummaryEnvelopeResponse](#agentstatisticsummaryenveloperesponse)<br> |
 
+### [GET] /agent/{agent_id}/text-to-audio/voices
+Get available TTS voices for an Agent and language
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| language | query | Language code | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
+| 400 | Invalid language parameter |  |
+| 404 | Agent not found |  |
+
 ### [GET] /agent/{agent_id}/versions
 #### Parameters
 
