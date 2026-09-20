@@ -22,6 +22,7 @@ import {
   workspacePermissionKeysFetchingAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
@@ -199,8 +200,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const streamActiveOverrideVersionsRef = useRef(new Map<string, string>())
   const trustedActiveOverrideVersionsRef = useRef(new Map<string, TrustedActiveOverride>())
   const trustedOverrideListGenerationsRef = useRef(new Map<string, number>())
-  const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
-  if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
+  const taskProgressStoreRef = useRefWithInit(createTaskProgressStore)
   const taskProgressStore = taskProgressStoreRef.current
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
