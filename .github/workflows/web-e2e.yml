@@ -1,6 +1,14 @@
 name: Web Full-Stack E2E
 
 on:
+  workflow_dispatch:
+    inputs:
+      chromium-shards:
+        description: Number of Chromium shards for the core E2E comparison.
+        type: choice
+        required: true
+        default: '3'
+        options: ['2', '3', '4']
   workflow_call:
     inputs:
       run-external-runtime:
@@ -87,7 +95,7 @@ jobs:
           key: ${{ steps.next-cache.outputs.cache-primary-key }}
 
   chromium-full:
-    name: Chromium Full (${{ matrix.shard }}/3)
+    name: Chromium Full (${{ matrix.shard }}/${{ inputs.chromium-shards || '3' }})
     if: ${{ !inputs.run-external-runtime }}
     needs: core-build
     runs-on: ubuntu-24.04
@@ -95,7 +103,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: ${{ fromJSON(inputs.chromium-shards == '2' && '[1,2]' || inputs.chromium-shards == '4' && '[1,2,3,4]' || '[1,2,3]') }}
     env:
       E2E_ADMIN_EMAIL: e2e-admin@example.com
       E2E_ADMIN_NAME: E2E Admin
@@ -124,7 +132,7 @@ jobs:
 
       - name: Run Chromium full shard
         working-directory: ./e2e
-        run: vp run e2e:full -- --shard ${{ matrix.shard }}/3
+        run: vp run e2e:full -- --shard ${{ matrix.shard }}/${{ inputs.chromium-shards || '3' }}
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
