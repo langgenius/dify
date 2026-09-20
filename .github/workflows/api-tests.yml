@@ -90,6 +90,8 @@ jobs:
     runs-on: depot-ubuntu-24.04-4
     env:
       COVERAGE_FILE: coverage-integration-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+      # Use the bundled price map instead of fetching it in every pytest process.
+      LITELLM_LOCAL_MODEL_COST_MAP: 'true'
       STORAGE_TYPE: opendal
       OPENDAL_SCHEME: fs
       OPENDAL_FS_ROOT: /tmp/dify-storage
@@ -134,6 +136,8 @@ jobs:
             -p no:benchmark \
             --start-middleware \
             -n auto \
+            --dist worksteal \
+            --durations=20 \
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
             -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
