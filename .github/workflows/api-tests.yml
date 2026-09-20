@@ -18,6 +18,7 @@ jobs:
     name: API Unit Tests (${{ matrix.python-version }}, shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: depot-ubuntu-24.04
     env:
+      PYTHONUNBUFFERED: '1'
       COVERAGE_FILE: coverage-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
     defaults:
       run:
@@ -63,6 +64,9 @@ jobs:
             --shard-total "${{ matrix.shardTotal }}" \
             -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
+            --durations=50 \
+            --report-collection-timing \
+            --junitxml=test-results/unit.xml \
             api/tests/unit_tests \
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests \
@@ -75,7 +79,19 @@ jobs:
             -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --cov-append \
+            --durations=50 \
+            --report-collection-timing \
+            --junitxml=test-results/controllers.xml \
             api/tests/unit_tests/controllers
+
+      - name: Upload unit test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-test-results-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+          path: test-results/*.xml
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload unit coverage data
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

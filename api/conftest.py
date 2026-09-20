@@ -35,6 +35,11 @@ ensure_backend_test_environment(_REPO_ROOT)
 def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("dify")
     group.addoption(
+        "--report-collection-timing",
+        action="store_true",
+        help="Report collection wall time separately for each pytest process.",
+    )
+    group.addoption(
         "--middleware-stop-timeout",
         type=int,
         default=None,
@@ -88,6 +93,10 @@ def pytest_configure(config: pytest.Config) -> None:
         raise pytest.UsageError("--middleware-stop-timeout must be nonnegative")
 
     config.stash[_DIFY_COMPOSE_STACKS_KEY] = []
+    if config.getoption("report_collection_timing"):
+        from tests.pytest_timing import CollectionTimingPlugin
+
+        config.pluginmanager.register(CollectionTimingPlugin(), "dify-collection-timing")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
