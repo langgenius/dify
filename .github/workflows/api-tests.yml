@@ -31,9 +31,8 @@ jobs:
         shardIndex:
           - 1
           - 2
-          - 3
         shardTotal:
-          - 3
+          - 2
 
     steps:
       - name: Checkout code
@@ -250,8 +249,8 @@ jobs:
           mapfile -t unit_coverage < <(find coverage-data -type f -name 'coverage-unit-*' -print | sort)
           mapfile -t controller_coverage < <(find coverage-data -type f -name 'coverage-controllers-*' -print | sort)
           mapfile -t integration_coverage < <(find coverage-data -type f -name 'coverage-integration-*' -print | sort)
-          if [[ "${#unit_coverage[@]}" -ne 3 ]]; then
-            echo "expected 3 unit coverage artifacts, found ${#unit_coverage[@]}" >&2
+          if [[ "${#unit_coverage[@]}" -ne 2 ]]; then
+            echo "expected 2 unit coverage artifacts, found ${#unit_coverage[@]}" >&2
             exit 1
           fi
           if [[ "${#controller_coverage[@]}" -ne 1 ]]; then
