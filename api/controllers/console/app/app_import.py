@@ -37,6 +37,7 @@ from services.app_dsl_service import (
     PendingData,
 )
 from services.app_import_source import download_app_import_source, try_read_yaml
+from services.app_package_service import AppPackageService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
@@ -103,8 +104,14 @@ class AppImportApi(Resource):
                                 "file": {
                                     "type": "string",
                                     "format": "binary",
-                                    "description": "Roster Agent .ifpkg archive",
-                                }
+                                    "description": "App .ifpkg archive",
+                                },
+                                "app_id": {"type": "string", "description": "App to overwrite"},
+                                "name": {"type": "string"},
+                                "description": {"type": "string"},
+                                "icon_type": {"type": "string"},
+                                "icon": {"type": "string"},
+                                "icon_background": {"type": "string"},
                             },
                             "required": ["file"],
                         }
@@ -148,11 +155,29 @@ class AppImportApi(Resource):
                 )
             return self._import_package(current_user, payload, source)
 
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()))
     def _import_package(
         self, current_user: Account, payload: AppImportPayload | None = None, source: BinaryIO | None = None
     ):
+        if source is None:
+            uploaded = request.files.get("file")
+            if uploaded is None or not uploaded.filename:
+                raise InvalidRosterAgentPackageError("App package file is required")
+            if not uploaded.filename.lower().endswith(".ifpkg"):
+                raise InvalidRosterAgentPackageError("App package file must use the .ifpkg extension")
+            source = cast(BinaryIO, uploaded.stream)
+        dsl = AppPackageService().read_dsl(source)
+        if dsl is not None:
+            if payload is None:
+                payload = AppImportPayload.model_validate({**request.form.to_dict(), "mode": "yaml-content"})
+            return self._import_dsl(
+                payload.model_copy(update={"mode": "yaml-content", "yaml_content": dsl, "yaml_url": None}),
+                current_user,
+            )
+        return self._import_agent_package(current_user, source, payload)
+
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()))
+    def _import_agent_package(self, current_user: Account, source: BinaryIO, payload: AppImportPayload | None = None):
         app_id = payload.app_id if payload is not None else request.form.get("app_id")
         if app_id:
             raise InvalidRosterAgentPackageError("Roster Agent package import does not support overwriting an App")
@@ -160,13 +185,6 @@ class AppImportApi(Resource):
         if tenant_id is None:
             raise Forbidden("Current workspace is required")
         importer = RosterAgentPackageImporter()
-        if source is None:
-            uploaded = request.files.get("file")
-            if uploaded is None or not uploaded.filename:
-                raise InvalidRosterAgentPackageError("Roster Agent package file is required")
-            if not uploaded.filename.lower().endswith(".ifpkg"):
-                raise InvalidRosterAgentPackageError("Roster Agent package file must use the .ifpkg extension")
-            source = cast(BinaryIO, uploaded.stream)
         result = importer.import_package(source=source, tenant_id=tenant_id, account=account)
         return Import(
             id=str(uuid4()),
