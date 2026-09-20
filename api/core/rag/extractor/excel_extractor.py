@@ -136,20 +136,24 @@ class ExcelExtractor(BaseExtractor):
         elif file_extension == ".xls":
             excel_file = pd.ExcelFile(self._file_path, engine="xlrd")
             for excel_sheet_name in excel_file.sheet_names:
-                df = excel_file.parse(sheet_name=excel_sheet_name)
+                # Keep literal cell text: pandas otherwise turns strings such as
+                # "N/A", "NA", "NULL" or "None" into missing values, dropping the
+                # cell together with its column name.
+                df = excel_file.parse(sheet_name=excel_sheet_name, keep_default_na=False)
                 df.dropna(how="all", inplace=True)
 
                 for _, series_row in df.iterrows():
                     page_content = []
                     for k, v in series_row.items():
-                        if pd.notna(v):
+                        if pd.notna(v) and v != "":
                             # Escape embedded double quotes like the .xlsx branch
                             # does, so quoted cell values do not corrupt the row.
                             value = str(v).replace('"', '\\"')
                             page_content.append(f'"{k}":"{value}"')
-                    documents.append(
-                        Document(page_content=";".join(page_content), metadata={"source": self._file_path})
-                    )
+                    if page_content:
+                        documents.append(
+                            Document(page_content=";".join(page_content), metadata={"source": self._file_path})
+                        )
         else:
             raise ValueError(f"Unsupported file extension: {file_extension}")
 

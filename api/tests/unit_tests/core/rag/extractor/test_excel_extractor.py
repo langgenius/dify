@@ -247,7 +247,7 @@ class TestExcelExtractor:
         class FakeExcelFile:
             sheet_names = ["Sheet1"]
 
-            def parse(self, sheet_name):
+            def parse(self, sheet_name, keep_default_na=True):
                 assert sheet_name == "Sheet1"
                 return pd.DataFrame([{"A": "x", "B": 1}, {"A": None, "B": None}])
 
@@ -260,11 +260,58 @@ class TestExcelExtractor:
         assert docs[0].page_content == '"A":"x";"B":"1.0"'
         assert docs[0].metadata == {"source": "/tmp/sample.xls"}
 
+    def test_extract_xls_keeps_literal_na_cells(self, monkeypatch: pytest.MonkeyPatch):
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+
+            def parse(self, sheet_name, keep_default_na=True):
+                assert keep_default_na is False
+                return pd.DataFrame([{"Code": "A1", "Status": "N/A", "Units": 12}])
+
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        extractor = ExcelExtractor("/tmp/sample.xls")
+        docs = extractor.extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == '"Code":"A1";"Status":"N/A";"Units":"12"'
+
+    def test_extract_xls_skips_blank_cells_without_keep_default_na(self, monkeypatch: pytest.MonkeyPatch):
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+
+            def parse(self, sheet_name, keep_default_na=True):
+                # With keep_default_na=False a blank cell arrives as "", not NaN.
+                return pd.DataFrame([{"A": "x", "B": ""}])
+
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        extractor = ExcelExtractor("/tmp/sample.xls")
+        docs = extractor.extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == '"A":"x"'
+
+    def test_extract_xls_skips_all_blank_rows(self, monkeypatch: pytest.MonkeyPatch):
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+
+            def parse(self, sheet_name, keep_default_na=True):
+                return pd.DataFrame([{"A": "x", "B": "1"}, {"A": "", "B": ""}])
+
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        extractor = ExcelExtractor("/tmp/sample.xls")
+        docs = extractor.extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == '"A":"x";"B":"1"'
+
     def test_extract_xls_escapes_double_quotes_like_xlsx(self, monkeypatch: pytest.MonkeyPatch):
         class FakeExcelFile:
             sheet_names = ["Sheet1"]
 
-            def parse(self, sheet_name):
+            def parse(self, sheet_name, keep_default_na=True):
                 return pd.DataFrame([{"note": 'he said "hi"', "plain": "text"}])
 
         monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
