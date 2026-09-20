@@ -3,7 +3,9 @@
 import datetime
 import math
 import uuid
+from collections.abc import Iterator
 from types import SimpleNamespace
+from typing import TypedDict
 
 import pytest
 from sqlalchemy import Engine, delete, func, select
@@ -35,13 +37,33 @@ _PAGINATION_MESSAGE_COUNT = 25
 _PAGINATION_BATCH_SIZE = 8
 
 
+class TenantAndApp(TypedDict):
+    tenant_id: str
+    app_id: str
+    conversation_id: str
+
+
+class SeedMessages(TenantAndApp):
+    msg_ids: dict[str, str]
+
+
+class PaginatedSeedMessages(TenantAndApp):
+    msg_ids: list[str]
+
+
+class CascadeTestData(TenantAndApp):
+    msg_id: str
+    fb_id: str
+    ann_id: str
+
+
 @pytest.fixture(autouse=True)
 def _bind_service_engine(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
     monkeypatch.setattr(messages_clean_service_module, "db", SimpleNamespace(engine=sqlite_engine))
 
 
 @pytest.fixture
-def tenant_and_app():
+def tenant_and_app() -> Iterator[TenantAndApp]:
     """Creates a Tenant, App and Conversation for the test and cleans up after."""
     with session_factory.create_session() as session:
         tenant = Tenant(name="retention_it_tenant")
@@ -102,7 +124,7 @@ def _make_message(app_id: str, conversation_id: str, created_at: datetime.dateti
 
 class TestMessagesCleanServiceIntegration:
     @pytest.fixture
-    def seed_messages(self, tenant_and_app):
+    def seed_messages(self, tenant_and_app: TenantAndApp) -> Iterator[SeedMessages]:
         """Seeds one message at each of _VERY_OLD, _OLD, and _RECENT.
         Yields a semantic mapping keyed by age label.
         """
@@ -125,7 +147,7 @@ class TestMessagesCleanServiceIntegration:
                 msg_ids[label] = msg.id
             session.commit()
 
-        yield {"msg_ids": msg_ids, **data}
+        yield {"msg_ids": msg_ids, "tenant_id": data["tenant_id"], "app_id": app_id, "conversation_id": conv_id}
 
         with session_factory.create_session() as session:
             session.execute(
@@ -136,7 +158,7 @@ class TestMessagesCleanServiceIntegration:
             session.commit()
 
     @pytest.fixture
-    def paginated_seed_messages(self, tenant_and_app):
+    def paginated_seed_messages(self, tenant_and_app: TenantAndApp) -> Iterator[PaginatedSeedMessages]:
         """Seeds multiple messages separated by 1-second increments starting at _OLD."""
         data = tenant_and_app
         app_id = data["app_id"]
@@ -152,14 +174,14 @@ class TestMessagesCleanServiceIntegration:
                 msg_ids.append(msg.id)
             session.commit()
 
-        yield {"msg_ids": msg_ids, **data}
+        yield {"msg_ids": msg_ids, "tenant_id": data["tenant_id"], "app_id": app_id, "conversation_id": conv_id}
 
         with session_factory.create_session() as session:
             session.execute(delete(Message).where(Message.id.in_(msg_ids)).execution_options(synchronize_session=False))
             session.commit()
 
     @pytest.fixture
-    def cascade_test_data(self, tenant_and_app):
+    def cascade_test_data(self, tenant_and_app: TenantAndApp) -> Iterator[CascadeTestData]:
         """Seeds one Message with an associated Feedback and Annotation."""
         data = tenant_and_app
         app_id = data["app_id"]
@@ -192,7 +214,14 @@ class TestMessagesCleanServiceIntegration:
             fb_id = feedback.id
             ann_id = annotation.id
 
-        yield {"msg_id": msg_id, "fb_id": fb_id, "ann_id": ann_id, **data}
+        yield {
+            "msg_id": msg_id,
+            "fb_id": fb_id,
+            "ann_id": ann_id,
+            "tenant_id": data["tenant_id"],
+            "app_id": app_id,
+            "conversation_id": conv_id,
+        }
 
         with session_factory.create_session() as session:
             session.execute(delete(MessageAnnotation).where(MessageAnnotation.id == ann_id))
@@ -200,7 +229,7 @@ class TestMessagesCleanServiceIntegration:
             session.execute(delete(Message).where(Message.id == msg_id))
             session.commit()
 
-    def test_dry_run_does_not_delete(self, seed_messages):
+    def test_dry_run_does_not_delete(self, seed_messages: SeedMessages) -> None:
         """Dry-run must count eligible rows without deleting any of them."""
         data = seed_messages
         msg_ids = data["msg_ids"]
@@ -222,7 +251,7 @@ class TestMessagesCleanServiceIntegration:
             remaining = session.scalar(select(func.count()).select_from(Message).where(Message.id.in_(all_ids)))
         assert remaining == len(all_ids)
 
-    def test_billing_disabled_deletes_all_in_range(self, seed_messages):
+    def test_billing_disabled_deletes_all_in_range(self, seed_messages: SeedMessages) -> None:
         """All 3 seeded messages fall within the window and must be deleted."""
         data = seed_messages
         msg_ids = data["msg_ids"]
@@ -243,7 +272,7 @@ class TestMessagesCleanServiceIntegration:
             remaining = session.scalar(select(func.count()).select_from(Message).where(Message.id.in_(all_ids)))
         assert remaining == 0
 
-    def test_start_from_filters_correctly(self, seed_messages):
+    def test_start_from_filters_correctly(self, seed_messages: SeedMessages) -> None:
         """Only the message at _OLD falls within the narrow ±1 h window."""
         data = seed_messages
         msg_ids = data["msg_ids"]
@@ -269,7 +298,7 @@ class TestMessagesCleanServiceIntegration:
         assert msg_ids["very_old"] in remaining_ids
         assert msg_ids["recent"] in remaining_ids
 
-    def test_cursor_pagination_across_batches(self, paginated_seed_messages):
+    def test_cursor_pagination_across_batches(self, paginated_seed_messages: PaginatedSeedMessages) -> None:
         """Messages must be deleted across multiple batches."""
         data = paginated_seed_messages
         msg_ids = data["msg_ids"]
@@ -294,7 +323,7 @@ class TestMessagesCleanServiceIntegration:
             remaining = session.scalar(select(func.count()).select_from(Message).where(Message.id.in_(msg_ids)))
         assert remaining == 0
 
-    def test_no_messages_in_range_returns_empty_stats(self, seed_messages):
+    def test_no_messages_in_range_returns_empty_stats(self, seed_messages: SeedMessages) -> None:
         """A window entirely in the future must yield zero matches."""
         _ = seed_messages
         far_future = _NOW + datetime.timedelta(days=365)
@@ -311,7 +340,7 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_messages"] == 0
         assert stats["total_deleted"] == 0
 
-    def test_relation_cascade_deletes(self, cascade_test_data):
+    def test_relation_cascade_deletes(self, cascade_test_data: CascadeTestData) -> None:
         """Deleting a Message must cascade to its Feedback and Annotation rows."""
         data = cascade_test_data
         msg_id = data["msg_id"]
@@ -341,7 +370,7 @@ class TestMessagesCleanServiceIntegration:
                 == 0
             )
 
-    def test_factory_from_time_range_validation(self):
+    def test_factory_from_time_range_validation(self) -> None:
         with pytest.raises(ValueError, match="start_from"):
             MessagesCleanService.from_time_range(
                 policy=BillingDisabledPolicy(),
@@ -349,14 +378,14 @@ class TestMessagesCleanServiceIntegration:
                 end_before=_OLD,
             )
 
-    def test_factory_from_days_validation(self):
+    def test_factory_from_days_validation(self) -> None:
         with pytest.raises(ValueError, match="days"):
             MessagesCleanService.from_days(
                 policy=BillingDisabledPolicy(),
                 days=-1,
             )
 
-    def test_factory_batch_size_validation(self):
+    def test_factory_batch_size_validation(self) -> None:
         with pytest.raises(ValueError, match="batch_size"):
             MessagesCleanService.from_time_range(
                 policy=BillingDisabledPolicy(),
