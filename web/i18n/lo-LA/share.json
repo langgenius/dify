@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "ຖ້າທ່ານຕ້ອງການຄວາມຊ່ວຍເຫຼືອ ກະລຸນາຕິດຕໍ່ຜູ້ດູແລແອັບ.",
+  "appNotAccessible.documentTitle": "ບໍ່ສາມາດເຂົ້າເຖິງແອັບໄດ້ · Dify",
+  "appNotAccessible.ipAddress": "ທີ່ຢູ່ IP ຂອງທ່ານແມ່ນ <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "ແອັບນີ້ບໍ່ມີຢູ່ ຫຼື ບໍ່ສາມາດເຂົ້າເຖິງຈາກເຄືອຂ່າຍຂອງທ່ານໄດ້.",
   "chat.chatFormTip": "ການຕັ້ງຄ່າການສົນທະນາບໍ່ສາມາດແກ້ໄຂໄດ້ຫຼັງຈາກເລີ່ມຕົ້ນການສົນທະນາ.",
   "chat.chatSettingsTitle": "ຕັ້ງຄ່າການສົນທະນາໃໝ່",
   "chat.collapse": "ຫຍໍ້",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "ຂໍອະໄພ!",
   "humanInput.submissionID": "ລະຫັດການສົ່ງ (submission_id): {{id}}",
   "humanInput.thanks": "ຂອບໃຈ!",
-  "ipAccessDenied.description": "ແອັບນີ້ສາມາດເຂົ້າເຖິງໄດ້ຈາກເຄືອຂ່າຍທີ່ອະນຸມັດເທົ່ານັ້ນ.",
-  "ipAccessDenied.ipAddress": "ທີ່ຢູ່ IP ປັດຈຸບັນຂອງທ່ານ <ip>{{ip}}</ip> ບໍ່ຢູ່ໃນລາຍຊື່ທີ່ອະນຸຍາດ.",
-  "ipAccessDenied.title": "ຈຳກັດການເຂົ້າເຖິງ",
   "login.backToHome": "ກັບຄືນສູ່ໜ້າຫຼັກ"
 }

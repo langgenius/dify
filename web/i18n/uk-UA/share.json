@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Якщо потрібна допомога, зверніться до адміністратора застосунку.",
+  "appNotAccessible.documentTitle": "Застосунок недоступний · Dify",
+  "appNotAccessible.ipAddress": "Ваша IP-адреса — <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Цей застосунок не існує або недоступний із вашої мережі.",
   "chat.chatFormTip": "Налаштування чату не можуть бути змінені після початку чату.",
   "chat.chatSettingsTitle": "Нове налаштування чату",
   "chat.collapse": "Згорнути",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "Вибачте!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Дякуємо!",
-  "ipAccessDenied.description": "Ця програма доступна лише зі схвалених мереж.",
-  "ipAccessDenied.ipAddress": "Вашої поточної IP-адреси <ip>{{ip}}</ip> немає в списку дозволених адрес.",
-  "ipAccessDenied.title": "Доступ обмежено",
   "login.backToHome": "Повернутися на головну"
 }

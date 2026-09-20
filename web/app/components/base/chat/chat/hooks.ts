@@ -23,10 +23,10 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import {
-  captureIpAccessScope,
-  hasIpAccessDenied,
-  isIpAccessScopeCurrent,
-} from '@/features/webapp-ip-access/state'
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -1122,11 +1122,11 @@ export const useChat = (
       pausedStateRef.current = false
       resetWorkflowEventsSubscription()
       const requestGeneration = ++workflowRequestGenerationRef.current
-      const ipAccessScope = isPublicAPI ? captureIpAccessScope() : null
+      const appAccessScope = isPublicAPI ? captureAppAccessScope() : null
       const isCurrentRequest = () =>
         requestGeneration === workflowRequestGenerationRef.current &&
-        isIpAccessScopeCurrent(ipAccessScope) &&
-        !hasIpAccessDenied(ipAccessScope)
+        isAppAccessScopeCurrent(appAccessScope) &&
+        !hasAppAccessError(appAccessScope)
 
       const parentMessage = threadMessages.find((item) => item.id === data.parent_message_id)
 

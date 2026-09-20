@@ -8,6 +8,11 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
+import {
+  markAppDeletionFailed,
+  markAppDeletionStarted,
+  markAppDeletionSucceeded,
+} from '../app-deletion'
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
@@ -626,7 +631,14 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           delete: {
             mutationOptions: {
+              onMutate: (variables) => {
+                markAppDeletionStarted(`installed:${variables.params.installed_app_id}`)
+              },
+              onError: (_error, variables) => {
+                markAppDeletionFailed(`installed:${variables.params.installed_app_id}`)
+              },
               onSuccess: (_response, variables, _onMutateResult, context) => {
+                markAppDeletionSucceeded(`installed:${variables.params.installed_app_id}`)
                 context.client.removeQueries({
                   queryKey: consoleQuery.installedApps.byInstalledAppId.get.queryKey({
                     input: {
@@ -836,7 +848,14 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           delete: {
             mutationOptions: {
+              onMutate: (variables) => {
+                markAppDeletionStarted(`agent:${variables.params.agent_id}`)
+              },
+              onError: (_error, variables) => {
+                markAppDeletionFailed(`agent:${variables.params.agent_id}`)
+              },
               onSuccess: (_data, variables, _onMutateResult, context) => {
+                markAppDeletionSucceeded(`agent:${variables.params.agent_id}`)
                 context.client.removeQueries({
                   queryKey: consoleQuery.agent.byAgentId.key({
                     input: {

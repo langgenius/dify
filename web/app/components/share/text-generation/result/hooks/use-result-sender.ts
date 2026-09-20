@@ -8,10 +8,10 @@ import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import {
-  captureIpAccessScope,
-  hasIpAccessDenied,
-  isIpAccessScopeCurrent,
-} from '@/features/webapp-ip-access/state'
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
 import { AppSourceType, sendCompletionMessage, sendWorkflowMessage } from '@/service/share'
 import { sleep } from '@/utils'
 import { buildResultRequestData, validateResultRequest } from '../result-request'
@@ -94,7 +94,7 @@ export const useResultSender = ({
       promptConfig,
       visionConfig,
     })
-    const ipAccessScope = appSourceType === AppSourceType.webApp ? captureIpAccessScope() : null
+    const appAccessScope = appSourceType === AppSourceType.webApp ? captureAppAccessScope() : null
 
     runState.prepareForNewRun()
 
@@ -113,7 +113,8 @@ export const useResultSender = ({
     let completionChunks: string[] = []
     let tempMessageId = ''
     const stopInactiveRequest = () => {
-      if (isIpAccessScopeCurrent(ipAccessScope) && !hasIpAccessDenied(ipAccessScope)) return false
+      if (isAppAccessScopeCurrent(appAccessScope) && !hasAppAccessError(appAccessScope))
+        return false
 
       if (!isEnd) {
         runState.setRespondingFalse()

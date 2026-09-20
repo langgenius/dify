@@ -78,7 +78,7 @@ describe('AgentDetailLayout', () => {
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents/agent-1/configure'))
   })
 
-  it('redirects to the roster when the agent no longer exists', async () => {
+  it('leaves a missing agent to the app error boundary without redirecting', async () => {
     const { wrapper, queryClient } = setup()
     queryClient.setDefaultOptions({ queries: { retry: false, retryOnMount: false } })
     queryClient
@@ -94,7 +94,7 @@ describe('AgentDetailLayout', () => {
         fetchStatus: 'idle',
       })
     render(content, { wrapper })
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents'))
+    expect(router.replace).not.toHaveBeenCalled()
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
   })
 })

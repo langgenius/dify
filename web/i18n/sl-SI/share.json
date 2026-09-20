@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Če potrebujete pomoč, se obrnite na skrbnika aplikacije.",
+  "appNotAccessible.documentTitle": "Aplikacija ni dostopna · Dify",
+  "appNotAccessible.ipAddress": "Vaš naslov IP je <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Ta aplikacija ne obstaja ali ni dostopna iz vašega omrežja.",
   "chat.chatFormTip": "Nastavitve klepeta ni mogoče spremeniti po začetku klepeta.",
   "chat.chatSettingsTitle": "Nova nastavitev klepeta",
   "chat.collapse": "Skrči",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "Oprostite!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Hvala!",
-  "ipAccessDenied.description": "Ta aplikacija je dostopna samo iz odobrenih omrežij.",
-  "ipAccessDenied.ipAddress": "Vaš trenutni naslov IP <ip>{{ip}}</ip> ni na seznamu dovoljenih naslovov.",
-  "ipAccessDenied.title": "Dostop omejen",
   "login.backToHome": "Nazaj na začetno stran"
 }

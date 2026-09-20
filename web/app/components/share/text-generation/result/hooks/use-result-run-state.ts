@@ -4,11 +4,11 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import {
-  captureIpAccessScope,
-  hasIpAccessDenied,
-  isIpAccessDeniedError,
-  isIpAccessScopeCurrent,
-} from '@/features/webapp-ip-access/state'
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
 import {
   AppSourceType,
   stopChatMessageResponding,
@@ -178,11 +178,11 @@ export const useResultRunState = ({
     if (!currentTaskId || isStopping) return
 
     const runGeneration = runGenerationRef.current
-    const ipAccessScope = appSourceType === AppSourceType.webApp ? captureIpAccessScope() : null
+    const appAccessScope = appSourceType === AppSourceType.webApp ? captureAppAccessScope() : null
     const isCurrentRequest = () =>
       runGeneration === runGenerationRef.current &&
-      isIpAccessScopeCurrent(ipAccessScope) &&
-      !hasIpAccessDenied(ipAccessScope)
+      isAppAccessScopeCurrent(appAccessScope) &&
+      !hasAppAccessError(appAccessScope)
     if (!isCurrentRequest()) return
 
     const abortController = abortControllerRef.current
@@ -193,7 +193,7 @@ export const useResultRunState = ({
 
       if (isCurrentRequest()) abortController?.abort()
     } catch (error) {
-      if (!isCurrentRequest() || isIpAccessDeniedError(error)) return
+      if (!isCurrentRequest() || isAppAccessError(error)) return
 
       const message = error instanceof Error ? error.message : String(error)
       notify({ type: 'error', message })

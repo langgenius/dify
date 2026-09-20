@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "หากต้องการความช่วยเหลือ โปรดติดต่อผู้ดูแลแอป",
+  "appNotAccessible.documentTitle": "ไม่สามารถเข้าถึงแอปได้ · Dify",
+  "appNotAccessible.ipAddress": "ที่อยู่ IP ของคุณคือ <ip>{{ip}}</ip>",
+  "appNotAccessible.title": "แอปนี้ไม่มีอยู่หรือไม่สามารถเข้าถึงได้จากเครือข่ายของคุณ",
   "chat.chatFormTip": "การตั้งค่าแชทไม่สามารถเปลี่ยนแปลงได้หลังจากที่แชทเริ่มต้นขึ้นแล้ว.",
   "chat.chatSettingsTitle": "การตั้งค่าการสนทนาใหม่",
   "chat.collapse": "ย่อ",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "ขออภัย!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "ขอบคุณ!",
-  "ipAccessDenied.description": "แอปนี้สามารถเข้าถึงได้จากเครือข่ายที่ได้รับอนุมัติเท่านั้น",
-  "ipAccessDenied.ipAddress": "ที่อยู่ IP ปัจจุบันของคุณ <ip>{{ip}}</ip> ไม่อยู่ในรายการที่อนุญาต",
-  "ipAccessDenied.title": "การเข้าถึงถูกจำกัด",
   "login.backToHome": "กลับไปที่หน้าแรก"
 }

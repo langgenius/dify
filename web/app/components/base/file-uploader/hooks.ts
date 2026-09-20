@@ -17,7 +17,7 @@ import {
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { isIpAccessDeniedError } from '@/features/webapp-ip-access/state'
+import { isAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
 import { uploadRemoteFileInfo } from '@/service/common'
 import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
@@ -193,7 +193,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
               t,
             )
-            if (!isIpAccessDeniedError(error) && !isAbortError(error)) toast.error(errorMessage)
+            if (!isAppAccessError(error) && !isAbortError(error)) toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
         }
@@ -281,7 +281,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           else handleUpdateFile(newFile)
         })
         .catch((error: unknown) => {
-          if (!isIpAccessDeniedError(error) && !isAbortError(error))
+          if (!isAppAccessError(error) && !isAbortError(error))
             toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
           handleRemoveFile(uploadingFile.id)
         })
@@ -375,7 +375,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
                 t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
                 t,
               )
-              if (!isIpAccessDeniedError(error) && !isAbortError(error)) toast.error(errorMessage)
+              if (!isAppAccessError(error) && !isAbortError(error)) toast.error(errorMessage)
               handleUpdateFile({ ...uploadingFile, progress: -1 })
             },
           }

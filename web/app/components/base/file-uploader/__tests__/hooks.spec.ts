@@ -2,7 +2,7 @@ import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import { act, renderHook } from '@testing-library/react'
-import { captureIpAccessScope, handleIpAccessDenied } from '@/features/webapp-ip-access/state'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { useFile, useFileSizeLimit } from '../hooks'
 
 const mockNotify = vi.fn()
@@ -12,7 +12,7 @@ const createUploadError = (ipDenied: boolean | 'cancelled') => {
   const error = new Error('Upload failed')
   if (ipDenied) {
     window.history.replaceState({}, '', '/chat/restricted-app')
-    handleIpAccessDenied(403, { code: 'ip_access_denied' }, captureIpAccessScope(), error)
+    handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope(), error)
   }
   return error
 }

@@ -1,6 +1,6 @@
 import type { ImageFile } from '@/types/app'
 import { act, renderHook } from '@testing-library/react'
-import { captureIpAccessScope, handleIpAccessDenied } from '@/features/webapp-ip-access/state'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { TransferMethod } from '@/types/app'
 import { useImageFiles, useLocalFileUploader } from '../hooks'
 
@@ -11,7 +11,7 @@ const createUploadError = (ipDenied: boolean | 'cancelled') => {
   const error = new Error('Upload failed')
   if (ipDenied) {
     window.history.replaceState({}, '', '/chat/restricted-app')
-    handleIpAccessDenied(403, { code: 'ip_access_denied' }, captureIpAccessScope(), error)
+    handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope(), error)
   }
   return error
 }

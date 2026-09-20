@@ -11,11 +11,11 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
 import {
-  captureIpAccessScope,
-  hasIpAccessDenied,
-  isIpAccessDeniedError,
-  isIpAccessScopeCurrent,
-} from '@/features/webapp-ip-access/state'
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAccessToken } from '@/service/share'
@@ -71,10 +71,10 @@ function Splash({ children }: PropsWithChildren) {
     status?: number
   }>()
   useEffect(() => {
-    const scope = captureIpAccessScope()
+    const scope = captureAppAccessScope()
     let cancelled = false
     const canContinue = () =>
-      !cancelled && (scope === null || isIpAccessScopeCurrent(scope)) && !hasIpAccessDenied(scope)
+      !cancelled && (scope === null || isAppAccessScopeCurrent(scope)) && !hasAppAccessError(scope)
     if (!canContinue()) return
 
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
@@ -141,7 +141,7 @@ function Splash({ children }: PropsWithChildren) {
             setWebAppPassport(address, access_token)
             redirectOrFinish()
           } catch (error) {
-            if (!canContinue() || isIpAccessDeniedError(error)) return
+            if (!canContinue() || isAppAccessError(error)) return
 
             if (error instanceof Response && error.status >= 500) {
               setInitializationError({ shareCode: effectiveShareCode, status: error.status })
@@ -149,7 +149,6 @@ function Splash({ children }: PropsWithChildren) {
             }
             if (error instanceof Response && error.status === 404) {
               setInitializationError({ shareCode: effectiveShareCode, status: 404 })
-              await webAppLogout(address)
               return
             }
             await webAppLogout(address)
@@ -157,7 +156,7 @@ function Splash({ children }: PropsWithChildren) {
           }
         }
       } catch (error) {
-        if (!canContinue() || isIpAccessDeniedError(error)) return
+        if (!canContinue() || isAppAccessError(error)) return
 
         setInitializationError({
           shareCode: effectiveShareCode,

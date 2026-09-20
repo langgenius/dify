@@ -4,7 +4,7 @@ import type { PromptConfig } from '@/models/debug'
 import type { AppSourceType } from '@/service/share'
 import type { VisionSettings } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { captureIpAccessScope, handleIpAccessDenied } from '@/features/webapp-ip-access/state'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -245,7 +245,7 @@ describe('useResultSender', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
-    captureIpAccessScope()
+    captureAppAccessScope()
     mockWebAppState.appInfo.mode = 'completion'
     validateResultRequestMock.mockReturnValue({ canSend: true })
     buildResultRequestDataMock.mockReturnValue({ inputs: { name: 'Alice' } })
@@ -587,10 +587,10 @@ describe('useResultSender', () => {
 
       await act(async () => {
         if (transition === 'denied')
-          handleIpAccessDenied(403, { code: 'ip_access_denied' }, captureIpAccessScope())
+          handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope())
         else {
           window.history.replaceState({}, '', '/completion/another-app')
-          captureIpAccessScope()
+          captureAppAccessScope()
         }
         completionHandlers![callback]()
       })
@@ -619,7 +619,7 @@ describe('useResultSender', () => {
 
     await act(async () => {
       await result.current.handleSend()
-      handleIpAccessDenied(403, { code: 'ip_access_denied' }, captureIpAccessScope())
+      handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope())
       rejectRequest(new Error('Late workflow failure'))
     })
 

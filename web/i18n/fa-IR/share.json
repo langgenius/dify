@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "اگر به کمک نیاز دارید، با مدیر برنامه تماس بگیرید.",
+  "appNotAccessible.documentTitle": "برنامه قابل دسترسی نیست · Dify",
+  "appNotAccessible.ipAddress": "نشانی IP شما <ip>{{ip}}</ip> است.",
+  "appNotAccessible.title": "این برنامه وجود ندارد یا از شبکه شما قابل دسترسی نیست.",
   "chat.chatFormTip": "تنظیمات چت پس از شروع چت قابل تغییر نیستند.",
   "chat.chatSettingsTitle": "راه‌اندازی چت جدید",
   "chat.collapse": "بستن",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "متأسفیم!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "متشکریم!",
-  "ipAccessDenied.description": "این برنامه فقط از طریق شبکه‌های تأییدشده قابل دسترسی است.",
-  "ipAccessDenied.ipAddress": "نشانی IP فعلی شما <ip>{{ip}}</ip> در فهرست نشانی‌های مجاز نیست.",
-  "ipAccessDenied.title": "دسترسی محدود است",
   "login.backToHome": "بازگشت به خانه"
 }

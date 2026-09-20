@@ -1,6 +1,6 @@
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { captureIpAccessScope, handleIpAccessDenied } from '@/features/webapp-ip-access/state'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { AppSourceType } from '@/service/share'
 import { useResultRunState } from '../use-result-run-state'
 
@@ -29,7 +29,7 @@ describe('useResultRunState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
-    captureIpAccessScope()
+    captureAppAccessScope()
     stopChatMessageRespondingMock.mockResolvedValue(undefined)
     stopWorkflowMessageMock.mockResolvedValue(undefined)
     updateFeedbackMock.mockResolvedValue(undefined)
@@ -86,11 +86,11 @@ describe('useResultRunState', () => {
         '',
         isWorkflow ? '/workflow/stop-test' : '/completion/stop-test',
       )
-      const scope = captureIpAccessScope()
+      const scope = captureAppAccessScope()
       const error = new Response(null, { status: 403 })
       const stop = isWorkflow ? stopWorkflowMessageMock : stopChatMessageRespondingMock
       stop.mockImplementationOnce(async () => {
-        handleIpAccessDenied(403, { code: 'ip_access_denied' }, scope, error)
+        handleAppAccessError(403, { code: 'ip_access_denied' }, scope, error)
         throw error
       })
       const notify = vi.fn()
@@ -185,7 +185,7 @@ describe('useResultRunState', () => {
 
   it('should not send a stop request after another public request denies access', async () => {
     window.history.replaceState({}, '', '/workflow/already-denied')
-    const scope = captureIpAccessScope()
+    const scope = captureAppAccessScope()
     const notify = vi.fn()
     const { result } = renderHook(() =>
       useResultRunState({
@@ -196,7 +196,7 @@ describe('useResultRunState', () => {
     )
     act(() => {
       result.current.setCurrentTaskId('task-denied')
-      handleIpAccessDenied(403, { code: 'ip_access_denied' }, scope)
+      handleAppAccessError(403, { code: 'ip_access_denied' }, scope)
     })
     await act(async () => {
       await result.current.handleStop()
