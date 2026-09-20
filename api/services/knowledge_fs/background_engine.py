@@ -26,7 +26,17 @@ class KnowledgeFSBackgroundEngineError(RuntimeError):
 
 
 def engine_environment(source: dict[str, str]) -> dict[str, str]:
-    allowed = {"PATH", "LANG", "LC_ALL", "TMPDIR", "DATABASE_URL", "NODE_ENV"}
+    allowed = {
+        "PATH",
+        "LANG",
+        "LC_ALL",
+        "TMPDIR",
+        "DATABASE_URL",
+        "NODE_ENV",
+        "DEPLOYMENT_EDITION",
+        "BILLING_API_URL",
+        "BILLING_API_SECRET_KEY",
+    }
     prefixes = (
         "KNOWLEDGE_",
         "UNSTRUCTURED_",

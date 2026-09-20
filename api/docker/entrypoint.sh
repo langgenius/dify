@@ -62,7 +62,7 @@ if [[ "${MODE}" == "worker" ]]; then
 
   WORKER_POOL="${CELERY_WORKER_POOL:-${CELERY_WORKER_CLASS:-gevent}}"
   case ",${DEFAULT_QUEUES}," in
-    *,knowledge_fs_document,*|*,knowledge_fs_source,*|*,knowledge_fs_research,*|*,knowledge_fs_maintenance,*|*,knowledge_fs_dispatch,*)
+    *,knowledge_fs_document,*|*,knowledge_fs_priority_document,*|*,knowledge_fs_source,*|*,knowledge_fs_research,*|*,knowledge_fs_maintenance,*|*,knowledge_fs_dispatch,*)
       if [[ "${WORKER_POOL}" != "prefork" || "${CELERY_PREFETCH_MULTIPLIER:-1}" != "1" ]]; then
         echo "KnowledgeFS queues require CELERY_WORKER_POOL=prefork and CELERY_PREFETCH_MULTIPLIER=1." >&2
         exit 1
@@ -74,7 +74,7 @@ if [[ "${MODE}" == "worker" ]]; then
       case ",${DEFAULT_QUEUES}," in
         *,knowledge_fs_source,*)
           case ",${DEFAULT_QUEUES}," in
-            *,knowledge_fs_document,*)
+            *,knowledge_fs_document,*|*,knowledge_fs_priority_document,*)
               echo "Source and document queues require separate worker pools to avoid publication-wait starvation." >&2
               exit 1
               ;;

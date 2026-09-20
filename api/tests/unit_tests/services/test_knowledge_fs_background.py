@@ -7,11 +7,14 @@ import pytest
 from billiard.exceptions import SoftTimeLimitExceeded
 from pydantic import ValidationError
 
+from enums import DeploymentEdition
 from services.knowledge_fs.background_contract import (
     DELIVERY_TASK,
     DISPATCH_QUEUE,
     DOCUMENT_QUEUE,
+    MAINTENANCE_QUEUE,
     OPERATION_QUEUES,
+    PRIORITY_DOCUMENT_QUEUE,
     SOURCE_QUEUE,
     BackgroundJobPayload,
 )
@@ -38,6 +41,7 @@ JOB = {
         {"attempts": 0},
         {"attempts": True},
         {"runAfter": 1.5},
+        {"priority": "urgent"},
         {"payload": {"attemptId": JOB["payload"]["attemptId"], "tenantId": "untrusted"}},
         {"type": "quality.page-index-findability"},
     ],
@@ -57,6 +61,39 @@ def test_publisher_uses_the_shared_broker_and_preserves_delivery_id(config_overr
     assert kwargs["task_id"] == JOB["id"]
     assert kwargs["kwargs"]["delivery"] == JOB
     assert kwargs["retry"] is False
+
+
+@pytest.mark.parametrize(
+    ("edition", "priority", "queue"),
+    [
+        (DeploymentEdition.CLOUD, "normal", DOCUMENT_QUEUE),
+        (DeploymentEdition.CLOUD, "high", PRIORITY_DOCUMENT_QUEUE),
+        (DeploymentEdition.ENTERPRISE, "high", DOCUMENT_QUEUE),
+    ],
+)
+def test_publisher_routes_only_cloud_paid_compilations_to_the_priority_queue(
+    config_overrides: Callable[..., None], edition: DeploymentEdition, priority: str, queue: str
+) -> None:
+    config_overrides(KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED=True, DEPLOYMENT_EDITION=edition)
+    with patch("services.knowledge_fs.background_publisher.current_app") as celery:
+        publish_background_job(BackgroundJobPayload.model_validate({**JOB, "priority": priority}))
+    kwargs = celery.send_task.call_args.kwargs
+    assert kwargs["queue"] == queue
+    assert kwargs["kwargs"]["delivery"] == JOB
+
+
+def test_quality_jobs_keep_the_maintenance_queue_even_with_priority(config_overrides: Callable[..., None]) -> None:
+    config_overrides(KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    job = {
+        **JOB,
+        "type": "quality.page-index-findability",
+        "payload": {"compilationAttemptId": JOB["payload"]["attemptId"], "publicationFingerprint": "sha256:test"},
+        "priority": "high",
+    }
+    with patch("services.knowledge_fs.background_publisher.current_app") as celery:
+        publish_background_job(BackgroundJobPayload.model_validate(job))
+    assert celery.send_task.call_args.kwargs["queue"] == MAINTENANCE_QUEUE
+    assert "priority" not in celery.send_task.call_args.kwargs["kwargs"]["delivery"]
 
 
 def test_disabled_publisher_does_not_silently_accept_work(config_overrides: Callable[..., None]) -> None:
@@ -79,6 +116,9 @@ def test_worker_does_not_inherit_control_plane_signing_keys_or_shell_hooks() -> 
         {
             "PATH": "/bin",
             "DATABASE_URL": "test-db",
+            "DEPLOYMENT_EDITION": "CLOUD",
+            "BILLING_API_URL": "http://billing:8000/v1",
+            "BILLING_API_SECRET_KEY": "test-billing-key",
             "DIFY_INNER_API_KEY": "test-key",
             "KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM": "private",
             "NODE_OPTIONS": "--require evil",
@@ -93,6 +133,9 @@ def test_worker_does_not_inherit_control_plane_signing_keys_or_shell_hooks() -> 
     assert "KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM" not in env
     assert env["KNOWLEDGE_BACKGROUND_EXECUTION"] == "celery"
     assert env["DIFY_INNER_API_KEY"] == "test-key"
+    assert env["DEPLOYMENT_EDITION"] == "CLOUD"
+    assert env["BILLING_API_URL"] == "http://billing:8000/v1"
+    assert env["BILLING_API_SECRET_KEY"] == "test-billing-key"
     assert env["KNOWLEDGE_MODEL_RUNTIME_GLOBAL_CONCURRENCY"] == "4"
     assert env["NODE_ENV"] == "production"
     assert env["DIFY_ROOT_KNOWLEDGE_BACKGROUND_EXECUTION_OVERRIDE"] == "celery"

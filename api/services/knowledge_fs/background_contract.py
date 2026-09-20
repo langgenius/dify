@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 DOCUMENT_QUEUE = "knowledge_fs_document"
+PRIORITY_DOCUMENT_QUEUE = "knowledge_fs_priority_document"
 SOURCE_QUEUE = "knowledge_fs_source"
 RESEARCH_QUEUE = "knowledge_fs_research"
 MAINTENANCE_QUEUE = "knowledge_fs_maintenance"
@@ -55,6 +56,8 @@ class BackgroundJobPayload(BaseModel):
     payload: CompilationLocator | FindabilityLocator
     attempts: int = Field(default=1, ge=1, le=100_000, strict=True)
     runAfter: int | None = Field(default=None, ge=0, le=2**53 - 1, strict=True)
+    # Publisher routing metadata must never become trusted worker execution scope.
+    priority: Literal["normal", "high"] = Field(default="normal", exclude=True)
 
     @model_validator(mode="after")
     def validate_locator_kind(self) -> "BackgroundJobPayload":

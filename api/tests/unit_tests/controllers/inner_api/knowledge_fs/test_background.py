@@ -7,6 +7,7 @@ from flask import Flask
 from werkzeug.exceptions import BadRequest, RequestEntityTooLarge, ServiceUnavailable
 
 from controllers.inner_api.knowledge_fs.background import KnowledgeFSBackgroundHealthApi, KnowledgeFSBackgroundJobApi
+from services.knowledge_fs.background_contract import BackgroundJobPayload
 
 JOB = {
     "id": "018f0d60-7a49-7cc2-9c1b-5b36f18f8a01",
@@ -25,6 +26,21 @@ def test_publication_returns_202_only_after_broker_accepts(app: Flask) -> None:
     assert response.status_code == 202
     assert response.get_data() == b""
     publish.assert_called_once()
+
+
+def test_priority_is_documented_and_consumed_only_by_the_publisher(app: Flask) -> None:
+    schema = BackgroundJobPayload.model_json_schema()
+    assert schema["properties"]["priority"]["enum"] == ["normal", "high"]
+    assert schema["properties"]["priority"]["default"] == "normal"
+    handler = KnowledgeFSBackgroundJobApi()
+    with (
+        app.test_request_context(json={**JOB, "priority": "high"}),
+        patch("controllers.inner_api.knowledge_fs.background.publish_background_job") as publish,
+    ):
+        assert inspect.unwrap(handler.post)(handler).status_code == 202
+    job = publish.call_args.args[0]
+    assert job.priority == "high"
+    assert "priority" not in job.model_dump()
 
 
 def test_publication_failure_is_retryable_and_does_not_report_success(app: Flask) -> None:

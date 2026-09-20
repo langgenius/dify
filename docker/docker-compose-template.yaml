@@ -779,7 +779,8 @@ services:
     <<: *knowledge-fs-celery-worker
     environment:
       <<: *knowledge-fs-celery-environment
-      CELERY_WORKER_QUEUES: knowledge_fs_document
+      # Compose shares document capacity; Cloud deployments can use separate consumer pools.
+      CELERY_WORKER_QUEUES: knowledge_fs_document,knowledge_fs_priority_document
       CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_DOCUMENT_WORKER_CONCURRENCY:-2}
   knowledge_fs_source_worker:
     <<: *knowledge-fs-celery-worker

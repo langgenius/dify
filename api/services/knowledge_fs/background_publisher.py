@@ -6,10 +6,12 @@ from datetime import UTC, datetime
 from celery import current_app
 
 from configs import dify_config
+from enums import DeploymentEdition
 from services.knowledge_fs.background_contract import (
     DELIVERY_TASK,
     DOCUMENT_QUEUE,
     MAINTENANCE_QUEUE,
+    PRIORITY_DOCUMENT_QUEUE,
     BackgroundJobPayload,
 )
 
@@ -28,11 +30,18 @@ def publish_background_job(job: BackgroundJobPayload) -> None:
         raise RuntimeError("KnowledgeFS Celery delivery is not enabled")
     if job.runAfter is not None and job.runAfter > int(time.time() * 1000) + 86_400_000:
         raise ValueError("Background job delay exceeds the transport envelope")
+    queue = MAINTENANCE_QUEUE
+    if job.type == "document.compile":
+        queue = (
+            PRIORITY_DOCUMENT_QUEUE
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and job.priority == "high"
+            else DOCUMENT_QUEUE
+        )
     current_app.send_task(
         DELIVERY_TASK,
         kwargs={"delivery": job.model_dump(mode="json", exclude={"runAfter"})},
         task_id=str(job.id),
-        queue=DOCUMENT_QUEUE if job.type == "document.compile" else MAINTENANCE_QUEUE,
+        queue=queue,
         eta=datetime.fromtimestamp(job.runAfter / 1000, tz=UTC) if job.runAfter is not None else None,
         retry=False,
     )
