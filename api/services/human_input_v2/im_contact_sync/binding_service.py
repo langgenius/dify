@@ -40,7 +40,7 @@ class ContactIMBindingService:
         self._channel_resolver = channel_resolver
         self._clock = clock
 
-    def create_organization_binding(
+    def set_organization_binding(
         self,
         *,
         organization_scope: DirectoryScope,
@@ -53,7 +53,7 @@ class ContactIMBindingService:
             organization_scope,
             tenant_id,
             contact_id,
-            lambda repository: repository.create(
+            lambda repository: repository.replace(
                 IMBindingAssignment(contact_id, identity_id, self._clock()),
                 bound_by_account_id=bound_by_account_id,
             ),

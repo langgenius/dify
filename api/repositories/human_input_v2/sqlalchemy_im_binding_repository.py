@@ -6,7 +6,6 @@ from collections.abc import Sequence
 from typing import override
 
 import sqlalchemy as sa
-from pydantic import NaiveDatetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -137,62 +136,38 @@ class SQLAlchemyIMBindingRepository(IMBindingRepository):
             raise IMBindingConflictError("Contact already has a different default IM Binding")
         if self._get_default_for_identity(assignment.identity_id) is not None:
             raise IMBindingConflictError("IM Identity already has a different default Contact")
-
-        record = HumanInputIMBinding(
-            channel_id=str(self._channel_id),
-            contact_id=str(assignment.contact_id),
-            im_identity_id=str(assignment.identity_id),
-            bound_by_account_id=(str(bound_by_account_id) if bound_by_account_id is not None else None),
-        )
-        record.id = str(uuidv7())
-        record.created_at = assignment.assigned_at
-        record.updated_at = assignment.assigned_at
-        try:
-            self._session.add(record)
-            self._session.flush([record])
-        except IntegrityError as error:
-            if _is_endpoint_conflict(error, workspace_override=False):
-                raise IMBindingConflictError("Default IM Binding endpoint is already assigned") from error
-            raise
-        return _default_binding_from_record(record)
+        return self._insert_default(assignment, bound_by_account_id=bound_by_account_id)
 
     @override
     def replace(
         self,
-        binding_id: IMBindingId,
+        assignment: IMBindingAssignment,
         *,
-        expected_identity_id: IMIdentityId,
-        next_identity_id: IMIdentityId,
         bound_by_account_id: AccountId | None,
-        updated_at: NaiveDatetime,
-    ) -> IMBinding | None:
-        # TODO(QuantumGhost): this seems incorrect. We should delete
-        # the old record and create a new record.
-        record = self._session.scalar(
-            sa.select(HumanInputIMBinding)
+    ) -> IMBinding:
+        self._require_identity(assignment.identity_id)
+        record = self._get_default_for_contact(assignment.contact_id)
+        if record is not None and record.im_identity_id == str(assignment.identity_id):
+            return _default_binding_from_record(record)
+        if self._get_default_for_identity(assignment.identity_id) is not None:
+            raise IMBindingConflictError("IM Identity already has a different default Contact")
+        if record is None:
+            return self._insert_default(assignment, bound_by_account_id=bound_by_account_id)
+        # Delete only the observed Binding so a concurrent replacement is not lost.
+        # The caller's transaction keeps deletion and creation atomic.
+        deleted_id = self._session.scalar(
+            sa.delete(HumanInputIMBinding)
             .where(
                 HumanInputIMBinding.channel_id == str(self._channel_id),
-                HumanInputIMBinding.id == str(binding_id),
-                HumanInputIMBinding.im_identity_id == str(expected_identity_id),
+                HumanInputIMBinding.id == record.id,
+                HumanInputIMBinding.im_identity_id == record.im_identity_id,
             )
+            .returning(HumanInputIMBinding.id)
             .execution_options(autoflush=False)
         )
-        if record is None:
-            return None
-        self._require_identity(next_identity_id)
-        occupying_record = self._get_default_for_identity(next_identity_id)
-        if occupying_record is not None and occupying_record.id != record.id:
-            raise IMBindingConflictError("IM Identity already has a different default Contact")
-        record.im_identity_id = str(next_identity_id)
-        record.bound_by_account_id = str(bound_by_account_id) if bound_by_account_id is not None else None
-        record.updated_at = updated_at
-        try:
-            self._session.flush([record])
-        except IntegrityError as error:
-            if _is_endpoint_conflict(error, workspace_override=False):
-                raise IMBindingConflictError("Default IM Binding endpoint is already assigned") from error
-            raise
-        return _default_binding_from_record(record)
+        if deleted_id is None:
+            raise IMBindingConflictError("Default IM Binding changed concurrently")
+        return self._insert_default(assignment, bound_by_account_id=bound_by_account_id)
 
     @override
     def delete(
@@ -319,6 +294,30 @@ class SQLAlchemyIMBindingRepository(IMBindingRepository):
             if default is not None:
                 result.append(_default_binding_from_record(default))
         return tuple(result)
+
+    def _insert_default(
+        self,
+        assignment: IMBindingAssignment,
+        *,
+        bound_by_account_id: AccountId | None,
+    ) -> IMBinding:
+        record = HumanInputIMBinding(
+            channel_id=str(self._channel_id),
+            contact_id=str(assignment.contact_id),
+            im_identity_id=str(assignment.identity_id),
+            bound_by_account_id=(str(bound_by_account_id) if bound_by_account_id is not None else None),
+        )
+        record.id = str(uuidv7())
+        record.created_at = assignment.assigned_at
+        record.updated_at = assignment.assigned_at
+        try:
+            self._session.add(record)
+            self._session.flush([record])
+        except IntegrityError as error:
+            if _is_endpoint_conflict(error, workspace_override=False):
+                raise IMBindingConflictError("Default IM Binding endpoint is already assigned") from error
+            raise
+        return _default_binding_from_record(record)
 
     def _require_identity(self, identity_id: IMIdentityId) -> None:
         if not _lock_current_identity(self._session, self._channel_id, identity_id):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime
+from uuid import UUID
 
 import pytest
 import sqlalchemy as sa
@@ -33,6 +34,7 @@ from models.human_input_v2 import (
     HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
+    IMBindingReconciliationSnapshot,
     IMEncryptedCredentials,
 )
 from repositories.human_input_v2.contact import Contact, ContactType
@@ -95,6 +97,17 @@ class _ContactReader:
         if contact_id != _CONTACT_ID:
             return None
         return self.list_contacts(1, 500)[0]
+
+
+@dataclass(frozen=True)
+class _ContactListReader:
+    contacts: tuple[Contact, ...]
+
+    def list_contacts(self, page: int, limit: int) -> tuple[Contact, ...]:
+        return self.contacts[(page - 1) * limit : page * limit]
+
+    def get_contact(self, contact_id: ContactId) -> Contact | None:
+        return next((contact for contact in self.contacts if contact.id == contact_id), None)
 
 
 class _DirectoryCapability:
@@ -362,6 +375,8 @@ def test_next_run_replaces_an_absent_identity_binding_and_deletes_the_old_identi
 ) -> None:
     service = reconciliation_context.service(_Adapter(_successful_directory()))
     assert service.reconcile(_RUN_ID).status is IMSyncRunStatus.SUCCEEDED
+    with reconciliation_context.sessions() as session:
+        original_binding_id = session.scalars(sa.select(HumanInputIMBinding.id)).one()
     _create_active_run(reconciliation_context.sessions, reconciliation_context.channel, _SECOND_RUN_ID)
     replacement_directory = Directory(
         (
@@ -387,8 +402,16 @@ def test_next_run_replaces_an_absent_identity_binding_and_deletes_the_old_identi
         ).all()
         assert [identity.provider_user_id for identity in identities] == ["provider-user-2"]
         assert binding is not None
+        assert binding.id != original_binding_id
+        assert session.get(HumanInputIMBinding, original_binding_id) is None
         assert binding.im_identity_id == identities[0].id
         assert {change.operation.value for change in changes} == {"create", "replace", "delete"}
+        replacement = next(change for change in changes if change.operation.value == "replace")
+        assert isinstance(replacement.before_snapshot, IMBindingReconciliationSnapshot)
+        assert isinstance(replacement.after_snapshot, IMBindingReconciliationSnapshot)
+        assert replacement.before_snapshot.binding_id == original_binding_id
+        assert replacement.after_snapshot.binding_id == binding.id
+        assert replacement.im_binding_id == binding.id
 
 
 def test_credential_failure_persists_a_safe_terminal_result(
@@ -410,3 +433,120 @@ def test_credential_failure_persists_a_safe_terminal_result(
     assert run.status is IMSyncRunStatus.FAILED
     assert run.error_code == "directory_read_failed"
     assert "sensitive" not in (run.error_message or "")
+
+
+@pytest.mark.parametrize("replacement_count", [1, 301])
+def test_sync_applies_creates_replacements_deletions_and_preserves_unchanged_bindings(
+    reconciliation_context: _ReconciliationContext,
+    replacement_count: int,
+) -> None:
+    contacts = tuple(
+        Contact(
+            id=ContactId(str(UUID(int=index + 501))),
+            type=ContactType.WORKSPACE,
+            name=f"Reviewer {index}",
+            email=f"reviewer-{index}@example.com",
+            avatar_file_id=None,
+            created_at=_NOW,
+        )
+        for index in range(replacement_count + 3)
+    )
+    reader = _ContactListReader(contacts)
+
+    def service(entries: tuple[DirectoryEntry, ...]) -> IMChannelReconciliationService:
+        return IMChannelReconciliationService(
+            reconciliation_context.sessions,
+            reconciliation_context.channel,
+            lambda _channel: _Adapter(Directory(entries)),
+            lambda _session: reader,
+            clock=lambda: _NOW,
+        )
+
+    first_entries = tuple(
+        DirectoryEntry(ProviderUserId(f"old-{index}"), contact.name, contact.email)
+        for index, contact in enumerate(contacts[:-1])
+    )
+    assert service(first_entries).reconcile(_RUN_ID).status is IMSyncRunStatus.SUCCEEDED
+    with reconciliation_context.sessions() as session:
+        original_ids = {record.contact_id: record.id for record in session.scalars(sa.select(HumanInputIMBinding))}
+    _create_active_run(reconciliation_context.sessions, reconciliation_context.channel, _SECOND_RUN_ID)
+
+    # Keep the first assignment, remove the second, replace the middle group,
+    # and bind the final Contact for the first time.
+    next_entries = (first_entries[0],) + tuple(
+        DirectoryEntry(ProviderUserId(f"new-{index}"), contacts[index].name, contacts[index].email)
+        for index in range(2, len(contacts))
+    )
+    run = service(next_entries).reconcile(_SECOND_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.SUCCEEDED
+    assert (run.added_count, run.removed_count, run.skipped_count) == (replacement_count + 1, replacement_count + 1, 1)
+    with reconciliation_context.sessions() as session:
+        current = {
+            binding.contact_id: (binding.id, identity.provider_user_id)
+            for binding, identity in session.execute(
+                sa.select(HumanInputIMBinding, HumanInputIMIdentity).join(
+                    HumanInputIMIdentity, HumanInputIMIdentity.id == HumanInputIMBinding.im_identity_id
+                )
+            )
+        }
+        assert current[str(contacts[0].id)] == (original_ids[str(contacts[0].id)], "old-0")
+        assert str(contacts[1].id) not in current
+        assert len(current) == replacement_count + 2
+        for index in range(2, len(contacts)):
+            binding_id, provider_user_id = current[str(contacts[index].id)]
+            assert binding_id != original_ids.get(str(contacts[index].id))
+            assert provider_user_id == f"new-{index}"
+        changes = session.scalars(
+            sa.select(HumanInputIMReconciliationChange).where(
+                HumanInputIMReconciliationChange.sync_run_id == str(_SECOND_RUN_ID),
+                HumanInputIMReconciliationChange.subject_kind == "binding",
+            )
+        ).all()
+        assert (
+            sorted(change.operation.value for change in changes)
+            == ["create", "delete"] + ["replace"] * replacement_count
+        )
+        results = session.scalars(
+            sa.select(HumanInputIMSyncResult).where(
+                HumanInputIMSyncResult.sync_run_id == str(_SECOND_RUN_ID),
+                HumanInputIMSyncResult.result_type == IMSyncResultType.ADDED,
+            )
+        ).all()
+        assert {result.im_binding_id for result in results} == {current[str(contact.id)][0] for contact in contacts[2:]}
+
+
+def test_sync_replacement_insert_failure_restores_old_bindings_and_history(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    assert (
+        reconciliation_context.service(_Adapter(_successful_directory())).reconcile(_RUN_ID).status
+        is IMSyncRunStatus.SUCCEEDED
+    )
+    with reconciliation_context.sessions.begin() as session:
+        original = session.scalars(sa.select(HumanInputIMBinding)).one()
+        original_id, original_identity_id = original.id, original.im_identity_id
+        original_change_count = session.scalar(sa.select(sa.func.count(HumanInputIMReconciliationChange.id)))
+        session.execute(
+            sa.text("""
+            CREATE TRIGGER reject_binding_insert BEFORE INSERT ON human_input_im_bindings
+            BEGIN
+                SELECT RAISE(ABORT, 'binding insert unavailable');
+            END
+        """)
+        )
+    _create_active_run(reconciliation_context.sessions, reconciliation_context.channel, _SECOND_RUN_ID)
+    directory = Directory((DirectoryEntry(ProviderUserId("replacement"), "Reviewer", "reviewer@example.com"),))
+
+    run = reconciliation_context.service(_Adapter(directory)).reconcile(_SECOND_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.FAILED
+    with reconciliation_context.sessions() as session:
+        binding = session.scalars(sa.select(HumanInputIMBinding)).one()
+        assert (binding.id, binding.im_identity_id) == (original_id, original_identity_id)
+        assert session.scalars(sa.select(HumanInputIMIdentity.id)).one() == original_identity_id
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMReconciliationChange.id))) == original_change_count
+        result = session.scalars(
+            sa.select(HumanInputIMSyncResult).where(HumanInputIMSyncResult.sync_run_id == str(_SECOND_RUN_ID))
+        ).one()
+        assert result.result_type is IMSyncResultType.FAILED

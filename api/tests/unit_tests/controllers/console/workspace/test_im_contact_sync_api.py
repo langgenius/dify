@@ -177,7 +177,7 @@ def _contact_view(scope: IMBindingScope) -> ContactIMBindingView:
 
 
 class _BindingService:
-    def create_organization_binding(self, **kwargs: object) -> ContactIMBindingView:
+    def set_organization_binding(self, **kwargs: object) -> ContactIMBindingView:
         assert kwargs == {
             "organization_scope": WorkspaceScope(id=TenantId("workspace-1")),
             "tenant_id": TenantId("workspace-1"),
@@ -328,7 +328,7 @@ def test_write_unavailable_has_stable_retryable_http_mapping(
             raise error
 
     class BindingService:
-        def create_organization_binding(self, **_kwargs: object) -> Never:
+        def set_organization_binding(self, **_kwargs: object) -> Never:
             raise error
 
         def set_workspace_override(self, **_kwargs: object) -> Never:
@@ -513,7 +513,7 @@ def test_expected_application_errors_have_stable_http_mapping(
     if isinstance(error, IMBindingCommandError):
 
         class BindingService:
-            def create_organization_binding(self, **_kwargs: object) -> Never:
+            def set_organization_binding(self, **_kwargs: object) -> Never:
                 raise error
 
         application = SimpleNamespace(binding_service=BindingService())

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Sequence
+from itertools import batched
 from typing import Protocol
 
 import sqlalchemy as sa
@@ -47,9 +48,8 @@ from core.human_input_v2.shared import (
 )
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
-from models.human_input_v2 import HumanInputIMChannel, HumanInputIMSyncRun
+from models.human_input_v2 import HumanInputIMBinding, HumanInputIMChannel, HumanInputIMSyncRun
 from repositories.human_input_v2.contact import Contact, ContactType
-from repositories.human_input_v2.im_binding_repository import IMBindingAssignment
 from repositories.human_input_v2.im_channel_repository import IMChannel
 from repositories.human_input_v2.im_identity_repository import IMIdentity, IMIdentityObservation, OpaqueProviderPayload
 from repositories.human_input_v2.im_integration.mappers import (
@@ -67,6 +67,7 @@ from .service import IMSyncRunNotFoundError
 logger = logging.getLogger(__name__)
 
 _CONTACT_PAGE_LIMIT = 500
+_BINDING_WRITE_BATCH_SIZE = 300
 
 
 class IMSyncRetryableError(RuntimeError):
@@ -173,7 +174,7 @@ class IMChannelReconciliationService:
                             self._clock(),
                         )
                     else:
-                        self._apply_plan(session, run_record, plan_or_block, contacts, identities, bindings)
+                        self._apply_plan(session, run_record, plan_or_block, contacts, identities)
             except _ReconciliationAlreadyTerminalError as terminal:
                 return terminal.run
             except _StaleChannelRevisionError:
@@ -212,7 +213,6 @@ class IMChannelReconciliationService:
         plan: ReconciliationPlan,
         contacts: tuple[Contact, ...],
         identities: SQLAlchemyIMIdentityRepository,
-        bindings: SQLAlchemyIMBindingRepository,
     ) -> None:
         now = self._clock()
         initial_identities = {identity.id: identity for identity in identities.list_all()}
@@ -263,20 +263,19 @@ class IMChannelReconciliationService:
             )
 
         contact_by_id = {contact.id: contact for contact in contacts}
+        bindings_to_delete: list[IMBindingChangeSnapshot] = []
+        bindings_to_create: list[IMBindingChangeSnapshot] = []
         for mutation in plan.binding_mutations:
             if isinstance(mutation, CreateIMBinding):
                 self._require_contact_precondition(contact_by_id, mutation.contact_precondition)
                 identity_id = self._resolve_identity(mutation.identity_ref, identity_ids)
-                created_binding = bindings.create(
-                    IMBindingAssignment(mutation.contact_id, identity_id, now),
-                    bound_by_account_id=None,
-                )
-                binding_ids[(identity_id, mutation.contact_id)] = created_binding.id
                 created_after_snapshot = self._binding_snapshot(
-                    created_binding.id,
-                    created_binding.identity_id,
-                    created_binding.contact_id,
+                    IMBindingId(str(uuidv7())),
+                    identity_id,
+                    mutation.contact_id,
                 )
+                bindings_to_create.append(created_after_snapshot)
+                binding_ids[(identity_id, mutation.contact_id)] = created_after_snapshot.binding_id
                 changes.append(
                     self._binding_change(
                         plan,
@@ -292,26 +291,19 @@ class IMChannelReconciliationService:
             elif isinstance(mutation, ReplaceIMBinding):
                 self._require_contact_precondition(contact_by_id, mutation.contact_precondition)
                 identity_id = self._resolve_identity(mutation.next_identity_ref, identity_ids)
-                replaced_binding = bindings.replace(
-                    mutation.before.binding_id,
-                    expected_identity_id=mutation.before.identity_id,
-                    next_identity_id=identity_id,
-                    bound_by_account_id=None,
-                    updated_at=now,
-                )
-                if replaced_binding is None:
-                    raise _ReconciliationPreconditionError
-                binding_ids[(identity_id, mutation.before.contact_id)] = replaced_binding.id
                 replaced_before_snapshot = self._binding_snapshot(
                     mutation.before.binding_id,
                     mutation.before.identity_id,
                     mutation.before.contact_id,
                 )
                 replaced_after_snapshot = self._binding_snapshot(
-                    replaced_binding.id,
-                    replaced_binding.identity_id,
-                    replaced_binding.contact_id,
+                    IMBindingId(str(uuidv7())),
+                    identity_id,
+                    mutation.before.contact_id,
                 )
+                bindings_to_delete.append(replaced_before_snapshot)
+                bindings_to_create.append(replaced_after_snapshot)
+                binding_ids[(identity_id, mutation.before.contact_id)] = replaced_after_snapshot.binding_id
                 changes.append(
                     self._binding_change(
                         plan,
@@ -325,22 +317,12 @@ class IMChannelReconciliationService:
                     )
                 )
             elif isinstance(mutation, DeleteIMBinding):
-                current_binding = bindings.get(mutation.before.binding_id)
-                if (
-                    current_binding is None
-                    or current_binding.identity_id != mutation.before.identity_id
-                    or current_binding.contact_id != mutation.before.contact_id
-                ):
-                    raise _ReconciliationPreconditionError
-                bindings.delete(
-                    mutation.before.binding_id,
-                    expected_identity_id=mutation.before.identity_id,
-                )
                 deleted_before_snapshot = self._binding_snapshot(
                     mutation.before.binding_id,
                     mutation.before.identity_id,
                     mutation.before.contact_id,
                 )
+                bindings_to_delete.append(deleted_before_snapshot)
                 changes.append(
                     self._binding_change(
                         plan,
@@ -353,6 +335,7 @@ class IMChannelReconciliationService:
                         now=now,
                     )
                 )
+        self._persist_binding_changes(session, bindings_to_delete, bindings_to_create, now)
         for deletion in plan.identity_deletions:
             current_identity = identities.get(deletion.before.identity_id)
             if current_identity is None or not self._identity_matches_state(current_identity, deletion.before):
@@ -399,6 +382,55 @@ class IMChannelReconciliationService:
         run_record.finished_at = now
         run_record.updated_at = now
         session.flush()
+
+    def _persist_binding_changes(
+        self,
+        session: Session,
+        removed: Sequence[IMBindingChangeSnapshot],
+        added: Sequence[IMBindingChangeSnapshot],
+        now: NaiveDatetime,
+    ) -> None:
+        # Apply the plan without re-deciding individual assignments. Check the
+        # captured endpoints and free them before inserting replacement Bindings.
+        for batch in batched(removed, _BINDING_WRITE_BATCH_SIZE):
+            deleted_ids = set(
+                session.scalars(
+                    sa.delete(HumanInputIMBinding)
+                    .where(
+                        HumanInputIMBinding.channel_id == str(self._channel.id),
+                        sa.tuple_(
+                            HumanInputIMBinding.id,
+                            HumanInputIMBinding.im_identity_id,
+                            HumanInputIMBinding.contact_id,
+                        ).in_(
+                            [
+                                (str(binding.binding_id), str(binding.identity_id), str(binding.contact_id))
+                                for binding in batch
+                            ]
+                        ),
+                    )
+                    .returning(HumanInputIMBinding.id)
+                    .execution_options(autoflush=False)
+                )
+            )
+            if deleted_ids != {str(binding.binding_id) for binding in batch}:
+                raise _ReconciliationPreconditionError
+        for batch in batched(added, _BINDING_WRITE_BATCH_SIZE):
+            session.execute(
+                sa.insert(HumanInputIMBinding),
+                [
+                    {
+                        "id": str(binding.binding_id),
+                        "channel_id": str(self._channel.id),
+                        "contact_id": str(binding.contact_id),
+                        "im_identity_id": str(binding.identity_id),
+                        "bound_by_account_id": None,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                    for binding in batch
+                ],
+            )
 
     def _materialize_results(
         self,
