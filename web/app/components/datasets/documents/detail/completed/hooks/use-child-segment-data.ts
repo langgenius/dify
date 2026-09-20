@@ -4,10 +4,10 @@ import type {
   SegmentDetailModel,
   SegmentUpdater,
 } from '@/models/datasets'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   useChildSegmentList,

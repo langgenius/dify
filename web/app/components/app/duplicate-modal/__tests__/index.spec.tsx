@@ -14,7 +14,7 @@ const { mockAppQuota, toastErrorMock } = vi.hoisted(() => ({
   toastErrorMock: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => toastErrorMock(...args),
   },

@@ -712,7 +712,7 @@ class TestAdvancedChatAppGeneratorInternals:
         generator._get_message = MagicMock(return_value=_make_message(message_id="msg", conversation_id="conv"))
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
@@ -764,7 +764,7 @@ class TestAdvancedChatAppGeneratorInternals:
         sqlite_session.commit()
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
@@ -815,7 +815,7 @@ class TestAdvancedChatAppGeneratorInternals:
         generator._get_message = MagicMock(return_value=_make_message(message_id="msg", conversation_id="conv"))
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
@@ -894,7 +894,7 @@ class TestAdvancedChatAppGeneratorInternals:
         sqlite_session.commit()
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
@@ -936,7 +936,7 @@ class TestAdvancedChatAppGeneratorInternals:
         sqlite_session.commit()
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         def _make_runner(error: Exception):
@@ -1150,7 +1150,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner", _Runner)
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)

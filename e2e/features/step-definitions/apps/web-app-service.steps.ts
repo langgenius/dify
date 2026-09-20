@@ -28,6 +28,23 @@ const getWebAppSwitch = (world: DifyWorld) => {
   return webAppCard.getByRole('switch', { name: 'Web App' })
 }
 
+async function waitForPersistedWebAppState(world: DifyWorld, enabled: boolean) {
+  const appId = world.createdAppIds.at(-1)
+  if (!appId) throw new Error('No workflow app has been created.')
+  const client = world.getConsoleClient()
+  // The status label updates optimistically. A different browser must wait for
+  // the saved state before reloading the published app.
+  await expect
+    .poll(
+      async () => {
+        const app = await client.apps.byAppId.get({ params: { app_id: appId } })
+        return app.enable_site
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(enabled)
+}
+
 When('an anonymous visitor opens the Web App', async function (this: DifyWorld) {
   if (!this.shareURL) throw new Error('No Web App URL is available.')
   if (!this.context) throw new Error('Playwright browser context has not been initialized.')
@@ -67,6 +84,7 @@ Then('the Web App should be in service', async function (this: DifyWorld) {
   await expect(webAppCard.getByText(/^In service$/i)).toBeVisible({
     timeout: 10_000,
   })
+  await waitForPersistedWebAppState(this, true)
 })
 
 Then('the Web App should be disabled', async function (this: DifyWorld) {
@@ -74,6 +92,7 @@ Then('the Web App should be disabled', async function (this: DifyWorld) {
   await expect(webAppCard.getByText('Disabled', { exact: true })).toBeVisible({
     timeout: 10_000,
   })
+  await waitForPersistedWebAppState(this, false)
 })
 
 Then('the published workflow Web App should be accessible', async function (this: DifyWorld) {

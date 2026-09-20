@@ -10,6 +10,7 @@ import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useAllMCPTools } from '@/service/use-tools'
 
 type Props = Readonly<{
@@ -45,7 +46,7 @@ const MultipleToolSelector = ({
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const { data: mcpTools } = useAllMCPTools()
   const addToolButtonRef = React.useRef<HTMLButtonElement>(null)
-  const toolItemTriggerByKeyRef = React.useRef(new Map<string, HTMLButtonElement>())
+  const toolItemTriggerByKeyRef = useRefWithInit(() => new Map<string, HTMLButtonElement>())
   const pendingFocusTargetRef = React.useRef<{ toolKey?: string } | null>(null)
   const enabledCount = value.filter((item) => {
     const isMCPTool = mcpTools?.find((tool) => tool.id === item.provider_name)
@@ -65,7 +66,7 @@ const MultipleToolSelector = ({
 
     resolvedFocusTarget?.focus()
     pendingFocusTargetRef.current = null
-  }, [value])
+  }, [value, toolItemTriggerByKeyRef])
 
   // add tool
   const [selectorOpen, setSelectorOpen] = React.useState(false)

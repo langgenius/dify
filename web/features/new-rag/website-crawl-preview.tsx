@@ -20,6 +20,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import { CrawlSelectionForm } from './crawl-selection-form'
@@ -328,7 +329,7 @@ export function WebsiteCrawlPreview({
   const cancelFingerprintRef = useRef<string | undefined>(undefined)
   const rootUrlInputRef = useRef<HTMLInputElement>(null)
   const sourceNameInputRef = useRef<HTMLInputElement>(null)
-  const pageMapRef = useRef(new Map<string, PreviewPage>())
+  const pageMapRef = useRefWithInit(() => new Map<string, PreviewPage>())
   const pageCursorRef = useRef<string | undefined>(undefined)
   const submittedRef = useRef(false)
   const discardRequestedRef = useRef(false)
@@ -350,7 +351,7 @@ export function WebsiteCrawlPreview({
     pageCursorRef.current = undefined
     setPages([])
     setPagesLoaded(false)
-  }, [])
+  }, [pageMapRef])
 
   const updateRun = useCallback((nextRun: SourceWorkflowRun | undefined) => {
     if (nextRun && pendingCancelRunRef.current?.id === nextRun.id)
@@ -842,7 +843,7 @@ export function WebsiteCrawlPreview({
       disposed = true
       if (timer) clearTimeout(timer)
     }
-  }, [knowledgeSpaceId, runId, shouldPoll, updateRun])
+  }, [knowledgeSpaceId, runId, shouldPoll, updateRun, pageMapRef])
 
   const stop = async (targetRun = run) => {
     if (!targetRun || isTerminal(targetRun.state)) return true

@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "AUSLÖSEEREIGNISSE",
   "upgrade.addChunks.description": "Sie haben das Limit für das Hinzufügen von Abschnitten in diesem Tarif erreicht.",
   "upgrade.addChunks.title": "Upgraden, um weiterhin Abschnitte hinzuzufügen",
+  "upgrade.agentRestore.description": "Die Wiederherstellung von Versionen der Agenten-App ist in Ihrem aktuellen Tarif nicht verfügbar.",
+  "upgrade.agentRestore.title": "Upgraden, um Versionen der Agenten-App wiederherzustellen",
   "upgrade.uploadMultipleFiles.description": "Laden Sie mehrere Dokumente gleichzeitig hoch und erhöhen Sie die maximale Größe pro Datei auf 50 MB.",
   "upgrade.uploadMultipleFiles.title": "Upgrade durchführen, um Batch-Uploads und größere Dateien freizuschalten",
   "upgrade.uploadMultiplePages.description": "Sie haben das Upload-Limit erreicht – in Ihrem aktuellen Tarif kann jeweils nur ein Dokument ausgewählt und hochgeladen werden.",

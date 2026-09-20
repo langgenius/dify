@@ -1,8 +1,9 @@
 import type { Step } from './step-indicator'
-import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { iconButtonVariants } from '@langgenius/dify-ui/icon-button'
 import { RiArrowLeftLine } from '@remixicon/react'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import Effect from '@/app/components/base/effect'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
@@ -16,6 +17,7 @@ type LeftHeaderProps = {
 
 const LeftHeader = ({ steps, title, currentStep }: LeftHeaderProps) => {
   const { datasetId } = useParams()
+  const { t } = useTranslation()
 
   return (
     <div className="relative flex flex-col gap-y-0.5 pt-4 pb-2">
@@ -29,14 +31,15 @@ const LeftHeader = ({ steps, title, currentStep }: LeftHeaderProps) => {
       <div className="system-md-semibold text-text-primary">{steps[currentStep - 1]?.label}</div>
       {currentStep !== steps.length && (
         <Link
+          aria-label={t(($) => $['operation.back'], { ns: 'common' })}
           href={`/datasets/${datasetId}/documents`}
           replace
           className={cn(
-            buttonVariants({ variant: 'secondary-accent' }),
-            'absolute top-3.5 -left-11 size-9 rounded-full p-0',
+            iconButtonVariants({ variant: 'secondary-accent', size: 'xl' }),
+            'absolute top-3.5 -left-11 rounded-full',
           )}
         >
-          <RiArrowLeftLine className="size-5" />
+          <RiArrowLeftLine aria-hidden className="size-5" />
         </Link>
       )}
       <Effect className="-top-8.5 left-8 opacity-20" />

@@ -80,6 +80,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
 }) => {
   const { t } = useTranslation()
   const parentMode = useDocumentContext((s) => s.parentMode)
+  const canEdit = useDocumentContext((s) => s.canEdit)
   const currChildChunk = useSegmentListContext((s) => s.currChildChunk)
 
   const [collapsed, setCollapsed] = useState(true)
@@ -119,6 +120,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         label={label}
         text={childChunk.content}
         onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
+        deleteDisabled={!canEdit}
         className="child-chunk"
         labelClassName={isFocused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
         labelInnerClassName="text-[10px] font-semibold align-bottom leading-6"
@@ -200,12 +202,14 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
               'px-1.5 py-1 system-xs-semibold-uppercase text-components-button-secondary-accent-text',
               hoverVisibleClass,
               isFullDocMode && isLoading && 'text-components-button-secondary-accent-text-disabled',
+              !canEdit &&
+                'cursor-not-allowed text-components-button-secondary-accent-text-disabled',
             )}
             onClick={(event) => {
               event.stopPropagation()
               handleAddNewChildChunk?.(parentChunkId)
             }}
-            disabled={isLoading}
+            disabled={!canEdit || isLoading}
           >
             {t(($) => $['operation.add'], { ns: 'common' })}
           </button>

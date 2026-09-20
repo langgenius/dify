@@ -19,9 +19,9 @@ import {
   PluginCategory,
   RuntimeState,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import {
   appWorkflowQueryOptions,
@@ -852,7 +852,7 @@ vi.mock('#i18n', async (importOriginal) => ({
   useLocale: () => 'en-US',
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },
@@ -1112,7 +1112,7 @@ describe('AppDeploy', () => {
 
     render(<AppDeploy />)
 
-    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'common.appMenus.deploy' }),
     ).not.toBeInTheDocument()

@@ -56,7 +56,7 @@ vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div>{`markdown:${content}`}</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     warning: (...args: unknown[]) => mockToastWarning(...args),
     success: vi.fn(),
