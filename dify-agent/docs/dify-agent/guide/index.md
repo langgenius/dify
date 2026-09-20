@@ -3,9 +3,10 @@
 This guide describes how to run the MVP Dify Agent API server. The server is
 implemented in `dify-agent/src/dify_agent/server/app.py` and uses Redis for run
 records and per-run event streams. Optional E2B metering sends operation logs
-directly to the inner API with a best-effort background worker; restarts or failed
-requests may lose those logs. Provider collection retains its Redis leader lease
-and does not change how Agent runs are scheduled.
+directly to the inner API, awaiting each request with a one-second deadline and
+no queue, background sender or retry. Failed requests or process exit may lose
+those logs. Provider collection retains its Redis leader lease and does not
+change how Agent runs are scheduled.
 
 ## Default local startup
 

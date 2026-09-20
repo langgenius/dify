@@ -1,18 +1,19 @@
 """Best-effort lifecycle diagnostics and the shared usage ingestion client.
 
-Application observations use a bounded, process-local queue and direct HTTP
-delivery. Overflow, network failure, shutdown, or restart can lose these logs;
-they are not retried or persisted locally. Authoritative E2B execution events
-are collected separately and do not depend on this diagnostic sender.
+Each application observation directly awaits one bounded HTTP request. Failed
+requests are logged and discarded without a queue, worker or retry. Business
+cancellation propagates; E2B callers retain ownership of resource cleanup.
+Provider execution events are collected separately.
 """
 
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
 import logging
+import math
 from typing import Any
 
 import httpx
@@ -72,7 +73,7 @@ class RuntimeUsageClient:
             raise ValueError("sandbox usage batches require 1 to 100 events")
         # The API limits the whole HTTP body, not just its event count. Splitting
         # here covers provider pages and application observations. The collector
-        # retries stable provider IDs; the best-effort sender drops failed batches.
+        # retries stable provider IDs; direct observations are attempted once.
         batch: list[dict[str, Any]] = []
         for event in events:
             candidate = [*batch, event]
@@ -113,89 +114,34 @@ class RuntimeUsageClient:
 
 
 @dataclass(slots=True)
-class BestEffortRuntimeUsageObserver:
+class DirectRuntimeUsageObserver:
+    """Await one diagnostic request, without buffering or background delivery."""
+
     client: RuntimeUsageClient
-    buffer_size: int = 1000
-    send_timeout_seconds: float = 15.0
-    dropped_events: int = field(default=0, init=False)
-    failed_batches: int = field(default=0, init=False)
-    _queue: asyncio.Queue[str] = field(init=False)
+    timeout_seconds: float = 1.0
 
     def __post_init__(self) -> None:
-        if self.buffer_size < 1:
-            raise ValueError("sandbox usage buffer size must be positive")
-        if self.send_timeout_seconds <= 0:
-            raise ValueError("sandbox usage send timeout must be positive")
-        self._queue = asyncio.Queue(maxsize=self.buffer_size)
+        if not math.isfinite(self.timeout_seconds) or self.timeout_seconds <= 0:
+            raise ValueError("sandbox usage timeout must be finite and positive")
 
     async def observe_safely(self, event: dict[str, Any]) -> None:
-        """Enqueue without suspension, so cancellation cannot strand an E2B handle.
-
-        This queue is intentionally lossy. It snapshots only diagnostic event
-        data; delivery never adds a cancellation point to an E2B lifecycle call.
-        """
+        # Cancellation cleanup takes priority over optional diagnostics. Do not
+        # consume or clear the task's cancellation: callers still own it.
+        task = asyncio.current_task()
+        if task is not None and task.cancelling():
+            return
         try:
             payload = json.dumps(event, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
             if not isinstance(event.get("id"), str) or not event["id"]:
                 raise ValueError("sandbox usage event requires stable id")
             if len(payload.encode()) > _MAX_EVENT_BYTES:
                 raise ValueError("sandbox usage event exceeds size limit")
-            self._queue.put_nowait(payload)
+            async with asyncio.timeout(self.timeout_seconds):
+                await self.client.post_events([event])
         except Exception as exc:
-            self.dropped_events += 1
-            # Do not log event contents or raw exception text: they can contain data.
-            logger.warning("sandbox usage enqueue failed", extra={"error_type": type(exc).__name__})
-
-    async def run(self) -> None:
-        try:
-            while True:
-                payloads = [await self._queue.get()]
-                while len(payloads) < 100:
-                    try:
-                        payloads.append(self._queue.get_nowait())
-                    except asyncio.QueueEmpty:
-                        break
-                try:
-                    async with asyncio.timeout(self.send_timeout_seconds):
-                        await self.client.post_events([json.loads(payload) for payload in payloads])
-                except asyncio.CancelledError:
-                    self._record_dropped_batch(len(payloads), "CancelledError")
-                    raise
-                except Exception as exc:
-                    self._record_dropped_batch(len(payloads), type(exc).__name__)
-                finally:
-                    for _ in payloads:
-                        self._queue.task_done()
-        finally:
-            # Shutdown does not retain local observations for a future process.
-            pending = 0
-            while True:
-                try:
-                    self._queue.get_nowait()
-                except asyncio.QueueEmpty:
-                    break
-                self._queue.task_done()
-                pending += 1
-            if pending:
-                self.dropped_events += pending
-                logger.warning("sandbox usage queued observations dropped on shutdown", extra={"events": pending})
-
-    def _record_dropped_batch(self, count: int, error_type: str) -> None:
-        self.failed_batches += 1
-        self.dropped_events += count
-        # The remote API may have committed before an ACK was lost. This is the
-        # number abandoned locally, not a claim that none reached the database.
-        logger.warning(
-            "sandbox usage observation batch dropped without retry",
-            extra={"events": count, "error_type": error_type},
-        )
-
-    async def flush_on_shutdown(self, timeout_seconds: float = 2.0) -> None:
-        try:
-            async with asyncio.timeout(timeout_seconds):
-                await self._queue.join()
-        except TimeoutError:
-            logger.warning("sandbox usage shutdown drain timed out; remaining observations will be dropped")
+            # No retry or retained copy. Avoid contents and exception messages,
+            # which may include credentials. Business cancellation propagates.
+            logger.warning("sandbox usage observation dropped", extra={"error_type": type(exc).__name__})
 
 
 def utc_now() -> datetime:

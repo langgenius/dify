@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 import pytest
 
-from dify_agent.server.runtime_usage import BestEffortRuntimeUsageObserver, RuntimeUsageClient
+from dify_agent.server.runtime_usage import DirectRuntimeUsageObserver, RuntimeUsageClient
 
 
 def _event(event_id: str = "event-1") -> dict[str, Any]:
@@ -19,45 +19,11 @@ def _ack(request: httpx.Request) -> httpx.Response:
     return httpx.Response(200, json={"accepted": count, "duplicates": 0, "conflicts": 0, "ignored": 0})
 
 
-async def _stop(task: asyncio.Task[None]) -> None:
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
-
-
-def test_observer_does_not_suspend_or_send_http_on_business_path_and_drops_when_full() -> None:
+def test_observation_waits_for_one_http_request_without_background_delivery() -> None:
     async def scenario() -> None:
-        calls = []
-
-        async def handler(request: httpx.Request) -> httpx.Response:
-            calls.append(request)
-            return _ack(request)
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-            observer = BestEffortRuntimeUsageObserver(
-                RuntimeUsageClient(http, "http://inner", "inner", "project"), buffer_size=1
-            )
-            # One send must finish the coroutine without yielding: there cannot
-            # be a new cancellation point after an E2B handle is created.
-            for event in (_event(), _event("overflow")):
-                coroutine = observer.observe_safely(event)
-                with pytest.raises(StopIteration):
-                    coroutine.send(None)
-            assert calls == []
-            assert observer.dropped_events == 1
-            task = asyncio.create_task(observer.run())
-            await observer.flush_on_shutdown(timeout_seconds=1)
-            await _stop(task)
-            assert len(calls) == 1
-            assert json.loads(calls[0].content)["events"][0]["id"] == "event-1"
-
-    asyncio.run(scenario())
-
-
-def test_direct_http_delivery_batches_and_snapshots_mutable_events() -> None:
-    async def scenario() -> None:
+        entered = asyncio.Event()
+        finish = asyncio.Event()
         received: list[dict[str, Any]] = []
-        sizes: list[int] = []
 
         async def handler(request: httpx.Request) -> httpx.Response:
             assert request.url.path == "/inner/api/agent/sandbox-usage/events"
@@ -65,122 +31,147 @@ def test_direct_http_delivery_batches_and_snapshots_mutable_events() -> None:
             assert "X-API-Key" not in request.headers
             body = json.loads(request.content)
             assert body["project_id"] == "project"
-            sizes.append(len(body["events"]))
+            assert len(body["events"]) == 1
             received.extend(body["events"])
+            entered.set()
+            await finish.wait()
             return _ack(request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-            observer = BestEffortRuntimeUsageObserver(RuntimeUsageClient(http, "http://inner", "inner-only", "project"))
-            first = _event("0")
-            await observer.observe_safely(first)
-            first["payload"]["operation"] = "mutated-after-enqueue"
-            for i in range(1, 105):
-                await observer.observe_safely(_event(str(i)))
-            task = asyncio.create_task(observer.run())
-            await observer.flush_on_shutdown(timeout_seconds=1)
-            await _stop(task)
-        assert sizes == [100, 5]
-        assert [event["id"] for event in received] == [str(i) for i in range(105)]
-        assert received[0]["payload"]["operation"] == "pause"
-        assert observer.dropped_events == 0
+            observer = DirectRuntimeUsageObserver(RuntimeUsageClient(http, "http://inner", "inner-only", "project"))
+            call = asyncio.create_task(observer.observe_safely(_event()))
+            async with asyncio.timeout(1):
+                await entered.wait()
+            assert not call.done()
+            finish.set()
+            await call
+            assert received == [_event()]
+            await observer.observe_safely(_event("second"))
+            assert [event["id"] for event in received] == ["event-1", "second"]
 
     asyncio.run(scenario())
 
 
 @pytest.mark.parametrize("failure", ["status", "network", "timeout", "ack"])
-def test_failed_batch_is_not_retried_and_later_observations_continue(failure: str) -> None:
+def test_failed_observation_is_not_retried_and_next_call_still_sends(
+    failure: str, caplog: pytest.LogCaptureFixture
+) -> None:
     async def scenario() -> None:
-        calls: list[list[str]] = []
-        first_request = asyncio.Event()
+        calls: list[str] = []
+        cancelled = asyncio.Event()
 
         async def handler(request: httpx.Request) -> httpx.Response:
-            calls.append([event["id"] for event in json.loads(request.content)["events"]])
+            event = json.loads(request.content)["events"][0]
+            calls.append(event["id"])
             if len(calls) == 1:
-                first_request.set()
                 if failure == "status":
                     return httpx.Response(503)
                 if failure == "network":
-                    raise httpx.ConnectError("unavailable", request=request)
+                    raise httpx.ConnectError("sensitive-error-do-not-log", request=request)
                 if failure == "timeout":
-                    await asyncio.Event().wait()
+                    try:
+                        await asyncio.Event().wait()
+                    finally:
+                        cancelled.set()
                 return httpx.Response(200, json={"accepted": 0, "duplicates": 0, "conflicts": 0, "ignored": 0})
             return _ack(request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-            observer = BestEffortRuntimeUsageObserver(
-                RuntimeUsageClient(http, "http://inner", "inner", "project"), send_timeout_seconds=0.02
+            observer = DirectRuntimeUsageObserver(
+                RuntimeUsageClient(http, "http://inner", "inner", "project"), timeout_seconds=0.02
             )
-            await observer.observe_safely(_event("drop-1"))
-            await observer.observe_safely(_event("drop-2"))
-            task = asyncio.create_task(observer.run())
-            async with asyncio.timeout(1):
-                await first_request.wait()
-            await observer.flush_on_shutdown(timeout_seconds=1)
-            assert observer.failed_batches == 1
-            assert observer.dropped_events == 2
+            async with asyncio.timeout(0.5):
+                await observer.observe_safely(_event("failed"))
+            assert calls == ["failed"]
+            if failure == "timeout":
+                assert cancelled.is_set()
             await observer.observe_safely(_event("later"))
-            await observer.flush_on_shutdown(timeout_seconds=1)
-            await _stop(task)
-            assert calls == [["drop-1", "drop-2"], ["later"]]
+            assert calls == ["failed", "later"]
+        assert "observation dropped" in caplog.text
+        assert "sensitive-error-do-not-log" not in caplog.text
 
     asyncio.run(scenario())
 
 
-def test_shutdown_timeout_is_bounded_and_cancellation_drops_remaining_logs() -> None:
+def test_cancellation_during_http_is_propagated_and_request_is_closed() -> None:
     async def scenario() -> None:
         entered = asyncio.Event()
-        cancelled = asyncio.Event()
+        closed = asyncio.Event()
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            entered.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                closed.set()
+            return _ack(request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            observer = DirectRuntimeUsageObserver(RuntimeUsageClient(http, "http://inner", "inner", "project"))
+            call = asyncio.create_task(observer.observe_safely(_event()))
+            await entered.wait()
+            call.cancel("business-cancel")
+            with pytest.raises(asyncio.CancelledError, match="business-cancel"):
+                await call
+            assert closed.is_set()
+            assert call.cancelling() == 1
+
+    asyncio.run(scenario())
+
+
+def test_observation_skips_http_without_consuming_pending_resource_cancellation() -> None:
+    async def scenario() -> None:
         calls = 0
 
         async def handler(request: httpx.Request) -> httpx.Response:
             nonlocal calls
             calls += 1
-            entered.set()
-            try:
-                await asyncio.Event().wait()
-            finally:
-                cancelled.set()
             return _ack(request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-            observer = BestEffortRuntimeUsageObserver(RuntimeUsageClient(http, "http://inner", "inner", "project"))
-            await observer.observe_safely(_event("in-flight"))
-            task = asyncio.create_task(observer.run())
-            async with asyncio.timeout(1):
-                await entered.wait()
-            await observer.observe_safely(_event("queued"))
-            async with asyncio.timeout(0.5):
-                await observer.flush_on_shutdown(timeout_seconds=0.01)
-            assert not task.done()
-            await _stop(task)
-            assert cancelled.is_set()
-            assert observer.dropped_events == 2
-            assert calls == 1
-            # A cancelled sender does not leave unfinished queue accounting.
-            async with asyncio.timeout(0.5):
-                await observer.flush_on_shutdown(timeout_seconds=0.1)
-
-    asyncio.run(scenario())
-
-
-def test_observation_does_not_consume_pending_resource_cancellation() -> None:
-    async def scenario() -> None:
-        async with httpx.AsyncClient(transport=httpx.MockTransport(_ack)) as http:
-            observer = BestEffortRuntimeUsageObserver(RuntimeUsageClient(http, "http://inner", "inner", "project"))
+            observer = DirectRuntimeUsageObserver(RuntimeUsageClient(http, "http://inner", "inner", "project"))
 
             async def resource_operation() -> None:
                 task = asyncio.current_task()
                 assert task is not None
                 task.cancel()
                 await observer.observe_safely(_event())
-                # The observation did not swallow cancellation or add a yield;
-                # the original operation owns its next cancellation point.
+                assert task.cancelling() == 1
+                assert calls == 0
                 await asyncio.sleep(0)
                 raise AssertionError("resource cancellation was consumed")
 
-            task = asyncio.create_task(resource_operation())
+            call = asyncio.create_task(resource_operation())
             with pytest.raises(asyncio.CancelledError):
-                await task
+                await call
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("event", [{"id": ""}, {"id": "oversized", "payload": "x" * 65536}])
+def test_invalid_diagnostics_are_discarded_without_http(event: dict[str, Any]) -> None:
+    async def scenario() -> None:
+        calls = 0
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            return _ack(request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            observer = DirectRuntimeUsageObserver(RuntimeUsageClient(http, "http://inner", "inner", "project"))
+            await observer.observe_safely(event)
+            assert calls == 0
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("timeout", [0.0, -1.0, float("inf"), float("nan")])
+def test_observer_requires_a_finite_positive_deadline(timeout: float) -> None:
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(_ack)) as http:
+            with pytest.raises(ValueError, match="finite and positive"):
+                DirectRuntimeUsageObserver(RuntimeUsageClient(http, "http://inner", "inner", "project"), timeout)
 
     asyncio.run(scenario())
 

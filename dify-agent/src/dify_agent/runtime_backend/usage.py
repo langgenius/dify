@@ -18,11 +18,12 @@ logger = logging.getLogger(__name__)
 
 class RuntimeUsageObserver(Protocol):
     async def observe_safely(self, event: dict[str, Any]) -> None:
-        """Boundedly enqueue without suspension or changing resource outcomes.
+        """Attempt bounded direct delivery, allowing cancellation to propagate.
 
-        Network delivery belongs to a lifespan-owned worker. In particular this
-        method must not introduce a cancellation point between a successful
-        create/connect and returning the resource handle to its cleanup owner.
+        This call may suspend for HTTP. Callers must own an acquired resource
+        handle before observing success, and still attempt pause/kill if their
+        pre-operation observation is cancelled. Ordinary delivery errors are
+        diagnostic only; an already-cancelling task should skip reporting.
         """
         ...
 

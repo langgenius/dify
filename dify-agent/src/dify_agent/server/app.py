@@ -6,7 +6,7 @@ process-local scheduler. Run execution happens in background ``asyncio`` tasks
 rather than request handlers, so client disconnects do not cancel the agent
 runtime. Redis persists run records and per-run event streams with configured
 retention and coordinates the optional provider collector's leader lease.
-Application usage observations are best-effort HTTP deliveries from memory.
+Application usage observations directly await bounded, best-effort HTTP calls.
 Redis is not used as a run job queue. Agenton layers and providers
 stay state-only: they borrow the lifespan-owned clients through the runner and
 receive runtime-backend and Shell settings through provider construction rather
@@ -42,7 +42,7 @@ from dify_agent.server.binding_files import BindingFileService
 from dify_agent.server.home_snapshots import HomeSnapshotService
 from dify_agent.server.settings import ServerSettings
 from dify_agent.server.e2b_usage_collector import E2BUsageCollector
-from dify_agent.server.runtime_usage import BestEffortRuntimeUsageObserver, RuntimeUsageClient
+from dify_agent.server.runtime_usage import DirectRuntimeUsageObserver, RuntimeUsageClient
 from dify_agent.storage.redis_run_store import RedisRunStore
 
 
@@ -127,8 +127,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         )
         state["store"] = store
         state["scheduler"] = scheduler
-        usage_tasks: list[asyncio.Task[None]] = []
-        observer: BestEffortRuntimeUsageObserver | None = None
+        collector_task: asyncio.Task[None] | None = None
         provider_http_client: httpx.AsyncClient | None = None
         if resolved_settings.sandbox_metering_enabled:
             if runtime_backend_profile is None or not isinstance(
@@ -143,7 +142,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
                 api_key=resolved_settings.inner_api_key or "",
                 project_id=resolved_settings.e2b_project_id,
             )
-            observer = BestEffortRuntimeUsageObserver(client=usage_client)
+            observer = DirectRuntimeUsageObserver(client=usage_client)
             runtime_backend_profile.execution_bindings.usage_observer = observer
             collector = E2BUsageCollector(
                 provider_client=provider_http_client,
@@ -157,22 +156,17 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
                 redis=redis,
                 redis_prefix=resolved_settings.redis_prefix,
             )
-            usage_tasks = [
-                asyncio.create_task(observer.run(), name="sandbox-usage-observations"),
-                asyncio.create_task(collector.run(), name="sandbox-usage-collection"),
-            ]
+            collector_task = asyncio.create_task(collector.run(), name="sandbox-usage-collection")
         try:
             yield
         finally:
             try:
-                # Keep diagnostic delivery available while active runs clean up.
+                # Keep the borrowed inner HTTP client available during cleanup.
                 await scheduler.shutdown()
             finally:
-                if observer is not None:
-                    await observer.flush_on_shutdown()
-                for task in usage_tasks:
-                    task.cancel()
-                await asyncio.gather(*usage_tasks, return_exceptions=True)
+                if collector_task is not None:
+                    collector_task.cancel()
+                    await asyncio.gather(collector_task, return_exceptions=True)
                 if provider_http_client is not None:
                     await provider_http_client.aclose()
                 await dify_api_inner_http_client.aclose()
