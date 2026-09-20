@@ -25,6 +25,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Compute build source hash
+        id: build-source
+        shell: bash
+        run: |
+          # Hash tracked build inputs, excluding generated files and backend-only changes.
+          source_hash=$(git ls-tree -r HEAD -- web packages e2e/scripts e2e/package.json e2e/test-env.ts package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc .github/actions/setup-web .github/workflows/e2e-web-build.yml | sha256sum | cut -d ' ' -f 1)
+          echo "hash=$source_hash" >> "$GITHUB_OUTPUT"
+
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
 
@@ -33,7 +41,7 @@ jobs:
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: web/.next/cache
-          key: e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-${{ github.sha }}
+          key: e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-${{ steps.build-source.outputs.hash }}
           restore-keys: |
             e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-
 
