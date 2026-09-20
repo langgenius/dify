@@ -151,7 +151,7 @@
   "dynamicSelect.loading": "Memuat opsi...",
   "dynamicSelect.noData": "Tidak ada opsi yang tersedia",
   "dynamicSelect.selected": "{{count}} dipilih",
-  "editedAt": "Diedit di",
+  "editedAt": "Diedit pada",
   "environment.development": "PENGEMBANGAN",
   "environment.testing": "PENGUJIAN",
   "error": "Kesalahan",

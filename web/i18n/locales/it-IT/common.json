@@ -151,7 +151,7 @@
   "dynamicSelect.loading": "Caricamento opzioni...",
   "dynamicSelect.noData": "Nessuna opzione disponibile",
   "dynamicSelect.selected": "{{count}} selezionato",
-  "editedAt": "A cura di",
+  "editedAt": "Modificato il",
   "environment.development": "SVILUPPO",
   "environment.testing": "TEST",
   "error": "Errore",

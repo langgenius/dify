@@ -151,7 +151,7 @@
   "dynamicSelect.loading": "옵션 불러오는 중...",
   "dynamicSelect.noData": "사용 가능한 옵션이 없습니다",
   "dynamicSelect.selected": "{{count}} 선택됨",
-  "editedAt": "편집 위치",
+  "editedAt": "편집 시간",
   "environment.development": "개발",
   "environment.testing": "테스트",
   "error": "오류",

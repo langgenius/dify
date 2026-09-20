@@ -151,7 +151,7 @@
   "dynamicSelect.loading": "Завантаження параметрів...",
   "dynamicSelect.noData": "Немає доступних опцій",
   "dynamicSelect.selected": "{{count}} вибрано",
-  "editedAt": "За редакцією",
+  "editedAt": "Відредаговано",
   "environment.development": "РОЗРОБКА",
   "environment.testing": "ТЕСТУВАННЯ",
   "error": "Помилка",

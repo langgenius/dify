@@ -151,7 +151,7 @@
   "dynamicSelect.loading": "विकल्प लोड हो रहे हैं...",
   "dynamicSelect.noData": "कोई विकल्प उपलब्ध नहीं है",
   "dynamicSelect.selected": "{{count}} चयनित",
-  "editedAt": "पर संपादित",
+  "editedAt": "संपादित",
   "environment.development": "विकास",
   "environment.testing": "परीक्षण",
   "error": "त्रुटि",

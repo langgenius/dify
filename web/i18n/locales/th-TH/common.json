@@ -151,7 +151,7 @@
   "dynamicSelect.loading": "กำลังโหลดตัวเลือก...",
   "dynamicSelect.noData": "ไม่มีตัวเลือก available",
   "dynamicSelect.selected": "{{count}} ที่ถูกเลือก",
-  "editedAt": "แก้ไขที่",
+  "editedAt": "แก้ไขเมื่อ",
   "environment.development": "พัฒนาการ",
   "environment.testing": "การทดสอบ",
   "error": "ข้อผิดพลาด",

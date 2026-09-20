@@ -151,7 +151,7 @@
   "dynamicSelect.loading": "Loading options...",
   "dynamicSelect.noData": "No options available",
   "dynamicSelect.selected": "{{count}} selected",
-  "editedAt": "Edited at",
+  "editedAt": "Bewerkt op",
   "environment.development": "DEVELOPMENT",
   "environment.testing": "TESTING",
   "error": "Error",

@@ -151,7 +151,7 @@
   "dynamicSelect.loading": "Đang tải tùy chọn...",
   "dynamicSelect.noData": "Không có tùy chọn nào",
   "dynamicSelect.selected": "{{count}} đã chọn",
-  "editedAt": "Chỉnh sửa tại",
+  "editedAt": "Chỉnh sửa lúc",
   "environment.development": "DEVELOPMENT",
   "environment.testing": "TESTING",
   "error": "Lỗi",
