@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import traceback
 import uuid
 from collections.abc import Generator, Mapping
 from enum import StrEnum
@@ -353,6 +354,23 @@ def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None
     return message if isinstance(message, str) and message else None
 
 
+def _clear_exception_frames(error: BaseException) -> None:
+    """Release failed delivery frames, including those kept by chained exceptions."""
+    pending = [error]
+    visited: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if id(current) in visited:
+            continue
+        visited.add(id(current))
+        traceback.clear_frames(current.__traceback__)
+        current.__traceback__ = None
+        if current.__cause__ is not None:
+            pending.append(current.__cause__)
+        if current.__context__ is not None:
+            pending.append(current.__context__)
+
+
 def _publish_streaming_response(
     response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
     workflow_run_id: str | uuid.UUID,
@@ -365,9 +383,10 @@ def _publish_streaming_response(
 
     `_AppRunner.run()` only handles failures before the generator is returned.
     Once we start iterating the runtime stream, this helper becomes the last
-    place that can guarantee SSE consumers eventually see a terminal workflow
-    lifecycle event. Broken-pipe delivery failures must not stop generator
-    iteration because terminal handlers may still need to persist application state.
+    place that can attempt to deliver a terminal workflow lifecycle event.
+    Broken-pipe delivery failures skip only the current event:
+    later publishes let redis-py reconnect, while iteration still drives the
+    terminal handlers that persist application state.
     """
     normalized_workflow_run_id = str(workflow_run_id)
 
@@ -422,7 +441,7 @@ def _publish_streaming_response(
     terminal_published = False
     last_task_id = normalized_workflow_run_id
     stream_error_message: str | None = None
-    broken_pipe_error: BrokenPipeError | RedisConnectionError | None = None
+    broken_pipe_error_message: str | None = None
 
     try:
         for event in response_stream:
@@ -433,9 +452,6 @@ def _publish_streaming_response(
 
             if event_name == "error":
                 stream_error_message = _get_error_message(event) or stream_error_message
-
-            if broken_pipe_error is not None:
-                continue
 
             try:
                 if isinstance(event, BaseModel):
@@ -451,12 +467,14 @@ def _publish_streaming_response(
             except (BrokenPipeError, RedisConnectionError) as exc:
                 if not is_broken_pipe_error(exc):
                     raise
-                broken_pipe_error = exc
-                logger.exception(
-                    "Broken pipe while publishing workflow stream event for run %s; draining response stream before "
-                    "retrying terminal delivery",
+                broken_pipe_error_message = str(exc) or exc.__class__.__name__
+                logger.warning(
+                    "Broken pipe while publishing workflow stream event %s for run %s; skipping this event",
+                    event_name,
                     normalized_workflow_run_id,
+                    exc_info=True,
                 )
+                _clear_exception_frames(exc)
                 continue
 
             if event_name == "workflow_started":
@@ -476,38 +494,25 @@ def _publish_streaming_response(
             )
         raise
 
-    if broken_pipe_error is not None:
-        if not terminal_published:
-            logger.error(
-                "Workflow response delivery for run %s failed; publishing fallback terminal event after draining "
-                "the response stream",
-                normalized_workflow_run_id,
-            )
-            try:
-                _publish_failed_terminal_event(
-                    error_message=str(broken_pipe_error) or broken_pipe_error.__class__.__name__,
-                    task_id=last_task_id,
-                    publish_started=not started_published,
-                )
-            except (BrokenPipeError, RedisConnectionError) as exc:
-                if not is_broken_pipe_error(exc):
-                    raise
-                logger.exception(
-                    "Failed to publish fallback terminal event for workflow run %s",
-                    normalized_workflow_run_id,
-                )
-        raise broken_pipe_error
-
     if not terminal_published:
         logger.warning(
             "Workflow stream for run %s ended without a terminal event; publishing fallback terminal event",
             normalized_workflow_run_id,
         )
-        _publish_failed_terminal_event(
-            error_message=stream_error_message or unexpected_stream_end_message,
-            task_id=last_task_id,
-            publish_started=not started_published,
-        )
+        try:
+            _publish_failed_terminal_event(
+                error_message=stream_error_message or broken_pipe_error_message or unexpected_stream_end_message,
+                task_id=last_task_id,
+                publish_started=not started_published,
+            )
+        except (BrokenPipeError, RedisConnectionError) as exc:
+            if not is_broken_pipe_error(exc):
+                raise
+            logger.exception(
+                "Failed to publish fallback terminal event for workflow run %s",
+                normalized_workflow_run_id,
+            )
+            _clear_exception_frames(exc)
 
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)

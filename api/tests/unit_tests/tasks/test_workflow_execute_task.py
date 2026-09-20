@@ -4,6 +4,7 @@ import errno
 import json
 import logging
 import uuid
+import weakref
 from collections.abc import Generator, Mapping
 from contextlib import nullcontext
 from datetime import datetime
@@ -464,12 +465,23 @@ def test_publish_streaming_response_recovers_when_workflow_started_publish_fails
     assert "publishing fallback terminal event" in caplog.text
 
 
-def test_publish_streaming_response_drains_stream_before_reraising_publish_error(
+@pytest.mark.parametrize("publish_error", [BrokenPipeError(errno.EPIPE, "Broken pipe"), _redis_broken_pipe_error()])
+@pytest.mark.parametrize(
+    ("terminal_event", "terminal_status"),
+    [
+        ("workflow_finished", WorkflowExecutionStatus.SUCCEEDED),
+        ("workflow_finished", WorkflowExecutionStatus.PARTIAL_SUCCEEDED),
+        ("workflow_paused", WorkflowExecutionStatus.PAUSED),
+    ],
+)
+def test_publish_streaming_response_continues_delivery_after_broken_pipe(
     mock_topic: MagicMock,
     caplog: pytest.LogCaptureFixture,
+    publish_error: Exception,
+    terminal_event: str,
+    terminal_status: WorkflowExecutionStatus,
 ):
-    caplog.set_level(logging.ERROR, logger="tasks.app_generate.workflow_execute_task")
-    publish_error = _redis_broken_pipe_error()
+    caplog.set_level(logging.WARNING, logger="tasks.app_generate.workflow_execute_task")
     message_finalized = False
 
     def response_stream() -> Generator[Mapping[str, object], None, None]:
@@ -482,11 +494,12 @@ def test_publish_streaming_response_drains_stream_before_reraising_publish_error
             "data": {"id": "workflow-run-id", "workflow_id": "workflow-id", "inputs": {}, "created_at": 1},
         }
         yield {"event": "node_started", "task_id": "task-id"}
+        yield {"event": "message", "task_id": "task-id", "answer": "final answer"}
         message_finalized = True
         yield {
-            "event": "workflow_finished",
+            "event": terminal_event,
             "task_id": "task-id",
-            "data": {"status": WorkflowExecutionStatus.SUCCEEDED},
+            "data": {"status": terminal_status},
         }
 
     successful_payloads: list[dict[str, object] | str] = []
@@ -499,37 +512,34 @@ def test_publish_streaming_response_drains_stream_before_reraising_publish_error
 
     mock_topic.publish.side_effect = _publish
 
-    with pytest.raises(RedisConnectionError) as exc_info:
-        _publish_streaming_response(
-            response_stream(),
-            "workflow-run-id",
-            app_mode=AppMode.ADVANCED_CHAT,
-            workflow_id="workflow-id",
-            inputs={},
-            started_reason=WorkflowStartReason.INITIAL,
-        )
+    _publish_streaming_response(
+        response_stream(),
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
 
-    assert exc_info.value is publish_error
     assert message_finalized is True
-    assert [payload["event"] for payload in successful_payloads] == ["workflow_started", "workflow_finished"]
-    assert successful_payloads[1]["task_id"] == "task-id"
-    assert successful_payloads[1]["data"]["status"] == WorkflowExecutionStatus.FAILED
-    assert successful_payloads[1]["data"]["error"] == "Error 32 while writing to socket. Broken pipe."
+    assert [payload["event"] for payload in successful_payloads] == ["workflow_started", "message", terminal_event]
+    assert successful_payloads[-1]["data"]["status"] == terminal_status
     assert "workflow-run-id" in caplog.text
-    assert "publishing fallback terminal event" in caplog.text
+    assert "Broken pipe" in caplog.text
+    assert "publishing fallback terminal event" not in caplog.text
 
 
-def test_publish_streaming_response_preserves_delivery_error_when_fallback_hits_broken_pipe(
+def test_publish_streaming_response_drains_stream_when_every_publish_hits_broken_pipe(
     mock_topic: MagicMock,
+    caplog: pytest.LogCaptureFixture,
 ):
-    delivery_error = _redis_broken_pipe_error()
-    fallback_error = _redis_broken_pipe_error()
     message_finalized = False
 
     def response_stream() -> Generator[Mapping[str, object], None, None]:
         nonlocal message_finalized
 
         yield {"event": "workflow_started", "task_id": "task-id"}
+        yield {"event": "message", "task_id": "task-id", "answer": "final answer"}
         message_finalized = True
         yield {
             "event": "workflow_finished",
@@ -537,27 +547,90 @@ def test_publish_streaming_response_preserves_delivery_error_when_fallback_hits_
             "data": {"status": WorkflowExecutionStatus.SUCCEEDED},
         }
 
-    mock_topic.publish.side_effect = [delivery_error, fallback_error]
+    def publish(_payload: bytes) -> None:
+        raise _redis_broken_pipe_error()
 
-    with pytest.raises(RedisConnectionError) as exc_info:
-        _publish_streaming_response(
-            response_stream(),
-            "workflow-run-id",
-            app_mode=AppMode.ADVANCED_CHAT,
-            workflow_id="workflow-id",
-            inputs={},
-            started_reason=WorkflowStartReason.INITIAL,
-        )
+    mock_topic.publish.side_effect = publish
 
-    assert exc_info.value is delivery_error
+    _publish_streaming_response(
+        response_stream(),
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
     assert message_finalized is True
-    assert mock_topic.publish.call_count == 2
+    assert [payload["event"] for payload in _published_payloads(mock_topic)] == [
+        "workflow_started",
+        "message",
+        "workflow_finished",
+        "workflow_started",
+    ]
+    assert "Failed to publish fallback terminal event" in caplog.text
 
 
-def test_publish_streaming_response_does_not_drain_stream_after_other_redis_errors(
+@pytest.mark.parametrize("explicit_cause", [False, True])
+def test_publish_streaming_response_releases_broken_pipe_frames_before_next_event(
     mock_topic: MagicMock,
+    explicit_cause: bool,
 ):
-    publish_error = RedisConnectionError("Connection refused")
+    class FramePayload:
+        pass
+
+    frame_payloads: list[weakref.ReferenceType[FramePayload]] = []
+    errors: list[Exception] = []
+
+    def fail_socket_read() -> None:
+        frame_payload = FramePayload()
+        frame_payloads.append(weakref.ref(frame_payload))
+        raise BrokenPipeError(errno.EPIPE, "Broken pipe")
+
+    def publish(payload: bytes) -> None:
+        decoded = _decode_published_payload(payload)
+        if not isinstance(decoded, dict) or decoded.get("event") != "message":
+            return
+        frame_payload = FramePayload()
+        frame_payloads.append(weakref.ref(frame_payload))
+        try:
+            fail_socket_read()
+        except BrokenPipeError as exc:
+            wrapped = RedisConnectionError("Broken pipe")
+            errors.extend([exc, wrapped])
+            if explicit_cause:
+                raise wrapped from exc
+            raise wrapped
+
+    def response_stream() -> Generator[Mapping[str, object], None, None]:
+        yield {"event": "workflow_started", "task_id": "task-id"}
+        yield {"event": "message", "task_id": "task-id"}
+        # Logging handlers may retain exceptions, but not the failed frames' resources.
+        assert len(frame_payloads) == 2
+        assert all(payload_ref() is None for payload_ref in frame_payloads)
+        assert all(error.__traceback__ is None for error in errors)
+        yield {"event": "workflow_finished", "task_id": "task-id"}
+
+    mock_topic.publish.side_effect = publish
+
+    _publish_streaming_response(
+        response_stream(),
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+
+@pytest.mark.parametrize(
+    "publish_error",
+    [RedisConnectionError("Connection refused"), RedisConnectionError("Broken pipe"), RuntimeError("publish exploded")],
+)
+def test_publish_streaming_response_does_not_drain_stream_after_other_errors(
+    mock_topic: MagicMock,
+    publish_error: Exception,
+):
     message_finalized = False
 
     def response_stream() -> Generator[Mapping[str, object], None, None]:
@@ -579,7 +652,7 @@ def test_publish_streaming_response_does_not_drain_stream_after_other_redis_erro
 
     mock_topic.publish.side_effect = publish
 
-    with pytest.raises(RedisConnectionError) as exc_info:
+    with pytest.raises(type(publish_error)) as exc_info:
         _publish_streaming_response(
             response_stream(),
             "workflow-run-id",
@@ -591,6 +664,75 @@ def test_publish_streaming_response_does_not_drain_stream_after_other_redis_erro
 
     assert exc_info.value is publish_error
     assert message_finalized is False
+
+
+def test_publish_streaming_response_retries_terminal_delivery_after_broken_pipe(mock_topic: MagicMock):
+    broken_pipe = _redis_broken_pipe_error()
+    mock_topic.publish.side_effect = [None, broken_pipe, None]
+
+    _publish_streaming_response(
+        iter(
+            [
+                {"event": "workflow_started", "task_id": "task-id"},
+                {"event": "workflow_finished", "task_id": "task-id", "data": {"status": "succeeded"}},
+            ]
+        ),
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+    payloads = _published_payloads(mock_topic)
+    assert [payload["event"] for payload in payloads] == ["workflow_started", "workflow_finished", "workflow_finished"]
+    assert payloads[-1]["data"]["status"] == WorkflowExecutionStatus.FAILED
+    assert payloads[-1]["data"]["error"] == str(broken_pipe)
+
+
+def test_publish_streaming_response_propagates_generator_failure_after_broken_pipe(mock_topic: MagicMock):
+    stream_error = RuntimeError("stream exploded")
+    mock_topic.publish.side_effect = [None, _redis_broken_pipe_error(), None]
+
+    def response_stream() -> Generator[Mapping[str, object], None, None]:
+        yield {"event": "workflow_started", "task_id": "task-id"}
+        yield {"event": "message", "task_id": "task-id"}
+        raise stream_error
+
+    with pytest.raises(RuntimeError) as exc_info:
+        _publish_streaming_response(
+            response_stream(),
+            "workflow-run-id",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow-id",
+            inputs={},
+            started_reason=WorkflowStartReason.INITIAL,
+        )
+
+    assert exc_info.value is stream_error
+    assert _published_payloads(mock_topic)[-1]["data"]["error"] == "stream exploded"
+
+
+def test_publish_streaming_response_propagates_non_broken_pipe_fallback_error(mock_topic: MagicMock):
+    fallback_error = RedisConnectionError("Connection refused")
+    mock_topic.publish.side_effect = [None, _redis_broken_pipe_error(), fallback_error]
+
+    with pytest.raises(RedisConnectionError) as exc_info:
+        _publish_streaming_response(
+            iter(
+                [
+                    {"event": "workflow_started", "task_id": "task-id"},
+                    {"event": "workflow_finished", "task_id": "task-id"},
+                ]
+            ),
+            "workflow-run-id",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow-id",
+            inputs={},
+            started_reason=WorkflowStartReason.INITIAL,
+        )
+
+    assert exc_info.value is fallback_error
 
 
 def test_publish_streaming_response_recovers_when_workflow_finished_publish_fails_first(
