@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import pytest
 
+SHARED_SETUP_PROPERTY = "dify_shared_fixture_setup_seconds"
+
 
 def load_durations(path: Path) -> dict[str, float]:
     """Read phase totals, rejecting corrupt history rather than dropping tests silently."""
@@ -60,31 +62,65 @@ def assign_shards(nodeids: Sequence[str], shard_total: int, durations: Mapping[s
 class DurationRecorder:
     """Aggregate setup, call and teardown reports once, in the xdist controller.
 
-    Only successful sessions publish history, so interrupted/failed runs cannot
-    replace complete timing data with partial observations. Session fixture costs
-    are attributed to their triggering test; estimates are not wall-clock promises.
+    Only successful sessions publish history. Keep phase totals and shared fixture
+    initialization separate so refreshed weights do not charge one test for a
+    worker's cold start. Function-scoped setup and all teardown remain included.
     """
 
     def __init__(self, path: Path) -> None:
         self.path = path
-        self.durations: dict[str, float] = {}
+        self.durations: dict[str, dict[str, float]] = {}
 
     def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
-        self.durations[report.nodeid] = self.durations.get(report.nodeid, 0.0) + report.duration
+        phases = self.durations.setdefault(
+            report.nodeid, dict.fromkeys(("setup", "call", "teardown", "shared_setup"), 0.0)
+        )
+        phases[report.when] += report.duration
+        for name, value in report.user_properties:
+            if name == SHARED_SETUP_PROPERTY:
+                if not isinstance(value, int | float):
+                    raise ValueError("Invalid shared fixture duration report")
+                phases["shared_setup"] += value
 
     def pytest_sessionfinish(self, exitstatus: int) -> None:
         if exitstatus == 0:
             self.path.write_text(json.dumps(self.durations, sort_keys=True, indent=2) + "\n")
 
 
-def merge_duration_files(paths: Sequence[Path], output: Path) -> None:
-    """Merge disjoint shard reports, rejecting overlapping test execution."""
-    merged: dict[str, float] = {}
+def load_duration_profile(path: Path) -> dict[str, dict[str, float]]:
+    """Validate worker phase reports before generating a refreshed history."""
+    data = json.loads(path.read_text())
+    phases = {"setup", "call", "teardown", "shared_setup"}
+    if not isinstance(data, dict):
+        raise ValueError("Test duration profile must be an object")
+    for nodeid, timings in data.items():
+        if not isinstance(timings, dict) or timings.keys() != phases:
+            raise ValueError(f"Invalid test duration profile for {nodeid}")
+        for duration in timings.values():
+            if isinstance(duration, bool) or not isinstance(duration, int | float):
+                raise ValueError(f"Invalid test duration for {nodeid}")
+            if not math.isfinite(duration) or duration < 0:
+                raise ValueError(f"Invalid test duration for {nodeid}")
+    return data
+
+
+def merge_duration_files(paths: Sequence[Path], output: Path, profile_output: Path | None = None) -> None:
+    """Merge disjoint reports, excluding shared startup from per-test weights.
+
+    Shared startup is recorded for diagnostics but not assigned to individual
+    tests. All workers may pay it again after repartitioning. This does not remove
+    function-scoped setup, database cleanup or even shared teardown from estimates.
+    """
+    merged: dict[str, dict[str, float]] = {}
     for path in paths:
-        durations = load_durations(path)
-        if merged.keys() & durations.keys():
+        profile = load_duration_profile(path)
+        if merged.keys() & profile.keys():
             raise ValueError(f"Overlapping test IDs in duration report {path}")
-        merged.update(durations)
-    output.write_text(
-        json.dumps({nodeid: round(duration, 3) for nodeid, duration in merged.items()}, sort_keys=True, indent=2) + "\n"
-    )
+        merged.update(profile)
+    weights = {
+        nodeid: round(max(0.0, phases["setup"] + phases["call"] + phases["teardown"] - phases["shared_setup"]), 3)
+        for nodeid, phases in merged.items()
+    }
+    output.write_text(json.dumps(weights, sort_keys=True, indent=2) + "\n")
+    if profile_output is not None:
+        profile_output.write_text(json.dumps(merged, sort_keys=True, indent=2) + "\n")

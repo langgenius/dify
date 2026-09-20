@@ -6,7 +6,14 @@ from typing import Literal
 
 import pytest
 
-from tests.pytest_sharding import DurationRecorder, assign_shards, load_durations, merge_duration_files
+from tests.pytest_sharding import (
+    SHARED_SETUP_PROPERTY,
+    DurationRecorder,
+    assign_shards,
+    load_duration_profile,
+    load_durations,
+    merge_duration_files,
+)
 
 
 def test_balances_skewed_durations_without_losing_or_repeating_tests() -> None:
@@ -48,31 +55,55 @@ def test_rejects_invalid_history(tmp_path: Path, data: object) -> None:
         load_durations(path)
 
 
-def test_recorder_includes_setup_and_teardown_and_only_publishes_success(tmp_path: Path) -> None:
+def test_recorder_separates_shared_setup_and_only_publishes_success(tmp_path: Path) -> None:
     output = tmp_path / "durations.json"
     recorder = DurationRecorder(output)
     phases: list[tuple[Literal["setup", "call", "teardown"], float]] = [
-        ("setup", 3.0),
+        ("setup", 33.0),
         ("call", 1.0),
         ("teardown", 2.0),
     ]
     for phase, duration in phases:
         recorder.pytest_runtest_logreport(
-            pytest.TestReport("test", ("test.py", 0, "test"), {}, "passed", None, phase, duration=duration)
+            pytest.TestReport(
+                "test",
+                ("test.py", 0, "test"),
+                {},
+                "passed",
+                None,
+                phase,
+                duration=duration,
+                user_properties=[(SHARED_SETUP_PROPERTY, 30.0 if phase == "setup" else 0.0)],
+            )
         )
     recorder.pytest_sessionfinish(1)
     assert not output.exists()
     recorder.pytest_sessionfinish(0)
-    assert load_durations(output) == {"test": 6.0}
+    assert load_duration_profile(output) == {
+        "test": {"setup": 33.0, "call": 1.0, "teardown": 2.0, "shared_setup": 30.0}
+    }
+    merged = tmp_path / "weights.json"
+    merge_duration_files([output], merged)
+    assert load_durations(merged) == {"test": 6.0}
 
 
 def test_merge_rejects_duplicate_shard_membership(tmp_path: Path) -> None:
     reports = [tmp_path / "one.json", tmp_path / "two.json"]
     output = tmp_path / "merged.json"
-    reports[0].write_text('{"a": 1.0}')
-    reports[1].write_text('{"b": 2.0}')
+    reports[0].write_text('{"a": {"setup": 0, "call": 1, "teardown": 0, "shared_setup": 0}}')
+    reports[1].write_text('{"b": {"setup": 0, "call": 2, "teardown": 0, "shared_setup": 0}}')
     merge_duration_files(reports, output)
     assert load_durations(output) == {"a": 1.0, "b": 2.0}
-    reports[1].write_text('{"a": 2.0}')
+    reports[1].write_text('{"a": {"setup": 0, "call": 2, "teardown": 0, "shared_setup": 0}}')
     with pytest.raises(ValueError, match="Overlapping"):
         merge_duration_files(reports, output)
+
+
+@pytest.mark.parametrize(
+    "data", [[], {"a": 1}, {"a": {"call": 1}}, {"a": {"setup": 0, "call": 1, "teardown": 0, "shared_setup": -1}}]
+)
+def test_rejects_incomplete_or_invalid_profiles(tmp_path: Path, data: object) -> None:
+    path = tmp_path / "profile.json"
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError):
+        load_duration_profile(path)

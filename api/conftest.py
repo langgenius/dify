@@ -22,6 +22,7 @@ from tests.pytest_dify import (
     ensure_compose_env_files,
     parse_services,
 )
+from tests.pytest_fixture_timing import SharedFixtureTimer
 from tests.pytest_sharding import DurationRecorder, assign_shards, load_durations
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -89,8 +90,10 @@ def pytest_configure(config: pytest.Config) -> None:
         raise pytest.UsageError(f"Cannot read shard duration history: {error}") from error
 
     output_path = config.getoption("write_test_durations")
-    if output_path and not hasattr(config, "workerinput"):
-        config.pluginmanager.register(DurationRecorder(output_path), "dify-duration-recorder")
+    if output_path:
+        config.pluginmanager.register(SharedFixtureTimer(), "dify-fixture-timer")
+        if not hasattr(config, "workerinput"):
+            config.pluginmanager.register(DurationRecorder(output_path), "dify-duration-recorder")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

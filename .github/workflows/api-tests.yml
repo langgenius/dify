@@ -199,14 +199,18 @@ jobs:
           reports = sorted(Path("coverage-data").glob("integration-durations-*.json"))
           if len(reports) != 4:
               raise SystemExit(f"Expected 4 duration reports, found {len(reports)}")
-          merge_duration_files(reports, Path("integration-test-durations.json"))
+          merge_duration_files(
+              reports, Path("integration-test-durations.json"), Path("integration-test-profile.json")
+          )
           PYTHON
 
       - name: Upload integration test durations
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: api-integration-duration-history
-          path: integration-test-durations.json
+          path: |
+            integration-test-durations.json
+            integration-test-profile.json
           if-no-files-found: error
           retention-days: 14
 
