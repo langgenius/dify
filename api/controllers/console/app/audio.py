@@ -9,7 +9,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import HTTPException, InternalServerError
 
 import services
-from controllers.common.rbac import PlainApp, RBACCheck, enforce_rbac_checks
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
@@ -407,11 +407,10 @@ class AgentTextToSpeechVoicesApi(Resource):
             tenant_id=current_tenant_id,
             agent_id=agent_id,
         )
-        # Agent routes expose Agent ids, while APP RBAC is keyed by the resolved runtime App id.
         enforce_rbac_checks(
             tenant_id=current_tenant_id,
             account_id=current_user.id,
-            checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())],
-            path_args={"app_id": app_model.id},
+            checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())],
+            path_args={"agent_id": str(agent_id)},
         )
         return _get_text_to_speech_voices(tenant_id=app_model.tenant_id, language=query.language)

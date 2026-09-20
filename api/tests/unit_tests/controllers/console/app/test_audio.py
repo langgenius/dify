@@ -551,10 +551,10 @@ def test_agent_text_to_speech_voices_uses_backing_app_and_language(app: Flask, u
     rbac_call = check_access.call_args.kwargs
     assert rbac_call["tenant_id"] == "tenant-1"
     assert rbac_call["account_id"] == current_user.id
-    assert rbac_call["path_args"] == {"app_id": "backing-app-1"}
+    assert rbac_call["path_args"] == {"agent_id": str(agent_id)}
     (rbac_check,) = rbac_call["checks"]
-    assert rbac_check.scene is audio_module.RBACPermission.APP_VIEW_LAYOUT
-    assert isinstance(rbac_check.locator, audio_module.PlainApp)
+    assert rbac_check.scene is audio_module.RBACPermission.AGENT_PREVIEW
+    assert isinstance(rbac_check.locator, audio_module.AgentId)
     get_voices.assert_called_once_with(tenant_id="tenant-1", language="en-US")
 
 
