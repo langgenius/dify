@@ -293,7 +293,7 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
 
 
 def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) On ``confirm_resources`` bind resources into plan v2 and
+    """(waiting) On ``confirm_resources`` bind resources into plan v1 and
     snapshot the pre-build graph as the restore checkpoint (self-minted id so
     the CheckpointCard shown at plan_approval carries a real id -- mirrors
     handle_verify's self-minted run id). Transition to build.plan_approval."""
@@ -321,14 +321,14 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
             resource_ids = [r for r in raw_ids if isinstance(r, str)]
     fc.resource_selection = {"resource_ids": resource_ids}
     fc.plan_items = env.agent.bind_resources(list(fc.plan_items), resource_ids)
-    fc.plan_version_tag = "v2"
+    fc.plan_version_tag = "v1"
 
     progress.activate("build-create-checkpoint")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.BUILD_PLAN_APPROVAL)
 
     decision_items = append_card(fc, DecisionItem(text="Confirmed resources"))
-    plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v2", items=list(fc.plan_items)))
+    plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
     checkpoint_items = append_card(
         fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-build checkpoint", created_at="")
     )
@@ -354,7 +354,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     """(waiting) THE BUILD. Only ``approve_repair`` (resolved from approve_plan)
     builds: drive apply_repair once with all create_node/connect intents
     (node-by-node canvas reveal via env.emit_canvas), emit the change_set +
-    plan v2.x + assistant_turn(with execution activities), transition to build.execution.
+    plan v1.x + assistant_turn(with execution activities), transition to build.execution.
 
     Idempotent by construction (final-review fix, Important #1): a loop-back
     from build.review/build.reverted (continue_adjusting/revert/retry_after_
@@ -505,7 +505,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         fc,
         PlanCard(
             title=f"{fc.app_name} is ready" if fc.app_name else "Build plan",
-            version_tag="v2.1",
+            version_tag="v1.1",
             items=list(fc.plan_items),
         ),
     )
