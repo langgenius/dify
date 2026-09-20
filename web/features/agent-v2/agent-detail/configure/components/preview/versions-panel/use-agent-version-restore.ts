@@ -1,18 +1,8 @@
 import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { toast } from '@/app/notifications'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { deploymentEditionAtom } from '@/features/system-features/state'
@@ -96,56 +86,19 @@ export function useAgentVersionRestore({
     mutation.mutate({ params: { agent_id: agentId, version_id: version.id } })
   }
 
-  const versionLabel = version
-    ? version.version_note ||
-      t(($) => $['agentDetail.versionHistory.versionName'], { version: version.version })
-    : ''
-
   return {
     requestRestore,
     isPending: mutation.isPending,
     disabled: disabled || mutation.isPending,
     canRestore,
     showUpgrade,
-    dialog: (
-      <>
-        <PlanUpgradeModal
-          show={isUpgradeOpen}
-          onClose={() => setIsUpgradeOpen(false)}
-          title={t(($) => $['upgrade.agentRestore.title'], { ns: 'billing' })}
-          description={t(($) => $['upgrade.agentRestore.description'], { ns: 'billing' })}
-        />
-        <AlertDialog
-          open={isConfirmOpen}
-          onOpenChange={(open) => {
-            if (!mutation.isPending) setIsConfirmOpen(open)
-          }}
-        >
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 p-6 pb-4">
-              <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-                {`${t(($) => $['agentDetail.versionHistory.restore'])} ${versionLabel}`}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="system-md-regular text-text-secondary">
-                {t(($) => $['versionHistory.restorationTip'], { ns: 'workflow' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton variant="secondary" disabled={mutation.isPending}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                tone="default"
-                disabled={disabled}
-                loading={mutation.isPending}
-                onClick={confirmRestore}
-              >
-                {t(($) => $['agentDetail.versionHistory.restore'])}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
-      </>
-    ),
+    version,
+    isUpgradeOpen,
+    closeUpgrade: () => setIsUpgradeOpen(false),
+    isConfirmOpen,
+    onConfirmOpenChange: (open: boolean) => {
+      if (!mutation.isPending) setIsConfirmOpen(open)
+    },
+    confirmRestore,
   }
 }

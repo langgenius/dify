@@ -17,6 +17,7 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { CurrentDraftItem } from './current-draft-item'
 import { VersionFilter } from './filter'
+import { AgentVersionRestoreDialogs } from './restore-dialogs'
 import { useAgentVersionRestore } from './use-agent-version-restore'
 import { VersionFilterEmpty } from './version-filter-empty'
 import { VersionItem } from './version-item'
@@ -165,7 +166,16 @@ export function AgentPreviewVersionsPanel({
           </div>
         )}
       </div>
-      {restore.dialog}
+      <AgentVersionRestoreDialogs
+        version={restore.version}
+        isUpgradeOpen={restore.isUpgradeOpen}
+        onUpgradeClose={restore.closeUpgrade}
+        isConfirmOpen={restore.isConfirmOpen}
+        onConfirmOpenChange={restore.onConfirmOpenChange}
+        isPending={restore.isPending}
+        disabled={restore.disabled}
+        onConfirm={restore.confirmRestore}
+      />
     </aside>
   )
 }
