@@ -1,10 +1,15 @@
 """Authenticated HTTP contract backed by the real accounting service and DB."""
 
+from collections.abc import Iterator
+from typing import TypedDict
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
 from flask import Flask
+from flask.testing import FlaskClient
+from pydantic import JsonValue
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.inner_api import bp as inner_api_bp
 from models.agent_sandbox_usage import AgentSandboxUsageEvent
@@ -13,8 +18,21 @@ from tests.unit_tests.config_override import config_overrides_context
 PROJECT = "431de237-596f-4d59-8a85-20a9846bf243"
 
 
+class _EventPayload(TypedDict):
+    id: str
+    source: str
+    type: str
+    timestamp: str
+    payload: dict[str, JsonValue]
+
+
+class _BatchPayload(TypedDict):
+    project_id: str
+    events: list[_EventPayload]
+
+
 @pytest.fixture
-def client():
+def client() -> Iterator[FlaskClient]:
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(inner_api_bp)
@@ -28,7 +46,7 @@ def client():
         yield app.test_client()
 
 
-def payload():
+def payload() -> _BatchPayload:
     return {
         "project_id": PROJECT,
         "events": [
@@ -43,12 +61,12 @@ def payload():
     }
 
 
-def test_state_requires_inner_auth(client):
+def test_state_requires_inner_auth(client: FlaskClient) -> None:
     response = client.get(f"/inner/api/agent/sandbox-usage/state?project_id={PROJECT}")
     assert response.status_code == 404
 
 
-def test_state_exposes_persisted_scope_without_secret_or_environment(client):
+def test_state_exposes_persisted_scope_without_secret_or_environment(client: FlaskClient) -> None:
     response = client.get(
         f"/inner/api/agent/sandbox-usage/state?project_id={PROJECT}", headers={"X-Inner-Api-Key": "test-inner"}
     )
@@ -68,7 +86,9 @@ def test_state_exposes_persisted_scope_without_secret_or_environment(client):
     }
 
 
-def test_events_ack_only_after_persisted_and_duplicate_is_idempotent(client, sqlite_session_factory):
+def test_events_ack_only_after_persisted_and_duplicate_is_idempotent(
+    client: FlaskClient, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     body = payload()
     for expected in (
         {"accepted": 1, "duplicates": 0, "conflicts": 0, "ignored": 0},
@@ -90,7 +110,7 @@ def test_events_ack_only_after_persisted_and_duplicate_is_idempotent(client, sql
         )
 
 
-def test_ingestion_rejects_other_project_and_oversized_batch(client):
+def test_ingestion_rejects_other_project_and_oversized_batch(client: FlaskClient) -> None:
     body = payload()
     body["project_id"] = "other-project"
     response = client.post(
@@ -105,7 +125,7 @@ def test_ingestion_rejects_other_project_and_oversized_batch(client):
     assert response.status_code == 400
 
 
-def test_ingestion_payload_limit(client):
+def test_ingestion_payload_limit(client: FlaskClient) -> None:
     body = payload()
     body["events"][0]["payload"] = {"oversized": "x" * (1024 * 1024)}
     response = client.post(
