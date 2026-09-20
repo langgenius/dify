@@ -29,6 +29,8 @@ class Tag(ResponseModel):
 
 class WorkflowPartial(ResponseModel):
     id: str
+    type: str
+    kind: str | None = None
     created_by: str | None = None
     created_at: int | None = None
     updated_by: str | None = None
@@ -119,6 +121,8 @@ class AppPartial(ResponseModel):
         alias="model_config",
     )
     workflow: WorkflowPartial | None = None
+    workflow_type: str | None = None
+    workflow_kind: str | None = None
     use_icon_as_answer_icon: bool | None = None
     created_by: str | None = None
     created_at: int | None = None
@@ -189,6 +193,8 @@ class AppDetail(ResponseModel):
         alias="model_config",
     )
     workflow: WorkflowPartial | None
+    workflow_type: str | None = None
+    workflow_kind: str | None = None
     tracing: str | None
     use_icon_as_answer_icon: bool
     created_by: str | None

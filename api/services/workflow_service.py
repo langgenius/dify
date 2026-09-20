@@ -6,7 +6,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
-from sqlalchemy import exists, select
+from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -86,12 +86,20 @@ from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
 from libs.datetime_utils import naive_utc_now
+from libs.helper import escape_like_pattern
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow import (
+    Workflow,
+    WorkflowKind,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowType,
+    resolve_workflow_kind,
+)
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
@@ -409,6 +417,56 @@ class WorkflowService:
 
         return workflows, has_more
 
+    def list_published_evaluation_workflows(
+        self,
+        *,
+        session: Session,
+        tenant_id: str,
+        page: int,
+        limit: int,
+        user_id: str | None = None,
+        named_only: bool = False,
+        keyword: str | None = None,
+    ) -> tuple[Sequence[Workflow], bool]:
+        """List published evaluator workflows across tenant applications."""
+        stmt = (
+            select(Workflow)
+            .join(
+                App,
+                and_(
+                    Workflow.app_id == App.id,
+                    App.tenant_id == tenant_id,
+                    App.workflow_id == Workflow.id,
+                ),
+            )
+            .where(
+                Workflow.tenant_id == tenant_id,
+                Workflow.type == WorkflowType.WORKFLOW,
+                Workflow.kind == WorkflowKind.EVALUATION,
+                Workflow.version != Workflow.VERSION_DRAFT,
+                App.status == "normal",
+            )
+        )
+        if user_id:
+            stmt = stmt.where(Workflow.created_by == user_id)
+        if named_only:
+            stmt = stmt.where(Workflow.marked_name != "")
+        if keyword and (normalized_keyword := keyword.strip()):
+            escaped_keyword = escape_like_pattern(normalized_keyword)
+            pattern = f"%{escaped_keyword}%"
+            stmt = stmt.where(
+                or_(
+                    Workflow.marked_name.ilike(pattern, escape="\\"),
+                    App.name.ilike(pattern, escape="\\"),
+                )
+            )
+
+        workflows = session.scalars(
+            stmt.order_by(Workflow.created_at.desc()).offset((page - 1) * limit).limit(limit + 1)
+        ).all()
+        has_more = len(workflows) > limit
+        return workflows[:limit], has_more
+
     def sync_draft_workflow(
         self,
         *,
@@ -695,6 +753,7 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
+        workflow_kind: WorkflowKind | None = None,
     ) -> Workflow:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
@@ -704,6 +763,12 @@ class WorkflowService:
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
+
+        workflow_kind = self._resolve_publish_workflow_kind(
+            session=session,
+            app_model=app_model,
+            requested_kind=workflow_kind,
+        )
 
         validate_llm_environment_model_references(
             graph=draft_workflow.graph_dict,
@@ -725,6 +790,8 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             graph=draft_workflow.graph_dict,
         )
+        if workflow_kind == WorkflowKind.EVALUATION:
+            self._validate_evaluation_workflow_nodes(draft_workflow)
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -763,6 +830,7 @@ class WorkflowService:
             marked_comment=marked_comment,
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             features=draft_workflow.features,
+            kind=workflow_kind.value,
         )
 
         # commit db session changes
@@ -782,6 +850,118 @@ class WorkflowService:
 
         # return new workflow
         return workflow
+
+    @staticmethod
+    def _resolve_publish_workflow_kind(
+        *,
+        session: Session,
+        app_model: App,
+        requested_kind: WorkflowKind | None,
+    ) -> WorkflowKind:
+        """Keep evaluator apps as evaluators across ordinary draft publishes."""
+        if requested_kind is not None:
+            return requested_kind
+        if not app_model.workflow_id:
+            return WorkflowKind.STANDARD
+
+        active_kind = session.scalar(
+            select(Workflow.kind).where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.id == app_model.workflow_id,
+                Workflow.version != Workflow.VERSION_DRAFT,
+            )
+        )
+        return (
+            WorkflowKind.EVALUATION
+            if resolve_workflow_kind(active_kind) == WorkflowKind.EVALUATION
+            else WorkflowKind.STANDARD
+        )
+
+    def publish_evaluation_workflow(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        account: Account,
+        marked_name: str = "",
+        marked_comment: str = "",
+    ) -> Workflow:
+        """Publish through the standard pipeline while marking the version as an evaluator."""
+        return self.publish_workflow(
+            session=session,
+            app_model=app_model,
+            account=account,
+            marked_name=marked_name,
+            marked_comment=marked_comment,
+            workflow_kind=WorkflowKind.EVALUATION,
+        )
+
+    def convert_published_workflow_kind(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        target_kind: WorkflowKind,
+        account: Account,
+    ) -> Workflow:
+        """Convert the effective published version between standard and evaluation kinds."""
+        if target_kind not in {WorkflowKind.STANDARD, WorkflowKind.EVALUATION}:
+            raise ValueError("target_kind must be either 'standard' or 'evaluation'")
+        if not app_model.workflow_id:
+            raise WorkflowNotFoundError("Published workflow not found")
+
+        workflow = session.scalar(
+            select(Workflow).where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.id == app_model.workflow_id,
+                Workflow.version != Workflow.VERSION_DRAFT,
+            )
+        )
+        if workflow is None:
+            raise WorkflowNotFoundError("Published workflow not found")
+        if workflow.resolved_kind == target_kind:
+            return workflow
+        if target_kind == WorkflowKind.EVALUATION:
+            self._validate_evaluation_workflow_nodes(workflow)
+
+        workflow.kind = target_kind
+        workflow.updated_by = account.id
+        workflow.updated_at = naive_utc_now()
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        return workflow
+
+    @staticmethod
+    def _validate_evaluation_workflow_nodes(workflow: Workflow) -> None:
+        """Validate that an evaluator has synchronous workflow inputs and declared outputs."""
+        if workflow.type != WorkflowType.WORKFLOW:
+            raise ValueError("Evaluation workflows must use the workflow app type.")
+
+        disallowed_nodes: list[tuple[str, str]] = []
+        has_declared_output = False
+        for node_id, node_data in workflow.walk_nodes():
+            node_type = node_data.get("type")
+            if not isinstance(node_type, str):
+                continue
+            if node_type == BuiltinNodeTypes.HUMAN_INPUT or is_trigger_node_type(node_type):
+                disallowed_nodes.append((node_id, node_type))
+            if node_type == BuiltinNodeTypes.END:
+                outputs = node_data.get("outputs")
+                if isinstance(outputs, list) and any(
+                    isinstance(output, Mapping) and isinstance(output.get("variable"), str) and output["variable"]
+                    for output in outputs
+                ):
+                    has_declared_output = True
+
+        if disallowed_nodes:
+            formatted_nodes = ", ".join(f"{node_id}:{node_type}" for node_id, node_type in disallowed_nodes)
+            raise ValueError(
+                "Evaluation workflow cannot contain trigger or human-input nodes. "
+                f"Found disallowed nodes: {formatted_nodes}"
+            )
+        if not has_declared_output:
+            raise ValueError("Evaluation workflows must declare at least one End node output.")
 
     def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session) -> None:
         """

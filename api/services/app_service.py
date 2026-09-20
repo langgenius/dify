@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
+from functools import cached_property
 from types import EllipsisType
 from typing import Any, NotRequired, TypedDict, cast
 
@@ -45,7 +46,7 @@ from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.provider_ids import ModelProviderID
 from models.skill import AgentSkillBinding
-from models.workflow import Workflow
+from models.workflow import Workflow, resolve_workflow_kind
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
@@ -163,9 +164,17 @@ class AppResponseView:
             app_model_config.agent_mode = json.dumps(masked_agent_mode)
         return AppModelConfigResponseView(app_model_config, session=self._session)
 
-    @property
+    @cached_property
     def workflow(self) -> Workflow | None:
         return self._app.workflow_with_session(session=self._session)
+
+    @property
+    def workflow_type(self) -> str | None:
+        return self.workflow.type.value if self.workflow is not None else None
+
+    @property
+    def workflow_kind(self) -> str | None:
+        return resolve_workflow_kind(self.workflow.kind).value if self.workflow is not None else None
 
     @property
     def bound_agent_id(self) -> str | None:

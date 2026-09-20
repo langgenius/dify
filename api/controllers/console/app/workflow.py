@@ -93,7 +93,7 @@ from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
 from libs.login import login_required
 from models import Account, App
 from models.model import AppMode
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowKind
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import resolve_app_access_filter
@@ -204,6 +204,10 @@ class ConvertToWorkflowPayload(BaseModel):
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
+
+
+class WorkflowKindConvertQuery(BaseModel):
+    target_type: Literal["workflow", "evaluation"]
 
 
 class WorkflowFeatureTogglePayload(BaseModel):
@@ -418,6 +422,14 @@ class WorkflowPublishResponse(ResponseModel):
     )
 
 
+class WorkflowKindConvertResponse(ResponseModel):
+    result: str
+    workflow_id: str
+    type: str
+    kind: str
+    updated_at: int
+
+
 class SyncDraftWorkflowResponse(ResponseModel):
     result: str
     hash: str
@@ -483,6 +495,7 @@ register_schema_models(
     PublishWorkflowPayload,
     DefaultBlockConfigQuery,
     ConvertToWorkflowPayload,
+    WorkflowKindConvertQuery,
     WorkflowListQuery,
     WorkflowUpdatePayload,
     WorkflowFeatureTogglePayload,
@@ -512,6 +525,7 @@ register_response_schema_models(
     WorkflowOnlineUsersByApp,
     WorkflowOnlineUsersResponse,
     WorkflowPublishResponse,
+    WorkflowKindConvertResponse,
     SyncDraftWorkflowResponse,
     WorkflowRestoreResponse,
     DefaultBlockConfigsResponse,
@@ -1372,6 +1386,95 @@ class PublishedWorkflowApi(Resource):
         if warning:
             payload["warning"] = warning
         return payload
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/publish/evaluation")
+class EvaluationPublishedWorkflowApi(Resource):
+    @console_ns.doc("publish_evaluation_workflow")
+    @console_ns.doc(description="Publish the draft as a reusable evaluation workflow")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
+    @console_ns.response(
+        200,
+        "Evaluation workflow published successfully",
+        console_ns.models[WorkflowPublishResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()))
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
+    @edit_permission_required
+    @model_validate(PublishWorkflowPayload)
+    def post(self, args: PublishWorkflowPayload, current_user: Account, app_model: App):
+        workflow_service = WorkflowService()
+        try:
+            with sessionmaker(db.engine).begin() as session:
+                workflow = workflow_service.publish_evaluation_workflow(
+                    session=session,
+                    app_model=app_model,
+                    account=current_user,
+                    marked_name=args.marked_name or "",
+                    marked_comment=args.marked_comment or "",
+                )
+                app_model_in_session = session.get(App, app_model.id)
+                if app_model_in_session:
+                    app_model_in_session.workflow_id = workflow.id
+                    app_model_in_session.updated_by = current_user.id
+                    app_model_in_session.updated_at = naive_utc_now()
+                response = {
+                    "result": "success",
+                    "created_at": TimestampField().format(workflow.created_at),
+                }
+        except ValueError as exc:
+            raise BadRequest(str(exc)) from exc
+
+        return dump_response(WorkflowPublishResponse, response)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/convert-type")
+class WorkflowKindConvertApi(Resource):
+    @console_ns.doc("convert_published_workflow_kind")
+    @console_ns.doc(description="Convert the active published workflow between standard and evaluation kinds")
+    @console_ns.doc(params=query_params_from_model(WorkflowKindConvertQuery))
+    @console_ns.response(
+        200,
+        "Workflow kind converted successfully",
+        console_ns.models[WorkflowKindConvertResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()))
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
+    @edit_permission_required
+    def post(self, current_user: Account, app_model: App):
+        query = WorkflowKindConvertQuery.model_validate(request.args.to_dict(flat=True))
+        target_kind = WorkflowKind.EVALUATION if query.target_type == "evaluation" else WorkflowKind.STANDARD
+
+        try:
+            with sessionmaker(db.engine).begin() as session:
+                workflow = WorkflowService().convert_published_workflow_kind(
+                    session=session,
+                    app_model=app_model,
+                    target_kind=target_kind,
+                    account=current_user,
+                )
+                response = {
+                    "result": "success",
+                    "workflow_id": workflow.id,
+                    "type": workflow.type.value,
+                    "kind": workflow.resolved_kind.value,
+                    "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+                }
+        except WorkflowNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        except ValueError as exc:
+            raise BadRequest(str(exc)) from exc
+
+        return dump_response(WorkflowKindConvertResponse, response)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
