@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.rbac import DatasetId
 from controllers.console import console_ns
 from controllers.console.datasets.datasets_document import (
     DatasetDocumentListApi,
@@ -46,6 +47,7 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
+from controllers.console.wraps import RBACPermission
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
@@ -66,6 +68,7 @@ from services.vector_space_admission_service import (
     format_vector_space_admission_error,
 )
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 def make_serializable_document(**overrides):
@@ -224,6 +227,35 @@ class _UsesSQLiteSession:
         self.session = sqlite_session
 
 
+@pytest.mark.parametrize(
+    "method",
+    [
+        DatasetDocumentListApi.get,
+        DocumentBatchIndexingStatusApi.get,
+        DocumentIndexingStatusApi.get,
+        DocumentApi.get,
+        DocumentPipelineExecutionLogApi.get,
+        DocumentSummaryStatusApi.get,
+    ],
+)
+def test_document_read_routes_require_dataset_readonly_permission(method) -> None:
+    [check] = rbac_checks(method)
+
+    assert check.scene is RBACPermission.DATASET_READONLY
+    assert isinstance(check.locator, DatasetId)
+
+
+@pytest.mark.parametrize(
+    "method",
+    [DocumentIndexingEstimateApi.get, DocumentBatchIndexingEstimateApi.get],
+)
+def test_document_indexing_estimates_require_dataset_use_permission(method) -> None:
+    [check] = rbac_checks(method)
+
+    assert check.scene is RBACPermission.DATASET_USE
+    assert isinstance(check.locator, DatasetId)
+
+
 class TestGetProcessRuleApi(_UsesSQLiteSession):
     def test_get_default_success(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
@@ -300,6 +332,40 @@ class TestGetProcessRuleApi(_UsesSQLiteSession):
 
         assert response["mode"] == "custom"
         assert response["rules"] is None
+
+    def test_get_with_document_requires_dataset_readonly_permission(self, app: Flask, patch_tenant):
+        api = GetProcessRuleApi()
+        method = unwrap(api.get)
+        user, tenant_id = patch_tenant
+        document = make_document()
+        dataset = make_dataset(tenant_id=tenant_id)
+
+        with (
+            app.test_request_context("/?document_id=doc-1"),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.get_document_by_id",
+                return_value=document,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+            patch("controllers.console.datasets.datasets_document.enforce_rbac_checks", create=True) as enforce_checks,
+        ):
+            method(api, self.session, user)
+
+        enforce_checks.assert_called_once()
+        kwargs = enforce_checks.call_args.kwargs
+        assert kwargs["tenant_id"] == tenant_id
+        assert kwargs["account_id"] == user.id
+        assert kwargs["path_args"] == {"dataset_id": dataset.id}
+        [check] = kwargs["checks"]
+        assert check.scene is RBACPermission.DATASET_READONLY
+        assert isinstance(check.locator, DatasetId)
 
     def test_get_with_document_dataset_not_found(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
