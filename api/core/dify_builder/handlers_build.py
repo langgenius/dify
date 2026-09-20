@@ -124,16 +124,21 @@ def _refine_app_name(env: Env, fc: DifyBuilderContext) -> None:
 
 
 def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) Entry state. On ``send_goal`` reset the canvas, analyze the
-    goal into requirements, and transition to build.goal_analysis emitting its
-    form + challenge cards."""
+    """(waiting) Entry state. Gates on the GOAL, not the action: a session
+    whose composer already carried the goal in (fc.goal_text set at creation)
+    needs no send_goal action and proceeds immediately. Only a goal-less
+    session (create-from-blank) still waits for someone to supply one via
+    send_goal. Either way: reset the canvas, analyze the goal into
+    requirements, and transition to build.goal_analysis emitting its form +
+    challenge cards."""
     kind = action_kind(turn)
-    if kind != "send_goal":
-        return StepResult(next=PcState.BUILD_CAPABILITY_CHECK, context=fc)
-
     text, ok = action_string(turn, "text")
     if ok and text:
         fc.goal_text = text
+    # The composer already carried the goal in; only a goal-less session
+    # (create-from-blank) still needs someone to supply one.
+    if not fc.goal_text and kind != "send_goal":
+        return StepResult(next=PcState.BUILD_CAPABILITY_CHECK, context=fc)
 
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
