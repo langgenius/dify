@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -211,6 +211,30 @@ describe('trusted current IP and allowlist editing', () => {
         name: 'Office',
         allowed_cidrs: ['::ffff:203.0.113.42/128'],
       })
+    },
+  )
+
+  it.each([
+    { mode: 'edit', count: 0 },
+    { mode: 'view', count: 2 },
+  ] as const)(
+    'does not show an immediate-effect warning in $mode with $count references',
+    async ({ mode, count }) => {
+      render(
+        <IpPolicyDialog
+          open
+          mode={mode}
+          initialName="Office"
+          initialEntries={['10.0.0.0/8']}
+          usedByCount={count}
+          onOpenChange={vi.fn()}
+        />,
+      )
+      await waitFor(() =>
+        expect(
+          screen.queryByText('Changes take effect immediately wherever this policy is applied.'),
+        ).not.toBeInTheDocument(),
+      )
     },
   )
 })
