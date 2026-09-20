@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "SỰ KIỆN KÍCH HOẠT",
   "upgrade.addChunks.description": "Bạn đã đạt đến giới hạn thêm phần cho gói này.",
   "upgrade.addChunks.title": "Nâng cấp để tiếp tục thêm các phần",
+  "upgrade.agentRestore.description": "Tính năng khôi phục phiên bản ứng dụng tác tử không khả dụng trong gói hiện tại của bạn.",
+  "upgrade.agentRestore.title": "Nâng cấp để khôi phục các phiên bản ứng dụng tác tử",
   "upgrade.uploadMultipleFiles.description": "Tải lên nhiều tài liệu cùng lúc và tăng kích thước tối đa cho mỗi tệp lên 50 MB.",
   "upgrade.uploadMultipleFiles.title": "Nâng cấp để mở khóa tính năng tải lên hàng loạt và tệp có dung lượng lớn hơn",
   "upgrade.uploadMultiplePages.description": "Bạn đã đạt đến giới hạn tải lên — chỉ có thể chọn và tải lên một tài liệu trong một lần với gói hiện tại của bạn.",

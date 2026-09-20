@@ -15,7 +15,9 @@ type ExportAppDslInput = {
   appId: string
   appName: string
   includeSecret?: boolean
+  versionId?: string
   format?: NonNullable<GetAppsByAppIdExportData['query']>['format']
+  workflowId?: string
 }
 
 type ExportWorkflowAppDslInput = Pick<ExportAppDslInput, 'appId' | 'appName'>
@@ -45,16 +47,23 @@ async function getSecretEnvironmentVariables(appId: string) {
   return items.filter((environmentVariable) => environmentVariable.value_type === 'secret')
 }
 
-async function exportAppDslFile({
+export async function exportAppDslFile({
   appId,
   appName,
   includeSecret = false,
+  workflowId,
+  versionId,
   format,
 }: ExportAppDslInput) {
   const response = await consoleClient.apps.byAppId.export.get(
     {
       params: { app_id: appId },
-      query: { include_secret: includeSecret, ...(format && { format }) },
+      query: {
+        include_secret: includeSecret,
+        ...(workflowId ? { workflow_id: workflowId } : {}),
+        ...(versionId ? { version_id: versionId } : {}),
+        ...(format && { format }),
+      },
     },
     { context: { silent: true } },
   )

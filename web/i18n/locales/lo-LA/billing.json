@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "ເຫດການຕົວເລີ່ມຕົ້ນ",
   "upgrade.addChunks.description": "ທ່ານໄດ້ໃຊ້ງານຮອດຂີດຈຳກັດໃນການເພີ່ມ Chunk ສຳລັບແພັກເກດນີ້ແລ້ວ.",
   "upgrade.addChunks.title": "ອັບເກຣດເພື່ອເພີ່ມ Chunk ຕໍ່",
+  "upgrade.agentRestore.description": "ການກູ້ຄືນເວີຊັນແອັບ Agent ບໍ່ສາມາດໃຊ້ງານໄດ້ໃນແພັກເກດປັດຈຸບັນຂອງທ່ານ.",
+  "upgrade.agentRestore.title": "ອັບເກຣດເພື່ອກູ້ຄືນເວີຊັນແອັບ Agent",
   "upgrade.uploadMultipleFiles.description": "ອັບໂຫລດເອກະສານຫຼາຍອັນພ້ອມກັນເພື່ອປະຢັດເວລາ ແລະ ເພີ່ມປະສິດທິພາບ.",
   "upgrade.uploadMultipleFiles.title": "ອັບເກຣດເພື່ອປົດລັອກການອັບໂຫລດເອກະສານແບບເປັນກຸ່ມ",
   "upgrade.uploadMultiplePages.description": "ທ່ານຮອດຂີດຈຳກັດການອັບໂຫລດແລ້ວ — ສາມາດເລືອກ ແລະ ອັບໂຫລດເອກະສານໄດ້ເທື່ອລະອັນໃນແພັກເກດປັດຈຸບັນ.",

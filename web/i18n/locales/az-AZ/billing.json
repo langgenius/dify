@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "Tətikləmə hadisələri",
   "upgrade.addChunks.description": "Bu plan üzrə fraqment əlavə etmə limitinə çatmısınız.",
   "upgrade.addChunks.title": "Fraqment əlavə etməyə davam etmək üçün planın yüksəldilməsi",
+  "upgrade.agentRestore.description": "Cari planınızda agent tətbiqinin versiyalarının bərpası əlçatan deyil.",
+  "upgrade.agentRestore.title": "Agent tətbiqinin versiyalarını bərpa etmək üçün planın yüksəldilməsi",
   "upgrade.uploadMultipleFiles.description": "Bir neçə sənədi eyni anda yüklə və hər faylın maksimum ölçüsünü 50 MB-a qədər artır.",
   "upgrade.uploadMultipleFiles.title": "Toplu yükləmə və daha böyük fayllar üçün planın yüksəldilməsi",
   "upgrade.uploadMultiplePages.description": "Yükləmə limitinə çatmısınız: cari planınızda eyni anda yalnız bir sənəd seçib yükləyə bilərsiniz.",

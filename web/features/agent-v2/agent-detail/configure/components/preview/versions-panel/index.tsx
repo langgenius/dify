@@ -2,12 +2,23 @@
 
 import type { AgentVersionFilter } from './filter'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useAgentPermissions } from '@/features/agent-v2/permissions'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { CurrentDraftItem } from './current-draft-item'
 import { VersionFilter } from './filter'
+import { AgentVersionRestoreDialogs } from './restore-dialogs'
+import { useAgentVersionRestore } from './use-agent-version-restore'
 import { VersionFilterEmpty } from './version-filter-empty'
 import { VersionItem } from './version-item'
 
@@ -15,6 +26,9 @@ type AgentPreviewVersionsPanelProps = {
   agentId: string
   activeVersionId?: string | null
   onSelectVersion: (versionId: string | null) => void
+  onBeforeRestore?: () => void | Promise<void>
+  restoreDisabled?: boolean
+  onVersionRestored?: () => void | Promise<void>
   onClose: () => void
 }
 
@@ -23,7 +37,19 @@ export function AgentPreviewVersionsPanel({
   activeVersionId,
   onSelectVersion,
   onClose,
+  onVersionRestored,
+  onBeforeRestore,
+  restoreDisabled,
 }: AgentPreviewVersionsPanelProps) {
+  const restore = useAgentVersionRestore({
+    agentId,
+    onBeforeRestore,
+    disabled: restoreDisabled,
+    onRestored: async () => {
+      await onVersionRestored?.()
+      onSelectVersion(null)
+    },
+  })
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const { t: tWorkflow } = useTranslation('workflow')
@@ -31,6 +57,28 @@ export function AgentPreviewVersionsPanel({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
+  const { agentQuery, canImportExportDSL } = useAgentPermissions(agentId)
+  const { exportAppDsl, isExporting } = useExportAppDsl()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
+  const shouldShowUpgrade = deploymentEdition === 'CLOUD' && plan === 'sandbox'
+  const exportDisabled =
+    isExporting || (deploymentEdition === 'CLOUD' && plan === undefined) || !agentQuery.data?.app_id
+  const handleExport = (versionId: string) => {
+    const agent = agentQuery.data
+    if (!canImportExportDSL || exportDisabled || !agent?.app_id) return
+    if (shouldShowUpgrade) {
+      void setPricing('open')
+      return
+    }
+    void exportAppDsl({ appId: agent.app_id, appName: agent.name, versionId })
+  }
   const [filterValue, setFilterValue] = useState<AgentVersionFilter>('all')
   const versionsQuery = useQuery(
     consoleQuery.agent.byAgentId.versions.get.queryOptions({
@@ -108,11 +156,26 @@ export function AgentPreviewVersionsPanel({
                 isFirst={false}
                 isLast={index === filteredVersions.length - 1}
                 onSelect={onSelectVersion}
+                onExport={canImportExportDSL ? handleExport : undefined}
+                onRestore={restore.canRestore ? restore.requestRestore : undefined}
+                restoreDisabled={restore.disabled}
+                exportDisabled={exportDisabled}
+                showUpgrade={shouldShowUpgrade}
               />
             ))}
           </div>
         )}
       </div>
+      <AgentVersionRestoreDialogs
+        version={restore.version}
+        isUpgradeOpen={restore.isUpgradeOpen}
+        onUpgradeClose={restore.closeUpgrade}
+        isConfirmOpen={restore.isConfirmOpen}
+        onConfirmOpenChange={restore.onConfirmOpenChange}
+        isPending={restore.isPending}
+        disabled={restore.disabled}
+        onConfirm={restore.confirmRestore}
+      />
     </aside>
   )
 }

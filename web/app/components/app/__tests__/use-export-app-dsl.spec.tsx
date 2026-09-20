@@ -102,6 +102,78 @@ describe('useExportAppDsl', () => {
     expect(mocks.getEnvironmentVariables).not.toHaveBeenCalled()
   })
 
+  it('downloads the selected published Agent version as an ifpkg package', async () => {
+    const archive = new Blob(['published agent package'], { type: 'application/zip' })
+    mocks.exportAppDsl.mockResolvedValue(archive)
+    const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
+
+    await act(async () => {
+      await expect(
+        result.current.exportAppDsl({
+          appId: 'agent-app-id',
+          appName: 'Support Agent',
+          versionId: '11111111-1111-4111-8111-111111111111',
+          format: 'ifpkg',
+        }),
+      ).resolves.toEqual({ status: 'downloaded' })
+    })
+
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith(
+      {
+        params: { app_id: 'agent-app-id' },
+        query: {
+          include_secret: false,
+          version_id: '11111111-1111-4111-8111-111111111111',
+          format: 'ifpkg',
+        },
+      },
+      { context: { silent: true } },
+    )
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: archive,
+      fileName: 'Support Agent.ifpkg',
+    })
+    expect(mocks.getEnvironmentVariables).not.toHaveBeenCalled()
+  })
+
+  it('allows retrying a failed version export and downloads only the successful response', async () => {
+    const archive = new File(['published agent package'], 'published-agent.ifpkg', {
+      type: 'application/zip',
+    })
+    mocks.exportAppDsl.mockRejectedValueOnce(new Error('Export failed')).mockResolvedValue(archive)
+    const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
+    const input = {
+      appId: 'agent-app-id',
+      appName: 'Support Agent',
+      versionId: '11111111-1111-4111-8111-111111111111',
+    }
+
+    await act(async () => {
+      await expect(result.current.exportAppDsl(input)).resolves.toEqual({ status: 'failed' })
+    })
+    await waitFor(() => expect(result.current.isExporting).toBe(false))
+    expect(mocks.downloadBlob).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await expect(result.current.exportAppDsl(input)).resolves.toEqual({ status: 'downloaded' })
+    })
+    await waitFor(() => expect(result.current.isExporting).toBe(false))
+
+    expect(mocks.exportAppDsl).toHaveBeenCalledTimes(2)
+    expect(mocks.exportAppDsl).toHaveBeenLastCalledWith(
+      {
+        params: { app_id: input.appId },
+        query: { include_secret: false, version_id: input.versionId },
+      },
+      { context: { silent: true } },
+    )
+    expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: archive,
+      fileName: 'published-agent.ifpkg',
+    })
+  })
+
   it('exports through the generated client and hands the YAML file to the browser', async () => {
     mocks.exportAppDsl.mockResolvedValue({ data: 'kind: app\nversion: 0.1.5\n' })
     const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
