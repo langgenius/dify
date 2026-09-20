@@ -194,7 +194,7 @@ class DeploymentWorkspaceMemberAccessGateway:
     def permission_keys(self, workspace_id: str, actor_id: str) -> set[str]:
         with self._session_factory() as session:
             permissions = RBACService.MyPermissions.get(workspace_id, actor_id, session=session)
-            return set(getattr(getattr(permissions, "workspace", None), "permission_keys", []) or [])
+            return set(permissions.workspace.permission_keys)
 
     def is_owner(self, workspace_id: str, actor_id: str, member_id: str) -> bool:
         with self._session_factory() as session:

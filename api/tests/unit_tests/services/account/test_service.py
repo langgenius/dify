@@ -1,6 +1,8 @@
 """Account lifecycle regressions through application ports and real SQLite Sessions."""
 
+from collections.abc import Callable
 from datetime import datetime
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import select
@@ -47,16 +49,27 @@ def test_creation_hashes_password_and_keeps_registration_ip(
 @pytest.mark.parametrize(
     ("setting", "value", "error"),
     [
-        ("is_registration_allowed", False, AccountNotFoundError),
-        ("has_account_capacity", False, SeatsLimitExceededError),
-        ("get_email_freeze_type", "email_domain_suspended", AccountEmailDomainSuspendedError),
-        ("get_email_freeze_type", "deleted", AccountRegisterError),
+        pytest.param(
+            lambda policy: policy.is_registration_allowed, False, AccountNotFoundError, id="registration_disabled"
+        ),
+        pytest.param(lambda policy: policy.has_account_capacity, False, SeatsLimitExceededError, id="seat_limit"),
+        pytest.param(
+            lambda policy: policy.get_email_freeze_type,
+            "email_domain_suspended",
+            AccountEmailDomainSuspendedError,
+            id="domain_suspended",
+        ),
+        pytest.param(lambda policy: policy.get_email_freeze_type, "deleted", AccountRegisterError, id="deleted"),
     ],
 )
 def test_creation_policy_prevents_persistence(
-    account_domain: AccountDomain, sqlite_session: Session, setting: str, value: object, error: type[Exception]
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+    setting: Callable[[Mock], Mock],
+    value: object,
+    error: type[Exception],
 ) -> None:
-    getattr(account_domain.policy, setting).return_value = value
+    setting(account_domain.policy).return_value = value
     with pytest.raises(error):
         account_domain.accounts.create_account("new@example.com", "New", "en-US")
     assert sqlite_session.scalar(select(Account.id)) is None
@@ -92,11 +105,17 @@ def test_registration_initializes_and_creates_owner_membership(
     account_domain.policy.try_join_default_workspace.assert_called_once_with(account.id)
 
 
-@pytest.mark.parametrize("setting", ["is_workspace_creation_allowed", "has_workspace_capacity"])
+@pytest.mark.parametrize(
+    "setting",
+    [
+        pytest.param(lambda policy: policy.is_workspace_creation_allowed, id="creation_disabled"),
+        pytest.param(lambda policy: policy.has_workspace_capacity, id="workspace_limit"),
+    ],
+)
 def test_registration_without_personal_workspace_still_joins_default(
-    account_domain: AccountDomain, sqlite_session: Session, setting: str
+    account_domain: AccountDomain, sqlite_session: Session, setting: Callable[[Mock], Mock]
 ) -> None:
-    getattr(account_domain.policy, setting).return_value = False
+    setting(account_domain.policy).return_value = False
     account = account_domain.accounts.register("new@example.com", "New", status="pending")
     assert account.status == "pending"
     assert sqlite_session.scalar(select(Tenant.id)) is None

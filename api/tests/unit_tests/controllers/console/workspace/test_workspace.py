@@ -1,5 +1,6 @@
 """Controller contracts: parsing, delegation, serialization and HTTP errors."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from http import HTTPStatus
@@ -163,22 +164,40 @@ def test_config_response_and_partial_update(app: Flask, workspaces: WorkspaceMoc
 @pytest.mark.parametrize(
     ("resource", "method", "payload", "service_method"),
     [
-        (controller.CustomConfigWorkspaceApi, "get", {}, "custom_config"),
-        (controller.CustomConfigWorkspaceApi, "post", {}, "update_custom_config"),
-        (controller.WorkspaceInfoApi, "post", {"name": "New"}, "rename"),
+        pytest.param(
+            controller.CustomConfigWorkspaceApi,
+            controller.CustomConfigWorkspaceApi.get,
+            {},
+            lambda management: management.custom_config,
+            id="custom_config",
+        ),
+        pytest.param(
+            controller.CustomConfigWorkspaceApi,
+            controller.CustomConfigWorkspaceApi.post,
+            {},
+            lambda management: management.update_custom_config,
+            id="update_custom_config",
+        ),
+        pytest.param(
+            controller.WorkspaceInfoApi,
+            controller.WorkspaceInfoApi.post,
+            {"name": "New"},
+            lambda management: management.rename,
+            id="rename",
+        ),
     ],
 )
 def test_missing_workspace(
     app: Flask,
     workspaces: WorkspaceMocks,
     resource: type[Resource],
-    method: str,
+    method: Callable[..., object],
     payload: dict[str, object],
-    service_method: str,
+    service_method: Callable[[Mock], Mock],
 ) -> None:
-    getattr(workspaces.management, service_method).side_effect = WorkspaceNotFoundError()
+    service_method(workspaces.management).side_effect = WorkspaceNotFoundError()
     with app.test_request_context(json=payload), pytest.raises(NotFound):
-        unwrap(getattr(resource, method))(resource(), CONTEXT)
+        unwrap(method)(resource(), CONTEXT)
 
 
 @pytest.mark.parametrize(

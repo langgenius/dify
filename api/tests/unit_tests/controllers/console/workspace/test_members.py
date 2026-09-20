@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
@@ -187,7 +188,10 @@ def test_member_mutation_delegates_admitted_ids(app: Flask, services: Mock, oper
 def test_member_mutation_maps_errors(
     app: Flask, services: Mock, operation: str, error: Exception, code: str, status: int
 ) -> None:
-    getattr(services.workspaces.members, operation).side_effect = error
+    service_method = (
+        services.workspaces.members.remove if operation == "remove" else services.workspaces.members.update_role
+    )
+    service_method.side_effect = error
     api = MemberCancelInviteApi() if operation == "remove" else MemberUpdateRoleApi()
     method = api.delete if isinstance(api, MemberCancelInviteApi) else api.put
     with app.test_request_context("/", json={"role": "editor"}):
@@ -197,7 +201,10 @@ def test_member_mutation_maps_errors(
 
 @pytest.mark.parametrize("operation", ["remove", "update_role"])
 def test_member_mutation_maps_missing_account(app: Flask, services: Mock, operation: str) -> None:
-    getattr(services.workspaces.members, operation).side_effect = AccountNotFoundError()
+    service_method = (
+        services.workspaces.members.remove if operation == "remove" else services.workspaces.members.update_role
+    )
+    service_method.side_effect = AccountNotFoundError()
     api = MemberCancelInviteApi() if operation == "remove" else MemberUpdateRoleApi()
     method = api.delete if isinstance(api, MemberCancelInviteApi) else api.put
     with app.test_request_context("/", json={"role": "editor"}), pytest.raises(NotFound):
@@ -306,13 +313,43 @@ def test_owner_verification_serializes_promoted_token(app: Flask, services: Mock
 
 
 @pytest.mark.parametrize(
-    ("operation", "resource_type", "method_name", "has_member_id"),
+    ("service_method", "resource_type", "handler", "has_member_id"),
     [
-        ("remove", MemberCancelInviteApi, "delete", True),
-        ("update_role", MemberUpdateRoleApi, "put", True),
-        ("send_code", SendOwnerTransferEmailApi, "post", False),
-        ("verify_code", OwnerTransferCheckApi, "post", False),
-        ("transfer", OwnerTransfer, "post", True),
+        pytest.param(
+            lambda services: services.workspaces.members.remove,
+            MemberCancelInviteApi,
+            MemberCancelInviteApi.delete,
+            True,
+            id="remove",
+        ),
+        pytest.param(
+            lambda services: services.workspaces.members.update_role,
+            MemberUpdateRoleApi,
+            MemberUpdateRoleApi.put,
+            True,
+            id="update_role",
+        ),
+        pytest.param(
+            lambda services: services.workspaces.owner_transfer.send_code,
+            SendOwnerTransferEmailApi,
+            SendOwnerTransferEmailApi.post,
+            False,
+            id="send_code",
+        ),
+        pytest.param(
+            lambda services: services.workspaces.owner_transfer.verify_code,
+            OwnerTransferCheckApi,
+            OwnerTransferCheckApi.post,
+            False,
+            id="verify_code",
+        ),
+        pytest.param(
+            lambda services: services.workspaces.owner_transfer.transfer,
+            OwnerTransfer,
+            OwnerTransfer.post,
+            True,
+            id="transfer",
+        ),
     ],
 )
 @pytest.mark.parametrize(
@@ -326,20 +363,17 @@ def test_owner_verification_serializes_promoted_token(app: Flask, services: Mock
 )
 def test_member_errors_reach_the_http_boundary(
     services: Mock,
-    operation: str,
+    service_method: Callable[[Mock], Mock],
     resource_type: type[Resource],
-    method_name: str,
+    handler: Callable[..., object],
     has_member_id: bool,
     error: Exception,
     status: int,
     code: str,
 ) -> None:
-    service = (
-        services.workspaces.members if operation in {"remove", "update_role"} else services.workspaces.owner_transfer
-    )
-    getattr(service, operation).side_effect = error
+    service_method(services).side_effect = error
     resource = resource_type()
-    method = unwrap(getattr(resource, method_name))
+    method = unwrap(handler)
     context = RequestContext("request", None, "owner", "workspace")
     http_app = Flask(__name__)
     http_api = Api(http_app, doc=False)
