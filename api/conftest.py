@@ -12,7 +12,6 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from _pytest.terminal import TerminalReporter
 
 from tests.pytest_dify import (
     DEFAULT_MIDDLEWARE_SERVICES,
@@ -35,12 +34,6 @@ ensure_backend_test_environment(_REPO_ROOT)
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("dify")
-    group.addoption(
-        "--test-infra-timings",
-        action="store_true",
-        default=False,
-        help="Report controller-side Compose startup, readiness, and shutdown timings.",
-    )
     group.addoption(
         "--middleware-stop-timeout",
         type=int,
@@ -119,12 +112,6 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     if hasattr(config, "workerinput"):
         return
 
-    terminal = config.pluginmanager.get_plugin("terminalreporter")
-    timing_reporter = (
-        terminal.write_line
-        if config.getoption("test_infra_timings") and isinstance(terminal, TerminalReporter)
-        else None
-    )
     stacks: list[DockerComposeStack] = []
     if config.getoption("start_middleware"):
         ensure_compose_env_files(_REPO_ROOT)
@@ -132,7 +119,6 @@ def pytest_sessionstart(session: pytest.Session) -> None:
         stack = replace(
             stack,
             shutdown_timeout_seconds=config.getoption("middleware_stop_timeout"),
-            timing_reporter=timing_reporter,
         )
         stack.up()
         stacks.append(stack)
@@ -140,7 +126,6 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     if config.getoption("start_vdb"):
         ensure_compose_env_files(_REPO_ROOT)
         stack = build_vdb_stack(_REPO_ROOT, parse_services(config.getoption("vdb_services")))
-        stack = replace(stack, timing_reporter=timing_reporter)
         stack.up()
         stacks.append(stack)
 

@@ -2,6 +2,7 @@ import os
 import subprocess
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -114,7 +115,7 @@ def test_builders_use_expected_compose_files(tmp_path: Path):
         tmp_path / "docker" / "docker-compose.pytest.middleware.yaml",
     )
     assert middleware.env_file == tmp_path / "docker" / "middleware.env"
-    assert middleware.ready_delay_seconds == 0.0
+    assert middleware.warmup_urls == ("http://127.0.0.1:8194/health",)
     assert vdb.compose_files == (
         tmp_path / "docker" / "docker-compose.yaml",
         tmp_path / "docker" / "docker-compose.pytest.ports.yaml",
@@ -130,36 +131,44 @@ def test_stack_down_preserves_default_or_uses_explicit_timeout(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, timeout: int | None, expected_suffix: list[str]
 ) -> None:
     calls = []
-    reports = []
-    ticks = iter([10.0, 12.5])
-    monkeypatch.setattr("time.perf_counter", lambda: next(ticks))
     monkeypatch.setattr(subprocess, "run", lambda args, **kwargs: calls.append((args, kwargs)))
     stack = replace(
         build_middleware_stack(tmp_path, ["db_postgres"]),
         shutdown_timeout_seconds=timeout,
-        timing_reporter=reports.append,
     )
 
     stack.down()
 
     assert calls == [(stack._compose_command() + expected_suffix, {"cwd": tmp_path, "check": True})]
-    assert reports == ["test-infra middleware compose-down: 2.500s"]
     assert build_vdb_stack(tmp_path, ["weaviate"]).shutdown_timeout_seconds is None
 
 
-def test_stack_down_reports_time_without_swallowing_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    reports = []
+def test_stack_down_propagates_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     failure = subprocess.CalledProcessError(1, ["docker", "compose", "down"])
 
     def fail_run(*args: object, **kwargs: object) -> None:
         raise failure
 
     monkeypatch.setattr(subprocess, "run", fail_run)
-    stack = replace(build_middleware_stack(tmp_path, ["redis"]), timing_reporter=reports.append)
+    stack = build_middleware_stack(tmp_path, ["redis"])
 
     with pytest.raises(subprocess.CalledProcessError) as exc:
         stack.down()
 
     assert exc.value is failure
-    assert len(reports) == 1
-    assert reports[0].startswith("test-infra middleware compose-down: ")
+
+
+def test_healthy_middleware_still_checks_http_readiness_without_fixed_sleep(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(subprocess, "run", lambda args, **_kwargs: subprocess.CompletedProcess(args=args, returncode=0))
+    sleep = MagicMock()
+    monkeypatch.setattr("time.sleep", sleep)
+    urlopen = MagicMock()
+    urlopen.return_value.__enter__.return_value.status = 200
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+
+    build_middleware_stack(tmp_path, ["redis", "sandbox"]).up()
+
+    urlopen.assert_called_once_with("http://127.0.0.1:8194/health", timeout=5)
+    sleep.assert_not_called()
