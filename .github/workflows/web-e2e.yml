@@ -2,24 +2,6 @@ name: Web Full-Stack E2E
 
 on:
   workflow_dispatch:
-    inputs:
-      chromium-shards:
-        description: Number of Chromium shards for the core E2E comparison.
-        type: choice
-        required: true
-        default: '3'
-        options: ['2', '3', '4']
-      fast-redis-health:
-        description: Poll the unchanged Redis health check every second for core E2E.
-        type: boolean
-        required: true
-        default: true
-      cache-compression-level:
-        description: Zstd compression level for the core build cache comparison.
-        type: choice
-        required: true
-        default: '3'
-        options: ['1', '3']
   workflow_call:
     inputs:
       run-external-runtime:
@@ -59,7 +41,7 @@ jobs:
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: web/.next/cache
-          key: e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-${{ steps.build-source.outputs.hash }}-zstd${{ inputs.cache-compression-level || '3' }}
+          key: e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-${{ steps.build-source.outputs.hash }}
           restore-keys: |
             e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-
 
@@ -99,8 +81,6 @@ jobs:
           retention-days: 7
 
       - name: Save Next.js build cache
-        env:
-          ZSTD_CLEVEL: ${{ inputs.cache-compression-level || '3' }}
         if: github.event_name != 'merge_group' && steps.next-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
@@ -108,7 +88,7 @@ jobs:
           key: ${{ steps.next-cache.outputs.cache-primary-key }}
 
   chromium-full:
-    name: Chromium Full (${{ matrix.shard }}/${{ inputs.chromium-shards || '3' }})
+    name: Chromium Full (${{ matrix.shard }}/3)
     if: ${{ !inputs.run-external-runtime }}
     needs: core-build
     runs-on: ubuntu-24.04
@@ -116,13 +96,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(inputs.chromium-shards == '2' && '[1,2]' || inputs.chromium-shards == '4' && '[1,2,3,4]' || '[1,2,3]') }}
+        shard: [1, 2, 3]
     env:
       E2E_ADMIN_EMAIL: e2e-admin@example.com
       E2E_ADMIN_NAME: E2E Admin
       E2E_ADMIN_PASSWORD: E2eAdmin12345
       E2E_INIT_PASSWORD: E2eInit12345
-      E2E_FAST_REDIS_HEALTH: ${{ (github.event_name != 'workflow_dispatch' || inputs.fast-redis-health) && '1' || '0' }}
+      E2E_FAST_REDIS_HEALTH: '1'
 
     steps:
       - name: Checkout code
@@ -146,7 +126,7 @@ jobs:
 
       - name: Run Chromium full shard
         working-directory: ./e2e
-        run: vp run e2e:full -- --shard ${{ matrix.shard }}/${{ inputs.chromium-shards || '3' }}
+        run: vp run e2e:full -- --shard ${{ matrix.shard }}/3
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
@@ -181,7 +161,7 @@ jobs:
       E2E_ADMIN_PASSWORD: E2eAdmin12345
       E2E_BROWSER: webkit
       E2E_INIT_PASSWORD: E2eInit12345
-      E2E_FAST_REDIS_HEALTH: ${{ (github.event_name != 'workflow_dispatch' || inputs.fast-redis-health) && '1' || '0' }}
+      E2E_FAST_REDIS_HEALTH: '1'
 
     steps:
       - name: Checkout code
