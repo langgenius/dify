@@ -153,6 +153,7 @@ class WorkflowType(StrEnum):
 class WorkflowKind(StrEnum):
     STANDARD = "standard"
     SNIPPET = "snippet"
+    EVALUATION = "evaluation"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowKind":

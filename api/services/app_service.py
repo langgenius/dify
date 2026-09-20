@@ -3,6 +3,7 @@ import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from functools import cached_property
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
@@ -41,7 +42,7 @@ from models.agent import (
 )
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.skill import AgentSkillBinding
-from models.workflow import Workflow
+from models.workflow import Workflow, resolve_workflow_kind
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
@@ -202,9 +203,17 @@ class AppResponseView:
             return None
         return AppModelConfigResponseView(app_model_config, session=self._session)
 
-    @property
+    @cached_property
     def workflow(self) -> Workflow | None:
         return self._app.workflow_with_session(session=self._session)
+
+    @property
+    def workflow_type(self) -> str | None:
+        return self.workflow.type.value if self.workflow is not None else None
+
+    @property
+    def workflow_kind(self) -> str | None:
+        return resolve_workflow_kind(self.workflow.kind).value if self.workflow is not None else None
 
     @property
     def bound_agent_id(self) -> str | None:
