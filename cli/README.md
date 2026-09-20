@@ -115,6 +115,17 @@ See [`ARD.md`] for architecture patterns, scaffolding recipe, dev workflow.
 ## License
 
 Apache-2.0.
+[`ARD.md`]: ARD.md
+
+## Environment token authentication
+
+`DIFY_TOKEN` takes precedence over saved login credentials and is not persisted.
+Use `DIFY_HOST` to select the server. Without `DIFY_TOKEN`, the normal saved-login
+flow is used.
+
+Resource access tokens can list their own workspace through `/workspaces`.
+The CLI uses that workspace to query apps; only apps bound to the token are
+returned. Tokens do not inherit an account role or gain access to workspace
+details, members, or workspace switching.
 
 [Dify]: https://dify.ai
-[`ARD.md`]: ARD.md

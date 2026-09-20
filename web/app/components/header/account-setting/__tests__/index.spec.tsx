@@ -127,6 +127,11 @@ vi.mock('@/app/components/header/account-setting/access-rules-page', () => ({
   default: () => <div data-testid="access-rules-page" />,
 }))
 
+vi.mock('@/app/components/header/account-setting/resource-access-token-page', () => ({
+  __esModule: true,
+  default: () => <div data-testid="resource-access-token-page" />,
+}))
+
 const baseConsoleState: ConsoleStateFixture = {
   userProfile: {
     id: '1',
@@ -233,6 +238,9 @@ describe('AccountSetting', () => {
       ).toBeInTheDocument()
       expect(
         screen.getByRole('button', { name: 'common.settings.permissionSet' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'common.settings.accessToken' }),
       ).toBeInTheDocument()
       expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
@@ -411,6 +419,9 @@ describe('AccountSetting', () => {
       expect(
         screen.queryByRole('button', { name: 'common.settings.permissionSet' }),
       ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'common.settings.accessToken' }),
+      ).toBeInTheDocument()
     })
 
     it('should hide role and permission set entries when RBAC is disabled', () => {
@@ -424,6 +435,26 @@ describe('AccountSetting', () => {
       ).not.toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'common.settings.permissionSet' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'common.settings.accessToken' }),
+      ).toBeInTheDocument()
+    })
+
+    it('should hide access tokens from non-owner workspaces', () => {
+      mockConsoleState.current = {
+        ...baseConsoleState,
+        currentWorkspace: {
+          ...baseConsoleState.currentWorkspace,
+          role: 'admin' as const,
+        },
+        isCurrentWorkspaceOwner: false,
+      }
+
+      renderAccountSetting()
+
+      expect(
+        screen.queryByRole('button', { name: 'common.settings.accessToken' }),
       ).not.toBeInTheDocument()
     })
 
@@ -600,6 +631,10 @@ describe('AccountSetting', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.settings.permissionSet' }))
       expect(screen.getByText('common.settings.permissionSetDescription')).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-page')).toBeInTheDocument()
+
+      // Access Tokens
+      fireEvent.click(screen.getByRole('button', { name: 'common.settings.accessToken' }))
+      expect(screen.getByTestId('resource-access-token-page')).toBeInTheDocument()
 
       // Language
       fireEvent.click(screen.getByText('common.settings.preferences'))
