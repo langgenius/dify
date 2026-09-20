@@ -135,6 +135,45 @@ _SUGGESTION_SYSTEM_PROMPT = (
 )
 
 
+# ── Workflow instruction-improvement tuning ─────────────────────────────
+# "Add missing details": expand a short build prompt into one that states what
+# the builder would otherwise have to ask about. Pre-model-pick like
+# suggestions, so it degrades to "no change" rather than an error.
+_IMPROVE_MAX_TOKENS = 1024
+# Low but not zero: the rewrite must stay faithful to the user's request while
+# still phrasing the parts they left unsaid.
+_IMPROVE_TEMPERATURE = 0.4
+
+_IMPROVE_SYSTEM_PROMPT = (
+    "You help a user describe the Dify app they want built. Rewrite their instruction so it "
+    "states what a builder would otherwise have to ask about: what starts the app and what the "
+    "user supplies, the steps to perform, the rules or thresholds that decide between outcomes, "
+    "what the app produces and where it goes, and what to do when a step fails.\n"
+    "Rules:\n"
+    "- Keep the user's intent. Never drop or contradict a concrete value they gave "
+    "(amounts, names, systems, thresholds).\n"
+    "- Add only detail that plainly follows from what they asked for. Do not invent business "
+    "policies, integrations, or data their request does not imply.\n"
+    "- Write in the same language as the instruction.\n"
+    "- Keep it to one paragraph of at most 120 words. This is a build prompt, not a specification.\n"
+    "- Do not ask questions, and add no headings, lists, markdown, or preamble.\n"
+    "Reply with ONLY the rewritten instruction."
+)
+
+
+def _clean_improved_instruction(text: str) -> str:
+    """Strip the wrappers a model adds around what should be plain text.
+
+    A fenced block is the common one; surrounding quotes are next. Returns ""
+    when nothing survives, which the caller reads as "no improvement".
+    """
+    cleaned = text.strip()
+    fence = re.match(r"^```[a-zA-Z]*\n(.*?)\n?```$", cleaned, re.DOTALL)
+    if fence:
+        cleaned = fence.group(1)
+    return cleaned.strip().strip("\"'").strip()
+
+
 def _parse_string_list(text: str) -> list[str]:
     """Extract a JSON array of strings from a (possibly noisy) LLM response.
 
@@ -458,6 +497,71 @@ class LLMGenerator:
             if len(cleaned) >= count:
                 break
         return cleaned
+
+    @classmethod
+    def improve_workflow_instruction(
+        cls,
+        tenant_id: str,
+        *,
+        instruction: str,
+        mode: Literal["workflow", "advanced-chat"] = "workflow",
+        language: str | None = None,
+    ) -> str:
+        """Expand a build instruction with the details it leaves unstated.
+
+        Backs the composer's "Add missing details" action, which runs BEFORE an
+        app exists and before the user picks a model -- so it is tenant-scoped
+        and uses the tenant's DEFAULT LLM. Like suggestions it is a soft
+        enhancement: every failure path (no default model, LLM error, empty or
+        echoed output) returns "" meaning "no improvement", and the caller keeps
+        the user's own text. This method NEVER raises.
+
+        Deliberately NOT grounded in the tenant's tools or knowledge bases.
+        Naming specific tools here would prejudice the workflow generator's own
+        tool router, which selects from the full installed catalogue at build
+        time against the instruction it is actually given.
+        """
+        original = instruction.strip()
+        if not original:
+            return ""
+
+        try:
+            model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_default_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+            )
+        except Exception:
+            logger.info("Workflow instruction improvement: no default model for tenant %s", tenant_id)
+            return ""
+
+        app_type_label = (
+            "Workflow -- single-shot automation" if mode == "workflow" else "Chatflow -- conversational multi-turn"
+        )
+        user_lines = [f"App type: {app_type_label}", f"Instruction:\n{original}"]
+        if language:
+            user_lines.append(f"Write the rewritten instruction in this language: {language}.")
+
+        prompt_messages: list[PromptMessage] = [
+            SystemPromptMessage(content=_IMPROVE_SYSTEM_PROMPT),
+            UserPromptMessage(content="\n\n".join(user_lines)),
+        ]
+
+        try:
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters={"max_tokens": _IMPROVE_MAX_TOKENS, "temperature": _IMPROVE_TEMPERATURE},
+                stream=False,
+            )
+        except Exception:
+            logger.exception("Workflow instruction improvement: LLM invocation failed")
+            return ""
+
+        improved = _clean_improved_instruction(response.message.get_text_content() or "")
+        # An echo, or a rewrite that lost ground, is not an improvement -- say
+        # "no change" rather than churning the user's text for nothing.
+        if not improved or improved == original or len(improved) < len(original):
+            return ""
+        return improved
 
     @staticmethod
     def _build_suggestion_context(tenant_id: str) -> str:

@@ -16,6 +16,7 @@ from controllers.console.app.generator import (
     RuleCodeGeneratePayload,
     RuleGeneratePayload,
     WorkflowGeneratePayload,
+    WorkflowInstructionImprovePayload,
     WorkflowInstructionSuggestionsPayload,
 )
 from core.errors.error import ProviderTokenNotInitError
@@ -656,6 +657,183 @@ def test_workflow_instruction_suggestions_route_empty_is_valid_200(app: Flask, m
         response = method(api, WorkflowInstructionSuggestionsPayload.model_validate(request.get_json()), "t1")
 
     assert response == {"suggestions": []}
+
+
+# ─ /workflow-generate/improve ────────────────────────────────────
+
+
+_SHORT_INSTRUCTION = "Build a finance expense workflow"
+_EXPANDED_INSTRUCTION = (
+    "Build a finance expense workflow. The submitter uploads a receipt and enters the amount and "
+    "category. Check each claim against the expense policy, approve anything within limits, and "
+    "route the rest to the manager for review. Return the decision and the reason."
+)
+
+
+def test_improve_instruction_expands_a_short_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The default model's rewrite is returned once it clears the echo/shrink checks."""
+    from core.llm_generator import llm_generator as llm_gen_module
+
+    instance = MagicMock()
+    instance.invoke_llm.return_value.message.get_text_content.return_value = _EXPANDED_INSTRUCTION
+    mock_manager = MagicMock()
+    mock_manager.for_tenant.return_value.get_default_model_instance.return_value = instance
+    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+
+    result = llm_gen_module.LLMGenerator.improve_workflow_instruction(
+        tenant_id="t1", instruction=_SHORT_INSTRUCTION, mode="workflow"
+    )
+
+    assert result == _EXPANDED_INSTRUCTION
+
+
+def test_improve_instruction_strips_fences_and_quotes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A fenced or quoted rewrite is unwrapped -- the field holds plain text."""
+    from core.llm_generator import llm_generator as llm_gen_module
+
+    instance = MagicMock()
+    instance.invoke_llm.return_value.message.get_text_content.return_value = f'```text\n"{_EXPANDED_INSTRUCTION}"\n```'
+    mock_manager = MagicMock()
+    mock_manager.for_tenant.return_value.get_default_model_instance.return_value = instance
+    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+
+    result = llm_gen_module.LLMGenerator.improve_workflow_instruction(
+        tenant_id="t1", instruction=_SHORT_INSTRUCTION, mode="workflow"
+    )
+
+    assert result == _EXPANDED_INSTRUCTION
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        _SHORT_INSTRUCTION,  # a verbatim echo
+        "Build a finance flow",  # shorter than the input
+        "   ",  # nothing usable
+    ],
+)
+def test_improve_instruction_reports_no_change_when_it_did_not_improve(
+    reply: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An echo, a shrink, or blank output all mean "no improvement" -- never a raise."""
+    from core.llm_generator import llm_generator as llm_gen_module
+
+    instance = MagicMock()
+    instance.invoke_llm.return_value.message.get_text_content.return_value = reply
+    mock_manager = MagicMock()
+    mock_manager.for_tenant.return_value.get_default_model_instance.return_value = instance
+    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+
+    result = llm_gen_module.LLMGenerator.improve_workflow_instruction(
+        tenant_id="t1", instruction=_SHORT_INSTRUCTION, mode="workflow"
+    )
+
+    assert result == ""
+
+
+def test_improve_instruction_no_default_model_returns_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A missing default model degrades to "no improvement", never raising."""
+    from core.llm_generator import llm_generator as llm_gen_module
+
+    mock_manager = MagicMock()
+    mock_manager.for_tenant.return_value.get_default_model_instance.side_effect = ProviderTokenNotInitError(
+        "no default model"
+    )
+    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+
+    result = llm_gen_module.LLMGenerator.improve_workflow_instruction(
+        tenant_id="t1", instruction=_SHORT_INSTRUCTION, mode="workflow"
+    )
+
+    assert result == ""
+
+
+def test_improve_instruction_llm_error_returns_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An LLM failure is swallowed: the caller keeps the user's own text."""
+    from core.llm_generator import llm_generator as llm_gen_module
+
+    instance = MagicMock()
+    instance.invoke_llm.side_effect = RuntimeError("upstream exploded")
+    mock_manager = MagicMock()
+    mock_manager.for_tenant.return_value.get_default_model_instance.return_value = instance
+    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+
+    result = llm_gen_module.LLMGenerator.improve_workflow_instruction(
+        tenant_id="t1", instruction=_SHORT_INSTRUCTION, mode="workflow"
+    )
+
+    assert result == ""
+
+
+def test_improve_instruction_route_returns_rewrite(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The route reports the rewrite with ``changed: true`` and forwards mode/language."""
+    api = generator_module.WorkflowInstructionImproveApi()
+    method = unwrap(api.post)
+
+    captured: dict = {}
+
+    def _improve(**kwargs):
+        captured.update(kwargs)
+        return _EXPANDED_INSTRUCTION
+
+    monkeypatch.setattr(generator_module.LLMGenerator, "improve_workflow_instruction", _improve)
+
+    with app.test_request_context(
+        "/console/api/workflow-generate/improve",
+        method="POST",
+        json={"instruction": f"  {_SHORT_INSTRUCTION}  ", "mode": "advanced-chat", "language": "French"},
+    ):
+        response = method(api, WorkflowInstructionImprovePayload.model_validate(request.get_json()), "t1")
+
+    assert response == {"instruction": _EXPANDED_INSTRUCTION, "changed": True}
+    assert captured["instruction"] == _SHORT_INSTRUCTION  # trimmed before the model sees it
+    assert captured["mode"] == "advanced-chat"
+    assert captured["language"] == "French"
+    assert captured["tenant_id"] == "t1"
+
+
+def test_improve_instruction_route_soft_fail_keeps_the_users_text(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A soft failure is a 200 carrying the caller's own instruction back."""
+    api = generator_module.WorkflowInstructionImproveApi()
+    method = unwrap(api.post)
+
+    monkeypatch.setattr(generator_module.LLMGenerator, "improve_workflow_instruction", lambda **_kwargs: "")
+
+    with app.test_request_context(
+        "/console/api/workflow-generate/improve",
+        method="POST",
+        json={"instruction": _SHORT_INSTRUCTION},
+    ):
+        response = method(api, WorkflowInstructionImprovePayload.model_validate(request.get_json()), "t1")
+
+    assert response == {"instruction": _SHORT_INSTRUCTION, "changed": False}
+
+
+@pytest.mark.parametrize(
+    ("instruction", "code"),
+    [("   ", "EMPTY_INSTRUCTION"), ("x" * 10_001, "INSTRUCTION_TOO_LONG")],
+)
+def test_improve_instruction_route_rejects_bad_input_without_calling_the_model(
+    instruction: str, code: str, app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The boundary guard rejects before spending an LLM round-trip."""
+    api = generator_module.WorkflowInstructionImproveApi()
+    method = unwrap(api.post)
+
+    def _must_not_run(**_kwargs):
+        raise AssertionError("the model must not be invoked for a rejected instruction")
+
+    monkeypatch.setattr(generator_module.LLMGenerator, "improve_workflow_instruction", _must_not_run)
+
+    with app.test_request_context(
+        "/console/api/workflow-generate/improve",
+        method="POST",
+        json={"instruction": instruction},
+    ):
+        body, status = method(api, WorkflowInstructionImprovePayload.model_validate(request.get_json()), "t1")
+
+    assert status == 400
+    assert body["errors"][0]["code"] == code
 
 
 # ─ /workflow-generate/stream ──────────────────────────────────────────────────
