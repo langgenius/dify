@@ -217,8 +217,6 @@ jobs:
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed == 'true'
     uses: ./.github/workflows/api-tests.yml
-    with:
-      performance-experiments: ${{ contains(github.event.pull_request.labels.*.name, 'ci-performance-experiment') }}
     secrets: inherit
 
   api-tests-skip:
@@ -401,7 +399,6 @@ jobs:
     uses: ./.github/workflows/web-e2e.yml
     with:
       run-external-runtime: false
-      performance-experiments: ${{ contains(github.event.pull_request.labels.*.name, 'ci-performance-experiment') }}
     secrets: inherit
 
   web-e2e-skip:
