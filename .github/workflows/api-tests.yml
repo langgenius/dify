@@ -56,21 +56,23 @@ jobs:
 
       - name: Run Unit Tests
         run: |
+          uv run --project api python api/dev/pytest_sharding.py \
+            --shard-index "${{ matrix.shardIndex }}" \
+            --shard-total "${{ matrix.shardTotal }}" \
+            --ignore api/tests/unit_tests/controllers \
+            api/tests/unit_tests \
+            api/providers/vdb/*/tests/unit_tests \
+            api/providers/trace/*/tests/unit_tests > "$RUNNER_TEMP/unit-test-files.txt"
           uv run --project api pytest \
             -p no:benchmark \
             --timeout "${PYTEST_TIMEOUT:-20}" \
             -n auto \
-            --shard-index "${{ matrix.shardIndex }}" \
-            --shard-total "${{ matrix.shardTotal }}" \
             -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --durations=50 \
             --report-collection-timing \
             --junitxml=test-results/unit.xml \
-            api/tests/unit_tests \
-            api/providers/vdb/*/tests/unit_tests \
-            api/providers/trace/*/tests/unit_tests \
-            --ignore=api/tests/unit_tests/controllers
+            "@$RUNNER_TEMP/unit-test-files.txt"
           # Controller tests register Flask routes at import time, so keep them out of xdist.
           uv run --project api pytest \
             --timeout "${PYTEST_TIMEOUT:-20}" \
