@@ -21,7 +21,7 @@ Run commands from the repository root. Install dependencies and browsers once wi
 - Middleware lifecycle: `pnpm -C e2e e2e:middleware:up` and `pnpm -C e2e e2e:middleware:down`
 - Scoped static checks: `vp check e2e`
 
-The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1` to force a frontend rebuild. The external-runtime CI lane restores the Next.js incremental build cache and retains sequential service startup. The external lane also experiments with a shellctl image archive keyed by runtime source, runner architecture, and UTC week; service startup remains owned by the runner. Startup stage durations are printed in the job log. Use `E2E_BROWSER=webkit` for focused cross-browser runs and `E2E_SLOW_MO=500` with a headed command for local action debugging.
+The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1` to force a frontend rebuild. The external-runtime CI lane restores the Next.js incremental build cache and retains sequential service startup. The external lane also caches a shellctl image archive keyed by runtime source, runner architecture, and UTC week; service startup remains owned by the runner. Startup stage durations are printed in the job log. Use `E2E_BROWSER=webkit` for focused cross-browser runs and `E2E_SLOW_MO=500` with a headed command for local action debugging.
 
 ## Runtime Ownership
 

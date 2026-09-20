@@ -8,16 +8,6 @@ on:
         required: true
         default: true
         type: boolean
-      cache-shellctl:
-        description: Restore and save the shellctl image cache (disable for control runs).
-        required: true
-        default: true
-        type: boolean
-      parallel-dependencies:
-        description: Overlap API and web dependency installation (disable for control runs).
-        required: true
-        default: true
-        type: boolean
   workflow_call:
     inputs:
       run-external-runtime:
@@ -236,8 +226,6 @@ jobs:
 
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
-        with:
-          run-install: ${{ (github.event_name != 'workflow_dispatch' || inputs.parallel-dependencies) && 'false' || 'true' }}
 
       - name: Restore external Next.js build cache
         id: external-next-cache
@@ -257,32 +245,22 @@ jobs:
             api/uv.lock
             dify-agent/uv.lock
 
-      - name: Install dependencies in parallel
-        if: github.event_name != 'workflow_dispatch' || inputs.parallel-dependencies
-        timeout-minutes: 15
-        env:
-          E2E_INSTALL_BROWSER: chromium
-          E2E_SETUP_ACTION_PATH: ${{ github.workspace }}/.github/actions/setup-core-e2e
-        run: bash "$E2E_SETUP_ACTION_PATH/install.sh"
-
       - name: Install API dependencies
-        if: github.event_name == 'workflow_dispatch' && !inputs.parallel-dependencies
         run: uv sync --project api --dev
 
       - name: Install Chromium
-        if: github.event_name == 'workflow_dispatch' && !inputs.parallel-dependencies
         timeout-minutes: 15
         working-directory: ./e2e
         run: vp run e2e:install:ci:chromium
 
       - name: Compute shellctl cache epoch
         id: shellctl-epoch
-        if: github.event_name != 'workflow_dispatch' || inputs.cache-shellctl
+        if: (vars.E2E_START_AGENT_BACKEND || '1') != '0'
         run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
 
       - name: Restore shellctl image cache
         id: shellctl-cache
-        if: github.event_name != 'workflow_dispatch' || inputs.cache-shellctl
+        if: (vars.E2E_START_AGENT_BACKEND || '1') != '0'
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ runner.temp }}/e2e-shellctl-image.tar
