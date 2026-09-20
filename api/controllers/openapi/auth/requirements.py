@@ -20,15 +20,18 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.common.rbac import RBACCheck, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
+from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import Subject
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
 from models.enums import CreatorUserRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
+from services.errors.workspace import WorkspaceInvitationQuotaError, WorkspaceMemberLicenseQuotaError
 from services.system_feature_service import SystemFeatureService
 
 _DEAD_LICENSE_STATUSES = frozenset({LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST})
@@ -114,6 +117,19 @@ class CheckScope(Requirement):
         if Scope.FULL in subject.scopes or self.scope in subject.scopes:
             return
         raise Forbidden("insufficient_scope")
+
+
+class CheckWorkspaceInvitationQuota(Requirement):
+    """Run after workspace membership and permission checks, before the handler."""
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        try:
+            application_services().workspaces.invitations.check_invitation_quota(ctx.request_context)
+        except WorkspaceMemberLicenseQuotaError as error:
+            raise MemberLicenseExceeded() from error
+        except WorkspaceInvitationQuotaError as error:
+            raise MemberLimitExceeded() from error
 
 
 class CheckRBACPermission(Requirement):

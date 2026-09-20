@@ -27,7 +27,9 @@ from services.errors.workspace import (
 )
 from services.workspace.contracts import (
     OwnerTransferToken,
+    WorkspaceInvitation,
     WorkspaceInvitationResult,
+    WorkspaceMemberPage,
     WorkspaceMemberRecord,
     WorkspaceMemberRemoval,
     WorkspaceMemberRole,
@@ -69,6 +71,11 @@ class WorkspaceMemberQueryService:
     ) -> tuple[WorkspaceMemberRecord, ...]:
         role = TenantAccountRole.DATASET_OPERATOR if dataset_operators_only else None
         return tuple(self._members.list_for_workspace(workspace_id, role=role))
+
+    def list_page(self, context: RequestContext, *, page: int, limit: int) -> WorkspaceMemberPage:
+        records = self.list_members(context.active_workspace_id)
+        start = (page - 1) * limit
+        return WorkspaceMemberPage(members=records[start : start + limit], total=len(records))
 
     def list_current(self, context: RequestContext) -> tuple[WorkspaceMemberSummary, ...]:
         workspace_id = context.active_workspace_id
@@ -284,6 +291,8 @@ class WorkspaceInvitationDelivery(Protocol):
 
     def ensure_allowed(self, workspace_id: str) -> None: ...
 
+    def check_invitation_quota(self, workspace_id: str) -> None: ...
+
     def create(self, invitation: InvitationToken) -> str: ...
 
     def send(self, *, language: str, email: str, token: str, inviter_name: str, workspace_name: str) -> None: ...
@@ -302,6 +311,9 @@ class WorkspaceInvitationService:
         self._workspaces = workspaces
         self._members = members
         self._invitations = invitations
+
+    def check_invitation_quota(self, context: RequestContext) -> None:
+        self._invitations.check_invitation_quota(context.active_workspace_id)
 
     def invite_many(
         self, context: RequestContext, *, emails: Sequence[str], language: str | None, role: str
@@ -331,8 +343,8 @@ class WorkspaceInvitationService:
                     )
             for email in emails:
                 try:
-                    token = self.invite(workspace_id, email, language, role, inviter_id=context.account_id)
-                    results.append(WorkspaceInvitationResult(email, "success", token=token))
+                    invitation = self.invite(context, email, language, role)
+                    results.append(WorkspaceInvitationResult(email, "success", token=invitation.token))
                 except AccountAlreadyInTenantError:
                     results.append(
                         WorkspaceInvitationResult(email, "already_member", message="Account already in workspace.")
@@ -343,13 +355,13 @@ class WorkspaceInvitationService:
 
     def invite(
         self,
-        workspace_id: str,
+        context: RequestContext,
         email: str,
         language: str | None,
         role: str = "normal",
-        *,
-        inviter_id: str,
-    ) -> str:
+    ) -> WorkspaceInvitation:
+        workspace_id = context.active_workspace_id
+        inviter_id = context.account_id
         inviter = self._accounts.get_account_by_id(inviter_id)
         workspace = self._workspaces.get(workspace_id)
         if inviter is None:
@@ -407,7 +419,7 @@ class WorkspaceInvitationService:
             inviter_name=inviter.name,
             workspace_name=workspace.name,
         )
-        return token
+        return WorkspaceInvitation(workspace_id, account.id, normalized_email, role, token)
 
 
 class OwnerTransferGateway(Protocol):

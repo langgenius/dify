@@ -11,7 +11,7 @@ from services.account.adapters import RedisInvitationTokenStore
 from services.enterprise.enterprise_service import WorkspacePermission
 from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel, LimitationModel
 from services.errors.base import NoPermissionError
-from services.errors.workspace import WorkspaceInvitationQuotaError
+from services.errors.workspace import WorkspaceInvitationQuotaError, WorkspaceMemberLicenseQuotaError
 from services.workspace import gateways
 from tests.unit_tests.account_domain import AccountDomain
 
@@ -155,6 +155,58 @@ def test_community_invitation_does_not_query_quotas(
     invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=1)
     features.assert_not_called()
     license_query.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("edition", "plan_limit", "license_quota", "error"),
+    [
+        (DeploymentEdition.CLOUD, 2, LicenseLimitationModel(), WorkspaceInvitationQuotaError),
+        (DeploymentEdition.CLOUD, 3, LicenseLimitationModel(), None),
+        (DeploymentEdition.CLOUD, 0, LicenseLimitationModel(), None),
+        (DeploymentEdition.CLOUD, -1, LicenseLimitationModel(), None),
+        (
+            DeploymentEdition.ENTERPRISE,
+            2,
+            LicenseLimitationModel(enabled=True, size=2, limit=2),
+            WorkspaceMemberLicenseQuotaError,
+        ),
+        (DeploymentEdition.ENTERPRISE, 2, LicenseLimitationModel(enabled=True, size=2, limit=3), None),
+        (DeploymentEdition.ENTERPRISE, 2, LicenseLimitationModel(enabled=True, size=2, limit=0), None),
+        (DeploymentEdition.COMMUNITY, 2, LicenseLimitationModel(enabled=False, size=2, limit=2), None),
+        (
+            DeploymentEdition.CLOUD,
+            3,
+            LicenseLimitationModel(enabled=True, size=2, limit=2),
+            WorkspaceMemberLicenseQuotaError,
+        ),
+    ],
+)
+def test_single_invitation_quota_preserves_plan_and_license_limits(
+    invitations: gateways.WorkspaceInvitationGateway,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    plan_limit: int,
+    license_quota: LicenseLimitationModel,
+    error: type[WorkspaceInvitationQuotaError] | None,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    features = FeatureModel(members=LimitationModel(size=2, limit=plan_limit), workspace_members=license_quota)
+    requested: list[str] = []
+
+    def get_features(tenant_id: str, *, exclude_vector_space: bool = False) -> FeatureModel:
+        requested.append(tenant_id)
+        assert exclude_vector_space
+        return features
+
+    monkeypatch.setattr(gateways.FeatureService, "get_features", get_features)
+
+    if error is None:
+        invitations.check_invitation_quota("workspace")
+    else:
+        with pytest.raises(error):
+            invitations.check_invitation_quota("workspace")
+    assert requested == ["workspace"]
 
 
 def test_owner_transfer_notifies_both_owners(account_domain: AccountDomain, monkeypatch: pytest.MonkeyPatch) -> None:

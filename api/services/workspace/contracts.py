@@ -104,6 +104,15 @@ class WorkspaceInvitationResult:
     message: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class WorkspaceInvitation:
+    workspace_id: str
+    account_id: str
+    email: str
+    role: str
+    token: str
+
+
 @dataclass(frozen=True)
 class EffectiveCreditPool:
     plan: CloudPlan | None = None
@@ -168,6 +177,12 @@ class WorkspaceMemberRecord(NamedTuple):
     @property
     def role(self) -> str:
         return self.legacy_role
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceMemberPage:
+    members: tuple[WorkspaceMemberRecord, ...]
+    total: int
 
 
 class WorkspaceMemberRoleSubject(NamedTuple):

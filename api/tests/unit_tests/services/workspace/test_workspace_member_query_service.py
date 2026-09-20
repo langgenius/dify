@@ -154,3 +154,20 @@ def test_member_listing_passes_role_filter_to_repository(operators_only: bool) -
     assert members.workspace_ids == ["workspace-1"]
     assert members.requested_roles == [TenantAccountRole.DATASET_OPERATOR if operators_only else None]
     assert roles.calls == []
+
+
+@pytest.mark.parametrize(
+    ("count", "page", "limit", "expected_ids"),
+    [(5, 2, 2, ["2", "3"]), (5, 3, 2, ["4"]), (5, 4, 2, []), (0, 1, 20, [])],
+)
+def test_member_page_preserves_total_and_order(count: int, page: int, limit: int, expected_ids: list[str]) -> None:
+    members = RecordingMemberQuery([make_member(str(index)) for index in range(count)])
+    roles = RecordingRoleResolver({})
+    service = WorkspaceMemberQueryService(members=members, roles=roles)
+
+    result = service.list_page(make_context(), page=page, limit=limit)
+
+    assert result.total == count
+    assert [member.id for member in result.members] == expected_ids
+    assert members.workspace_ids == ["workspace-1"]
+    assert roles.calls == []

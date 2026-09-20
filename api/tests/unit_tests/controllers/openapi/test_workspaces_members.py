@@ -7,7 +7,7 @@ Coverage:
 - Domain exception → HTTP code mapping is preserved with the service's
   original message (so CLI users see what the console user sees)
 - Response shape matches the Pydantic models
-- The invite route actually commits its unit of work
+- Invitations persist through the application service and its repositories
 
 Auth is not exercised here: `@endpoint` resolves the `Context` before the
 handler runs, and the allow/deny answers live in `test_auth_matrix.py`. Body
@@ -23,7 +23,6 @@ import builtins
 import uuid
 from datetime import UTC, datetime
 from http import HTTPMethod
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -39,8 +38,6 @@ from controllers.openapi import bp as openapi_bp
 from controllers.openapi import workspaces as workspaces_module
 from controllers.openapi._errors import (
     ErrorBody,
-    MemberLicenseExceeded,
-    MemberLimitExceeded,
     OpenApiErrorCode,
 )
 from controllers.openapi._models import MemberInvitePayload, MemberListQuery, MemberRoleUpdatePayload
@@ -48,11 +45,10 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller, load_workspace
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.workspaces import WorkspaceMemberApi, WorkspaceMembersApi, WorkspaceSwitchApi
-from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, TokenType
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
-from services.account_errors import AccountRegisterError
+from services.account_errors import AccountNotFoundError, AccountRegisterError
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (
     AccountAlreadyInTenantError,
@@ -60,9 +56,11 @@ from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
     RoleAlreadyAssignedError,
+    WorkspaceInvitationQuotaError,
+    WorkspaceMemberLicenseQuotaError,
     WorkspaceNotLinkedError,
 )
-from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.account_domain import AccountDomain
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.model_factories import make_account, make_tenant
 
@@ -349,22 +347,17 @@ def _invite_body(email: str = "new@example.com") -> MemberInvitePayload:
     return MemberInvitePayload(email=email, role="normal")
 
 
-def test_invite_happy_path_returns_invite_url_and_member_id(monkeypatch: pytest.MonkeyPatch, database_session: Session):
+def test_invite_happy_path_returns_invite_url_and_member_id(
+    database_session: Session, account_domain: AccountDomain
+) -> None:
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
-    invited_id = str(uuid.uuid4())
     _persist_workspace(
         database_session,
         ws_id,
         [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, True)],
-    )
-    database_session.add(_account(account_id=invited_id, email="new@example.com"))
-    database_session.commit()
-
-    monkeypatch.setattr(
-        workspaces_module.application_services().workspaces.invitations, "invite", Mock(return_value="tok-123")
     )
 
     result = api.post.__handler__(
@@ -377,108 +370,62 @@ def test_invite_happy_path_returns_invite_url_and_member_id(monkeypatch: pytest.
     assert result.result == "success"
     assert result.email == "new@example.com"
     assert result.role == "normal"
-    assert result.member_id == invited_id
-    assert "token=tok-123" in result.invite_url
+    invited = account_domain.repository.get(result.member_id)
+    assert invited is not None
+    assert invited.email == result.email
+    assert "token=invitation-token" in result.invite_url
     assert "email=new%40example.com" in result.invite_url
     assert result.tenant_id == ws_id
 
 
-def _features(
-    *,
-    members_size: int = 0,
-    members_limit: int = 0,
-    workspace_members_enabled: bool = False,
-    workspace_members_size: int = 0,
-    workspace_members_limit: int = 0,
-) -> SimpleNamespace:
-    """Build a feature object matching the surface `_check_member_invite_quota`
-    reads: `.members.{size,limit}`,
-    `.workspace_members.{enabled, is_available(N)}`.
+@pytest.mark.parametrize(
+    ("error", "code"),
+    [
+        (WorkspaceInvitationQuotaError(), OpenApiErrorCode.MEMBER_LIMIT_EXCEEDED),
+        (WorkspaceMemberLicenseQuotaError(), OpenApiErrorCode.MEMBER_LICENSE_EXCEEDED),
+    ],
+)
+def test_invitation_quota_admission_preserves_error_contract(
+    admitted_bearer: AdmittedWorld,
+    account_domain: AccountDomain,
+    error: WorkspaceInvitationQuotaError,
+    code: OpenApiErrorCode,
+) -> None:
+    account_domain.delivery.check_invitation_quota.side_effect = error
 
-    Defaults leave both quotas unrestricted.
-    """
-
-    def _is_available(n: int) -> bool:
-        return workspace_members_size + n <= workspace_members_limit
-
-    return SimpleNamespace(
-        members=SimpleNamespace(size=members_size, limit=members_limit),
-        workspace_members=SimpleNamespace(
-            enabled=workspace_members_enabled,
-            size=workspace_members_size,
-            limit=workspace_members_limit,
-            is_available=_is_available,
-        ),
+    response = admitted_bearer.client.post(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members",
+        headers=admitted_bearer.headers,
+        json={"email": "new@example.com", "role": "normal"},
     )
 
+    assert response.status_code == 403
+    assert ErrorBody.model_validate(response.get_json()).code == code
+    account_domain.delivery.check_invitation_quota.assert_called_once_with(admitted_bearer.workspace_id)
+    assert account_domain.repository.find_by_email("new@example.com") is None
+    account_domain.delivery.send.assert_not_called()
 
-@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-def test_invite_blocked_by_saas_members_cap(monkeypatch: pytest.MonkeyPatch, database_session: Session):
-    """SaaS billing plan member cap → MemberLimitExceeded (403)."""
-    ws_id = str(uuid.uuid4())
-    acct_id = uuid.uuid4()
-    api = WorkspaceMembersApi()
 
-    _persist_workspace(
-        database_session,
-        ws_id,
-        [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, True)],
+def test_invitation_permission_rejection_precedes_quota_lookup(
+    admitted_bearer: AdmittedWorld, account_domain: AccountDomain, sqlite_session: Session
+) -> None:
+    membership = sqlite_session.scalar(
+        select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == admitted_bearer.workspace_id)
+    )
+    assert membership is not None
+    membership.role = TenantAccountRole.NORMAL
+    sqlite_session.commit()
+
+    response = admitted_bearer.client.post(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members",
+        headers=admitted_bearer.headers,
+        json={"email": "new@example.com", "role": "normal"},
     )
 
-    invite_mock = Mock()
-    monkeypatch.setattr(workspaces_module.application_services().workspaces.invitations, "invite", invite_mock)
-    monkeypatch.setattr(
-        workspaces_module,
-        "FeatureService",
-        SimpleNamespace(
-            get_features=Mock(
-                return_value=_features(members_size=10, members_limit=10),
-            ),
-        ),
-    )
-
-    with pytest.raises(MemberLimitExceeded):
-        api.post.__handler__(api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, body=_invite_body())
-
-    invite_mock.assert_not_called()
-
-
-@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-def test_invite_blocked_by_ee_workspace_members_license(monkeypatch: pytest.MonkeyPatch, database_session: Session):
-    """EE License workspace_members cap → MemberLicenseExceeded (403).
-
-    Enterprise member limits come from the license.
-    """
-    ws_id = str(uuid.uuid4())
-    acct_id = uuid.uuid4()
-    api = WorkspaceMembersApi()
-
-    _persist_workspace(
-        database_session,
-        ws_id,
-        [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, True)],
-    )
-
-    invite_mock = Mock()
-    monkeypatch.setattr(workspaces_module.application_services().workspaces.invitations, "invite", invite_mock)
-    monkeypatch.setattr(
-        workspaces_module,
-        "FeatureService",
-        SimpleNamespace(
-            get_features=Mock(
-                return_value=_features(
-                    workspace_members_enabled=True,
-                    workspace_members_size=5,
-                    workspace_members_limit=5,
-                ),
-            ),
-        ),
-    )
-
-    with pytest.raises(MemberLicenseExceeded):
-        api.post.__handler__(api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, body=_invite_body())
-
-    invite_mock.assert_not_called()
+    assert response.status_code == 403
+    assert ErrorBody.model_validate(response.get_json()).code == OpenApiErrorCode.FORBIDDEN
+    account_domain.delivery.check_invitation_quota.assert_not_called()
+    account_domain.delivery.send.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -519,7 +466,10 @@ def test_invite_400_on_registration_refusal(monkeypatch: pytest.MonkeyPatch, dat
 # ---------------------------------------------------------------------------
 
 
-def test_delete_member_happy_path(monkeypatch: pytest.MonkeyPatch, database_session: Session):
+@pytest.mark.parametrize("member_id_format", ["canonical", "uppercase", "hex"])
+def test_delete_member_happy_path(
+    database_session: Session, account_domain: AccountDomain, member_id_format: str
+) -> None:
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
@@ -533,15 +483,14 @@ def test_delete_member_happy_path(monkeypatch: pytest.MonkeyPatch, database_sess
         ],
     )
 
-    remove_mock = Mock()
-    monkeypatch.setattr(workspaces_module.application_services().workspaces.members, "remove", remove_mock)
-
+    path_member_id = _member_id_variant(member_id, member_id_format)
     result = api.delete.__handler__(
-        api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, member_id=member_id
+        api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, member_id=path_member_id
     )
 
     assert result.result == "success"
-    assert remove_mock.called
+    assert account_domain.members.get_role(ws_id, member_id) is None
+    assert account_domain.repository.get(member_id) is not None
 
 
 @pytest.mark.parametrize(
@@ -550,6 +499,7 @@ def test_delete_member_happy_path(monkeypatch: pytest.MonkeyPatch, database_sess
         (CannotOperateSelfError("cannot operate self"), BadRequest),
         (NoPermissionError("no permission"), BadRequest),
         (MemberNotInTenantError("not in tenant"), NotFound),
+        (AccountNotFoundError(), NotFound),
     ],
 )
 def test_delete_member_exception_mapping(monkeypatch, exc, expected, database_session: Session):
@@ -572,7 +522,8 @@ def test_delete_member_exception_mapping(monkeypatch, exc, expected, database_se
         api.delete.__handler__(api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, member_id=member_id)
 
 
-def test_delete_member_404_when_member_missing(database_session: Session):
+@pytest.mark.parametrize("method", ["delete", "patch"])
+def test_member_mutation_404_when_account_missing(database_session: Session, method: str) -> None:
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
@@ -583,8 +534,19 @@ def test_delete_member_404_when_member_missing(database_session: Session):
         [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, True)],
     )
 
-    with pytest.raises(NotFound):
-        api.delete.__handler__(api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, member_id=member_id)
+    ctx = _context(database_session, acct_id, ws_id)
+    if method == "delete":
+        with pytest.raises(NotFound, match="member not found"):
+            api.delete.__handler__(api, ctx, workspace_id=ws_id, member_id=member_id)
+    else:
+        with pytest.raises(NotFound, match="member not found"):
+            api.patch.__handler__(
+                api,
+                ctx,
+                workspace_id=ws_id,
+                member_id=member_id,
+                body=MemberRoleUpdatePayload(role="admin"),
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -592,7 +554,10 @@ def test_delete_member_404_when_member_missing(database_session: Session):
 # ---------------------------------------------------------------------------
 
 
-def test_update_role_happy_path(monkeypatch: pytest.MonkeyPatch, database_session: Session):
+@pytest.mark.parametrize("member_id_format", ["canonical", "uppercase", "hex"])
+def test_update_role_happy_path(
+    database_session: Session, account_domain: AccountDomain, member_id_format: str
+) -> None:
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
@@ -606,20 +571,88 @@ def test_update_role_happy_path(monkeypatch: pytest.MonkeyPatch, database_sessio
         ],
     )
 
-    update_mock = Mock()
-    monkeypatch.setattr(workspaces_module.application_services().workspaces.members, "update_role", update_mock)
-
     result = api.patch.__handler__(
         api,
         _context(database_session, acct_id, ws_id),
         workspace_id=ws_id,
-        member_id=member_id,
+        member_id=_member_id_variant(member_id, member_id_format),
         body=MemberRoleUpdatePayload(role="admin"),
     )
 
     assert result.result == "success"
-    args = update_mock.call_args.args
-    assert args[2] == "admin"
+    assert account_domain.members.get_role(ws_id, member_id) == TenantAccountRole.ADMIN
+
+
+def _member_id_variant(member_id: str, variant: str) -> str:
+    if variant == "uppercase":
+        return member_id.upper()
+    if variant == "hex":
+        return uuid.UUID(member_id).hex
+    if variant == "uppercase_hex":
+        return uuid.UUID(member_id).hex.upper()
+    return member_id
+
+
+@pytest.mark.parametrize("member_id_format", ["canonical", "uppercase", "hex", "uppercase_hex"])
+@pytest.mark.parametrize(
+    ("method", "caller_role"), [("DELETE", TenantAccountRole.OWNER), ("PATCH", TenantAccountRole.ADMIN)]
+)
+def test_member_id_aliases_cannot_bypass_self_operation_guard(
+    admitted_bearer: AdmittedWorld,
+    database_session: Session,
+    account_domain: AccountDomain,
+    member_id_format: str,
+    method: str,
+    caller_role: TenantAccountRole,
+) -> None:
+    membership = database_session.scalar(
+        select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == admitted_bearer.workspace_id)
+    )
+    assert membership is not None
+    account_id = membership.account_id
+    membership.role = caller_role
+    owner_id = account_id
+    if caller_role == TenantAccountRole.ADMIN:
+        owner_id = str(uuid.uuid4())
+        database_session.add_all(
+            [
+                _account(owner_id, "owner@example.com"),
+                TenantAccountJoin(
+                    tenant_id=admitted_bearer.workspace_id, account_id=owner_id, role=TenantAccountRole.OWNER
+                ),
+            ]
+        )
+    database_session.commit()
+    path_member_id = _member_id_variant(account_id, member_id_format)
+
+    response = admitted_bearer.client.open(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members/{path_member_id}",
+        method=method,
+        headers=admitted_bearer.headers,
+        json={"role": "normal"} if method == "PATCH" else None,
+    )
+
+    assert response.status_code == 400
+    error = ErrorBody.model_validate(response.get_json())
+    assert error.code == OpenApiErrorCode.BAD_REQUEST
+    assert error.message == "Cannot operate self."
+    assert account_domain.members.get_role(admitted_bearer.workspace_id, account_id) == caller_role
+    assert account_domain.members.get_role(admitted_bearer.workspace_id, owner_id) == TenantAccountRole.OWNER
+    account_domain.access.member_removed.assert_not_called()
+    account_domain.access.change_role.assert_not_called()
+
+
+@pytest.mark.parametrize("method", ["DELETE", "PATCH"])
+def test_malformed_member_id_returns_404(admitted_bearer: AdmittedWorld, method: str) -> None:
+    response = admitted_bearer.client.open(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members/not-a-uuid",
+        method=method,
+        headers=admitted_bearer.headers,
+        json={"role": "admin"} if method == "PATCH" else None,
+    )
+
+    assert response.status_code == 404
+    assert ErrorBody.model_validate(response.get_json()).message == "member not found"
 
 
 @pytest.mark.parametrize(
@@ -630,6 +663,7 @@ def test_update_role_happy_path(monkeypatch: pytest.MonkeyPatch, database_sessio
         (RoleAlreadyAssignedError("already"), BadRequest),
         (InvalidWorkspaceMemberRoleError("Dataset operators are not enabled."), BadRequest),
         (MemberNotInTenantError("not in tenant"), NotFound),
+        (AccountNotFoundError(), NotFound),
     ],
 )
 def test_update_role_exception_mapping(monkeypatch, exc, expected, database_session: Session):

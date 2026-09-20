@@ -200,10 +200,16 @@ def test_new_invitation_normalizes_email_and_sets_current_workspace(
     account_domain: AccountDomain, members: tuple[str, str, str]
 ) -> None:
     workspace_id, owner_id, _ = members
-    token = account_domain.invitations.invite(workspace_id, "New@Example.com", "en-US", "editor", inviter_id=owner_id)
-    assert token == "invitation-token"
+    result = account_domain.invitations.invite(
+        RequestContext("request", None, owner_id, workspace_id), "New@Example.com", "en-US", "editor"
+    )
+    assert result.token == "invitation-token"
+    assert result.email == "new@example.com"
+    assert result.workspace_id == workspace_id
+    assert result.role == "editor"
     invitee = account_domain.repository.find_by_email("new@example.com")
     assert invitee is not None
+    assert result.account_id == invitee.id
     assert invitee.status == "pending"
     assert account_domain.members.get_role(workspace_id, invitee.id) == TenantAccountRole.EDITOR
     membership = account_domain.workspaces.find_membership(invitee.id, workspace_id)
@@ -219,7 +225,7 @@ def test_active_invitee_must_accept_before_joining(
 ) -> None:
     workspace_id, owner_id, _ = members
     account = account_domain.accounts.create_account("new@example.com", "New", "en-US")
-    account_domain.invitations.invite(workspace_id, account.email, None, inviter_id=owner_id)
+    account_domain.invitations.invite(RequestContext("request", None, owner_id, workspace_id), account.email, None)
     assert account_domain.members.get_role(workspace_id, account.id) is None
     assert account_domain.delivery.create.call_args.args[0].requires_setup is False
 
@@ -232,7 +238,7 @@ def test_pending_member_can_be_reinvited(
     assert account is not None
     account.status = AccountStatus.PENDING
     sqlite_session.commit()
-    account_domain.invitations.invite(workspace_id, account.email, None, inviter_id=owner_id)
+    account_domain.invitations.invite(RequestContext("request", None, owner_id, workspace_id), account.email, None)
     assert account_domain.delivery.create.call_args.args[0].requires_setup is True
 
 
@@ -241,7 +247,9 @@ def test_active_member_is_reported_without_sending_invitation(
 ) -> None:
     workspace_id, owner_id, _ = members
     with pytest.raises(AccountAlreadyInTenantError):
-        account_domain.invitations.invite(workspace_id, "member@example.com", None, inviter_id=owner_id)
+        account_domain.invitations.invite(
+            RequestContext("request", None, owner_id, workspace_id), "member@example.com", None
+        )
     account_domain.delivery.send.assert_not_called()
 
 

@@ -13,6 +13,7 @@ from configs import dify_config
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
+from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from services.account.adapters import RedisInvitationTokenStore
 from services.account_errors import InvalidInvitationError
@@ -53,7 +54,11 @@ def test_invitation_token_round_trip_and_acceptance(
     monkeypatch.setattr(gateways.send_invite_member_mail_task, "delay", send)
     services = application_services()
 
-    token = services.workspaces.invitations.invite(tenant.id, invited.email, "en-US", "admin", inviter_id=owner.id)
+    invitation = services.workspaces.invitations.invite(
+        RequestContext("request", None, owner.id, tenant.id), invited.email, "en-US", "admin"
+    )
+    token = invitation.token
+    assert invitation.account_id == invited.id
 
     token_key = f"member_invite:token:{token}"
     payload = redis_client.get(token_key)

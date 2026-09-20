@@ -85,3 +85,7 @@ class WorkspaceInvitationQuotaError(WorkspaceApplicationError):
     def __init__(self, *, seats: bool = False) -> None:
         super().__init__("Workspace invitation quota exceeded")
         self.seats = seats
+
+
+class WorkspaceMemberLicenseQuotaError(WorkspaceInvitationQuotaError):
+    """The workspace member allowance in the license is exhausted."""

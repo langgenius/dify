@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app_factory import create_flask_app_with_configs
 from controllers.openapi import bp as openapi_bp
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import AuthContext, TokenType
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
@@ -123,9 +124,18 @@ def admitted_bearer(
 
 
 @pytest.fixture(autouse=True)
-def _account_services(monkeypatch: pytest.MonkeyPatch, account_application_services):
+def _account_services(monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices) -> None:
     from controllers.openapi import apps, apps_permitted_external, oauth_device, oauth_device_sso, workspaces
-    from controllers.openapi.auth import loaders, subjects
+    from controllers.openapi.auth import loaders, requirements, subjects
 
-    for module in (apps, apps_permitted_external, oauth_device, oauth_device_sso, workspaces, loaders, subjects):
+    for module in (
+        apps,
+        apps_permitted_external,
+        oauth_device,
+        oauth_device_sso,
+        workspaces,
+        loaders,
+        requirements,
+        subjects,
+    ):
         monkeypatch.setattr(module, "application_services", lambda: account_application_services)

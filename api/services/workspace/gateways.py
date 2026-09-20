@@ -40,6 +40,7 @@ from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     OwnerTransferSendRateLimitError,
     WorkspaceInvitationQuotaError,
+    WorkspaceMemberLicenseQuotaError,
 )
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -153,6 +154,19 @@ class WorkspaceInvitationGateway:
     def ensure_role_enabled(self, role: str) -> None:
         _ensure_role_enabled(role)
 
+    def check_invitation_quota(self, workspace_id: str) -> None:
+        """Admit a single invitation using the advertised plan and license limits.
+
+        Unlike batch capacity checks, this gate also applies to reinvitations
+        and uses the billing-reported member count.
+        """
+        features = FeatureService.get_features(tenant_id=workspace_id, exclude_vector_space=True)
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            if 0 < features.members.limit <= features.members.size:
+                raise WorkspaceInvitationQuotaError()
+        if features.workspace_members.enabled and not features.workspace_members.is_available(1):
+            raise WorkspaceMemberLicenseQuotaError()
+
     def check_capacity(self, workspace_id: str, *, current_members: int, new_members: int, new_accounts: int) -> None:
         if dify_config.DEPLOYMENT_EDITION not in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}:
             return
@@ -160,7 +174,7 @@ class WorkspaceInvitationGateway:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             quota = features.workspace_members
             if quota.enabled and not quota.is_available(new_members):
-                raise WorkspaceInvitationQuotaError()
+                raise WorkspaceMemberLicenseQuotaError()
             if new_accounts and not SystemFeatureService.get_license().seats.is_available(new_accounts):
                 raise WorkspaceInvitationQuotaError(seats=True)
         elif 0 < features.members.limit < current_members + new_members:
