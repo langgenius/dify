@@ -92,6 +92,19 @@ class ToolCandidateSelection:
     pinned_count: int
 
 
+@dataclass(frozen=True)
+class LegacyToolFallbackSelection:
+    entries: list[ToolCatalogueEntry]
+    omitted_entries: list[ToolCatalogueEntry]
+    pinned_count: int
+    limit: int
+
+    @property
+    def overflow_count(self) -> int:
+        """Count intentional pinned overflow beyond the legacy prompt cap."""
+        return max(0, len(self.entries) + len(self.omitted_entries) - self.limit)
+
+
 def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
     """
     Enumerate installed tools for the given tenant.
@@ -292,13 +305,13 @@ def select_tool_candidates(
     )
 
 
-def select_legacy_fallback_tools(
+def select_legacy_fallback_selection(
     entries: list[ToolCatalogueEntry],
     *,
     explicit_text: str = "",
     current_graph: dict[str, Any] | None = None,
-) -> list[ToolCatalogueEntry]:
-    """Keep pinned tools while reproducing the legacy bounded prompt fallback."""
+) -> LegacyToolFallbackSelection:
+    """Keep pinned tools and expose the tools omitted by the legacy fallback."""
     pinned = select_tool_candidates(
         entries,
         [],
@@ -307,10 +320,27 @@ def select_legacy_fallback_tools(
     ).entries
     pinned_keys = {(entry["provider_name"], entry["tool_name"]) for entry in pinned}
     regular_limit = max(0, _MAX_PROMPT_TOOLS - len(pinned))
-    regular = [entry for entry in entries if (entry["provider_name"], entry["tool_name"]) not in pinned_keys][
-        :regular_limit
-    ]
-    return [*pinned, *regular]
+    regular = [entry for entry in entries if (entry["provider_name"], entry["tool_name"]) not in pinned_keys]
+    return LegacyToolFallbackSelection(
+        entries=[*pinned, *regular[:regular_limit]],
+        omitted_entries=regular[regular_limit:],
+        pinned_count=len(pinned),
+        limit=_MAX_PROMPT_TOOLS,
+    )
+
+
+def select_legacy_fallback_tools(
+    entries: list[ToolCatalogueEntry],
+    *,
+    explicit_text: str = "",
+    current_graph: dict[str, Any] | None = None,
+) -> list[ToolCatalogueEntry]:
+    """Keep pinned tools while reproducing the legacy bounded prompt fallback."""
+    return select_legacy_fallback_selection(
+        entries,
+        explicit_text=explicit_text,
+        current_graph=current_graph,
+    ).entries
 
 
 def _find_explicit_tool_keys(
