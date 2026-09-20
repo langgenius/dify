@@ -370,6 +370,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 (
     apikey,
+    evaluation,
     extension,
     feature,
     human_input_form,
@@ -509,6 +510,7 @@ __all__ = [
     "datasource_content_preview",
     "email_register",
     "endpoint",
+    "evaluation",
     "extension",
     "external",
     "feature",
