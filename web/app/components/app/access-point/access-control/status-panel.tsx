@@ -115,7 +115,9 @@ export function AccessControlStatusPanel({
           <Switch
             checked={enabled}
             disabled={updating || readOnly}
-            aria-label={t(($) => $['studio.accessControl.restrictByIp'], { ns: 'deployments' })}
+            aria-label={t(($) => $['studio.accessControl.enableAccessControl'], {
+              ns: 'deployments',
+            })}
             onCheckedChange={(next) => {
               if (readOnly || updating) return
               if (next) {

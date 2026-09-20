@@ -41,44 +41,7 @@ const accessControlTranslations = vi.hoisted(() => ({
   'settings.ipPolicyNewTitle': 'New IP Policy',
   'settings.ipPolicyRemoveEntry': 'Remove entry',
   'settings.trigger': 'Trigger',
-  'studio.accessControl.addressCount': '{{count}} addresses',
-  'studio.accessControl.applyTo': 'Apply to',
-  'studio.accessControl.applyToHelp': 'Choose which access points to protect.',
-  'studio.accessControl.applyToHelpSelected': 'Choose which access points this policy protects.',
-  'studio.accessControl.createIpPolicy': 'Create an IP policy',
-  'studio.accessControl.downgradeDescription': 'Access control needs the Pro plan.',
-  'studio.accessControl.downgradeTitle': 'This app is no longer protected',
-  'studio.accessControl.emptyPoliciesTitle': 'No IP policies in this workspace yet',
-  'studio.accessControl.chipOff': 'Off',
-  'studio.accessControl.chipOn': 'ON',
-  'studio.accessControl.chipPartial': '{{n}} of {{m}}',
-  'studio.accessControl.entryLabel': 'Access Control',
-  'studio.accessControl.ipPolicy': 'IP Policy',
-  'studio.accessControl.manageIpPolicies': 'Manage IP policies',
-  'studio.accessControl.notEnabled': 'Not enabled',
-  'studio.accessControl.paywallDescription': 'Restrict this app to IP addresses you trust.',
-  'studio.accessControl.paywallTitle': 'Access Control',
-  'studio.accessControl.policySummaryOne': 'Allows {{address}}',
-  'studio.accessControl.previewAppName': 'Code Companion',
-  'studio.accessControl.previewCaption':
-    "This app is only available on your organization's network.",
-  'studio.accessControl.proBadge': 'PRO',
-  'studio.accessControl.protectsCoverage': 'Protects {{n}} of {{m}} access points',
-  'studio.accessControl.readyToResume': 'Ready to resume',
-  'studio.accessControl.selectPolicy': 'Select a policy',
-  'studio.accessControl.tooltipOff': 'Not set up',
-  'studio.accessControl.tooltipPro': 'Access control requires the Pro plan',
-  'studio.accessControl.turnOn': 'Turn on Access Control',
-  'studio.accessControl.restrictByIp': 'Restrict by IP address',
-  'studio.accessControl.restrictedTo': 'Restricted to {{name}}',
-  'studio.accessControl.excluded': 'Excluded',
-  'studio.accessControl.protectingAll': 'Protecting all {{count}} access points in service.',
-  'studio.accessControl.protectingPartial': 'Protecting {{n}} of {{m}} access points in service.',
-  'studio.accessControl.policySummaryTwo': 'Allows {{first}} and {{second}}',
   'operation.edit': 'Edit',
-  'studio.accessControl.turnOffTitle': 'Turn off access control?',
-  'studio.accessControl.turnOffDescription': '{{points}} will be reachable from any IP.',
-  'studio.accessControl.turnOffConfirm': 'Turn off',
 }))
 
 vi.mock('nuqs', async (importOriginal) => {
@@ -94,7 +57,8 @@ vi.mock('nuqs', async (importOriginal) => {
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock(accessControlTranslations)
+  const { default: deploymentTranslations } = await import('@/i18n/en-US/deployments.json')
+  return createReactI18nextMock({ ...accessControlTranslations, ...deploymentTranslations })
 })
 
 const renderEntry = ({
@@ -186,7 +150,7 @@ describe('AccessControlEntry', () => {
     expect(screen.getByText('Protects 3 of 3 access points')).toBeInTheDocument()
     expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('switch', { name: 'Restrict by IP address' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Enable access control' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Turn on Access Control' }))
     expect(mockSetPricing).toHaveBeenCalledWith('open')
@@ -284,7 +248,7 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
+    await user.click(screen.getByRole('button', { name: 'Add IP Policy' }))
 
     expect(screen.getByRole('heading', { name: 'New IP Policy' })).toBeInTheDocument()
     expect(mockSetSettingsDestination).not.toHaveBeenCalled()
@@ -295,7 +259,7 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
+    await user.click(screen.getByRole('button', { name: 'Add IP Policy' }))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
 
     await waitFor(() => {
@@ -330,7 +294,7 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
+    await user.click(screen.getByRole('button', { name: 'Add IP Policy' }))
     await user.type(screen.getByPlaceholderText('e.g. Internal Network'), 'Office')
     await user.type(screen.getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
     await user.click(screen.getByRole('button', { name: 'Create' }))
@@ -397,7 +361,7 @@ describe('AccessControlEntry', () => {
     expect(within(getChip()).getByText('ON')).toBeInTheDocument()
     await user.click(getChip())
     expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
   })
 
   it('keeps the saved chip state until a turned-off draft is saved', async () => {
@@ -419,7 +383,7 @@ describe('AccessControlEntry', () => {
     })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+    await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
     await user.click(screen.getByRole('button', { name: 'Turn off' }))
 
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
@@ -626,7 +590,7 @@ describe('AccessControlEntry', () => {
     })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+    await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
     await user.click(screen.getByRole('button', { name: 'Turn off' }))
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
 
@@ -769,7 +733,7 @@ describe('supported access points and binding permission', () => {
     const user = userEvent.setup()
     const { unmount } = renderEntry({ plan: 'professional', role: 'editor' })
     await user.click(getChip())
-    expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add IP Policy' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Manage IP policies' }))
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
     unmount()
@@ -832,7 +796,7 @@ describe('supported access points and binding permission', () => {
     try {
       renderEntry({ plan: 'professional', groups: [createNetworkAccessGroupFixture()], binding })
       await user.click(getChip())
-      await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+      await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
       expect(screen.getByRole('alertdialog')).toHaveTextContent(
         'Web App, MCP Server will be reachable from any IP.',
       )
@@ -851,8 +815,8 @@ describe('supported access points and binding permission', () => {
       await waitFor(() =>
         expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
       )
-      expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).not.toBeChecked()
-      await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+      expect(screen.getByRole('switch', { name: 'Enable access control' })).not.toBeChecked()
+      await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
       await user.click(screen.getByRole('button', { name: 'Save' }))
       await waitFor(() => expect(payloads).toHaveLength(2))
       expect(payloads[1]).toEqual({
@@ -881,7 +845,7 @@ describe('supported access points and binding permission', () => {
       })
       await user.click(getChip())
       expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
-      expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toHaveAttribute(
+      expect(screen.getByRole('switch', { name: 'Enable access control' })).toHaveAttribute(
         'aria-disabled',
         'true',
       )
@@ -891,7 +855,7 @@ describe('supported access points and binding permission', () => {
       expect(
         screen.queryByRole('button', { name: 'Turn on Access Control' }),
       ).not.toBeInTheDocument()
-      await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+      await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       expect(fetchSpy).not.toHaveBeenCalled()
     } finally {
@@ -923,7 +887,7 @@ describe('supported access points and binding permission', () => {
     expect(screen.getByText('Protecting all 3 access points in service.')).toBeInTheDocument()
     expect(screen.queryByText('Office')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toHaveAttribute(
+    expect(screen.getByRole('switch', { name: 'Enable access control' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
@@ -948,19 +912,19 @@ describe('supported access points and binding permission', () => {
       binding: createBinding(),
     })
     await user.click(getChip())
-    await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+    await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
     rendered.rerender(<AccessControlEntry appId="app-1" appIcon={{}} canEditBinding={false} />)
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     await user.click(getChip())
-    expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
 
     rendered.rerender(<AccessControlEntry appId="app-1" appIcon={{}} canEditBinding />)
     await user.click(getChip())
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   })
 

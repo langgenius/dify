@@ -172,6 +172,9 @@ export function IpPolicyDialog({
                 <FieldLabel>
                   {t(($) => $['settings.ipPolicyUsedByLabel'], { ns: 'common' })}
                 </FieldLabel>
+                <p className="system-xs-regular text-text-tertiary">
+                  {t(($) => $['settings.ipPolicyEditUsedBy'], { ns: 'common' })}
+                </p>
                 <PolicyReferencedApps apps={referencedApps} usedByCount={usedByCount} />
               </Field>
             )}

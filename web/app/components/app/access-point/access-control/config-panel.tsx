@@ -8,7 +8,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { PopoverTitle } from '@langgenius/dify-ui/popover'
+import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { canSaveAccessControl, hasSelectedAccessPoint } from './draft'
 import { AccessControlPolicyField } from './policy-field'
@@ -52,9 +53,13 @@ export function AccessControlConfigPanel({
   onSave,
 }: AccessControlConfigPanelProps) {
   const { t } = useTranslation()
+  const policyErrorId = useId()
+  const accessPointErrorId = useId()
   const title = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
   const hasSelectedPolicy = Boolean(draft.selectedPolicyId)
   const hasPersistableSelection = hasSelectedAccessPoint(draft, availableAccessPoints)
+  const showPolicyError = draft.enabled && !hasSelectedPolicy
+  const showAccessPointError = draft.enabled && !hasPersistableSelection
   const canSave = !readOnly && canSaveAccessControl({ draft, baseline, availableAccessPoints })
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -84,11 +89,25 @@ export function AccessControlConfigPanel({
           <PopoverTitle className="min-w-0 flex-1 system-md-semibold text-text-primary">
             {title}
           </PopoverTitle>
+          <IconButton
+            type="button"
+            size="lg"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={onCancel}
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
         </div>
       </div>
+      <PopoverDescription className="px-4 pb-2 system-sm-regular text-text-tertiary">
+        {t(($) => $['studio.accessControl.description'], { ns: 'deployments' })}
+      </PopoverDescription>
 
       <div className="flex flex-col gap-5 overflow-hidden px-4 pt-2 pb-4">
-        <Fieldset className="flex w-full flex-col gap-1">
+        <Fieldset
+          className="flex w-full flex-col gap-1"
+          aria-describedby={showPolicyError ? policyErrorId : undefined}
+        >
           <FieldsetLegend className="mb-0 py-0">
             {t(($) => $['studio.accessControl.ipPolicy'], { ns: 'deployments' })}
           </FieldsetLegend>
@@ -105,9 +124,17 @@ export function AccessControlConfigPanel({
               onDraftChange({ ...draft, selectedPolicyId: policyId })
             }}
           />
+          {showPolicyError && (
+            <p id={policyErrorId} className="system-xs-regular text-text-warning">
+              {t(($) => $['studio.accessControl.selectPolicyRequired'], { ns: 'deployments' })}
+            </p>
+          )}
         </Fieldset>
 
-        <Fieldset className="flex w-full flex-col gap-1">
+        <Fieldset
+          className="flex w-full flex-col gap-1"
+          aria-describedby={showAccessPointError ? accessPointErrorId : undefined}
+        >
           <FieldsetLegend className="mb-0 py-0">
             {t(($) => $['studio.accessControl.applyTo'], { ns: 'deployments' })}
           </FieldsetLegend>
@@ -123,8 +150,8 @@ export function AccessControlConfigPanel({
             readOnly={readOnly}
             onDraftChange={onDraftChange}
           />
-          {hasSelectedPolicy && draft.enabled && !hasPersistableSelection && (
-            <p className="system-xs-regular text-text-warning">
+          {showAccessPointError && (
+            <p id={accessPointErrorId} className="system-xs-regular text-text-warning">
               {t(($) => $['studio.accessControl.selectAccessPoint'], { ns: 'deployments' })}
             </p>
           )}

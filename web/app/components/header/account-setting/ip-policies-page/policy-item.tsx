@@ -19,9 +19,10 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { PolicyReferencedApps } from './referenced-apps'
@@ -99,20 +100,29 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
       <div className={policyActionsColClassName}>
         {canMutate && (
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-            <DropdownMenuTrigger
-              render={
-                <IconButton
-                  size="md"
-                  aria-label={t(($) => $['operation.moreActionsFor'], {
-                    ns: 'common',
-                    name: group.name,
-                  })}
-                  className="data-popup-open:bg-state-base-hover"
-                >
-                  <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-                </IconButton>
-              }
-            />
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <DropdownMenuTrigger
+                    render={
+                      <IconButton
+                        size="md"
+                        aria-label={t(($) => $['operation.moreActionsFor'], {
+                          ns: 'common',
+                          name: group.name,
+                        })}
+                        className="data-popup-open:bg-state-base-hover"
+                      >
+                        <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+                      </IconButton>
+                    }
+                  />
+                }
+              />
+              <TooltipContent>
+                {t(($) => $['settings.ipPolicyMore'], { ns: 'common' })}
+              </TooltipContent>
+            </Tooltip>
             <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-35">
               <DropdownMenuItem
                 disabled={!canMutate}
@@ -152,8 +162,8 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
           className="flex w-120 flex-col gap-6 p-6 shadow-xl"
         >
           <div className="flex items-start gap-4">
-            <AlertDialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-              {t(($) => $['settings.ipPolicyDeleteConfirm'], { ns: 'common' })}
+            <AlertDialogTitle className="min-w-0 flex-1 title-2xl-semi-bold wrap-anywhere text-text-primary">
+              {t(($) => $['settings.ipPolicyDeleteConfirm'], { ns: 'common', name: group.name })}
             </AlertDialogTitle>
             <IconButton
               size="lg"
@@ -166,16 +176,9 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
           </div>
           <div className="flex flex-col gap-4">
             <AlertDialogDescription className="text-sm leading-5.5 wrap-anywhere text-text-tertiary">
-              <Trans
-                ns="common"
-                i18nKey={
-                  isBound
-                    ? ($) => $['settings.ipPolicyDeleteBoundDescription']
-                    : ($) => $['settings.ipPolicyDeleteDescription']
-                }
-                values={{ name: group.name }}
-                components={{ policyName: <strong className="font-semibold" /> }}
-              />
+              {isBound
+                ? t(($) => $['settings.ipPolicyDeleteBoundDescription'], { ns: 'common' })
+                : t(($) => $['settings.ipPolicyDeleteDescription'], { ns: 'common' })}
             </AlertDialogDescription>
             {isBound && (
               <div className="flex flex-col gap-3">

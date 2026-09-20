@@ -154,14 +154,12 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
         : chip.kind === 'on'
           ? t(($) => $['studio.accessControl.tooltipOn'], {
               ns: 'deployments',
-              name: chip.policyName ?? '',
             })
           : chip.kind === 'partial'
             ? t(($) => $['studio.accessControl.tooltipPartial'], {
                 ns: 'deployments',
-                name: chip.policyName ?? '',
                 n: chip.coveredCount,
-                m: chip.inServiceCount,
+                total: chip.inServiceCount,
               })
             : t(($) => $['studio.accessControl.tooltipOff'], { ns: 'deployments' })
 

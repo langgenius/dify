@@ -53,7 +53,7 @@ export function AccessControlChipAffix({
             status={kind === 'off' ? 'disabled' : kind === 'paused' ? 'warning' : 'success'}
           />
         </span>
-        <span className="system-xs-semibold text-text-tertiary uppercase">{statusLabel}</span>
+        <span className="system-xs-semibold text-text-tertiary">{statusLabel}</span>
       </span>
     </>
   )

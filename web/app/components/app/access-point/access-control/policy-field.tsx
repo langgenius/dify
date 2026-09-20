@@ -14,13 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import {
   policyIncludesIp,
   splitPolicySummary,
 } from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
 
-const MANAGE_POLICIES_VALUE = '__manage-ip-policies__'
+const CREATE_POLICY_VALUE = '__create-ip-policy__'
 
 type AccessControlPolicyFieldProps = {
   policies: readonly AccessControlPolicy[]
@@ -53,6 +54,20 @@ export function AccessControlPolicyField({
     !policyIncludesIp(selectedPolicy.allowed_cidrs, currentIp)
   const selectLabel = t(($) => $['studio.accessControl.ipPolicy'], { ns: 'deployments' })
   const placeholder = t(($) => $['studio.accessControl.selectPolicy'], { ns: 'deployments' })
+  const canCreatePolicy = canManagePolicies && !readOnly
+  const manageLabel = t(($) => $['studio.accessControl.manageIpPolicies'], { ns: 'deployments' })
+  const manageButton = (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <IconButton type="button" size="lg" aria-label={manageLabel} onClick={onManagePolicies}>
+            <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+          </IconButton>
+        }
+      />
+      <TooltipContent>{manageLabel}</TooltipContent>
+    </Tooltip>
+  )
 
   if (policies.length === 0) {
     return (
@@ -60,7 +75,7 @@ export function AccessControlPolicyField({
         <p className="w-full text-center system-sm-medium text-text-secondary">
           {t(($) => $['studio.accessControl.emptyPoliciesTitle'], { ns: 'deployments' })}
         </p>
-        {canManagePolicies && !readOnly ? (
+        {canCreatePolicy ? (
           <Button type="button" variant="secondary-accent" onClick={onCreatePolicy}>
             {t(($) => $['studio.accessControl.createIpPolicy'], { ns: 'deployments' })}
           </Button>
@@ -87,12 +102,16 @@ export function AccessControlPolicyField({
           <SelectItemIndicator />
         </SelectItem>
       ))}
-      <SelectSeparator />
-      <SelectItem value={MANAGE_POLICIES_VALUE}>
-        <SelectItemText>
-          {t(($) => $['studio.accessControl.manageIpPolicies'], { ns: 'deployments' })}
-        </SelectItemText>
-      </SelectItem>
+      {canCreatePolicy && (
+        <>
+          <SelectSeparator />
+          <SelectItem value={CREATE_POLICY_VALUE}>
+            <SelectItemText>
+              {t(($) => $['studio.accessControl.createIpPolicy'], { ns: 'deployments' })}
+            </SelectItemText>
+          </SelectItem>
+        </>
+      )}
     </>
   )
 
@@ -114,50 +133,45 @@ export function AccessControlPolicyField({
               className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary"
             />
           </div>
-          <IconButton
-            size="lg"
-            aria-label={t(($) => $['settings.ipPolicies'], { ns: 'common' })}
-            onClick={onManagePolicies}
-          >
-            <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-          </IconButton>
+          {manageButton}
         </div>
-        <div
-          role="listbox"
-          aria-label={selectLabel}
-          className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-xs"
-        >
-          {policies.map((policy) => (
-            <button
-              key={policy.id}
-              type="button"
-              role="option"
-              aria-selected={false}
-              disabled={readOnly}
-              className="flex h-8 w-full cursor-pointer items-center rounded-lg px-2 text-left system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              onClick={() => {
-                if (!readOnly) onSelectPolicy(policy.id)
-              }}
-            >
-              <span className="min-w-0 flex-1 truncate px-1">{policy.name}</span>
-              <span className="shrink-0 system-xs-regular text-text-tertiary">
-                {t(($) => $['studio.accessControl.addressCount'], {
-                  ns: 'deployments',
-                  count: policy.allowed_cidrs.length,
-                })}
-              </span>
-            </button>
-          ))}
-          <div className="my-1 h-px bg-divider-subtle" />
-          <button
-            type="button"
-            className="flex h-8 w-full cursor-pointer items-center rounded-lg px-2 text-left system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            onClick={onManagePolicies}
-          >
-            <span className="px-1">
-              {t(($) => $['studio.accessControl.manageIpPolicies'], { ns: 'deployments' })}
-            </span>
-          </button>
+        <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-xs">
+          <div role="listbox" aria-label={selectLabel}>
+            {policies.map((policy) => (
+              <button
+                key={policy.id}
+                type="button"
+                role="option"
+                aria-selected={false}
+                disabled={readOnly}
+                className="flex h-8 w-full cursor-pointer items-center rounded-lg px-2 text-left system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                onClick={() => {
+                  if (!readOnly) onSelectPolicy(policy.id)
+                }}
+              >
+                <span className="min-w-0 flex-1 truncate px-1">{policy.name}</span>
+                <span className="shrink-0 system-xs-regular text-text-tertiary">
+                  {t(($) => $['studio.accessControl.addressCount'], {
+                    ns: 'deployments',
+                    count: policy.allowed_cidrs.length,
+                  })}
+                </span>
+              </button>
+            ))}
+          </div>
+          {canCreatePolicy && (
+            <>
+              <div className="my-1 h-px bg-divider-subtle" />
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={onCreatePolicy}
+              >
+                {t(($) => $['studio.accessControl.createIpPolicy'], { ns: 'deployments' })}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     )
@@ -171,8 +185,8 @@ export function AccessControlPolicyField({
           disabled={readOnly}
           onValueChange={(value) => {
             if (readOnly) return
-            if (value === MANAGE_POLICIES_VALUE) {
-              onManagePolicies()
+            if (value === CREATE_POLICY_VALUE) {
+              if (canCreatePolicy) onCreatePolicy()
               return
             }
             if (value) onSelectPolicy(value)
@@ -187,13 +201,7 @@ export function AccessControlPolicyField({
             {policyOptions}
           </SelectContent>
         </Select>
-        <IconButton
-          size="lg"
-          aria-label={t(($) => $['settings.ipPolicies'], { ns: 'common' })}
-          onClick={onManagePolicies}
-        >
-          <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-        </IconButton>
+        {manageButton}
       </div>
       {summary && (
         <p className="system-xs-regular text-text-tertiary">
