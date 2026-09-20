@@ -628,6 +628,22 @@ function AgentConfigurePageComposerContent({
               agentId={agentId}
               activeVersionId={activeVersionId}
               onSelectVersion={selectVersion}
+              restoreDisabled={
+                buildDraft.isActive ||
+                buildDraftActionsDisabled ||
+                isEnteringBuildMode ||
+                isPublishing
+              }
+              onBeforeRestore={async () => {
+                if (!isViewingVersion) {
+                  await waitForPendingPreviewDraftSave()
+                  await saveDraft()
+                }
+              }}
+              onVersionRestored={async () => {
+                await composerQuery.refetch()
+                onComposerRebase()
+              }}
               onClose={() => setShowPreviewVersions(false)}
             />
           )}

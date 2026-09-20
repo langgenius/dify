@@ -39,6 +39,8 @@ export function VersionItem({
   isLast,
   onSelect,
   onExport,
+  onRestore,
+  restoreDisabled,
   exportDisabled,
   showUpgrade,
 }: {
@@ -49,6 +51,8 @@ export function VersionItem({
   isLast: boolean
   onSelect: (versionId: string) => void
   onExport?: (versionId: string) => void
+  onRestore?: (version: AgentConfigSnapshotSummaryResponse) => void
+  restoreDisabled?: boolean
   exportDisabled?: boolean
   showUpgrade?: boolean
 }) {
@@ -67,7 +71,7 @@ export function VersionItem({
         onClick={() => onSelect(version.id)}
         className={cn(
           'group relative flex w-full items-start gap-1 rounded-lg py-1 pl-2 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-          onExport ? 'pr-8' : 'pr-1.5',
+          onExport || onRestore ? 'pr-8' : 'pr-1.5',
           isActive ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
         )}
       >
@@ -96,7 +100,7 @@ export function VersionItem({
           <VersionMetadata version={version} />
         </div>
       </button>
-      {onExport && (
+      {(onExport || onRestore) && (
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -110,19 +114,36 @@ export function VersionItem({
             }
           />
           <DropdownMenuContent placement="bottom-end" className="min-w-40">
-            <DropdownMenuItem
-              disabled={exportDisabled}
-              onClick={() => onExport(version.id)}
-              className="gap-2"
-            >
-              <span aria-hidden className="i-ri-file-download-line size-4 shrink-0" />
-              <span className="flex-1">{t(($) => $.exportApp, { ns: 'app' })}</span>
-              {showUpgrade && (
-                <PremiumBadge size="s">
-                  {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
-                </PremiumBadge>
-              )}
-            </DropdownMenuItem>
+            {onRestore && (
+              <DropdownMenuItem
+                disabled={restoreDisabled}
+                onClick={() => onRestore(version)}
+                className="gap-2"
+              >
+                <span aria-hidden className="i-ri-history-line size-4 shrink-0" />
+                <span className="flex-1">{tWorkflow(($) => $['common.restore'])}</span>
+                {showUpgrade && (
+                  <PremiumBadge size="s">
+                    {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
+                  </PremiumBadge>
+                )}
+              </DropdownMenuItem>
+            )}
+            {onExport && (
+              <DropdownMenuItem
+                disabled={exportDisabled}
+                onClick={() => onExport(version.id)}
+                className="gap-2"
+              >
+                <span aria-hidden className="i-ri-file-download-line size-4 shrink-0" />
+                <span className="flex-1">{t(($) => $.exportApp, { ns: 'app' })}</span>
+                {showUpgrade && (
+                  <PremiumBadge size="s">
+                    {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
+                  </PremiumBadge>
+                )}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       )}
