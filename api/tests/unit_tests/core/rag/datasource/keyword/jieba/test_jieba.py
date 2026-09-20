@@ -1,6 +1,6 @@
 import json
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Literal
 from unittest.mock import MagicMock
 
 import pytest
@@ -169,6 +169,59 @@ def test_add_texts_persists_child_node_id_in_keyword_table(monkeypatch: pytest.M
     )
 
 
+@pytest.mark.parametrize("method", ["create", "add_texts"])
+@pytest.mark.parametrize("child_only", [False, True])
+def test_keyword_batch_persists_without_child_parent_lookups(
+    method: Literal["create", "add_texts"],
+    child_only: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    patched_runtime,
+    sqlite_engine,
+    sqlite_session_factory,
+):
+    """The child fast path saves one batch and preserves default parent-field updates."""
+    keyword = Jieba(make_dataset())
+    handler = MagicMock()
+    handler.extract_keywords.return_value = {"keyword"}
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", lambda: handler)
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE="database")
+    session = patched_runtime.session
+    segment = _segment(index_node_id="parent-node")
+    session.add(segment)
+    session.commit()
+    node_ids = [f"child-{i}" for i in range(10)] if child_only else ["parent-node"]
+    documents = [Document(page_content="keyword", metadata={"doc_id": node_id}) for node_id in node_ids]
+    statements: list[str] = []
+
+    def record_sql(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
+
+    event.listen(sqlite_engine, "before_cursor_execute", record_sql)
+    try:
+        writer = keyword.create if method == "create" else keyword.add_texts
+        if child_only:
+            writer(documents, session, update_segment_keywords=False)
+        else:
+            writer(documents, session)
+        session.commit()
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record_sql)
+
+    parent_lookups = [sql for sql in statements if "FROM document_segments" in sql]
+    assert len(parent_lookups) == (0 if child_only else 1)
+    assert sum(sql.startswith("UPDATE dataset_keyword_tables") for sql in statements) == 1
+    patched_runtime.lock.assert_called_once_with("keyword_indexing_lock_dataset-1", timeout=600)
+    with sqlite_session_factory() as read_session:
+        table = read_session.scalar(select(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == "dataset-1"))
+        assert table is not None
+        assert set(json.loads(table.keyword_table)["__data__"]["table"]["keyword"]) == set(node_ids)
+        stored_segment = read_session.get(DocumentSegment, segment.id)
+        assert stored_segment is not None
+        assert stored_segment.keywords == ([] if child_only else ["keyword"])
+
+
 def test_text_exists_handles_missing_and_existing_keyword_table(
     monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ):
@@ -217,6 +270,31 @@ def test_delete_by_ids_saves_none_when_keyword_table_is_missing(monkeypatch: pyt
     keyword._get_dataset_keyword_table.assert_called_once_with(patched_runtime.session)
     keyword._delete_ids_from_keyword_table.assert_not_called()
     keyword._save_dataset_keyword_table.assert_called_once_with(None, patched_runtime.session)
+
+
+@pytest.mark.parametrize("document_ids_filter", [None, ["doc-2"]])
+def test_search_empty_hits_skip_materialization_queries(
+    document_ids_filter, monkeypatch: pytest.MonkeyPatch, patched_runtime, sqlite_engine
+):
+    keyword = Jieba(_dataset(_dataset_keyword_table()))
+    monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=[]))
+    logger = MagicMock()
+    monkeypatch.setattr(jieba_module, "logger", logger)
+    statements: list[str] = []
+
+    def record_sql(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
+
+    event.listen(sqlite_engine, "before_cursor_execute", record_sql)
+    try:
+        documents = keyword.search("no-match", session=patched_runtime.session, document_ids_filter=document_ids_filter)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record_sql)
+
+    assert documents == []
+    assert statements == []
+    logger.warning.assert_not_called()
+    logger.debug.assert_not_called()
 
 
 def test_search_returns_documents_in_rank_order_and_applies_filter(monkeypatch: pytest.MonkeyPatch, patched_runtime):

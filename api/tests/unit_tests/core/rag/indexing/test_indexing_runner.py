@@ -813,6 +813,7 @@ class TestIndexingRunnerLoad:
         # Assert
         # Verify keyword thread was created and joined
         mock_dependencies["thread"].assert_called_once()
+        assert mock_dependencies["thread"].call_args.kwargs["kwargs"] == {"update_segment_keywords": True}
         mock_thread_instance.start.assert_called_once()
         mock_thread_instance.join.assert_called_once()
 
@@ -892,6 +893,7 @@ class TestIndexingRunnerLoad:
         ]
         assert all(type(document) is Document for document in keyword_documents)
         assert thread_args[4] == [document.metadata["doc_id"] for document in sample_documents]
+        assert mock_dependencies["thread"].call_args.kwargs["kwargs"] == {"update_segment_keywords": False}
         mock_thread_instance.start.assert_called_once()
         mock_thread_instance.join.assert_called_once()
 

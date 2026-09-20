@@ -234,7 +234,7 @@ class VectorService:
             # save vector index
             vector = Vector(dataset=dataset, session=session)
             vector.add_texts([child_document], duplicate_check=True)
-        Keyword(dataset).add_texts([child_document], session)
+        Keyword(dataset).add_texts([child_document], session, update_segment_keywords=False)
 
     @classmethod
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
@@ -287,7 +287,7 @@ class VectorService:
         if delete_node_ids:
             keyword.delete_by_ids(delete_node_ids, session)
         if documents:
-            keyword.add_texts(documents, session)
+            keyword.add_texts(documents, session, update_segment_keywords=False)
 
     @classmethod
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset, *, session: Session):

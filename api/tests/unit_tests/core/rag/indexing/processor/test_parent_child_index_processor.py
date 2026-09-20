@@ -247,7 +247,9 @@ class TestParentChildIndexProcessor:
         assert len(formatted_docs) == 2
         assert all(isinstance(doc, Document) for doc in formatted_docs)
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
-        mock_keyword_cls.return_value.add_texts.assert_called_once_with(formatted_docs, session)
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(
+            formatted_docs, session, update_segment_keywords=False
+        )
 
     def test_load_skips_keyword_index_when_disabled(
         self, processor: ParentChildIndexProcessor, dataset: Dataset
@@ -299,7 +301,9 @@ class TestParentChildIndexProcessor:
         mock_vector_cls.assert_not_called()
         keyword_documents = mock_keyword_cls.return_value.add_texts.call_args.args[0]
         assert [document.page_content for document in keyword_documents] == ["child"]
-        mock_keyword_cls.return_value.add_texts.assert_called_once_with(keyword_documents, self.session)
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(
+            keyword_documents, self.session, update_segment_keywords=False
+        )
 
     def test_clean_with_precomputed_child_ids(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
         session = self.session
@@ -548,7 +552,9 @@ class TestParentChildIndexProcessor:
         assert all(type(document) is Document for document in indexed_child_documents)
         mock_vector_cls.return_value.create.assert_called_once_with(indexed_child_documents)
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
-        mock_keyword_cls.return_value.add_texts.assert_called_once_with(indexed_child_documents, session)
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(
+            indexed_child_documents, session, update_segment_keywords=False
+        )
 
     def test_index_uses_content_files_when_files_missing(
         self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument

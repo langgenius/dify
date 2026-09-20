@@ -673,6 +673,9 @@ class IndexingRunner:
                     keyword_documents,
                     segment_node_ids,
                 ),
+                kwargs={
+                    "update_segment_keywords": dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX,
+                },
             )
             create_keyword_thread.start()
 
@@ -729,6 +732,8 @@ class IndexingRunner:
         document_id: str,
         documents: list[Document],
         segment_node_ids: list[str],
+        *,
+        update_segment_keywords: bool = True,
     ):
         with flask_app.app_context():
             with session_factory.create_session() as session:
@@ -736,7 +741,7 @@ class IndexingRunner:
                 if not dataset:
                     raise ValueError("no dataset found")
                 keyword = Keyword(dataset)
-                keyword.create(documents, session)
+                keyword.create(documents, session, update_segment_keywords=update_segment_keywords)
                 if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                     session.execute(
                         update(DocumentSegment)

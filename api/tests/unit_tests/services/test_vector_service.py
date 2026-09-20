@@ -594,7 +594,7 @@ def test_create_child_chunk_vector_economy_adds_keyword_without_vector(
         "document_id": "doc-1",
         "dataset_id": "dataset-1",
     }
-    keyword_instance.add_texts.assert_called_once_with(keyword_documents, sqlite_session)
+    keyword_instance.add_texts.assert_called_once_with(keyword_documents, sqlite_session, update_segment_keywords=False)
 
 
 def test_update_child_chunk_vector_high_quality_updates_vector(
@@ -624,7 +624,7 @@ def test_update_child_chunk_vector_high_quality_updates_vector(
     docs = vector_instance.add_texts.call_args.args[0]
     assert len(docs) == 2
     keyword_instance.delete_by_ids.assert_called_once_with(["uid", "did"], sqlite_session)
-    keyword_instance.add_texts.assert_called_once_with(docs, sqlite_session)
+    keyword_instance.add_texts.assert_called_once_with(docs, sqlite_session, update_segment_keywords=False)
 
 
 def test_update_child_chunk_vector_economy_updates_keywords_without_vector(
@@ -661,7 +661,7 @@ def test_update_child_chunk_vector_economy_updates_keywords_without_vector(
     keyword_documents = keyword_instance.add_texts.call_args.args[0]
     assert [document.page_content for document in keyword_documents] == ["new", "updated"]
     assert [document.metadata["doc_id"] for document in keyword_documents] == ["new-id", "updated-id"]
-    keyword_instance.add_texts.assert_called_once_with(keyword_documents, sqlite_session)
+    keyword_instance.add_texts.assert_called_once_with(keyword_documents, sqlite_session, update_segment_keywords=False)
 
 
 def test_update_child_chunk_vector_empty_change_does_not_touch_indexes(

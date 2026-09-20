@@ -33,7 +33,10 @@ class Jieba(BaseKeyword):
         self._config = KeywordTableConfig()
 
     @override
-    def create(self, texts: list[Document], session: Session, **kwargs: Any) -> BaseKeyword:
+    def create(
+        self, texts: list[Document], session: Session, *, update_segment_keywords: bool = True, **kwargs: Any
+    ) -> BaseKeyword:
+        """Build keyword mappings; child-only batches can skip the parent segment keywords field."""
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table_handler = JiebaKeywordTableHandler()
@@ -43,7 +46,8 @@ class Jieba(BaseKeyword):
             for text in texts:
                 keywords = keyword_table_handler.extract_keywords(text.page_content, keyword_number)
                 if text.metadata is not None:
-                    self._update_segment_keywords(self.dataset.id, text.metadata["doc_id"], list(keywords), session)
+                    if update_segment_keywords:
+                        self._update_segment_keywords(self.dataset.id, text.metadata["doc_id"], list(keywords), session)
                     keyword_table = self._add_text_to_keyword_table(
                         keyword_table or {}, text.metadata["doc_id"], list(keywords)
                     )
@@ -53,7 +57,10 @@ class Jieba(BaseKeyword):
             return self
 
     @override
-    def add_texts(self, texts: list[Document], session: Session, **kwargs: Any):
+    def add_texts(
+        self, texts: list[Document], session: Session, *, update_segment_keywords: bool = True, **kwargs: Any
+    ):
+        """Add a batch under one lock, optionally skipping parent-only keyword field updates."""
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table_handler = JiebaKeywordTableHandler()
@@ -70,7 +77,8 @@ class Jieba(BaseKeyword):
                 else:
                     keywords = keyword_table_handler.extract_keywords(text.page_content, keyword_number)
                 if text.metadata is not None:
-                    self._update_segment_keywords(self.dataset.id, text.metadata["doc_id"], list(keywords), session)
+                    if update_segment_keywords:
+                        self._update_segment_keywords(self.dataset.id, text.metadata["doc_id"], list(keywords), session)
                     keyword_table = self._add_text_to_keyword_table(
                         keyword_table or {}, text.metadata["doc_id"], list(keywords)
                     )
@@ -115,6 +123,8 @@ class Jieba(BaseKeyword):
         k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
         sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k)
+        if not sorted_chunk_indices:
+            return []
 
         documents = []
 
@@ -144,7 +154,7 @@ class Jieba(BaseKeyword):
                     unresolved_count,
                     len(sorted_chunk_indices),
                 )
-        elif sorted_chunk_indices and not child_chunk_map and not segment_map:
+        elif not child_chunk_map and not segment_map:
             logger.debug(
                 "Keyword search for dataset %s had %d matched node IDs before document filtering, "
                 "but no documents remained after applying %d document ID filters.",

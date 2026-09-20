@@ -159,7 +159,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 vector.create_multimodal(multimodal_documents)
 
         if with_keywords and child_documents:
-            Keyword(dataset).add_texts(child_documents, session)
+            Keyword(dataset).add_texts(child_documents, session, update_segment_keywords=False)
 
     @override
     def clean(
@@ -198,8 +198,10 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     select(ChildChunk.index_node_id)
                     .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
                     .where(
+                        DocumentSegment.tenant_id == dataset.tenant_id,
                         DocumentSegment.dataset_id == dataset.id,
                         DocumentSegment.index_node_id.in_(node_ids),
+                        ChildChunk.tenant_id == dataset.tenant_id,
                         ChildChunk.dataset_id == dataset.id,
                     )
                 ).all()
@@ -213,25 +215,18 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 if child_node_ids:
                     vector.delete_by_ids(child_node_ids)
 
-                # Delete from database
-                if delete_child_chunks and child_node_ids:
-                    session.execute(
-                        delete(ChildChunk).where(
-                            ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
-                        )
-                    )
-                    session.flush()
             else:
                 vector.delete()
 
-                if delete_child_chunks:
-                    # Use existing compound index: (tenant_id, dataset_id, ...)
-                    session.execute(
-                        delete(ChildChunk).where(
-                            ChildChunk.tenant_id == dataset.tenant_id, ChildChunk.dataset_id == dataset.id
-                        )
-                    )
-                    session.flush()
+        if delete_child_chunks and (child_node_ids or not node_ids):
+            # Child rows belong to both index techniques, independently of the vector store.
+            child_delete_stmt = delete(ChildChunk).where(
+                ChildChunk.tenant_id == dataset.tenant_id, ChildChunk.dataset_id == dataset.id
+            )
+            if node_ids:
+                child_delete_stmt = child_delete_stmt.where(ChildChunk.index_node_id.in_(child_node_ids))
+            session.execute(child_delete_stmt)
+            session.flush()
 
         if with_keywords:
             keyword = Keyword(dataset)
@@ -344,23 +339,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 save_child=True,
             )
             session.commit()
-            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                all_child_documents: list[Document] = []
-                all_multimodal_documents = []
-                for doc in documents:
-                    if doc.children:
-                        all_child_documents.extend(
-                            Document.model_validate(child_document.model_dump()) for child_document in doc.children
-                        )
-                    if doc.attachments:
-                        all_multimodal_documents.extend(doc.attachments)
-                vector = Vector(dataset, session=session)
-                if all_child_documents:
-                    vector.create(all_child_documents)
-                if all_multimodal_documents and dataset.is_multimodal:
-                    vector.create_multimodal(all_multimodal_documents)
-                if all_child_documents:
-                    Keyword(dataset).add_texts(all_child_documents, session)
+            multimodal_documents = [attachment for doc in documents for attachment in doc.attachments or []]
+            self.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
 
     @override
     def format_preview(self, chunks: Any) -> ParentChildFormatPreviewDict:
