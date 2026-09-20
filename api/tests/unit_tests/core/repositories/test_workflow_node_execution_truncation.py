@@ -121,6 +121,16 @@ def mock_user() -> Account:
     return user
 
 
+def create_offload(type_: ExecutionOffLoadType) -> WorkflowNodeExecutionOffload:
+    return WorkflowNodeExecutionOffload(
+        tenant_id="test-tenant-id",
+        app_id="test-app-id",
+        node_execution_id="test-node-execution-id",
+        type_=type_,
+        file_id="test-file-id",
+    )
+
+
 class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
     """Test class for truncation functionality in SQLAlchemyWorkflowNodeExecutionRepository."""
 
@@ -178,7 +188,7 @@ class TestWorkflowNodeExecutionModelTruncatedProperties:
     def test_inputs_truncated_with_offload_data(self):
         """Test inputs_truncated property when offload data exists."""
         model = WorkflowNodeExecutionModel()
-        offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
+        offload = create_offload(ExecutionOffLoadType.INPUTS)
         model.offload_data = [offload]
 
         assert model.inputs_truncated is True
@@ -190,7 +200,7 @@ class TestWorkflowNodeExecutionModelTruncatedProperties:
         model = WorkflowNodeExecutionModel()
 
         # Mock offload data with outputs file
-        offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
+        offload = create_offload(ExecutionOffLoadType.OUTPUTS)
         model.offload_data = [offload]
 
         assert model.inputs_truncated is False
@@ -199,7 +209,7 @@ class TestWorkflowNodeExecutionModelTruncatedProperties:
 
     def test_process_data_truncated_with_offload_data(self):
         model = WorkflowNodeExecutionModel()
-        offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.PROCESS_DATA)
+        offload = create_offload(ExecutionOffLoadType.PROCESS_DATA)
         model.offload_data = [offload]
         assert model.process_data_truncated is True
         assert model.inputs_truncated is False

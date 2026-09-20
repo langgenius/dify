@@ -31,6 +31,17 @@ appearance variant.
 Omit `variant` for the IconButton-specific neutral appearance. The other appearance names align
 with `Button`. Use `tone="destructive"` for destructive intent.
 
+For an icon-only link, keep the native anchor or router link and apply `iconButtonVariants`
+from `@langgenius/dify-ui/icon-button`. The link owns its accessible name and navigation:
+
+```tsx
+<a href="/help" aria-label="Help" className={iconButtonVariants({ size: 'md' })}>
+  <span aria-hidden="true" className="i-ri-book-open-line size-4" />
+</a>
+```
+
+Do not render navigation through `IconButton`: its Base UI button behavior is for commands.
+
 ## Composition
 
 When Toggle, Menu, Popover, Tooltip, or Collapsible owns the interaction state, keep that

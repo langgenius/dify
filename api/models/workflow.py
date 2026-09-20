@@ -70,12 +70,12 @@ from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
 from libs import helper
 
 from .account import Account
-from .base import Base, DefaultFieldsDCMixin, TypeBase
+from .base import DefaultFieldsDCMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 
-# UploadFile and workflow execution models use a separate declarative registry from the
-# excluded offload model, so cross-registry relationships target class objects directly.
+# UploadFile and workflow execution models use TypeBase; importing the class object keeps
+# their relationship joins explicit.
 from .model import UploadFile
 from .types import EnumText, LongText, StringUUID
 from .utils.file_input_compat import (
@@ -225,10 +225,7 @@ class Workflow(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
     type: Mapped[WorkflowType] = mapped_column(EnumText(WorkflowType, length=255), nullable=False, default=None)
     kind: Mapped[WorkflowKind | None] = mapped_column(
-        EnumText(WorkflowKind, length=255),
-        nullable=True,
-        default=WorkflowKind.STANDARD,
-        server_default=sa.text("'standard'"),
+        EnumText(WorkflowKind, length=255), nullable=True, default=WorkflowKind.STANDARD
     )
     version: Mapped[str] = mapped_column(String(255), nullable=False, default=None)
     id: Mapped[str] = mapped_column(
@@ -239,8 +236,8 @@ class Workflow(TypeBase):
     # User-facing version number, unique and monotonically increasing within an app, displayed as `#N`.
     # NULL for draft workflows and for versions published before numbering was introduced.
     version_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
-    marked_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
-    marked_comment: Mapped[str] = mapped_column(String(255), default="", server_default="")
+    marked_name: Mapped[str] = mapped_column(String(255), default="")
+    marked_comment: Mapped[str] = mapped_column(String(255), default="")
     graph: Mapped[str] = mapped_column(LongText, default=None)
     _features: Mapped[Any] = mapped_column("features", LongText, default=None)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
@@ -1096,6 +1093,8 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), init=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
 
+    # WorkflowNodeExecutionOffload uses TypeBase while this model uses Base, so both the target and join
+    # must resolve lazily as class objects instead of relying on string lookup across registries.
     offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
         lambda: WorkflowNodeExecutionOffload,
         primaryjoin=lambda: (
@@ -1239,7 +1238,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
         return self._load_full_content(session, offload.file_id, storage)
 
 
-class WorkflowNodeExecutionOffload(Base):
+class WorkflowNodeExecutionOffload(TypeBase):
     __tablename__ = "workflow_node_execution_offload"
     __table_args__ = (
         # PostgreSQL 14 treats NULL values as distinct in unique constraints by default,
@@ -1258,15 +1257,7 @@ class WorkflowNodeExecutionOffload(Base):
     )
     _HASH_COL_SIZE = 64
 
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        primary_key=True,
-        default=lambda: str(uuid4()),
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=naive_utc_now, server_default=func.current_timestamp()
-    )
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
@@ -1304,6 +1295,7 @@ class WorkflowNodeExecutionOffload(Base):
             orm.foreign(WorkflowNodeExecutionOffload.node_execution_id) == WorkflowNodeExecutionModel.id
         ),
         back_populates="offload_data",
+        init=False,
     )
 
     file: Mapped[Optional["UploadFile"]] = orm.relationship(
@@ -1312,6 +1304,10 @@ class WorkflowNodeExecutionOffload(Base):
         lazy="raise",
         uselist=False,
         primaryjoin=lambda: orm.foreign(WorkflowNodeExecutionOffload.file_id) == UploadFile.id,
+        init=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default_factory=naive_utc_now, server_default=func.current_timestamp()
     )
 
 

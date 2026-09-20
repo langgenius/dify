@@ -69,6 +69,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "Əmrlər icra olunur",
   "agentDetail.configure.answer.duration.minute": "{{count}} dəq",
   "agentDetail.configure.answer.duration.second": "{{count}} san",
+  "agentDetail.configure.answer.responseEnded": "Cavab tamamlandı",
   "agentDetail.configure.answer.thinking": "Düşünür",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition buraxılışı çıxarılmış konfiqurasiyaların versiyalarını saxlasa da, fayl sisteminin özündə versiyaların saxlanmasını dəstəkləmir. Qurma rejimində əməliyyatlarınızı ehtiyatla yerinə yetirin, çünki fayl sistemindəki dəyişikliklər real vaxtda baş verir və onları həmişə tam geri qaytarmaq olmur. Community Edition buraxılışı geniş xarici auditoriyaya xidmət göstərmək üçün ideal seçim deyil.",
   "agentDetail.configure.build.empty.description": "İstədiyinizi təsvir edin, söhbət davam etdikcə agent soldakı formanı dolduracaq.",

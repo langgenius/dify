@@ -31,7 +31,6 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
@@ -40,6 +39,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { toast } from '@/app/notifications'
 import { SkillCardTags } from '@/features/tag-management/components/skill-card-tags'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -417,7 +417,6 @@ function SkillCard({
   const descriptionId = useId()
   const draftStatusId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const [isExportOpen, setIsExportOpen] = useState(false)
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
   )
@@ -425,7 +424,6 @@ function SkillCard({
     mutationFn: () => fetchSkillArchiveBlob(skill.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${skill.name}.zip` })
-      setIsExportOpen(false)
     },
     onError: () => {
       toast.error(tCommon(($) => $['operation.downloadFailed']))
@@ -554,7 +552,11 @@ function SkillCard({
                   <span>{tCommon(($) => $['operation.duplicate'])}</span>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem className="gap-2" onClick={() => setIsExportOpen(true)}>
+              <DropdownMenuItem
+                className="gap-2"
+                disabled={exportMutation.isPending}
+                onClick={handleExport}
+              >
                 <span
                   aria-hidden
                   className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
@@ -588,35 +590,6 @@ function SkillCard({
           />
         </div>
       </div>
-      <AlertDialog
-        open={isExportOpen}
-        onOpenChange={(open) => {
-          if (!exportMutation.isPending) setIsExportOpen(open)
-        }}
-      >
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['skillManagement.exportDialog.title'])}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-secondary">
-              {t(($) => $['skillManagement.exportDialog.description'])}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton disabled={exportMutation.isPending}>
-              {tCommon(($) => $['operation.cancel'])}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              tone="default"
-              loading={exportMutation.isPending}
-              onClick={handleExport}
-            >
-              {tCommon(($) => $['operation.confirm'])}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
       <DeleteSkillDialog skill={skill} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
     </li>
   )
