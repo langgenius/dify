@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from dify_agent.protocol import CreateExecutionBindingRequest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -654,7 +655,7 @@ def test_metering_owner_registration_precedes_billable_creation(
 
     client = _backend_client()
 
-    def create(request):
+    def create(request: CreateExecutionBindingRequest) -> SimpleNamespace:
         calls.append(("create", request.binding_id))
         assert owner["workspace_id"] == request.workspace_id
         assert owner["tenant_id"] == request.tenant_id
