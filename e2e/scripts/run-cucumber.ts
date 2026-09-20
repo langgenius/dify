@@ -4,7 +4,6 @@ import path from 'node:path'
 import { runCleanupTasks } from '../support/cleanup'
 import { assertCucumberScenariosStarted } from '../support/cucumber-messages'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
-import { runTimedStage } from '../support/startup-stages'
 import { startWebServer, stopWebServer } from '../support/web-server'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
 import { e2eDir, isMainModule, runCommand } from './common'
@@ -124,7 +123,7 @@ const main = async () => {
 
     if (full) {
       middlewareStarted = true
-      await runTimedStage('Middleware readiness', startMiddleware)
+      await startMiddleware()
     }
 
     if (!seedOnly) await rm(cucumberReportDir, { force: true, recursive: true })
@@ -189,19 +188,17 @@ const main = async () => {
       logFilePath: path.join(logDir, 'cucumber-celery.log'),
     })
 
-    await runTimedStage('Web build and readiness', () =>
-      startWebServer({
-        baseURL,
-        command: process.execPath,
-        args: ['--import', 'tsx', './scripts/setup.ts', 'web'],
-        cwd: e2eDir,
-        logFilePath: path.join(logDir, 'cucumber-web.log'),
-        reuseExistingServer: reuseExistingWebServer,
-        timeoutMs: 300_000,
-      }),
-    )
+    await startWebServer({
+      baseURL,
+      command: process.execPath,
+      args: ['--import', 'tsx', './scripts/setup.ts', 'web'],
+      cwd: e2eDir,
+      logFilePath: path.join(logDir, 'cucumber-web.log'),
+      reuseExistingServer: reuseExistingWebServer,
+      timeoutMs: 300_000,
+    })
 
-    if (seed) await runTimedStage('Seed', () => runSeed(seed))
+    if (seed) await runSeed(seed)
 
     if (!seedOnly) {
       const cucumberEnv: NodeJS.ProcessEnv = {
