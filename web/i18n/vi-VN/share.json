@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Hãy liên hệ với quản trị viên ứng dụng nếu bạn cần trợ giúp.",
+  "appNotAccessible.documentTitle": "Không thể truy cập ứng dụng · Dify",
+  "appNotAccessible.ipAddress": "Địa chỉ IP của bạn là <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Ứng dụng này không tồn tại hoặc không thể truy cập từ mạng của bạn.",
   "chat.chatFormTip": "Cài đặt trò chuyện không thể được thay đổi sau khi cuộc trò chuyện đã bắt đầu.",
   "chat.chatSettingsTitle": "Cài đặt trò chuyện mới",
   "chat.collapse": "Thu gọn",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "Xin lỗi!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Cảm ơn!",
-  "ipAccessDenied.description": "Chỉ có thể truy cập ứng dụng này từ các mạng đã được phê duyệt.",
-  "ipAccessDenied.ipAddress": "Địa chỉ IP hiện tại của bạn <ip>{{ip}}</ip> không nằm trong danh sách cho phép.",
-  "ipAccessDenied.title": "Quyền truy cập bị hạn chế",
   "login.backToHome": "Trở về Trang Chủ"
 }

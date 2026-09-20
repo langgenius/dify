@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
+import TrialAppAccessBoundary from '@/features/app-access-error/trial-boundary'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import App from './app'
 import AppInfo from './app-info'
@@ -24,7 +25,7 @@ type Props = Readonly<{
   onCreate: () => void
 }>
 
-function TryApp({
+function TryAppContent({
   appId,
   app,
   canCreate = true,
@@ -40,85 +41,94 @@ function TryApp({
   const { data: appDetail, isLoading, isError, error } = useGetTryAppInfo(appId)
 
   return (
+    <div className="h-full min-w-7xl">
+      {isLoading ? (
+        <div className="flex h-full items-center justify-center">
+          <Loading type="area" />
+        </div>
+      ) : isError ? (
+        <div className="flex h-full items-center justify-center">
+          <AppUnavailable
+            className="size-auto"
+            isUnknownReason={!error}
+            unknownReason={error instanceof Error ? error.message : undefined}
+          />
+        </div>
+      ) : !appDetail ? (
+        <div className="flex h-full items-center justify-center">
+          <AppUnavailable className="size-auto" isUnknownReason />
+        </div>
+      ) : (
+        <Tabs
+          value={activeType}
+          onValueChange={(selectedValue) => setType(selectedValue)}
+          className="flex h-full flex-col"
+        >
+          <div className="flex shrink-0 justify-between pl-4">
+            <TabsList>
+              <TabsTab
+                value={TypeEnum.TRY}
+                disabled={!canUseTryTab}
+                className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
+              >
+                <span className="system-md-semibold-uppercase">
+                  {t(($) => $['tryApp.tabHeader.try'], { ns: 'explore' })}
+                </span>
+              </TabsTab>
+              <TabsTab
+                value={TypeEnum.DETAIL}
+                className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
+              >
+                <span className="system-md-semibold-uppercase">
+                  {t(($) => $['tryApp.tabHeader.detail'], { ns: 'explore' })}
+                </span>
+              </TabsTab>
+            </TabsList>
+            <Button
+              size="large"
+              variant="tertiary"
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
+              onClick={onClose}
+            >
+              <span aria-hidden className="i-ri-close-line size-5" />
+            </Button>
+          </div>
+          {/* Main content */}
+          <div className="mt-2 flex h-0 grow justify-between space-x-2">
+            <TabsPanel value={TypeEnum.TRY} className="min-w-0 flex-1">
+              <App appId={appId} appDetail={appDetail} />
+            </TabsPanel>
+            <TabsPanel value={TypeEnum.DETAIL} className="min-w-0 flex-1">
+              <Preview appId={appId} appDetail={appDetail} />
+            </TabsPanel>
+            <AppInfo
+              className="w-90 shrink-0"
+              appDetail={appDetail}
+              appId={appId}
+              canCreate={canCreate}
+              categories={categories}
+              createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
+              onCreate={onCreate}
+            />
+          </div>
+        </Tabs>
+      )}
+    </div>
+  )
+}
+function TryApp(props: Props) {
+  return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose()
+        if (!open) props.onClose()
       }}
     >
-      <DialogContent className="h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-full max-w-[calc(100vw-32px)] min-w-7xl overflow-hidden overflow-x-auto border-none p-2 text-left align-middle">
-        {isLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <Loading type="area" />
-          </div>
-        ) : isError ? (
-          <div className="flex h-full items-center justify-center">
-            <AppUnavailable
-              className="size-auto"
-              isUnknownReason={!error}
-              unknownReason={error instanceof Error ? error.message : undefined}
-            />
-          </div>
-        ) : !appDetail ? (
-          <div className="flex h-full items-center justify-center">
-            <AppUnavailable className="size-auto" isUnknownReason />
-          </div>
-        ) : (
-          <Tabs
-            value={activeType}
-            onValueChange={(selectedValue) => setType(selectedValue)}
-            className="flex h-full flex-col"
-          >
-            <div className="flex shrink-0 justify-between pl-4">
-              <TabsList>
-                <TabsTab
-                  value={TypeEnum.TRY}
-                  disabled={!canUseTryTab}
-                  className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
-                >
-                  <span className="system-md-semibold-uppercase">
-                    {t(($) => $['tryApp.tabHeader.try'], { ns: 'explore' })}
-                  </span>
-                </TabsTab>
-                <TabsTab
-                  value={TypeEnum.DETAIL}
-                  className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
-                >
-                  <span className="system-md-semibold-uppercase">
-                    {t(($) => $['tryApp.tabHeader.detail'], { ns: 'explore' })}
-                  </span>
-                </TabsTab>
-              </TabsList>
-              <Button
-                size="large"
-                variant="tertiary"
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
-                onClick={onClose}
-              >
-                <span aria-hidden className="i-ri-close-line size-5" />
-              </Button>
-            </div>
-            {/* Main content */}
-            <div className="mt-2 flex h-0 grow justify-between space-x-2">
-              <TabsPanel value={TypeEnum.TRY} className="min-w-0 flex-1">
-                <App appId={appId} appDetail={appDetail} />
-              </TabsPanel>
-              <TabsPanel value={TypeEnum.DETAIL} className="min-w-0 flex-1">
-                <Preview appId={appId} appDetail={appDetail} />
-              </TabsPanel>
-              <AppInfo
-                className="w-90 shrink-0"
-                appDetail={appDetail}
-                appId={appId}
-                canCreate={canCreate}
-                categories={categories}
-                createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
-                onCreate={onCreate}
-              />
-            </div>
-          </Tabs>
-        )}
+      <DialogContent className="h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-full max-w-[calc(100vw-32px)] min-w-0 overflow-hidden overflow-x-auto border-none p-2 text-left align-middle">
+        <TrialAppAccessBoundary key={props.appId} appId={props.appId} onClose={props.onClose}>
+          <TryAppContent {...props} />
+        </TrialAppAccessBoundary>
       </DialogContent>
     </Dialog>
   )

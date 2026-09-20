@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Contactez l’administrateur de l’application si vous avez besoin d’aide.",
+  "appNotAccessible.documentTitle": "Application inaccessible · Dify",
+  "appNotAccessible.ipAddress": "Votre adresse IP est <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Cette application n’existe pas ou n’est pas accessible depuis votre réseau.",
   "chat.chatFormTip": "Les paramètres de chat ne peuvent pas être modifiés une fois que le chat a commencé.",
   "chat.chatSettingsTitle": "Nouvelle configuration de chat",
   "chat.collapse": "Réduire",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "Désolé !",
   "humanInput.submissionID": "submission_id : {{id}}",
   "humanInput.thanks": "Merci !",
-  "ipAccessDenied.description": "Cette application est uniquement accessible depuis les réseaux approuvés.",
-  "ipAccessDenied.ipAddress": "Votre adresse IP actuelle <ip>{{ip}}</ip> ne figure pas dans la liste des adresses autorisées.",
-  "ipAccessDenied.title": "Accès restreint",
   "login.backToHome": "Retour à l'accueil"
 }

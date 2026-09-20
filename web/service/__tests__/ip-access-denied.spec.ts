@@ -2,13 +2,18 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
-  captureIpAccessScope,
-  ipAccessDeniedAtom,
-  ipAccessStore,
-  isIpAccessDeniedError,
-} from '@/features/webapp-ip-access/state'
+  appAccessErrorAtom,
+  appAccessStore,
+  beginTrialAppAccess,
+  captureAppAccessScope,
+  endTrialAppAccess,
+  isAppAccessError,
+  trialAppAccessErrorAtom,
+} from '@/features/app-access-error/state'
+import { markAppDeletionFailed, markAppDeletionStarted } from '../app-deletion'
 // oxlint-disable-next-line no-restricted-imports -- This integration spec exercises public WebApp transport error handling.
 import { request, sseGet, ssePost, upload } from '../base'
+import { consoleClient } from '../console'
 import * as webAppAuth from '../webapp-auth'
 
 const refreshAccessTokenOrReLogin = vi.hoisted(() => vi.fn())
@@ -61,10 +66,10 @@ const transitionWhileRequestIsPending = async (transition: 'denied' | 'navigated
     const error = await request('/parameters', {}, { isPublicAPI: true }).catch(
       (caught: unknown) => caught,
     )
-    expect(isIpAccessDeniedError(error)).toBe(true)
+    expect(isAppAccessError(error)).toBe(true)
   } else {
     window.history.replaceState({}, '', '/environment/chat/another-app')
-    captureIpAccessScope()
+    captureAppAccessScope()
   }
 }
 
@@ -72,14 +77,14 @@ describe('WebApp IP access denial transport', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
-    captureIpAccessScope()
+    captureAppAccessScope()
     window.history.replaceState({}, '', '/chat/ip-restricted-app')
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
     window.history.replaceState({}, '', '/')
-    captureIpAccessScope()
+    captureAppAccessScope()
   })
 
   it.each(['/site', '/webapp/access-mode', '/login/status', '/passport'])(
@@ -96,8 +101,8 @@ describe('WebApp IP access denial transport', () => {
       }
 
       expect(error).toBeInstanceOf(Response)
-      expect(isIpAccessDeniedError(error)).toBe(true)
-      expect(ipAccessStore.get(ipAccessDeniedAtom)?.clientIp).toBe(denial.client_ip)
+      expect(isAppAccessError(error)).toBe(true)
+      expect(appAccessStore.get(appAccessErrorAtom)?.clientIp).toBe(denial.client_ip)
       await expect((error as Response).json()).resolves.toEqual(denial)
       expect(fetch).toHaveBeenCalledOnce()
       expect(window.location.href).toBe(url)
@@ -116,7 +121,7 @@ describe('WebApp IP access denial transport', () => {
       { isPublicAPI: true },
     ).catch((caught: unknown) => caught)
 
-    expect(isIpAccessDeniedError(error)).toBe(true)
+    expect(isAppAccessError(error)).toBe(true)
     expect(toast.error).not.toHaveBeenCalled()
     expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
   })
@@ -128,11 +133,11 @@ describe('WebApp IP access denial transport', () => {
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledOnce())
 
     window.history.replaceState({}, '', '/chat/another-app')
-    captureIpAccessScope()
+    captureAppAccessScope()
     pending.resolve(createResponse(denial))
 
-    expect(isIpAccessDeniedError(await response)).toBe(true)
-    expect(ipAccessStore.get(ipAccessDeniedAtom)).toBeNull()
+    expect(isAppAccessError(await response)).toBe(true)
+    expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
     expect(toast.error).not.toHaveBeenCalled()
   })
 
@@ -162,7 +167,7 @@ describe('WebApp IP access denial transport', () => {
 
         await transitionWhileRequestIsPending(transition)
         const url = window.location.href
-        const currentDenial = ipAccessStore.get(ipAccessDeniedAtom)
+        const currentDenial = appAccessStore.get(appAccessErrorAtom)
         pending.resolve(
           code
             ? createResponse({ code, message: 'Late authorization error' }, status)
@@ -171,7 +176,7 @@ describe('WebApp IP access denial transport', () => {
 
         expect(await response).toBeInstanceOf(Response)
         expect(window.location.href).toBe(url)
-        expect(ipAccessStore.get(ipAccessDeniedAtom)).toBe(currentDenial)
+        expect(appAccessStore.get(appAccessErrorAtom)).toBe(currentDenial)
         expect(beginRecovery).not.toHaveBeenCalled()
         expect(clearPassport).not.toHaveBeenCalled()
         expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
@@ -266,8 +271,8 @@ describe('WebApp IP access denial transport', () => {
       )
 
       expect(error).toBeInstanceOf(Response)
-      expect(isIpAccessDeniedError(error)).toBe(false)
-      expect(ipAccessStore.get(ipAccessDeniedAtom)).toBeNull()
+      expect(isAppAccessError(error)).toBe(false)
+      expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
       await expect((error as Response).json()).resolves.toEqual(data)
       expect(toast.error).toHaveBeenCalledWith(data.message)
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
@@ -323,7 +328,7 @@ describe('WebApp IP access denial transport', () => {
 
       await expect(upload({ xhr, data: new FormData() }, true, path)).rejects.toBe(xhr)
 
-      expect(isIpAccessDeniedError(xhr)).toBe(true)
+      expect(isAppAccessError(xhr)).toBe(true)
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
       expect(toast.error).not.toHaveBeenCalled()
     },
@@ -334,6 +339,203 @@ describe('WebApp IP access denial transport', () => {
 
     await expect(upload({ xhr, data: new FormData() }, true)).rejects.toBe(xhr)
 
-    expect(isIpAccessDeniedError(xhr)).toBe(false)
+    expect(isAppAccessError(xhr)).toBe(false)
   })
+})
+
+describe('application not-found transport', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
+    captureAppAccessScope()
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it.each([
+    ['/chat/app', '/site', true],
+    ['/completion/app', '/parameters', true],
+    ['/workflow/app', '/passport', true],
+    ['/environment/agent/app', '/login/status', true],
+    ['/agent/app', '/webapp/access-mode?appCode=app', true],
+    ['/app/app/workflow', '/apps/app', false],
+    ['/agents/app/access', '/agent/app', false],
+    ['/installed/app', '/installed-apps/app', false],
+  ])(
+    'handles an identity 404 at %s without consuming the error or retrying',
+    async (route, url, isPublicAPI) => {
+      window.history.replaceState({}, '', route)
+      const body = { code: 'not_found', message: 'App not found', client_ip: '203.0.113.8' }
+      const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(body, 404))
+      const error = await request(url, {}, { isPublicAPI }).catch((error) => error)
+      expect(isAppAccessError(error)).toBe(true)
+      expect(error).toBeInstanceOf(Response)
+      expect(await (error as Response).json()).toEqual(body)
+      expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({
+        reason: 'app_not_found',
+        clientIp: '203.0.113.8',
+      })
+      expect(toast.error).not.toHaveBeenCalled()
+      await request(url, {}, { isPublicAPI }).catch(() => undefined)
+      expect(fetch).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it.each([
+    ['/chat/app', '/conversations/gone', true, 404, 'not_found'],
+    ['/app/app/workflow', '/apps/app/workflows/draft', false, 404, 'not_found'],
+    ['/app/app/workflow', '/apps/other', false, 404, 'app_not_found'],
+    ['/form/token', '/form/human_input/token', true, 404, 'not_found'],
+    ['/chat/app', '/site', true, 503, 'policy_unavailable'],
+    ['/agents/app/access', '/agent/app', false, 403, 'forbidden'],
+  ])('preserves unrelated errors at %s for %s', async (route, url, isPublicAPI, status, code) => {
+    window.history.replaceState({}, '', route)
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      createResponse({ code, message: 'Existing error' }, status),
+    )
+    const error = await request(url, {}, { isPublicAPI }).catch((error) => error)
+    expect(isAppAccessError(error)).toBe(false)
+    expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
+  })
+})
+
+it.each([
+  ['/app/deleting/workflow', '/apps/deleting', 'deleting'],
+  ['/agents/deleting/access', '/agent/deleting', 'agent:deleting'],
+  ['/installed/deleting', '/installed-apps/deleting', 'installed:deleting'],
+])('does not replace %s during intentional deletion', async (route, url, key) => {
+  window.history.replaceState({}, '', '/')
+  captureAppAccessScope()
+  window.history.replaceState({}, '', route)
+  markAppDeletionStarted(key)
+  try {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse({ code: 'app_not_found' }, 404))
+    const error = await request(url).catch((error) => error)
+    expect(isAppAccessError(error)).toBe(false)
+    expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
+  } finally {
+    markAppDeletionFailed(key)
+    vi.restoreAllMocks()
+  }
+})
+
+it('ignores a console authorization failure arriving after the application 404', async () => {
+  vi.clearAllMocks()
+  window.history.replaceState({}, '', '/')
+  captureAppAccessScope()
+  window.history.replaceState({}, '', '/app/missing/workflow')
+  const late = createPendingResponse()
+  const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(late.promise)
+  const pending = request('/apps/missing/workflows/draft').catch((error) => error)
+  await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+  fetch.mockResolvedValueOnce(createResponse({ code: 'app_not_found' }, 404))
+  await request('/apps/missing').catch(() => undefined)
+  late.resolve(createResponse({ code: 'unauthorized', message: 'Unauthorized' }, 401))
+  await pending
+  expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+  expect(window.location.pathname).toBe('/app/missing/workflow')
+  vi.restoreAllMocks()
+})
+
+it.each(['agent', 'installed'] as const)(
+  'connects the generated %s detail client to the page boundary',
+  async (kind) => {
+    vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
+    captureAppAccessScope()
+    window.history.replaceState(
+      {},
+      '',
+      kind === 'agent' ? '/agents/missing/access' : '/installed/missing',
+    )
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse({ code: 'not_found' }, 404))
+    try {
+      const promise =
+        kind === 'agent'
+          ? consoleClient.agent.byAgentId.get({ params: { agent_id: 'missing' } })
+          : consoleClient.installedApps.byInstalledAppId.get({
+              params: { installed_app_id: 'missing' },
+            })
+      await promise.catch(() => undefined)
+      expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({ reason: 'app_not_found' })
+      expect(toast.error).not.toHaveBeenCalled()
+    } finally {
+      vi.restoreAllMocks()
+    }
+  },
+)
+
+describe('trial application error isolation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    window.history.replaceState({}, '', '/explore/apps')
+    captureAppAccessScope()
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it.each(['/trial-apps/missing', '/trial-apps/missing/parameters'])(
+    'handles a trial identity 404 at %s without replacing the explore page',
+    async (path) => {
+      const scope = beginTrialAppAccess('missing')
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue(createResponse({ message: 'Not found' }, 404))
+      try {
+        const error = await request(path).catch((error: unknown) => error)
+        expect(isAppAccessError(error)).toBe(true)
+        expect(appAccessStore.get(trialAppAccessErrorAtom)?.scope).toBe(scope)
+        expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
+        await expect(request(path)).rejects.toMatchObject({ name: 'AbortError' })
+        expect(fetch).toHaveBeenCalledOnce()
+        expect(toast.error).not.toHaveBeenCalled()
+      } finally {
+        endTrialAppAccess(scope)
+      }
+    },
+  )
+
+  it('ignores a late response after closing and reopening the same trial', async () => {
+    const first = beginTrialAppAccess('missing')
+    const pending = createPendingResponse()
+    vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(pending.promise)
+    const result = request('/trial-apps/missing').catch((error: unknown) => error)
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledOnce())
+    endTrialAppAccess(first)
+    const next = beginTrialAppAccess('missing')
+    try {
+      pending.resolve(createResponse({ code: 'app_not_found' }, 404))
+      expect(isAppAccessError(await result)).toBe(true)
+      expect(appAccessStore.get(trialAppAccessErrorAtom)).toBeNull()
+      expect(toast.error).not.toHaveBeenCalled()
+    } finally {
+      endTrialAppAccess(next)
+    }
+  })
+
+  it.each([true, false])(
+    'handles explicit app_not_found before SSE starts (public=%s)',
+    async (isPublicAPI) => {
+      const scope = isPublicAPI ? null : beginTrialAppAccess('missing')
+      if (isPublicAPI) window.history.replaceState({}, '', '/chat/missing')
+      const error = { code: 'app_not_found', message: 'App not found' }
+      const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(error, 404))
+      const onError = vi.fn()
+      const onNotifyError = vi.fn()
+      const path = isPublicAPI ? '/chat-messages' : '/trial-apps/missing/chat-messages'
+      try {
+        await ssePost(path, {}, { isPublicAPI, onError, onNotifyError })
+        await waitFor(() =>
+          expect(onError).toHaveBeenCalledExactlyOnceWith(error.message, error.code),
+        )
+        expect(
+          appAccessStore.get(isPublicAPI ? appAccessErrorAtom : trialAppAccessErrorAtom)?.reason,
+        ).toBe('app_not_found')
+        expect(onNotifyError).not.toHaveBeenCalled()
+        expect(toast.error).not.toHaveBeenCalled()
+        await ssePost(path, {}, { isPublicAPI })
+        expect(fetch).toHaveBeenCalledOnce()
+      } finally {
+        if (scope) endTrialAppAccess(scope)
+      }
+    },
+  )
 })

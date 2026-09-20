@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "如需協助，請聯絡應用程式管理員。",
+  "appNotAccessible.documentTitle": "應用程式無法存取 · Dify",
+  "appNotAccessible.ipAddress": "您的 IP 位址是 <ip>{{ip}}</ip>。",
+  "appNotAccessible.title": "此應用程式不存在，或無法從您的網路存取。",
   "chat.chatFormTip": "聊天設定在聊天開始後無法修改。",
   "chat.chatSettingsTitle": "新的聊天設置",
   "chat.collapse": "摺疊",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "抱歉!",
   "humanInput.submissionID": "提交 ID: {{id}}",
   "humanInput.thanks": "謝謝!",
-  "ipAccessDenied.description": "此應用程式僅允許從已核准的網路存取。",
-  "ipAccessDenied.ipAddress": "您目前的 IP 位址 <ip>{{ip}}</ip> 不在允許清單中。",
-  "ipAccessDenied.title": "存取受限",
   "login.backToHome": "返回首頁"
 }

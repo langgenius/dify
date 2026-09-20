@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Contactați administratorul aplicației dacă aveți nevoie de ajutor.",
+  "appNotAccessible.documentTitle": "Aplicație inaccesibilă · Dify",
+  "appNotAccessible.ipAddress": "Adresa dvs. IP este <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Această aplicație nu există sau nu poate fi accesată din rețeaua dvs.",
   "chat.chatFormTip": "Setările chat-ului nu pot fi modificate după ce chat-ul a început.",
   "chat.chatSettingsTitle": "Nouă configurare a chatului",
   "chat.collapse": "Restrânge",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "Ne pare rău!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Mulțumim!",
-  "ipAccessDenied.description": "Această aplicație poate fi accesată numai din rețele aprobate.",
-  "ipAccessDenied.ipAddress": "Adresa IP curentă <ip>{{ip}}</ip> nu se află în lista adreselor permise.",
-  "ipAccessDenied.title": "Acces restricționat",
   "login.backToHome": "Înapoi la Acasă"
 }

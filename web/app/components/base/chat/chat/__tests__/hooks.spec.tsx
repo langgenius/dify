@@ -3,7 +3,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { act, renderHook } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { captureIpAccessScope, handleIpAccessDenied } from '@/features/webapp-ip-access/state'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
@@ -93,7 +93,7 @@ describe('useChat', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
-    captureIpAccessScope()
+    captureAppAccessScope()
     vi.useFakeTimers()
     vi.mocked(useParams).mockReturnValue({} as ReturnType<typeof useParams>)
     vi.mocked(usePathname).mockReturnValue('')
@@ -963,7 +963,7 @@ describe('useChat', () => {
       'should ignore history results after %s',
       async (transition) => {
         window.history.replaceState({}, '', '/agent/history-test')
-        const scope = captureIpAccessScope()
+        const scope = captureAppAccessScope()
         const history = createDeferred<unknown>()
         const onGetConversationMessages = vi.fn(() => history.promise)
         const onGetSuggestedQuestions = vi.fn()
@@ -1017,7 +1017,7 @@ describe('useChat', () => {
           if (transition === 'stop') result.current.handleStop()
           if (transition === 'unmount') unmount()
           if (transition === 'denied')
-            handleIpAccessDenied(403, { code: 'ip_access_denied' }, scope)
+            handleAppAccessError(403, { code: 'ip_access_denied' }, scope)
         })
         const chatListBeforeHistory = result.current.chatList
         await act(async () => {
@@ -1037,7 +1037,7 @@ describe('useChat', () => {
       'should consume history rejection after %s without completion callbacks',
       async (transition) => {
         window.history.replaceState({}, '', '/agent/history-rejection')
-        const scope = captureIpAccessScope()
+        const scope = captureAppAccessScope()
         const history = createDeferred<unknown>()
         const onGetSuggestedQuestions = vi.fn()
         const onConversationComplete = vi.fn()
@@ -1069,7 +1069,7 @@ describe('useChat', () => {
         await act(async () => {
           const error = new Response(null, { status: transition === 'denied' ? 403 : 503 })
           if (transition === 'denied')
-            handleIpAccessDenied(403, { code: 'ip_access_denied' }, scope, error)
+            handleAppAccessError(403, { code: 'ip_access_denied' }, scope, error)
           if (transition === 'navigation') window.history.replaceState({}, '', '/chat/another-app')
           if (transition === 'unmount') unmount()
           history.reject(error)
@@ -2448,7 +2448,7 @@ describe('useChat', () => {
       'should consume a rejected stop request when unmounted is %s',
       async (shouldUnmount) => {
         window.history.replaceState({}, '', '/agent/stop-test')
-        const scope = captureIpAccessScope()
+        const scope = captureAppAccessScope()
         const error = new Response(null, { status: 403 })
         const stopRequest = createDeferred<void>()
         const stopChat = vi.fn(() => stopRequest.promise)
@@ -2473,7 +2473,7 @@ describe('useChat', () => {
 
         await act(async () => {
           if (shouldUnmount) unmount()
-          handleIpAccessDenied(403, { code: 'ip_access_denied' }, scope, error)
+          handleAppAccessError(403, { code: 'ip_access_denied' }, scope, error)
           stopRequest.reject(error)
         })
         expect(toast.error).not.toHaveBeenCalled()

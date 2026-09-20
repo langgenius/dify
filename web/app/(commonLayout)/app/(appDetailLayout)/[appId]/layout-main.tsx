@@ -19,6 +19,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
+import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -120,7 +121,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       .catch((error: unknown) => {
         if (ignore) return
 
-        if (isNotFoundError(error)) router.replace('/apps')
+        if (isNotFoundError(error) && isAppDeletingOrDeleted(appId)) router.replace('/apps')
       })
       .finally(() => {
         if (ignore) return

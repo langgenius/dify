@@ -44,11 +44,11 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => navigationMocks.searchParams,
 }))
 
-vi.mock('@/features/webapp-ip-access/state', () => ({
-  captureIpAccessScope: () => ipAccessState.scope,
-  hasIpAccessDenied: () => ipAccessState.isDenied,
-  isIpAccessScopeCurrent: () => ipAccessState.isCurrent,
-  isIpAccessDeniedError: (error: unknown) => error === ipAccessState.deniedError,
+vi.mock('@/features/app-access-error/state', () => ({
+  captureAppAccessScope: () => ipAccessState.scope,
+  hasAppAccessError: () => ipAccessState.isDenied,
+  isAppAccessScopeCurrent: () => ipAccessState.isCurrent,
+  isAppAccessError: (error: unknown) => error === ipAccessState.deniedError,
 }))
 
 vi.mock('@/service/share', () => ({

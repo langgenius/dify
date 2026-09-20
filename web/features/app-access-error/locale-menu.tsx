@@ -7,14 +7,17 @@ import {
   DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useLocale } from '@/context/i18n'
-import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 
 const supportedLanguages = languages.filter((language) => language.supported)
 
-export default function LocaleMenu() {
-  const locale = useLocale()
+export default function LocaleMenu({
+  locale,
+  onChange,
+}: {
+  locale: Locale
+  onChange: (locale: Locale) => void
+}) {
   const selectedLanguage = supportedLanguages.find((language) => language.value === locale)
   const selectedLanguageName =
     selectedLanguage?.value === 'en-US' ? selectedLanguage.prompt_name : selectedLanguage?.name
@@ -37,7 +40,7 @@ export default function LocaleMenu() {
         <DropdownMenuRadioGroup<Locale>
           value={locale}
           onValueChange={(value) => {
-            void setLocaleOnClient(value, false)
+            onChange(value)
           }}
         >
           {supportedLanguages.map((language) => (

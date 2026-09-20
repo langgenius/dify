@@ -1,4 +1,4 @@
-import { captureIpAccessScope, handleIpAccessDenied } from '@/features/webapp-ip-access/state'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 
 const mockPostPublic = vi.hoisted(() => vi.fn())
 const mockUpload = vi.hoisted(() => vi.fn())
@@ -26,7 +26,7 @@ describe('human input form upload services', () => {
     mockPostPublic.mockReset()
     mockUpload.mockReset()
     window.history.replaceState({}, '', '/')
-    captureIpAccessScope()
+    captureAppAccessScope()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-06T00:00:00Z'))
   })
@@ -128,7 +128,7 @@ describe('human input form upload services', () => {
   it('should cancel local upload before requesting a token when the form is already denied', async () => {
     const { uploadHumanInputFormLocalFile } = await import('../share')
     window.history.replaceState({}, '', '/form/already-denied')
-    handleIpAccessDenied(403, { code: 'ip_access_denied' }, captureIpAccessScope())
+    handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope())
     const onErrorCallback = vi.fn()
     const onSuccessCallback = vi.fn()
 
@@ -166,7 +166,7 @@ describe('human input form upload services', () => {
       expect(mockPostPublic).toHaveBeenCalledTimes(1)
 
       if (interruption === 'IP denial')
-        handleIpAccessDenied(403, { code: 'ip_access_denied' }, captureIpAccessScope())
+        handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope())
       else window.history.replaceState({}, '', '/form/another-form')
 
       finishToken({
@@ -217,7 +217,7 @@ describe('human input form upload services', () => {
     window.history.replaceState({}, '', '/form/token-denied')
     const tokenError = new Response(null, { status: 403 })
     mockPostPublic.mockImplementationOnce(async () => {
-      handleIpAccessDenied(403, { code: 'ip_access_denied' }, captureIpAccessScope(), tokenError)
+      handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope(), tokenError)
       throw tokenError
     })
 

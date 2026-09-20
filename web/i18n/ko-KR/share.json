@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "도움이 필요하면 앱 관리자에게 문의하세요.",
+  "appNotAccessible.documentTitle": "앱에 접근할 수 없음 · Dify",
+  "appNotAccessible.ipAddress": "IP 주소는 <ip>{{ip}}</ip>입니다.",
+  "appNotAccessible.title": "이 앱이 존재하지 않거나 현재 네트워크에서 접근할 수 없습니다.",
   "chat.chatFormTip": "채팅이 시작된 후에는 채팅 설정을 수정할 수 없습니다.",
   "chat.chatSettingsTitle": "새 채팅 설정",
   "chat.collapse": "축소",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "죄송합니다!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "감사합니다!",
-  "ipAccessDenied.description": "이 앱은 승인된 네트워크에서만 접근할 수 있습니다.",
-  "ipAccessDenied.ipAddress": "현재 IP 주소 <ip>{{ip}}</ip>이(가) 허용 목록에 없습니다.",
-  "ipAccessDenied.title": "접근 제한",
   "login.backToHome": "홈으로 돌아가기"
 }

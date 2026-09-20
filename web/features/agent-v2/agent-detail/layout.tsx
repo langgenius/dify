@@ -15,15 +15,12 @@ type AgentDetailLayoutProps = {
   children: ReactNode
 }
 
-const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
-
 export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps) {
   const { t } = useTranslation('agentV2')
   const pathname = usePathname()
   const router = useRouter()
   const { t: tCommon } = useTranslation('common')
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
-  const shouldRedirectToRoster = isNotFoundResponse(agentQuery.error)
   const section = pathname.endsWith('/access-config')
     ? 'access-config'
     : pathname.endsWith('/access')
@@ -37,9 +34,8 @@ export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps)
   const agentTitle = agentQuery.data?.name ?? t(($) => $['agentDetail.documentTitle'])
   const canAccessSection = getAgentSectionAccess(capabilities)[section]
   const defaultSection = getAgentDefaultSection(capabilities)
-  const redirectPath = shouldRedirectToRoster
-    ? '/agents'
-    : agentQuery.isSuccess && !canAccessSection
+  const redirectPath =
+    agentQuery.isSuccess && !canAccessSection
       ? defaultSection
         ? `/agents/${agentId}/${defaultSection}`
         : '/agents'

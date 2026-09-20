@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "सहायता के लिए ऐप के व्यवस्थापक से संपर्क करें।",
+  "appNotAccessible.documentTitle": "ऐप उपलब्ध नहीं है · Dify",
+  "appNotAccessible.ipAddress": "आपका IP पता <ip>{{ip}}</ip> है।",
+  "appNotAccessible.title": "यह ऐप मौजूद नहीं है या आपके नेटवर्क से इसे एक्सेस नहीं किया जा सकता।",
   "chat.chatFormTip": "चैट शुरू होने के बाद चैट सेटिंग्स को संशोधित नहीं किया जा सकता।",
   "chat.chatSettingsTitle": "नया चैट सेटअप",
   "chat.collapse": "संकुचित करें",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "क्षमा करें!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "धन्यवाद!",
-  "ipAccessDenied.description": "इस ऐप को केवल स्वीकृत नेटवर्क से ही एक्सेस किया जा सकता है।",
-  "ipAccessDenied.ipAddress": "आपका वर्तमान IP पता <ip>{{ip}}</ip> अनुमति सूची में नहीं है।",
-  "ipAccessDenied.title": "पहुँच प्रतिबंधित है",
   "login.backToHome": "होम पर वापस"
 }

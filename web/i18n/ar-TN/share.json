@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "تواصل مع مسؤول التطبيق إذا كنت بحاجة إلى مساعدة.",
+  "appNotAccessible.documentTitle": "التطبيق غير متاح · Dify",
+  "appNotAccessible.ipAddress": "عنوان IP الخاص بك هو <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "هذا التطبيق غير موجود أو لا يمكن الوصول إليه من شبكتك.",
   "chat.chatFormTip": "لا يمكن تعديل إعدادات الدردشة بعد بدء الدردشة.",
   "chat.chatSettingsTitle": "إعداد الدردشة الجديدة",
   "chat.collapse": "طي",
@@ -54,8 +58,5 @@
   "humanInput.sorry": "عذراً!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "شكراً!",
-  "ipAccessDenied.description": "لا يمكن الوصول إلى هذا التطبيق إلا من الشبكات المعتمدة.",
-  "ipAccessDenied.ipAddress": "عنوان IP الحالي <ip>{{ip}}</ip> غير موجود في قائمة العناوين المسموح بها.",
-  "ipAccessDenied.title": "الوصول مقيّد",
   "login.backToHome": "العودة إلى الصفحة الرئيسية"
 }

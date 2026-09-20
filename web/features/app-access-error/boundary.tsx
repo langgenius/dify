@@ -4,33 +4,33 @@ import type { PropsWithChildren } from 'react'
 import { useAtomValueRawSync } from 'jotai/react'
 import { useEffect } from 'react'
 import { usePathname, useSearchParams } from '@/next/navigation'
-import AccessRestricted from './access-restricted'
+import AppNotAccessible from './page'
 import {
-  captureIpAccessScope,
-  getIpAccessScopeKey,
-  ipAccessDeniedAtom,
-  ipAccessStore,
+  appAccessErrorAtom,
+  appAccessStore,
+  captureAppAccessScope,
+  getAppAccessScopeKey,
 } from './state'
 
-export default function IpAccessBoundary({ children }: PropsWithChildren) {
+export default function AppAccessBoundary({ children }: PropsWithChildren) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const search = searchParams.toString()
-  const denial = useAtomValueRawSync(ipAccessDeniedAtom, { store: ipAccessStore })
-  const scopeKey = getIpAccessScopeKey(
+  const denial = useAtomValueRawSync(appAccessErrorAtom, { store: appAccessStore })
+  const scopeKey = getAppAccessScopeKey(
     pathname,
     search,
     typeof window === 'undefined' ? undefined : window.location.origin,
   )
 
-  // Stay mounted in the root layout to observe leaving public routes, even
+  // Stay mounted in the root layout to observe leaving application routes, even
   // when the next page makes no request that would otherwise reset the scope.
   useEffect(() => {
-    captureIpAccessScope()
+    captureAppAccessScope()
   }, [pathname, search])
 
   if (denial && denial.scope.key === scopeKey)
-    return <AccessRestricted clientIp={denial.clientIp} />
+    return <AppNotAccessible clientIp={denial.clientIp} />
 
   return children
 }
