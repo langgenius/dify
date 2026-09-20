@@ -122,6 +122,37 @@ def test_build_registry_maps_capability_check():
     assert build_registry()[PcState.BUILD_CAPABILITY_CHECK] is handle_capability_check
 
 
+def test_a_session_carrying_a_goal_needs_no_send_action():
+    """Task 4: the capability_check gate is on the GOAL, not the action. A
+    session whose composer already carried the goal in (fc.goal_text set at
+    creation) proceeds on ANY turn, even one with no action at all -- only a
+    goal-less (create-from-blank) session still needs send_goal."""
+    from core.dify_builder.handlers_build import handle_capability_check
+
+    env, _ = _new_env()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_CAPABILITY_CHECK)
+    fc = DifyBuilderContext(goal_text="Build a quarterly report workflow")
+
+    result = handle_capability_check(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_GOAL_ANALYSIS
+    assert result.context.goal_text == "Build a quarterly report workflow"
+
+
+def test_a_goal_less_session_still_waits_for_one():
+    """A create-from-blank session (no goal yet) is unaffected: with no
+    action and no goal_text, it must keep waiting at capability_check."""
+    from core.dify_builder.handlers_build import handle_capability_check
+
+    env, _ = _new_env()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_CAPABILITY_CHECK)
+    fc = DifyBuilderContext(goal_text="")
+
+    result = handle_capability_check(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_CAPABILITY_CHECK
+
+
 def test_submitting_requirements_goes_straight_to_resources():
     """The decision-free find_resources gate at build.initial_plan is gone --
     submit_requirements now tail-calls the shared discovery helper directly,
