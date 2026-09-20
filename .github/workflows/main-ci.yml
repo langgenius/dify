@@ -109,8 +109,6 @@ jobs:
               - 'docker/ssrf_proxy/**'
               - 'docker/volumes/sandbox/conf/**'
               - '.github/workflows/web-e2e.yml'
-              - '.github/workflows/e2e-web-build.yml'
-              - '.github/workflows/e2e-cache-warm.yml'
               - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'
               - '.github/actions/setup-core-e2e/**'
