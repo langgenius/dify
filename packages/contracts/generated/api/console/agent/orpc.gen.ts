@@ -142,6 +142,9 @@ import {
   zPostAgentByAgentIdSandboxFilesDownloadBody,
   zPostAgentByAgentIdSandboxFilesDownloadPath,
   zPostAgentByAgentIdSandboxFilesDownloadResponse,
+  zPostAgentByAgentIdTextToAudioBody,
+  zPostAgentByAgentIdTextToAudioPath,
+  zPostAgentByAgentIdTextToAudioResponse,
   zPostAgentByAgentIdVersionsByVersionIdRestorePath,
   zPostAgentByAgentIdVersionsByVersionIdRestoreResponse,
   zPostAgentResponse,
@@ -1138,11 +1141,32 @@ export const voices = {
   get: get28,
 }
 
+/**
+ * Preview an Agent TTS voice or read an Agent chat message
+ */
+export const post17 = oc
+  .route({
+    description: 'Preview an Agent TTS voice or read an Agent chat message',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdTextToAudio',
+    path: '/agent/{agent_id}/text-to-audio',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdTextToAudioBody,
+      params: zPostAgentByAgentIdTextToAudioPath,
+    }),
+  )
+  .output(zPostAgentByAgentIdTextToAudioResponse)
+
 export const textToAudio = {
+  post: post17,
   voices,
 }
 
-export const post17 = oc
+export const post18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1154,7 +1178,7 @@ export const post17 = oc
   .output(zPostAgentByAgentIdVersionsByVersionIdRestoreResponse)
 
 export const restore = {
-  post: post17,
+  post: post18,
 }
 
 export const get29 = oc
@@ -1262,7 +1286,7 @@ export const get32 = oc
   .input(z.object({ query: zGetAgentQuery.optional() }))
   .output(zGetAgentResponse)
 
-export const post18 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1276,7 +1300,7 @@ export const post18 = oc
 
 export const agent = {
   get: get32,
-  post: post18,
+  post: post19,
   inviteOptions,
   byAgentId,
 }

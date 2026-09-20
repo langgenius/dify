@@ -36,10 +36,12 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.login import current_user, login_required
 from models import Account, App, AppMode
@@ -262,6 +264,53 @@ class AgentChatMessageAudioApi(Resource):
         )
 
 
+def _text_to_speech(*, payload: TextToSpeechPayload, app_model: App, session: Session, account_id: str | None):
+    try:
+        message_ref = None
+        if payload.message_id:
+            app_ref = AppRefService.create_app_ref(app_model)
+            message_ref = AppRefService.create_message_ref(
+                app_ref,
+                payload.message_id,
+                account_id=account_id,
+            )
+
+        return AudioService.transcript_tts(
+            app_model=app_model,
+            session=session,
+            text=payload.text,
+            voice=payload.voice,
+            message_ref=message_ref,
+            is_draft=True,
+        )
+    except services.errors.app_model_config.AppModelConfigBrokenError:
+        logger.exception("App model config broken.")
+        raise AppUnavailableError()
+    except NoAudioUploadedServiceError:
+        raise NoAudioUploadedError()
+    except AudioTooLargeServiceError as e:
+        raise AudioTooLargeError(str(e))
+    except UnsupportedAudioTypeServiceError:
+        raise UnsupportedAudioTypeError()
+    except ProviderNotSupportSpeechToTextServiceError:
+        raise ProviderNotSupportSpeechToTextError()
+    except ProviderTokenNotInitError as ex:
+        raise ProviderNotInitializeError(ex.description)
+    except QuotaExceededError:
+        raise ProviderQuotaExceededError()
+    except ModelCurrentlyNotSupportError:
+        raise ProviderModelCurrentlyNotSupportError()
+    except InvokeError as e:
+        raise CompletionRequestError(e.description)
+    except HTTPException:
+        raise
+    except ValueError:
+        raise
+    except Exception as e:
+        logger.exception("Failed to convert text to speech")
+        raise InternalServerError() from e
+
+
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio")
 class ChatMessageTextApi(Resource):
     @console_ns.doc("chat_message_text_to_speech")
@@ -277,49 +326,58 @@ class ChatMessageTextApi(Resource):
     @get_app_model
     @model_validate(TextToSpeechPayload)
     def post(self, req_data: TextToSpeechPayload, app_model: App):
-        try:
-            message_ref = None
-            if req_data.message_id:
-                app_ref = AppRefService.create_app_ref(app_model)
-                message_ref = AppRefService.create_message_ref(
-                    app_ref,
-                    req_data.message_id,
-                    account_id=current_user.id,
-                )
+        # response-contract:ignore provider audio bytes
+        return _text_to_speech(
+            payload=req_data,
+            app_model=app_model,
+            session=db.session(),
+            account_id=current_user.id if req_data.message_id else None,
+        )
 
-            # response-contract:ignore
-            return AudioService.transcript_tts(
-                app_model=app_model,
-                session=db.session(),
-                text=req_data.text,
-                voice=req_data.voice,
-                message_ref=message_ref,
-                is_draft=True,
-            )
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logger.exception("Failed to handle post request to ChatMessageTextApi")
-            raise InternalServerError()
+
+@console_ns.route("/agent/<uuid:agent_id>/text-to-audio")
+class AgentChatMessageTextApi(Resource):
+    @console_ns.doc("agent_chat_message_text_to_speech")
+    @console_ns.doc(description="Preview an Agent TTS voice or read an Agent chat message")
+    @console_ns.doc(params={"agent_id": "Agent ID"})
+    @console_ns.doc(
+        produces=list(SUPPORTED_TTS_AUDIO_MIME_TYPES),
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: list(SUPPORTED_TTS_AUDIO_MIME_TYPES)},
+    )
+    @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
+    @console_ns.response(200, "Generated audio bytes in the provider audio format")
+    @console_ns.response(400, "Invalid text or voice")
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(404, "Agent not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @with_session
+    @model_validate(TextToSpeechPayload)
+    def post(
+        self,
+        req_data: TextToSpeechPayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
+        enforce_rbac_checks(
+            tenant_id=current_tenant_id,
+            account_id=current_user.id,
+            checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())],
+            path_args={"agent_id": str(agent_id)},
+        )
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
+        # response-contract:ignore provider audio bytes
+        return _text_to_speech(payload=req_data, app_model=app_model, session=session, account_id=current_user.id)
 
 
 def _get_text_to_speech_voices(*, tenant_id: str, language: str):
@@ -402,15 +460,15 @@ class AgentTextToSpeechVoicesApi(Resource):
         agent_id: UUID,
     ):
         query = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))
-        app_model = resolve_agent_runtime_app_model(
-            session=session,
-            tenant_id=current_tenant_id,
-            agent_id=agent_id,
-        )
         enforce_rbac_checks(
             tenant_id=current_tenant_id,
             account_id=current_user.id,
             checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())],
             path_args={"agent_id": str(agent_id)},
+        )
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
         )
         return _get_text_to_speech_voices(tenant_id=app_model.tenant_id, language=query.language)

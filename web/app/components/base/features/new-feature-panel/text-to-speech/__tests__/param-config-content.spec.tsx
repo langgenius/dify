@@ -3,6 +3,7 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { skipToken } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18next from 'i18next'
 import { TtsAutoPlay } from '@/types/app'
 import { FeaturesProvider } from '../../../context'
 import ParamConfigContent from '../param-config-content'
@@ -31,6 +32,14 @@ type VoicesQueryOptions = {
 
 const mockVoicesQuery = vi.fn((_options: VoicesQueryOptions) => ({
   data: mockVoiceItems,
+}))
+
+const mockGetAudioPlayer = vi.fn(() => ({ playAudio: vi.fn(), pauseAudio: vi.fn() }))
+
+vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
+  AudioPlayerManager: {
+    getInstance: () => ({ getAudioPlayer: mockGetAudioPlayer }),
+  },
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => ({
@@ -83,6 +92,10 @@ const getLanguageSelect = () =>
 const getVoiceSelect = () => screen.getByRole('combobox', { name: /voice\.voiceSettings\.voice/ })
 
 describe('ParamConfigContent', () => {
+  beforeAll(async () => {
+    await i18next.init({})
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockParams = { appId: 'test-app-id' }
@@ -194,6 +207,27 @@ describe('ParamConfigContent', () => {
 
   // User-triggered behavior and callbacks.
   describe('User Interactions', () => {
+    it('should audition the displayed fallback voice on an agent page', async () => {
+      const user = userEvent.setup()
+      mockParams = { agentId: 'agent-1' }
+      renderWithProvider(
+        {},
+        { text2speech: { ...defaultFeatures.text2speech, enabled: true, voice: 'removed-voice' } },
+      )
+
+      expect(getVoiceSelect()).toHaveTextContent('Alloy')
+      await user.click(screen.getByRole('button', { name: /play/i }))
+
+      expect(mockGetAudioPlayer).toHaveBeenCalledWith(
+        '/agent/agent-1/text-to-audio',
+        false,
+        undefined,
+        'Hello world',
+        'alloy',
+        expect.any(Function),
+      )
+    })
+
     it.each([
       {
         route: 'Chatflow',

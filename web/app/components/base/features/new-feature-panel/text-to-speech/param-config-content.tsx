@@ -193,7 +193,7 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
               role="group"
               aria-label={t(($) => $.play, { ns: 'appApi', defaultValue: 'Play' })}
             >
-              <AudioBtn value={languageItem?.example} isAudition voice={text2speech?.voice} />
+              <AudioBtn value={languageItem?.example} isAudition voice={voiceItem?.value} />
             </div>
           )}
         </div>
