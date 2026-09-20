@@ -86,10 +86,10 @@ jobs:
           retention-days: 1
 
   api-integration:
-    name: API Integration Tests (${{ matrix.python-version }}, shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    name: API Integration Tests (${{ matrix.python-version }})
     runs-on: depot-ubuntu-24.04-4
     env:
-      COVERAGE_FILE: coverage-integration-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+      COVERAGE_FILE: coverage-integration-${{ matrix.python-version }}
       STORAGE_TYPE: opendal
       OPENDAL_SCHEME: fs
       OPENDAL_FS_ROOT: /tmp/dify-storage
@@ -101,11 +101,6 @@ jobs:
       matrix:
         python-version:
           - '3.12'
-        shardIndex:
-          - 1
-          - 2
-        shardTotal:
-          - 2
 
     steps:
       - name: Checkout code
@@ -132,8 +127,6 @@ jobs:
             -p no:benchmark \
             --start-middleware \
             -n auto \
-            --shard-index "${{ matrix.shardIndex }}" \
-            --shard-total "${{ matrix.shardTotal }}" \
             -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
@@ -144,7 +137,7 @@ jobs:
       - name: Upload integration coverage data
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: api-coverage-integration-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+          name: api-coverage-integration-${{ matrix.python-version }}
           path: ${{ env.COVERAGE_FILE }}
           if-no-files-found: error
           retention-days: 1
@@ -198,8 +191,8 @@ jobs:
             echo "expected 3 unit coverage artifacts, found ${#unit_coverage[@]}" >&2
             exit 1
           fi
-          if [[ "${#integration_coverage[@]}" -ne 2 ]]; then
-            echo "expected 2 integration coverage artifacts, found ${#integration_coverage[@]}" >&2
+          if [[ "${#integration_coverage[@]}" -ne 1 ]]; then
+            echo "expected 1 integration coverage artifact, found ${#integration_coverage[@]}" >&2
             exit 1
           fi
 
