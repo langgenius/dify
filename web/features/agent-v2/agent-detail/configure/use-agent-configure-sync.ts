@@ -23,6 +23,7 @@ import {
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerToolPresentationIdentitiesAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
 import {
   getAgentToolPublishIssue,
@@ -61,7 +62,7 @@ export function useAgentConfigureSync({
   const latestAppliedSaveSequenceRef = useRef(0)
   const nextSaveSequenceRef = useRef(0)
   const pageCloseSavingDraftKeyRef = useRef<string | undefined>(undefined)
-  const explicitlySavingDraftKeysRef = useRef(new Set<string>())
+  const explicitlySavingDraftKeysRef = useRefWithInit(() => new Set<string>())
   const publishInFlightRef = useRef(false)
 
   // The layout can unmount this hook before a revoked permission reaches its props.
@@ -314,7 +315,14 @@ export function useAgentConfigureSync({
     } finally {
       explicitlySavingDraftKeysRef.current.delete(draftKey)
     }
-  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store, tCommon])
+  }, [
+    debouncedSaveDraft,
+    getAgentSoulDraft,
+    saveComposer,
+    store,
+    tCommon,
+    explicitlySavingDraftKeysRef,
+  ])
 
   const saveDirtyDraftOnPageClose = useCallback(
     (allowInFlightDuplicate = false) => {
@@ -346,7 +354,13 @@ export function useAgentConfigureSync({
           pageCloseSavingDraftKeyRef.current = undefined
       })
     },
-    [debouncedSaveDraft, getAgentSoulDraft, saveComposerOnPageClose, store],
+    [
+      debouncedSaveDraft,
+      getAgentSoulDraft,
+      saveComposerOnPageClose,
+      store,
+      explicitlySavingDraftKeysRef,
+    ],
   )
 
   useEffect(() => {

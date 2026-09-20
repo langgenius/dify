@@ -1,6 +1,11 @@
 name: Setup Web Environment
 description: Set up Node.js, Vite+, pnpm, and web dependencies
 
+inputs:
+  run-install:
+    description: Install web dependencies after setting up the toolchain
+    default: 'true'
+
 runs:
   using: composite
   steps:
@@ -16,4 +21,4 @@ runs:
           pnpm: false
           npm: false
         cache: true
-        run-install: true
+        run-install: ${{ inputs.run-install }}
