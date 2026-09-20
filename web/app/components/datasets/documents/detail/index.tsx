@@ -217,8 +217,9 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       documentId,
       docForm: documentDetail?.doc_form as ChunkingMode,
       parentMode,
+      canEdit: canEditDocument,
     }),
-    [datasetId, documentId, documentDetail?.doc_form, parentMode],
+    [datasetId, documentId, documentDetail?.doc_form, parentMode, canEditDocument],
   )
 
   const statusDetail = useMemo(

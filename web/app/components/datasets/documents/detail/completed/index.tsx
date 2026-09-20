@@ -51,6 +51,7 @@ const Completed: FC<ICompletedProps> = ({
 }) => {
   const { t } = useTranslation()
   const docForm = useDocumentContext((s) => s.docForm)
+  const canEdit = useDocumentContext((s) => s.canEdit)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -289,6 +290,7 @@ const Completed: FC<ICompletedProps> = ({
         <BatchAction
           className="absolute bottom-16 left-0 z-20"
           selectedIds={selectionState.selectedSegmentIds}
+          disabled={!canEdit}
           onBatchEnable={() => segmentListDataHook.onChangeSwitch(true, '')}
           onBatchDisable={() => segmentListDataHook.onChangeSwitch(false, '')}
           onBatchDelete={() => segmentListDataHook.onDelete('')}
