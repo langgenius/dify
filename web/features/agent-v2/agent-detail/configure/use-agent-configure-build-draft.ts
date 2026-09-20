@@ -11,7 +11,7 @@ import type {
   AgentFileNode,
   AgentSoulConfigFormState,
 } from '@/features/agent-v2/agent-composer/form-state'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -156,7 +156,7 @@ export function useAgentConfigureBuildDraftData({
   setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
   soulSourceOverride: AgentConfigureSoulSource | null
 }) {
-  const shouldSilenceBuildDraftCheckRef = useRef(true)
+  const { t } = useTranslation('common')
   const buildDraftQueryInput = {
     params: {
       agent_id: agentId,
@@ -166,41 +166,32 @@ export function useAgentConfigureBuildDraftData({
     input: {
       params: buildDraftQueryInput.params,
     },
-    context: {},
-  })
-  const silentBuildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
-    input: {
-      params: buildDraftQueryInput.params,
-    },
     context: {
       silent: true,
     },
-    queryKey: buildDraftQueryOptions.queryKey,
   })
-  const buildDraftQuery = useQuery({
-    ...buildDraftQueryOptions,
-    enabled:
-      isBuildMode &&
-      !isViewingVersion &&
-      soulSourceOverride !== 'draft' &&
-      soulSourceOverride !== 'view-version',
-    queryFn: async (context) => {
-      try {
-        const queryOptions = shouldSilenceBuildDraftCheckRef.current
-          ? silentBuildDraftQueryOptions
-          : buildDraftQueryOptions
-
-        shouldSilenceBuildDraftCheckRef.current = false
-        return await queryOptions.queryFn(context)
-      } catch (error) {
-        if (isNotFoundResponse(error)) setSoulSourceOverride('draft')
-        throw error
-      }
-    },
-    retry: false,
-    refetchOnReconnect: false,
-    refetchOnWindowFocus: false,
-  })
+  const buildDraftQuery = useQuery(
+    queryOptions({
+      ...buildDraftQueryOptions,
+      enabled:
+        isBuildMode &&
+        !isViewingVersion &&
+        soulSourceOverride !== 'draft' &&
+        soulSourceOverride !== 'view-version',
+      queryFn: async (context) => {
+        try {
+          return await buildDraftQueryOptions.queryFn(context)
+        } catch (error) {
+          if (isNotFoundResponse(error)) setSoulSourceOverride('draft')
+          else toast.error(t(($) => $['api.actionFailed']))
+          throw error
+        }
+      },
+      retry: false,
+      refetchOnReconnect: false,
+      refetchOnWindowFocus: false,
+    }),
+  )
   const {
     data: buildDraftData,
     dataUpdatedAt: buildDraftDataUpdatedAt,

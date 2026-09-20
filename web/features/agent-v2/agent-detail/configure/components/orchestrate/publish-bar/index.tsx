@@ -12,7 +12,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +21,8 @@ import { isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/sto
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { AgentVersionRestoreDialogs } from '../../preview/versions-panel/restore-dialogs'
+import { useAgentVersionRestore } from '../../preview/versions-panel/use-agent-version-restore'
 import { AgentPublishImpactDetails } from './publish-impact-details'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
@@ -133,56 +135,14 @@ export function AgentConfigurePublishBar({
       enabled: publishIsAvailable && !isPublishing && !selectedVersionSnapshot,
     })
   useQuery(workflowReferencesQueryOptions)
-  const restoreVersionMutation = useMutation(
-    consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions(),
-  )
+  const restore = useAgentVersionRestore({
+    agentId,
+    onRestored: async () => {
+      await onVersionRestored?.()
+      onExitVersions?.()
+    },
+  })
   const canPublish = publishIsAvailable && !isPublishing
-
-  const handleRestoreVersion = (versionId: string) => {
-    if (restoreVersionMutation.isPending) return
-
-    restoreVersionMutation.mutate(
-      {
-        params: {
-          agent_id: agentId,
-          version_id: versionId,
-        },
-      },
-      {
-        onSuccess: async () => {
-          await Promise.all([
-            queryClient.invalidateQueries({
-              queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-                input: {
-                  params: {
-                    agent_id: agentId,
-                  },
-                },
-              }),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: consoleQuery.agent.byAgentId.composer.get.queryKey({
-                input: {
-                  params: {
-                    agent_id: agentId,
-                  },
-                },
-              }),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-            }),
-          ])
-          await onVersionRestored?.()
-          onExitVersions?.()
-          toast.success(tCommon(($) => $['api.actionSuccess']))
-        },
-        onError: () => {
-          toast.error(tCommon(($) => $['api.actionFailed']))
-        },
-      },
-    )
-  }
 
   const handlePublish = async () => {
     if (!canPublish) return
@@ -237,12 +197,27 @@ export function AgentConfigurePublishBar({
 
   if (selectedVersionSnapshot) {
     return (
-      <AgentVersionRestoreBar
-        version={selectedVersionSnapshot}
-        isRestoring={restoreVersionMutation.isPending}
-        onExitVersions={onExitVersions}
-        onRestoreVersion={handleRestoreVersion}
-      />
+      <>
+        <AgentVersionRestoreBar
+          version={selectedVersionSnapshot}
+          isRestoring={restore.isPending}
+          restoreDisabled={restore.disabled}
+          onExitVersions={onExitVersions}
+          onRestoreVersion={
+            restore.canRestore ? () => restore.requestRestore(selectedVersionSnapshot) : undefined
+          }
+        />
+        <AgentVersionRestoreDialogs
+          version={restore.version}
+          isUpgradeOpen={restore.isUpgradeOpen}
+          onUpgradeClose={restore.closeUpgrade}
+          isConfirmOpen={restore.isConfirmOpen}
+          onConfirmOpenChange={restore.onConfirmOpenChange}
+          isPending={restore.isPending}
+          disabled={restore.disabled}
+          onConfirm={restore.confirmRestore}
+        />
+      </>
     )
   }
 
@@ -420,11 +395,13 @@ function PublishBarActions({
 function AgentVersionRestoreBar({
   version,
   isRestoring = false,
+  restoreDisabled,
   onExitVersions,
   onRestoreVersion,
 }: {
   version: AgentConfigSnapshotSummaryResponse
   isRestoring?: boolean
+  restoreDisabled?: boolean
   onExitVersions?: () => void
   onRestoreVersion?: (versionId: string) => void
 }) {
@@ -461,9 +438,9 @@ function AgentVersionRestoreBar({
       <Button
         type="button"
         variant="primary"
-        disabled={!onRestoreVersion}
+        disabled={!onRestoreVersion || restoreDisabled}
         loading={isRestoring}
-        className="h-8 rounded-lg px-3"
+        className="shrink-0"
         onClick={() => onRestoreVersion?.(version.id)}
       >
         {t(($) => $['agentDetail.versionHistory.restore'])}

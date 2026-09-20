@@ -15,11 +15,17 @@ import WorkflowHiddenInputFields from '../workflow-hidden-input-fields'
 
 type WorkflowLaunchFormProps = {
   hiddenVariables: WorkflowHiddenStartVariable[]
+  launchDisabled: boolean
   targetUrl: string
   onClose: () => void
 }
 
-function WorkflowLaunchForm({ hiddenVariables, targetUrl, onClose }: WorkflowLaunchFormProps) {
+function WorkflowLaunchForm({
+  hiddenVariables,
+  launchDisabled,
+  targetUrl,
+  onClose,
+}: WorkflowLaunchFormProps) {
   const { t } = useTranslation()
   const [values, setValues] = useState<Record<string, WorkflowLaunchInputValue>>(() =>
     createWorkflowLaunchInitialValues(hiddenVariables),
@@ -34,6 +40,8 @@ function WorkflowLaunchForm({ hiddenVariables, targetUrl, onClose }: WorkflowLau
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (launchDisabled) return
+
     const launchUrl = await buildWorkflowLaunchUrl({
       accessibleUrl: targetUrl,
       variables: hiddenVariables,
@@ -55,7 +63,7 @@ function WorkflowLaunchForm({ hiddenVariables, targetUrl, onClose }: WorkflowLau
       </div>
       <div className="flex items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
         <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-        <Button type="submit" variant="primary">
+        <Button type="submit" variant="primary" disabled={launchDisabled}>
           {t(($) => $['overview.appInfo.launch'], { ns: 'appOverview' })}
         </Button>
       </div>
@@ -65,6 +73,7 @@ function WorkflowLaunchForm({ hiddenVariables, targetUrl, onClose }: WorkflowLau
 
 type WorkflowLaunchDialogProps = {
   hiddenVariables: WorkflowHiddenStartVariable[]
+  launchDisabled?: boolean
   open: boolean
   targetUrl: string
   onOpenChange: (open: boolean) => void
@@ -72,6 +81,7 @@ type WorkflowLaunchDialogProps = {
 
 export function WorkflowLaunchDialog({
   hiddenVariables,
+  launchDisabled = false,
   open,
   targetUrl,
   onOpenChange,
@@ -101,6 +111,7 @@ export function WorkflowLaunchDialog({
         <WorkflowLaunchForm
           key={open ? `open:${targetUrl}` : 'closed'}
           hiddenVariables={supportedVariables}
+          launchDisabled={launchDisabled}
           targetUrl={targetUrl}
           onClose={() => onOpenChange(false)}
         />

@@ -241,7 +241,7 @@ type BlockSelectorContentProps = Pick<
   searchInputRef: React.RefObject<HTMLInputElement | null>
 }
 
-function BlockSelectorContent({
+export function BlockSelectorContent({
   allowUserInputSelection,
   availableBlocksTypes,
   blocks: blocksFromProps,

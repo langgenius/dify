@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
 import { AgentPermission } from '@/features/agent-v2/acl'
+import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
@@ -18,6 +19,8 @@ import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
 const mocks = vi.hoisted(() => ({
+  getUserCanAccess:
+    vi.fn<(appId: string, isInstalledApp: boolean) => Promise<{ result: boolean }>>(),
   apiAccessQueryFn: vi.fn(),
   apiKeysQueryFn: vi.fn(),
   siteEnableMutation: vi.fn(),
@@ -31,10 +34,26 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
-  default: ({ app }: { app: { id: string; access_mode: string } }) => {
+  default: ({
+    app,
+    onConfirm,
+  }: {
+    app: { id: string; access_mode: string }
+    onConfirm: () => Promise<void>
+  }) => {
     mocks.accessControlRender(app)
-    return <div role="dialog" aria-label="access-control" />
+    return (
+      <div role="dialog" aria-label="access-control">
+        <button type="button" onClick={() => void onConfirm()}>
+          Save access control
+        </button>
+      </div>
+    )
   },
+}))
+
+vi.mock('@/service/share', () => ({
+  getUserCanAccess: mocks.getUserCanAccess,
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -339,10 +358,123 @@ function createDeferredPromise<T>() {
 describe('Agent access surface cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getUserCanAccess.mockResolvedValue({ result: true })
     mocks.accessSubjectsQueryFn.mockResolvedValue({ groups: [], members: [] })
   })
 
   describe('Web app access', () => {
+    it('disables Open when the user cannot access the backing Web App', async () => {
+      const user = userEvent.setup()
+      mocks.getUserCanAccess.mockResolvedValue({ result: false })
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({
+            access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+            app_id: 'source-app-1',
+            backing_app_id: 'backing-app-1',
+          })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      const openButton = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.actions.open',
+      })
+      await user.hover(openButton)
+
+      expect(await screen.findByText('app.noAccessPermission')).toBeVisible()
+      expect(openButton).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.queryByRole('link', { name: /webApp\.actions\.open/ })).not.toBeInTheDocument()
+      expect(mocks.getUserCanAccess).toHaveBeenCalledWith('backing-app-1', true)
+    })
+
+    it('keeps Open disabled until Web App access is confirmed', async () => {
+      const permission = createDeferredPromise<{ result: boolean }>()
+      mocks.getUserCanAccess.mockReturnValueOnce(permission.promise)
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_mode: AccessMode.ORGANIZATION })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: /webApp\.actions\.open/ })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+
+      permission.resolve({ result: true })
+
+      expect(await screen.findByRole('link', { name: /webApp\.actions\.open/ })).toHaveAttribute(
+        'href',
+        'https://chat.example.test/agent/site-token',
+      )
+    })
+
+    it('allows external-member Web Apps without platform access', () => {
+      mocks.getUserCanAccess.mockResolvedValue({ result: false })
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_mode: AccessMode.EXTERNAL_MEMBERS })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(screen.getByRole('link', { name: /webApp\.actions\.open/ })).toHaveAttribute(
+        'href',
+        'https://chat.example.test/agent/site-token',
+      )
+    })
+
+    it('allows opening without a permission query when Web App auth is disabled', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_mode: AccessMode.ORGANIZATION })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+        { webAppAuthEnabled: false },
+      )
+
+      expect(screen.getByRole('link', { name: /webApp\.actions\.open/ })).toHaveAttribute(
+        'href',
+        'https://chat.example.test/agent/site-token',
+      )
+      expect(mocks.getUserCanAccess).not.toHaveBeenCalled()
+    })
+
+    it('refreshes Open after saving Web App access permissions', async () => {
+      const user = userEvent.setup()
+      mocks.getUserCanAccess.mockResolvedValue({ result: false })
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+      )
+      const dialog = await screen.findByRole('dialog', { name: 'access-control' })
+      expect(screen.getByRole('button', { name: /webApp\.actions\.open/ })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+
+      mocks.getUserCanAccess.mockResolvedValue({ result: true })
+      await user.click(within(dialog).getByRole('button', { name: 'Save access control' }))
+
+      expect(await screen.findByRole('link', { name: /webApp\.actions\.open/ })).toHaveAttribute(
+        'href',
+        'https://chat.example.test/agent/site-token',
+      )
+    })
+
     it('should serialize Web App toggles and cache each confirmed response', async () => {
       const user = userEvent.setup()
       const firstToggle = createDeferredPromise<AppDetail>()
@@ -575,7 +707,9 @@ describe('Agent access surface cards', () => {
 
     it('should save settings through the backing app id and update the agent detail cache', async () => {
       const user = userEvent.setup()
+      mocks.getUserCanAccess.mockResolvedValue({ result: false })
       const agent = createAgent({
+        access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
         site: {
           ...createAgent().site!,
           icon_url: 'https://files.example.test/old-icon.png',

@@ -86,6 +86,17 @@ function LegacyList({
     includeAll
   const showEmptyDataList = !hasAnyDataset && hasResolvedFirstPage && !hasActiveFilters
   const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
+  const filtersHaveSettled =
+    keywords === searchKeywords &&
+    tagFilterValue.length === tagIDs.length &&
+    tagFilterValue.every((id, index) => id === tagIDs[index])
+  const announceFilteredEmptyState =
+    showFilteredEmptyState &&
+    filtersHaveSettled &&
+    !datasetListQuery.isFetching &&
+    !datasetListQuery.isPlaceholderData &&
+    !datasetListQuery.isError
+  const filteredEmptyMessage = t(($) => $['filterEmpty.noKnowledge'], { ns: 'dataset' })
   const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
   const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
   const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
@@ -149,6 +160,9 @@ function LegacyList({
         }
         knowledgeViewSwitcherProps={knowledgeViewSwitcherProps}
       />
+      <div role="status" aria-atomic="true" className="sr-only">
+        {announceFilteredEmptyState ? filteredEmptyMessage : ''}
+      </div>
       {showEmptyDataList ? (
         <DatasetFirstEmptyState
           canConnectExternalDataset={canConnectExternalDataset}
@@ -159,7 +173,7 @@ function LegacyList({
           datasetList={datasetListQuery.data}
           emptyElement={
             showFilteredEmptyState ? (
-              <FilterEmptyState title={t(($) => $['filterEmpty.noKnowledge'], { ns: 'dataset' })} />
+              <FilterEmptyState title={<span aria-hidden="true">{filteredEmptyMessage}</span>} />
             ) : undefined
           }
           fetchNextPage={datasetListQuery.fetchNextPage}
