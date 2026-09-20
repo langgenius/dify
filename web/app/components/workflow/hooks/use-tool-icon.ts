@@ -14,6 +14,7 @@ import {
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
 
@@ -99,7 +100,7 @@ const findToolInCollections = (
 
     seen.add(collection)
     const matched = collection.find((toolWithProvider) => {
-      if (canFindTool(toolWithProvider.id, data.provider_id)) return true
+      if (matchesProviderReference(toolWithProvider, data.provider_id)) return true
       if (data.plugin_id && toolWithProvider.plugin_id === data.plugin_id) return true
       return data.provider_name === toolWithProvider.name
     })

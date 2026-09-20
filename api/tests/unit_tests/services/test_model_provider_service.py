@@ -20,6 +20,7 @@ from models.provider import (
     ProviderCredential,
     ProviderModel,
     ProviderType,
+    TenantDefaultModel,
     TenantPreferredModelProvider,
 )
 from services import model_provider_service as service_module
@@ -996,9 +997,66 @@ class TestModelProviderServiceListingsAndDefaults:
 
         assert result is None
 
-    def test_get_default_model_of_model_type_should_return_none_when_manager_raises_exception(self) -> None:
+    def test_get_default_model_of_model_type_should_return_none_when_no_configuration_is_saved(self) -> None:
         service, manager = _create_service_with_mocked_manager()
         manager.get_default_model.side_effect = RuntimeError("boom")
+
+        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
+
+        assert result is None
+
+    @pytest.mark.parametrize(
+        "error",
+        [ValueError("Invalid provider: langgenius/openai/openai"), RuntimeError("Plugin daemon unavailable")],
+    )
+    def test_get_default_model_of_model_type_should_preserve_saved_configuration_on_provider_failure(
+        self, sqlite_session: Session, error: Exception
+    ) -> None:
+        saved_model = TenantDefaultModel(
+            tenant_id="tenant-1",
+            model_type=ModelType.LLM,
+            provider_name="langgenius/openai/openai",
+            model_name="gpt-4o",
+        )
+        sqlite_session.add(saved_model)
+        sqlite_session.commit()
+        service, manager = _create_service_with_mocked_manager()
+        manager.get_default_model.side_effect = error
+
+        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
+
+        assert result is not None
+        assert result.model == "gpt-4o"
+        assert result.model_type == ModelType.LLM
+        assert result.provider.provider == "langgenius/openai/openai"
+        assert result.provider.tenant_id == "tenant-1"
+        assert result.provider.label.en_us == "langgenius/openai/openai"
+        assert result.provider.label.zh_hans == "langgenius/openai/openai"
+        assert result.provider.icon_small is None
+        assert result.provider.supported_model_types == []
+        assert result.model_dump(mode="json")["model_type"] == "llm"
+        sqlite_session.refresh(saved_model)
+        assert saved_model.model_name == "gpt-4o"
+        assert saved_model.provider_name == "langgenius/openai/openai"
+
+    @pytest.mark.parametrize(
+        ("tenant_id", "model_type"),
+        [("other-tenant", ModelType.LLM), ("tenant-1", ModelType.TEXT_EMBEDDING)],
+    )
+    def test_get_default_model_of_model_type_should_not_fall_back_to_another_tenant_or_model_type(
+        self, sqlite_session: Session, tenant_id: str, model_type: ModelType
+    ) -> None:
+        sqlite_session.add(
+            TenantDefaultModel(
+                tenant_id=tenant_id,
+                model_type=model_type,
+                provider_name="langgenius/openai/openai",
+                model_name="configured-model",
+            )
+        )
+        sqlite_session.commit()
+        service, manager = _create_service_with_mocked_manager()
+        manager.get_default_model.side_effect = ValueError("Invalid provider: langgenius/openai/openai")
 
         result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 

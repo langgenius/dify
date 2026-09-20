@@ -182,7 +182,7 @@ class HumanInputFormApi(Resource):
 
         service.ensure_form_active(form)
         app_model, site = _get_app_site_from_form(form)
-        tenant = app_model.tenant
+        tenant = app_model.tenant(db.session)
         if tenant is None:
             raise Forbidden()
         inputs = service.resolve_form_inputs(form)
@@ -276,7 +276,8 @@ def _get_app_site_from_form(form: Form) -> tuple[App, Site]:
     if site is None:
         raise Forbidden()
 
-    if app_model.tenant is None or app_model.tenant.status == TenantStatus.ARCHIVE:
+    tenant = app_model.tenant(db.session)
+    if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden()
 
     return app_model, site

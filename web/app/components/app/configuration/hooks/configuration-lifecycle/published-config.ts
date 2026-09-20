@@ -8,6 +8,7 @@ import { PromptMode } from '@/models/debug'
 import { AgentStrategy, AppModeEnum } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { normalizeChatPromptConfig, normalizeCompletionPromptConfig } from './prompt-config'
 
 type BackendAgentTool = ModelConfig['agentConfig']['tools'][number] & {
@@ -99,8 +100,8 @@ function buildPublishedModelConfig({
             tools: agentModeTools
               .filter((tool) => !tool.dataset)
               .map((tool) => {
-                const toolInCollectionList = collectionList.find(
-                  (collection) => collection.id === tool.provider_id,
+                const toolInCollectionList = collectionList.find((collection) =>
+                  matchesProviderReference(collection, tool.provider_id),
                 )
                 return {
                   ...tool,

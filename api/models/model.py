@@ -530,9 +530,8 @@ class App(Base):
         base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
         return normalize_api_base_url(base)
 
-    @property
-    def tenant(self) -> Tenant | None:
-        return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
+    def tenant(self, session: Session | scoped_session) -> Tenant | None:
+        return session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
     def is_agent_with_session(self, *, session: Session) -> bool:
         """Detect legacy agent mode, committing the compatible app mode through the supplied session."""

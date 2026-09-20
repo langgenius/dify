@@ -1,14 +1,15 @@
-"""Unit tests for PermittedExternalAppsListQuery — the
-/permitted-external-apps query validator.
+"""Unit tests for the /permitted-external-apps routes.
 
-Strict ConfigDict(extra='forbid'): cross-tenant tag/workspace_id are
-unresolvable, so the model must reject them as 422 instead of silently
-dropping them. Mode/name/page/limit have the same shape as AppListQuery.
+`PermittedExternalAppsListQuery` is strict (`ConfigDict(extra='forbid')`):
+cross-tenant tag/workspace_id are unresolvable, so the model must reject them as
+422 instead of silently dropping them. Mode/name/page/limit have the same shape
+as AppListQuery.
+
+The allow/deny answers live in `test_auth_matrix.py`.
 """
 
 from __future__ import annotations
 
-import inspect
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -21,8 +22,6 @@ from controllers.openapi.apps_permitted_external import (
     PermittedExternalAppsListQuery,
 )
 from models.model import App, AppMode
-
-from ._mode_constants import NON_LISTABLE_MODES
 
 
 def test_query_defaults_match_apps_list():
@@ -41,22 +40,9 @@ def test_query_rejects_workspace_id():
         PermittedExternalAppsListQuery.model_validate({"workspace_id": "ws-1"})
 
 
-def test_query_rejects_tag():
-    """Tags are tenant-scoped; cross-tenant tag resolution is undefined."""
-    with pytest.raises(ValidationError):
-        PermittedExternalAppsListQuery.model_validate({"tag": "prod"})
-
-
 def test_query_validates_mode_against_supported_app_type():
     with pytest.raises(ValidationError):
         PermittedExternalAppsListQuery.model_validate({"mode": "not-a-mode"})
-
-
-@pytest.mark.parametrize("mode", NON_LISTABLE_MODES)
-def test_query_rejects_non_listable_app_modes(mode: str):
-    """Non-app runtime modes and roster-owned agent are not listable here."""
-    with pytest.raises(ValidationError):
-        PermittedExternalAppsListQuery.model_validate({"mode": mode})
 
 
 def test_query_clamps_limit_at_max():
@@ -64,17 +50,8 @@ def test_query_clamps_limit_at_max():
         PermittedExternalAppsListQuery.model_validate({"limit": 500})
 
 
-def test_query_accepts_valid_mode():
-    """Pin the happy path: AppMode values pass."""
-    q = PermittedExternalAppsListQuery.model_validate({"mode": "chat"})
-    assert q.mode is not None
-    assert q.mode.value == "chat"
-
-
 def test_describe_forwards_request_session_to_response_builder(unbound_session: Session):
     api = PermittedExternalAppDescribeApi()
-    method = inspect.unwrap(api.get)
-    session = unbound_session
     app = App(
         id="app-id",
         tenant_id="tenant-1",
@@ -83,7 +60,7 @@ def test_describe_forwards_request_session_to_response_builder(unbound_session: 
         enable_site=True,
         enable_api=True,
     )
-    auth_data = SimpleNamespace(app=app)
+    ctx = SimpleNamespace(app=app, session=unbound_session)
     query = SimpleNamespace(fields={"info"})
     response = object()
 
@@ -91,7 +68,7 @@ def test_describe_forwards_request_session_to_response_builder(unbound_session: 
         "controllers.openapi.apps_permitted_external.build_app_describe_response",
         return_value=response,
     ) as build_response:
-        result = method(api, session, "app-id", auth_data=auth_data, query=query)
+        result = api.get.__handler__(api, ctx, "app-id", query=query)
 
     assert result is response
-    build_response.assert_called_once_with(app, query.fields, session=session)
+    build_response.assert_called_once_with(app, query.fields, session=unbound_session)

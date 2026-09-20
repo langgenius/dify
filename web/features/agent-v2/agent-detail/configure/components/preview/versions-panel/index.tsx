@@ -2,9 +2,18 @@
 
 import type { AgentVersionFilter } from './filter'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useAgentPermissions } from '@/features/agent-v2/permissions'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { CurrentDraftItem } from './current-draft-item'
 import { VersionFilter } from './filter'
@@ -31,6 +40,28 @@ export function AgentPreviewVersionsPanel({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
+  const { agentQuery, canImportExportDSL } = useAgentPermissions(agentId)
+  const { exportAppDsl, isExporting } = useExportAppDsl()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
+  const shouldShowUpgrade = deploymentEdition === 'CLOUD' && plan === 'sandbox'
+  const exportDisabled =
+    isExporting || (deploymentEdition === 'CLOUD' && plan === undefined) || !agentQuery.data?.app_id
+  const handleExport = (versionId: string) => {
+    const agent = agentQuery.data
+    if (!canImportExportDSL || exportDisabled || !agent?.app_id) return
+    if (shouldShowUpgrade) {
+      void setPricing('open')
+      return
+    }
+    void exportAppDsl({ appId: agent.app_id, appName: agent.name, versionId })
+  }
   const [filterValue, setFilterValue] = useState<AgentVersionFilter>('all')
   const versionsQuery = useQuery(
     consoleQuery.agent.byAgentId.versions.get.queryOptions({
@@ -108,6 +139,9 @@ export function AgentPreviewVersionsPanel({
                 isFirst={false}
                 isLast={index === filteredVersions.length - 1}
                 onSelect={onSelectVersion}
+                onExport={canImportExportDSL ? handleExport : undefined}
+                exportDisabled={exportDisabled}
+                showUpgrade={shouldShowUpgrade}
               />
             ))}
           </div>

@@ -838,16 +838,24 @@ class AccountService:
     @staticmethod
     def get_account_by_email_with_case_fallback(email: str, *, session: Session) -> Account | None:
         """
-        Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
+        Retrieve an account by email, matching case-insensitively.
 
-        This keeps backward compatibility for older records that stored uppercase emails while the
-        rest of the system gradually normalizes new inputs.
+        SSO-provisioned accounts keep the identity provider's original casing, while other entry
+        points (invites, registration, login) normalize input to lowercase before looking up an
+        account. An exact match is tried first since it uses the plain email index; the fallback
+        compares normalized_email so either direction of case mismatch still resolves to the same
+        account.
         """
         account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
-        if account or email == email.lower():
+        if account:
             return account
 
-        return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+        return session.execute(
+            select(Account)
+            .where(Account.normalized_email == normalize_email(email))
+            .order_by(Account.created_at)
+            .limit(1)
+        ).scalar_one_or_none()
 
     @staticmethod
     @redis_fallback(default_return=None)
@@ -1231,8 +1239,8 @@ class TenantService:
     @staticmethod
     def account_belongs_to_tenant(account_id: uuid.UUID | str | None, tenant_id: str, *, session: Session) -> bool:
         """Existence check for ``TenantAccountJoin(account_id, tenant_id)``.
-        Backs the CE-deployment membership fallback in
-        ``controllers.openapi.auth.strategies.MembershipStrategy``.
+        Membership without the role: where the openapi auth layer needs the role
+        itself it reads ``Context.workspace_role`` instead.
 
         ``None``/empty ``account_id`` short-circuits to ``False`` so SSO
         bearers (no account) and missing identity collapse cleanly.
@@ -1253,9 +1261,9 @@ class TenantService:
     ) -> TenantAccountRole | None:
         """Return the caller's role in ``tenant_id``, or ``None`` if not a member.
 
-        Backs the openapi auth pipeline's ``load_workspace_role`` prepare step:
-        ``None`` is treated as non-member (the pipeline maps it to 404 — no
-        cross-tenant ID leak) and an out-of-set role to 403.
+        Backs the openapi auth layer's ``Context.workspace_role``: ``None`` is
+        treated as non-member (mapped to 404 — no cross-tenant ID leak) and an
+        out-of-set role to 403.
 
         ``None``/empty ``account_id`` short-circuits to ``None`` so SSO
         bearers (no account) collapse to the non-member path. Mirrors the

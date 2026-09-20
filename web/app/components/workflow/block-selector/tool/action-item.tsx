@@ -14,6 +14,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { getProviderReference } from '@/utils/provider-reference'
 import { basePath } from '@/utils/var'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
@@ -90,7 +91,7 @@ const ToolItem: FC<Props> = ({
           })
         }
         onSelect(BlockEnum.Tool, {
-          provider_id: provider.id,
+          provider_id: getProviderReference(provider),
           provider_type: provider.type,
           provider_name: provider.name,
           provider_show_name: provider.label[language],

@@ -38,7 +38,7 @@ class _TrackedSessionContext:
         self._opened_sessions.append(self._session)
         original_close = self._session.close
 
-        def _tracked_close(*args, **kwargs):
+        def _tracked_close[**P](*args: P.args, **kwargs: P.kwargs):
             self._closed_sessions.append(self._session)
             return original_close(*args, **kwargs)
 
@@ -70,7 +70,7 @@ def session_close_tracker():
 
     original_create_session = task_module.session_factory.create_session
 
-    def _tracked_create_session(*args, **kwargs):
+    def _tracked_create_session[**P](*args: P.args, **kwargs: P.kwargs):
         original_context_manager = original_create_session(*args, **kwargs)
         return _TrackedSessionContext(original_context_manager, opened_sessions, closed_sessions)
 

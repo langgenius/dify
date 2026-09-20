@@ -32,6 +32,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { getProviderReference, matchesProviderReference } from '@/utils/provider-reference'
 import { useAgentPromptToolIconResolver } from './hooks'
 
 export type SlashMenuView = 'main' | 'skills' | 'files' | 'tools' | 'knowledge'
@@ -422,7 +423,11 @@ function AgentPromptToolRows({
       provider.tools.map((tool) => toToolDefaultValue(provider, tool, language, icon, iconDark)),
     )
     onInsertToken(
-      createReferenceToken('tool', `${provider.id}/*`, getProviderLabel(provider, language)),
+      createReferenceToken(
+        'tool',
+        `${getProviderReference(provider)}/*`,
+        getProviderLabel(provider, language),
+      ),
     )
   }
 
@@ -431,7 +436,11 @@ function AgentPromptToolRows({
     const selectedTool = toToolDefaultValue(provider, tool, language, icon, iconDark)
     selectTools([selectedTool])
     onInsertToken(
-      createReferenceToken('tool', `${provider.id}/${tool.name}`, selectedTool.tool_label),
+      createReferenceToken(
+        'tool',
+        `${getProviderReference(provider)}/${tool.name}`,
+        selectedTool.tool_label,
+      ),
     )
   }
 
@@ -549,7 +558,7 @@ function toToolDefaultValue(
   const providerLabel = getLocalizedText(provider.label, language) || provider.name
 
   return {
-    provider_id: provider.id,
+    provider_id: getProviderReference(provider),
     provider_type: parseToolProviderType(provider.type),
     provider_name: provider.name,
     provider_show_name: providerLabel,
@@ -574,7 +583,7 @@ function isToolSelected(selectedTools: ToolValue[], provider: ToolWithProvider, 
   return selectedTools.some(
     (selectedTool) =>
       (selectedTool.provider_name === provider.name ||
-        selectedTool.provider_name === provider.id) &&
+        matchesProviderReference(provider, selectedTool.provider_name)) &&
       selectedTool.tool_name === tool.name,
   )
 }

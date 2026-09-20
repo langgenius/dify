@@ -57,7 +57,10 @@ function ComplianceDocActionVisual({
 }: ComplianceDocActionVisualProps) {
   if (isCurrentPlanCanDownload) {
     return (
-      <span data-disabled={isPending || undefined} className={buttonVariants({ size: 'small' })}>
+      <span
+        data-disabled={isPending || undefined}
+        className={buttonVariants({ size: 'small', className: 'shrink-0' })}
+      >
         <span
           aria-hidden
           className="i-ri-arrow-down-circle-line size-3.5 text-components-button-secondary-text-disabled"

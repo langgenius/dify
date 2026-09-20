@@ -12,6 +12,7 @@ import copy
 import json
 from collections.abc import Mapping
 from typing import Any, cast
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
@@ -72,8 +73,8 @@ class AgentDslService:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def export_agent_app(self, *, app: App) -> tuple[str, dict[str, AgentPackage]]:
-        """Export the editable shared Agent draft, falling back to the active snapshot."""
+    def export_agent_app(self, *, app: App, version_id: UUID | None) -> tuple[str, dict[str, AgentPackage]]:
+        """Export a visible version, or the shared draft with an active snapshot fallback."""
 
         agent = self.session.scalar(
             select(Agent)
@@ -89,31 +90,40 @@ class AgentDslService:
         if agent is None:
             raise ValueError("Agent App has no active backing Agent.")
 
-        draft = self.session.scalar(
-            select(AgentConfigDraft)
-            .where(
-                AgentConfigDraft.tenant_id == app.tenant_id,
-                AgentConfigDraft.agent_id == agent.id,
-                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
-                AgentConfigDraft.draft_owner_key == "",
+        draft = None
+        snapshot_id = agent.active_config_snapshot_id
+        if version_id is not None:
+            snapshot = AgentRosterService(self.session).get_visible_agent_version_snapshot(
+                tenant_id=app.tenant_id, agent_id=agent.id, version_id=version_id
             )
-            .limit(1)
-        )
-        if draft is not None:
-            soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-        else:
-            snapshot = self._require_snapshot(
-                tenant_id=app.tenant_id,
-                agent_id=agent.id,
-                snapshot_id=agent.active_config_snapshot_id,
-            )
+            snapshot_id = snapshot.id
             soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        else:
+            draft = self.session.scalar(
+                select(AgentConfigDraft)
+                .where(
+                    AgentConfigDraft.tenant_id == app.tenant_id,
+                    AgentConfigDraft.agent_id == agent.id,
+                    AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                    AgentConfigDraft.draft_owner_key == "",
+                )
+                .limit(1)
+            )
+            if draft is not None:
+                soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+            else:
+                snapshot = self._require_snapshot(
+                    tenant_id=app.tenant_id,
+                    agent_id=agent.id,
+                    snapshot_id=snapshot_id,
+                )
+                soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
 
         package_ref = "agent_1"
         workspace_skills = self._workspace_skills_for_export(
             tenant_id=app.tenant_id,
             agent_id=agent.id,
-            snapshot_id=agent.active_config_snapshot_id,
+            snapshot_id=snapshot_id,
             include_draft=draft is not None,
         )
         return package_ref, {package_ref: make_portable_agent_package(agent, soul, workspace_skills=workspace_skills)}

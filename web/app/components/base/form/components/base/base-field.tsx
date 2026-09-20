@@ -295,7 +295,11 @@ const BaseField = ({
               {translatedLabel || name}
             </SelectLabel>
           ) : isSingleControl ? (
-            <label id={labelId} htmlFor={controlId}>
+            <label
+              id={labelId}
+              htmlFor={controlId}
+              className={cn(isValidElement(label) && 'w-full')}
+            >
               {translatedLabel || name}
             </label>
           ) : (

@@ -15,7 +15,7 @@ def _build_mcp_entity(*, icon: str = "icon.svg") -> MCPProviderEntity:
     now = datetime.now()
     return MCPProviderEntity(
         id="db-id",
-        provider_id="provider-id",
+        server_identifier="mcp_server",
         name="MCP Provider",
         tenant_id="tenant-1",
         user_id="user-1",
@@ -48,6 +48,8 @@ def test_mcp_tool_provider_controller_from_entity_and_get_tools():
     tool = controller.get_tool("remote-tool")
     assert isinstance(tool, MCPTool)
     assert tool.tenant_id == "tenant-1"
+    # The runtime reference is the server identifier, never the primary key.
+    assert tool.server_identifier == "mcp_server"
 
     tools = controller.get_tools()
     assert len(tools) == 1

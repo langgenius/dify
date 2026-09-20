@@ -173,6 +173,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form definition | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/human-input-forms/{form_token}:submit
 #### Parameters
@@ -211,6 +212,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/tasks/{task_id}:stop
 #### Parameters
@@ -246,6 +248,7 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/approve
 #### Request Body
@@ -515,7 +518,7 @@ Upload a file to use as an input variable when running the app
 | default_workspace_id | string |  | No |
 | subject_email | string |  | No |
 | subject_issuer | string |  | No |
-| subject_type | string |  | Yes |
+| subject_type | [SubjectType](#subjecttype) |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
 #### AppDescribeInfo
@@ -715,7 +718,7 @@ Enum representing the deployment edition of the platform.
 | expires_at | string |  | Yes |
 | subject_email | string |  | No |
 | subject_issuer | string |  | No |
-| subject_type | string, <br>**Available values:** "account", "external_sso" | *Enum:* `"account"`, `"external_sso"` | Yes |
+| subject_type | [SubjectType](#subjecttype) |  | Yes |
 | token | string |  | Yes |
 | token_id | string |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
@@ -1021,6 +1024,12 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result. | Yes |
+
+#### SubjectType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SubjectType | string |  |  |
 
 #### SupportedAppType
 

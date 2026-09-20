@@ -22,7 +22,7 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
     def __init__(
         self,
         entity: ToolProviderEntityWithPlugin,
-        provider_id: str,
+        server_identifier: str,
         tenant_id: str,
         server_url: str,
         headers: dict[str, str] | None = None,
@@ -33,7 +33,7 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
         super().__init__(entity)
         self.entity: ToolProviderEntityWithPlugin = entity
         self.tenant_id = tenant_id
-        self.provider_id = provider_id
+        self.server_identifier = server_identifier
         self.server_url = server_url
         self.headers = headers or {}
         self.timeout = timeout
@@ -72,7 +72,7 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
                     author="Anonymous",  # Tool level author is not stored
                     name=remote_mcp_tool.name,
                     label=I18nObject(en_US=remote_mcp_tool.name, zh_Hans=remote_mcp_tool.name),
-                    provider=entity.provider_id,
+                    provider=entity.server_identifier,
                     icon=entity.icon if isinstance(entity.icon, str) else "",
                 ),
                 parameters=ToolTransformService.convert_mcp_schema_to_parameter(remote_mcp_tool.inputSchema),
@@ -102,7 +102,7 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
                 credentials_schema=[],
                 tools=tools,
             ),
-            provider_id=entity.provider_id,
+            server_identifier=entity.server_identifier,
             tenant_id=entity.tenant_id,
             server_url=entity.server_url,
             headers=entity.headers,
@@ -135,7 +135,7 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
             tenant_id=self.tenant_id,
             icon=self.entity.identity.icon,
             server_url=self.server_url,
-            provider_id=self.provider_id,
+            server_identifier=self.server_identifier,
             headers=self.headers,
             timeout=self.timeout,
             sse_read_timeout=self.sse_read_timeout,
@@ -153,7 +153,7 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
                 tenant_id=self.tenant_id,
                 icon=self.entity.identity.icon,
                 server_url=self.server_url,
-                provider_id=self.provider_id,
+                server_identifier=self.server_identifier,
                 headers=self.headers,
                 timeout=self.timeout,
                 sse_read_timeout=self.sse_read_timeout,

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from inspect import unwrap
 from io import BytesIO
 
 from flask import Flask
@@ -10,7 +9,7 @@ from sqlalchemy.orm import Session
 from controllers.openapi.files import AppFileUploadApi
 from models import Account, App
 from services.app_service import AppService, CreateAppParams
-from tests.test_containers_integration_tests.controllers.openapi.conftest import auth_for
+from tests.test_containers_integration_tests.controllers.openapi.conftest import context_for
 
 
 def _create_app(db_session: Session, account: Account, *, name: str = "Uploader") -> App:
@@ -48,10 +47,10 @@ class TestAppFileUpload:
             data=data,
             content_type="multipart/form-data",
         ):
-            result = unwrap(api.post)(
+            result = api.post.__handler__(
                 api,
-                app_id=app_model.id,
-                auth_data=auth_for(account, app_model=app_model, caller_kind="account"),
+                context_for(account, session=db_session_with_containers, view_args={"app_id": app_model.id}),
+                app_model.id,
             )
 
         assert result.id

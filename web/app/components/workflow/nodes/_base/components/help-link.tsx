@@ -1,6 +1,6 @@
 import type { BlockEnum } from '@/app/components/workflow/types'
-import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { iconButtonVariants } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,10 +26,7 @@ const HelpLink = ({ nodeType }: HelpLinkProps) => {
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn(
-              buttonVariants({ variant: 'ghost', size: 'small' }),
-              'mr-1 w-6 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-            )}
+            className={cn(iconButtonVariants({ size: 'md' }), 'mr-1')}
           >
             <span aria-hidden className="i-ri-book-open-line size-4" />
           </a>

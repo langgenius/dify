@@ -328,8 +328,8 @@ class TestMCPToolTransform:
         assert result[0].type == ToolParameter.ToolParameterType.STRING
         assert result[0].input_schema is None
 
-    def test_mcp_provider_to_user_provider_for_list(self, mock_provider_full, mocker: MockerFixture):
-        """Test mcp_provider_to_user_provider with for_list=True."""
+    def test_mcp_provider_to_user_provider_minimal_response(self, mock_provider_full, mocker: MockerFixture):
+        """Test mcp_provider_to_user_provider with a response that omits optional fields."""
         # Set tools data with null description
         mock_provider_full.tools = '[{"name": "tool1", "description": null, "inputSchema": {}}]'
 
@@ -352,12 +352,11 @@ class TestMCPToolTransform:
         }
         mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
-        # Call the method with for_list=True
-        result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, for_list=True)
+        result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full)
 
         # Verify the result
         assert isinstance(result, ToolProviderApiEntity)
-        assert result.id == "provider-id-123"  # Should use provider.id when for_list=True
+        assert result.id == "provider-id-123"
         assert result.name == "Test MCP Provider"
         assert result.type == ToolProviderType.MCP
         assert result.is_team_authorization is True
@@ -365,8 +364,8 @@ class TestMCPToolTransform:
         assert len(result.tools) == 1
         assert result.tools[0].description.en_US == ""  # Should handle None description
 
-    def test_mcp_provider_to_user_provider_not_for_list(self, mock_provider_full, mocker: MockerFixture):
-        """Test mcp_provider_to_user_provider with for_list=False."""
+    def test_mcp_provider_to_user_provider_full_response(self, mock_provider_full, mocker: MockerFixture):
+        """Test mcp_provider_to_user_provider with configuration and sensitive fields."""
         # Set tools data with description
         mock_provider_full.tools = '[{"name": "tool1", "description": "Tool description", "inputSchema": {}}]'
 
@@ -391,12 +390,11 @@ class TestMCPToolTransform:
         }
         mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
-        # Call the method with for_list=False
-        result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, for_list=False)
+        result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full)
 
         # Verify the result
         assert isinstance(result, ToolProviderApiEntity)
-        assert result.id == "server-identifier-456"  # Should use server_identifier when for_list=False
+        assert result.id == "provider-id-123"
         assert result.server_identifier == "server-identifier-456"
         assert result.configuration is not None
         assert result.configuration.timeout == 30

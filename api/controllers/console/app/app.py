@@ -2,7 +2,7 @@ import logging
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from flask import send_file
 from flask_restx import Resource
@@ -44,6 +44,7 @@ from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
@@ -80,6 +81,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightVectorSetting,
 )
 from services.errors.account import NoPermissionError
+from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
@@ -188,6 +190,19 @@ class AppExportQuery(BaseModel):
     )
     include_secret: bool = Field(default=False, description="Include secrets in export")
     workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
+    version_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "Published Agent version ID to export; requires a paid plan on Cloud. "
+            "If omitted, exports the shared draft, falling back to the active snapshot when no draft exists."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_version_selectors(self) -> Self:
+        if self.version_id is not None and self.workflow_id is not None:
+            raise ValueError("version_id and workflow_id cannot be used together")
+        return self
 
 
 class AppNamePayload(BaseModel):
@@ -1052,13 +1067,24 @@ class AppExportApi(Resource):
     def get(self, req_data: AppExportQuery, app_model: App):
         """Export app"""
 
+        if req_data.version_id is not None:
+            if app_model.mode != AppMode.AGENT:
+                raise BadRequest("version_id is only available for Agent Apps")
+            if (
+                dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+                and not FeatureService.get_workspace_plan(app_model.tenant_id).is_paid
+            ):
+                raise Forbidden("This feature requires a paid plan.")
+
         if req_data.format == "ifpkg" or (req_data.format is None and app_model.mode == AppMode.AGENT):
             if app_model.mode != AppMode.AGENT:
                 raise BadRequest("The ifpkg format is only available for Agent Apps")
             agent_id = app_model.bound_agent_id_with_session(session=db.session())
             if agent_id is None:
                 raise NotFound("Agent not found")
-            exported = RosterAgentPackageExporter().export(tenant_id=app_model.tenant_id, agent_id=agent_id)
+            exported = RosterAgentPackageExporter().export(
+                tenant_id=app_model.tenant_id, agent_id=agent_id, version_id=req_data.version_id
+            )
             try:
                 archive_response = send_file(
                     exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
@@ -1075,6 +1101,7 @@ class AppExportApi(Resource):
                 session=db.session(),
                 include_secret=req_data.include_secret,
                 workflow_id=req_data.workflow_id,
+                version_id=req_data.version_id,
             )
         )
         return response.model_dump(mode="json")

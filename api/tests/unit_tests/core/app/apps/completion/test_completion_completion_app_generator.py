@@ -13,8 +13,9 @@ from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from models import Account
 from models.enums import ConversationFromSource
-from models.model import AppMode, AppModelConfig, Conversation, Message
+from models.model import App, AppMode, AppModelConfig, Conversation, Message
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
 
@@ -44,18 +45,32 @@ def generator(mocker: MockerFixture):
     return gen
 
 
-def _build_app_model():
-    return MagicMock(tenant_id="tenant", id="app1", mode="completion", app_model_config_id="cfg-current")
+@pytest.fixture(autouse=True)
+def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(module.db, "session", sqlite_session)
 
 
-def _build_user():
-    return MagicMock(id="user", session_id="session")
+def _build_app_model() -> App:
+    return App(
+        id="app1",
+        tenant_id="tenant",
+        name="Completion app",
+        description="",
+        mode=AppMode.COMPLETION,
+        app_model_config_id="cfg-current",
+        enable_site=False,
+        enable_api=False,
+    )
 
 
-def _build_app_model_config():
-    config = MagicMock(id="cfg", app_id="app1")
-    config.to_dict.return_value = {"model": {"provider": "x"}}
-    return config
+def _build_user() -> Account:
+    account = Account(name="User", email="user@example.com")
+    account.id = "user"
+    return account
+
+
+def _build_app_model_config() -> AppModelConfig:
+    return AppModelConfig(app_id="app1", model='{"provider": "x"}')
 
 
 def _persist_message(
@@ -80,7 +95,7 @@ def _persist_message(
         invoke_from=InvokeFrom.WEB_APP,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
-        from_account_id=None,
+        from_account_id="user",
         read_at=None,
         read_account_id=None,
     )
@@ -108,7 +123,7 @@ def _persist_message(
         invoke_from=InvokeFrom.WEB_APP,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
-        from_account_id=None,
+        from_account_id="user",
         workflow_run_id=None,
         app_mode=AppMode.COMPLETION,
     )
@@ -144,6 +159,7 @@ class TestCompletionAppGenerator:
     def test_generate_success_no_file_config(self, generator, mocker: MockerFixture, sqlite_session: Session):
         app_model_config = _build_app_model_config()
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
+        to_dict = mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "x"}})
         annotation_reply = {"enabled": False}
         load_annotation_reply_config = mocker.patch.object(
             module,
@@ -163,8 +179,27 @@ class TestCompletionAppGenerator:
 
         mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
-        conversation = MagicMock(id="conv", mode="completion")
-        message = MagicMock(id="msg")
+        conversation = Conversation(
+            id="conv",
+            app_id="app1",
+            mode=AppMode.COMPLETION,
+            name="Conversation",
+            inputs={},
+            from_source=ConversationFromSource.CONSOLE,
+        )
+        message = Message(
+            id="msg",
+            app_id="app1",
+            conversation_id="conv",
+            inputs={},
+            query="q",
+            message={},
+            message_unit_price=Decimal(0),
+            answer="",
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.CONSOLE,
+        )
         mocker.patch.object(generator, "_init_generate_records", return_value=(conversation, message))
 
         mocker.patch.object(generator, "_handle_response", return_value="response")
@@ -183,12 +218,13 @@ class TestCompletionAppGenerator:
         assert generator.generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
         module.file_factory.build_from_mappings.assert_not_called()
         load_annotation_reply_config.assert_called_once_with(sqlite_session, "app1")
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
         assert get_app_config.call_args.kwargs["annotation_reply"] is annotation_reply
 
     def test_generate_success_with_files(self, generator, mocker: MockerFixture, sqlite_session: Session):
         app_model_config = _build_app_model_config()
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
+        mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "x"}})
 
         file_extra_config = MagicMock()
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_extra_config)
@@ -200,8 +236,27 @@ class TestCompletionAppGenerator:
 
         mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
-        conversation = MagicMock(id="conv", mode="completion")
-        message = MagicMock(id="msg")
+        conversation = Conversation(
+            id="conv",
+            app_id="app1",
+            mode=AppMode.COMPLETION,
+            name="Conversation",
+            inputs={},
+            from_source=ConversationFromSource.CONSOLE,
+        )
+        message = Message(
+            id="msg",
+            app_id="app1",
+            conversation_id="conv",
+            inputs={},
+            query="q",
+            message={},
+            message_unit_price=Decimal(0),
+            answer="",
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.CONSOLE,
+        )
         mocker.patch.object(generator, "_init_generate_records", return_value=(conversation, message))
 
         mocker.patch.object(generator, "_handle_response", return_value="response")
@@ -238,7 +293,29 @@ class TestCompletionAppGenerator:
         mocker.patch.object(
             generator,
             "_init_generate_records",
-            return_value=(MagicMock(id="conv", mode="completion"), MagicMock(id="msg")),
+            return_value=(
+                Conversation(
+                    id="conv",
+                    app_id="app1",
+                    mode=AppMode.COMPLETION,
+                    name="Conversation",
+                    inputs={},
+                    from_source=ConversationFromSource.CONSOLE,
+                ),
+                Message(
+                    id="msg",
+                    app_id="app1",
+                    conversation_id="conv",
+                    inputs={},
+                    query="q",
+                    message={},
+                    message_unit_price=Decimal(0),
+                    answer="",
+                    answer_unit_price=Decimal(0),
+                    currency="USD",
+                    from_source=ConversationFromSource.CONSOLE,
+                ),
+            ),
         )
         mocker.patch.object(generator, "_handle_response", return_value="response")
         mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
@@ -350,7 +427,29 @@ class TestCompletionAppGenerator:
         mocker.patch.object(
             generator,
             "_init_generate_records",
-            return_value=(MagicMock(id="conv", mode="completion"), MagicMock(id="msg")),
+            return_value=(
+                Conversation(
+                    id="conv",
+                    app_id="app1",
+                    mode=AppMode.COMPLETION,
+                    name="Conversation",
+                    inputs={},
+                    from_source=ConversationFromSource.CONSOLE,
+                ),
+                Message(
+                    id="msg",
+                    app_id="app1",
+                    conversation_id="conv",
+                    inputs={},
+                    query="q",
+                    message={},
+                    message_unit_price=Decimal(0),
+                    answer="",
+                    answer_unit_price=Decimal(0),
+                    currency="USD",
+                    from_source=ConversationFromSource.CONSOLE,
+                ),
+            ),
         )
         mocker.patch.object(generator, "_handle_response", return_value="response")
         mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
@@ -399,13 +498,8 @@ class TestCompletionAppGenerator:
         flask_app = MagicMock()
         flask_app.app_context.return_value = contextlib.nullcontext()
 
-        session_context = mocker.MagicMock()
-        session_context.__enter__.return_value = sqlite_session
-        create_session = mocker.patch.object(module.session_factory, "create_session")
-        create_session.return_value = session_context
-        mocker.patch.object(module.db, "session")
-
-        mocker.patch.object(generator, "_get_message", return_value=MagicMock())
+        message = _persist_message(sqlite_session)
+        mocker.patch.object(generator, "_get_message", return_value=message)
 
         runner_instance = MagicMock()
         runner_instance.run.side_effect = error

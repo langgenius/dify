@@ -1043,7 +1043,7 @@ def test_get_mcp_provider_controller_returns_controller(monkeypatch: pytest.Monk
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
         mock_service = mock_service_cls.return_value
-        mock_service.get_provider.return_value = provider_entity
+        mock_service.get_provider_by_persisted_reference.return_value = provider_entity
         with patch("core.tools.tool_manager.MCPToolProviderController.from_db", return_value=controller):
             built = ToolManager.get_mcp_provider_controller("tenant-1", "mcp-1")
         assert built is controller
@@ -1057,7 +1057,7 @@ def test_generate_mcp_tool_icon_url_returns_provider_icon(
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
         mock_service = mock_service_cls.return_value
-        mock_service.get_provider_entity.return_value = provider_entity
+        mock_service.get_provider_entity_by_persisted_reference.return_value = provider_entity
         assert ToolManager.generate_mcp_tool_icon_url("tenant-1", "mcp-1") == provider_entity.provider_icon
         assert isinstance(mock_service_cls.call_args.kwargs["session"], Session)
 
@@ -1065,7 +1065,7 @@ def test_generate_mcp_tool_icon_url_returns_provider_icon(
 def test_get_mcp_provider_controller_missing_raises(monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase):
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
-        mock_service_cls.return_value.get_provider.side_effect = ValueError("missing")
+        mock_service_cls.return_value.get_provider_by_persisted_reference.side_effect = ValueError("missing")
         with pytest.raises(ToolProviderNotFoundError, match="mcp provider mcp-1 not found"):
             ToolManager.get_mcp_provider_controller("tenant-1", "mcp-1")
 

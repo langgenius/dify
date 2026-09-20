@@ -1,8 +1,7 @@
 import type { currentVarType } from './panel'
 import type { GenRes } from '@/service/debug'
-import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { IconButton, iconButtonVariants } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
@@ -233,10 +232,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                         href={fullContent?.download_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={cn(
-                          buttonVariants({ variant: 'ghost', size: 'small' }),
-                          'size-6 rounded-lg p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                        )}
+                        className={iconButtonVariants({ size: 'md' })}
                       >
                         <span aria-hidden className="i-ri-file-download-fill size-4" />
                       </a>

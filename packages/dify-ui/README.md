@@ -43,7 +43,7 @@ Import `styles.css` once from the consumer's root stylesheet or entrypoint.
 | Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` |
 | Layout           | `./scroll-area`                                                                                                                                                                      |
 | Media            | `./avatar`                                                                                                                                                                           |
-| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                                              |
+| Navigation       | `./breadcrumb`, `./file-tree`, `./pagination`, `./tabs`                                                                                                                              |
 | Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                            |
 | Search and pick  | `./autocomplete`, `./combobox`, `./select`                                                                                                                                           |
 

@@ -5,6 +5,14 @@ module-local and publish the complete surface through separate `export { ... }` 
 `export type { ... }` manifests at the bottom of the file. Do not mix scattered inline exports
 with the manifest or use wildcard exports.
 
+## React imports
+
+Use React namespace imports throughout this package, including stories and tests. Use
+`import * as React from 'react'` when calling React runtime APIs, and
+`import type * as React from 'react'` when referencing only React types. A runtime namespace
+import also covers React types; do not add separate named type imports. JSX alone does not
+require an explicit React import.
+
 ## Subpaths and names
 
 Every public primitive needs a matching `package.json#exports` subpath. Import relatively between

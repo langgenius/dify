@@ -819,7 +819,7 @@ class ToolManager:
 
             if "mcp" in filters:
                 mcp_service = MCPToolManageService(session=session)
-                mcp_providers = mcp_service.list_providers(tenant_id=tenant_id, for_list=True)
+                mcp_providers = mcp_service.list_providers(tenant_id=tenant_id)
                 for mcp_provider in mcp_providers:
                     result_providers[f"mcp_provider.{mcp_provider.name}"] = mcp_provider
 
@@ -871,14 +871,18 @@ class ToolManager:
         get the api provider
 
         :param tenant_id: the id of the tenant
-        :param provider_id: the id of the provider
+        :param provider_id: the persisted reference of the provider, normally its
+            server identifier, or the primary key for graphs written before that
+            convention
 
         :return: the provider controller, the credentials
         """
         with Session(db.engine) as session:
             mcp_service = MCPToolManageService(session=session)
             try:
-                provider = mcp_service.get_provider(server_identifier=provider_id, tenant_id=tenant_id)
+                provider = mcp_service.get_provider_by_persisted_reference(
+                    id_or_server_identifier=provider_id, tenant_id=tenant_id
+                )
             except ValueError:
                 raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
 
@@ -1028,8 +1032,8 @@ class ToolManager:
             with Session(db.engine) as session:
                 mcp_service = MCPToolManageService(session=session)
                 try:
-                    mcp_provider = mcp_service.get_provider_entity(
-                        provider_id=provider_id, tenant_id=tenant_id, by_server_id=True
+                    mcp_provider = mcp_service.get_provider_entity_by_persisted_reference(
+                        id_or_server_identifier=provider_id, tenant_id=tenant_id
                     )
                     return cast(EmojiIconDict | str, mcp_provider.provider_icon)
                 except ValueError:

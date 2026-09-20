@@ -310,7 +310,7 @@ def test_agent_package_rejects_unknown_schema_version() -> None:
 
 def test_export_agent_app_requires_backing_agent(sqlite_session: Session) -> None:
     with pytest.raises(ValueError, match="no active backing Agent"):
-        AgentDslService(sqlite_session).export_agent_app(app=_app())
+        AgentDslService(sqlite_session).export_agent_app(app=_app(), version_id=None)
 
 
 @pytest.mark.parametrize("use_draft", [True, False])
@@ -334,7 +334,7 @@ def test_export_agent_app_uses_draft_or_active_snapshot(sqlite_session: Session,
     sqlite_session.add_all(rows)
     sqlite_session.commit()
 
-    package_ref, packages = AgentDslService(sqlite_session).export_agent_app(app=_app())
+    package_ref, packages = AgentDslService(sqlite_session).export_agent_app(app=_app(), version_id=None)
 
     assert package_ref == "agent_1"
     assert packages[package_ref].soul.config_note == ("draft" if use_draft else "snapshot")

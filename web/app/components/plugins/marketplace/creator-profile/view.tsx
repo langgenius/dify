@@ -9,7 +9,16 @@ import type {
   CreatorProfileViewModel,
 } from './model'
 import type { Plugin } from '@/app/components/plugins/types'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
 import { cn } from '@langgenius/dify-ui/cn'
+import { iconButtonVariants } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from '#i18n'
 import Link from '@/next/link'
 import DefaultCreatorBackground from './assets/default-background.png'
@@ -51,24 +60,28 @@ export default function CreatorProfileView({
           isMarketplacePlatform ? 'md:px-6' : 'md:px-9',
         )}
       >
-        <nav
+        <Breadcrumb
           aria-label={t(($) => $['marketplace.creatorProfile.breadcrumbLabel'], { ns: 'plugin' })}
-          className="flex h-12 shrink-0 items-end gap-2 overflow-hidden"
+          className="h-12 shrink-0"
         >
-          <Link
-            href={homeHref}
-            aria-label={t(($) => $['marketplace.creatorProfile.home'], { ns: 'plugin' })}
-            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span aria-hidden className="i-ri-home-4-line size-4" />
-          </Link>
-          <span aria-hidden className="pb-0.5 system-md-regular text-text-quaternary">
-            /
-          </span>
-          <span className="pb-0.5 system-md-regular text-text-primary">
-            {t(($) => $['marketplace.creatorProfile.title'], { ns: 'plugin' })}
-          </span>
-        </nav>
+          <BreadcrumbList className="h-full items-end gap-2">
+            <BreadcrumbItem className="shrink-0">
+              <BreadcrumbLink
+                render={<Link href={homeHref} />}
+                aria-label={t(($) => $['marketplace.creatorProfile.home'], { ns: 'plugin' })}
+                className={iconButtonVariants({ size: 'md' })}
+              >
+                <span aria-hidden className="i-ri-home-4-line size-4" />
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator className="pb-0.5 system-md-regular" />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="pb-0.5 system-md-regular">
+                {t(($) => $['marketplace.creatorProfile.title'], { ns: 'plugin' })}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
         <div className="w-full pt-5 pb-8">
           <div

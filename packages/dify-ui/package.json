@@ -21,6 +21,10 @@
       "types": "./src/avatar/index.tsx",
       "import": "./src/avatar/index.tsx"
     },
+    "./breadcrumb": {
+      "types": "./src/breadcrumb/index.tsx",
+      "import": "./src/breadcrumb/index.tsx"
+    },
     "./button": {
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"

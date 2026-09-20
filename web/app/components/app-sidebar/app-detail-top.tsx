@@ -1,5 +1,12 @@
 'use client'
 
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -27,7 +34,6 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
             expand={expand}
             onToggle={onToggle}
             icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
-            className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
           />
         )}
       </div>
@@ -36,27 +42,33 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
 
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
-      <div className="flex min-w-0 flex-1 items-center gap-px">
-        <Link
-          href="/"
-          aria-label={t(($) => $['mainNav.home'], { ns: 'common' })}
-          className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary transition-colors hover:bg-background-default-hover hover:text-text-secondary"
-        >
-          <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-          <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
-        </Link>
-        {expand && (
-          <>
-            <span className="shrink-0 system-md-regular text-text-quaternary">/</span>
-            <Link
-              href="/apps"
-              className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary"
+      <Breadcrumb aria-label={t(($) => $['menus.apps'], { ns: 'common' })} className="flex-1">
+        <BreadcrumbList className="gap-px">
+          <BreadcrumbItem className="shrink-0">
+            <BreadcrumbLink
+              render={<Link href="/" />}
+              aria-label={t(($) => $['mainNav.home'], { ns: 'common' })}
+              className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
             >
-              {t(($) => $['menus.apps'], { ns: 'common' })}
-            </Link>
-          </>
-        )}
-      </div>
+              <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+              <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          {expand && (
+            <>
+              <BreadcrumbSeparator className="system-md-regular" />
+              <BreadcrumbItem className="shrink-0">
+                <BreadcrumbLink
+                  render={<Link href="/apps" />}
+                  className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
+                >
+                  {t(($) => $['menus.apps'], { ns: 'common' })}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            </>
+          )}
+        </BreadcrumbList>
+      </Breadcrumb>
       {expand && (
         <Tooltip>
           <TooltipTrigger
@@ -93,7 +105,6 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
           expand={expand}
           onToggle={onToggle}
           icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
-          className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
         />
       )}
     </div>
