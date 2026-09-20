@@ -8,10 +8,11 @@ const mockMembers = vi.hoisted(() => ({
   accounts: [] as Member[] | null,
   isLoading: false,
 }))
-const mockUseMembers = vi.hoisted(() => vi.fn())
+const mockMembersQuery = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: mockUseMembers,
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: mockMembersQuery,
 }))
 
 const createRule = (resourceType: 'app' | 'dataset'): AccessPolicyWithBindings => ({
@@ -32,7 +33,9 @@ const createRule = (resourceType: 'app' | 'dataset'): AccessPolicyWithBindings =
   accounts: [],
 })
 
-const createUserAccessSetting = (): ResourceUserAccessSetting => ({
+const createUserAccessSetting = (
+  resourceType: 'app' | 'dataset' = 'app',
+): ResourceUserAccessSetting => ({
   account: {
     account_id: 'account-1',
     account_name: 'Evan',
@@ -46,14 +49,15 @@ const createUserAccessSetting = (): ResourceUserAccessSetting => ({
       name: 'Maintainer',
       is_builtin: false,
       permission_keys: [],
+      role_tag: '',
     },
   ],
   access_policies: [
     {
-      id: 'app-policy-id',
+      id: `${resourceType}-policy-id`,
       tenant_id: 'tenant-id',
-      resource_type: 'app',
-      policy_key: 'app-policy-key',
+      resource_type: resourceType,
+      policy_key: `${resourceType}-policy-key`,
       name: 'Manage',
       description: 'Can manage this app',
       permission_keys: [],
@@ -86,9 +90,9 @@ describe('AccessRulesEditor', () => {
     vi.clearAllMocks()
     mockMembers.accounts = []
     mockMembers.isLoading = false
-    mockUseMembers.mockImplementation(() => ({
+    mockMembersQuery.mockImplementation(() => ({
       data: { accounts: mockMembers.accounts },
-      isLoading: mockMembers.isLoading,
+      isPending: mockMembers.isLoading,
     }))
   })
 
@@ -105,7 +109,7 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
     expect(screen.queryByText('permission.accessRule.noUserAccessSettings')).not.toBeInTheDocument()
   })
 
@@ -267,6 +271,113 @@ describe('AccessRulesEditor', () => {
     expect(onRemoveAccessPolicyMemberBinding).not.toHaveBeenCalled()
   })
 
+  it.each(['app', 'dataset'] as const)(
+    'should prevent editing or removing the workspace owner from %s access',
+    async (resourceType) => {
+      const user = userEvent.setup()
+      mockMembers.accounts = [
+        createMember({
+          id: 'workspace-owner',
+          name: 'Workspace Owner',
+          email: 'owner@example.com',
+        }),
+        createMember(),
+      ]
+      const ownerSetting: ResourceUserAccessSetting = {
+        ...createUserAccessSetting(resourceType),
+        account: {
+          account_id: 'workspace-owner',
+          account_name: 'Workspace Owner',
+          email: 'owner@example.com',
+        },
+        roles: [
+          {
+            id: 'owner-role',
+            type: 'workspace',
+            category: 'global_system_default',
+            name: 'Owner',
+            is_builtin: true,
+            permission_keys: [],
+            role_tag: 'owner',
+          },
+        ],
+      }
+      const memberSetting: ResourceUserAccessSetting = {
+        ...createDefaultUserAccessSetting(),
+        account: {
+          account_id: 'account-2',
+          account_name: 'Mia',
+          email: 'mia@example.com',
+        },
+      }
+      const onUserAccessPoliciesChange = vi.fn()
+      const onRemoveAccessPolicyMemberBinding = vi.fn()
+      const onBatchRemoveAccessPolicyMemberBindings = vi.fn().mockResolvedValue(undefined)
+      const onAddAccessSubject = vi.fn()
+
+      render(
+        <AccessRulesEditor
+          rules={[createRule(resourceType)]}
+          userAccessSettings={[ownerSetting, memberSetting]}
+          isLoadingRules={false}
+          isLoadingUserAccessSettings={false}
+          automaticIncludeWorkspaceMembers={false}
+          isUpdatingAutomaticIncludeWorkspaceMembers={false}
+          existingAccountIds={[]}
+          updatingAccountId={null}
+          onUserAccessPoliciesChange={onUserAccessPoliciesChange}
+          onRemoveAccessPolicyMemberBinding={onRemoveAccessPolicyMemberBinding}
+          onBatchRemoveAccessPolicyMemberBindings={onBatchRemoveAccessPolicyMemberBindings}
+          onAddAccessSubject={onAddAccessSubject}
+        />,
+      )
+
+      const ownerRow = screen.getByRole('row', { name: /Workspace Owner/ })
+      expect(within(ownerRow).getByText('permission.accessRule.workspaceOwner')).toBeInTheDocument()
+      expect(within(ownerRow).getByRole('checkbox', { name: 'Workspace Owner' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(
+        within(ownerRow).getByLabelText(/permission\.accessRule\.exceptionPermissionFor/),
+      ).toBeDisabled()
+      expect(
+        within(ownerRow).getByRole('button', { name: 'common.operation.remove' }),
+      ).toBeDisabled()
+
+      await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+      expect(screen.getByRole('checkbox', { name: 'Workspace Owner' })).not.toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Mia' })).toBeChecked()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      const dialog = screen.getByRole('alertdialog', {
+        name: 'permission.accessRule.batchRemoveTitle',
+      })
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
+
+      expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledWith([
+        { accessPolicyId: 'default', accountIds: ['account-2'] },
+      ])
+      expect(onUserAccessPoliciesChange).not.toHaveBeenCalled()
+      expect(onRemoveAccessPolicyMemberBinding).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+      const addDialog = await screen.findByRole('dialog', {
+        name: 'permission.accessRule.addMembersTitle',
+      })
+      expect(within(addDialog).getByText('Workspace Owner')).toBeInTheDocument()
+      expect(
+        within(addDialog).getByRole('button', { name: 'common.operation.added' }),
+      ).toBeDisabled()
+      expect(
+        within(addDialog).queryByRole('button', {
+          name: 'permission.accessRule.addMemberAria:{"name":"Workspace Owner"}',
+        }),
+      ).not.toBeInTheDocument()
+      expect(onAddAccessSubject).not.toHaveBeenCalled()
+    },
+  )
+
   it('should navigate through member pages and change the page size', async () => {
     const user = userEvent.setup()
     const onPageChange = vi.fn()
@@ -323,9 +434,9 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
-    expect(mockUseMembers).not.toHaveBeenCalled()
+    expect(mockMembersQuery).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    expect(mockUseMembers).toHaveBeenCalledTimes(1)
+    expect(mockMembersQuery).toHaveBeenCalledTimes(1)
 
     const dialog = await screen.findByRole('dialog', {
       name: 'permission.accessRule.addMembersTitle',

@@ -16,6 +16,7 @@ environment configuration provides a token.
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing_extensions import cast
 
 import httpx
 from fastapi import APIRouter, FastAPI
@@ -105,6 +106,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             redis,
             prefix=resolved_settings.redis_prefix,
             run_retention_seconds=resolved_settings.run_retention_seconds,
+            run_event_stream_max_length=resolved_settings.run_event_stream_max_length,
         )
         scheduler = RunScheduler(
             store=store,
@@ -112,6 +114,9 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             run_timeout_seconds=resolved_settings.run_timeout_seconds,
+            stream_text_delta_coalescing_enabled=resolved_settings.stream_text_delta_coalescing_enabled,
+            stream_text_delta_flush_interval_seconds=(resolved_settings.stream_text_delta_flush_interval_ms / 1000),
+            stream_text_delta_max_chars=resolved_settings.stream_text_delta_max_chars,
             layer_providers=layer_providers,
         )
         state["store"] = store
@@ -128,10 +133,10 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     configure_server_observability(app)
 
     def get_store() -> RedisRunStore:
-        return state["store"]  # pyright: ignore[reportReturnType]
+        return cast(RedisRunStore, state["store"])
 
     def get_scheduler() -> RunScheduler:
-        return state["scheduler"]  # pyright: ignore[reportReturnType]
+        return cast(RunScheduler, state["scheduler"])
 
     control_plane_router = APIRouter(
         dependencies=[create_bearer_token_dependency(resolved_settings.api_token)],

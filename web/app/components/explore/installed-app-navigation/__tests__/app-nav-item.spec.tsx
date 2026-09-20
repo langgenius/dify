@@ -22,7 +22,6 @@ vi.mock('@/next/link', () => ({
 }))
 
 const baseProps = {
-  ariaLabel: 'My App',
   app: {
     id: 'app-123',
     app_owner_tenant_id: 'tenant-1',
@@ -57,7 +56,9 @@ describe('AppNavItem', () => {
       render(<AppNavItem {...baseProps} />)
 
       expect(screen.getByText('My App')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -68,19 +69,8 @@ describe('AppNavItem', () => {
       const link = screen.getByRole('link', { name: 'My App' })
 
       expect(link).toHaveAttribute('href', '/installed/app-123')
-      expect(link).toHaveAttribute('aria-label', 'My App')
       expect(link).not.toHaveAttribute('aria-current')
       expect(link).toHaveAttribute('data-prefetch', 'false')
-    })
-
-    it('should use a contextual accessible name when ariaLabel is provided', () => {
-      render(<AppNavItem {...baseProps} ariaLabel="Open My App web app" />)
-
-      const link = screen.getByRole('link', { name: 'Open My App web app' })
-
-      expect(link).toHaveAttribute('href', '/installed/app-123')
-      expect(link).toHaveAttribute('aria-label', 'Open My App web app')
-      expect(screen.getByText('My App')).toBeInTheDocument()
     })
 
     it('should enable prefetch after pointer intent', async () => {
@@ -122,7 +112,9 @@ describe('AppNavItem', () => {
       const user = userEvent.setup()
       render(<AppNavItem {...baseProps} />)
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      await user.click(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      )
       await user.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(baseProps.onDelete).toHaveBeenCalledWith('app-123')
@@ -132,7 +124,9 @@ describe('AppNavItem', () => {
       const user = userEvent.setup()
       render(<AppNavItem {...baseProps} />)
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      await user.click(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      )
       await user.click(await screen.findByText('explore.sidebar.action.pin'))
 
       expect(baseProps.onTogglePin).toHaveBeenCalledWith('app-123', true)
@@ -152,7 +146,9 @@ describe('AppNavItem', () => {
         />,
       )
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      await user.click(
+        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
+      )
 
       expect(screen.queryByText('explore.sidebar.action.delete')).not.toBeInTheDocument()
     })

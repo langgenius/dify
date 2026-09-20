@@ -25,7 +25,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowUpdatePayload,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from models.account import Account, Tenant, TenantAccountRole
+from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, Pipeline
 from models.engine import db
 from models.enums import PermissionEnum
@@ -34,6 +34,8 @@ from models.workflow import Workflow, WorkflowType
 from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
 
 DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
@@ -67,13 +69,13 @@ def _make_workflow(**overrides: object) -> Workflow:
 
 
 def _account() -> Account:
-    account = Account(name="Alice", email="alice@example.com")
-    account.id = DEFAULT_WORKFLOW_CREATED_BY
-    account.role = TenantAccountRole.EDITOR
-    tenant = Tenant(name="Tenant")
-    tenant.id = DEFAULT_WORKFLOW_TENANT_ID
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=DEFAULT_WORKFLOW_CREATED_BY,
+        name="Alice",
+        email="alice@example.com",
+        role=TenantAccountRole.EDITOR,
+        tenant=make_tenant(tenant_id=DEFAULT_WORKFLOW_TENANT_ID, name="Tenant"),
+    )
 
 
 def _pipeline() -> Pipeline:
@@ -83,10 +85,9 @@ def _pipeline() -> Pipeline:
 
 
 def _dataset(*, tenant_id: str = DEFAULT_WORKFLOW_TENANT_ID, maintainer: str = DEFAULT_WORKFLOW_CREATED_BY) -> Dataset:
-    return Dataset(
-        id=DEFAULT_DATASET_ID,
+    return make_dataset(
+        dataset_id=DEFAULT_DATASET_ID,
         tenant_id=tenant_id,
-        name="Dataset",
         created_by=maintainer,
         maintainer=maintainer,
         permission=PermissionEnum.ONLY_ME,
@@ -128,7 +129,7 @@ def test_draft_rag_pipeline_workflow_get_serializes_response_model() -> None:
     api = module.DraftRagPipelineApi()
     handler = unwrap_all(api.get)
 
-    response = handler(api, _pipeline())
+    response = handler(api, db.session(), _pipeline())
 
     assert response["id"] == DEFAULT_WORKFLOW_ID
     assert response["graph"] == {"nodes": [], "edges": []}
@@ -259,7 +260,7 @@ def test_rag_pipeline_transform_rejects_read_only_member(sqlite_engine: Engine) 
         session.add(_dataset())
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             pytest.raises(Forbidden),
         ):
             handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, account, UUID(DEFAULT_DATASET_ID))
@@ -293,7 +294,7 @@ def test_rag_pipeline_transform_enforces_legacy_dataset_permission_before_servic
         session.add(_dataset(maintainer="00000000-0000-0000-0000-000000000099"))
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module.RagPipelineTransformService, "transform_dataset") as transform_dataset,
             pytest.raises(Forbidden),
         ):
@@ -315,7 +316,7 @@ def test_rag_pipeline_transform_passes_authorized_dataset_and_account_to_service
         session.add(dataset)
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module.RagPipelineTransformService, "transform_dataset", return_value=expected) as transform,
         ):
             response = handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, account, UUID(DEFAULT_DATASET_ID))
@@ -333,7 +334,7 @@ def test_rag_pipeline_transform_maps_missing_pipeline_to_not_found(sqlite_engine
         session.add(_dataset())
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(
                 module.RagPipelineTransformService,
                 "transform_dataset",
@@ -355,7 +356,7 @@ def test_rag_pipeline_transform_skips_legacy_acl_when_rbac_is_enabled(sqlite_eng
         session.add(_dataset(maintainer="00000000-0000-0000-0000-000000000099"))
 
         with (
-            patch.object(module.dify_config, "RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch.object(module.RagPipelineTransformService, "transform_dataset", return_value=expected) as transform,
         ):
             response = handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, account, UUID(DEFAULT_DATASET_ID))

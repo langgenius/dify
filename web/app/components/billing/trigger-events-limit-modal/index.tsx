@@ -7,7 +7,6 @@ import UsageInfo from '@/app/components/billing/usage-info'
 type Props = Readonly<{
   show: boolean
   onClose: () => void
-  onUpgrade: () => void
   usage: number
   total: number
   resetInDays?: number
@@ -16,7 +15,6 @@ type Props = Readonly<{
 export default function TriggerEventsLimitModal({
   show,
   onClose,
-  onUpgrade,
   usage,
   total,
   resetInDays,
@@ -27,7 +25,6 @@ export default function TriggerEventsLimitModal({
     <PlanUpgradeModal
       show={show}
       onClose={onClose}
-      onUpgrade={onUpgrade}
       Icon={TriggerAll}
       title={t(($) => $['triggerLimitModal.title'], { ns: 'billing' })}
       description={t(($) => $['triggerLimitModal.description'], { ns: 'billing' })}

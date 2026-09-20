@@ -1,4 +1,5 @@
 import builtins
+from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec
@@ -7,7 +8,6 @@ import pytest
 from flask.views import MethodView
 
 from controllers.console import setup as setup_controller
-from controllers.console import wraps
 from controllers.console.error import AlreadySetupError, NotInitValidateError
 from dify_app import DifyApp
 from enums import DeploymentEdition
@@ -78,8 +78,9 @@ def test_console_setup_fastopenapi_post_success(
     setup_service: Mock,
     monkeypatch: pytest.MonkeyPatch,
     deployment_edition: DeploymentEdition,
+    config_overrides: Callable[..., None],
 ) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
+    config_overrides(DEPLOYMENT_EDITION=deployment_edition)
     monkeypatch.setattr(setup_controller, "is_init_validated", lambda: True)
     mark_setup_completed = Mock()
     monkeypatch.setattr(setup_controller, "mark_setup_completed", mark_setup_completed)
@@ -114,9 +115,9 @@ def test_console_setup_fastopenapi_post_success(
 def test_console_setup_fastopenapi_post_rejects_cloud_edition(
     app: DifyApp,
     setup_service: Mock,
-    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     response = app.test_client().post(
         "/console/api/setup",
@@ -167,10 +168,10 @@ def test_console_setup_fastopenapi_post_rejects_cloud_edition(
 def test_console_setup_fastopenapi_post_rejects_invalid_payload_before_service_call(
     app: DifyApp,
     setup_service: Mock,
-    monkeypatch: pytest.MonkeyPatch,
     payload: dict[str, str],
+    config_overrides: Callable[..., None],
 ) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
     response = app.test_client().post("/console/api/setup", json=payload)
 
@@ -195,8 +196,9 @@ def test_console_setup_translates_service_errors_to_controller_errors(
     monkeypatch: pytest.MonkeyPatch,
     service_error: Exception,
     expected_controller_error: type[Exception],
+    config_overrides: Callable[..., None],
 ) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(setup_controller, "is_init_validated", lambda: False)
     mark_setup_completed = Mock()
     monkeypatch.setattr(setup_controller, "mark_setup_completed", mark_setup_completed)
@@ -226,8 +228,9 @@ def test_console_setup_fastopenapi_does_not_mark_setup_completed_when_service_fa
     app: DifyApp,
     setup_service: Mock,
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(setup_controller, "is_init_validated", lambda: True)
     mark_setup_completed = Mock()
     monkeypatch.setattr(setup_controller, "mark_setup_completed", mark_setup_completed)

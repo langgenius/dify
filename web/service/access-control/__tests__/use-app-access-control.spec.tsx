@@ -24,8 +24,8 @@ vi.mock('@/service/share', () => ({
   getUserCanAccess: vi.fn(),
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleQuery: {

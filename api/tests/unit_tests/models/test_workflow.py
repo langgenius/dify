@@ -175,7 +175,7 @@ def test_to_dict():
 
 
 @pytest.mark.parametrize("sqlite_session", [(Workflow, Account)], indirect=True)
-def test_workflow_account_getters_use_caller_session(sqlite_session: Session):
+def test_workflow_account_accessors_use_caller_session(sqlite_session: Session):
     created_account = Account(name="Created Account", email="created@example.com")
     created_account.id = "created-account-id"
     updated_account = Account(name="Updated Account", email="updated@example.com")
@@ -197,12 +197,12 @@ def test_workflow_account_getters_use_caller_session(sqlite_session: Session):
     sqlite_session.add_all([decoy_account, updated_account, workflow, created_account])
     sqlite_session.flush()
 
-    assert workflow.get_created_by_account(session=sqlite_session) is created_account
-    assert workflow.get_updated_by_account(session=sqlite_session) is updated_account
+    assert workflow.created_by_account(sqlite_session) is created_account
+    assert workflow.updated_by_account(sqlite_session) is updated_account
 
 
 @pytest.mark.parametrize("sqlite_session", [(Workflow, WorkflowToolProvider)], indirect=True)
-def test_workflow_tool_published_getter_uses_caller_session(sqlite_session: Session):
+def test_workflow_tool_published_accessor_uses_caller_session(sqlite_session: Session):
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
@@ -237,7 +237,8 @@ def test_workflow_tool_published_getter_uses_caller_session(sqlite_session: Sess
     sqlite_session.add_all([decoy_provider, workflow, matching_provider])
     sqlite_session.flush()
 
-    assert workflow.get_tool_published(session=sqlite_session) is True
+    with pytest.warns(DeprecationWarning, match="not accurate"):
+        assert workflow.tool_published(sqlite_session) is True
 
 
 def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():

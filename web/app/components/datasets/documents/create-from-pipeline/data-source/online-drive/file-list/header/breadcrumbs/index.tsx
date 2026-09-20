@@ -1,3 +1,4 @@
+import { Breadcrumb, BreadcrumbList } from '@langgenius/dify-ui/breadcrumb'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -94,9 +95,9 @@ const Breadcrumbs = ({
   )
 
   return (
-    <div className="flex grow items-center overflow-hidden">
+    <div className="flex min-w-0 grow items-center">
       {showSearchResult && (
-        <div className="text-test-secondary px-1.25 system-sm-medium">
+        <div className="px-1.25 system-sm-medium">
           {t(($) => $['onlineDrive.breadcrumbs.searchResult'], {
             ns: 'datasetPipeline',
             searchResultsLength,
@@ -105,69 +106,68 @@ const Breadcrumbs = ({
         </div>
       )}
       {!showSearchResult && showBucketListTitle && (
-        <div className="text-test-secondary px-1.25 system-sm-medium">
+        <div className="px-1.25 system-sm-medium">
           {t(($) => $['onlineDrive.breadcrumbs.allBuckets'], { ns: 'datasetPipeline' })}
         </div>
       )}
       {!showSearchResult && !showBucketListTitle && (
-        <div className="flex w-full items-center gap-x-0.5 overflow-hidden">
-          {hasBucket && bucket && (
-            <Bucket
-              bucketName={bucket}
-              handleBackToBucketList={handleBackToBucketList}
-              handleClickBucketName={handleClickBucketName}
-              isActive={breadcrumbs.length === 0}
-              disabled={breadcrumbs.length === 0}
-              showSeparator={breadcrumbs.length > 0}
-            />
-          )}
-          {!hasBucket && <Drive breadcrumbs={breadcrumbs} handleBackToRoot={handleBackToRoot} />}
-          {!breadcrumbsConfig.needCollapsed && (
-            <>
-              {breadcrumbsConfig.original.map((breadcrumb, index) => {
-                const isLast = index === breadcrumbsConfig.original.length - 1
-                return (
-                  <BreadcrumbItem
-                    key={`${breadcrumb}-${index}`}
-                    index={index}
-                    handleClick={handleClickBreadcrumb}
-                    name={breadcrumb}
-                    isActive={isLast}
-                    showSeparator={!isLast}
-                    disabled={isLast}
-                  />
-                )
-              })}
-            </>
-          )}
-          {breadcrumbsConfig.needCollapsed && (
-            <>
-              {breadcrumbsConfig.prefixBreadcrumbs.map((breadcrumb, index) => {
-                return (
-                  <BreadcrumbItem
-                    key={`${breadcrumb}-${index}`}
-                    index={index}
-                    handleClick={handleClickBreadcrumb}
-                    name={breadcrumb}
-                  />
-                )
-              })}
-              <Dropdown
-                startIndex={breadcrumbsConfig.prefixBreadcrumbs.length}
-                breadcrumbs={breadcrumbsConfig.collapsedBreadcrumbs}
-                onBreadcrumbClick={handleClickBreadcrumb}
+        <Breadcrumb
+          aria-label={t(($) => $['onlineDrive.breadcrumbs.allFiles'], { ns: 'datasetPipeline' })}
+          className="w-full"
+        >
+          <BreadcrumbList className="gap-0.5">
+            {hasBucket && bucket && (
+              <Bucket
+                bucketName={bucket}
+                handleBackToBucketList={handleBackToBucketList}
+                handleClickBucketName={handleClickBucketName}
+                current={breadcrumbs.length === 0}
               />
-              <BreadcrumbItem
-                index={breadcrumbs.length - 1}
-                handleClick={handleClickBreadcrumb}
-                name={breadcrumbsConfig.lastBreadcrumb!}
-                isActive={true}
-                disabled={true}
-                showSeparator={false}
-              />
-            </>
-          )}
-        </div>
+            )}
+            {!hasBucket && <Drive breadcrumbs={breadcrumbs} handleBackToRoot={handleBackToRoot} />}
+            {!breadcrumbsConfig.needCollapsed && (
+              <>
+                {breadcrumbsConfig.original.map((breadcrumb, index) => {
+                  const isLast = index === breadcrumbsConfig.original.length - 1
+                  return (
+                    <BreadcrumbItem
+                      key={breadcrumbs.slice(0, index + 1).join('/')}
+                      onClick={() => handleClickBreadcrumb(index)}
+                      name={breadcrumb}
+                      title={breadcrumb}
+                      current={isLast}
+                    />
+                  )
+                })}
+              </>
+            )}
+            {breadcrumbsConfig.needCollapsed && (
+              <>
+                {breadcrumbsConfig.prefixBreadcrumbs.map((breadcrumb, index) => {
+                  return (
+                    <BreadcrumbItem
+                      key={breadcrumbs.slice(0, index + 1).join('/')}
+                      onClick={() => handleClickBreadcrumb(index)}
+                      name={breadcrumb}
+                      title={breadcrumb}
+                    />
+                  )
+                })}
+                <Dropdown
+                  startIndex={breadcrumbsConfig.prefixBreadcrumbs.length}
+                  breadcrumbs={breadcrumbsConfig.collapsedBreadcrumbs}
+                  onBreadcrumbClick={handleClickBreadcrumb}
+                />
+                <BreadcrumbItem
+                  onClick={() => handleClickBreadcrumb(breadcrumbs.length - 1)}
+                  name={breadcrumbsConfig.lastBreadcrumb!}
+                  title={breadcrumbsConfig.lastBreadcrumb!}
+                  current
+                />
+              </>
+            )}
+          </BreadcrumbList>
+        </Breadcrumb>
       )}
     </div>
   )

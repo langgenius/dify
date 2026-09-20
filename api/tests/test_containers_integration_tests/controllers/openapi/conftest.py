@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable, Generator
-from contextlib import contextmanager
-from typing import Literal
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
@@ -11,11 +9,16 @@ from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
 
-from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import PathParam, load_app
+from controllers.openapi.auth.requirements import ResolveCaller
+from controllers.openapi.auth.subjects import subject_from_auth
+from libs.oauth_bearer import AuthContext, TokenType
 from models import Account, Tenant
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
+
+_CLIENT_ID = "integration-cli"
 
 
 @pytest.fixture
@@ -38,8 +41,8 @@ def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
 
     def _make(*, with_owner_tenant: bool = True) -> Account:
         fake = Faker()
-        with patch("services.account_service.FeatureService") as mock_feature_service:
-            mock_feature_service.get_system_features.return_value.is_allow_register = True
+        with patch("services.account_service.SystemFeatureService") as mock_feature_service:
+            mock_feature_service.is_registration_allowed.return_value = True
             account = AccountService.create_account(
                 email=fake.email(),
                 name=fake.name(),
@@ -60,65 +63,58 @@ def add_tenant_for_account(
     account: Account, *, session: Session, role: str = "normal", name: str = "Second WS"
 ) -> Tenant:
     """Create an additional tenant and join ``account`` to it (real service calls)."""
-    with patch("services.account_service.FeatureService") as mock_feature_service:
+    with patch("services.account_service.SystemFeatureService") as mock_feature_service:
         mock_feature_service.is_workspace_creation_allowed.return_value = True
         tenant = TenantService.create_tenant(name=name, session=session)
     TenantService.create_tenant_member(tenant, account, session, role=role)
     return tenant
 
 
-def auth_for(
+def _account_auth(
     account: Account,
     *,
-    app_model: object | None = None,
     token_id: uuid.UUID | None = None,
-    caller_kind: Literal["account", "end_user"] | None = None,
-) -> AuthData:
-    """Build an AuthData for ``account`` (and optionally an app context).
-
-    ``token_id`` is needed by the self-revoke endpoint, and ``caller_kind`` by
-    any handler calling ``require_app_context`` (e.g. file upload / task stop).
-    """
-    return AuthData(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.UUID(str(account.id)),
-        token_hash="integration-test",
-        token_id=token_id,
-        scopes=frozenset({Scope.FULL}),
-        caller=account,
-        caller_kind=caller_kind,
-        app=app_model,  # type: ignore[arg-type]
-    )
-
-
-@contextmanager
-def account_auth_context(
-    account: Account,
-    *,
-    token_id: uuid.UUID,
-    client_id: str = "integration-cli",
-) -> Generator[AuthContext]:
-    """Publish an account ``AuthContext`` for handlers that read ``get_auth_ctx()``.
-
-    The auth pipeline normally sets this ContextVar; the integration suite
-    bypasses the pipeline via ``inspect.unwrap``, so endpoints that resolve the
-    caller through ``get_auth_ctx()`` (the ``/account/sessions*`` family) need it
-    set explicitly. Resets on exit so the worker thread can't leak identity.
-    """
-    ctx = AuthContext(
-        subject_type=SubjectType.ACCOUNT,
+    client_id: str = _CLIENT_ID,
+) -> AuthContext:
+    """The ``AuthContext`` a live ``dfoa_`` token for ``account`` would carry."""
+    return AuthContext(
         subject_email=account.email,
         subject_issuer=None,
         account_id=uuid.UUID(str(account.id)),
         client_id=client_id,
-        scopes=frozenset({Scope.FULL}),
-        token_id=token_id,
+        token_id=token_id or uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,
-        token_hash="integration-test",
     )
-    reset_token = set_auth_ctx(ctx)
-    try:
-        yield ctx
-    finally:
-        reset_auth_ctx(reset_token)
+
+
+def context_for(
+    account: Account,
+    *,
+    session: Session,
+    view_args: dict[str, str] | None = None,
+    token_id: uuid.UUID | None = None,
+) -> Context:
+    """Build the ``Context`` a handler is given after the pipeline ran.
+
+    The subject comes from a real ``AuthContext`` through ``subject_from_auth``,
+    so the helper walks the same resolution path the router does. ``view_args``
+    is the route's path params — the app and the workspace are loaded from it,
+    so a route carrying ``<app_id>`` needs ``{"app_id": ...}`` here.
+    ``token_id`` only matters to the ``/account/sessions*`` family, which reads
+    it back off the subject.
+
+    It runs ``ResolveCaller`` itself — the requirement every pipeline fixes
+    last — rather than the wider set a route's own requirements would ask for,
+    so a handler sees exactly what the thinnest pipeline would give it. On a
+    route carrying ``<app_id>`` that thinnest pipeline is ``CheckAppApiEnabled``,
+    which loads the app; handlers read ``ctx.app`` and never load it themselves,
+    so the helper loads it through the same loader. Running the real pieces is
+    what keeps this CI-only helper from drifting away from the pipeline it
+    stands in for.
+    """
+    ctx = Context(subject_from_auth(_account_auth(account, token_id=token_id)), session, view_args or {})
+    if PathParam.APP_ID in ctx.view_args:
+        load_app(ctx)
+    ResolveCaller().run(ctx.subject, ctx, session)
+    return ctx

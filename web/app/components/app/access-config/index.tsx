@@ -5,13 +5,13 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useStore } from '@/app/components/app/store'
-import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import {
   useAppAccessRules,
@@ -22,6 +22,7 @@ import {
   useUpdateAppAutomaticIncludeWorkspaceMembers,
   useUpdateAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
+import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 
 type AppAccessConfigPageProps = {
@@ -201,7 +202,7 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
           {t(($) => $['accessRule.appDescription'], { ns: 'permission' })}
         </p>
       </header>
-      <main className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:pr-20 sm:pl-12.5">
+      <div className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:pr-20 sm:pl-12.5">
         <AccessRulesEditor
           className="min-h-0 w-full flex-1"
           rules={appAccessRules}
@@ -226,7 +227,7 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
           onBatchRemoveAccessPolicyMemberBindings={handleBatchRemoveAccessPolicyMemberBindings}
           onAddAccessSubject={handleAddAccessSubject}
         />
-      </main>
+      </div>
     </div>
   )
 }
@@ -257,7 +258,13 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
     ],
   )
 
-  if (!appDetail || appDetail.id !== appId || !appACLCapabilities.canAccessConfig) return null
+  if (
+    !appDetail ||
+    appDetail.id !== appId ||
+    appDetail.mode === AppModeEnum.AGENT ||
+    !appACLCapabilities.canAccessConfig
+  )
+    return null
 
   return <AppAccessConfigContent appId={appId} maintainerId={appDetail.maintainer} />
 }

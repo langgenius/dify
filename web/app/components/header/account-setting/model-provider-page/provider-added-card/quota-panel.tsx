@@ -11,13 +11,13 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchManifestFromMarketPlace, fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
@@ -61,7 +61,7 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
       </PopoverTrigger>
       <PopoverContent
         placement="top"
-        className="max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
+        className="max-w-75 rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
       >
         {tipText}
       </PopoverContent>
@@ -177,7 +177,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   if (isLoading) {
     return (
       <div className="flex h-16 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }

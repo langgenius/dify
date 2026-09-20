@@ -29,6 +29,13 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
@@ -50,20 +57,21 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay, matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
+import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyboard'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
+import { toast } from '@/app/notifications'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchSkillFileBlob, uploadSkillFile } from '../client'
 import { SkillDropDestinationHint, SkillUploadStatusPanel } from './file-tree-dnd'
 import { FileTreeItem, FileTreeNameInput, RootFileActionMenuItems } from './file-tree-items'
@@ -107,7 +115,6 @@ import {
 
 const skillSidebarMinWidth = 240
 const skillSidebarMaxWidth = 420
-const skillSidebarKeyboardStep = 8
 
 const skillSidebarHelpTriggerIcon = (
   <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
@@ -175,6 +182,8 @@ export function FileTree({
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
+  const filesTitleId = useId()
+  const sidebarPanelId = useId()
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [inlineAction, setInlineAction] = useState<FileTreeInlineAction>()
   const [draggingPaths, setDraggingPaths] = useState<string[]>([])
@@ -287,15 +296,17 @@ export function FileTree({
   )
 
   const handleSidebarResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    let nextWidth: number | undefined
-    if (event.key === 'ArrowLeft') nextWidth = sidebarWidth - skillSidebarKeyboardStep
-    if (event.key === 'ArrowRight') nextWidth = sidebarWidth + skillSidebarKeyboardStep
-    if (event.key === 'Home') nextWidth = skillSidebarMinWidth
-    if (event.key === 'End') nextWidth = skillSidebarMaxWidth
+    const nextWidth = getKeyboardResizeValue(event, {
+      side: 'right',
+      value: sidebarWidth,
+      min: skillSidebarMinWidth,
+      max: skillSidebarMaxWidth,
+    })
     if (nextWidth === undefined) return
 
     event.preventDefault()
-    setSidebarWidth(clampSkillSidebarWidth(nextWidth))
+    event.stopPropagation()
+    setSidebarWidth(nextWidth)
   }
 
   const fileMutation = useMutation(
@@ -1105,7 +1116,7 @@ export function FileTree({
   const creatorName = detail?.created_by_name ?? detail?.created_by ?? '-'
   if (collapsed && !sidebarFloating) {
     return (
-      <aside
+      <div
         data-testid="skill-detail-sidebar-shell"
         className="relative flex h-full w-16 shrink-0 bg-background-body p-1"
         onMouseEnter={openSidebarFloatingPreview}
@@ -1137,13 +1148,14 @@ export function FileTree({
             <SkillSidebarAccountFooter compact />
           </div>
         </div>
-      </aside>
+      </div>
     )
   }
 
   return (
     <>
-      <aside
+      <section
+        aria-labelledby={filesTitleId}
         ref={sidebarRef}
         data-testid="skill-detail-sidebar-shell"
         className={cn(
@@ -1155,6 +1167,7 @@ export function FileTree({
         onMouseLeave={collapsed ? closeSidebarFloatingPreview : undefined}
       >
         <div
+          id={sidebarPanelId}
           data-testid="skill-detail-sidebar"
           className={cn(
             'group/sidebar relative flex min-h-0 flex-col rounded-lg bg-components-panel-bg',
@@ -1172,6 +1185,8 @@ export function FileTree({
               aria-valuemax={skillSidebarMaxWidth}
               aria-valuemin={skillSidebarMinWidth}
               aria-valuenow={sidebarWidth}
+              aria-valuetext={t(($) => $['resize.width'], { ns: 'common', width: sidebarWidth })}
+              aria-controls={sidebarPanelId}
               tabIndex={0}
               className="group/resize absolute top-0 -right-2 z-40 flex h-full w-4 cursor-col-resize touch-none items-center justify-center outline-hidden"
               onKeyDown={handleSidebarResizeKeyDown}
@@ -1180,7 +1195,7 @@ export function FileTree({
               <span
                 aria-hidden
                 className={cn(
-                  'absolute right-[5px] h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
+                  'absolute right-1.25 h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
                   sidebarResizing && 'h-full bg-state-accent-solid opacity-100',
                 )}
               />
@@ -1190,23 +1205,29 @@ export function FileTree({
             data-testid="skill-detail-sidebar-header"
             className="flex h-12 shrink-0 items-center py-2 pr-2 pl-1"
           >
-            <div className="flex min-w-0 flex-1 items-center gap-px">
-              <Link
-                href="/skills"
-                className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary outline-hidden hover:bg-background-default-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                aria-label={t(($) => $['skillManagement.detail.back'])}
-              >
-                <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-                <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
-              </Link>
-              <span className="shrink-0 system-md-regular text-text-quaternary">/</span>
-              <Link
-                href="/skills"
-                className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              >
-                SKILLS
-              </Link>
-            </div>
+            <Breadcrumb aria-label={tCommon(($) => $['mainNav.skills'])} className="flex-1">
+              <BreadcrumbList className="gap-px">
+                <BreadcrumbItem className="shrink-0">
+                  <BreadcrumbLink
+                    render={<Link href="/skills" />}
+                    className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+                    aria-label={t(($) => $['skillManagement.detail.back'])}
+                  >
+                    <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+                    <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="system-md-regular" />
+                <BreadcrumbItem className="shrink-0">
+                  <BreadcrumbLink
+                    render={<Link href="/skills" />}
+                    className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
+                  >
+                    SKILLS
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -1309,11 +1330,14 @@ export function FileTree({
               skillId={skillId}
             />
           </div>
-          <div className="flex h-[17px] shrink-0 items-center px-3">
-            <div className="h-px w-full bg-gradient-to-r from-divider-subtle to-transparent" />
+          <div className="flex h-4.25 shrink-0 items-center px-3">
+            <div className="h-px w-full bg-linear-to-r from-divider-subtle to-transparent" />
           </div>
           <div className="flex h-8 shrink-0 items-center gap-1 px-3">
-            <h2 className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary">
+            <h2
+              id={filesTitleId}
+              className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary"
+            >
               {t(
                 ($) =>
                   fileCount === 1
@@ -1325,6 +1349,7 @@ export function FileTree({
             {!readonly && (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger
+                  aria-label={tCommon(($) => $['operation.add'])}
                   className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
                   disabled={!detail || isMutating}
                 >
@@ -1361,14 +1386,15 @@ export function FileTree({
               }}
             />
           </div>
-          <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
             <ScrollAreaViewport tabIndex={-1}>
               <ScrollAreaContent
                 className={cn(
-                  'relative flex min-h-full min-w-0 flex-col rounded-lg px-1 pt-1 pb-3',
+                  'relative flex min-h-full flex-col rounded-lg px-1 pt-1 pb-3',
                   dropTarget?.path === '' &&
                     'bg-components-dropzone-bg-accent before:pointer-events-none before:absolute before:inset-0.5 before:z-10 before:rounded-lg before:border-[1.5px] before:border-dashed before:border-components-dropzone-border-accent',
                 )}
+                style={{ minWidth: 0 }}
                 onDragLeave={handleRootDragLeave}
                 onDragOver={handleRootDragOver}
                 onDrop={handleRootDrop}
@@ -1600,7 +1626,7 @@ export function FileTree({
           </div>
           <SkillSidebarAccountFooter />
         </div>
-      </aside>
+      </section>
     </>
   )
 }

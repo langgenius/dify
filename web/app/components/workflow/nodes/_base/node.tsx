@@ -21,7 +21,6 @@ import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { useToolIcon } from '../../hooks/use-tool-icon'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
-import { selectWorkflowNode } from '../../utils/node-navigation'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
@@ -213,6 +212,9 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         {data._showAddVariablePopup && <AddVariablePopupWithPosition nodeId={id} nodeData={data} />}
         {data.type === BlockEnum.Iteration && <NodeResizer nodeId={id} nodeData={data} />}
         {data.type === BlockEnum.Loop && <NodeResizer nodeId={id} nodeData={data} />}
+        {!data._runningStatus && !nodesReadOnly && !data._isCandidate && (
+          <NodeControl id={id} data={data} pluginInstallLocked={pluginInstallLocked} />
+        )}
         {data.type !== BlockEnum.StartPlaceholder && !data._isCandidate && (
           <NodeTargetHandle
             id={id}
@@ -233,27 +235,13 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
               handleId="source"
             />
           )}
-        {!data._runningStatus && !nodesReadOnly && !data._isCandidate && (
-          <NodeControl id={id} data={data} pluginInstallLocked={pluginInstallLocked} />
-        )}
         <div
           className={cn(
             'flex items-center rounded-t-2xl px-3 pt-3 pb-2',
             isContainerNode(data.type) && 'bg-transparent',
           )}
         >
-          <button
-            type="button"
-            aria-label={data.title}
-            className="mr-1 flex min-w-0 grow appearance-none items-center rounded-md border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            onClick={() => {
-              // In comment mode, clicking a node should not open the node settings panel:
-              // the right-hand panel covers the canvas region where the comment is anchored.
-              // Mirrors the comment-mode guard in use-nodes-interactions' handleNodeClick.
-              if (controlMode === ControlMode.Comment) return
-              selectWorkflowNode(id)
-            }}
-          >
+          <div className="mr-1 flex min-w-0 grow items-center">
             <BlockIcon className="mr-2 shrink-0" type={data.type} size="md" toolIcon={toolIcon} />
             <div className="flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary">
               <div title={data.title} className="min-w-0 grow truncate">
@@ -265,7 +253,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
                 </div>
               )}
             </div>
-          </button>
+          </div>
           <div className="flex shrink-0 items-center">
             <NodeHeaderMeta
               data={data}

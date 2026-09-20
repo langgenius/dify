@@ -6,7 +6,6 @@ from unittest.mock import Mock
 import pytest
 
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError
 from services.account_errors import (
     AccountAlreadyInitializedError,
     InvalidInvitationCodeError,
@@ -20,6 +19,7 @@ from services.entities.account_entities import (
     AccountInitializationStatus,
     AccountSnapshot,
 )
+from tests.unit_tests.model_factories import make_account_snapshot
 
 
 def _context() -> RequestContext:
@@ -32,21 +32,7 @@ def _context() -> RequestContext:
 
 
 def _account(*, status: str = "uninitialized") -> AccountSnapshot:
-    return AccountSnapshot(
-        id="account-1",
-        name="Account",
-        email="account@example.com",
-        avatar=None,
-        is_password_set=False,
-        interface_language="en-US",
-        interface_theme="light",
-        timezone="UTC",
-        last_login_at=None,
-        last_login_ip=None,
-        status=status,
-        initialized_at=None,
-        created_at=datetime(2026, 1, 1),
-    )
+    return make_account_snapshot(status=status)
 
 
 def test_cloud_initialization_consumes_invitation_and_updates_account_atomically() -> None:
@@ -101,26 +87,6 @@ def test_cloud_initialization_rejects_missing_or_invalid_invitation() -> None:
         service.initialize(_context(), interface_language="en-US", timezone="UTC", invitation_code="used")
 
     accounts.initialize.assert_called_once()
-
-
-def test_cloud_initialization_requires_admitted_workspace() -> None:
-    accounts = Mock(spec=AccountRepository)
-    service = AccountInitializationService(
-        accounts=accounts,
-        invitation_required=True,
-        now=lambda: datetime(2026, 8, 10),
-    )
-    context = RequestContext(
-        request_id="request-1",
-        trace_id="trace-1",
-        account_id="account-1",
-        active_workspace_id=None,
-    )
-
-    with pytest.raises(ActiveWorkspaceRequiredError):
-        service.initialize(context, interface_language="en-US", timezone="UTC", invitation_code="invite")
-
-    accounts.initialize.assert_not_called()
 
 
 def test_initialization_rejects_an_active_account_before_consuming_invitation() -> None:

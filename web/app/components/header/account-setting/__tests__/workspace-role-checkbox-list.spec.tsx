@@ -60,7 +60,46 @@ describe('WorkspaceRoleCheckboxList', () => {
     )
 
     expect(screen.getByRole('checkbox', { name: /First role/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('checkbox')).toHaveLength(mockRoles.length)
     expect(screen.queryByRole('radio', { name: /First role/i })).not.toBeInTheDocument()
+  })
+
+  it('should provide one named keyboard stop per role and toggle from its label', async () => {
+    const user = userEvent.setup()
+    const onSelectedRolesChange = vi.fn()
+    render(
+      <WorkspaceRoleCheckboxList
+        selectedRoleIds={[]}
+        onSelectedRolesChange={onSelectedRolesChange}
+      />,
+    )
+
+    const firstRole = screen.getByRole('checkbox', { name: /First role/i })
+    const secondRole = screen.getByRole('checkbox', { name: /Second role/i })
+    await user.click(screen.getByText('First role'))
+    expect(onSelectedRolesChange).toHaveBeenLastCalledWith([mockRoles[0]])
+
+    firstRole.focus()
+    await user.tab()
+    expect(secondRole).toHaveFocus()
+    await user.keyboard(' ')
+    expect(onSelectedRolesChange).toHaveBeenLastCalledWith([mockRoles[1]])
+  })
+
+  it('should prevent changing disabled roles through their labels', async () => {
+    const user = userEvent.setup()
+    const onSelectedRolesChange = vi.fn()
+    render(
+      <WorkspaceRoleCheckboxList
+        selectedRoleIds={[]}
+        disabledRoleIds={['role-1']}
+        onSelectedRolesChange={onSelectedRolesChange}
+      />,
+    )
+
+    await user.click(screen.getByText('First role'))
+    expect(onSelectedRolesChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('checkbox', { name: /First role/i })).toHaveAttribute('data-disabled')
   })
 
   it('should render radios when only one role is allowed', () => {

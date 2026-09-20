@@ -14,18 +14,29 @@ from uuid import UUID
 import pytest
 from flask import Flask
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import core.ops.ops_trace_manager as module
-from configs import dify_config
+from core.moderation.base import ModerationAction, ModerationInputsResult
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
 from core.rag.models.document import Document as RetrievalDocument
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FileTransferMethod, FileType
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
-from models.model import App, AppMode, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
+from models.model import (
+    App,
+    AppMode,
+    AppModelConfig,
+    Conversation,
+    Message,
+    MessageAgentThought,
+    MessageFile,
+    TraceAppConfig,
+)
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_app
 
 
 class DummyConfig:
@@ -144,8 +155,9 @@ class RecordingDispatcher:
 
 @pytest.fixture
 def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session]:
+    session_proxy = scoped_session(lambda: sqlite_session)
     with (
-        patch.object(module.db, "session", sqlite_session),
+        patch.object(module.db, "session", session_proxy),
         patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
     ):
         yield sqlite_session
@@ -155,7 +167,7 @@ def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session
 def trace_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr(module, "provider_config_map", FakeProviderMap({"dummy": PROVIDER_ENTRY}))
     monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap({}))
-    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", False)
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=False)
     OpsTraceManager.ops_trace_instances_cache.clear()
     OpsTraceManager.decrypted_configs_cache.clear()
     monkeypatch.setattr(module.threading, "Timer", DummyTimer)
@@ -182,20 +194,7 @@ def encryption_functions(
 
 
 def _app(session: Session, *, app_id: str = "app-id", tracing: str | None = None) -> App:
-    app = App(
-        id=app_id,
-        tenant_id="tenant-1",
-        name="App",
-        description="description",
-        mode=AppMode.CHAT,
-        icon_type=None,
-        icon=None,
-        icon_background=None,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-        tracing=tracing,
-    )
+    app = make_app(app_id=app_id, name="App", description="description", icon_type=None, tracing=tracing)
     session.add(app)
     session.commit()
     return app
@@ -289,7 +288,11 @@ def _message_data(**overrides):
         "inputs": "inputs",
     }
     data.update(overrides)
-    return SimpleNamespace(**data, to_dict=lambda: data)
+    return SimpleNamespace(
+        **data,
+        agent_thoughts_with_session=lambda *, session: data["agent_thoughts"],
+        to_dict=lambda: data,
+    )
 
 
 def test_encrypt_decrypt_obfuscate_and_cache(
@@ -386,7 +389,7 @@ def test_ops_trace_instance_routes_by_unified_switch(
     app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
     database.add(TraceAppConfig(app_id=app.id, tracing_provider="dummy", tracing_config={}))
     database.commit()
-    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", enabled)
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=enabled)
     entries = {"dummy": UNIFIED_PROVIDER_ENTRY} if registered else {}
     monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap(entries))
 
@@ -404,7 +407,7 @@ def test_registered_unified_provider_does_not_fallback_when_construction_fails(
     app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
     database.add(TraceAppConfig(app_id=app.id, tracing_provider="dummy", tracing_config={}))
     database.commit()
-    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", True)
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=True)
     monkeypatch.setattr(
         module,
         "unified_provider_config_map",
@@ -433,9 +436,9 @@ def test_unified_and_legacy_instances_have_separate_cache_entries(
     database.commit()
     monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap({"dummy": UNIFIED_PROVIDER_ENTRY}))
 
-    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", False)
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=False)
     legacy = OpsTraceManager.get_ops_trace_instance(app.id)
-    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", True)
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=True)
     unified = OpsTraceManager.get_ops_trace_instance(app.id)
 
     assert type(legacy) is DummyTraceInstance
@@ -482,7 +485,6 @@ def test_update_and_get_app_tracing_config_persist_state(trace_environment: None
 
 
 def test_message_trace_reads_real_conversation_app_and_message_file(
-    monkeypatch: pytest.MonkeyPatch,
     trace_environment: None,
     database: Session,
 ) -> None:
@@ -498,7 +500,6 @@ def test_message_trace_reads_real_conversation_app_and_message_file(
     )
     database.add(file)
     database.commit()
-    monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data())
     result = TraceTask(
         trace_type=TraceTaskName.MESSAGE_TRACE,
         message_id=message.id,
@@ -510,9 +511,10 @@ def test_message_trace_reads_real_conversation_app_and_message_file(
 
 
 def test_workflow_log_enriches_moderation_and_suggested_question_traces(
-    monkeypatch: pytest.MonkeyPatch,
     database: Session,
 ) -> None:
+    app = _app(database)
+    _, message = _conversation_message(database, app)
     log = WorkflowAppLog(
         tenant_id="tenant-1",
         app_id="app-id",
@@ -524,11 +526,15 @@ def test_workflow_log_enriches_moderation_and_suggested_question_traces(
     )
     database.add(log)
     database.commit()
-    monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data())
-    task = TraceTask(trace_type=TraceTaskName.MODERATION_TRACE, message_id="message-1")
-    moderation = SimpleNamespace(action="block", preset_response="no", query="q", flagged=True)
+    task = TraceTask(trace_type=TraceTaskName.MODERATION_TRACE, message_id=message.id)
+    moderation = ModerationInputsResult(
+        action=ModerationAction.DIRECT_OUTPUT,
+        preset_response="no",
+        query="q",
+        flagged=True,
+    )
     result = task.moderation_trace(
-        "message-1",
+        message.id,
         {"start": 1, "end": 2},
         moderation_result=moderation,
         inputs={"source": "payload"},
@@ -536,22 +542,21 @@ def test_workflow_log_enriches_moderation_and_suggested_question_traces(
     assert result.message_id == log.id
     assert result.flagged is True
     assert result.inputs == {"source": "payload"}
-    suggested = task.suggested_question_trace("message-1", {"start": 1, "end": 2}, suggested_question=["q1"])
+    suggested = task.suggested_question_trace(message.id, {"start": 1, "end": 2}, suggested_question=["q1"])
     assert suggested.message_id == log.id
     assert suggested.suggested_question == ["q1"]
 
 
 def test_dataset_retrieval_trace_serializes_documents(
-    monkeypatch: pytest.MonkeyPatch,
     trace_environment: None,
     database: Session,
 ) -> None:
-    _app(database)
-    monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data())
+    app = _app(database)
+    _, message = _conversation_message(database, app)
     document = RetrievalDocument(page_content="value")
 
     result = TraceTask(trace_type=TraceTaskName.DATASET_RETRIEVAL_TRACE).dataset_retrieval_trace(
-        "message-1",
+        message.id,
         {"start": 1, "end": 2},
         documents=[document],
     )
@@ -613,25 +618,29 @@ def test_workflow_trace_reads_real_workflow_log_from_owned_session(
     assert result.completion_tokens == 7
 
 
-def test_tool_trace_reads_real_message_file(monkeypatch: pytest.MonkeyPatch, database: Session) -> None:
+def test_tool_trace_reads_real_message_file(database: Session) -> None:
+    app = _app(database)
+    _, message = _conversation_message(database, app)
     file = MessageFile(
-        message_id="message-1",
+        message_id=message.id,
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.REMOTE_URL,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         url="tool/file",
     )
-    database.add(file)
-    database.commit()
-    thought = SimpleNamespace(
-        tools=["tool-a"],
-        created_at=datetime(2025, 2, 20, 12, 1),
-        tool_meta={"tool-a": {"tool_config": {}, "time_cost": 5, "error": "", "tool_parameters": {}}},
+    thought = MessageAgentThought(
+        message_id=message.id,
+        position=1,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        tool="tool-a",
+        tool_meta_str=json.dumps({"tool-a": {"tool_config": {}, "time_cost": 5, "error": "", "tool_parameters": {}}}),
     )
-    monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data(agent_thoughts=[thought]))
+    database.add_all([file, thought])
+    database.commit()
     result = TraceTask(trace_type=TraceTaskName.TOOL_TRACE).tool_trace(
-        "message-1", {"start": 1, "end": 2}, tool_name="tool-a", tool_inputs={}, tool_outputs="result"
+        message.id, {"start": 1, "end": 2}, tool_name="tool-a", tool_inputs={}, tool_outputs="result"
     )
     assert result.tool_name == "tool-a"
     assert result.time_cost == 5
@@ -667,7 +676,7 @@ def test_trace_helpers_and_streaming_metrics(trace_environment: None) -> None:
     assert OpsTraceManager.get_trace_config_project_url({}, "dummy") == "https://project.fake"
     task = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE, message_id="message-1")
     assert task.conversation_trace(foo="bar") == {"foo": "bar"}
-    assert task._extract_streaming_metrics(_message_data(message_metadata="invalid")) == {}
+    assert task._extract_streaming_metrics(Message(message_metadata="invalid")) == {}
     assert task.generate_name_trace("conversation", {"start": 1, "end": 2}, tenant_id=None) == {}
     generated = task.generate_name_trace(
         "conversation",
@@ -681,9 +690,16 @@ def test_trace_helpers_and_streaming_metrics(trace_environment: None) -> None:
     assert generated.message_id == "message-1"
 
 
-def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
-    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
+def test_trace_queue_preserves_source_app_when_another_manager_drains(
+    monkeypatch: pytest.MonkeyPatch, trace_environment: None
+) -> None:
+    monkeypatch.setattr(
+        OpsTraceManager,
+        "get_ops_trace_instance",
+        classmethod(lambda cls, app_id: app_id == "source-app-id"),
+    )
+    draining_manager = TraceQueueManager(app_id="draining-app-id", user_id="user-1")
+    source_manager = TraceQueueManager(app_id="source-app-id", user_id="user-2")
     task = TraceTask(
         trace_type=TraceTaskName.GENERATE_NAME_TRACE,
         conversation_id="conversation-1",
@@ -692,8 +708,8 @@ def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.Monkey
         generate_conversation_name="name",
         inputs="query",
     )
-    manager.add_trace_task(task)
-    assert manager.collect_tasks() == [task]
+    source_manager.add_trace_task(task)
+    assert draining_manager.collect_tasks() == [task]
 
     recording_storage = RecordingStorage()
     dispatcher = RecordingDispatcher()
@@ -701,14 +717,14 @@ def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.Monkey
     monkeypatch.setattr(module.process_trace_tasks, "apply_async", dispatcher.apply_async)
     file_id = UUID("00000000-0000-0000-0000-000000000123")
     monkeypatch.setattr(module, "uuid4", lambda: file_id)
-    manager.add_trace_task(task)
-    manager.run()
+    source_manager.add_trace_task(task)
+    draining_manager.run()
 
     assert len(recording_storage.writes) == 1
     path, data = recording_storage.writes[0]
-    assert path.endswith(f"app-id/{file_id.hex}.json")
-    assert json.loads(data)["app_id"] == "app-id"
-    assert dispatcher.payloads == [{"file_id": file_id.hex, "app_id": "app-id"}]
+    assert path.endswith(f"source-app-id/{file_id.hex}.json")
+    assert json.loads(data)["app_id"] == "source-app-id"
+    assert dispatcher.payloads == [{"file_id": file_id.hex, "app_id": "source-app-id"}]
 
 
 def test_trace_queue_persists_with_caller_supplied_file_id(
@@ -724,6 +740,7 @@ def test_trace_queue_persists_with_caller_supplied_file_id(
         generate_conversation_name="name",
         inputs="query",
     )
+    task.app_id = "app-id"
     recording_storage = RecordingStorage()
     monkeypatch.setattr(module.storage, "save", recording_storage.save)
 
@@ -740,6 +757,7 @@ def test_trace_queue_persistence_error_propagates(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
     manager = TraceQueueManager(app_id="app-id", user_id="user-1")
     task = TraceTask(trace_type=TraceTaskName.GENERATE_NAME_TRACE)
+    task.app_id = "app-id"
 
     def fail_save(_path: str, _data: bytes) -> None:
         raise OSError("storage unavailable")

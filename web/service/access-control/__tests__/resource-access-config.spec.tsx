@@ -32,7 +32,7 @@ const mocks = vi.hoisted(() => ({
   datasetWhitelistConfigQueryOptions: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     workspaces: {
       current: {

@@ -5,8 +5,13 @@ const supportModelProviders = 'OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face
 
 export const NUM_INFINITE = -1
 export const contactSalesUrl = 'https://vikgc6bnu1s.typeform.com/dify-business'
-export const getStartedWithCommunityUrl = 'https://github.com/langgenius/dify'
-export const getWithPremiumUrl = 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6'
+export const SELF_HOSTED_PLAN_URLS = {
+  community: 'https://github.com/langgenius/dify',
+  premium: 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6',
+  enterprise: contactSalesUrl,
+} as const
+
+export type SelfHostedPlan = keyof typeof SELF_HOSTED_PLAN_URLS
 
 export const ALL_PLANS: Record<CloudPlan, PlanInfo> = {
   sandbox: {
@@ -62,33 +67,5 @@ export const ALL_PLANS: Record<CloudPlan, PlanInfo> = {
     triggerEvents: NUM_INFINITE,
     annotatedResponse: 5000,
     logHistory: NUM_INFINITE,
-  },
-}
-
-export const defaultPlan = {
-  type: 'sandbox' as const,
-  usage: {
-    documents: 50,
-    vectorSpace: 1,
-    buildApps: 1,
-    teamMembers: 1,
-    annotatedResponse: 1,
-    documentsUploadQuota: 0,
-    apiRateLimit: 0,
-    triggerEvents: 0,
-  },
-  total: {
-    documents: 50,
-    vectorSpace: 10,
-    buildApps: 10,
-    teamMembers: 1,
-    annotatedResponse: 10,
-    documentsUploadQuota: 0,
-    apiRateLimit: ALL_PLANS.sandbox.apiRateLimit,
-    triggerEvents: ALL_PLANS.sandbox.triggerEvents,
-  },
-  reset: {
-    apiRateLimit: null,
-    triggerEvents: null,
   },
 }

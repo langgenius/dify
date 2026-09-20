@@ -1,7 +1,7 @@
 import type { DocumentProcessingTask } from '@dify/contracts/knowledge-fs/types.gen'
 import type { RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export function DocumentDetailStatus({
@@ -49,6 +49,26 @@ export function DocumentDetailStatus({
   const { t: tCommon } = useTranslation('common')
   const permissionRetryRef = useRef<HTMLButtonElement>(null)
   const permissionRecoveryWasNeededRef = useRef(false)
+  const pendingRecoveryActionRef = useRef<'check' | 'retry' | null>(null)
+  const [pendingRecoveryAction, setPendingRecoveryAction] = useState<'check' | 'retry' | null>(null)
+  const recoveryBusy = submissionRecoveryBusy || pendingRecoveryAction !== null
+
+  const handleSubmissionRecovery = async (
+    action: 'check' | 'retry',
+    recover: () => Promise<unknown>,
+  ) => {
+    if (submissionRecoveryBusy || pendingRecoveryActionRef.current) return
+
+    pendingRecoveryActionRef.current = action
+    setPendingRecoveryAction(action)
+    try {
+      await recover()
+    } finally {
+      pendingRecoveryActionRef.current = null
+      setPendingRecoveryAction(null)
+      titleRef.current?.focus()
+    }
+  }
 
   useEffect(() => {
     if (permissionRecoveryNeeded && !permissionRecoveryWasNeededRef.current)
@@ -102,7 +122,6 @@ export function DocumentDetailStatus({
           <span>{t(($) => $['newKnowledge.documentPermissionRestricted'])}</span>
           <Button
             ref={permissionRetryRef}
-            disabled={permissionRecoveryBusy}
             loading={permissionRecoveryBusy}
             onClick={() =>
               void retryWritePermission().then((recovered) => {
@@ -145,7 +164,7 @@ export function DocumentDetailStatus({
         </div>
       )}
 
-      {submissionTimedOut && (
+      {(submissionTimedOut || pendingRecoveryAction) && (
         <div
           className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
           role="alert"
@@ -153,19 +172,16 @@ export function DocumentDetailStatus({
           <span>{t(($) => $['newKnowledge.documentReindexConfirmationDelayed'])}</span>
           <div className="flex flex-wrap gap-2">
             <Button
-              disabled={submissionRecoveryBusy}
-              loading={submissionRecoveryBusy}
-              onClick={() =>
-                void recheckTimedOutSubmission().finally(() => titleRef.current?.focus())
-              }
+              loading={pendingRecoveryAction === 'check'}
+              disabled={recoveryBusy && pendingRecoveryAction !== 'check'}
+              onClick={() => void handleSubmissionRecovery('check', recheckTimedOutSubmission)}
             >
               {t(($) => $['newKnowledge.checkReindexStatus'])}
             </Button>
             <Button
-              disabled={submissionRecoveryBusy}
-              onClick={() =>
-                void retryTimedOutSubmission().finally(() => titleRef.current?.focus())
-              }
+              loading={pendingRecoveryAction === 'retry'}
+              disabled={recoveryBusy && pendingRecoveryAction !== 'retry'}
+              onClick={() => void handleSubmissionRecovery('retry', retryTimedOutSubmission)}
             >
               {t(($) => $['newKnowledge.retryReindexDocument'])}
             </Button>

@@ -19,7 +19,7 @@ import {
   PluginSource,
   TaskStatus,
 } from '@/app/components/plugins/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { renderHook } from '@/test/console/render'
 import {
   normalizeInstalledPluginDetail,
@@ -292,6 +292,16 @@ const createPluginEntity = (): PluginEntity => ({
 })
 
 describe('normalizeInstalledPluginDetail', () => {
+  it('preserves Portuguese metadata alongside the existing UI locale spelling', () => {
+    const plugin = createPluginEntity()
+    plugin.declaration.label = { en_US: 'Plugin', pt_BR: 'Extensão' }
+    const detail = normalizeInstalledPluginDetail(plugin)
+
+    expect(detail.declaration.label.pt_BR).toBe('Extensão')
+    expect(detail.declaration.label['pt-BR']).toBe('Extensão')
+    expect(detail.declaration.description.pt_BR).toBe('Plugin description')
+  })
+
   it('adapts generic and category list items to the legacy detail model', () => {
     const genericDetail = normalizeInstalledPluginDetail(createPluginEntity())
     const categoryDetail = normalizeInstalledPluginDetail(

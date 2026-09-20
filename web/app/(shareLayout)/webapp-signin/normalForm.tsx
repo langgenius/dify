@@ -6,7 +6,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -55,7 +55,7 @@ const NormalForm = () => {
       <div
         className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
       >
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -64,7 +64,7 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+            <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
@@ -84,7 +84,7 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+            <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
@@ -104,7 +104,7 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+            <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
@@ -196,7 +196,7 @@ const NormalForm = () => {
           {allMethodsAreDisabled && (
             <>
               <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-                <div className="shadows-shadow-lg mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+                <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
                   <RiDoorLockLine className="size-5" />
                 </div>
                 <p className="system-sm-medium text-text-primary">

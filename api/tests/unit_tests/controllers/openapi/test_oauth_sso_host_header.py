@@ -20,15 +20,13 @@ def app() -> Flask:
 def _ee_features():
     from services.entities.feature_entities import LicenseStatus
 
-    m = MagicMock()
-    m.license.status = LicenseStatus.ACTIVE
-    return m
+    return LicenseStatus.ACTIVE
 
 
 @patch("controllers.openapi.oauth_device_sso.EnterpriseService")
 @patch("controllers.openapi.oauth_device_sso.jws")
 @patch("controllers.openapi.oauth_device_sso.DeviceFlowRedis")
-@patch("libs.device_flow_security.FeatureService.get_system_features")
+@patch("libs.device_flow_security.SystemFeatureService.get_license_status")
 @patch("libs.rate_limit.RateLimiter.is_rate_limited", new=MagicMock(return_value=False))
 @patch("libs.rate_limit.RateLimiter.increment_rate_limit", new=MagicMock())
 def test_idp_callback_url_uses_console_api_url_not_host_header(
@@ -61,7 +59,7 @@ def test_idp_callback_url_uses_console_api_url_not_host_header(
 
 
 @patch("controllers.openapi.oauth_device_sso.DeviceFlowRedis")
-@patch("libs.device_flow_security.FeatureService.get_system_features")
+@patch("libs.device_flow_security.SystemFeatureService.get_license_status")
 @patch("libs.rate_limit.RateLimiter.is_rate_limited", new=MagicMock(return_value=False))
 @patch("libs.rate_limit.RateLimiter.increment_rate_limit", new=MagicMock())
 def test_sso_initiate_fails_closed_when_console_api_url_unset(ee_feat, redis_cls, app: Flask, config_overrides):

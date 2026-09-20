@@ -7,12 +7,12 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
 
@@ -187,7 +187,7 @@ function EducationVerifyContent({ children }: { children: ReactNode }) {
 function EducationVerifyLoading() {
   return (
     <EducationStatusCard
-      icon={<Loading />}
+      icon={<LoadingPlaceholder />}
       title={<span className="block h-5 w-40 animate-pulse rounded bg-background-section-burn" />}
     >
       <span className="block h-4 w-full max-w-100 animate-pulse rounded bg-background-section-burn" />

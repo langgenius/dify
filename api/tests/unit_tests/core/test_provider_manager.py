@@ -36,6 +36,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _build_provider_manager() -> ProviderManager:
@@ -302,7 +303,7 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
     paid_pool = SimpleNamespace(quota_used=0, quota_limit=0)
 
     with (
-        patch.object(provider_manager_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
         patch(
             "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
             {provider_entity.provider: _build_hosting_provider()},

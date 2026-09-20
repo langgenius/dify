@@ -50,6 +50,7 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 def _file_data():
@@ -57,22 +58,11 @@ def _file_data():
 
 
 def _app(*, app_id: str = "a1", tenant_id: str = "tenant-1") -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name="Audio app",
-        description="",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=0,
-    )
+    return make_app(app_id=app_id, tenant_id=tenant_id, name="Audio app", icon_type=None, max_active_requests=0)
 
 
 def _account(account_id: str = "account-1") -> Account:
-    account = Account(name="Audio account", email=f"{account_id}@example.com")
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Audio account", email=f"{account_id}@example.com")
 
 
 def test_console_audio_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -111,11 +101,11 @@ def test_agent_console_audio_api_uses_agent_draft(
         calls["asr"] = kwargs
         return {"text": "agent transcript"}
 
-    def enforce_rbac_access(**kwargs):
+    def enforce_rbac_checks(**kwargs):
         calls["rbac"] = kwargs
 
     monkeypatch.setattr(audio_module, "resolve_agent_runtime_app_model", resolve_agent_runtime_app_model)
-    monkeypatch.setattr(audio_module, "enforce_rbac_access", enforce_rbac_access)
+    monkeypatch.setattr(audio_module, "enforce_rbac_checks", enforce_rbac_checks)
     monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
     monkeypatch.setattr(AudioService, "transcript_agent_asr", transcript_agent_asr)
 
@@ -138,13 +128,13 @@ def test_agent_console_audio_api_uses_agent_draft(
 
     assert response == {"text": "agent transcript"}
     assert calls["resolver"] == {"session": session, "tenant_id": "tenant-1", "agent_id": agent_id}
-    assert calls["rbac"] == {
-        "tenant_id": "tenant-1",
-        "account_id": "account-1",
-        "resource_type": audio_module.RBACResourceScope.APP,
-        "scene": audio_module.RBACPermission.APP_TEST_AND_RUN,
-        "path_args": {"app_id": "backing-app-1"},
-    }
+    rbac_call = calls["rbac"]
+    assert rbac_call["tenant_id"] == "tenant-1"
+    assert rbac_call["account_id"] == "account-1"
+    assert rbac_call["path_args"] == {"app_id": "backing-app-1"}
+    (rbac_check,) = rbac_call["checks"]
+    assert rbac_check.scene is audio_module.RBACPermission.APP_TEST_AND_RUN
+    assert isinstance(rbac_check.locator, audio_module.PlainApp)
     assert calls["draft"] == {
         "tenant_id": "tenant-1",
         "agent_id": str(agent_id),
@@ -216,7 +206,7 @@ def test_agent_console_audio_api_checks_rbac_with_backing_app_id(
         soul_loaded = True
         return AgentSoulConfig()
 
-    monkeypatch.setattr(audio_module, "enforce_rbac_access", deny_access)
+    monkeypatch.setattr(audio_module, "enforce_rbac_checks", deny_access)
     monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
 
     api = AgentChatMessageAudioApi()

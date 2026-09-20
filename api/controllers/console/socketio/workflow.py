@@ -93,12 +93,10 @@ def handle_collaboration_event(sid, data):
     1. mouse_move
     2. vars_and_features_update
     3. sync_request (ask leader to update graph)
-    4. app_state_update
-    5. mcp_server_update
-    6. workflow_update
-    7. comments_update
-    8. node_panel_presence
-    9. graph_view_state (session reports tab visibility; drives leader election)
+    4. workflow_update
+    5. comments_update
+    6. node_panel_presence
+    7. graph_view_state (session reports tab visibility; drives leader election)
     """
     return collaboration_service.relay_collaboration_event(sid, data)
 

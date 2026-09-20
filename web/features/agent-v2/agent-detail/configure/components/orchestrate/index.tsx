@@ -6,7 +6,6 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type { AgentBuildDraftChangedKey } from './build-draft-changes-context'
-import type { ModelSelectorProvider } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -46,7 +45,6 @@ type AgentOrchestratePanelProps = {
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
   currentModel?: AgentComposerModel
-  textGenerationModelList: ModelSelectorProvider[]
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
@@ -71,7 +69,6 @@ export function AgentOrchestratePanel({
   agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
-  textGenerationModelList,
   isPublishing,
   className,
   readOnly = false,
@@ -142,57 +139,51 @@ export function AgentOrchestratePanel({
         />
       )}
 
-      <AgentOrchestrateViewingVersionContext value={!!selectedVersionSnapshot}>
-        <AgentOrchestrateReadOnlyContext value={readOnly}>
-          <div aria-readonly={readOnly} className="flex min-h-0 flex-1 flex-col">
-            <ScrollArea className="min-h-0 flex-1 overflow-hidden">
-              <ScrollAreaViewport
-                aria-label={showHeader ? undefined : orchestrateLabel}
-                aria-labelledby={showHeader ? orchestrateHeadingId : undefined}
-                className="overscroll-contain"
-                role="region"
-              >
-                <ScrollAreaContent
-                  className={cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20')}
-                >
-                  <AgentConfigApiContextProvider value={configApiContext}>
-                    <AgentOrchestrateAddActionsProvider>
-                      <AgentBuildDraftChangedKeysProvider
-                        changedKeys={
-                          isBuildDraftActive
-                            ? buildDraftChangedKeys
-                            : EMPTY_BUILD_DRAFT_CHANGED_KEYS
-                        }
-                      >
-                        <AgentModelField
-                          currentModel={currentModel}
-                          textGenerationModelList={textGenerationModelList}
-                          onSelect={onSelectModel}
-                        />
-                        <AgentPromptEditor />
-                        <AgentSkills />
-                        <AgentFiles />
-                        <AgentTools />
-                        {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL && <AgentKnowledgeRetrieval />}
-                        <AgentAdvancedSettings />
-                      </AgentBuildDraftChangedKeysProvider>
-                    </AgentOrchestrateAddActionsProvider>
-                  </AgentConfigApiContextProvider>
-                </ScrollAreaContent>
-              </ScrollAreaViewport>
-              <ScrollAreaScrollbar className={hasBottomAction ? 'z-20' : undefined}>
-                <ScrollAreaThumb />
-              </ScrollAreaScrollbar>
-            </ScrollArea>
-          </div>
-        </AgentOrchestrateReadOnlyContext>
-      </AgentOrchestrateViewingVersionContext>
-
-      {orchestrateBottomAction ? (
-        <AgentOrchestrateBottomActions shrinkOnOpen={!bottomAction}>
-          {orchestrateBottomAction}
-        </AgentOrchestrateBottomActions>
-      ) : null}
+      <ScrollArea
+        className={cn(
+          'min-h-0 flex-1 overflow-hidden',
+          showHeader ? 'rounded-b-[inherit]' : 'rounded-[inherit]',
+        )}
+      >
+        <AgentOrchestrateViewingVersionContext value={!!selectedVersionSnapshot}>
+          <AgentOrchestrateReadOnlyContext value={readOnly}>
+            <ScrollAreaViewport
+              aria-label={showHeader ? undefined : orchestrateLabel}
+              aria-labelledby={showHeader ? orchestrateHeadingId : undefined}
+              className="overscroll-contain"
+              role="region"
+            >
+              <ScrollAreaContent className={cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20')}>
+                <AgentConfigApiContextProvider value={configApiContext}>
+                  <AgentOrchestrateAddActionsProvider>
+                    <AgentBuildDraftChangedKeysProvider
+                      changedKeys={
+                        isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS
+                      }
+                    >
+                      <AgentModelField currentModel={currentModel} onSelect={onSelectModel} />
+                      <AgentPromptEditor />
+                      <AgentSkills />
+                      <AgentFiles />
+                      <AgentTools />
+                      {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL && <AgentKnowledgeRetrieval />}
+                      <AgentAdvancedSettings />
+                    </AgentBuildDraftChangedKeysProvider>
+                  </AgentOrchestrateAddActionsProvider>
+                </AgentConfigApiContextProvider>
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+          </AgentOrchestrateReadOnlyContext>
+        </AgentOrchestrateViewingVersionContext>
+        {orchestrateBottomAction ? (
+          <AgentOrchestrateBottomActions shrinkOnOpen={!bottomAction}>
+            {orchestrateBottomAction}
+          </AgentOrchestrateBottomActions>
+        ) : null}
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
+      </ScrollArea>
     </div>
   )
 }

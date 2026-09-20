@@ -154,7 +154,7 @@ vi.mock('../../_base/hooks/use-node-crud', () => ({
 }))
 
 vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => true,
+  useCanCreateAgents: () => true,
 }))
 
 vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
@@ -263,30 +263,11 @@ vi.mock('../components/save-inline-agent-to-roster-dialog', () => ({
     onSaved,
   }: {
     open: boolean
-    onSaved: (binding: {
-      agent_id?: string | null
-      binding_type: 'inline_agent' | 'roster_agent'
-      current_snapshot_id?: string | null
-      id: string
-      node_id: string
-      workflow_id: string
-    }) => void
+    onSaved: (agentId: string) => void
   }) =>
     open ? (
       <div role="dialog" aria-label="save-inline-agent-to-roster">
-        <button
-          type="button"
-          onClick={() =>
-            onSaved({
-              id: 'binding-1',
-              binding_type: 'roster_agent',
-              agent_id: 'saved-roster-agent',
-              current_snapshot_id: 'saved-snapshot',
-              workflow_id: 'workflow-1',
-              node_id: 'agent-node',
-            })
-          }
-        >
+        <button type="button" onClick={() => onSaved('saved-roster-agent')}>
           Save inline agent to roster
         </button>
       </div>
@@ -413,6 +394,7 @@ describe('agent/panel', () => {
             icon: 'N',
             icon_background: '#E9D7FE',
             icon_type: 'emoji',
+            permission_keys: ['agent.acl.edit'],
             role: 'Researcher',
           }
         : undefined,

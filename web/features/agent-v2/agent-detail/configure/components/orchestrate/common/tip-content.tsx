@@ -30,7 +30,9 @@ export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps
           i18nKey={($) => $['agentDetail.configure.advancedSettings.envEditor.richTip']}
           ns="agentV2"
           components={{
-            docLink: <DocsLink href={docLink('/use-dify/build/agent')} />,
+            docLink: (
+              <DocsLink href={docLink('/use-dify/build/new-agent/build#environment-variables')} />
+            ),
           }}
         />
       </span>

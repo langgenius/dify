@@ -1,4 +1,5 @@
 import gzip
+from collections.abc import Callable
 from typing import override
 from unittest.mock import ANY, MagicMock, call, patch
 
@@ -141,15 +142,19 @@ def test_force_list_response_returns_when_retries_disabled(mock_get_client):
     mock_client.send.assert_called_once()
 
 
-def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports():
+def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports(
+    config_overrides: Callable[..., None],
+):
+    config_overrides(
+        SSRF_PROXY_ALL_URL=None,
+        SSRF_PROXY_HTTP_URL="http://proxy.example.com:8080",
+        SSRF_PROXY_HTTPS_URL="http://proxy.example.com:8443",
+    )
     mock_client = MagicMock()
     http_transport = MagicMock()
     https_transport = MagicMock()
 
     with (
-        patch("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_ALL_URL", None),
-        patch("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_HTTP_URL", "http://proxy.example.com:8080"),
-        patch("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_HTTPS_URL", "http://proxy.example.com:8443"),
         patch("core.helper.ssrf_proxy.httpx.HTTPTransport", side_effect=[http_transport, https_transport]) as transport,
         patch("core.helper.ssrf_proxy.httpx.Client", return_value=mock_client) as client,
     ):

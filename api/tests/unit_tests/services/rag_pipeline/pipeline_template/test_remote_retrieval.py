@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 from services.rag_pipeline.pipeline_template.remote.remote_retrieval import RemotePipelineTemplateRetrieval
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -54,12 +55,8 @@ def test_get_pipeline_template_detail_fallbacks_to_database_on_error(
     assert not sqlite_session.in_transaction()
 
 
-def test_fetch_pipeline_templates_from_dify_official(mocker: MockerFixture) -> None:
-    mocker.patch(
-        "services.rag_pipeline.pipeline_template.remote.remote_retrieval"
-        ".dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN",
-        "https://example.com",
-    )
+def test_fetch_pipeline_templates_from_dify_official(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN="https://example.com")
 
     success_response = mocker.Mock(status_code=200)
     success_response.json.return_value = {"pipeline_templates": [{"id": "remote-1"}]}
@@ -80,12 +77,10 @@ def test_fetch_pipeline_templates_from_dify_official(mocker: MockerFixture) -> N
     assert http_get_mock.call_count == 2
 
 
-def test_fetch_pipeline_template_detail_from_dify_official(mocker: MockerFixture) -> None:
-    mocker.patch(
-        "services.rag_pipeline.pipeline_template.remote.remote_retrieval"
-        ".dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN",
-        "https://example.com",
-    )
+def test_fetch_pipeline_template_detail_from_dify_official(
+    mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN="https://example.com")
 
     success_response = mocker.Mock(status_code=200)
     success_response.json.return_value = {"id": "remote-1", "name": "Remote Template"}

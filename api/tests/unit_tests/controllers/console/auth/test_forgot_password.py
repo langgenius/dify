@@ -1,174 +1,235 @@
-"""Unit tests for forgot password controller endpoints."""
+"""Transport-boundary tests for Console forgot-password endpoints."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from unittest.mock import patch
+from types import SimpleNamespace
 
 import pytest
 from flask import Flask
 
-from controllers.console.auth.forgot_password import (
-    ForgotPasswordCheckApi,
-    ForgotPasswordResetApi,
-    ForgotPasswordSendEmailApi,
+from controllers.console.auth import forgot_password
+from controllers.console.auth.error import (
+    EmailCodeError,
+    EmailPasswordResetLimitError,
+    InvalidEmailError,
+    InvalidTokenError,
+    PasswordMismatchError,
+    PasswordResetRateLimitExceededError,
 )
+from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from enums import DeploymentEdition
-from models.account import Account
-from models.engine import db
-from services.entities.feature_entities import SystemFeatureModel
+from services import account_errors
+from services.entities.account_entities import ForgotPasswordVerification
+from tests.unit_tests.config_override import apply_config_overrides
+
+
+class FakeForgotPasswordService:
+    def __init__(self) -> None:
+        self.error: Exception | None = None
+        self.send_arguments: dict[str, str] | None = None
+        self.verify_arguments: dict[str, str] | None = None
+        self.reset_arguments: dict[str, str] | None = None
+
+    def _raise_if_needed(self) -> None:
+        if self.error is not None:
+            raise self.error
+
+    def send_code(
+        self,
+        *,
+        email: str,
+        language: str,
+        ip_address: str,
+    ) -> str:
+        self.send_arguments = {"email": email, "language": language, "ip_address": ip_address}
+        self._raise_if_needed()
+        return "reset-token"
+
+    def verify_code(
+        self,
+        *,
+        email: str,
+        code: str,
+        token: str,
+    ) -> ForgotPasswordVerification:
+        self.verify_arguments = {"email": email, "code": code, "token": token}
+        self._raise_if_needed()
+        return ForgotPasswordVerification(email="user@example.com", token="promoted-token")
+
+    def reset(
+        self,
+        *,
+        token: str,
+        new_password: str,
+        password_confirm: str,
+    ) -> None:
+        self.reset_arguments = {
+            "token": token,
+            "new_password": new_password,
+            "password_confirm": password_confirm,
+        }
+        self._raise_if_needed()
+
+
+@pytest.fixture(autouse=True)
+def admit_forgot_password_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        ENABLE_EMAIL_PASSWORD_LOGIN=True,
+    )
 
 
 @pytest.fixture
-def database_app() -> Iterator[Flask]:
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        Account.__table__.create(db.engine)
-        yield app
+def service(monkeypatch: pytest.MonkeyPatch) -> FakeForgotPasswordService:
+    service = FakeForgotPasswordService()
+    services = SimpleNamespace(accounts=SimpleNamespace(forgot_password=service))
+    monkeypatch.setattr(forgot_password, "application_services", lambda: services)
+    monkeypatch.setattr(forgot_password, "extract_remote_ip", lambda _request: "127.0.0.1")
+    return service
 
 
-class TestForgotPasswordSendEmailApi:
-    @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit", return_value=False)
-    @patch("controllers.console.auth.forgot_password.extract_remote_ip", return_value="127.0.0.1")
-    def test_send_normalizes_email(
-        self,
-        mock_extract_ip,
-        mock_is_ip_limit,
-        mock_send_email,
-        mock_get_account,
-        app: Flask,
+def test_send_parses_input_and_serializes_service_result(app: Flask, service: FakeForgotPasswordService) -> None:
+    with app.test_request_context(
+        "/forgot-password",
+        method="POST",
+        json={"email": "User@Example.com", "language": "zh-Hans"},
     ):
-        account = Account(name="User", email="user@example.com")
-        mock_get_account.return_value = account
-        mock_send_email.return_value = "token-123"
+        response = forgot_password.ForgotPasswordSendEmailApi().post()
 
-        wraps_features = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_email_password_login=True,
-            is_allow_register=True,
-        )
-        controller_features = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            is_allow_register=True,
-        )
-        with (
-            patch(
-                "controllers.console.auth.forgot_password.FeatureService.get_system_features",
-                return_value=controller_features,
-            ),
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
-        ):
-            with app.test_request_context(
-                "/forgot-password",
-                method="POST",
-                json={"email": "User@Example.com", "language": "zh-Hans"},
-            ):
-                response = ForgotPasswordSendEmailApi().post()
-
-        assert response == {"result": "success", "data": "token-123"}
-        mock_send_email.assert_called_once_with(
-            account=account,
-            email="user@example.com",
-            language="zh-Hans",
-            is_allow_register=True,
-        )
-        mock_is_ip_limit.assert_called_once_with("127.0.0.1")
-        mock_extract_ip.assert_called_once()
+    assert response == {"result": "success", "data": "reset-token"}
+    assert service.send_arguments == {
+        "email": "User@Example.com",
+        "language": "zh-Hans",
+        "ip_address": "127.0.0.1",
+    }
 
 
-class TestForgotPasswordCheckApi:
-    @patch("controllers.console.auth.forgot_password.AccountService.reset_forgot_password_error_rate_limit")
-    @patch("controllers.console.auth.forgot_password.AccountService.generate_reset_password_token")
-    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
-    @patch("controllers.console.auth.forgot_password.AccountService.add_forgot_password_error_rate_limit")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
-    def test_check_normalizes_email(
-        self,
-        mock_rate_limit_check,
-        mock_get_data,
-        mock_add_rate,
-        mock_revoke_token,
-        mock_generate_token,
-        mock_reset_rate,
-        app: Flask,
+def test_send_defaults_unsupported_language(app: Flask, service: FakeForgotPasswordService) -> None:
+    with app.test_request_context(
+        "/forgot-password",
+        method="POST",
+        json={"email": "user@example.com", "language": "fr-FR"},
     ):
-        mock_rate_limit_check.return_value = False
-        mock_get_data.return_value = {"email": "Admin@Example.com", "code": "4321"}
-        mock_generate_token.return_value = (None, "new-token")
+        forgot_password.ForgotPasswordSendEmailApi().post()
 
-        wraps_features = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_email_password_login=True,
-        )
-        with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
-        ):
-            with app.test_request_context(
-                "/forgot-password/validity",
-                method="POST",
-                json={"email": "ADMIN@Example.com", "code": "4321", "token": "token-123"},
-            ):
-                response = ForgotPasswordCheckApi().post()
-
-        assert response == {"is_valid": True, "email": "admin@example.com", "token": "new-token"}
-        mock_rate_limit_check.assert_called_once_with("admin@example.com")
-        mock_generate_token.assert_called_once_with(
-            "Admin@Example.com",
-            code="4321",
-            additional_data={"phase": "reset"},
-        )
-        mock_reset_rate.assert_called_once_with("admin@example.com")
-        mock_add_rate.assert_not_called()
-        mock_revoke_token.assert_called_once_with("token-123")
+    assert service.send_arguments is not None
+    assert service.send_arguments["language"] == "en-US"
 
 
-class TestForgotPasswordResetApi:
-    @patch("controllers.console.auth.forgot_password.ForgotPasswordResetApi._update_existing_account")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    def test_reset_fetches_account_with_original_email(
-        self,
-        mock_get_reset_data,
-        mock_revoke_token,
-        mock_get_account,
-        mock_update_account,
-        database_app: Flask,
+@pytest.mark.parametrize(
+    ("service_error", "request_error"),
+    [
+        (account_errors.ForgotPasswordSendIPLimitedError(), EmailSendIpLimitError),
+        (account_errors.ForgotPasswordSendRateLimitError(2), PasswordResetRateLimitExceededError),
+    ],
+)
+def test_send_maps_application_errors(
+    app: Flask,
+    service: FakeForgotPasswordService,
+    service_error: Exception,
+    request_error: type[Exception],
+) -> None:
+    service.error = service_error
+    with (
+        app.test_request_context(
+            "/forgot-password",
+            method="POST",
+            json={"email": "user@example.com"},
+        ),
+        pytest.raises(request_error),
     ):
-        mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com"}
-        account = Account(name="User", email="user@example.com")
-        db.session.add(account)
-        db.session.commit()
-        mock_get_account.return_value = account
+        forgot_password.ForgotPasswordSendEmailApi().post()
 
-        wraps_features = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_email_password_login=True,
-        )
-        with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
-        ):
-            with database_app.test_request_context(
-                "/forgot-password/resets",
-                method="POST",
-                json={
-                    "token": "token-123",
-                    "new_password": "ValidPass123!",
-                    "password_confirm": "ValidPass123!",
-                },
-            ):
-                response = ForgotPasswordResetApi().post()
 
-        assert response == {"result": "success"}
-        mock_get_reset_data.assert_called_once_with("token-123")
-        mock_revoke_token.assert_called_once_with("token-123")
-        mock_update_account.assert_called_once()
+def test_verify_serializes_promoted_token(app: Flask, service: FakeForgotPasswordService) -> None:
+    with app.test_request_context(
+        "/forgot-password/validity",
+        method="POST",
+        json={"email": "USER@example.com", "code": "123456", "token": "verification-token"},
+    ):
+        response = forgot_password.ForgotPasswordCheckApi().post()
+
+    assert response == {"is_valid": True, "email": "user@example.com", "token": "promoted-token"}
+    assert service.verify_arguments == {
+        "email": "USER@example.com",
+        "code": "123456",
+        "token": "verification-token",
+    }
+
+
+@pytest.mark.parametrize(
+    ("service_error", "request_error"),
+    [
+        (account_errors.ForgotPasswordVerificationLimitError(), EmailPasswordResetLimitError),
+        (account_errors.InvalidForgotPasswordTokenError(), InvalidTokenError),
+        (account_errors.InvalidForgotPasswordEmailError(), InvalidEmailError),
+        (account_errors.InvalidForgotPasswordCodeError(), EmailCodeError),
+    ],
+)
+def test_verify_maps_application_errors(
+    app: Flask,
+    service: FakeForgotPasswordService,
+    service_error: Exception,
+    request_error: type[Exception],
+) -> None:
+    service.error = service_error
+    with (
+        app.test_request_context(
+            "/forgot-password/validity",
+            method="POST",
+            json={"email": "user@example.com", "code": "123456", "token": "token"},
+        ),
+        pytest.raises(request_error),
+    ):
+        forgot_password.ForgotPasswordCheckApi().post()
+
+
+def test_reset_delegates_and_serializes_result(app: Flask, service: FakeForgotPasswordService) -> None:
+    with app.test_request_context(
+        "/forgot-password/resets",
+        method="POST",
+        json={
+            "token": "reset-token",
+            "new_password": "ValidPass123!",
+            "password_confirm": "ValidPass123!",
+        },
+    ):
+        response = forgot_password.ForgotPasswordResetApi().post()
+
+    assert response == {"result": "success"}
+    assert service.reset_arguments == {
+        "token": "reset-token",
+        "new_password": "ValidPass123!",
+        "password_confirm": "ValidPass123!",
+    }
+
+
+@pytest.mark.parametrize(
+    ("service_error", "request_error"),
+    [
+        (account_errors.ForgotPasswordMismatchError(), PasswordMismatchError),
+        (account_errors.InvalidForgotPasswordTokenError(), InvalidTokenError),
+        (account_errors.AccountNotFoundError(), AccountNotFound),
+    ],
+)
+def test_reset_maps_application_errors(
+    app: Flask,
+    service: FakeForgotPasswordService,
+    service_error: Exception,
+    request_error: type[Exception],
+) -> None:
+    service.error = service_error
+    with (
+        app.test_request_context(
+            "/forgot-password/resets",
+            method="POST",
+            json={
+                "token": "reset-token",
+                "new_password": "ValidPass123!",
+                "password_confirm": "ValidPass123!",
+            },
+        ),
+        pytest.raises(request_error),
+    ):
+        forgot_password.ForgotPasswordResetApi().post()

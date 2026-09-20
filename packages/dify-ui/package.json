@@ -21,6 +21,10 @@
       "types": "./src/avatar/index.tsx",
       "import": "./src/avatar/index.tsx"
     },
+    "./breadcrumb": {
+      "types": "./src/breadcrumb/index.tsx",
+      "import": "./src/breadcrumb/index.tsx"
+    },
     "./button": {
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
@@ -160,6 +164,10 @@
     "./tooltip": {
       "types": "./src/tooltip/index.tsx",
       "import": "./src/tooltip/index.tsx"
+    },
+    "./spinner": {
+      "types": "./src/spinner/index.tsx",
+      "import": "./src/spinner/index.tsx"
     }
   },
   "scripts": {
@@ -171,8 +179,7 @@
     "type-check": "tsc"
   },
   "dependencies": {
-    "clsx": "catalog:",
-    "tailwind-merge": "catalog:"
+    "cn": "catalog:"
   },
   "devDependencies": {
     "@base-ui/react": "catalog:",

@@ -212,7 +212,7 @@ const ConditionItem = ({
       const newCondition = produce(condition, (draft) => {
         draft.variable_selector = valueSelector
         draft.varType = varItem.type
-        draft.value = ''
+        draft.value = varItem.type === VarType.boolean ? false : ''
         draft.comparison_operator = getOperators(varItem.type)[0]
         delete draft.key
         delete draft.sub_variable_condition
@@ -266,7 +266,7 @@ const ConditionItem = ({
                 </SelectTrigger>
                 <SelectPortal>
                   <SelectPositioner>
-                    <SelectPopup className="w-[165px]">
+                    <SelectPopup className="w-41.25">
                       <SelectList className="max-h-none p-1">
                         {subVarOptions.map((option) => (
                           <SelectItem
@@ -326,7 +326,10 @@ const ConditionItem = ({
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
           condition.varType === VarType.boolean && (
             <div className="p-1">
-              <BoolValue value={condition.value as boolean} onChange={handleUpdateConditionValue} />
+              <BoolValue
+                value={condition.value === true || condition.value === 'true'}
+                onChange={handleUpdateConditionValue}
+              />
             </div>
           )}
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&

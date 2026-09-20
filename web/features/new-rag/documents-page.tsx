@@ -7,13 +7,13 @@ import type {
 } from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import {
   datasetDefaultPermissionKeysAtom,
   refreshWorkspacePermissionKeysAfterMutationDenialAtom,
@@ -22,7 +22,7 @@ import {
   workspacePermissionKeysFetchingAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
 import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'
@@ -1938,7 +1938,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             <Button
               ref={permissionRetryButtonRef}
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
-              aria-busy={workspacePermissionKeysFetching}
               loading={workspacePermissionKeysFetching}
               size="small"
               onBlur={(event) => {
@@ -1972,7 +1971,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 <Button
                   ref={documentsRetryButtonRef}
                   aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-                  aria-busy={documentsQuery.isRefetching}
                   loading={documentsQuery.isRefetching}
                   size="small"
                   onBlur={(event) => {
@@ -2005,7 +2003,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   ? t(($) => $['newKnowledge.sourcesErrorDescription'])
                   : t(($) => $['newKnowledge.tasksErrorDescription'])
               }`}
-              aria-busy={dependencyRetryFetching}
               loading={dependencyRetryFetching}
               size="small"
               onBlur={(event) => {
@@ -2022,7 +2019,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         )}
         {documentsQuery.isPending && !permissionDenied ? (
           <div className="flex min-h-64 flex-1 items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         ) : permissionDenied || (documentsQuery.error && !documentsQuery.data) ? (
           <div
@@ -2051,7 +2048,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               <Button
                 ref={documentsRetryButtonRef}
                 aria-label={`${tCommon(($) => $['operation.retry'])} · ${documentsRecoveryDescription}`}
-                aria-busy={documentsQuery.isFetching}
                 className="mt-4"
                 loading={documentsQuery.isFetching}
                 onBlur={(event) => {
@@ -2085,7 +2081,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   ? t(($) => $['newKnowledge.tasksErrorDescription'])
                   : t(($) => $['newKnowledge.sourcesErrorDescription'])
               }`}
-              aria-busy={blockingDependencyRetryFetching}
               className="mt-4"
               loading={blockingDependencyRetryFetching}
               onBlur={(event) => {

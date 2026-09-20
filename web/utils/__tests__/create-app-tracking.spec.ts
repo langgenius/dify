@@ -1,6 +1,7 @@
 import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as amplitude from '@/app/components/base/amplitude/utils'
+import { AgentScope } from '@/features/agent-v2/analytics'
 import { AppModeEnum } from '@/types/app'
 import {
   buildCreateAppEventPayload,
@@ -147,6 +148,7 @@ describe('create-app-tracking', () => {
           {
             source: 'studio_blank',
             appMode: 'agent-v2',
+            agentScope: AgentScope.Global,
           },
           null,
           new Date(2026, 3, 13, 9, 8, 9),
@@ -154,6 +156,7 @@ describe('create-app-tracking', () => {
       ).toEqual({
         source: 'studio_blank',
         app_mode: 'agent-v2',
+        agent_scope: 'global',
         time: '04-13-09:08:09',
       })
     })

@@ -13,17 +13,15 @@ import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-sche
 import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
-import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { docPathProductAvailability } from '@/types/doc-paths'
+import { isAgentV2Enabled, isAgentV2InChatflowEnabled } from '@/features/agent-v2/feature-flag'
+import { isProductlessDocPathWithAnchor } from '@/types/doc-paths'
 import { useIsChatMode } from './use-is-chat-mode'
 
 const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefined => {
   if (!helpLinkUri) return undefined
 
   const helpLinkPath = `/use-dify/nodes/${helpLinkUri}`
-  if (!docPathProductAvailability[helpLinkPath]) return undefined
-
-  return helpLinkPath as DocPathWithoutLang
+  return isProductlessDocPathWithAnchor(helpLinkPath) ? helpLinkPath : undefined
 }
 
 export const useAvailableNodesMetaData = () => {
@@ -31,7 +29,9 @@ export const useAvailableNodesMetaData = () => {
   const isChatMode = useIsChatMode()
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
-  const shouldUseAgentV2 = agentV2Enabled && !isChatMode
+  // Chatflow (advanced-chat) keeps Agent v2 hidden by default; opt in via
+  // NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW. Pure workflows are unaffected.
+  const shouldUseAgentV2 = agentV2Enabled && (!isChatMode || isAgentV2InChatflowEnabled())
 
   const startNodeMetaData = useMemo(
     () => ({
@@ -45,14 +45,8 @@ export const useAvailableNodesMetaData = () => {
   )
 
   const mergedNodesMetaData = useMemo(() => {
-    const commonNodes = WORKFLOW_COMMON_NODES.filter((node) =>
-      shouldUseAgentV2
-        ? node.metaData.type !== BlockEnum.Agent
-        : node.metaData.type !== BlockEnum.AgentV2,
-    )
-
     return [
-      ...commonNodes,
+      ...WORKFLOW_COMMON_NODES,
       startNodeMetaData,
       ...(isChatMode
         ? [AnswerDefault]
@@ -64,9 +58,9 @@ export const useAvailableNodesMetaData = () => {
             TriggerPluginDefault,
           ]),
     ]
-  }, [isChatMode, shouldUseAgentV2, startNodeMetaData])
+  }, [isChatMode, startNodeMetaData])
 
-  const availableNodesMetaData = useMemo(
+  const nodesMetaData = useMemo(
     () =>
       mergedNodesMetaData.map((node) => {
         const { metaData } = node
@@ -95,25 +89,35 @@ export const useAvailableNodesMetaData = () => {
     [mergedNodesMetaData, t, docLink],
   )
 
-  const availableNodesMetaDataMap = useMemo(
+  const availableNodesMetaData = useMemo(
     () =>
-      availableNodesMetaData.reduce(
+      nodesMetaData.filter((node) =>
+        shouldUseAgentV2
+          ? node.metaData.type !== BlockEnum.Agent
+          : node.metaData.type !== BlockEnum.AgentV2,
+      ),
+    [nodesMetaData, shouldUseAgentV2],
+  )
+
+  const nodesMetaDataMap = useMemo(
+    () =>
+      nodesMetaData.reduce(
         (acc, node) => {
           acc![node.metaData.type] = node
           return acc
         },
         {} as AvailableNodesMetaData['nodesMap'],
       ),
-    [availableNodesMetaData],
+    [nodesMetaData],
   )
 
   return useMemo(() => {
     return {
       nodes: availableNodesMetaData,
       nodesMap: {
-        ...availableNodesMetaDataMap,
-        [BlockEnum.VariableAssigner]: availableNodesMetaDataMap?.[BlockEnum.VariableAggregator],
+        ...nodesMetaDataMap,
+        [BlockEnum.VariableAssigner]: nodesMetaDataMap?.[BlockEnum.VariableAggregator],
       },
     }
-  }, [availableNodesMetaData, availableNodesMetaDataMap])
+  }, [availableNodesMetaData, nodesMetaDataMap])
 }

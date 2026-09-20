@@ -419,6 +419,9 @@ describe('InstallFromLocalPackage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('ready-to-install-package')).toBeInTheDocument()
         expect(screen.getByTestId('package-step')).toHaveTextContent('uploadFailed')
+        expect(
+          screen.getByRole('dialog', { name: 'plugin.installModal.uploadFailed' }),
+        ).toBeInTheDocument()
       })
     })
 

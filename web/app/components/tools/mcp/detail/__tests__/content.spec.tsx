@@ -501,8 +501,9 @@ describe('MCPDetailContent', () => {
       const { default: copy } = await import('copy-to-clipboard')
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
 
-      // Find the server identifier element
-      const serverIdentifier = screen.getByText('test-mcp')
+      const serverIdentifier = screen.getByRole('button', {
+        name: /test-mcp.*tools\.mcp\.identifier/,
+      })
       fireEvent.click(serverIdentifier)
 
       expect(copy).toHaveBeenCalledWith('test-mcp')

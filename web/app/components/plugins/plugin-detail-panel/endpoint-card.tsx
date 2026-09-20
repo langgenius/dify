@@ -11,7 +11,6 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
@@ -22,6 +21,7 @@ import {
   addDefaultValue,
   toolCredentialToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { toast } from '@/app/notifications'
 import {
   useDeleteEndpoint,
   useDisableEndpoint,

@@ -1,4 +1,11 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import AgentLogNavMore from './agent-log-nav-more'
@@ -15,47 +22,68 @@ export function AgentLogNav({ agentOrToolLogItemStack, onShowAgentOrToolLog }: A
   const end = agentOrToolLogItemStack.at(-1)
 
   return (
-    <div className="flex h-8 items-center bg-components-panel-bg p-1 pr-3">
-      <Button
-        className="shrink-0 px-1.25"
-        size="small"
-        variant="ghost-accent"
-        onClick={() => {
-          onShowAgentOrToolLog()
-        }}
-      >
-        <span aria-hidden className="i-ri-arrow-left-line size-3.5" />
-        AGENT
-      </Button>
-      <div className="mx-0.5 shrink-0 system-xs-regular text-divider-deep">/</div>
-      {agentOrToolLogItemStackLength > 1 ? (
-        <Button
-          className="shrink-0 px-1.25"
-          size="small"
-          variant="ghost-accent"
-          onClick={() => onShowAgentOrToolLog(first)}
-        >
-          {t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
-        </Button>
-      ) : (
-        <div className="flex items-center px-1.25 system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
-        </div>
-      )}
-      {!!mid.length && (
-        <>
-          <div className="mx-0.5 shrink-0 system-xs-regular text-divider-deep">/</div>
-          <AgentLogNavMore options={mid} onShowAgentOrToolLog={onShowAgentOrToolLog} />
-        </>
-      )}
-      {!!end && agentOrToolLogItemStackLength > 1 && (
-        <>
-          <div className="mx-0.5 shrink-0 system-xs-regular text-divider-deep">/</div>
-          <div className="flex items-center px-1.25 system-xs-medium-uppercase text-text-tertiary">
-            {end.label}
-          </div>
-        </>
-      )}
-    </div>
+    <Breadcrumb
+      aria-label={t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
+      className="flex min-h-8 items-center bg-components-panel-bg p-1 pr-3"
+    >
+      <BreadcrumbList className="gap-0">
+        <BreadcrumbItem className="shrink-0">
+          <Button
+            className="px-1.25"
+            size="small"
+            variant="ghost-accent"
+            onClick={() => {
+              onShowAgentOrToolLog()
+            }}
+          >
+            <span aria-hidden className="i-ri-arrow-left-line size-3.5" />
+            AGENT
+          </Button>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator className="mx-0.5 system-xs-regular text-divider-deep" />
+        {agentOrToolLogItemStackLength > 1 ? (
+          <BreadcrumbItem className="shrink-0">
+            <Button
+              className="px-1.25"
+              size="small"
+              variant="ghost-accent"
+              onClick={() => onShowAgentOrToolLog(first)}
+            >
+              {t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
+            </Button>
+          </BreadcrumbItem>
+        ) : (
+          <BreadcrumbItem>
+            <BreadcrumbPage
+              aria-current="location"
+              className="px-1.25 system-xs-medium-uppercase wrap-anywhere whitespace-normal text-text-tertiary"
+            >
+              {t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
+            </BreadcrumbPage>
+          </BreadcrumbItem>
+        )}
+        {!!mid.length && (
+          <>
+            <BreadcrumbSeparator className="mx-0.5 system-xs-regular text-divider-deep" />
+            <BreadcrumbItem className="shrink-0">
+              <AgentLogNavMore options={mid} onShowAgentOrToolLog={onShowAgentOrToolLog} />
+            </BreadcrumbItem>
+          </>
+        )}
+        {!!end && agentOrToolLogItemStackLength > 1 && (
+          <>
+            <BreadcrumbSeparator className="mx-0.5 system-xs-regular text-divider-deep" />
+            <BreadcrumbItem>
+              <BreadcrumbPage
+                aria-current="location"
+                className="px-1.25 system-xs-medium-uppercase wrap-anywhere whitespace-normal text-text-tertiary"
+              >
+                {end.label}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        )}
+      </BreadcrumbList>
+    </Breadcrumb>
   )
 }

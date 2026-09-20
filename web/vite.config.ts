@@ -1,11 +1,8 @@
 import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
-import {
-  createCodeInspectorPlugin,
-  createForceInspectorClientInjectionPlugin,
-} from './plugins/vite/code-inspector.ts'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
+import { i18nPrunePlugin } from './plugins/vite/i18n-prune.ts'
 import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
 import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test.ts'
 
@@ -14,7 +11,7 @@ const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 const browserTestPattern = 'app/**/*.browser.spec.{ts,tsx}'
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode, isPreview }) => {
   const isTest = mode === 'test'
   const isStorybook =
     process.env.STORYBOOK === 'true' ||
@@ -35,15 +32,17 @@ export default defineConfig(({ mode }) => {
           import('vite-plugin-inspect'),
         ])
 
+      const inspector =
+        command === 'serve' && isPreview !== true
+          ? (await import('code-inspector-plugin')).codeInspectorPlugin({
+              bundler: 'vite',
+            })
+          : undefined
+
       return [
+        i18nPrunePlugin(),
         Inspect(),
-        createCodeInspectorPlugin({
-          injectTarget: rootClientInjectTarget,
-        }),
-        createForceInspectorClientInjectionPlugin({
-          injectTarget: rootClientInjectTarget,
-          projectRoot,
-        }),
+        inspector,
         tailwindcss(),
         react(),
         vinext({ react: false }),
@@ -70,10 +69,6 @@ export default defineConfig(({ mode }) => {
           },
           server: {
             port: 3000,
-          },
-          ssr: {
-            // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
-            noExternal: ['emoji-mart'],
           },
         }
       : {}),
@@ -107,7 +102,14 @@ export default defineConfig(({ mode }) => {
             return [tailwindcss()]
           }),
           optimizeDeps: {
-            include: ['vite-plus/test/browser'],
+            include: [
+              '@base-ui/react/fieldset',
+              '@base-ui/react/number-field',
+              '@base-ui/react/slider',
+              'vite-plus/test/browser',
+              'dayjs/plugin/relativeTime',
+              'react-textarea-autosize',
+            ],
           },
           test: {
             name: 'browser',
