@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { taskVersionIsAfter } from './document-model'
 
-export type AuxiliaryTaskReadGuard = ReturnType<typeof createAuxiliaryTaskReadGuard>
-
 type RefetchDocuments = (options: { cancelRefetch: true }) => Promise<{ error: unknown }>
 
 export function createAuxiliaryTaskReadGuard() {
