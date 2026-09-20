@@ -6,6 +6,7 @@ from io import BytesIO
 from flask import Flask
 from sqlalchemy.orm import Session
 
+from controllers.openapi.auth.requirements import CheckWorkspaceMember
 from controllers.openapi.files import AppFileUploadApi
 from models import Account, App
 from services.app_service import AppService, CreateAppParams
@@ -49,7 +50,12 @@ class TestAppFileUpload:
         ):
             result = api.post.__handler__(
                 api,
-                context_for(account, session=db_session_with_containers, view_args={"app_id": app_model.id}),
+                context_for(
+                    account,
+                    session=db_session_with_containers,
+                    view_args={"app_id": app_model.id},
+                    requirements=(CheckWorkspaceMember(),),
+                ),
                 app_model.id,
             )
 
