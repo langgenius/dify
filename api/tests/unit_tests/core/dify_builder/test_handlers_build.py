@@ -1157,13 +1157,10 @@ def test_full_build_flow_goal_to_complete():
     assert len(graph["nodes"]) == 4
     assert len(graph["edges"]) == 3
 
-    # 5) run_test -> build.await_testdata (gate; no test input prepared yet)
+    # 5) run_test -> the generated start schema declares no file/file-list
+    # variable, so inputs are mocked inline (no gate) -> build.test_and_repair
+    # (working, auto) -> rests at build.review.
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
-    assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
-
-    # 5b) provide_testdata (mock) -> build.test_and_repair (working, auto) -> rest at build.review
-    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
-    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_REVIEW
 
     # 6) publish_workflow -> build.publish (auto) -> governance_feedback (auto)
@@ -1221,10 +1218,8 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    # No file/file-list start variable -> mocked inline, no gate.
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
-    assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
-    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
-    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_REVIEW
 
     out = runner.advance(s.id, Turn(action=Action(kind="keep_draft", base_version=out.version), actor=_actor()))
@@ -1272,10 +1267,8 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
     assert len(dify.graph["nodes"]) == 4
     assert len(dify.graph["edges"]) == 3
 
+    # No file/file-list start variable -> mocked inline, no gate.
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
-    assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
-    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
-    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_REVIEW
 
     # loop back: continue_adjusting (-> re_fix) -> build.initial_plan (re-plan)
@@ -1347,6 +1340,62 @@ def test_run_test_skips_gate_when_input_prepared():
         env, Turn(actor=_actor(), action=Action(kind="run_test")), s, DifyBuilderContext(test_input_ref="ti-1")
     )
     assert result.next == PcState.BUILD_TEST_AND_REPAIR
+
+
+def test_run_test_mocks_its_own_inputs():
+    """Nothing to upload, so nothing to ask -- mock the inputs inline and run."""
+    from core.dify_builder.handlers_build import handle_execution
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {"type": "start", "variables": [{"variable": "topic", "type": "text-input"}]},
+            }
+        ],
+        "edges": [],
+    }
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    fc = DifyBuilderContext(test_input_ref="")
+    result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
+    assert result.next == PcState.BUILD_TEST_AND_REPAIR
+    assert result.context.test_input_ref  # mocked + persisted, not left blank
+    assert not any(i.kind == "form" for i in result.items)  # no gate shown
+
+
+def test_run_test_still_asks_when_a_file_is_declared_among_other_variables():
+    """Mixed schema: text can be mocked, but the file variable cannot -- the
+    gate must still fire so a human can supply the upload."""
+    from core.dify_builder.handlers_build import handle_execution
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "topic", "type": "text-input"},
+                        {"variable": "doc", "type": "file"},
+                    ],
+                },
+            }
+        ],
+        "edges": [],
+    }
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    fc = DifyBuilderContext(test_input_ref="")
+    result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
+    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    assert result.context.test_input_ref == ""
+    form = next(i for i in result.items if i.kind == "form")
+    assert [f["type"] for f in form.payload["fields"]] == ["text-input", "file"]
 
 
 def test_await_testdata_mock_prepares_input_and_advances():

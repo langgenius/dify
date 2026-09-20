@@ -623,6 +623,50 @@ def test_start_schema_empty_when_no_start_or_no_vars():
     assert start_schema({"nodes": [{"id": "s", "data": {"type": "start"}}], "edges": []}) == {"variables": []}
 
 
+# ---- needs_upload_inputs -----------------------------------------------------
+
+
+def test_needs_upload_inputs_false_for_an_all_text_schema():
+    from core.dify_builder.handlers_fix import needs_upload_inputs
+
+    schema = {"variables": [{"variable": "topic", "type": "text-input"}, {"variable": "count", "type": "number"}]}
+    assert needs_upload_inputs(schema) is False
+
+
+def test_needs_upload_inputs_false_when_there_are_no_variables():
+    from core.dify_builder.handlers_fix import needs_upload_inputs
+
+    assert needs_upload_inputs({"variables": []}) is False
+
+
+def test_needs_upload_inputs_true_for_a_file_variable():
+    from core.dify_builder.handlers_fix import needs_upload_inputs
+
+    schema = {"variables": [{"variable": "doc", "type": "file"}]}
+    assert needs_upload_inputs(schema) is True
+
+
+def test_needs_upload_inputs_true_for_a_file_list_variable():
+    from core.dify_builder.handlers_fix import needs_upload_inputs
+
+    schema = {"variables": [{"variable": "docs", "type": "file-list"}]}
+    assert needs_upload_inputs(schema) is True
+
+
+def test_needs_upload_inputs_true_for_a_mixed_schema():
+    """A human still has to supply the file even though everything else in
+    the schema could be mocked -- the mixed case must still stop at the gate."""
+    from core.dify_builder.handlers_fix import needs_upload_inputs
+
+    schema = {
+        "variables": [
+            {"variable": "topic", "type": "text-input"},
+            {"variable": "doc", "type": "file"},
+        ]
+    }
+    assert needs_upload_inputs(schema) is True
+
+
 # ---- is_input_failure / testdata_form_fields -------------------------------
 
 

@@ -87,6 +87,7 @@ __all__ = [
     "merge_known_keys",
     "mint_checkpoint",
     "model_config_error_text",
+    "needs_upload_inputs",
     "perform_revert",
     "start_schema",
     "testdata_form_fields",
@@ -237,6 +238,20 @@ def start_schema(graph: Graph) -> StartSchema:
         if data.get("type") == "start":
             return {"variables": list(data.get("variables") or [])}
     return {"variables": []}
+
+
+_UPLOAD_VARIABLE_TYPES = frozenset({"file", "file-list"})
+
+
+def needs_upload_inputs(schema: StartSchema) -> bool:
+    """Whether any declared start variable takes a file.
+
+    Everything else can be mocked; an upload cannot, so it is the only reason
+    left to stop and ask a human for test data.
+    """
+    return any(
+        isinstance(v, dict) and str(v.get("type") or "") in _UPLOAD_VARIABLE_TYPES for v in schema.get("variables", [])
+    )
 
 
 def _string_list(value: object) -> list[str]:
