@@ -410,6 +410,14 @@ extend-select = ["ANN401", "ARG"]
 "test_pytest_dify.py" = ["ARG001"]
 "tools/test_mcp_tool.py" = ["TID251"]
 
+# Existing exceptions follow the test groups split from their original modules.
+"libs/broadcast_channel/redis/test_redis_sharded_subscription.py" = ["ARG002", "ARG005"]
+"libs/broadcast_channel/redis/test_redis_subscription.py" = ["ARG002", "ARG005"]
+"libs/broadcast_channel/redis/test_redis_subscription_common.py" = ["ARG002"]
+"services/_external_dataset_helpers.py" = ["TID251"]
+"services/test_external_dataset_endpoints.py" = ["ARG002"]
+"services/test_external_dataset_retrieval.py" = ["ARG002"]
+
 [lint.flake8-tidy-imports.banned-api."flask_restx.reqparse"]
 msg = "Use Pydantic payload/query models instead of reqparse."
 
