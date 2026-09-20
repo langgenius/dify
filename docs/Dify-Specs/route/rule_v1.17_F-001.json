@@ -1,0 +1,66 @@
+{
+  "version": "v1.17",
+  "feature_id": "F-001",
+  "feature_title": "App Studio and Publishing",
+  "objective": "Implement F-001 exactly as specified by the documents listed in reads.",
+  "reads": {
+    "domain": [
+      "docs/Dify-Specs/ddd/domain_DOM-001-app-studio-and-publishing.md"
+    ],
+    "prd": [
+      "docs/Dify-Specs/PRDs/prd.md",
+      "docs/Dify-Specs/PRDs/prd_v1.17_F-001-app-studio-and-publishing.md"
+    ],
+    "adrs": [
+      "docs/Dify-Specs/ADRs/adrs_ADR-0001-record-architecture-decisions.md",
+      "docs/Dify-Specs/ADRs/adrs_ADR-0002-application-level-referential-integrity.md",
+      "docs/Dify-Specs/ADRs/adrs_ADR-0003-generated-api-contract.md",
+      "docs/Dify-Specs/ADRs/adrs_ADR-0004-enforced-import-layers.md",
+      "docs/Dify-Specs/ADRs/adrs_ADR-0005-pluggable-provider-packages.md"
+    ],
+    "architecture": [
+      "docs/Dify-Specs/architect/architect_common.md",
+      "docs/Dify-Specs/status-model.md",
+      "docs/Dify-Specs/architect/feature_v1.17_F-001_architect.md"
+    ],
+    "data": [
+      "docs/Dify-Specs/data/data-master-erd.md",
+      "docs/Dify-Specs/data/schema/schemas.json",
+      "docs/Dify-Specs/data/data-erd_v1.17_F-001.md",
+      "docs/Dify-Specs/data/api-contract_v1.17_F-001.md",
+      "docs/Dify-Specs/data/data-fixtures_v1.17_F-001.md",
+      "docs/Dify-Specs/data/schema/erd_v1.17_F-001.puml",
+      "docs/Dify-Specs/data/schema/openapi_v1.17_F-001.json",
+      "docs/Dify-Specs/data/schema/asyncapi_v1.17_F-001.json",
+      "docs/Dify-Specs/data/fixtures/fixtures_v1.17_F-001.json"
+    ],
+    "tasks": [
+      "docs/Dify-Specs/tasks/tasks_v1.17_F-001.md"
+    ],
+    "tests": [
+      "docs/Dify-Specs/tests/testing_strategy.md",
+      "docs/Dify-Specs/tests/test_v1.17_F-001.md"
+    ],
+    "runbooks": [
+      "docs/Dify-Specs/runbook/runbook_DEV_RB-001-local-setup.md"
+    ]
+  },
+  "writes": {
+    "code": [],
+    "tests": []
+  },
+  "guardrails": [
+    "Do not invent requirements: if a document is silent, stop and ask.",
+    "Do not change any file under docs/ while executing this route.",
+    "Treat docs/ as read-only, data/ included: schemas, OpenAPI/AsyncAPI and fixtures are the contract, not scratch space. A shape that does not fit is a spec bug \u2014 stop and say so.",
+    "Status cells move only through docs_flow.py task, one legal transition at a time (status-model.md); a done cites evidence that passed here.",
+    "Follow architect_common.md for naming, quality and security; it overrides personal preference.",
+    "One task from tasks_v1.17_F-001.md at a time, in the stated order."
+  ],
+  "exit_criteria": [
+    "Every acceptance criterion in the feature PRD has a passing test.",
+    "Implemented shapes match data/schema/schemas.json; route.py reports no fixture/model mismatch.",
+    "Review checklist in architect_common.md passes.",
+    "tasks_v1.17_F-001.md status column is complete."
+  ]
+}

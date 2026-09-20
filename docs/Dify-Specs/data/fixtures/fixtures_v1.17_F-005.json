@@ -1,0 +1,48 @@
+{
+  "$comment": "Fixture set for v1.17 F-005. One minimal valid record per entity, derived from schemas.json \u2014 no fixture in the repository was copied, and no value here is real data. Every top-level key is a $defs entity; required fields only. IDs and timestamps are fixed literals.",
+  "accounts": [
+    {
+      "created_at": "2024-01-01T00:00:00Z",
+      "email": "email",
+      "id": "00000000-0000-4000-8000-000000000013",
+      "last_active_at": "2024-01-01T00:00:00Z",
+      "name": "name",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "tenants": [
+    {
+      "created_at": "2024-01-01T00:00:00Z",
+      "id": "00000000-0000-4000-8000-000000000022",
+      "name": "name"
+    }
+  ],
+  "tenant_account_joins": [
+    {
+      "account_id": "00000000-0000-4000-8000-000000000031",
+      "created_at": "2024-01-01T00:00:00Z",
+      "id": "00000000-0000-4000-8000-000000000033",
+      "tenant_id": "00000000-0000-4000-8000-000000000034",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "providers": [
+    {
+      "created_at": "2024-01-01T00:00:00Z",
+      "id": "00000000-0000-4000-8000-000000000042",
+      "is_valid": false,
+      "provider_name": "provider_name",
+      "provider_type": "provider_type",
+      "tenant_id": "00000000-0000-4000-8000-000000000046",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "api_tokens": [
+    {
+      "created_at": "2024-01-01T00:00:00Z",
+      "id": "00000000-0000-4000-8000-000000000052",
+      "token": "token",
+      "type": "app"
+    }
+  ]
+}

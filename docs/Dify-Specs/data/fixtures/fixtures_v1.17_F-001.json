@@ -1,0 +1,87 @@
+{
+  "$comment": "Fixture set for v1.17 F-001. One minimal valid record per entity, derived from schemas.json \u2014 no fixture in the repository was copied, and no value here is real data. Every top-level key is a $defs entity; required fields only. IDs and timestamps are fixed literals.",
+  "apps": [
+    {
+      "created_at": "2024-01-01T00:00:00Z",
+      "enable_api": false,
+      "enable_site": false,
+      "icon": "icon",
+      "id": "00000000-0000-4000-8000-000000000015",
+      "mode": "completion",
+      "name": "name",
+      "tenant_id": "00000000-0000-4000-8000-000000000018",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "use_icon_as_answer_icon": false
+    }
+  ],
+  "app_model_configs": [
+    {
+      "app_id": "00000000-0000-4000-8000-000000000021",
+      "created_at": "2024-01-01T00:00:00Z",
+      "id": "00000000-0000-4000-8000-000000000023",
+      "prompt_type": "simple",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "conversations": [
+    {
+      "_inputs": {},
+      "app_id": "00000000-0000-4000-8000-000000000032",
+      "created_at": "2024-01-01T00:00:00Z",
+      "from_account_id": "00000000-0000-4000-8000-000000000034",
+      "from_end_user_id": "00000000-0000-4000-8000-000000000035",
+      "from_source": "api",
+      "id": "00000000-0000-4000-8000-000000000037",
+      "is_deleted": false,
+      "mode": "completion",
+      "name": "name",
+      "override_model_configs": "override_model_configs",
+      "read_account_id": "00000000-0000-4000-8000-000000000042",
+      "read_at": "2024-01-01T00:00:00Z",
+      "status": "normal",
+      "summary": "summary",
+      "system_instruction_tokens": 0,
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "messages": [
+    {
+      "_inputs": {},
+      "agent_based": false,
+      "answer": "answer",
+      "answer_price_unit": 0,
+      "answer_tokens": 0,
+      "answer_unit_price": 0,
+      "app_id": "00000000-0000-4000-8000-000000000047",
+      "conversation_id": "00000000-0000-4000-8000-000000000048",
+      "currency": "currency",
+      "from_source": "api",
+      "id": "00000000-0000-4000-8000-000000000051",
+      "message": {},
+      "message_price_unit": 0,
+      "message_tokens": 0,
+      "message_unit_price": 0,
+      "provider_response_latency": 0,
+      "query": "query",
+      "status": "normal",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "sites": [
+    {
+      "app_id": "00000000-0000-4000-8000-000000000051",
+      "chat_color_theme_inverted": false,
+      "created_at": "2024-01-01T00:00:00Z",
+      "custom_disclaimer": "custom_disclaimer",
+      "customize_token_strategy": "must",
+      "default_language": "default_language",
+      "id": "00000000-0000-4000-8000-000000000057",
+      "prompt_public": false,
+      "show_workflow_steps": false,
+      "status": "normal",
+      "title": "title",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "use_icon_as_answer_icon": false
+    }
+  ]
+}

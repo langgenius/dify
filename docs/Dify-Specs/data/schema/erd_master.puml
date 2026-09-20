@@ -1,0 +1,17 @@
+@startuml erd_master
+' Master ERD — Dify.
+' Every entity any feature owns is introduced here exactly once, with the same
+' name it carries in schemas.json ($defs key). Per-feature diagrams
+' (erd_<version>_<F-nnn>.puml) show a subset in detail; they never introduce an
+' entity this file does not have.
+hide circle
+skinparam linetype ortho
+
+entity "example_entity" as example_entity {
+  * id : uuid <<PK>>
+  --
+  * created_at : timestamptz
+}
+
+' relationships:  example_entity ||--o{ other_entity : owns
+@enduml

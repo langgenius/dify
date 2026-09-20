@@ -1,0 +1,55 @@
+{
+  "version": "{{VERSION}}",
+  "feature_id": "{{FEATURE_ID}}",
+  "feature_title": "{{FEATURE_TITLE}}",
+  "objective": "Implement {{FEATURE_ID}} exactly as specified by the documents listed in reads.",
+  "reads": {
+    "domain": [],
+    "prd": [
+      "docs/Dify-Specs/PRDs/prd.md",
+      "docs/Dify-Specs/PRDs/prd_{{VERSION}}_{{FEATURE_ID}}-*.md"
+    ],
+    "adrs": [],
+    "architecture": [
+      "docs/Dify-Specs/architect/architect_common.md",
+      "docs/Dify-Specs/status-model.md",
+      "docs/Dify-Specs/architect/feature_{{VERSION}}_{{FEATURE_ID}}_architect.md"
+    ],
+    "data": [
+      "docs/Dify-Specs/data/data-master-erd.md",
+      "docs/Dify-Specs/data/data-erd_{{VERSION}}_{{FEATURE_ID}}.md",
+      "docs/Dify-Specs/data/api-contract_{{VERSION}}_{{FEATURE_ID}}.md",
+      "docs/Dify-Specs/data/data-fixtures_{{VERSION}}_{{FEATURE_ID}}.md",
+      "docs/Dify-Specs/data/schema/schemas.json",
+      "docs/Dify-Specs/data/schema/erd_{{VERSION}}_{{FEATURE_ID}}.puml",
+      "docs/Dify-Specs/data/schema/openapi_{{VERSION}}_{{FEATURE_ID}}.json",
+      "docs/Dify-Specs/data/schema/asyncapi_{{VERSION}}_{{FEATURE_ID}}.json",
+      "docs/Dify-Specs/data/fixtures/fixtures_{{VERSION}}_{{FEATURE_ID}}.json"
+    ],
+    "tasks": [
+      "docs/Dify-Specs/tasks/tasks_{{VERSION}}_{{FEATURE_ID}}.md"
+    ],
+    "tests": [
+      "docs/Dify-Specs/tests/testing_strategy.md"
+    ],
+    "runbooks": []
+  },
+  "writes": {
+    "code": [],
+    "tests": []
+  },
+  "guardrails": [
+    "Do not invent requirements: if a document is silent, stop and ask.",
+    "Do not change any file under docs/ while executing this route.",
+    "Treat docs/ as read-only, data/ included: schemas, OpenAPI/AsyncAPI and fixtures are the contract, not scratch space. A shape that does not fit is a spec bug — stop and say so.",
+    "Status cells move only through docs_flow.py task, one legal transition at a time (status-model.md); a done cites evidence that passed here.",
+    "Follow architect_common.md for naming, quality and security; it overrides personal preference.",
+    "One task from tasks_{{VERSION}}_{{FEATURE_ID}}.md at a time, in the stated order."
+  ],
+  "exit_criteria": [
+    "Every acceptance criterion in the feature PRD has a passing test.",
+    "Implemented shapes match data/schema/schemas.json; route.py reports no fixture/model mismatch.",
+    "Review checklist in architect_common.md passes.",
+    "tasks_{{VERSION}}_{{FEATURE_ID}}.md status column is complete."
+  ]
+}

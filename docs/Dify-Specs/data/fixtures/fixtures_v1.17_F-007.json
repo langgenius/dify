@@ -1,0 +1,3 @@
+{
+  "$comment": "Fixture set for v1.17 F-007. One minimal valid record per entity, derived from schemas.json \u2014 no fixture in the repository was copied, and no value here is real data. Every top-level key is a $defs entity; required fields only. IDs and timestamps are fixed literals. This feature owns no relational entity, so the set is deliberately empty."
+}

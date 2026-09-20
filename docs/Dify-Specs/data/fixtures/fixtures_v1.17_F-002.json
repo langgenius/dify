@@ -1,0 +1,79 @@
+{
+  "$comment": "Fixture set for v1.17 F-002. One minimal valid record per entity, derived from schemas.json \u2014 no fixture in the repository was copied, and no value here is real data. Every top-level key is a $defs entity; required fields only. IDs and timestamps are fixed literals.",
+  "workflows": [
+    {
+      "_conversation_variables": "_conversation_variables",
+      "_environment_variables": "_environment_variables",
+      "_features": "_features",
+      "_rag_pipeline_variables": "_rag_pipeline_variables",
+      "app_id": "00000000-0000-4000-8000-000000000015",
+      "created_at": "2024-01-01T00:00:00Z",
+      "created_by": "00000000-0000-4000-8000-000000000017",
+      "graph": "graph",
+      "id": "00000000-0000-4000-8000-000000000019",
+      "tenant_id": "00000000-0000-4000-8000-000000000020",
+      "type": "workflow",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "version": "version"
+    }
+  ],
+  "workflow_runs": [
+    {
+      "app_id": "00000000-0000-4000-8000-000000000021",
+      "created_at": "2024-01-01T00:00:00Z",
+      "created_by": "00000000-0000-4000-8000-000000000023",
+      "created_by_role": "account",
+      "elapsed_time": 0,
+      "id": "00000000-0000-4000-8000-000000000026",
+      "status": "status",
+      "tenant_id": "00000000-0000-4000-8000-000000000028",
+      "triggered_from": "debugging",
+      "type": "workflow",
+      "version": "version",
+      "workflow_id": "00000000-0000-4000-8000-000000000032"
+    }
+  ],
+  "workflow_node_executions": [
+    {
+      "app_id": "00000000-0000-4000-8000-000000000031",
+      "created_by": "00000000-0000-4000-8000-000000000032",
+      "created_by_role": "account",
+      "id": "00000000-0000-4000-8000-000000000034",
+      "index": 0,
+      "node_id": "node_id",
+      "node_type": "node_type",
+      "status": "status",
+      "tenant_id": "00000000-0000-4000-8000-000000000039",
+      "title": "title",
+      "triggered_from": "single-step",
+      "workflow_id": "00000000-0000-4000-8000-000000000042"
+    }
+  ],
+  "workflow_draft_variables": [
+    {
+      "app_id": "00000000-0000-4000-8000-000000000041",
+      "created_at": "2024-01-01T00:00:00Z",
+      "description": "description",
+      "editable": false,
+      "id": "00000000-0000-4000-8000-000000000045",
+      "is_default_value": false,
+      "name": "name",
+      "node_id": "node_id",
+      "selector": "selector",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "value": "value",
+      "value_type": "automatic",
+      "visible": false
+    }
+  ],
+  "workflow_pauses": [
+    {
+      "created_at": "2024-01-01T00:00:00Z",
+      "id": "00000000-0000-4000-8000-000000000052",
+      "state_object_key": "state_object_key",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "workflow_id": "00000000-0000-4000-8000-000000000055",
+      "workflow_run_id": "00000000-0000-4000-8000-000000000056"
+    }
+  ]
+}

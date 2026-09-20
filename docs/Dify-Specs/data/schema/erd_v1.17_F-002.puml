@@ -1,0 +1,15 @@
+@startuml erd_v1.17_F-002
+' Feature ERD — v1.17 F-002 Workflow Engine and Authoring.
+' Shows only the entities this feature reads or writes, with the fields it
+' depends on. Names must match erd_master.puml and schemas.json exactly; an
+' entity that appears here and nowhere else is a defect, not a shortcut.
+hide circle
+skinparam linetype ortho
+
+entity "example_entity" as example_entity {
+  * id : uuid <<PK>>
+  --
+  * created_at : timestamptz
+}
+
+@enduml

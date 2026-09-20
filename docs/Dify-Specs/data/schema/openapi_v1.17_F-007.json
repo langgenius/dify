@@ -1,0 +1,14 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Dify — F-007 difyctl CLI",
+    "version": "v1.17",
+    "description": "Synchronous surface of F-007. Shapes are $ref'd from schemas.json; do not inline an entity definition here. A product standardised on OpenAPI 2.0 replaces this file wholesale and keeps the same $ref discipline."
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "ExampleEntity": { "$ref": "schemas.json#/$defs/example_entity" }
+    }
+  }
+}

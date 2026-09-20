@@ -1,0 +1,11 @@
+{
+  "asyncapi": "3.0.0",
+  "info": {
+    "title": "Dify — F-005 Workspace Identity and Access events",
+    "version": "v1.17",
+    "description": "Asynchronous surface of F-005. Payloads are $ref'd from schemas.json. A feature with no events leaves channels and operations empty — an empty file is a stated fact, not an omission."
+  },
+  "channels": {},
+  "operations": {},
+  "components": { "schemas": {} }
+}

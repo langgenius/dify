@@ -1,0 +1,45 @@
+{
+  "$comment": "Fixture set for v1.17 F-006. One minimal valid record per entity, derived from schemas.json \u2014 no fixture in the repository was copied, and no value here is real data. Every top-level key is a $defs entity; required fields only. IDs and timestamps are fixed literals.",
+  "end_users": [
+    {
+      "_is_anonymous": false,
+      "created_at": "2024-01-01T00:00:00Z",
+      "id": "00000000-0000-4000-8000-000000000013",
+      "session_id": "session_id",
+      "tenant_id": "00000000-0000-4000-8000-000000000015",
+      "type": "app-deploy",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "installed_apps": [
+    {
+      "app_id": "00000000-0000-4000-8000-000000000021",
+      "app_owner_tenant_id": "00000000-0000-4000-8000-000000000022",
+      "created_at": "2024-01-01T00:00:00Z",
+      "id": "00000000-0000-4000-8000-000000000024",
+      "is_pinned": false,
+      "position": 0,
+      "tenant_id": "00000000-0000-4000-8000-000000000027"
+    }
+  ],
+  "pinned_conversations": [
+    {
+      "app_id": "00000000-0000-4000-8000-000000000031",
+      "conversation_id": "00000000-0000-4000-8000-000000000032",
+      "created_at": "2024-01-01T00:00:00Z",
+      "created_by": "00000000-0000-4000-8000-000000000034",
+      "created_by_role": "account",
+      "id": "00000000-0000-4000-8000-000000000036"
+    }
+  ],
+  "saved_messages": [
+    {
+      "app_id": "00000000-0000-4000-8000-000000000041",
+      "created_at": "2024-01-01T00:00:00Z",
+      "created_by": "00000000-0000-4000-8000-000000000043",
+      "created_by_role": "account",
+      "id": "00000000-0000-4000-8000-000000000045",
+      "message_id": "00000000-0000-4000-8000-000000000046"
+    }
+  ]
+}

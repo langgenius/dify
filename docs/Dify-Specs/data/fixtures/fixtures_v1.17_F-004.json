@@ -1,0 +1,72 @@
+{
+  "$comment": "Fixture set for v1.17 F-004. One minimal valid record per entity, derived from schemas.json \u2014 no fixture in the repository was copied, and no value here is real data. Every top-level key is a $defs entity; required fields only. IDs and timestamps are fixed literals.",
+  "agents": [
+    {
+      "active_config_has_model": false,
+      "active_config_is_published": false,
+      "agent_kind": "dify_agent",
+      "created_at": "2024-01-01T00:00:00Z",
+      "description": "description",
+      "id": "00000000-0000-4000-8000-000000000016",
+      "name": "name",
+      "role": "role",
+      "scope": "roster",
+      "source": "roster",
+      "status": "active",
+      "tenant_id": "00000000-0000-4000-8000-000000000022",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "agent_config_drafts": [
+    {
+      "agent_id": "00000000-0000-4000-8000-000000000021",
+      "config_snapshot": {},
+      "created_at": "2024-01-01T00:00:00Z",
+      "draft_owner_key": "draft_owner_key",
+      "draft_type": "draft",
+      "id": "00000000-0000-4000-8000-000000000026",
+      "tenant_id": "00000000-0000-4000-8000-000000000027",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "agent_config_revisions": [
+    {
+      "agent_id": "00000000-0000-4000-8000-000000000031",
+      "created_at": "2024-01-01T00:00:00Z",
+      "current_snapshot_id": "00000000-0000-4000-8000-000000000033",
+      "id": "00000000-0000-4000-8000-000000000034",
+      "operation": "create_version",
+      "revision": 0,
+      "tenant_id": "00000000-0000-4000-8000-000000000037"
+    }
+  ],
+  "skills": [
+    {
+      "created_at": "2024-01-01T00:00:00Z",
+      "description": "description",
+      "display_name": "display_name",
+      "icon": "icon",
+      "id": "00000000-0000-4000-8000-000000000045",
+      "name": "name",
+      "name_manually_edited": false,
+      "tenant_id": "00000000-0000-4000-8000-000000000048",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "visibility": "visibility"
+    }
+  ],
+  "skill_versions": [
+    {
+      "archive_size": 0,
+      "archive_tool_file_id": "00000000-0000-4000-8000-000000000052",
+      "created_at": "2024-01-01T00:00:00Z",
+      "hash_code": "hash_code",
+      "id": "00000000-0000-4000-8000-000000000055",
+      "manifest": {},
+      "publish_note": "publish_note",
+      "skill_id": "00000000-0000-4000-8000-000000000058",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "version_name": "version_name",
+      "version_number": 0
+    }
+  ]
+}
