@@ -8,9 +8,11 @@ tests below their directory, and this setup is shared by api/tests and api/provi
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from _pytest.terminal import TerminalReporter
 
 from tests.pytest_dify import (
     DEFAULT_MIDDLEWARE_SERVICES,
@@ -33,6 +35,18 @@ ensure_backend_test_environment(_REPO_ROOT)
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("dify")
+    group.addoption(
+        "--test-infra-timings",
+        action="store_true",
+        default=False,
+        help="Report controller-side Compose startup, readiness, and shutdown timings.",
+    )
+    group.addoption(
+        "--middleware-stop-timeout",
+        type=int,
+        default=None,
+        help="Override the shutdown grace period in seconds for pytest-started middleware only.",
+    )
     group.addoption(
         "--shard-index",
         type=int,
@@ -76,6 +90,9 @@ def pytest_configure(config: pytest.Config) -> None:
         raise pytest.UsageError("--shard-total must be at least 1")
     if not 1 <= shard_index <= shard_total:
         raise pytest.UsageError("--shard-index must be between 1 and --shard-total")
+    stop_timeout = config.getoption("middleware_stop_timeout")
+    if stop_timeout is not None and stop_timeout < 0:
+        raise pytest.UsageError("--middleware-stop-timeout must be nonnegative")
 
     config.stash[_DIFY_COMPOSE_STACKS_KEY] = []
 
@@ -102,16 +119,28 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     if hasattr(config, "workerinput"):
         return
 
+    terminal = config.pluginmanager.get_plugin("terminalreporter")
+    timing_reporter = (
+        terminal.write_line
+        if config.getoption("test_infra_timings") and isinstance(terminal, TerminalReporter)
+        else None
+    )
     stacks: list[DockerComposeStack] = []
     if config.getoption("start_middleware"):
         ensure_compose_env_files(_REPO_ROOT)
         stack = build_middleware_stack(_REPO_ROOT, parse_services(config.getoption("middleware_services")))
+        stack = replace(
+            stack,
+            shutdown_timeout_seconds=config.getoption("middleware_stop_timeout"),
+            timing_reporter=timing_reporter,
+        )
         stack.up()
         stacks.append(stack)
 
     if config.getoption("start_vdb"):
         ensure_compose_env_files(_REPO_ROOT)
         stack = build_vdb_stack(_REPO_ROOT, parse_services(config.getoption("vdb_services")))
+        stack = replace(stack, timing_reporter=timing_reporter)
         stack.up()
         stacks.append(stack)
 

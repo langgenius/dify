@@ -12,6 +12,8 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -87,6 +89,18 @@ class DockerComposeStack:
     profiles: tuple[str, ...] = ()
     ready_delay_seconds: float = 0.0
     warmup_urls: tuple[str, ...] = ()
+    shutdown_timeout_seconds: int | None = None
+    timing_reporter: Callable[[str], None] | None = None
+
+    @contextmanager
+    def _time_phase(self, phase: str) -> Generator[None]:
+        """Report wall time even when a lifecycle operation fails."""
+        started = time.perf_counter()
+        try:
+            yield
+        finally:
+            if self.timing_reporter is not None:
+                self.timing_reporter(f"test-infra {self.name} {phase}: {time.perf_counter() - started:.3f}s")
 
     def _compose_command(self) -> list[str]:
         command = [
@@ -113,18 +127,24 @@ class DockerComposeStack:
             "180",
             *self.services,
         ]
-        completed = subprocess.run(wait_command, cwd=self.repo_root, text=True, capture_output=True)
+        with self._time_phase("compose-up-and-healthchecks"):
+            completed = subprocess.run(wait_command, cwd=self.repo_root, text=True, capture_output=True)
         if completed.returncode == 0:
             if self.ready_delay_seconds > 0:
-                time.sleep(self.ready_delay_seconds)
-            self._warm_up()
+                with self._time_phase("ready-delay"):
+                    time.sleep(self.ready_delay_seconds)
+            with self._time_phase("http-warmup"):
+                self._warm_up()
             return
 
         combined_output = f"{completed.stdout}\n{completed.stderr}"
         if "unknown flag: --wait" in combined_output or "unknown flag: wait-timeout" in combined_output:
-            subprocess.run(self._compose_command() + ["up", "-d", *self.services], cwd=self.repo_root, check=True)
-            time.sleep(5)
-            self._warm_up()
+            with self._time_phase("compose-up-fallback"):
+                subprocess.run(self._compose_command() + ["up", "-d", *self.services], cwd=self.repo_root, check=True)
+            with self._time_phase("ready-delay-fallback"):
+                time.sleep(5)
+            with self._time_phase("http-warmup"):
+                self._warm_up()
             return
 
         raise subprocess.CalledProcessError(
@@ -135,8 +155,12 @@ class DockerComposeStack:
         )
 
     def down(self) -> None:
-        """Stop services started for this pytest run."""
-        subprocess.run(self._compose_command() + ["down"], cwd=self.repo_root, check=True)
+        """Stop test services, optionally overriding Compose's shutdown grace period."""
+        command = self._compose_command() + ["down"]
+        if self.shutdown_timeout_seconds is not None:
+            command.extend(("--timeout", str(self.shutdown_timeout_seconds)))
+        with self._time_phase("compose-down"):
+            subprocess.run(command, cwd=self.repo_root, check=True)
 
     def _warm_up(self) -> None:
         for url in self.warmup_urls:

@@ -1,6 +1,9 @@
 import os
 import subprocess
+from dataclasses import replace
 from pathlib import Path
+
+import pytest
 
 from tests.pytest_dify import (
     DEFAULT_LOG_FORMAT,
@@ -115,3 +118,45 @@ def test_builders_use_expected_compose_files(tmp_path: Path):
     )
     assert vdb.env_file == tmp_path / "docker" / ".env"
     assert vdb.profiles == ("weaviate", "qdrant")
+
+
+@pytest.mark.parametrize(
+    ("timeout", "expected_suffix"), [(None, ["down"]), (0, ["down", "--timeout", "0"]), (2, ["down", "--timeout", "2"])]
+)
+def test_stack_down_preserves_default_or_uses_explicit_timeout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, timeout: int | None, expected_suffix: list[str]
+) -> None:
+    calls = []
+    reports = []
+    ticks = iter([10.0, 12.5])
+    monkeypatch.setattr("time.perf_counter", lambda: next(ticks))
+    monkeypatch.setattr(subprocess, "run", lambda args, **kwargs: calls.append((args, kwargs)))
+    stack = replace(
+        build_middleware_stack(tmp_path, ["db_postgres"]),
+        shutdown_timeout_seconds=timeout,
+        timing_reporter=reports.append,
+    )
+
+    stack.down()
+
+    assert calls == [(stack._compose_command() + expected_suffix, {"cwd": tmp_path, "check": True})]
+    assert reports == ["test-infra middleware compose-down: 2.500s"]
+    assert build_vdb_stack(tmp_path, ["weaviate"]).shutdown_timeout_seconds is None
+
+
+def test_stack_down_reports_time_without_swallowing_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    reports = []
+    failure = subprocess.CalledProcessError(1, ["docker", "compose", "down"])
+
+    def fail_run(*args: object, **kwargs: object) -> None:
+        raise failure
+
+    monkeypatch.setattr(subprocess, "run", fail_run)
+    stack = replace(build_middleware_stack(tmp_path, ["redis"]), timing_reporter=reports.append)
+
+    with pytest.raises(subprocess.CalledProcessError) as exc:
+        stack.down()
+
+    assert exc.value is failure
+    assert len(reports) == 1
+    assert reports[0].startswith("test-infra middleware compose-down: ")
