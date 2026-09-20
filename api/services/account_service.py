@@ -838,16 +838,24 @@ class AccountService:
     @staticmethod
     def get_account_by_email_with_case_fallback(email: str, *, session: Session) -> Account | None:
         """
-        Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
+        Retrieve an account by email, matching case-insensitively.
 
-        This keeps backward compatibility for older records that stored uppercase emails while the
-        rest of the system gradually normalizes new inputs.
+        SSO-provisioned accounts keep the identity provider's original casing, while other entry
+        points (invites, registration, login) normalize input to lowercase before looking up an
+        account. An exact match is tried first since it uses the plain email index; the fallback
+        compares normalized_email so either direction of case mismatch still resolves to the same
+        account.
         """
         account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
-        if account or email == email.lower():
+        if account:
             return account
 
-        return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+        return session.execute(
+            select(Account)
+            .where(Account.normalized_email == normalize_email(email))
+            .order_by(Account.created_at)
+            .limit(1)
+        ).scalar_one_or_none()
 
     @staticmethod
     @redis_fallback(default_return=None)
