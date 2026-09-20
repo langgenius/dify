@@ -582,6 +582,38 @@ def test_test_and_repair_pass_goes_to_review_with_real_run():
     assert "mark_review_ready" in names
 
 
+def test_a_passing_test_shows_what_the_workflow_produced():
+    """A passing test's card carries what the run actually produced, not just
+    a bare "All checks passed" -- and it must show it even though
+    FakeDifyPort's per-node status spelling ("success") differs from the
+    Run-level one ("succeeded"): status-agnostic, per the terminal-output
+    helper's contract."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+
+    env, _ = _new_env()  # default FakeDifyPort; verify_pass=True by default
+    env.dify.run_outputs = {"result": "42"}
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    assert result.next == PcState.BUILD_REVIEW
+    test_result = next(i for i in result.items if i.kind == "test_result")
+    assert '"result": "42"' in test_result.payload["output"]
+
+
+def test_a_passing_test_with_no_output_shows_none():
+    """No output produced -> the card's output is "", not a stale/placeholder
+    value -- a passing test that shows nothing is not evidence of anything,
+    but it also mustn't lie about what ran."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+
+    env, _ = _new_env()  # run_outputs defaults to {}
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    test_result = next(i for i in result.items if i.kind == "test_result")
+    assert test_result.payload["output"] == ""
+
+
 def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
     from core.dify_builder.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent

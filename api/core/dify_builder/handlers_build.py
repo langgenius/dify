@@ -10,6 +10,7 @@ no handler -- its completion summary is emitted by the governance-tail handlers
 ``handle_await_learning`` for the ask policy).
 """
 
+import json
 import logging
 import uuid
 
@@ -57,6 +58,7 @@ from core.dify_builder.models import (
     DifyBuilderContext,
     MutationIntent,
     NodeEvent,
+    NodeOutput,
     Risk,
     Run,
     Session,
@@ -621,6 +623,20 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc)
 
 
+def _terminal_output(per_node: list[NodeOutput]) -> str:
+    """The last node that produced anything, as readable JSON, or "".
+
+    Deliberately status-agnostic: node status spellings differ by source
+    ("success" vs "succeeded"), and a status filter that silently misses is
+    worse than showing the output of a run that ended badly -- showing what
+    ran is the point of the card.
+    """
+    for node in reversed(per_node):
+        if node.outputs:
+            return json.dumps(node.outputs, ensure_ascii=False, indent=2)
+    return ""
+
+
 def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(working, auto) Live test: run the built draft with mock inputs. Success
     -> build.review. Failure -> real diagnose + propose_repair, staged for the
@@ -690,6 +706,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 tone="success",
                 stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
                 run_ids=[run.id],
+                output=_terminal_output(per_node),
             ),
         )
         emit_canvas(env, "mark_review_ready")
