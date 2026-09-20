@@ -1,7 +1,7 @@
 import type { AccessControlSubjects } from '../specific-groups-or-members'
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { AccessMode, SubjectType } from '@/models/access-control'
@@ -241,7 +241,13 @@ describe('AddMemberOrGroupDialog', () => {
       name: 'app.accessControlDialog.operateGroupAndMember.allMembers',
     })
     expect(allMembersButton).toBeInTheDocument()
-    expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
+    const path = within(
+      screen.getByRole('navigation', {
+        name: 'app.accessControlDialog.operateGroupAndMember.allMembers',
+      }),
+    )
+    expect(path.getAllByRole('listitem')).toHaveLength(2)
+    expect(path.getByText(baseGroup.name)).toHaveAttribute('aria-current', 'location')
     expect(screen.getByRole('status')).toHaveTextContent(
       'app.accessControlDialog.operateGroupAndMember.noResult',
     )

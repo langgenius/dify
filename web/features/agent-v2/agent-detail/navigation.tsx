@@ -4,6 +4,13 @@ import type { AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComponentProps } from 'react'
 import type { AgentDetailSectionKey } from './section'
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -110,23 +117,32 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
 
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
-      <div className="flex min-w-0 flex-1 items-center gap-px">
-        <Link
-          href="/"
-          aria-label={tCommon(($) => $['mainNav.home'])}
-          className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary transition-colors hover:bg-background-default-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-          <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
-        </Link>
-        <span className="shrink-0 system-md-regular text-text-quaternary">/</span>
-        <Link
-          href="/agents"
-          className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          Agents
-        </Link>
-      </div>
+      <Breadcrumb
+        aria-label={tCommon(($) => $['roster.title'], { ns: 'agentV2' })}
+        className="flex-1"
+      >
+        <BreadcrumbList className="gap-px">
+          <BreadcrumbItem className="shrink-0">
+            <BreadcrumbLink
+              render={<Link href="/" />}
+              aria-label={tCommon(($) => $['mainNav.home'])}
+              className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+            >
+              <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+              <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="system-md-regular" />
+          <BreadcrumbItem className="shrink-0">
+            <BreadcrumbLink
+              render={<Link href="/agents" />}
+              className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
+            >
+              Agents
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
       <Tooltip>
         <TooltipTrigger
           render={
