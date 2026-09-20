@@ -3,7 +3,9 @@ from __future__ import annotations
 import importlib
 from collections.abc import Callable
 
+import httpx
 import pytest
+from pytest_mock import MockerFixture
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
@@ -198,6 +200,81 @@ def test_directory_uses_a_current_token_for_each_complete_read(
         None,
         "fake-access-token-002",
     ]
+
+
+@pytest.mark.parametrize(
+    ("avatar_url", "status", "content_type", "has_avatar"),
+    [
+        (None, 200, "image/png", False),
+        ("", 200, "image/png", False),
+        ("https://example.invalid/avatar.png", 200, "image/png", True),
+        ("https://example.invalid/avatar.png", 404, "application/json", False),
+        ("https://example.invalid/avatar.png", 403, "application/json", False),
+        ("https://example.invalid/avatar.png", 500, "text/html", False),
+        ("https://example.invalid/avatar.png", 200, "text/html", False),
+    ],
+)
+def test_directory_includes_available_avatar_and_fails_on_download_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    avatar_url: str | None,
+    status: int,
+    content_type: str,
+    has_avatar: bool,
+) -> None:
+    wecom_module = importlib.import_module("core.human_input_v2.im_integration.adapters.wecom")
+    directory_client = _DirectoryClient(
+        _scope_response(users=("user",)),
+        lambda _department_id: [],
+        lambda _department_id: [],
+        user_get_route=lambda user_id: {"userid": user_id, "name": "User", "avatar": avatar_url},
+    )
+    _install_clients(monkeypatch, [_TokenClient("token")], {"token": directory_client})
+    download = mocker.patch(
+        "core.file.remote_fetcher.make_request",
+        return_value=httpx.Response(
+            status,
+            headers={"Content-Type": content_type},
+            content=b"avatar-image",
+            request=httpx.Request("GET", "https://example.invalid/avatar.png"),
+        ),
+    )
+
+    result = wecom_module.WeComIMProviderAdapter(_credentials()).directory.read_directory()
+
+    if avatar_url and (status not in (200, 404) or (status == 200 and content_type != "image/png")):
+        assert isinstance(result, DirectoryReadFailure)
+        return
+
+    assert isinstance(result, Directory)
+    assert result.entries[0].display_name == "User"
+    if has_avatar:
+        assert result.entries[0].avatar is not None
+        assert result.entries[0].avatar.mime_type == "image/png"
+        assert result.entries[0].avatar.data == b"avatar-image"
+    else:
+        assert result.entries[0].avatar is None
+    if not avatar_url:
+        download.assert_not_called()
+
+
+def test_directory_fails_on_avatar_transport_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+) -> None:
+    wecom_module = importlib.import_module("core.human_input_v2.im_integration.adapters.wecom")
+    directory_client = _DirectoryClient(
+        _scope_response(users=("user",)),
+        lambda _department_id: [],
+        lambda _department_id: [],
+        user_get_route=lambda user_id: {"userid": user_id, "avatar": "https://example.invalid/avatar.png"},
+    )
+    _install_clients(monkeypatch, [_TokenClient("token")], {"token": directory_client})
+    mocker.patch("core.file.remote_fetcher.make_request", side_effect=httpx.ReadTimeout("private request details"))
+
+    result = wecom_module.WeComIMProviderAdapter(_credentials()).directory.read_directory()
+
+    assert isinstance(result, DirectoryReadFailure)
 
 
 def test_directory_traverses_configured_scope_with_stable_deduplication(

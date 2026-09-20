@@ -9,6 +9,7 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 from urllib.parse import urlparse
 
+import httpx
 import pytest
 from alibabacloud_dingtalk.oauth2_1_0.models import GetTokenRequest, GetTokenResponse, GetTokenResponseBody
 from alibabacloud_dingtalk.robot_1_0.models import (
@@ -18,6 +19,7 @@ from alibabacloud_dingtalk.robot_1_0.models import (
     BatchSendOTOResponseBody,
 )
 from alibabacloud_tea_util.models import RuntimeOptions
+from pytest_mock import MockerFixture
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
@@ -38,6 +40,7 @@ from core.human_input_v2.im_integration.adapters.dingtalk import (
     _DingTalkDirectory,
     _DingTalkMessaging,
 )
+from core.human_input_v2.im_integration.adapters.entities import Avatar
 
 
 class _ProviderError(Exception):
@@ -893,7 +896,16 @@ def test_credential_test_normalizes_unknown_root_boundary_failures(monkeypatch: 
     )
 
 
-def test_directory_fixture_preserves_full_traversal_and_minimal_projection() -> None:
+def test_directory_fixture_preserves_full_traversal_and_minimal_projection(mocker: MockerFixture) -> None:
+    mocker.patch(
+        "core.file.remote_fetcher.make_request",
+        return_value=httpx.Response(
+            200,
+            headers={"Content-Type": "image/png"},
+            content=b"avatar-image",
+            request=httpx.Request("GET", "https://example.invalid/fake-user-001.png"),
+        ),
+    )
     fixture = _load_sanitized_protocol_fixture()
     exchanges = fixture["directory"]
     assert isinstance(exchanges, list)
@@ -923,6 +935,7 @@ def test_directory_fixture_preserves_full_traversal_and_minimal_projection() -> 
                 ProviderUserId("fake-user-001"),
                 "Fake User One",
                 "fake.user.one@example.invalid",
+                avatar=Avatar(mime_type="image/png", data=b"avatar-image"),
             ),
             dingtalk_module.DirectoryEntry(ProviderUserId("fake-user-002"), None, None),
             dingtalk_module.DirectoryEntry(ProviderUserId("fake-user-003"), None, None),
@@ -930,6 +943,22 @@ def test_directory_fixture_preserves_full_traversal_and_minimal_projection() -> 
     )
     assert queued == []
     assert all(set(request.body) <= {"dept_id", "cursor", "size"} for request in recorded)
+
+
+@pytest.mark.parametrize("avatar", [None, "", " "])
+def test_directory_accepts_unavailable_avatar(avatar: str | None) -> None:
+    def route(request: _RecordedRequest) -> tuple[int, dict[str, object]]:
+        if request.path.endswith("/department/listsub"):
+            return 200, {"errcode": 0, "result": []}
+        return 200, {
+            "errcode": 0,
+            "result": {"has_more": False, "list": [{"userid": "user", "avatar": avatar}]},
+        }
+
+    result = _DingTalkDirectory(_FakeTokenProvider("token"), _http_client(route)).read_directory()
+
+    assert isinstance(result, Directory)
+    assert result.entries[0].avatar is None
 
 
 def test_directory_ignores_repeated_department_edges_without_revisiting() -> None:

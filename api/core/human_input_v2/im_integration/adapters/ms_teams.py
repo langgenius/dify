@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.message import Message
 from typing import ClassVar, Literal, override
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from uuid import UUID
 
 import httpx
@@ -37,6 +37,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, Val
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import MSTeamsCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
     AuthenticatedIMEvent,
@@ -531,7 +532,7 @@ class _MSTeamsDirectory(IMDirectory):
         try:
             access_token = self._credential.get_token(_GRAPH_SCOPE).token
             return self._read_all_pages(access_token)
-        except (ClientAuthenticationError, httpx.HTTPError, ValidationError, ValueError):
+        except (AvatarReadError, ClientAuthenticationError, httpx.HTTPError, ValidationError, ValueError):
             return DirectoryReadFailure("Microsoft Teams directory could not be read completely.")
         except Exception:
             _log_safe_error("Unexpected Microsoft Teams directory failure")
@@ -556,13 +557,18 @@ class _MSTeamsDirectory(IMDirectory):
                 response = self._client.get(next_url, headers=headers)
             response.raise_for_status()
             page = _GraphUsersPage.model_validate(response.json())
+            avatars = read_avatars(
+                [f"{_GRAPH_USERS_URL}/{quote(user.id, safe='')}/photo/$value" for user in page.users],
+                headers=headers,
+            )
             entries.extend(
                 DirectoryEntry(
                     provider_user_id=ProviderUserId(user.id),
                     display_name=user.display_name,
                     email=user.mail,
+                    avatar=avatar,
                 )
-                for user in page.users
+                for user, avatar in zip(page.users, avatars, strict=True)
             )
             if page.next_link is None:
                 return Directory(tuple(entries))

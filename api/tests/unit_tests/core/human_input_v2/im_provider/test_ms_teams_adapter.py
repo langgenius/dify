@@ -20,6 +20,7 @@ from botframework.connector.auth import ChannelValidation, ClaimsIdentity, JwtTo
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 from msrest.exceptions import HttpOperationError
+from pytest_mock import MockerFixture
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
@@ -121,6 +122,7 @@ def _unsigned_token(claims: dict[str, object]) -> str:
 
 
 def _adapter_with_tokens(mocker, *, graph_claims: dict[str, object], bot_claims: dict[str, object]):
+    mocker.patch("core.file.remote_fetcher.make_request", return_value=httpx.Response(404))
     graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
     graph_credential.get_token.return_value = SimpleNamespace(token=_unsigned_token(graph_claims))
     graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
@@ -547,6 +549,132 @@ def test_directory_returns_one_ordered_complete_graph_snapshot(mocker) -> None:
         ("sanitized-user-c", "Lin", None),
     ]
     assert graph_client.get.call_count == 2
+
+
+@pytest.mark.parametrize("status", [200, 404, 403, 500])
+def test_directory_reads_avatar_with_provider_authentication(mocker, status: int) -> None:
+    adapter, credential, graph_client, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={"aud": "https://api.botframework.com", "appid": _credentials().client_id},
+    )
+    graph_client.get.return_value = httpx.Response(
+        200,
+        json={"value": [{"id": "user/with space", "displayName": "Ada"}]},
+        request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users"),
+    )
+    download = mocker.patch(
+        "core.file.remote_fetcher.make_request",
+        return_value=httpx.Response(
+            status,
+            headers={"Content-Type": "image/jpeg"},
+            content=b"avatar-image",
+            request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users/user/photo/$value"),
+        ),
+    )
+
+    result = adapter.directory.read_directory()
+
+    assert download.call_args.args == (
+        "GET",
+        "https://graph.microsoft.com/v1.0/users/user%2Fwith%20space/photo/$value",
+    )
+    assert download.call_args.kwargs["headers"] == {
+        "Authorization": f"Bearer {credential.get_token.return_value.token}"
+    }
+    if status in (403, 500):
+        assert isinstance(result, DirectoryReadFailure)
+        return
+    assert isinstance(result, Directory)
+    if status == 404:
+        assert result.entries[0].avatar is None
+    else:
+        assert result.entries[0].avatar is not None
+        assert result.entries[0].avatar.mime_type == "image/jpeg"
+        assert result.entries[0].avatar.data == b"avatar-image"
+
+
+def test_directory_reads_avatar_from_captured_graph_response(mocker: MockerFixture) -> None:
+    adapter, _, graph_client, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={"aud": "https://api.botframework.com", "appid": _credentials().client_id},
+    )
+    graph_client.get.return_value = httpx.Response(
+        200,
+        json={"value": [{"id": "sanitized-user", "displayName": "Ada"}]},
+        request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users"),
+    )
+    fixture = Path(__file__).parents[4] / "fixtures/im_provider/ms_teams/sanitized_avatar_success.json"
+    captured = json.loads(fixture.read_text())
+    image_bytes = base64.b64decode(captured["body"], validate=True)
+    mocker.patch(
+        "core.file.remote_fetcher.make_request",
+        return_value=httpx.Response(
+            captured["status"],
+            headers=captured["headers"],
+            content=image_bytes,
+            request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users/sanitized-user/photo/$value"),
+        ),
+    )
+
+    result = adapter.directory.read_directory()
+
+    assert isinstance(result, Directory)
+    assert len(result.entries) == 1
+    assert result.entries[0].provider_user_id == "sanitized-user"
+    assert result.entries[0].avatar is not None
+    assert result.entries[0].avatar.mime_type == "image/jpeg"
+    assert result.entries[0].avatar.data == image_bytes
+
+
+def test_directory_batch_keeps_other_avatars_when_graph_returns_captured_image_not_found(mocker) -> None:
+    adapter, _, graph_client, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={"aud": "https://api.botframework.com", "appid": _credentials().client_id},
+    )
+    graph_client.get.return_value = httpx.Response(
+        200,
+        json={"value": [{"id": "first"}, {"id": "missing"}, {"id": "last"}]},
+        request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users"),
+    )
+    fixture = Path(__file__).parents[4] / "fixtures/im_provider/ms_teams/sanitized_avatar_not_found.json"
+    not_found = json.loads(fixture.read_text())
+
+    def download(_method: str, url: str, **_kwargs: object) -> httpx.Response:
+        if "/missing/" in url:
+            return httpx.Response(404, json=not_found, request=httpx.Request("GET", url))
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "image/jpeg"},
+            content=b"first" if "/first/" in url else b"last",
+            request=httpx.Request("GET", url),
+        )
+
+    mocker.patch("core.file.remote_fetcher.make_request", side_effect=download)
+
+    result = adapter.directory.read_directory()
+
+    assert isinstance(result, Directory)
+    assert [entry.provider_user_id for entry in result.entries] == ["first", "missing", "last"]
+    assert result.entries[0].avatar is not None
+    assert result.entries[0].avatar.data == b"first"
+    assert result.entries[1].avatar is None
+    assert result.entries[2].avatar is not None
+    assert result.entries[2].avatar.data == b"last"
 
 
 def test_directory_discards_partial_entries_and_rejects_untrusted_pagination(mocker) -> None:

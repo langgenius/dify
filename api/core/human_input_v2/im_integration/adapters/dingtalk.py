@@ -24,9 +24,10 @@ from alibabacloud_dingtalk.robot_1_0.client import Client as RobotClient
 from alibabacloud_dingtalk.robot_1_0.models import BatchSendOTOHeaders, BatchSendOTORequest
 from alibabacloud_tea_openapi.models import Config
 from alibabacloud_tea_util.models import RuntimeOptions
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.avatar import read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import DingTalkCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
@@ -160,6 +161,14 @@ class _DirectoryUser(BaseModel):
     userid: str
     name: str | None = None
     email: str | None = None
+    avatar_url: str | None = Field(default=None, alias="avatar")
+
+    @field_validator("avatar_url")
+    @classmethod
+    def _normalize_avatar_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
 
 
 class _UserPage(BaseModel):
@@ -241,7 +250,7 @@ class _DingTalkDirectory(IMDirectory):
             return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
 
     def _read_complete_directory(self, access_token: str) -> Directory:
-        entries: list[DirectoryEntry] = []
+        users: list[_DirectoryUser] = []
         seen_user_ids: set[str] = set()
         pending_departments: deque[int] = deque((_ROOT_DEPARTMENT_ID,))
         discovered_departments = {_ROOT_DEPARTMENT_ID}
@@ -264,13 +273,7 @@ class _DingTalkDirectory(IMDirectory):
                     if user.userid in seen_user_ids:
                         continue
                     seen_user_ids.add(user.userid)
-                    entries.append(
-                        DirectoryEntry(
-                            ProviderUserId(user.userid),
-                            _optional_non_blank(user.name),
-                            _optional_non_blank(user.email),
-                        )
-                    )
+                    users.append(user)
                 if not page.has_more:
                     break
                 next_cursor = page.next_cursor
@@ -279,7 +282,18 @@ class _DingTalkDirectory(IMDirectory):
                 seen_cursors.add(next_cursor)
                 cursor = next_cursor
 
-        return Directory(tuple(entries))
+        avatars = read_avatars([user.avatar_url for user in users])
+        return Directory(
+            tuple(
+                DirectoryEntry(
+                    ProviderUserId(user.userid),
+                    _optional_non_blank(user.name),
+                    _optional_non_blank(user.email),
+                    avatar=avatar,
+                )
+                for user, avatar in zip(users, avatars, strict=True)
+            )
+        )
 
 
 class _DingTalkMessaging(IMMessaging):

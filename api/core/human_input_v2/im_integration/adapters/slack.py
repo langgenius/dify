@@ -12,7 +12,7 @@ import json
 import logging
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from email.message import Message
 from math import isfinite
@@ -20,11 +20,13 @@ from typing import Annotated, ClassVar, Literal, Never, Self, override
 from urllib.parse import parse_qs
 
 from pydantic import (
+    AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
     JsonValue,
     RootModel,
+    StringConstraints,
     TypeAdapter,
     ValidationError,
     field_validator,
@@ -42,6 +44,7 @@ from slack_sdk.web.slack_response import SlackResponse
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
     AuthenticatedIMEvent,
@@ -688,6 +691,9 @@ class _SlackDirectoryPagination:
 
 class _SlackDirectory(IMDirectory):
     _PAGE_SIZE: ClassVar[int] = 200
+    _AVATAR_URL_ADAPTER: ClassVar[TypeAdapter[str | None]] = TypeAdapter(
+        Annotated[str | None, StringConstraints(strip_whitespace=True), AfterValidator(lambda value: value or None)]
+    )
     # Slack-owned special users are protocol exceptions: Slackbot reports `is_bot=false`, and system
     # notifications are sent by `USLACK`.
     # https://docs.slack.dev/reference/objects/user-object/
@@ -725,12 +731,13 @@ class _SlackDirectory(IMDirectory):
                     return Directory(tuple(entries))
                 seen_cursors.add(next_cursor)
                 cursor = next_cursor
-        except SlackClientError:
+        except (SlackClientError, AvatarReadError):
             return DirectoryReadFailure("Slack directory could not be read completely.")
 
     @staticmethod
     def _directory_entries(members: Sequence[JsonValue]) -> tuple[DirectoryEntry, ...] | None:
         entries: list[DirectoryEntry] = []
+        avatar_urls: list[str | None] = []
         for member in members:
             if not isinstance(member, Mapping):
                 return None
@@ -749,8 +756,14 @@ class _SlackDirectory(IMDirectory):
                 profile.get("real_name_normalized"),
             )
             email = _optional_non_empty_string(profile.get("email"))
+            try:
+                avatar_url = _SlackDirectory._AVATAR_URL_ADAPTER.validate_python(profile.get("image_192"), strict=True)
+            except ValidationError:
+                return None
             entries.append(DirectoryEntry(ProviderUserId(provider_user_id), display_name, email))
-        return tuple(entries)
+            avatar_urls.append(avatar_url)
+        avatars = read_avatars(avatar_urls)
+        return tuple(replace(entry, avatar=avatar) for entry, avatar in zip(entries, avatars, strict=True))
 
     @staticmethod
     def _pagination(response_metadata: JsonValue) -> _SlackDirectoryPagination | None:

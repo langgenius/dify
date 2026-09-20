@@ -33,11 +33,12 @@ from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTr
 from lark_oapi.ws import client as sdk_ws_client_module
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError, field_validator
+from pydantic import AliasPath, BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError, field_validator
 from websockets.asyncio.client import ClientConnection
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.avatar import read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import (
     FeishuCredentials,
     LarkCredentials,
@@ -644,6 +645,14 @@ class _DirectoryUser(_ExternalResponseModel):
     name: str | None = None
     email: str | None = None
     enterprise_email: str | None = None
+    avatar_url: str | None = Field(default=None, validation_alias=AliasPath("avatar", "avatar_240"))
+
+    @field_validator("avatar_url")
+    @classmethod
+    def _normalize_avatar_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
 
 
 class _DirectoryDepartment(_ExternalResponseModel):
@@ -1088,7 +1097,7 @@ class _FeishuLarkDirectory(IMDirectory):
             return DirectoryReadFailure(f"{_provider_name(self._provider)} directory could not be read completely.")
 
     def _read_complete_directory(self) -> Directory:
-        entries: list[DirectoryEntry] = []
+        users: list[_DirectoryUser] = []
         seen_users: set[str] = set()
         seen_departments = {_ROOT_DEPARTMENT}
         pending_departments = deque((_ROOT_DEPARTMENT,))
@@ -1099,21 +1108,23 @@ class _FeishuLarkDirectory(IMDirectory):
                 if user.union_id in seen_users:
                     continue
                 seen_users.add(user.union_id)
-                entries.append(self._entry_from_user(user))
+                users.append(user)
             for child in self._read_child_departments(department):
                 if child in seen_departments:
                     continue
                 seen_departments.add(child)
                 pending_departments.append(child)
-        return Directory(tuple(entries))
-
-    @staticmethod
-    def _entry_from_user(user: _DirectoryUser) -> DirectoryEntry:
-        email = _optional_string(user.enterprise_email) or _optional_string(user.email)
-        return DirectoryEntry(
-            provider_user_id=ProviderUserId(user.union_id),
-            display_name=_optional_string(user.name),
-            email=email,
+        avatars = read_avatars([user.avatar_url for user in users])
+        return Directory(
+            tuple(
+                DirectoryEntry(
+                    provider_user_id=ProviderUserId(user.union_id),
+                    display_name=_optional_string(user.name),
+                    email=_optional_string(user.enterprise_email) or _optional_string(user.email),
+                    avatar=avatar,
+                )
+                for user, avatar in zip(users, avatars, strict=True)
+            )
         )
 
     def _read_users(self, department: _DepartmentIdentity) -> tuple[_DirectoryUser, ...]:

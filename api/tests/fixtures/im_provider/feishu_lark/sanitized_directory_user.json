@@ -1,0 +1,32 @@
+{
+  "avatar": {
+    "avatar_240": "https://example.invalid/avatar_240.png",
+    "avatar_640": "https://example.invalid/avatar_640.png",
+    "avatar_72": "https://example.invalid/avatar_72.png",
+    "avatar_origin": "https://example.invalid/avatar_origin.png"
+  },
+  "city": "",
+  "country": "",
+  "description": "",
+  "email": "user@example.invalid",
+  "employee_no": "",
+  "employee_type": 1,
+  "en_name": "sanitized-en_name",
+  "enterprise_email": "user@example.invalid",
+  "is_tenant_manager": true,
+  "job_title": "",
+  "join_time": 0,
+  "mobile_visible": true,
+  "name": "sanitized-name",
+  "open_id": "sanitized-open_id",
+  "status": {
+    "is_activated": true,
+    "is_exited": false,
+    "is_frozen": false,
+    "is_resigned": false,
+    "is_unjoin": false
+  },
+  "union_id": "sanitized-union_id",
+  "user_id": "sanitized-user_id",
+  "work_station": ""
+}

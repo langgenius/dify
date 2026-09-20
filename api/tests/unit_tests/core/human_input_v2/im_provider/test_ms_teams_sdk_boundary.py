@@ -27,6 +27,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 from msrest.authentication import BasicTokenAuthentication
 
+from core.file import remote_fetcher
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
@@ -422,6 +423,7 @@ def test_real_connector_and_graph_boundaries_round_trip_all_outbound_capabilitie
     monkeypatch: pytest.MonkeyPatch,
     connector_server: _ConnectorServer,
 ) -> None:
+    monkeypatch.setattr(remote_fetcher, "make_request", lambda *_args, **_kwargs: httpx.Response(404))
     state = connector_server.state
     for conversation_id in ("test-only-text-conversation", "test-only-card-conversation"):
         state.enqueue(
@@ -679,6 +681,7 @@ def test_graph_boundary_never_publishes_partial_directory(
     responses: list[httpx.Response | Exception],
     expected_request_count: int,
 ) -> None:
+    monkeypatch.setattr(remote_fetcher, "make_request", lambda *_args, **_kwargs: httpx.Response(404))
     adapter, _, graph_boundary = _adapter(monkeypatch, graph_responses=responses)
 
     result = adapter.directory.read_directory()

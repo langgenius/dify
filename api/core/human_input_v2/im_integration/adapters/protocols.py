@@ -31,7 +31,11 @@ class IMDirectory(Protocol):
     """Adapter-bound directory capability."""
 
     def read_directory(self) -> Directory | DirectoryReadFailure:
-        """Return a complete snapshot or one failure without partial entries."""
+        """Return identities with downloaded avatars, or fail without partial entries.
+
+        Provider authentication and image retrieval finish before returning.
+        Missing avatars and HTTP 404 are None; other avatar errors fail the snapshot.
+        """
         ...
 
 

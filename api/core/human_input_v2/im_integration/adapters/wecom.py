@@ -12,6 +12,7 @@ from wechatpy.enterprise import WeChatClient
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.avatar import read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import WeComCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
@@ -198,6 +199,14 @@ class _DirectoryUser(BaseModel):
     userid: StrictStr
     name: StrictStr | None = None
     email: StrictStr | None = None
+    avatar_url: str | None = Field(default=None, alias="avatar")
+
+    @field_validator("avatar_url", mode="before")
+    @classmethod
+    def _normalize_avatar_url(cls, value: object) -> str | None:
+        if not isinstance(value, str):
+            return None
+        return value.strip() or None
 
     @field_validator("email")
     @classmethod
@@ -281,7 +290,7 @@ class _WeComDirectory(IMDirectory):
         if scope.agentid != int(self._credentials.agent_id):
             raise _DirectoryBoundaryError
 
-        entries: list[DirectoryEntry] = []
+        entries: list[_DirectoryUser] = []
         seen_user_ids: set[str] = set()
         seen_department_ids: set[int] = set()
 
@@ -312,7 +321,18 @@ class _WeComDirectory(IMDirectory):
                     seen_department_ids,
                 )
 
-        return Directory(tuple(entries))
+        avatars = read_avatars([user.avatar_url for user in entries])
+        return Directory(
+            tuple(
+                DirectoryEntry(
+                    ProviderUserId(user.userid),
+                    _optional_non_blank(user.name),
+                    _optional_non_blank(user.email),
+                    avatar=avatar,
+                )
+                for user, avatar in zip(entries, avatars, strict=True)
+            )
+        )
 
 
 class _WeComMessaging(IMMessaging):
@@ -460,7 +480,7 @@ def _fetch_access_token(client: _WeComClient) -> str:
 def _read_department_scope(
     client: _WeComClient,
     root_department_id: int,
-    entries: list[DirectoryEntry],
+    entries: list[_DirectoryUser],
     seen_user_ids: set[str],
     seen_department_ids: set[int],
 ) -> None:
@@ -518,7 +538,7 @@ def _validate_department_topology(
 def _read_user_details(
     client: _WeComClient,
     user_id: str,
-    entries: list[DirectoryEntry],
+    entries: list[_DirectoryUser],
     seen_user_ids: set[str],
 ) -> None:
     _require_valid_user_id(user_id)
@@ -532,20 +552,14 @@ def _read_user_details(
 
 def _append_directory_user(
     user: _DirectoryUser,
-    entries: list[DirectoryEntry],
+    entries: list[_DirectoryUser],
     seen_user_ids: set[str],
 ) -> None:
     _require_valid_user_id(user.userid)
     if user.userid in seen_user_ids:
         return
     seen_user_ids.add(user.userid)
-    entries.append(
-        DirectoryEntry(
-            ProviderUserId(user.userid),
-            _optional_non_blank(user.name),
-            _optional_non_blank(user.email),
-        )
-    )
+    entries.append(user)
 
 
 def _require_valid_user_id(user_id: str) -> None:

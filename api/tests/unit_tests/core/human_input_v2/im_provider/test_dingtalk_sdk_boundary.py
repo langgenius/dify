@@ -9,6 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import urlparse
 
+import httpx
 import pytest
 from alibabacloud_dingtalk.oauth2_1_0.client import Client as OAuthClient
 from alibabacloud_dingtalk.oauth2_1_0.models import GetTokenRequest, GetTokenResponse, GetTokenResponseBody
@@ -20,6 +21,7 @@ from alibabacloud_dingtalk.robot_1_0.models import (
     BatchSendOTOResponseBody,
 )
 from alibabacloud_tea_util.models import RuntimeOptions
+from pytest_mock import MockerFixture
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
@@ -213,7 +215,17 @@ def _adapter(
 
 def test_public_adapter_round_trips_fresh_credentials_directory_and_text(
     monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
 ) -> None:
+    mocker.patch(
+        "core.file.remote_fetcher.make_request",
+        return_value=httpx.Response(
+            200,
+            headers={"Content-Type": "image/png"},
+            content=b"avatar-image",
+            request=httpx.Request("GET", "https://example.invalid/fake-user-001.png"),
+        ),
+    )
     direct = _OAuthSequence(
         _token_response("fake-access-token-direct-001"),
         _token_response("fake-access-token-direct-002"),
@@ -248,6 +260,8 @@ def test_public_adapter_round_trips_fresh_credentials_directory_and_text(
     assert first_credentials == CredentialTestSuccess(IMProvider.DING_TALK, "fake-corp-001")
     assert second_credentials == first_credentials
     assert isinstance(directory, Directory)
+    assert directory.entries[0].avatar is not None
+    assert directory.entries[0].avatar.data == b"avatar-image"
     assert [entry.provider_user_id for entry in directory.entries] == [
         "fake-user-001",
         "fake-user-002",

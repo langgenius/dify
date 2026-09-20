@@ -3,9 +3,13 @@ from __future__ import annotations
 import base64
 import json
 from collections.abc import Mapping
+from pathlib import Path
+from threading import Barrier, Lock
 from typing import Literal, overload
 
+import httpx
 import pytest
+from pytest_mock import MockerFixture
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
@@ -525,6 +529,144 @@ def test_directory_publishes_complete_ordered_union_id_snapshot(
         ("list_users", ("dept_child", None)),
         ("list_departments", ("dept_child", None)),
     ]
+
+
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_directory_projects_avatar_from_captured_user(
+    monkeypatch: pytest.MonkeyPatch,
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
+    mocker: MockerFixture,
+) -> None:
+    fixture = Path(__file__).parents[4] / "fixtures/im_provider/feishu_lark/sanitized_directory_user.json"
+    gateway = FakeSDKGateway()
+    gateway.user_responses.append(_page([json.loads(fixture.read_text())]))
+    gateway.department_responses.append(_page([]))
+    mocker.patch(
+        "core.file.remote_fetcher.make_request",
+        return_value=httpx.Response(
+            200,
+            headers={"Content-Type": "image/png"},
+            content=b"avatar-image",
+            request=httpx.Request("GET", "https://example.invalid/avatar_240.png"),
+        ),
+    )
+
+    result = _adapter(monkeypatch, provider, gateway).directory.read_directory()
+
+    assert isinstance(result, Directory)
+    assert len(result.entries) == 1
+    assert result.entries[0].avatar is not None
+    assert result.entries[0].avatar.mime_type == "image/png"
+    assert result.entries[0].avatar.data == b"avatar-image"
+
+
+@pytest.mark.parametrize("avatar", [None, {}, {"avatar_240": " "}])
+def test_directory_accepts_unavailable_avatar(monkeypatch: pytest.MonkeyPatch, avatar: object) -> None:
+    gateway = FakeSDKGateway()
+    gateway.user_responses.append(_page([{"union_id": "union_user", "avatar": avatar}]))
+    gateway.department_responses.append(_page([]))
+
+    result = _adapter(monkeypatch, IMProvider.FEISHU, gateway).directory.read_directory()
+
+    assert isinstance(result, Directory)
+    assert result.entries[0].avatar is None
+
+
+def test_directory_downloads_avatars_in_bounded_batches(
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+) -> None:
+    gateway = FakeSDKGateway()
+    gateway.user_responses.append(
+        _page(
+            [
+                {"union_id": f"user-{index}", "avatar": {"avatar_240": f"https://example.invalid/avatar/{index}"}}
+                for index in range(10)
+            ]
+        )
+    )
+    gateway.department_responses.append(_page([]))
+    first_batch = Barrier(8)
+    lock = Lock()
+    active = 0
+    peak = 0
+
+    def download(_method: str, url: str, **_kwargs: object) -> httpx.Response:
+        nonlocal active, peak
+        index = int(url.rsplit("/", 1)[1])
+        with lock:
+            active += 1
+            peak = max(peak, active)
+        try:
+            if index < 8:
+                first_batch.wait(timeout=5)
+            return httpx.Response(
+                200,
+                headers={"Content-Type": "image/png"},
+                content=f"photo-{index}".encode(),
+                request=httpx.Request("GET", url),
+            )
+        finally:
+            with lock:
+                active -= 1
+
+    mocker.patch("core.file.remote_fetcher.make_request", side_effect=download)
+
+    result = _adapter(monkeypatch, IMProvider.FEISHU, gateway).directory.read_directory()
+
+    assert isinstance(result, Directory)
+    assert peak == 8
+    assert [entry.provider_user_id for entry in result.entries] == [f"user-{index}" for index in range(10)]
+    assert [entry.avatar.data for entry in result.entries if entry.avatar is not None] == [
+        f"photo-{index}".encode() for index in range(10)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("status", "content_type", "content", "missing"),
+    [
+        (404, "application/json", b"{}", True),
+        (403, "application/json", b"{}", False),
+        (500, "text/html", b"error", False),
+        (200, "text/html", b"login page", False),
+        (200, "image/png", b"", False),
+    ],
+)
+def test_directory_handles_missing_avatar_and_rejects_failed_avatar_download(
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    status: int,
+    content_type: str,
+    content: bytes,
+    missing: bool,
+) -> None:
+    gateway = FakeSDKGateway()
+    gateway.user_responses.append(
+        _page(
+            [
+                {"union_id": "first"},
+                {"union_id": "second", "avatar": {"avatar_240": "https://example.invalid/avatar.png"}},
+            ]
+        )
+    )
+    gateway.department_responses.append(_page([]))
+    response = httpx.Response(
+        status,
+        headers={"Content-Type": content_type},
+        content=content,
+        request=httpx.Request("GET", "https://example.invalid/avatar.png"),
+    )
+    mocker.patch("core.file.remote_fetcher.make_request", return_value=response)
+
+    result = _adapter(monkeypatch, IMProvider.FEISHU, gateway).directory.read_directory()
+
+    if missing:
+        assert isinstance(result, Directory)
+        assert len(result.entries) == 2
+        assert result.entries[1].avatar is None
+    else:
+        assert isinstance(result, DirectoryReadFailure)
+    assert response.is_closed
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])

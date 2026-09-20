@@ -6,9 +6,11 @@ import json
 import logging
 import threading
 from datetime import UTC, datetime
+from pathlib import Path
 from types import MappingProxyType
 from typing import override
 
+import httpx
 import pytest
 from pytest_mock import MockerFixture
 from slack_sdk.errors import SlackApiError, SlackClientError
@@ -380,6 +382,48 @@ def test_directory_returns_one_ordered_complete_snapshot(mocker) -> None:
     assert result.entries[1].display_name == "Second"
     assert result.entries[1].email is None
     assert client.directory_calls == [{"limit": 200}, {"limit": 200, "cursor": "cursor-2"}]
+
+
+def test_directory_projects_avatar_from_captured_user(mocker: MockerFixture) -> None:
+    fixture = Path(__file__).parents[4] / "fixtures/im_provider/slack/sanitized_directory_user.json"
+    client = FakeWebClient()
+    mocker.patch(
+        "core.file.remote_fetcher.make_request",
+        return_value=httpx.Response(
+            200,
+            headers={"Content-Type": "image/jpeg; charset=binary"},
+            content=b"avatar-image",
+            request=httpx.Request("GET", "https://example.invalid/image_192.png"),
+        ),
+    )
+    client.directory_responses.append(
+        SlackResponse(
+            {"ok": True, "members": [json.loads(fixture.read_text())], "response_metadata": {"next_cursor": ""}}
+        )
+    )
+
+    result = _adapter(mocker, client).directory.read_directory()
+
+    assert isinstance(result, Directory)
+    assert len(result.entries) == 1
+    assert result.entries[0].avatar is not None
+    assert result.entries[0].avatar.mime_type == "image/jpeg"
+    assert result.entries[0].avatar.data == b"avatar-image"
+
+
+@pytest.mark.parametrize("profile", [{}, {"image_192": None}, {"image_192": " "}])
+def test_directory_accepts_unavailable_avatar(mocker: MockerFixture, profile: dict[str, object]) -> None:
+    client = FakeWebClient()
+    client.directory_responses.append(
+        SlackResponse(
+            {"ok": True, "members": [{"id": "user", "profile": profile}], "response_metadata": {"next_cursor": ""}}
+        )
+    )
+
+    result = _adapter(mocker, client).directory.read_directory()
+
+    assert isinstance(result, Directory)
+    assert result.entries[0].avatar is None
 
 
 def test_directory_excludes_slack_owned_special_users(mocker: MockerFixture) -> None:

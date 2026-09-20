@@ -43,12 +43,21 @@ class CredentialTestFailure:
 
 
 @dataclass(frozen=True, slots=True)
+class Avatar:
+    """Downloaded provider image, independent of transport and credentials."""
+
+    mime_type: str
+    data: bytes
+
+
+@dataclass(frozen=True, slots=True)
 class DirectoryEntry:
-    """Minimal provider identity from one complete directory snapshot."""
+    """Provider identity and downloaded avatar from one directory snapshot."""
 
     provider_user_id: ProviderUserId
     display_name: str | None
     email: str | None
+    avatar: Avatar | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,6 +222,7 @@ class IMStreamStopError(Exception):
 
 __all__ = [
     "AuthenticatedIMEvent",
+    "Avatar",
     "CardAssessment",
     "CorrelationToken",
     "CredentialTestFailure",
