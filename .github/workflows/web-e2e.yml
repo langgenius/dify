@@ -8,8 +8,8 @@ on:
         required: true
         default: true
         type: boolean
-      parallel-startup:
-        description: Overlap Web build with backend preparation (disable for the serial control).
+      cache-shellctl:
+        description: Restore and save the shellctl image cache (disable for control runs).
         required: true
         default: true
         type: boolean
@@ -258,6 +258,23 @@ jobs:
         working-directory: ./e2e
         run: vp run e2e:install:ci:chromium
 
+      - name: Compute shellctl cache epoch
+        id: shellctl-epoch
+        if: github.event_name != 'workflow_dispatch' || inputs.cache-shellctl
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore shellctl image cache
+        id: shellctl-cache
+        if: github.event_name != 'workflow_dispatch' || inputs.cache-shellctl
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/e2e-shellctl-image.tar
+          key: e2e-shellctl-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.shellctl-epoch.outputs.week }}-${{ hashFiles('dify-agent-runtime/**') }}
+
+      - name: Load shellctl image cache
+        if: steps.shellctl-cache.outputs.cache-hit == 'true'
+        run: docker load --input "$RUNNER_TEMP/e2e-shellctl-image.tar"
+
       - name: Run prepared and external runtime E2E tests
         working-directory: ./e2e
         env:
@@ -268,7 +285,6 @@ jobs:
           E2E_AGENT_DECISION_MODEL_PROVIDER: ${{ vars.E2E_AGENT_DECISION_MODEL_PROVIDER || 'openai' }}
           E2E_AGENT_DECISION_MODEL_TYPE: ${{ vars.E2E_AGENT_DECISION_MODEL_TYPE || 'llm' }}
           E2E_FORCE_WEB_BUILD: '1'
-          E2E_PARALLEL_STARTUP: ${{ (github.event_name != 'workflow_dispatch' || inputs.parallel-startup) && '1' || '0' }}
           E2E_INIT_PASSWORD: E2eInit12345
           E2E_MARKETPLACE_API_URL: ${{ vars.E2E_MARKETPLACE_API_URL }}
           E2E_MARKETPLACE_PLUGIN_IDS: ${{ vars.E2E_MARKETPLACE_PLUGIN_IDS }}
@@ -322,3 +338,14 @@ jobs:
         with:
           path: web/.next/cache
           key: ${{ steps.external-next-cache.outputs.cache-primary-key }}
+
+      - name: Export shellctl image cache
+        if: steps.shellctl-cache.outputs.cache-primary-key != '' && steps.shellctl-cache.outputs.cache-hit != 'true' && vars.E2E_START_AGENT_BACKEND != '0'
+        run: docker save --output "$RUNNER_TEMP/e2e-shellctl-image.tar" dify-agent-local-sandbox:e2e
+
+      - name: Save shellctl image cache
+        if: steps.shellctl-cache.outputs.cache-primary-key != '' && steps.shellctl-cache.outputs.cache-hit != 'true' && vars.E2E_START_AGENT_BACKEND != '0'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/e2e-shellctl-image.tar
+          key: ${{ steps.shellctl-cache.outputs.cache-primary-key }}
