@@ -332,6 +332,10 @@ class E2BExecutionBindingBackend:
                             observer=self.usage_observer,
                             allocation_id=spec.binding_id,
                         )
+                    except asyncio.CancelledError as cleanup_exc:
+                        if isinstance(exc, asyncio.CancelledError):
+                            raise exc from cleanup_exc
+                        raise
                     except Exception as cleanup_exc:
                         _log_e2b_cleanup_warning(
                             "failed to remove partial E2B Binding",
@@ -371,12 +375,20 @@ class E2BExecutionBindingBackend:
     async def _acquire(self, binding_ref: str) -> RuntimeLease:
         sandbox: _E2BSandbox | None = None
         lease: E2BRuntimeLease | None = None
+
+        async def connect() -> _E2BSandbox:
+            nonlocal sandbox
+            # Own the handle before the helper awaits success reporting, so a
+            # cancellation in that HTTP call can still pause the resumed sandbox.
+            sandbox = await self.control_plane.connect(binding_ref, timeout=self.active_timeout_seconds)
+            return sandbox
+
         try:
             sandbox = await _run_e2b_idempotent_operation(
                 operation="connect",
                 sandbox_id=binding_ref,
                 cleanup_stage="binding_acquire",
-                action=lambda: self.control_plane.connect(binding_ref, timeout=self.active_timeout_seconds),
+                action=connect,
                 observer=self.usage_observer,
             )
             if not await sandbox.files.exists(self.layout.workspace_dir):
@@ -386,12 +398,19 @@ class E2BExecutionBindingBackend:
             return lease
         except _E2BControlPlaneNotFoundError as exc:
             raise BindingLostError(f"E2B Binding {binding_ref!r} no longer exists") from exc
-        except BindingLostError:
-            await _best_effort_pause(sandbox, observer=self.usage_observer)
+        except BindingLostError as exc:
+            await _best_effort_pause(sandbox, observer=self.usage_observer, primary_error=exc)
             raise
         except BaseException as exc:
-            await _best_effort_close_data_plane(lease)
-            await _best_effort_pause(sandbox, observer=self.usage_observer)
+            primary_error = exc
+            try:
+                await _best_effort_close_data_plane(lease)
+            except asyncio.CancelledError as cleanup_exc:
+                if not isinstance(primary_error, asyncio.CancelledError):
+                    primary_error = cleanup_exc
+            await _best_effort_pause(sandbox, observer=self.usage_observer, primary_error=primary_error)
+            if isinstance(primary_error, asyncio.CancelledError):
+                raise primary_error
             if isinstance(exc, Exception):
                 raise BindingAcquireError(str(exc)) from exc
             raise
@@ -546,34 +565,49 @@ async def _run_e2b_idempotent_operation(
     observer: RuntimeUsageObserver | None = None,
     allocation_id: str | None = None,
 ) -> _ResultT:
-    """Retry one idempotent E2B lifecycle operation after a transport failure."""
+    """Retry SDK transport failures, while reporting cannot prevent cleanup."""
     operation_id = str(uuid4())
-    for attempt in range(1, _E2B_CONTROL_PLANE_MAX_ATTEMPTS + 1):
-        await observe_runtime_operation(
-            observer,
-            operation_id=operation_id,
-            attempt=attempt,
-            phase="requested",
-            operation=operation,
-            cleanup_stage=cleanup_stage,
-            sandbox_id=sandbox_id,
-            allocation_id=allocation_id,
-        )
+    reporting_cancel: asyncio.CancelledError | None = None
+
+    async def report(
+        attempt: int,
+        phase: str,
+        *,
+        outcome: str | None = None,
+        changed: bool | None = None,
+        error_type: str | None = None,
+    ) -> None:
+        nonlocal reporting_cancel
+        if reporting_cancel is not None:
+            return
         try:
-            result = await action()
-        except _RETRYABLE_E2B_TRANSPORT_ERRORS as exc:
             await observe_runtime_operation(
                 observer,
                 operation_id=operation_id,
                 attempt=attempt,
-                phase="observed",
+                phase=phase,
                 operation=operation,
                 cleanup_stage=cleanup_stage,
                 sandbox_id=sandbox_id,
                 allocation_id=allocation_id,
-                outcome="unknown",
-                error_type=type(exc).__name__,
+                outcome=outcome,
+                changed=changed,
+                error_type=error_type,
             )
+        except asyncio.CancelledError as exc:
+            if operation not in {"pause", "kill"}:
+                raise
+            # Keep the cancellation until actual cleanup (including its existing
+            # bounded SDK retries) has been attempted. Do not report again while
+            # cancelling, spawn a task, shield, or consume the cancellation count.
+            reporting_cancel = exc
+
+    for attempt in range(1, _E2B_CONTROL_PLANE_MAX_ATTEMPTS + 1):
+        await report(attempt, "requested")
+        try:
+            result = await action()
+        except _RETRYABLE_E2B_TRANSPORT_ERRORS as exc:
+            await report(attempt, "observed", outcome="unknown", error_type=type(exc).__name__)
             exhausted = attempt == _E2B_CONTROL_PLANE_MAX_ATTEMPTS
             logger.warning(
                 "E2B lifecycle operation exhausted retries" if exhausted else "retrying E2B lifecycle operation",
@@ -588,35 +622,29 @@ async def _run_e2b_idempotent_operation(
                 ),
             )
             if exhausted:
+                if reporting_cancel is not None:
+                    raise reporting_cancel from exc
                 raise
-            await asyncio.sleep(_E2B_CONTROL_PLANE_RETRY_INTERVAL_SECONDS)
+            try:
+                await asyncio.sleep(_E2B_CONTROL_PLANE_RETRY_INTERVAL_SECONDS)
+            except asyncio.CancelledError as exc:
+                if reporting_cancel is not None:
+                    raise reporting_cancel from exc
+                raise
         except BaseException as exc:
-            await observe_runtime_operation(
-                observer,
-                operation_id=operation_id,
-                attempt=attempt,
-                phase="observed",
-                operation=operation,
-                cleanup_stage=cleanup_stage,
-                sandbox_id=sandbox_id,
-                allocation_id=allocation_id,
+            await report(
+                attempt,
+                "observed",
                 outcome="unknown" if isinstance(exc, asyncio.CancelledError) else "failed",
                 error_type=type(exc).__name__,
             )
+            if reporting_cancel is not None:
+                raise reporting_cancel from exc
             raise
         else:
-            await observe_runtime_operation(
-                observer,
-                operation_id=operation_id,
-                attempt=attempt,
-                phase="observed",
-                operation=operation,
-                cleanup_stage=cleanup_stage,
-                sandbox_id=sandbox_id,
-                allocation_id=allocation_id,
-                outcome="success",
-                changed=result if isinstance(result, bool) else None,
-            )
+            await report(attempt, "observed", outcome="success", changed=result if isinstance(result, bool) else None)
+            if reporting_cancel is not None:
+                raise reporting_cancel
             return result
     raise AssertionError("unreachable")
 
@@ -675,6 +703,8 @@ async def _best_effort_close_data_plane(lease: E2BRuntimeLease | None) -> None:
         return
     try:
         await lease.data_plane.close()
+    except asyncio.CancelledError:
+        raise
     except BaseException as exc:
         _log_e2b_cleanup_warning(
             "failed to close E2B RuntimeLease data plane after acquire failure",
@@ -690,6 +720,7 @@ async def _best_effort_pause(
     sandbox: _E2BSandbox | None,
     *,
     observer: RuntimeUsageObserver | None = None,
+    primary_error: BaseException | None = None,
 ) -> None:
     if sandbox is None:
         return
@@ -701,6 +732,10 @@ async def _best_effort_pause(
             action=lambda: sandbox.pause(keep_memory=True),
             observer=observer,
         )
+    except asyncio.CancelledError as exc:
+        if isinstance(primary_error, asyncio.CancelledError):
+            raise primary_error from exc
+        raise
     except BaseException as exc:
         _log_e2b_cleanup_warning(
             "failed to pause E2B Binding after acquire failure",

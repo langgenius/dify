@@ -463,34 +463,39 @@ def test_server_settings_use_generic_outbound_http_args_for_shared_clients() -> 
     assert "outbound_http_keepalive_expiry" in model_fields
 
 
-def test_metering_tasks_are_lifespan_owned_and_flush_after_run_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_metering_only_starts_collector_and_keeps_clients_open_for_run_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
     import asyncio
     from typing import Any
 
     from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend
 
     _patch_app_lifecycle(monkeypatch)
-    order: list[str] = []
-    instances: list[MeteringTask] = []
+    observers: list[DirectObserver] = []
+    collectors: list[Collector] = []
 
-    class MeteringTask:
+    class DirectObserver:
+        # Deliberately has no run or flush method: the lifespan must not create
+        # a diagnostic worker or depend on draining an observation buffer.
+        def __init__(self, **kwargs: Any) -> None:
+            self.kwargs = kwargs
+            observers.append(self)
+
+    class Collector:
         def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
             self.stopped = False
-            instances.append(self)
+            collectors.append(self)
 
         async def run(self) -> None:
             try:
                 await asyncio.Event().wait()
             finally:
+                assert FakeRunScheduler.created[-1].shutdown_called
+                assert not self.kwargs["provider_client"].is_closed
                 self.stopped = True
 
-        async def flush_on_shutdown(self) -> None:
-            assert FakeRunScheduler.created[-1].shutdown_called
-            order.append("flush")
-
-    monkeypatch.setattr(app_module, "BestEffortRuntimeUsageObserver", MeteringTask)
-    monkeypatch.setattr(app_module, "E2BUsageCollector", MeteringTask)
+    monkeypatch.setattr(app_module, "DirectRuntimeUsageObserver", DirectObserver)
+    monkeypatch.setattr(app_module, "E2BUsageCollector", Collector)
     settings = ServerSettings(
         _env_file=None,
         sandbox_metering_enabled=True,
@@ -504,14 +509,13 @@ def test_metering_tasks_are_lifespan_owned_and_flush_after_run_cleanup(monkeypat
     assert isinstance(profile.execution_bindings, E2BExecutionBindingBackend)
     monkeypatch.setattr(ServerSettings, "build_runtime_backend_profile", lambda self: profile)
     with TestClient(create_app(settings)):
-        assert len(instances) == 2
-        assert profile.execution_bindings.usage_observer is instances[0]
-        assert set(instances[0].kwargs) == {"client"}
-        provider_client = instances[1].kwargs["provider_client"]
+        assert len(observers) == len(collectors) == 1
+        assert profile.execution_bindings.usage_observer is observers[0]
+        assert set(observers[0].kwargs) == {"client"}
+        provider_client = collectors[0].kwargs["provider_client"]
         assert "X-Inner-Api-Key" not in provider_client.headers
-        assert instances[1].kwargs["usage_client"].api_key == "inner-key"
-        assert instances[1].kwargs["api_key"] == "provider-key"
-        assert instances[1].kwargs["redis"] is FakeRedisModule.fake_redis
-    assert order == ["flush"]
-    assert all(instance.stopped for instance in instances)
+        assert collectors[0].kwargs["usage_client"].api_key == "inner-key"
+        assert collectors[0].kwargs["api_key"] == "provider-key"
+        assert collectors[0].kwargs["redis"] is FakeRedisModule.fake_redis
+    assert collectors[0].stopped
     assert provider_client.is_closed

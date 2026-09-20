@@ -9,8 +9,8 @@ the same execution's metered duration.
 
 The Dify API owns `agent_sandbox_usage_events` and `agent_sandbox_executions`.
 The agent backend has no SQL connection. It observes control-plane operations,
-sends diagnostic events directly to the inner API from one best-effort background
-worker, and polls the E2B lifecycle API with its existing project key. The authenticated Dify inner API
+directly awaits the inner API once for each diagnostic event, and polls the E2B
+lifecycle API with its existing project key. The authenticated Dify inner API
 commits events and projects provider execution usage atomically.
 
 Before creating a binding, the API independently commits an allocation owner
@@ -71,19 +71,23 @@ and `X-Inner-Api-Key`.
   unresolved rather than becoming zero usage.
 - Provider event IDs deduplicate repeated delivery. Conflicting facts are
   retained and flagged; duplicate durations are never added together.
-- A local observer enqueues diagnostic records without yielding. One background
-  worker sends batches of at most 100 records directly to the inner API; there is
-  no Redis outbox or persistent delivery retry. The memory queue holds at most
-  1,000 records, with a 64 KiB limit per record. Invalid records and overflow are
-  dropped with a warning.
-- HTTP failure, timeout or an invalid acknowledgement drops the affected batch
-  without retrying it; later batches can still be delivered. Restarting the
-  process can lose queued and in-flight observations. Shutdown attempts a bounded
-  two-second drain after run cleanup, then cancels the sender. This intentional
-  best-effort contract applies to operation diagnostics, not to the source of
-  metered duration: E2B events and allocation ownership remain the usage inputs.
-- Delivery failures cannot prevent pause/kill, overwrite the original execution
-  error, or make a successful resource operation fail and be retried.
+- Each operation observation directly awaits one inner API request with a
+  one-second overall deadline and a 64 KiB event limit. There is no operation-log
+  queue, background sender, batch buffer, shutdown drain, persistent outbox or
+  delivery retry. HTTP errors, timeout, invalid payloads and invalid ACKs produce
+  a warning containing only the error class, then normal business work continues.
+- This reporting adds a short wait to the calling operation: requested and
+  observed events can add up to roughly two seconds per lifecycle attempt if the
+  API is unresponsive. Waits while the sandbox is running are part of its actual
+  provider-metered lifetime. Cancellation or process exit can lose observations.
+- Business cancellation propagates. Reporting is skipped when the current task
+  is already cancelling, so optional diagnostics do not delay cancellation
+  cleanup or clear its cancellation count. E2B callers keep the created or
+  connected handle before awaiting result reporting, and still attempt required
+  pause/kill if cancellation arrives during its request observation.
+- Provider execution events and independently registered allocation ownership
+  remain the metering inputs. Local RPC/reporting duration is never used as a
+  replacement for provider execution time.
 - Pollers share a project-scoped renewable Redis leader lease. Lease loss cancels
   an in-progress scan. Database idempotency remains the final duplicate defense.
 - Every scan restarts provider offset pagination from zero and overlaps prior
@@ -118,17 +122,19 @@ execution across windows must conserve its original duration.
    existing key without logging it.
 2. Run migrations with metering disabled, then restart the relevant API/worker
    and backend processes with a fixed T0.
-3. Verify state, a completed checkpoint, the best-effort sender and the collector
-   leader lease. No sandbox usage outbox should be created.
+3. Verify state, a completed checkpoint, direct operation reporting and the
+   collector leader lease. Only the provider collector has a metering background
+   task; there is no observation queue, sender task or outbox.
 4. Exercise binding initialization, file list/read/download, snapshot creation
    and restoration, successful/failed/cancelled Agent runs and cleanup.
 5. Compare the test allocations' ledger rows to their actual E2B execution
    events. Replay events and confirm totals do not increase.
 6. Check late/missing terminal events, project rejection, start-time immutability,
    and partial-scan failures. Do not test faults by stopping shared services.
-7. With an isolated sender and controlled HTTP endpoint, verify that delivery
-   failure drops a batch, later events still send, and bounded shutdown can drop
-   pending observations. Do not interrupt shared Agent services to simulate loss.
+7. With an isolated observer and controlled HTTP endpoint, verify that reporting
+   waits for one request, failure is not retried, the deadline is bounded, later
+   observations still send, and cancellation propagates. Exercise cancellation
+   around create/connect/pause/kill reporting without stopping shared services.
 
 Upgrading from the outbox implementation does not migrate or replay its pending
 operation logs. After the new image is running, an operator may remove only the

@@ -52,3 +52,30 @@ async def test_observation_failure_does_not_change_resource_outcome(caplog: pyte
     )
     assert "RuntimeError" in caplog.text
     assert "must-not-log-sensitive-contents" not in caplog.text
+
+
+@pytest.mark.anyio
+async def test_direct_observation_can_suspend_and_preserves_business_cancellation() -> None:
+    entered = asyncio.Event()
+
+    class DirectObserver:
+        async def observe_safely(self, event: dict[str, Any]) -> None:
+            entered.set()
+            await asyncio.Event().wait()
+
+    task = asyncio.create_task(
+        observe_runtime_operation(
+            DirectObserver(),
+            operation_id="operation",
+            attempt=1,
+            phase="observed",
+            operation="connect",
+            cleanup_stage="binding_acquire",
+            sandbox_id="sandbox",
+        )
+    )
+    async with asyncio.timeout(2):
+        await entered.wait()
+    task.cancel("original cancellation")
+    with pytest.raises(asyncio.CancelledError, match="original cancellation"):
+        await task
