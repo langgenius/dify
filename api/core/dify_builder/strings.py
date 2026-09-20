@@ -52,6 +52,7 @@ PLAIN: frozenset[str] = frozenset(
         "Test failed — here's a proposed fix to review.",
         "Test failed — no safe automatic fix; edit or keep draft.",
         "No automatic fix found — review the diagnosis and edit the canvas manually, or reject.",
+        "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test.",
         # card titles
         "Test run",
         "Review",

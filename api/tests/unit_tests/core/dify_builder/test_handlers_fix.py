@@ -439,6 +439,39 @@ def test_verify_fail_freezes_run_allows_re_fix():
     assert verify.immutable
 
 
+def test_verify_running_status_routes_to_await_testdata_not_decision():
+    """A truncated-stream run (status="running" -- the outcome is genuinely
+    unknown) must NOT be treated as a failure: the flow returns to
+    fix.await_testdata (re-runnable) with a neutral notice, never reaching
+    fix.await_decision -- where publish/re_fix would act on an unknown
+    result."""
+    from core.dify_builder.models import Run
+
+    env, repo = _new_env()
+    runner, s = _drive_to_await_verify(env, repo)
+
+    turn = Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_TESTDATA
+
+    env.dify.run_draft = lambda *_a, **_k: Run(
+        dify_run_id="",
+        status="running",
+        per_node=[],
+        error="the workflow run's progress stream ended before the run did, so its outcome is unknown",
+    )
+    turn = Turn(
+        action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version), actor=_actor()
+    )
+    out = runner.advance(s.id, turn)
+
+    assert out.current_state == PcState.FIX_AWAIT_TESTDATA  # re-runnable, not fix.await_decision
+
+    _, fc = repo.get_session(s.id)
+    verify = repo.get_run(fc.verify_run_id)
+    assert verify.status == "running"
+
+
 # ---- await_decision --------------------------------------------------------
 
 

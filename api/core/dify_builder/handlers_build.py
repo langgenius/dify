@@ -35,6 +35,7 @@ from core.dify_builder.contract import (
     TestStat,
 )
 from core.dify_builder.handlers_fix import (
+    UNKNOWN_TEST_OUTCOME_NOTICE,
     action_kind,
     action_string,
     append_card,
@@ -741,6 +742,33 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             next=PcState.BUILD_REVIEW,
             context=fc,
             items=[*test_items, *summary_items, *turn_items],
+            run=run,
+            run_id_sink=[run.id],
+        )
+
+    if status == "running":
+        # Stream truncated: the run's outcome is genuinely unknown, NOT a
+        # failure (Run.status documents "running" for exactly this case).
+        # Diagnosing/staging a repair here would edit the draft under a run
+        # that may still be executing -- surface a neutral notice instead and
+        # return to build.execution (re-runnable), without ever calling
+        # diagnose or propose_repair.
+        notice_items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
+        execution = progress.finish()
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                execution=execution,
+                reply_text=UNKNOWN_TEST_OUTCOME_NOTICE,
+                cards=["notice"],
+            ),
+        )
+        return StepResult(
+            next=PcState.BUILD_EXECUTION,
+            context=fc,
+            items=[*notice_items, *turn_items],
             run=run,
             run_id_sink=[run.id],
         )

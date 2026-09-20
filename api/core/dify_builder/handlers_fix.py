@@ -62,6 +62,7 @@ from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 
 __all__ = [
+    "UNKNOWN_TEST_OUTCOME_NOTICE",
     "action_kind",
     "action_string",
     "append_card",
@@ -92,6 +93,15 @@ __all__ = [
     "start_schema",
     "testdata_form_fields",
 ]
+
+
+# Shared by handle_verify (below) and handle_test_and_repair (handlers_build.py,
+# which imports it): the "running"/unknown-outcome branch. A truncated stream
+# means the run's actual pass/fail is genuinely unknown -- not a failure to
+# diagnose or repair against.
+UNKNOWN_TEST_OUTCOME_NOTICE = (
+    "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test."
+)
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -655,6 +665,25 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    if result.status == "running":
+        # Stream truncated: the run's outcome is genuinely unknown, NOT a
+        # failure. Advancing to fix.await_decision here would let the user
+        # publish (or re-fix) against a run that may still be executing --
+        # surface a neutral notice instead and return to fix.await_testdata
+        # (re-runnable), never diagnosing or staging a repair against an
+        # unknown result.
+        fc.verify_run_id = run.id
+        items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
+        progress.finish()
+        return StepResult(
+            next=PcState.FIX_AWAIT_TESTDATA,
+            context=fc,
+            items=items,
+            run=run,
+            run_id_sink=[run.id],
+        )
+
     if result.status != "succeeded":
         run.culprit_node_id = first_failed_node(result.per_node)
 
