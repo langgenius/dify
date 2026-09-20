@@ -84,7 +84,7 @@ class AgentWorkspaceService:
         binding_id: str,
         expected_owner_scope: WorkspaceOwnerScope,
     ) -> AgentWorkspaceBinding | None:
-        return session.scalar(
+        binding = session.scalar(
             select(AgentWorkspaceBinding)
             .join(
                 AgentWorkspace,
@@ -103,6 +103,9 @@ class AgentWorkspaceService:
                 AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
             )
         )
+        if binding is not None:
+            cls._register_usage_allocation(binding)
+        return binding
 
     @classmethod
     def resolve_active_binding_for_scope(
@@ -114,7 +117,7 @@ class AgentWorkspaceService:
     ) -> AgentWorkspaceBinding | None:
         """Return the ACTIVE participant for a stable Workspace owner scope."""
 
-        return session.scalar(
+        binding = session.scalar(
             select(AgentWorkspaceBinding)
             .join(
                 AgentWorkspace,
@@ -135,6 +138,26 @@ class AgentWorkspaceService:
             )
             .order_by(AgentWorkspaceBinding.created_at.desc())
             .limit(1)
+        )
+        if binding is not None:
+            cls._register_usage_allocation(binding)
+        return binding
+
+    @staticmethod
+    def _register_usage_allocation(binding: AgentWorkspaceBinding) -> None:
+        """Register a verified owner before first use, never import past usage."""
+        if not dify_config.AGENT_SANDBOX_METERING_ENABLED:
+            return
+        from services.agent.runtime_usage_service import SandboxUsageService
+
+        SandboxUsageService.register_allocation(
+            allocation_id=binding.id,
+            tenant_id=binding.tenant_id,
+            app_id=binding.app_id,
+            agent_id=binding.agent_id,
+            binding_id=binding.id,
+            workspace_id=binding.workspace_id,
+            sandbox_id=binding.backend_binding_ref,
         )
 
     @classmethod
@@ -173,6 +196,19 @@ class AgentWorkspaceService:
         workspace = cls.resolve_active_workspace(session=session, scope=scope)
         workspace_id = workspace.id if workspace is not None else str(uuidv7())
         binding_id = str(uuidv7())
+        if dify_config.AGENT_SANDBOX_METERING_ENABLED:
+            from services.agent.runtime_usage_service import SandboxUsageService
+
+            # A separate committed owner snapshot must survive this caller's
+            # transaction rolling back after E2B has created a paid resource.
+            SandboxUsageService.register_allocation(
+                allocation_id=binding_id,
+                tenant_id=scope.tenant_id,
+                app_id=scope.app_id,
+                agent_id=agent_id,
+                binding_id=binding_id,
+                workspace_id=workspace_id,
+            )
         with cls._client() as client:
             allocation = client.create_execution_binding_sync(
                 CreateExecutionBindingRequest(

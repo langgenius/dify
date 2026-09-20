@@ -461,3 +461,56 @@ def test_server_settings_use_generic_outbound_http_args_for_shared_clients() -> 
     assert "outbound_http_max_connections" in model_fields
     assert "outbound_http_max_keepalive_connections" in model_fields
     assert "outbound_http_keepalive_expiry" in model_fields
+
+
+def test_metering_tasks_are_lifespan_owned_and_flush_after_run_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
+    from typing import Any
+
+    from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend
+
+    _patch_app_lifecycle(monkeypatch)
+    order: list[str] = []
+    instances: list[MeteringTask] = []
+
+    class MeteringTask:
+        def __init__(self, **kwargs: Any) -> None:
+            self.kwargs = kwargs
+            self.stopped = False
+            instances.append(self)
+
+        async def run(self) -> None:
+            try:
+                await asyncio.Event().wait()
+            finally:
+                self.stopped = True
+
+        async def flush_on_shutdown(self) -> None:
+            assert FakeRunScheduler.created[-1].shutdown_called
+            order.append("flush")
+
+    monkeypatch.setattr(app_module, "BufferedRuntimeUsageObserver", MeteringTask)
+    monkeypatch.setattr(app_module, "RuntimeUsageDispatcher", MeteringTask)
+    monkeypatch.setattr(app_module, "E2BUsageCollector", MeteringTask)
+    settings = ServerSettings(
+        _env_file=None,
+        sandbox_metering_enabled=True,
+        runtime_backend="e2b",
+        e2b_api_key="provider-key",
+        e2b_project_id="project",
+        inner_api_key="inner-key",
+    )
+    profile = settings.build_runtime_backend_profile()
+    assert profile is not None
+    assert isinstance(profile.execution_bindings, E2BExecutionBindingBackend)
+    monkeypatch.setattr(ServerSettings, "build_runtime_backend_profile", lambda self: profile)
+    with TestClient(create_app(settings)):
+        assert len(instances) == 3
+        assert profile.execution_bindings.usage_observer is instances[0]
+        provider_client = instances[2].kwargs["provider_client"]
+        assert "X-Inner-Api-Key" not in provider_client.headers
+        assert instances[2].kwargs["usage_client"].api_key == "inner-key"
+        assert instances[2].kwargs["api_key"] == "provider-key"
+    assert order == ["flush"]
+    assert all(instance.stopped for instance in instances)
+    assert provider_client.is_closed

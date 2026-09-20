@@ -88,6 +88,12 @@ class ServerSettings(BaseSettings):
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    sandbox_metering_enabled: bool = False
+    e2b_project_id: str = ""
+    sandbox_metering_poll_interval_seconds: float = Field(default=60, gt=0)
+    sandbox_metering_overlap_seconds: int = Field(default=900, ge=1)
+    sandbox_metering_full_scan_interval_seconds: int = Field(default=3600, ge=1)
+    sandbox_metering_max_pages: int = Field(default=1000, ge=1, le=10000)
     openshell_gateway_endpoint: str | None = None
     openshell_workspace: str = "default"
     openshell_bearer_token: str | None = None
@@ -221,6 +227,16 @@ class ServerSettings(BaseSettings):
             raise ValueError(
                 "DIFY_AGENT_SANDBOX_FILES_BASE_URL is required for Agent Stub file transfers and Config downloads."
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_sandbox_metering_requirements(self) -> "ServerSettings":
+        if self.sandbox_metering_enabled:
+            if self.runtime_backend != "e2b":
+                raise ValueError("Sandbox usage metering requires the E2B runtime backend")
+            if not self.e2b_api_key or not self.e2b_project_id.strip() or not self.inner_api_key:
+                raise ValueError("Sandbox usage metering requires E2B key/project and Dify inner API key")
+            self.e2b_project_id = self.e2b_project_id.strip()
         return self
 
     def build_runtime_backend_profile(self) -> RuntimeBackendProfile | None:

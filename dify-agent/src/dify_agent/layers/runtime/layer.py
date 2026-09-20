@@ -48,7 +48,7 @@ class DifyRuntimeLayer(PlainLayer[NoLayerDeps, DifyRuntimeLayerConfig, EmptyRunt
     async def resource_context(self) -> AsyncGenerator[None]:
         if self._lease is not None:
             raise RuntimeError("DifyRuntimeLayer resource_context() is already active")
-        async with open_runtime_lease(self.backend, self.config.backend_binding_ref) as lease:
+        async with open_runtime_lease(self.backend, self.config.backend_binding_ref, purpose="agent_run") as lease:
             self._lease = lease
             try:
                 yield
