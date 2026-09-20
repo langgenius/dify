@@ -11,6 +11,8 @@ import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import ThemeSelector from '@/app/components/base/theme-selector'
 import { loadI18nResource } from '@/i18n-config/load-resource'
 import { getInitOptions } from '@/i18n-config/settings'
+import Link from '@/next/link'
+import { usePathname, useSearchParams } from '@/next/navigation'
 import { basePath } from '@/utils/var'
 import { getBrowserLocale } from './locale'
 import LocaleMenu from './locale-menu'
@@ -23,7 +25,11 @@ type AppNotAccessibleProps = {
 }
 
 function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
-  const { t, i18n } = useTranslation('share')
+  const { t, i18n } = useTranslation(['share', 'login'])
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const query = searchParams.toString()
+  const returnTo = `${pathname}${query ? `?${query}` : ''}`
   const [copyrightYear] = useState(() => new Date().getFullYear())
   const title = t(($) => $['appNotAccessible.documentTitle'])
   const ip = getClientIp({ client_ip: clientIp })
@@ -49,7 +55,7 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
       <div className="flex min-h-full min-w-0 flex-col rounded-lg border border-effects-highlight bg-background-default-subtle">
         <header className="flex shrink-0 items-center justify-between gap-2 pt-4 pr-3 pb-3 pl-6">
           <DifyLogo alt="Dify" size="large" className="w-15.75 shrink-0" />
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1">
             <LocaleMenu
               locale={i18n.language as Locale}
               onChange={(value) => {
@@ -57,6 +63,28 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
               }}
             />
             <ThemeSelector />
+            <span aria-hidden className="h-3.5 w-px shrink-0 bg-divider-regular" />
+            <Link
+              href={{ pathname: '/signin', query: { redirect_url: returnTo } }}
+              prefetch={false}
+              className="inline-flex shrink-0 items-center rounded-full p-0.5 text-components-button-secondary-text hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            >
+              <span
+                aria-hidden
+                className="relative size-6 shrink-0 overflow-hidden rounded-full border-[0.5px] border-divider-regular bg-util-colors-gray-gray-300"
+              >
+                <img
+                  src={`${basePath}/illustrations/sign-in-avatar-person.svg`}
+                  width={18}
+                  height={29.1429}
+                  alt=""
+                  className="absolute top-[21.43%] left-[12.5%] w-3/4 max-w-none"
+                />
+              </span>
+              <span className="px-2 system-sm-medium whitespace-nowrap">
+                {t(($) => $.signBtn, { ns: 'login' })}
+              </span>
+            </Link>
           </div>
         </header>
         <Content className="flex flex-1 items-center justify-center px-6 pt-12 pb-12 md:pb-30">
@@ -108,7 +136,7 @@ export default function AppNotAccessible(props: AppNotAccessibleProps) {
     void instance.use(resourcesToBackend(loadI18nResource)).init({
       ...getInitOptions(),
       lng: getBrowserLocale(typeof navigator === 'undefined' ? [] : navigator.languages),
-      ns: ['share', 'common'],
+      ns: ['share', 'common', 'login'],
       defaultNS: 'share',
     })
     return instance

@@ -33,7 +33,8 @@ export default function LocaleMenu({
         }
       >
         <span aria-hidden className="i-ri-global-line size-4 shrink-0" />
-        <span>{selectedLanguageName}</span>
+        {/* oxlint-disable-next-line dify/require-title-for-truncated-text -- The language menu exposes the full selected label through pointer, keyboard, and touch. */}
+        <span className="truncate">{selectedLanguageName}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" className="max-h-80 w-60 overflow-y-auto">

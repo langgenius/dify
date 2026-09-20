@@ -5,7 +5,10 @@ import AppNotAccessible from './page'
 const meta = {
   title: 'App/App Not Accessible',
   component: AppNotAccessible,
-  parameters: { layout: 'fullscreen' },
+  parameters: {
+    layout: 'fullscreen',
+    nextjs: { appDirectory: true, navigation: { pathname: '/chat/app' } },
+  },
   decorators: [
     (Story) => (
       <ThemeProvider attribute="data-theme" defaultTheme="light">
