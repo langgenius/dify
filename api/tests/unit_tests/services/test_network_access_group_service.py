@@ -669,6 +669,43 @@ def test_current_ip_check_authorizes_and_loads_tenant_policy_before_reading_ip()
     assert result == {"client_ip": "2001:db8::42", "allowed": True, "policy_version": 7}
 
 
+@pytest.mark.parametrize("role", ["owner", "admin", "editor"])
+@pytest.mark.parametrize("paid", [True, False], ids=["paid", "lapsed-or-free"])
+def test_current_ip_read_needs_no_policy_and_preserves_read_admission(role: str, paid: bool) -> None:
+    harness = _harness(role=role, paid=paid)
+    order: list[str] = []
+    harness.memberships.get_role_for_account.side_effect = lambda **_kwargs: order.append("role") or role
+
+    result = harness.service.get_current_ip(
+        _context(),
+        client_ip_supplier=lambda: order.append("ip") or "2001:db8::42",
+    )
+
+    assert result == {"client_ip": "2001:db8::42"}
+    assert order == ["role", "ip"]
+    harness.memberships.get_role_for_account.assert_called_once_with(
+        workspace_id=WORKSPACE_ID,
+        account_id=ACCOUNT_ID,
+    )
+    assert harness.control_plane.method_calls == []
+    assert harness.apps.method_calls == []
+    harness.entitlement.is_paid_plan.assert_not_called()
+
+
+@pytest.mark.parametrize("role", ["normal", "dataset_operator", "unknown", None])
+def test_current_ip_read_rejects_disallowed_persisted_roles_before_reading_ip(role: str | None) -> None:
+    harness = _harness(role=role)
+    supplier = MagicMock(return_value="203.0.113.7")
+
+    with pytest.raises(NetworkAccessGroupAccessDeniedError):
+        harness.service.get_current_ip(_context(), client_ip_supplier=supplier)
+
+    supplier.assert_not_called()
+    assert harness.control_plane.method_calls == []
+    assert harness.apps.method_calls == []
+    harness.entitlement.is_paid_plan.assert_not_called()
+
+
 def test_current_ip_check_rejects_role_before_policy_or_ip_lookup() -> None:
     harness = _harness(role="normal")
     supplier = MagicMock(return_value="203.0.113.7")

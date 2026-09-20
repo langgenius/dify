@@ -264,6 +264,13 @@ export const zNetworkAccessGroupCreatePayload = z.object({
 })
 
 /**
+ * NetworkAccessGroupCurrentIPResponse
+ */
+export const zNetworkAccessGroupCurrentIpResponse = z.object({
+  client_ip: z.string(),
+})
+
+/**
  * NetworkAccessGroupDeleteResponse
  */
 export const zNetworkAccessGroupDeleteResponse = z.object({
@@ -4669,6 +4676,12 @@ export const zPostWorkspacesCurrentNetworkAccessGroupsBody = zNetworkAccessGroup
  * Workspace network access group created successfully
  */
 export const zPostWorkspacesCurrentNetworkAccessGroupsResponse = zNetworkAccessGroupMutationResponse
+
+/**
+ * Trusted current client IP retrieved without requiring an existing network access group
+ */
+export const zGetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponse =
+  zNetworkAccessGroupCurrentIpResponse
 
 export const zDeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdPath = z.object({
   group_id: z.uuid(),
