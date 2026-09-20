@@ -21,7 +21,7 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { PolicyReferencedApps } from './referenced-apps'
@@ -60,7 +60,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
           })
 
   const handleDelete = () => {
-    if (!canMutate) return
+    if (!canMutate || deleteGroup.isPending) return
 
     deleteGroup.mutate(
       {
@@ -141,31 +141,63 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
           </DropdownMenu>
         )}
       </div>
-      <AlertDialog open={confirmDelete && canMutate} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent backdropProps={{ forceRender: true }} className="w-100">
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
-              {t(($) => $['settings.ipPolicyDeleteConfirm'], { ns: 'common', name: group.name })}
+      <AlertDialog
+        open={confirmDelete && canMutate}
+        onOpenChange={(open) => {
+          if (!deleteGroup.isPending) setConfirmDelete(open)
+        }}
+      >
+        <AlertDialogContent
+          backdropProps={{ forceRender: true }}
+          className="flex w-120 flex-col gap-6 p-6 shadow-xl"
+        >
+          <div className="flex items-start gap-4">
+            <AlertDialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+              {t(($) => $['settings.ipPolicyDeleteConfirm'], { ns: 'common' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-sm-regular text-text-secondary">
-              {isBound
-                ? t(($) => $['settings.ipPolicyDeleteBoundDescription'], {
-                    ns: 'common',
-                    name: group.name,
-                    count: group.used_by_count,
-                  })
-                : t(($) => $['settings.ipPolicyDeleteDescription'], { ns: 'common' })}
+            <IconButton
+              size="lg"
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              disabled={deleteGroup.isPending}
+              onClick={() => setConfirmDelete(false)}
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          </div>
+          <div className="flex flex-col gap-4">
+            <AlertDialogDescription className="text-sm leading-5.5 wrap-anywhere text-text-tertiary">
+              <Trans
+                ns="common"
+                i18nKey={
+                  isBound
+                    ? ($) => $['settings.ipPolicyDeleteBoundDescription']
+                    : ($) => $['settings.ipPolicyDeleteDescription']
+                }
+                values={{ name: group.name }}
+                components={{ policyName: <strong className="font-semibold" /> }}
+              />
             </AlertDialogDescription>
             {isBound && (
-              <PolicyReferencedApps apps={group.apps} usedByCount={group.used_by_count} />
+              <div className="flex flex-col gap-3">
+                <p className="system-sm-medium text-text-secondary">
+                  {t(($) => $['settings.ipPolicyUsedBy'], {
+                    ns: 'common',
+                    count: group.used_by_count,
+                  })}
+                </p>
+                {group.apps.length > 0 && (
+                  <PolicyReferencedApps apps={group.apps} usedByCount={group.used_by_count} />
+                )}
+              </div>
             )}
           </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton variant="secondary">
+          <AlertDialogActions className="p-0 pt-2">
+            <AlertDialogCancelButton variant="secondary" disabled={deleteGroup.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              disabled={!canMutate || deleteGroup.isPending}
+              disabled={!canMutate}
+              loading={deleteGroup.isPending}
               onClick={handleDelete}
             >
               {t(($) => $['operation.delete'], { ns: 'common' })}

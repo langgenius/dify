@@ -30,12 +30,12 @@ export function PolicyReferencedApps({ apps, usedByCount }: PolicyReferencedApps
   return (
     <ul className="flex flex-wrap content-start items-start gap-2">
       {apps.map((app) => (
-        <li key={app.id}>
+        <li key={app.id} className="max-w-full min-w-0">
           <a
             href={`/app/${app.id}/overview`}
             target="_blank"
             rel="noreferrer"
-            className="flex min-h-7 items-center gap-1.5 rounded-md border border-components-panel-border-subtle bg-background-default py-1 pr-1.5 pl-1 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex min-h-7 max-w-full items-center gap-1.5 rounded-md border border-components-panel-border-subtle bg-background-default py-1 pr-1.5 pl-1 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             <AppIcon
               size="xs"
@@ -43,9 +43,11 @@ export function PolicyReferencedApps({ apps, usedByCount }: PolicyReferencedApps
               iconType={toAppIconType(app.icon_type)}
               icon={app.icon ?? undefined}
               background={app.icon_background}
-              className="size-5 rounded-sm"
+              className="size-5 shrink-0 rounded-sm"
             />
-            <span className="system-sm-medium whitespace-nowrap text-text-primary">{app.name}</span>
+            <span className="min-w-0 system-sm-medium wrap-anywhere text-text-primary">
+              {app.name}
+            </span>
             <span
               aria-hidden
               className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary"
