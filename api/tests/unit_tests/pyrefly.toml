@@ -8,6 +8,22 @@ min-severity = "warn"
 
 # Existing strict-mode debt. Remove a file when bringing it under strict checking.
 project-excludes = [
+  # Follow the existing strict-mode debt when test groups move to separate files.
+  "commands/_swagger_spec_helpers.py",
+  "commands/test_generate_swagger_specs_console.py",
+  "commands/test_generate_swagger_specs_payloads.py",
+  "commands/test_generate_swagger_specs_runtime.py",
+  "commands/test_generate_swagger_specs_schemas.py",
+  "commands/test_generate_swagger_specs_service.py",
+  "libs/broadcast_channel/redis/test_redis_sharded_subscription.py",
+  "libs/broadcast_channel/redis/test_redis_subscription.py",
+  "libs/broadcast_channel/redis/test_redis_subscription_common.py",
+  "models/test_end_user_constructors.py",
+  "models/test_end_user_service_types.py",
+  "services/_external_dataset_helpers.py",
+  "services/test_external_dataset_endpoints.py",
+  "services/test_external_dataset_retrieval.py",
+
   "clients/agent_backend/test_cleanup_composition_compositor_integration.py",
   "clients/agent_backend/test_client.py",
   "clients/agent_backend/test_event_adapter.py",
