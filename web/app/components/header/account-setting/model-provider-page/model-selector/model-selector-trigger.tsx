@@ -1,5 +1,6 @@
 import type { ModelSelectorModel, ModelSelectorProvider, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
@@ -18,6 +19,8 @@ type ModelSelectorTriggerProps = {
   currentProvider?: ModelSelectorProvider
   currentModel?: ModelSelectorModel
   defaultModel?: ModelSelectorValue
+  onClear?: () => void
+  clearLabel?: string
   disabled?: boolean
   loading?: boolean
   size?: 'small' | 'medium'
@@ -33,6 +36,8 @@ function ModelSelectorTrigger({
   currentProvider,
   currentModel,
   defaultModel,
+  onClear,
+  clearLabel,
   disabled,
   loading = false,
   size = 'medium',
@@ -45,6 +50,7 @@ function ModelSelectorTrigger({
 }: ModelSelectorTriggerProps) {
   const { t } = useTranslation()
 
+  const showClear = !!defaultModel && !!onClear
   const isSelected = !!currentProvider && !!currentModel
   const isDeprecated = !isSelected && !!defaultModel
   const isEmpty = !isSelected && !defaultModel
@@ -94,7 +100,7 @@ function ModelSelectorTrigger({
         ? tooltipLabel
         : undefined
 
-  return (
+  const trigger = (
     <Tooltip>
       <TooltipTrigger
         disabled={!triggerTooltipLabel || isDisabled}
@@ -126,7 +132,13 @@ function ModelSelectorTrigger({
               />
             }
           >
-            <span className="flex min-w-0 grow items-center gap-0.5">
+            <span
+              className={cn(
+                'flex min-w-0 grow items-center gap-0.5',
+                showClear &&
+                  'group-focus-within/model-selector-clearable:mr-6 group-hover/model-selector-clearable:mr-6',
+              )}
+            >
               {isEmpty ? (
                 <span
                   className={cn(
@@ -190,6 +202,7 @@ function ModelSelectorTrigger({
                     <span
                       className={cn(
                         'flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning px-1.25 py-0.5',
+                        'group-focus-within/model-selector-clearable:hidden group-focus-within/model-selector-trigger:hidden group-hover/model-selector-clearable:hidden group-hover/model-selector-trigger:hidden',
                         isCreditsExhausted && 'min-w-5 justify-center bg-components-badge-bg-dimm',
                       )}
                     >
@@ -201,7 +214,7 @@ function ModelSelectorTrigger({
                   )}
 
                 {isDeprecated && !isStatusUnavailable && showDeprecatedWarnIcon && (
-                  <span className="flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning bg-components-badge-bg-dimm px-1.25 py-0.5">
+                  <span className="flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning bg-components-badge-bg-dimm px-1.25 py-0.5 group-focus-within/model-selector-clearable:hidden group-focus-within/model-selector-trigger:hidden group-hover/model-selector-clearable:hidden group-hover/model-selector-trigger:hidden">
                     <span aria-hidden className="i-ri-alert-fill size-3 text-text-warning" />
                     <span className="system-xs-medium whitespace-nowrap text-text-warning">
                       {statusLabel}
@@ -210,7 +223,7 @@ function ModelSelectorTrigger({
                 )}
               </span>
             </span>
-            {!isDisabled && shape !== 'split' && (isActive || isEmpty) && (
+            {!isDisabled && shape !== 'split' && (
               <span
                 aria-hidden="true"
                 className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary transition-colors group-hover/model-selector-trigger:text-text-secondary group-data-popup-open/model-selector-trigger:text-text-secondary"
@@ -223,6 +236,32 @@ function ModelSelectorTrigger({
         <TooltipContent placement="top">{triggerTooltipLabel}</TooltipContent>
       )}
     </Tooltip>
+  )
+
+  if (!showClear) return trigger
+
+  return (
+    <div
+      className={cn(
+        'group/model-selector-clearable relative min-w-0',
+        shape === 'split' ? 'flex-1' : 'w-full',
+      )}
+    >
+      {trigger}
+      <IconButton
+        aria-label={clearLabel ?? t(($) => $['operation.reset'], { ns: 'common' })}
+        size="sm"
+        disabled={isDisabled}
+        onClick={onClear}
+        className={cn(
+          'pointer-events-none absolute top-1/2 -translate-y-1/2 opacity-0 group-focus-within/model-selector-clearable:pointer-events-auto group-focus-within/model-selector-clearable:opacity-100 group-hover/model-selector-clearable:pointer-events-auto group-hover/model-selector-clearable:opacity-100',
+          'text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset',
+          shape === 'split' ? 'right-1' : size === 'small' ? 'right-4.5' : 'right-5',
+        )}
+      >
+        <span aria-hidden="true" className="i-ri-close-circle-fill size-4" />
+      </IconButton>
+    </div>
   )
 }
 
