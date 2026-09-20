@@ -658,8 +658,8 @@ def test_agent_text_to_speech_denies_access_before_resolving_app(app: Flask, unb
 def test_agent_tts_preserves_missing_agent_error(app: Flask, unbound_session: Session, voices: bool) -> None:
     agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
     api = AgentTextToSpeechVoicesApi() if voices else AgentChatMessageTextApi()
-    handler = unwrap(api.get if voices else api.post)
-    args = {
+    handler = unwrap(api.get if isinstance(api, AgentTextToSpeechVoicesApi) else api.post)
+    args: dict[str, object] = {
         "session": unbound_session,
         "current_tenant_id": "tenant-1",
         "current_user": _account(),

@@ -210,7 +210,9 @@ def test_agent_tts_routes_document_voice_queries_and_binary_audio():
     assert "requestBody" not in voices
 
     preview = payload["paths"]["/agent/{agent_id}/text-to-audio"]["post"]
-    assert "text" in _json_body_schema(payload, preview)["required"]
+    required_fields = _json_body_schema(payload, preview)["required"]
+    assert isinstance(required_fields, list)
+    assert "text" in required_fields
     assert _response_content_types(preview) == set(SUPPORTED_TTS_AUDIO_MIME_TYPES)
     for media in preview["responses"]["200"]["content"].values():
         assert media["schema"] == {"type": "string", "format": "binary"}
