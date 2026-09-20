@@ -49,6 +49,7 @@ from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
+from libs.emoji_normalization import ensure_model_emoji_icon_normalized
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
@@ -375,6 +376,10 @@ class AppDetailSiteResponse(ResponseModel):
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
 
+    @model_validator(mode="after")
+    def _normalize_persisted_emoji_icon(self) -> Self:
+        return ensure_model_emoji_icon_normalized(self)
+
 
 class DeletedTool(ResponseModel):
     type: str
@@ -436,6 +441,10 @@ class AppPartial(AppResponseModel):
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
 
+    @model_validator(mode="after")
+    def _normalize_persisted_emoji_icon(self) -> Self:
+        return ensure_model_emoji_icon_normalized(self)
+
 
 class RecentAppResponse(ResponseModel):
     id: str
@@ -458,6 +467,10 @@ class RecentAppResponse(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int) -> int:
         return to_timestamp(value)
+
+    @model_validator(mode="after")
+    def _normalize_persisted_emoji_icon(self) -> Self:
+        return ensure_model_emoji_icon_normalized(self)
 
 
 class RecentAppListResponse(ResponseModel):
@@ -494,6 +507,10 @@ class AppDetail(AppResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+    @model_validator(mode="after")
+    def _normalize_persisted_emoji_icon(self) -> Self:
+        return ensure_model_emoji_icon_normalized(self)
 
 
 class AppDetailWithSite(AppDetail):

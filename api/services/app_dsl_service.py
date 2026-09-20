@@ -43,6 +43,7 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
+from libs.emoji_normalization import normalize_icon_for_storage
 from models import Account, App, AppMode
 from models.agent import AgentScope
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
@@ -575,6 +576,7 @@ class AppDslService:
         else:
             resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
+        icon = normalize_icon_for_storage(resolved_icon_type, icon) or icon
         if not is_valid_image_icon(
             session=self._session,
             tenant_id=target_tenant_id,

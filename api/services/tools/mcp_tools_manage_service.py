@@ -501,6 +501,9 @@ class MCPToolManageService:
     def _prepare_icon(self, icon: str, icon_type: str, icon_background: str) -> str:
         """Prepare icon data for storage."""
         if icon_type == "emoji":
+            from libs.emoji_normalization import normalize_icon_for_storage
+
+            icon = normalize_icon_for_storage(icon_type, icon) or icon
             return json.dumps({"content": icon, "background": icon_background})
         return icon
 
