@@ -2,15 +2,23 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
+import enLogin from '@/i18n/en-US/login.json'
 import enShare from '@/i18n/en-US/share.json'
+import jaLogin from '@/i18n/ja-JP/login.json'
 import jaShare from '@/i18n/ja-JP/share.json'
+import zhLogin from '@/i18n/zh-Hans/login.json'
 import zhShare from '@/i18n/zh-Hans/share.json'
 import { getBrowserLocale } from '../locale'
 import AppNotAccessible from '../page'
 
 vi.unmock('react-i18next')
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => window.location.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}))
 
 beforeEach(() => {
+  window.history.replaceState({}, '', '/chat/app')
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US'])
   document.title = 'Previous title'
   document.cookie = 'locale=zh-Hans'
@@ -18,10 +26,10 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 it.each([
-  ['en-GB', enShare],
-  ['zh-CN', zhShare],
-  ['ja', jaShare],
-])('uses browser language %s for exact page and document copy', async (language, copy) => {
+  ['en-GB', enShare, enLogin],
+  ['zh-CN', zhShare, zhLogin],
+  ['ja', jaShare, jaLogin],
+])('uses browser language %s for exact page and document copy', async (language, copy, login) => {
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue([language])
   const parent = createInstance()
   await parent.init({ lng: 'zh-Hans' })
@@ -34,6 +42,10 @@ it.each([
     await screen.findByRole('heading', { name: copy['appNotAccessible.title'] }),
   ).toBeInTheDocument()
   expect(screen.getByText(copy['appNotAccessible.description'])).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: login.signBtn })).toHaveAttribute(
+    'href',
+    '/signin?redirect_url=%2Fchat%2Fapp',
+  )
   expect(screen.getByText('2001:db8::12', { selector: 'code' }).closest('p')?.textContent).toBe(
     copy['appNotAccessible.ipAddress'].replace('<ip>{{ip}}</ip>', '2001:db8::12'),
   )
@@ -47,7 +59,7 @@ it.each([undefined, '', 'unknown', '203.0.113.1, 192.0.2.1', '999.1.1.1'])(
     render(<AppNotAccessible clientIp={clientIp} />)
     await screen.findByRole('heading', { name: enShare['appNotAccessible.title'] })
     expect(screen.queryByText(/Your IP address/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /sign in|retry/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument()
   },
 )
 
@@ -61,9 +73,26 @@ it('changes only the error-page language, retaining the IP and restoring the tit
   ).toBeInTheDocument()
   await waitFor(() => expect(document.title).toBe(jaShare['appNotAccessible.documentTitle']))
   expect(screen.getByText('203.0.113.8', { selector: 'code' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: jaLogin.signBtn })).toHaveAttribute(
+    'href',
+    '/signin?redirect_url=%2Fchat%2Fapp',
+  )
   expect(document.cookie).toContain('locale=zh-Hans')
   unmount()
   expect(document.title).toBe('Previous title')
+})
+
+it.each([
+  '/environment/workflow/app?conversation=123&name=%E6%B5%8B%E8%AF%95',
+  '/agents/app/access',
+  '/form/test-token',
+])('keeps the current access address %s as the sign-in return target', async (path) => {
+  window.history.replaceState({}, '', path)
+  render(<AppNotAccessible />)
+  const link = await screen.findByRole('link', { name: enLogin.signBtn })
+  const destination = new URL(link.getAttribute('href')!, window.location.origin)
+  expect(destination.pathname).toBe('/signin')
+  expect(destination.searchParams.get('redirect_url')).toBe(path)
 })
 
 it.each([

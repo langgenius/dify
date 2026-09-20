@@ -19,9 +19,10 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { PolicyReferencedApps } from './referenced-apps'
@@ -29,7 +30,7 @@ import { PolicyReferencedApps } from './referenced-apps'
 export const policyRowClassName = 'flex items-center pl-3 pr-1'
 export const policyNameColClassName = 'min-w-0 flex-1 truncate'
 export const policyIpEntriesColClassName = 'w-30 shrink-0'
-export const policyEnforcingColClassName = 'w-32 shrink-0'
+export const policyUsedByColClassName = 'w-32 shrink-0'
 export const policyUpdatedColClassName = 'w-52 shrink-0'
 export const policyActionsColClassName = 'flex w-8 shrink-0 items-center justify-center'
 
@@ -49,7 +50,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
     consoleQuery.workspaces.current.networkAccessGroups.byGroupId.delete.mutationOptions(),
   )
   const isBound = group.used_by_count > 0
-  const enforcingLabel =
+  const usedByLabel =
     group.used_by_count <= 0
       ? t(($) => $['settings.ipPolicyEnforcingNone'], { ns: 'common' })
       : group.used_by_count === 1
@@ -77,42 +78,51 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
 
   return (
     <div className={`${policyRowClassName} border-b border-divider-subtle py-3`}>
-      <div className={policyNameColClassName}>
-        <Button
-          variant="ghost"
-          size="small"
-          className="h-auto max-w-full justify-start p-0 text-text-secondary"
-          onClick={() => onView(group)}
-        >
-          <span className="truncate">{group.name}</span>
-        </Button>
-      </div>
-      <p className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}>
-        {group.allowed_cidrs.length}
-      </p>
-      <p className={`${policyEnforcingColClassName} system-sm-regular text-text-tertiary`}>
-        {enforcingLabel}
-      </p>
-      <p className={`${policyUpdatedColClassName} system-sm-regular text-text-tertiary`}>
-        {formatTimeFromNow(Date.parse(group.updated_at))}
-      </p>
+      <Button
+        variant="ghost"
+        aria-label={group.name}
+        className="h-auto min-w-0 flex-1 justify-start gap-0 rounded-none p-0 text-left"
+        onClick={() => onView(group)}
+      >
+        <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
+          {group.name}
+        </span>
+        <span className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}>
+          {group.allowed_cidrs.length}
+        </span>
+        <span className={`${policyUsedByColClassName} system-sm-regular text-text-tertiary`}>
+          {usedByLabel}
+        </span>
+        <span className={`${policyUpdatedColClassName} system-sm-regular text-text-tertiary`}>
+          {formatTimeFromNow(Date.parse(group.updated_at))}
+        </span>
+      </Button>
       <div className={policyActionsColClassName}>
         {canMutate && (
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-            <DropdownMenuTrigger
-              render={
-                <IconButton
-                  size="md"
-                  aria-label={t(($) => $['operation.moreActionsFor'], {
-                    ns: 'common',
-                    name: group.name,
-                  })}
-                  className="data-popup-open:bg-state-base-hover"
-                >
-                  <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-                </IconButton>
-              }
-            />
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <DropdownMenuTrigger
+                    render={
+                      <IconButton
+                        size="md"
+                        aria-label={t(($) => $['operation.moreActionsFor'], {
+                          ns: 'common',
+                          name: group.name,
+                        })}
+                        className="data-popup-open:bg-state-base-hover"
+                      >
+                        <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+                      </IconButton>
+                    }
+                  />
+                }
+              />
+              <TooltipContent>
+                {t(($) => $['settings.ipPolicyMore'], { ns: 'common' })}
+              </TooltipContent>
+            </Tooltip>
             <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-35">
               <DropdownMenuItem
                 disabled={!canMutate}
@@ -152,8 +162,8 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
           className="flex w-120 flex-col gap-6 p-6 shadow-xl"
         >
           <div className="flex items-start gap-4">
-            <AlertDialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-              {t(($) => $['settings.ipPolicyDeleteConfirm'], { ns: 'common' })}
+            <AlertDialogTitle className="min-w-0 flex-1 title-2xl-semi-bold wrap-anywhere text-text-primary">
+              {t(($) => $['settings.ipPolicyDeleteConfirm'], { ns: 'common', name: group.name })}
             </AlertDialogTitle>
             <IconButton
               size="lg"
@@ -166,16 +176,9 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
           </div>
           <div className="flex flex-col gap-4">
             <AlertDialogDescription className="text-sm leading-5.5 wrap-anywhere text-text-tertiary">
-              <Trans
-                ns="common"
-                i18nKey={
-                  isBound
-                    ? ($) => $['settings.ipPolicyDeleteBoundDescription']
-                    : ($) => $['settings.ipPolicyDeleteDescription']
-                }
-                values={{ name: group.name }}
-                components={{ policyName: <strong className="font-semibold" /> }}
-              />
+              {isBound
+                ? t(($) => $['settings.ipPolicyDeleteBoundDescription'], { ns: 'common' })
+                : t(($) => $['settings.ipPolicyDeleteDescription'], { ns: 'common' })}
             </AlertDialogDescription>
             {isBound && (
               <div className="flex flex-col gap-3">

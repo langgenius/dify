@@ -4,12 +4,21 @@ import type { ComponentProps } from 'react'
 import type { AccessControlAssignment } from './chip-status'
 import type { AccessControlDraft } from './draft'
 import type AppIcon from '@/app/components/base/app-icon'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   pricingQueryParamName,
@@ -48,6 +57,7 @@ type AccessControlEntryProps = {
   appId: string
   appIcon: AccessControlAppIcon
   canEditBinding: boolean
+  isPublished: boolean
 }
 
 type GtagHandler = (command: 'event', action: 'click_upgrade_btn', payload: { loc: string }) => void
@@ -56,7 +66,12 @@ export function AccessControlEntry(props: AccessControlEntryProps) {
   return <AccessControlSession key={`${props.appId}:${props.canEditBinding}`} {...props} />
 }
 
-function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlEntryProps) {
+function AccessControlSession({
+  appId,
+  appIcon,
+  canEditBinding,
+  isPublished,
+}: AccessControlEntryProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const canRead = useAtomValue(canReadNetworkAccessAtom)
@@ -92,6 +107,32 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
   const [showBack, setShowBack] = useState(false)
   const [draft, setDraft] = useState<AccessControlDraft | null>(null)
   const [createPolicyOpen, setCreatePolicyOpen] = useState(false)
+  const [policySelectOpen, setPolicySelectOpen] = useState(false)
+  const [confirmation, setConfirmation] = useState<{
+    draft: AccessControlDraft
+    clientIp: string
+    policyVersion: number
+    changed: boolean
+  } | null>(null)
+  const saveAttemptRef = useRef(0)
+  const selectedPolicyId = draft ? draft.selectedPolicyId : bindingQuery.data?.binding?.group_id
+  const checkCurrentIp =
+    consoleQuery.workspaces.current.networkAccessGroups.byGroupId.checkCurrentIp.get
+  const ipCheck = useQuery(
+    checkCurrentIp.queryOptions({
+      input: selectedPolicyId ? { params: { group_id: selectedPolicyId } } : skipToken,
+      enabled:
+        canFetchNetworkAccess &&
+        canEditBinding &&
+        bindingQuery.data?.entitled === true &&
+        open &&
+        view === 'config',
+      context: { silent: true },
+      staleTime: 0,
+      retry: false,
+    }),
+  )
+  const saveCheck = useMutation(checkCurrentIp.mutationOptions({ context: { silent: true } }))
 
   const bindingErrorStatus = getNetworkAccessErrorStatus(bindingQuery.error)
   const hideForUnsupportedApp =
@@ -129,10 +170,6 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
       }
     : null
   const dirty = !isAccessControlDraftEqual(resolvedDraft, baseline, availableAccessPoints)
-  const persistableAccessPoints = accessPointsFromScopes(
-    resolvedDraft.scopes,
-    availableAccessPoints,
-  )
   const canSave = canSaveAccessControl({
     draft: resolvedDraft,
     baseline,
@@ -154,14 +191,12 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
         : chip.kind === 'on'
           ? t(($) => $['studio.accessControl.tooltipOn'], {
               ns: 'deployments',
-              name: chip.policyName ?? '',
             })
           : chip.kind === 'partial'
             ? t(($) => $['studio.accessControl.tooltipPartial'], {
                 ns: 'deployments',
-                name: chip.policyName ?? '',
                 n: chip.coveredCount,
-                m: chip.inServiceCount,
+                total: chip.inServiceCount,
               })
             : t(($) => $['studio.accessControl.tooltipOff'], { ns: 'deployments' })
 
@@ -172,6 +207,10 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
   }
 
   const discardDraft = () => {
+    saveAttemptRef.current += 1
+    saveCheck.reset()
+    setConfirmation(null)
+    setPolicySelectOpen(false)
     setDraft(null)
     setShowBack(false)
   }
@@ -219,7 +258,7 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
     },
     onSuccess?: () => void,
   ) => {
-    if (!canMutate) return
+    if (!canMutate || updateBinding.isPending) return
 
     updateBinding.mutate(
       {
@@ -232,7 +271,15 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
         },
       },
       {
-        onSuccess,
+        onSuccess: (data) => {
+          queryClient.setQueryData(
+            consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
+              input: { params: { app_id: appId } },
+            }),
+            (current) => (current ? { ...current, ...data } : current),
+          )
+          onSuccess?.()
+        },
         onError: (error) => {
           if (getNetworkAccessErrorStatus(error) !== 409) return
           void queryClient.invalidateQueries({
@@ -248,25 +295,72 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
     )
   }
 
-  const handleSave = () => {
-    if (!canMutate || !canSave || !resolvedDraft.selectedPolicyId) return
-
+  const saveDraft = (nextDraft: AccessControlDraft) => {
     persistBinding(
       {
-        enabled: resolvedDraft.enabled,
-        groupId: resolvedDraft.selectedPolicyId,
-        accessPoints: persistableAccessPoints,
+        enabled: nextDraft.enabled,
+        groupId: nextDraft.selectedPolicyId,
+        accessPoints: accessPointsFromScopes(nextDraft.scopes, availableAccessPoints),
       },
       () => {
         discardDraft()
         setView('status')
+        setOpen(true)
+      },
+    )
+  }
+
+  const handleSave = (acceptedVersion?: number) => {
+    const nextDraft = confirmation?.draft ?? resolvedDraft
+    if (
+      !canMutate ||
+      !canSave ||
+      !nextDraft.selectedPolicyId ||
+      saveCheck.isPending ||
+      updateBinding.isPending
+    )
+      return
+    if (!nextDraft.enabled) {
+      saveDraft(nextDraft)
+      return
+    }
+    const groupId = nextDraft.selectedPolicyId
+    const attempt = ++saveAttemptRef.current
+    saveCheck.mutate(
+      { params: { group_id: groupId } },
+      {
+        onSuccess: (check) => {
+          if (saveAttemptRef.current !== attempt) return
+          queryClient.setQueryData(
+            checkCurrentIp.queryKey({ input: { params: { group_id: groupId } } }),
+            check,
+          )
+          if (isPublished && !check.allowed && acceptedVersion !== check.policy_version) {
+            setConfirmation({
+              draft: nextDraft,
+              clientIp: check.client_ip,
+              policyVersion: check.policy_version,
+              changed: acceptedVersion !== undefined,
+            })
+            setOpen(false)
+            return
+          }
+          setConfirmation(null)
+          saveDraft(nextDraft)
+        },
       },
     )
   }
 
   const handleEnabledChange = (enabled: boolean) => {
-    if (!canMutate) return
-    setDraft({ ...resolvedDraft, enabled })
+    if (!canMutate || updateBinding.isPending || !binding?.group_id) return
+    persistBinding(
+      { enabled, groupId: binding.group_id, accessPoints: binding.access_points },
+      () => {
+        discardDraft()
+        setView('status')
+      },
+    )
   }
 
   return (
@@ -277,6 +371,8 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
           onOpenChange={(nextOpen) => {
             setOpen(nextOpen)
             if (!nextOpen) {
+              saveAttemptRef.current += 1
+              saveCheck.reset()
               if (!dirty) discardDraft()
               return
             }
@@ -323,12 +419,8 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
                 policies={policies}
                 enabled={resolvedDraft.enabled}
                 updating={updateBinding.isPending}
-                dirty={dirty}
-                canSave={canSave}
                 readOnly={!canMutate}
                 onEnabledChange={handleEnabledChange}
-                onCancel={handleCancel}
-                onSave={handleSave}
                 onEdit={() => {
                   if (!canMutate) return
                   setDraft(resolvedDraft)
@@ -343,18 +435,36 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
                 availableAccessPoints={availableAccessPoints}
                 policies={policies}
                 readOnly={!canMutate}
+                ipCheck={ipCheck.isSuccess && !ipCheck.isFetching ? ipCheck.data : undefined}
+                ipCheckStatus={
+                  saveCheck.isPending || ipCheck.isFetching
+                    ? 'loading'
+                    : saveCheck.isError || ipCheck.isError
+                      ? 'error'
+                      : undefined
+                }
+                onRetryIpCheck={() => {
+                  saveCheck.reset()
+                  void ipCheck.refetch()
+                }}
+                policySelectOpen={policySelectOpen}
+                onPolicySelectOpenChange={setPolicySelectOpen}
                 canManagePolicies={canManagePolicies}
                 baseline={baseline}
                 showBack={showBack}
-                saving={updateBinding.isPending}
+                saving={updateBinding.isPending || saveCheck.isPending}
                 onBack={handleBack}
                 onCancel={handleCancel}
                 onCreatePolicy={handleCreatePolicy}
                 onManagePolicies={handleManagePolicies}
                 onDraftChange={(nextDraft) => {
-                  if (canMutate) setDraft(nextDraft)
+                  if (canMutate) {
+                    saveAttemptRef.current += 1
+                    saveCheck.reset()
+                    setDraft(nextDraft)
+                  }
                 }}
-                onSave={handleSave}
+                onSave={() => handleSave()}
               />
             )}
           </PopoverContent>
@@ -390,12 +500,9 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
                       }
                     },
                   )
-                  setDraft({
-                    ...resolvedDraft,
-                    selectedPolicyId: data.group.id,
-                  })
                   setCreatePolicyOpen(false)
                   setView('config')
+                  setPolicySelectOpen(true)
                   setOpen(true)
                 },
               },
@@ -403,6 +510,50 @@ function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlE
           }}
         />
       )}
+      <AlertDialog
+        open={confirmation !== null}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) return
+          saveAttemptRef.current += 1
+          saveCheck.reset()
+          setConfirmation(null)
+          setOpen(true)
+        }}
+      >
+        <AlertDialogContent className="w-100">
+          <AlertDialogTitle>
+            {t(($) => $['studio.accessControl.saveWithoutOwnIp'], { ns: 'deployments' })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t(($) => $['studio.accessControl.lockoutWarning'], {
+              ns: 'deployments',
+              ip: confirmation?.clientIp,
+            })}
+          </AlertDialogDescription>
+          {confirmation?.changed && (
+            <p role="status" className="system-sm-regular text-text-warning">
+              {t(($) => $['studio.accessControl.policyChanged'], { ns: 'deployments' })}
+            </p>
+          )}
+          {saveCheck.isError && (
+            <p role="alert" className="system-sm-regular text-text-warning">
+              {t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
+            </p>
+          )}
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              loading={saveCheck.isPending || updateBinding.isPending}
+              disabled={!canMutate}
+              onClick={() => handleSave(confirmation?.policyVersion)}
+            >
+              {t(($) => $['studio.accessControl.saveAnyway'], { ns: 'deployments' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

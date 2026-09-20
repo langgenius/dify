@@ -1,7 +1,7 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { IpPolicyDialog } from '../policy-dialog'
 
 const translations = vi.hoisted(() => ({
@@ -26,7 +26,8 @@ const translations = vi.hoisted(() => ({
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock(translations)
+  const { default: commonTranslations } = await import('@/i18n/en-US/common.json')
+  return createReactI18nextMock({ ...commonTranslations, ...translations })
 })
 
 function DialogHarness({
@@ -49,6 +50,11 @@ function DialogHarness({
 }
 
 describe('IpPolicyDialog', () => {
+  beforeEach(() => {
+    vi.mocked(globalThis.fetch).mockImplementation(async () =>
+      Response.json({ client_ip: '203.0.113.42' }),
+    )
+  })
   it('keeps Create disabled until the name and a valid entry are filled', async () => {
     const user = userEvent.setup()
     render(<DialogHarness />)
@@ -110,4 +116,125 @@ describe('IpPolicyDialog', () => {
       allowed_cidrs: ['10.0.0.0/8', '203.0.113.42/32'],
     })
   })
+})
+
+describe('trusted current IP and allowlist editing', () => {
+  beforeEach(() => {
+    vi.mocked(globalThis.fetch).mockImplementation(async () =>
+      Response.json({ client_ip: '203.0.113.42' }),
+    )
+  })
+
+  it('loads the current IP without an existing policy and preserves input when adding it', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<DialogHarness onSubmit={onSubmit} />)
+    await user.type(screen.getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
+    expect(await screen.findByText('Your current IP is 203.0.113.42')).toBeInTheDocument()
+    const request = new Request(vi.mocked(globalThis.fetch).mock.calls[0]![0])
+    expect(request.method).toBe('GET')
+    expect(request.url).toBe(
+      'http://localhost:5001/console/api/workspaces/current/network-access-groups/current-ip',
+    )
+    await user.click(screen.getByRole('button', { name: 'Add it' }))
+    expect(
+      screen.getAllByPlaceholderText('10.0.0.0/8').map((row) => (row as HTMLInputElement).value),
+    ).toEqual(['10.0.0.0/8', '203.0.113.42'])
+    expect(screen.getByRole('button', { name: 'Add it' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('shows a retryable error instead of a guessed IP when the trusted endpoint returns 503', async () => {
+    const user = userEvent.setup()
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(
+      Response.json({ message: 'IP unavailable' }, { status: 503 }),
+    )
+    render(<DialogHarness />)
+    expect(
+      await screen.findByText('Unable to check your IP address. Please try again.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add it' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('Your current IP is 203.0.113.42')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add it' })).toBeEnabled()
+  })
+
+  it.each(['203.0.113.42/32', '::ffff:203.0.113.42/128'])(
+    'does not duplicate the current IP already stored as %s',
+    async (entry) => {
+      render(
+        <IpPolicyDialog
+          open
+          mode="edit"
+          initialName="Office"
+          initialEntries={[entry]}
+          onOpenChange={vi.fn()}
+        />,
+      )
+      expect(await screen.findByRole('button', { name: 'Add it' })).toBeDisabled()
+    },
+  )
+
+  it('does not append an IP beyond the 100 entry limit', async () => {
+    render(
+      <IpPolicyDialog
+        open
+        mode="edit"
+        initialName="Office"
+        initialEntries={Array.from({ length: 100 }, (_, i) => `10.0.0.${i}/32`)}
+        onOpenChange={vi.fn()}
+      />,
+    )
+    expect(await screen.findByRole('button', { name: 'Add it' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
+    expect(screen.getAllByPlaceholderText('10.0.0.0/8')).toHaveLength(100)
+  })
+
+  it.each(['create', 'edit'] as const)(
+    'accepts a mapped IPv6 address in %s mode and submits it to the server',
+    async (mode) => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      render(
+        <IpPolicyDialog
+          open
+          mode={mode}
+          initialName="Office"
+          initialEntries={['::ffff:203.0.113.42/128']}
+          onOpenChange={vi.fn()}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: mode === 'create' ? 'Create' : 'Save' }))
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Office',
+        allowed_cidrs: ['::ffff:203.0.113.42/128'],
+      })
+    },
+  )
+
+  it.each([
+    { mode: 'edit', count: 0 },
+    { mode: 'view', count: 2 },
+  ] as const)(
+    'does not show an immediate-effect warning in $mode with $count references',
+    async ({ mode, count }) => {
+      render(
+        <IpPolicyDialog
+          open
+          mode={mode}
+          initialName="Office"
+          initialEntries={['10.0.0.0/8']}
+          usedByCount={count}
+          onOpenChange={vi.fn()}
+        />,
+      )
+      await waitFor(() =>
+        expect(
+          screen.queryByText('Changes take effect immediately wherever this policy is applied.'),
+        ).not.toBeInTheDocument(),
+      )
+    },
+  )
 })

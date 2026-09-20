@@ -21,12 +21,12 @@ import { consoleQuery } from '@/service/console'
 import { IpPolicyDialog } from './policy-dialog'
 import {
   policyActionsColClassName,
-  policyEnforcingColClassName,
   policyIpEntriesColClassName,
   PolicyItem,
   policyNameColClassName,
   policyRowClassName,
   policyUpdatedColClassName,
+  policyUsedByColClassName,
 } from './policy-item'
 
 type DialogState =
@@ -47,7 +47,7 @@ function IpPoliciesListSkeleton() {
             </SkeletonRow>
           </SkeletonContainer>
           <SkeletonRectangle className={`${policyIpEntriesColClassName} h-4 animate-pulse`} />
-          <SkeletonRectangle className={`${policyEnforcingColClassName} h-4 animate-pulse`} />
+          <SkeletonRectangle className={`${policyUsedByColClassName} h-4 animate-pulse`} />
           <SkeletonRectangle className={`${policyUpdatedColClassName} h-4 animate-pulse`} />
           <div className={policyActionsColClassName} />
         </div>
@@ -143,8 +143,8 @@ export default function IpPoliciesPage() {
             <div className={policyIpEntriesColClassName}>
               {t(($) => $['settings.ipPolicyColumnIpEntries'], { ns: 'common' })}
             </div>
-            <div className={policyEnforcingColClassName}>
-              {t(($) => $['settings.ipPolicyColumnEnforcing'], { ns: 'common' })}
+            <div className={policyUsedByColClassName}>
+              {t(($) => $['settings.ipPolicyColumnUsedBy'], { ns: 'common' })}
             </div>
             <div className={policyUpdatedColClassName}>
               {t(($) => $['settings.ipPolicyColumnUpdatedAt'], { ns: 'common' })}
@@ -156,7 +156,7 @@ export default function IpPoliciesPage() {
               key={group.id}
               group={group}
               canMutate={canMutate}
-              onView={(group) => setDialogState({ mode: 'view', group })}
+              onView={(group) => setDialogState({ mode: canMutate ? 'edit' : 'view', group })}
               onEdit={(group) => {
                 if (!canMutate) return
                 setDialogState({ mode: 'edit', group })

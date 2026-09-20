@@ -36,11 +36,7 @@ type AccessControlStatusPanelProps = {
   enabled: boolean
   onEdit: () => void
   updating?: boolean
-  dirty?: boolean
-  canSave?: boolean
   readOnly?: boolean
-  onCancel?: () => void
-  onSave?: () => void
   onEnabledChange: (enabled: boolean) => void
 }
 
@@ -52,11 +48,7 @@ export function AccessControlStatusPanel({
   enabled,
   onEdit,
   updating = false,
-  dirty = false,
-  canSave = false,
   readOnly = false,
-  onCancel,
-  onSave,
   onEnabledChange,
 }: AccessControlStatusPanelProps) {
   const { t } = useTranslation()
@@ -79,7 +71,7 @@ export function AccessControlStatusPanel({
     <div className="flex w-100 flex-col">
       <div className="flex items-center justify-between gap-2 overflow-hidden px-4 pt-4 pb-3">
         <PopoverTitle className="min-w-0 flex-1 system-md-semibold text-text-primary">
-          {policyName
+          {policyName && enabled
             ? t(($) => $['studio.accessControl.restrictedTo'], {
                 ns: 'deployments',
                 name: policyName,
@@ -87,7 +79,7 @@ export function AccessControlStatusPanel({
             : t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })}
         </PopoverTitle>
         {!readOnly && (
-          <Button type="button" variant="ghost" size="small" onClick={onEdit}>
+          <Button type="button" variant="ghost" size="small" disabled={updating} onClick={onEdit}>
             {t(($) => $['operation.edit'], { ns: 'common' })}
           </Button>
         )}
@@ -100,22 +92,29 @@ export function AccessControlStatusPanel({
               {t(($) => $['studio.accessControl.restrictByIp'], { ns: 'deployments' })}
             </p>
             <p className="system-xs-regular text-text-tertiary">
-              {coverage.inServiceCount > 0 && coverage.coveredCount === coverage.inServiceCount
-                ? t(($) => $['studio.accessControl.protectingAll'], {
+              {!enabled
+                ? t(($) => $['studio.accessControl.tooltipPaused'], {
                     ns: 'deployments',
-                    count: coverage.inServiceCount,
+                    name: policyName ?? '',
                   })
-                : t(($) => $['studio.accessControl.protectingPartial'], {
-                    ns: 'deployments',
-                    n: coverage.coveredCount,
-                    m: coverage.inServiceCount,
-                  })}
+                : coverage.inServiceCount > 0 && coverage.coveredCount === coverage.inServiceCount
+                  ? t(($) => $['studio.accessControl.protectingAll'], {
+                      ns: 'deployments',
+                      count: coverage.inServiceCount,
+                    })
+                  : t(($) => $['studio.accessControl.protectingPartial'], {
+                      ns: 'deployments',
+                      n: coverage.coveredCount,
+                      m: coverage.inServiceCount,
+                    })}
             </p>
           </div>
           <Switch
             checked={enabled}
             disabled={updating || readOnly}
-            aria-label={t(($) => $['studio.accessControl.restrictByIp'], { ns: 'deployments' })}
+            aria-label={t(($) => $['studio.accessControl.enableAccessControl'], {
+              ns: 'deployments',
+            })}
             onCheckedChange={(next) => {
               if (readOnly || updating) return
               if (next) {
@@ -203,22 +202,6 @@ export function AccessControlStatusPanel({
             )
           })}
         </div>
-        {dirty && !readOnly && (
-          <div className="flex items-center justify-end gap-2 pt-5">
-            <Button type="button" variant="secondary" onClick={onCancel}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              disabled={!canSave || updating}
-              loading={updating}
-              onClick={onSave}
-            >
-              {t(($) => $['operation.save'], { ns: 'common' })}
-            </Button>
-          </div>
-        )}
       </div>
 
       <AlertDialog open={confirmPause} onOpenChange={setConfirmPause}>

@@ -12,8 +12,10 @@ import {
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/console'
 import { AllowlistField } from './allowlist-field'
 import { createAllowlistRow } from './allowlist-row'
 import { PolicyReferencedApps } from './referenced-apps'
@@ -54,6 +56,23 @@ export function IpPolicyDialog({
   onSubmit,
 }: IpPolicyDialogProps) {
   const { t } = useTranslation()
+  const currentIpQuery = useQuery(
+    consoleQuery.workspaces.current.networkAccessGroups.currentIp.get.queryOptions({
+      enabled: open && mode !== 'view' && currentIp === undefined,
+      retry: false,
+      staleTime: 0,
+      gcTime: 0,
+      context: { silent: true },
+    }),
+  )
+  const resolvedCurrentIp =
+    currentIp ?? (currentIpQuery.isSuccess ? currentIpQuery.data.client_ip : undefined)
+  const currentIpStatus =
+    currentIp !== undefined || currentIpQuery.isSuccess
+      ? undefined
+      : currentIpQuery.isError
+        ? 'error'
+        : 'loading'
   const [name, setName] = useState(initialName)
   const [entries, setEntries] = useState(() =>
     initialEntries && initialEntries.length > 0
@@ -165,13 +184,24 @@ export function IpPolicyDialog({
               />
             </Field>
 
-            <AllowlistField entries={entries} currentIp={currentIp} onEntriesChange={setEntries} />
+            <AllowlistField
+              entries={entries}
+              currentIp={resolvedCurrentIp}
+              currentIpStatus={currentIpStatus}
+              onRetryCurrentIp={() => {
+                void currentIpQuery.refetch()
+              }}
+              onEntriesChange={setEntries}
+            />
 
             {mode === 'edit' && usedByCount > 0 && (
               <Field className="flex shrink-0 flex-col gap-3">
                 <FieldLabel>
                   {t(($) => $['settings.ipPolicyUsedByLabel'], { ns: 'common' })}
                 </FieldLabel>
+                <p className="system-xs-regular text-text-tertiary">
+                  {t(($) => $['settings.ipPolicyEditUsedBy'], { ns: 'common' })}
+                </p>
                 <PolicyReferencedApps apps={referencedApps} usedByCount={usedByCount} />
               </Field>
             )}

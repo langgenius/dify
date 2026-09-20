@@ -1,3 +1,4 @@
+import type { NetworkAccessGroupCurrentIpCheckResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AccessControlDraft, AccessControlPolicy } from '../draft'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { screen } from '@testing-library/react'
@@ -29,39 +30,33 @@ const translations = vi.hoisted(() => ({
   'mcp.server.title': 'MCP Server',
   'settings.ipPolicies': 'IP Policies',
   'settings.trigger': 'Trigger',
-  'studio.accessControl.addressCount': '{{count}} addresses',
-  'studio.accessControl.applyTo': 'Apply to',
-  'studio.accessControl.applyToHelp': 'Choose which access points to protect.',
-  'studio.accessControl.applyToHelpSelected': 'Choose which access points this policy protects.',
-  'studio.accessControl.entryLabel': 'Access Control',
-  'studio.accessControl.ipPolicy': 'IP Policy',
-  'studio.accessControl.lockoutWarning':
-    "Your IP ({{ip}}) isn't in this policy. You may lose access.",
-  'studio.accessControl.manageIpPolicies': 'Manage IP policies',
-  'studio.accessControl.policySummaryMany': 'Allows {{listed}} and {{count}} more addresses',
-  'studio.accessControl.policySummaryOne': 'Allows {{address}}',
-  'studio.accessControl.selectAccessPoint': 'Select at least one access point to protect.',
-  'studio.accessControl.selectPolicy': 'Select a policy',
 }))
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock(translations)
+  const { default: deploymentTranslations } = await import('@/i18n/en-US/deployments.json')
+  return createReactI18nextMock({ ...translations, ...deploymentTranslations })
 })
 
 function PanelHarness({
-  currentIp,
+  ipCheck,
   initialDraft = createDefaultAccessControlDraft(ACCESS_POINT_ORDER),
   onSave = vi.fn(),
+  onCreatePolicy = vi.fn(),
+  onManagePolicies = vi.fn(),
+  canManagePolicies = true,
+  readOnly = false,
 }: {
-  currentIp?: string
+  ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
   initialDraft?: AccessControlDraft
   onSave?: () => void
+  onCreatePolicy?: () => void
+  onManagePolicies?: () => void
+  canManagePolicies?: boolean
+  readOnly?: boolean
 }) {
   const [draft, setDraft] = useState(initialDraft)
   const onCancel = vi.fn()
-  const onCreatePolicy = vi.fn()
-  const onManagePolicies = vi.fn()
 
   return (
     <Popover open>
@@ -71,9 +66,10 @@ function PanelHarness({
           draft={draft}
           availableAccessPoints={ACCESS_POINT_ORDER}
           appIcon={{}}
-          canManagePolicies
+          canManagePolicies={canManagePolicies}
+          readOnly={readOnly}
           policies={policies}
-          currentIp={currentIp}
+          ipCheck={ipCheck}
           onCancel={onCancel}
           onCreatePolicy={onCreatePolicy}
           onManagePolicies={onManagePolicies}
@@ -90,23 +86,20 @@ describe('AccessControlConfigPanel', () => {
     render(<PanelHarness />)
 
     expect(await screen.findByRole('option', { name: /Internal Network/ })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'IP Policy' })).toHaveAccessibleDescription(
+      'Please select an IP policy.',
+    )
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Web App' })).not.toHaveAttribute(
+    expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('switch', { name: 'Backend Service API' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByRole('switch', { name: 'Backend Service API' })).not.toHaveAttribute(
+    expect(screen.getByRole('switch', { name: 'MCP Server' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(screen.getByRole('switch', { name: 'Trigger' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.getByRole('switch', { name: 'Trigger' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('enables save after a policy is selected', async () => {
@@ -116,6 +109,7 @@ describe('AccessControlConfigPanel', () => {
 
     await user.click(await screen.findByRole('option', { name: /Internal Network/ }))
 
+    expect(screen.queryByText('Please select an IP policy.')).not.toBeInTheDocument()
     expect(
       screen.getByText('Allows 203.0.113.42/32, 198.51.100.0/24 and 2 more addresses'),
     ).toBeInTheDocument()
@@ -129,6 +123,60 @@ describe('AccessControlConfigPanel', () => {
     expect(onSave).toHaveBeenCalledTimes(1)
   })
 
+  it.each([null, 'internal-network'])(
+    'opens policy creation from the policy list with selected policy %s',
+    async (selectedPolicyId) => {
+      const user = userEvent.setup()
+      const onCreatePolicy = vi.fn()
+      const onManagePolicies = vi.fn()
+      render(
+        <PanelHarness
+          initialDraft={{
+            ...createDefaultAccessControlDraft(ACCESS_POINT_ORDER),
+            selectedPolicyId,
+          }}
+          onCreatePolicy={onCreatePolicy}
+          onManagePolicies={onManagePolicies}
+        />,
+      )
+
+      if (selectedPolicyId) {
+        await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
+        await user.click(await screen.findByRole('option', { name: 'Add IP Policy' }))
+      } else {
+        await user.click(screen.getByRole('button', { name: 'Add IP Policy' }))
+      }
+
+      expect(onCreatePolicy).toHaveBeenCalledOnce()
+      expect(onManagePolicies).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([{ canManagePolicies: false }, { readOnly: true }])(
+    'keeps policy creation unavailable without edit permission: %j',
+    (permissions) => {
+      render(<PanelHarness {...permissions} />)
+
+      expect(screen.queryByRole('button', { name: 'Add IP Policy' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Manage IP policies' })).toBeEnabled()
+    },
+  )
+
+  it('hides required-selection messages while access control is disabled', () => {
+    render(
+      <PanelHarness
+        initialDraft={{
+          enabled: false,
+          selectedPolicyId: null,
+          scopes: { webApp: false, serviceApi: false, mcp: false, trigger: false },
+        }}
+      />,
+    )
+
+    expect(screen.queryByText('Please select an IP policy.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Please choose at least one access point.')).not.toBeInTheDocument()
+  })
+
   it('warns and disables save when every access point is off', async () => {
     const user = userEvent.setup()
     render(<PanelHarness />)
@@ -139,13 +187,15 @@ describe('AccessControlConfigPanel', () => {
     await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
     await user.click(screen.getByRole('switch', { name: 'Trigger' }))
 
-    expect(screen.getByText('Select at least one access point to protect.')).toBeInTheDocument()
+    expect(screen.getByText('Please choose at least one access point.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 
   it('shows a lockout warning when the current IP is outside the selected policy', async () => {
     const user = userEvent.setup()
-    render(<PanelHarness currentIp="203.0.113.42" />)
+    render(
+      <PanelHarness ipCheck={{ allowed: false, client_ip: '203.0.113.42', policy_version: 1 }} />,
+    )
 
     await user.click(await screen.findByRole('option', { name: /Office VPN/ }))
 
@@ -173,4 +223,32 @@ describe('AccessControlConfigPanel', () => {
     await user.click(screen.getByRole('switch', { name: 'Trigger' }))
     expect(screen.getByRole('switch', { name: 'Trigger' })).not.toBeChecked()
   })
+})
+
+it('ignores pointer and keyboard scope changes until a policy is selected', async () => {
+  const user = userEvent.setup()
+  render(<PanelHarness />)
+  const scope = screen.getByRole('switch', { name: 'Web App' })
+  await user.click(scope)
+  expect(scope).toBeChecked()
+  expect(scope).toHaveAttribute('tabindex', '-1')
+  scope.focus()
+  await user.keyboard(' {Enter}')
+  expect(scope).toBeChecked()
+  await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+  await user.click(scope)
+  expect(scope).not.toBeChecked()
+})
+
+it('requires a policy that is still present in the workspace before enabling configuration', () => {
+  render(
+    <PanelHarness
+      initialDraft={{
+        ...createDefaultAccessControlDraft(ACCESS_POINT_ORDER),
+        selectedPolicyId: 'deleted-policy',
+      }}
+    />,
+  )
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
 })

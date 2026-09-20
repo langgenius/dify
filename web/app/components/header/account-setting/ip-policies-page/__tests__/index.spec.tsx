@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { initReactI18next } from 'react-i18next'
+import commonTranslations from '@/i18n/en-US/common.json'
+import deploymentTranslations from '@/i18n/en-US/deployments.json'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import {
   createNetworkAccessGroupFixture,
@@ -11,52 +13,14 @@ import {
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import IpPoliciesPage from '..'
 
-const translations = vi.hoisted(() => ({
-  'operation.cancel': 'Cancel',
-  'operation.close': 'Close',
-  'operation.delete': 'Delete',
-  'operation.edit': 'Edit',
-  'operation.moreActionsFor': 'More actions for {{name}}',
-  'operation.save': 'Save',
-  'settings.ipPolicies': 'IP Policies',
-  'settings.ipPoliciesDescription':
-    'Reusable rules that control which IP addresses or ranges can access your apps',
-  'settings.ipPolicyAddEntry': 'Add',
-  'settings.ipPolicyAllowlist': 'Allowlist',
-  'settings.ipPolicyAllowlistHelp':
-    'Single addresses (203.0.113.42) or CIDR ranges (10.0.0.0/8). IPv4 and IPv6 are both accepted.',
-  'settings.ipPolicyColumnEnforcing': 'Enforcing',
-  'settings.ipPolicyColumnIpEntries': 'IP entries',
-  'settings.ipPolicyColumnName': 'Name',
-  'settings.ipPolicyColumnUpdatedAt': 'Updated at',
-  'settings.ipPolicyCreate': 'Create',
-  'settings.ipPolicyEnforcingMany': '{{count}} apps',
-  'settings.ipPolicyEnforcingNone': '0 apps',
-  'settings.ipPolicyEnforcingOne': '1 app',
-  'settings.ipPolicyDeleteBound': 'This policy is in use',
-  'settings.ipPolicyDeleteBoundDescription':
-    'Delete <policyName>{{name}}</policyName>? These apps will allow access from any IP address. This cannot be undone.',
-  'settings.ipPolicyDeleteConfirm': 'Delete IP policy?',
-  'settings.ipPolicyDeleteDescription':
-    'Delete <policyName>{{name}}</policyName>? This cannot be undone.',
-  'settings.ipPolicyUsedBy': 'Used by {{count}} apps',
-  'settings.ipPolicyUsedByLabel': 'Used by',
-  'settings.ipPolicyDialogDescription':
-    'Specify which IP addresses or ranges can access your apps.',
-  'settings.ipPolicyEditTitle': 'Edit IP Policy',
-  'settings.ipPolicyName': 'Name',
-  'settings.ipPolicyNamePlaceholder': 'e.g. Internal Network',
-  'settings.ipPolicyNewTitle': 'New IP Policy',
-  'settings.ipPolicyRemoveEntry': 'Remove entry',
-  'studio.accessControl.emptyPoliciesTitle': 'No IP policies in this workspace yet',
-  'studio.accessControl.policySummaryTwo': 'Allows {{first}} and {{second}}',
-}))
-
 vi.unmock('react-i18next')
 
 describe('IpPoliciesPage', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
+    vi.mocked(globalThis.fetch).mockImplementation(async () =>
+      Response.json({ client_ip: '203.0.113.42' }),
+    )
     await createInstance()
       .use(initReactI18next)
       .init({
@@ -65,7 +29,7 @@ describe('IpPoliciesPage', () => {
         defaultNS: 'common',
         keySeparator: false,
         interpolation: { escapeValue: false },
-        resources: { 'en-US': { common: translations, deployments: translations } },
+        resources: { 'en-US': { common: commonTranslations, deployments: deploymentTranslations } },
       })
   })
 
@@ -246,7 +210,11 @@ describe('IpPoliciesPage', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       }
-      expect(globalThis.fetch).not.toHaveBeenCalled()
+      expect(
+        vi
+          .mocked(globalThis.fetch)
+          .mock.calls.filter(([input, init]) => new Request(input, init).method !== 'GET'),
+      ).toHaveLength(0)
     },
   )
 
@@ -349,8 +317,8 @@ describe('IpPoliciesPage', () => {
 
     expect(screen.getByText('Internal Network')).toBeInTheDocument()
     expect(screen.getByText('Name')).toBeInTheDocument()
-    expect(screen.getByText('IP entries')).toBeInTheDocument()
-    expect(screen.getByText('Enforcing')).toBeInTheDocument()
+    expect(screen.getByText('IP Entries')).toBeInTheDocument()
+    expect(screen.getByText('Used by')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getByText('0 apps')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
@@ -398,7 +366,10 @@ describe('IpPoliciesPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
     await user.click(screen.getByRole('menuitem', { name: 'Edit' }))
-    expect(screen.getByText('Used by')).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByText('Used by')).toBeInTheDocument()
+    expect(
+      screen.getByText('Changes take effect immediately wherever this policy is applied.'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Support Bot' })).toHaveAttribute(
       'href',
       '/app/app-a/overview',
@@ -445,12 +416,11 @@ describe('IpPoliciesPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
     await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
-    const dialog = screen.getByRole('alertdialog', { name: 'Delete IP policy?' })
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete “Internal Network”?' })
     expect(dialog).toHaveAccessibleDescription(
-      /Delete Internal Network\s*\? These apps will allow access from any IP address\. This cannot be undone\./,
+      'Apps using this policy will become accessible from any IP address. This can’t be undone.',
     )
-    expect(within(dialog).getByText('Internal Network', { selector: 'strong' })).toBeInTheDocument()
-    expect(within(dialog).getByText('Used by 2 apps')).toBeInTheDocument()
+    expect(within(dialog).getByText('Still used by 2 apps')).toBeInTheDocument()
     expect(globalThis.fetch).not.toHaveBeenCalled()
     expect(within(dialog).getByRole('button', { name: 'Delete' })).toBeEnabled()
     expect(within(dialog).getByRole('link', { name: 'Support Bot' })).toHaveAttribute(
@@ -474,11 +444,9 @@ describe('IpPoliciesPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
       await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
-      const dialog = screen.getByRole('alertdialog', { name: 'Delete IP policy?' })
-      expect(dialog).toHaveAccessibleDescription(
-        /Delete Internal Network\s*\? This cannot be undone\./,
-      )
-      expect(within(dialog).queryByText(/Used by/)).not.toBeInTheDocument()
+      const dialog = screen.getByRole('alertdialog', { name: 'Delete “Internal Network”?' })
+      expect(dialog).toHaveAccessibleDescription('This can’t be undone.')
+      expect(within(dialog).queryByText(/Still used by/)).not.toBeInTheDocument()
       await user.click(within(dialog).getByRole('button', { name: button }))
 
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
@@ -518,7 +486,7 @@ describe('IpPoliciesPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
       await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
-      const dialog = screen.getByRole('alertdialog', { name: 'Delete IP policy?' })
+      const dialog = screen.getByRole('alertdialog', { name: 'Delete “Internal Network”?' })
       const deleteButton = within(dialog).getByRole('button', { name: 'Delete' })
       await user.click(deleteButton)
 
@@ -553,6 +521,119 @@ describe('IpPoliciesPage', () => {
         await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
         expect(screen.getByRole('button', { name: 'Internal Network' })).toBeInTheDocument()
       }
+    },
+  )
+
+  it.each(['owner', 'admin'] as const)(
+    'opens edit directly from the policy row for %s',
+    async (role) => {
+      const user = userEvent.setup()
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, { groups: [createNetworkAccessGroupFixture()] })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          currentWorkspace: { role },
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
+      await user.click(screen.getByRole('button', { name: 'Internal Network' }))
+      expect(screen.getByRole('dialog', { name: 'Edit IP Policy' })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Internal Network')
+      await user.keyboard('{Escape}')
+      await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+      expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
+
+  it.each([0, 1])(
+    'shows total references under Used by even when only %s apps enforce the policy',
+    (enforcingCount) => {
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, {
+        groups: [
+          createNetworkAccessGroupFixture({ used_by_count: 2, enforcing_count: enforcingCount }),
+        ],
+      })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
+      expect(screen.getByText('Used by')).toBeInTheDocument()
+      expect(
+        within(screen.getByRole('button', { name: 'Internal Network' })).getByText('2 apps'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('Enforcing')).not.toBeInTheDocument()
+    },
+  )
+
+  it.each(['view', 'edit', 'delete'] as const)(
+    'links agent and regular app references correctly in %s',
+    async (mode) => {
+      const user = userEvent.setup()
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, {
+        groups: [
+          createNetworkAccessGroupFixture({
+            used_by_count: 2,
+            enforcing_count: 1,
+            apps: [
+              {
+                id: 'backing-app',
+                bound_agent_id: 'agent-1',
+                name: 'New Agent',
+                mode: 'workflow',
+                icon: null,
+                icon_type: null,
+                icon_background: null,
+              },
+              {
+                id: 'app-2',
+                name: 'Workflow',
+                mode: 'workflow',
+                icon: null,
+                icon_type: null,
+                icon_background: null,
+              },
+            ],
+          }),
+        ],
+      })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          currentWorkspace: { role: mode === 'view' ? 'editor' : 'owner' },
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
+      if (mode === 'delete') {
+        await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+        expect(screen.getByText('Still used by 2 apps')).toBeInTheDocument()
+      } else {
+        await user.click(screen.getByRole('button', { name: 'Internal Network' }))
+      }
+      expect(screen.getByRole('link', { name: 'New Agent' })).toHaveAttribute(
+        'href',
+        '/agents/agent-1/configure',
+      )
+      expect(screen.getByRole('link', { name: 'New Agent' })).toHaveAttribute('target', '_blank')
+      expect(screen.getByRole('link', { name: 'Workflow' })).toHaveAttribute(
+        'href',
+        '/app/app-2/overview',
+      )
     },
   )
 })
