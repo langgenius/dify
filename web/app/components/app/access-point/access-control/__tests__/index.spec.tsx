@@ -7,7 +7,7 @@ import type {
   GetWorkspacesCurrentSummaryResponse,
   NetworkAccessGroupResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import {
@@ -398,32 +398,6 @@ describe('AccessControlEntry', () => {
     expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
   })
 
-  it('keeps the saved chip state until a turned-off draft is saved', async () => {
-    const user = userEvent.setup()
-    renderEntry({
-      plan: 'professional',
-      groups: [createNetworkAccessGroupFixture()],
-      binding: {
-        id: 'binding-1',
-        tenant_id: 'workspace-1',
-        app_id: 'app-1',
-        enabled: true,
-        group_id: 'group-1',
-        access_points: ['webapp', 'service_api', 'mcp'],
-        version: 2,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
-      },
-    })
-
-    await user.click(getChip())
-    await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
-    await user.click(screen.getByRole('button', { name: 'Turn off' }))
-
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
-  })
-
   it('discards an unsaved first-time draft on Cancel', async () => {
     const user = userEvent.setup()
     renderEntry({ plan: 'professional', groups: [createNetworkAccessGroupFixture()] })
@@ -610,41 +584,6 @@ describe('AccessControlEntry', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
   })
-  it('reopens the edit layer after dismissing a paused draft with Escape', async () => {
-    const user = userEvent.setup()
-    renderEntry({
-      plan: 'professional',
-      groups: [createNetworkAccessGroupFixture()],
-      binding: {
-        id: 'binding-1',
-        tenant_id: 'workspace-1',
-        app_id: 'app-1',
-        enabled: true,
-        group_id: 'group-1',
-        access_points: ['webapp', 'service_api', 'mcp'],
-        version: 2,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
-      },
-    })
-
-    await user.click(getChip())
-    await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
-    await user.click(screen.getByRole('button', { name: 'Turn off' }))
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
-
-    await user.keyboard('{Escape}')
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
-    })
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
-
-    await user.click(getChip())
-    expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
-  })
 })
 
 const capabilityCases = [
@@ -817,6 +756,8 @@ describe('supported access points and binding permission', () => {
     const payloads: unknown[] = []
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init)
+      const metadata = metadataResponse(request)
+      if (metadata) return metadata
       if (request.url.endsWith('/workspaces/current/network-access-groups'))
         return Response.json({
           tenant_id: 'workspace-1',
@@ -850,7 +791,6 @@ describe('supported access points and binding permission', () => {
         'Web App, MCP Server will be reachable from any IP.',
       )
       await user.click(screen.getByRole('button', { name: 'Turn off' }))
-      await user.click(screen.getByRole('button', { name: 'Save' }))
       await waitFor(() =>
         expect(payloads).toEqual([
           {
@@ -865,8 +805,12 @@ describe('supported access points and binding permission', () => {
         expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
       )
       expect(screen.getByRole('switch', { name: 'Enable access control' })).not.toBeChecked()
+      expect(
+        screen.getByText('Paused — Internal Network is configured but not enforcing'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/Protecting/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
       await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
-      await user.click(screen.getByRole('button', { name: 'Save' }))
       await waitFor(() => expect(payloads).toHaveLength(2))
       expect(payloads[1]).toEqual({
         enabled: true,
@@ -1231,4 +1175,63 @@ describe('trusted IP checks before saving', () => {
     ).toBeInTheDocument()
     expect(server.writes).toHaveLength(0)
   })
+})
+
+describe('immediate pause and resume', () => {
+  it('cancels pause without writing or changing the saved status', async () => {
+    const user = userEvent.setup()
+    const server = setupBindingServer(createBinding())
+    renderEntry({ plan: 'professional', groups: server.groups, binding: server.binding })
+    await user.click(getChip())
+    await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }),
+    )
+    expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
+    expect(server.writes).toHaveLength(0)
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+  })
+
+  it.each([500, 409])(
+    'keeps the saved state and prevents duplicate requests when pause fails (%s)',
+    async (status) => {
+      const user = userEvent.setup()
+      const server = setupBindingServer(createBinding({ access_points: ['webapp', 'mcp'] }))
+      let finish!: (response: Response) => void
+      server.put = () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve
+        })
+      renderEntry({ plan: 'professional', groups: server.groups, binding: server.binding })
+      await user.click(getChip())
+      await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
+      await user.click(screen.getByRole('button', { name: 'Turn off' }))
+      const toggle = screen.getByRole('switch', { name: 'Enable access control' })
+      await waitFor(() => expect(toggle).toHaveAttribute('aria-disabled', 'true'))
+      await user.click(toggle)
+      expect(server.writes).toEqual([
+        {
+          enabled: false,
+          group_id: 'group-1',
+          access_points: ['webapp', 'mcp'],
+          expected_version: 2,
+        },
+      ])
+      if (status === 409)
+        server.binding = createBinding({ version: 3, access_points: ['webapp', 'mcp'] })
+      await act(async () => finish(Response.json({ message: 'Unable to pause' }, { status })))
+      await waitFor(() => expect(toggle).not.toHaveAttribute('aria-disabled', 'true'))
+      expect(toggle).toBeChecked()
+      expect(within(getChip()).getByText('2 of 3')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+      if (status === 409) {
+        await user.click(toggle)
+        await user.click(screen.getByRole('button', { name: 'Turn off' }))
+        await waitFor(() => expect(server.writes[1]).toMatchObject({ expected_version: 3 }))
+        await act(async () =>
+          finish(Response.json({ message: 'Unable to pause' }, { status: 500 })),
+        )
+      }
+    },
+  )
 })

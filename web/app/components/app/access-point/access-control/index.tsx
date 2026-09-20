@@ -256,7 +256,7 @@ function AccessControlSession({
     },
     onSuccess?: () => void,
   ) => {
-    if (!canMutate) return
+    if (!canMutate || updateBinding.isPending) return
 
     updateBinding.mutate(
       {
@@ -269,7 +269,15 @@ function AccessControlSession({
         },
       },
       {
-        onSuccess,
+        onSuccess: (data) => {
+          queryClient.setQueryData(
+            consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
+              input: { params: { app_id: appId } },
+            }),
+            (current) => (current ? { ...current, ...data } : current),
+          )
+          onSuccess?.()
+        },
         onError: (error) => {
           if (getNetworkAccessErrorStatus(error) !== 409) return
           void queryClient.invalidateQueries({
@@ -343,8 +351,14 @@ function AccessControlSession({
   }
 
   const handleEnabledChange = (enabled: boolean) => {
-    if (!canMutate) return
-    setDraft({ ...resolvedDraft, enabled })
+    if (!canMutate || updateBinding.isPending || !binding?.group_id) return
+    persistBinding(
+      { enabled, groupId: binding.group_id, accessPoints: binding.access_points },
+      () => {
+        discardDraft()
+        setView('status')
+      },
+    )
   }
 
   return (
@@ -403,12 +417,8 @@ function AccessControlSession({
                 policies={policies}
                 enabled={resolvedDraft.enabled}
                 updating={updateBinding.isPending}
-                dirty={dirty}
-                canSave={canSave}
                 readOnly={!canMutate}
                 onEnabledChange={handleEnabledChange}
-                onCancel={handleCancel}
-                onSave={handleSave}
                 onEdit={() => {
                   if (!canMutate) return
                   setDraft(resolvedDraft)
