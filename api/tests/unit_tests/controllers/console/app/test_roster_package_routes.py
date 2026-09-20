@@ -1,4 +1,5 @@
 import io
+import zipfile
 from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
@@ -20,15 +21,28 @@ from models.model import App, AppMode
 from services import app_import_source
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.agent.roster_package_importer import RosterAgentPackageImportResult
+from services.app_package_service import AppPackageService
 from services.entities.dsl_entities import DslImportWarning
 
 
-def _mock_download(monkeypatch: pytest.MonkeyPatch, content: bytes = b"PK\x00\xff") -> Mock:
+def _mock_download(monkeypatch: pytest.MonkeyPatch, content: bytes | None = None) -> Mock:
     fetch = Mock(
-        return_value=httpx.Response(200, content=content, request=httpx.Request("GET", "https://example.com/download"))
+        return_value=httpx.Response(
+            200,
+            content=content if content is not None else _roster_archive().getvalue(),
+            request=httpx.Request("GET", "https://example.com/download"),
+        )
     )
     monkeypatch.setattr(app_import_source.remote_fetcher, "make_request", fetch)
     return fetch
+
+
+def _roster_archive() -> io.BytesIO:
+    source = io.BytesIO()
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("manifest.yaml", "format: dify.roster-agent")
+    source.seek(0)
+    return source
 
 
 def _account() -> Account:
@@ -148,7 +162,7 @@ def test_url_quota_is_enforced_after_content_detection(
     features = Mock()
     features.apps = SimpleNamespace(size=1, limit=1)
     monkeypatch.setattr("controllers.console.wraps.FeatureService.get_features", lambda *_args, **_kwargs: features)
-    _mock_download(monkeypatch, b"app: {}" if is_yaml else b"PK\x00\xff")
+    _mock_download(monkeypatch, b"app: {}" if is_yaml else _roster_archive().getvalue())
     importer = Mock()
     importer.import_package.return_value = RosterAgentPackageImportResult(
         app_id="app-1", agent_id="agent-1", warnings=[]
@@ -205,10 +219,10 @@ def test_existing_import_route_accepts_package_and_preserves_import_response(
     )
     api = import_module.AppImportApi()
     with app.test_request_context(
-        "/console/api/apps/imports", method="POST", data={"file": (io.BytesIO(b"package"), "agent.ifpkg")}
+        "/console/api/apps/imports", method="POST", data={"file": (_roster_archive(), "agent.ifpkg")}
     ):
         data, status = unwrap(api.post)(api, account)
-        assert import_package.call_args.kwargs["source"].read() == b"package"
+        assert import_package.call_args.kwargs["source"].read() == _roster_archive().getvalue()
     assert status == 200
     assert data["app_id"] == "app-1"
     assert data["app_mode"] == "agent"
@@ -220,7 +234,7 @@ def test_existing_import_route_accepts_package_and_preserves_import_response(
 
 @pytest.mark.parametrize("from_url", [False, True])
 @pytest.mark.parametrize("denied", [RBACPermission.AGENT_CREATE, RBACPermission.AGENT_IMPORT_EXPORT_DSL])
-def test_package_import_checks_agent_permissions_before_reading_payload(
+def test_package_import_checks_agent_permissions_before_materializing_resources(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
@@ -244,7 +258,7 @@ def test_package_import_checks_agent_permissions_before_reading_payload(
     request_kwargs = (
         {"json": {"mode": "yaml-url", "yaml_url": "https://example.com/agent.ifpkg"}}
         if from_url
-        else {"data": {"file": (io.BytesIO(b"package"), "agent.ifpkg")}}
+        else {"data": {"file": (_roster_archive(), "agent.ifpkg")}}
     )
     with app.test_request_context("/console/api/apps/imports", method="POST", **request_kwargs):
         with pytest.raises(Forbidden):
@@ -265,7 +279,7 @@ def test_package_import_rejects_overwrite(
     request_kwargs = (
         {"json": {"mode": "yaml-url", "yaml_url": "https://example.com/agent.ifpkg", "app_id": "existing"}}
         if from_url
-        else {"data": {"app_id": "existing", "file": (io.BytesIO(b"package"), "agent.ifpkg")}}
+        else {"data": {"app_id": "existing", "file": (_roster_archive(), "agent.ifpkg")}}
     )
     with app.test_request_context("/console/api/apps/imports", method="POST", **request_kwargs):
         with pytest.raises(InvalidRosterAgentPackageError, match="overwriting"):
@@ -300,10 +314,75 @@ def test_existing_export_route_returns_ifpkg_for_agent(
     close.assert_called_once_with()
 
 
-def test_ifpkg_export_rejects_non_agent_apps() -> None:
-    model = App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-    with pytest.raises(BadRequest):
-        unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), app_module.AppExportQuery(format="ifpkg"), model)
+@pytest.mark.parametrize(
+    "mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT]
+)
+@pytest.mark.parametrize("query", [{}, {"format": "ifpkg"}])
+def test_default_export_packages_ordinary_app_dsl(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, mode: AppMode, query: dict[str, str]
+) -> None:
+    model = App(id="app-1", tenant_id="tenant-1", mode=mode, name="My App")
+    dsl = f"kind: app\nversion: 0.7.0\napp:\n  mode: {mode}\n"
+    export = Mock(return_value=dsl)
+    session = object()
+    monkeypatch.setattr(app_module, "db", SimpleNamespace(session=lambda: session))
+    monkeypatch.setattr(app_module.AppDslService, "export_dsl", export)
+    with app.test_request_context():
+        response = unwrap(app_module.AppExportApi.get)(
+            app_module.AppExportApi(),
+            app_module.AppExportQuery.model_validate({**query, "include_secret": True, "workflow_id": "revision-1"}),
+            model,
+        )
+        response.direct_passthrough = False
+        assert response.mimetype == "application/zip"
+        assert "my-app.ifpkg" in response.headers["Content-Disposition"]
+        assert AppPackageService().read_dsl(io.BytesIO(response.get_data())) == dsl
+        response.close()
+    export.assert_called_once_with(app_model=model, session=session, include_secret=True, workflow_id="revision-1")
+
+
+@pytest.mark.parametrize("from_url", [False, True])
+@pytest.mark.parametrize("app_id", [None, "existing"])
+@pytest.mark.parametrize("status", [200, 202, 400])
+def test_ordinary_package_import_uses_dsl_permissions_and_confirmation(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    app_id: str | None,
+    status: int,
+    from_url: bool,
+) -> None:
+    config_overrides(RBAC_ENABLED=False)
+    account = _account()
+    api = import_module.AppImportApi()
+    dsl = "kind: app\nversion: 99.0.0\napp:\n  mode: workflow\n"
+    import_dsl = Mock(return_value=({"status": "pending"}, status))
+    monkeypatch.setattr(api, "_import_dsl", import_dsl)
+    agent_import = Mock()
+    monkeypatch.setattr(api, "_import_agent_package", agent_import)
+    with AppPackageService().export(dsl=dsl, name="Workflow") as package:
+        form = {"file": (package.archive, "workflow.ifpkg"), "name": "Renamed"}
+        if app_id:
+            form["app_id"] = app_id
+        if from_url:
+            _mock_download(monkeypatch, package.archive.read())
+            with app.test_request_context(
+                method="POST",
+                json={
+                    "mode": "yaml-url",
+                    "yaml_url": "https://example.com/workflow.ifpkg",
+                    "name": "Renamed",
+                    "app_id": app_id,
+                },
+            ):
+                assert unwrap(api.post)(api, account) == ({"status": "pending"}, status)
+        else:
+            with app.test_request_context(method="POST", data=form):
+                assert unwrap(api.post)(api, account) == ({"status": "pending"}, status)
+    import_dsl.assert_called_once_with(
+        import_module.AppImportPayload(mode="yaml-content", yaml_content=dsl, name="Renamed", app_id=app_id), account
+    )
+    agent_import.assert_not_called()
 
 
 @pytest.mark.parametrize("export_format", [None, "ifpkg", "yaml"])
@@ -375,7 +454,7 @@ def test_version_export_rejects_non_agent_apps() -> None:
 
 @pytest.mark.parametrize(
     ("mode", "query"),
-    [(AppMode.AGENT, {"format": "yaml"}), (AppMode.WORKFLOW, {}), (AppMode.WORKFLOW, {"format": "yaml"})],
+    [(AppMode.AGENT, {"format": "yaml"}), (AppMode.WORKFLOW, {"format": "yaml"})],
 )
 def test_yaml_export_remains_available(monkeypatch: pytest.MonkeyPatch, mode: AppMode, query: dict[str, str]) -> None:
     model = App(id="app-1", tenant_id="tenant-1", mode=mode)
@@ -384,3 +463,48 @@ def test_yaml_export_remains_available(monkeypatch: pytest.MonkeyPatch, mode: Ap
     assert unwrap(app_module.AppExportApi.get)(
         app_module.AppExportApi(), app_module.AppExportQuery.model_validate(query), model
     ) == {"data": "app: {}"}
+
+
+def test_ordinary_package_import_checks_app_permission(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    account = _account()
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr("controllers.common.wraps.current_account_with_tenant", lambda: (account, "tenant-1"))
+    check = Mock(return_value=False)
+    monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", check)
+    service = Mock()
+    monkeypatch.setattr(import_module, "AppDslService", service)
+    with AppPackageService().export(dsl="kind: app\napp: {mode: workflow}\n", name="Workflow") as package:
+        with app.test_request_context(method="POST", data={"file": (package.archive, "workflow.ifpkg")}):
+            api = import_module.AppImportApi()
+            with pytest.raises(Forbidden):
+                unwrap(api.post)(api, account)
+    assert check.call_args.kwargs["scene"] == RBACPermission.APP_IMPORT_EXPORT_DSL
+    service.assert_not_called()
+
+
+def test_ordinary_package_import_cannot_bypass_app_quota(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION="CLOUD", RBAC_ENABLED=False)
+    account = _account()
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr(
+        "controllers.console.wraps.FeatureService.get_features",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            members=None,
+            apps=SimpleNamespace(limit=1, size=1),
+            documents_upload_quota=None,
+            annotation_quota_limit=None,
+        ),
+    )
+    service = Mock()
+    monkeypatch.setattr(import_module, "AppDslService", service)
+    with AppPackageService().export(dsl="kind: app\napp: {mode: workflow}\n", name="Workflow") as package:
+        with app.test_request_context(method="POST", data={"file": (package.archive, "workflow.ifpkg")}):
+            api = import_module.AppImportApi()
+            with pytest.raises(Forbidden):
+                unwrap(api.post)(api, account)
+    service.assert_not_called()

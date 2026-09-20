@@ -3157,7 +3157,13 @@ export type PostAppsImportsData = {
   body:
     | AppImportPayload
     | {
+        app_id?: string
+        description?: string
         file: Blob | File
+        icon?: string
+        icon_background?: string
+        icon_type?: string
+        name?: string
       }
   path?: never
   query?: never
