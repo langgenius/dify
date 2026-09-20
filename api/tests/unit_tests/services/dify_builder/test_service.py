@@ -1011,16 +1011,10 @@ def test_waiting_state_actions_resolve_to_handled_kinds() -> None:
 
 
 def test_every_backend_waiting_action_has_a_ui_path() -> None:
-    # BUILD_INITIAL_PLAN is a deliberate, documented exception: the
-    # straight-through flow no longer stops there (submit_requirements goes
-    # straight to resource discovery), so it offers no UI action there. It
-    # survives only as the continue_adjusting/retry_after_revert loop-back
-    # target, where the handler still accepts find_resources -- see
-    # test_initial_plan_state_offers_no_actions.
-    exempt = {PcState.BUILD_INITIAL_PLAN}
+    # No exemptions needed: BUILD_INITIAL_PLAN is a working/pass-through
+    # state now (state.py), not a waiting one, so it has no entry in
+    # _BACKEND_ACTIONS_FOR at all -- see test_initial_plan_state_offers_no_actions.
     for state, backend_kinds in service_module._BACKEND_ACTIONS_FOR.items():
-        if state in exempt:
-            continue
         surfaced_kinds = {resolve_action_kind(action.id) for action in service_module._ACTIONS_FOR.get(state, [])}
         assert backend_kinds <= surfaced_kinds, f"{state}: hidden backend actions {backend_kinds - surfaced_kinds}"
 
@@ -1434,9 +1428,11 @@ def test_actions_for_await_learning() -> None:
 
 def test_initial_plan_state_offers_no_actions() -> None:
     # The straight-through flow no longer stops at build.initial_plan
-    # (submit_requirements now goes straight to resource discovery), so the
-    # state offers no UI action -- it survives only as the
-    # continue_adjusting/retry_after_revert loop-back target.
+    # (submit_requirements now goes straight to resource discovery), and it is
+    # a working/pass-through state now (state.py), not a waiting one -- so it
+    # offers no UI action. It survives only as the continue_adjusting/
+    # retry_after_revert loop-back target, where the runner drives its
+    # handler unconditionally on entry with no action to wait for.
     assert service_module._actions_for(PcState.BUILD_INITIAL_PLAN) == []
 
 
@@ -1568,10 +1564,11 @@ def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
     on -- otherwise the button is a dead no-op. approve_plan->approve_repair,
     revert->undo, continue_adjusting/retry_after_revert->re_fix reuse the
     existing global _ACTION_ID_TO_KIND map; the rest pass through."""
-    # BUILD_INITIAL_PLAN is deliberately absent: it offers no UI action (see
-    # test_initial_plan_state_offers_no_actions), so it has no _ACTIONS_FOR
-    # entry to check here -- its find_resources handling is exercised
-    # directly against the handler in test_handlers_build.py instead.
+    # BUILD_INITIAL_PLAN is deliberately absent: it is a working/pass-through
+    # state now (state.py), not a waiting one, so it has no _ACTIONS_FOR entry
+    # to check here (see test_initial_plan_state_offers_no_actions) -- its
+    # unconditional discovery-on-entry behavior is exercised directly against
+    # the handler and end to end in test_handlers_build.py instead.
     handled: dict[PcState, set[str]] = {
         PcState.BUILD_CAPABILITY_CHECK: {"send_goal"},
         PcState.BUILD_GOAL_ANALYSIS: {"submit_requirements"},

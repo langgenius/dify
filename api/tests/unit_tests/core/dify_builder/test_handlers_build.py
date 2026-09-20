@@ -200,8 +200,13 @@ def test_continue_adjusting_still_reaches_resource_discovery():
     """handle_initial_plan is now reachable only via the continue_adjusting/
     retry_after_revert loop-back (build.initial_plan has no straight-through
     entry and no projected UI action -- see test_initial_plan_state_offers_no_
-    actions in test_service.py). Driving it directly with find_resources must
-    still reach the resource card via the shared discovery helper."""
+    actions in test_service.py). It is a working/pass-through state (state.py)
+    now, not a waiting one, so the runner drives it unconditionally with the
+    action already consumed -- NO find_resources action is sent or required;
+    a bare actor-only turn must still reach the resource card via the shared
+    discovery helper. (The end-to-end regression that this genuinely unwedges
+    the continue_adjusting loop-back through the Runner is
+    test_continue_adjusting_reaches_resources_without_find_resources_action.)"""
     from core.dify_builder.handlers_build import handle_initial_plan
 
     env, repo = _new_env()
@@ -211,13 +216,45 @@ def test_continue_adjusting_still_reaches_resource_discovery():
         plan_items=["Retrieve", "Summarize"],
         plan_version_tag="v1",
     )
-    turn = Turn(action=Action(kind="find_resources", base_version=1), actor=_actor())
+    turn = Turn(actor=_actor())  # no action -- the runner consumes it before driving a pass-through state
     res = handle_initial_plan(env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1])
 
     assert res.next == PcState.BUILD_RESOURCE_RECOMMENDATION
     rs = next(i for i in res.items if i.kind == "resource_select")
     assert rs.payload["recommended"][0]["readiness"] == "ready"
     assert "conflict_policy_options" not in rs.payload
+
+
+def test_continue_adjusting_reaches_resources_without_find_resources_action():
+    """End-to-end regression for the fix that made build.initial_plan a
+    working/pass-through state (state.py) instead of a waiting one: before
+    that fix, continue_adjusting landed a session on build.initial_plan with
+    NO projected UI action (task 2) AND a handler that still gated on
+    find_resources (task 2's original state) -- a dead end the loop-back
+    could never escape. Drive the Runner from build.review with ONLY
+    continue_adjusting (resolved to re_fix); it must fall straight through
+    build.initial_plan's unconditional discovery, in the SAME advance() call,
+    and settle at build.resource_recommendation with a resource_select card
+    -- no find_resources action is ever sent."""
+    from core.dify_builder.handlers_build import build_registry
+
+    env, repo = _new_env()
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_REVIEW,
+        requirements={"currency": "USD"},
+        built_node_ids=["start", "llm", "end"],
+    )
+    runner = Runner(env, build_registry())
+
+    re_fix_turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, re_fix_turn)
+
+    # Settled straight at the resource gate -- never stopped at (or needed an
+    # action to leave) build.initial_plan.
+    assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    kinds = [i.kind for i in repo.list_conversation(s.id)]
+    assert "resource_select" in kinds
 
 
 def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v1():
@@ -1147,10 +1184,13 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
 
 def test_review_continue_adjusting_then_reapprove_is_idempotent():
     """Final-review fix (Important #1): looping back from build.review via
-    continue_adjusting (resolved re_fix) and re-walking find_resources ->
-    confirm_resources -> approve_plan must NOT crash on the second build.
-    build_nodes() always emits create_node with the SAME fixed node ids
-    (start/knowledge_retrieval/llm/end); without idempotency the second
+    continue_adjusting (resolved re_fix) — which now falls straight through
+    build.initial_plan's unconditional resource discovery to
+    build.resource_recommendation in the SAME advance() call, since
+    build.initial_plan is a working/pass-through state (state.py) — and
+    re-walking confirm_resources -> approve_plan must NOT crash on the second
+    build. build_nodes() always emits create_node with the SAME fixed node
+    ids (start/knowledge_retrieval/llm/end); without idempotency the second
     apply_repair raises ValueError on the colliding node id and the session
     dead-ends at build.plan_approval. handle_plan_approval must filter out
     intents that already exist in the current draft graph before applying."""
@@ -1185,12 +1225,12 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
     assert out.current_state == PcState.BUILD_REVIEW
 
     # loop back: continue_adjusting (-> re_fix) -> build.initial_plan (re-plan)
+    # -> falls straight through (working/pass-through, no action needed) to
+    # build.resource_recommendation, all within this one advance() call.
     out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
-    assert out.current_state == PcState.BUILD_INITIAL_PLAN
-
-    # re-walk find_resources -> confirm_resources -> approve_plan
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+
+    # confirm_resources -> approve_plan
     confirm_action_2 = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action_2, actor=_actor()))
     assert out.current_state == PcState.BUILD_PLAN_APPROVAL
@@ -1292,7 +1332,10 @@ def test_build_await_testdata_is_waiting_and_projected():
 
 def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
     """Same idempotency path via the revert -> reverted -> retry_after_revert
-    loop (handle_reverted's re_fix), not continue_adjusting."""
+    loop (handle_reverted's re_fix), not continue_adjusting. re_fix lands on
+    build.initial_plan, which is a working/pass-through state (state.py) that
+    falls straight through to build.resource_recommendation in the same
+    advance() call, with no find_resources action needed."""
     from core.dify_builder.handlers_build import build_registry
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -1325,11 +1368,11 @@ def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
     out = runner.advance(s.id, Turn(action=Action(kind="undo", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_REVERTED
 
-    # retry_after_revert (-> re_fix) -> build.initial_plan (re-plan)
+    # retry_after_revert (-> re_fix) -> build.initial_plan (re-plan) -> falls
+    # straight through to build.resource_recommendation in this one call.
     out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
-    assert out.current_state == PcState.BUILD_INITIAL_PLAN
+    assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
 
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
     out = runner.advance(
         s.id,
         Turn(
