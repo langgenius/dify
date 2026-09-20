@@ -632,17 +632,31 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc)
 
 
+# Node outputs are only truncated upstream at ~100,000 chars per string, so a
+# report-generating workflow (the Builder's showcase case) can otherwise push
+# hundreds of KB of JSON into the conversation-item row, the SSE frame, and
+# the localizer walk on every successful build. The card is a preview, not a
+# download -- this cap keeps it one.
+_MAX_TERMINAL_OUTPUT_CHARS = 2000
+_TERMINAL_OUTPUT_TRUNCATED_MARKER = "\n… (truncated)"
+
+
 def _terminal_output(per_node: list[NodeOutput]) -> str:
     """The last node that produced anything, as readable JSON, or "".
 
     Deliberately status-agnostic: node status spellings differ by source
     ("success" vs "succeeded"), and a status filter that silently misses is
     worse than showing the output of a run that ended badly -- showing what
-    ran is the point of the card.
+    ran is the point of the card. Capped at ``_MAX_TERMINAL_OUTPUT_CHARS``
+    (see its comment) -- a big JSON blob is capped with a visible marker
+    rather than silently dropped.
     """
     for node in reversed(per_node):
         if node.outputs:
-            return json.dumps(node.outputs, ensure_ascii=False, indent=2)
+            rendered = json.dumps(node.outputs, ensure_ascii=False, indent=2)
+            if len(rendered) > _MAX_TERMINAL_OUTPUT_CHARS:
+                return rendered[:_MAX_TERMINAL_OUTPUT_CHARS] + _TERMINAL_OUTPUT_TRUNCATED_MARKER
+            return rendered
     return ""
 
 

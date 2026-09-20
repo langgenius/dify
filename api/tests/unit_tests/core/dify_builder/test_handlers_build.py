@@ -600,6 +600,25 @@ def test_a_passing_test_shows_what_the_workflow_produced():
     assert '"result": "42"' in test_result.payload["output"]
 
 
+def test_a_passing_test_caps_an_oversized_output_with_a_marker():
+    """Node outputs are only truncated upstream at ~100,000 chars per string,
+    so an uncapped render (e.g. a report-generating workflow, the Builder's
+    showcase case) could push hundreds of KB of JSON into the card, the SSE
+    frame, and the localizer walk on every successful build. The card must
+    cap the rendered output instead, with a visible truncation marker."""
+    from core.dify_builder.handlers_build import _MAX_TERMINAL_OUTPUT_CHARS, handle_test_and_repair
+
+    env, _ = _new_env()  # default FakeDifyPort; verify_pass=True by default
+    env.dify.run_outputs = {"report": "x" * 50_000}  # far beyond the cap once JSON-rendered
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    test_result = next(i for i in result.items if i.kind == "test_result")
+    output = test_result.payload["output"]
+    assert len(output) < _MAX_TERMINAL_OUTPUT_CHARS + 100  # capped, not the ~50KB payload
+    assert "truncated" in output
+
+
 def test_a_passing_test_with_no_output_shows_none():
     """No output produced -> the card's output is "", not a stale/placeholder
     value -- a passing test that shows nothing is not evidence of anything,
