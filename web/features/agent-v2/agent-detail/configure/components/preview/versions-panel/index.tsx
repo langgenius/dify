@@ -17,6 +17,8 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { CurrentDraftItem } from './current-draft-item'
 import { VersionFilter } from './filter'
+import { AgentVersionRestoreDialogs } from './restore-dialogs'
+import { useAgentVersionRestore } from './use-agent-version-restore'
 import { VersionFilterEmpty } from './version-filter-empty'
 import { VersionItem } from './version-item'
 
@@ -24,6 +26,9 @@ type AgentPreviewVersionsPanelProps = {
   agentId: string
   activeVersionId?: string | null
   onSelectVersion: (versionId: string | null) => void
+  onBeforeRestore?: () => void | Promise<void>
+  restoreDisabled?: boolean
+  onVersionRestored?: () => void | Promise<void>
   onClose: () => void
 }
 
@@ -32,7 +37,19 @@ export function AgentPreviewVersionsPanel({
   activeVersionId,
   onSelectVersion,
   onClose,
+  onVersionRestored,
+  onBeforeRestore,
+  restoreDisabled,
 }: AgentPreviewVersionsPanelProps) {
+  const restore = useAgentVersionRestore({
+    agentId,
+    onBeforeRestore,
+    disabled: restoreDisabled,
+    onRestored: async () => {
+      await onVersionRestored?.()
+      onSelectVersion(null)
+    },
+  })
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const { t: tWorkflow } = useTranslation('workflow')
@@ -140,6 +157,8 @@ export function AgentPreviewVersionsPanel({
                 isLast={index === filteredVersions.length - 1}
                 onSelect={onSelectVersion}
                 onExport={canImportExportDSL ? handleExport : undefined}
+                onRestore={restore.canRestore ? restore.requestRestore : undefined}
+                restoreDisabled={restore.disabled}
                 exportDisabled={exportDisabled}
                 showUpgrade={shouldShowUpgrade}
               />
@@ -147,6 +166,16 @@ export function AgentPreviewVersionsPanel({
           </div>
         )}
       </div>
+      <AgentVersionRestoreDialogs
+        version={restore.version}
+        isUpgradeOpen={restore.isUpgradeOpen}
+        onUpgradeClose={restore.closeUpgrade}
+        isConfirmOpen={restore.isConfirmOpen}
+        onConfirmOpenChange={restore.onConfirmOpenChange}
+        isPending={restore.isPending}
+        disabled={restore.disabled}
+        onConfirm={restore.confirmRestore}
+      />
     </aside>
   )
 }

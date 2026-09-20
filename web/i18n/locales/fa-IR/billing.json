@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "رویدادهای محرک",
   "upgrade.addChunks.description": "شما به حد اضافه کردن بخش‌ها برای این طرح رسیده‌اید.",
   "upgrade.addChunks.title": "برای ادامه افزودن بخش‌ها ارتقا دهید",
+  "upgrade.agentRestore.description": "بازیابی نسخه‌های برنامهٔ عامل در طرح فعلی شما در دسترس نیست.",
+  "upgrade.agentRestore.title": "برای بازیابی نسخه‌های برنامهٔ عامل ارتقا دهید",
   "upgrade.uploadMultipleFiles.description": "چند سند را به‌طور هم‌زمان بارگذاری کنید و حداکثر اندازه هر فایل را به 50 MB افزایش دهید.",
   "upgrade.uploadMultipleFiles.title": "برای فعال‌کردن بارگذاری گروهی و فایل‌های بزرگ‌تر، ارتقا دهید",
   "upgrade.uploadMultiplePages.description": "شما به حد آپلود رسیده‌اید — در طرح فعلی خود تنها می‌توانید یک سند را در هر بار انتخاب و آپلود کنید.",
