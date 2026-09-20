@@ -3,9 +3,10 @@
 Owns the resolved model. All of the Protocol's methods use real cognition: the
 3 Fix methods that reason about a failed run --
 ``diagnose``, ``diagnose_checklist``, ``propose_repair`` -- via
-``services.dify_builder.agent.fix``; the 6 Build methods -- ``analyze_goal``,
-``propose_plan_v1``, ``discover_resources``, ``bind_resources``, ``build_nodes``,
-``learn_from_build`` -- via ``services.dify_builder.agent.build`` (``bind_resources``
+``services.dify_builder.agent.fix``; the 7 Build methods -- ``analyze_goal``,
+``propose_plan_v1``, ``discover_resources``, ``assess_capability_gap``,
+``bind_resources``, ``build_nodes``, ``learn_from_build`` -- via
+``services.dify_builder.agent.build`` (``bind_resources``
 is deterministic, not LLM-driven); and all 3 Edit methods -- ``analyze_impact``,
 ``propose_edit_plan``, ``build_edit_intents`` -- via ``services.dify_builder.agent.edit``;
 ``generate_mock_inputs`` via ``services.dify_builder.agent.mock_inputs``, and
@@ -124,6 +125,9 @@ class LlmBuilderAgent:
             plan_items,
             self._reasoning_for("discover-resources"),
         )
+
+    def assess_capability_gap(self, plan_items, options):
+        return build.assess_capability_gap(self.model_or_none(), plan_items, options)
 
     def bind_resources(self, plan_items, resource_ids):
         return build.bind_resources(self.model_or_none(), self._tenant_id, plan_items, resource_ids)

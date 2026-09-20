@@ -284,6 +284,14 @@ def _discover_and_offer_resources(
             fc,
             NoticeItem(text="No workspace resources matched this plan — continuing without any."),
         )
+    gap = env.agent.assess_capability_gap(list(fc.plan_items), options)
+    if gap:
+        # Distinct from the empty-resources notice above: this fires even when
+        # SOME resources matched but one plan step still has nothing that can
+        # perform it (including a tool that's installed but unauthorized --
+        # readiness "missing_config" doesn't cover a step either). The two
+        # notices are independent and can both appear.
+        rs_items += append_card(fc, NoticeItem(text=gap))
     execution = progress.finish()
     turn_items = append_card(
         fc,
