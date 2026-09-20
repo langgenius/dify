@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.tools.tool_manager import ToolManager
 from core.workflow.generator.tool_catalogue import build_tool_catalogue
 from extensions.ext_database import db
 from models.dataset import Dataset
@@ -48,6 +49,38 @@ def _list_tools(tenant_id: str) -> list[dict]:
     return list(build_tool_catalogue(tenant_id))
 
 
+def _authorized_providers(tenant_id: str) -> set[str]:
+    """Providers with a credential row, i.e. authorized for this tenant.
+
+    Mirrors ``ToolTransformService.builtin_provider_to_user_provider``
+    (api/services/tools/tools_transform_service.py) so the Builder and the
+    console's own tools page can never disagree about what is usable: a
+    provider is usable when it needs no credentials, or when a
+    ``tool_builtin_providers`` row exists for it.
+    """
+    return {str(p.provider) for p in ToolManager.list_default_builtin_providers(tenant_id)}
+
+
+def _tool_readiness(entry: dict, authorized: set[str] | None) -> str:
+    """"ready" unless the tool needs credentials it doesn't have.
+
+    ``authorized is None`` means the authorization lookup itself failed
+    (see the ``build_tools`` try/except below) -- distinct from a
+    successful lookup that simply found zero rows. We fail OPEN in that
+    case: reporting every credentialed tool "missing_config" on a
+    transient DB error would hide tools the tenant genuinely has
+    configured, which is a worse failure than occasionally recommending
+    one we can't currently confirm. A real credential gap still surfaces
+    the next time the lookup succeeds, and the actual authorization check
+    happens again at tool-execution time regardless of this label.
+    """
+    if not entry.get("needs_credentials"):
+        return "ready"
+    if authorized is None:
+        return "ready"
+    return "ready" if entry["provider_name"] in authorized else "missing_config"
+
+
 def _safe(build, source: str) -> list:
     try:
         return build()
@@ -74,10 +107,25 @@ def list_tenant_resources(tenant_id: str) -> TenantResources:
         return [ResourceRef(id=str(d.id), label=str(d.name)) for d in _list_datasets(tenant_id)]
 
     def build_tools():
+        tools = _list_tools(tenant_id)
+        # Only pay for the authorization query when some listed tool would
+        # actually be gated on it -- a tenant with no credentialed tools
+        # installed never needs to touch tool_builtin_providers.
+        authorized: set[str] | None = None
+        if any(t.get("needs_credentials") for t in tools):
+            try:
+                authorized = _authorized_providers(tenant_id)
+            except Exception:  # the lookup degrades to "unknown", not "none authorized"
+                logger.warning(
+                    "Dify Builder: resource source %r failed for the current tenant; treating as empty",
+                    "tool authorization",
+                    exc_info=True,
+                )
+                authorized = None
         return [
             ResourceRef(id=f"{t['provider_name']}/{t['tool_name']}", label=str(t.get("tool_label") or t["tool_name"]),
-                        meta=str(t.get("description") or ""))
-            for t in _list_tools(tenant_id)
+                        meta=str(t.get("description") or ""), readiness=_tool_readiness(t, authorized))
+            for t in tools
         ]
 
     models = _safe(build_models, "models")
