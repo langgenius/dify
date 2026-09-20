@@ -14,7 +14,10 @@ import { useQueryState } from 'nuqs'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import {
+  isReRankModelSelected,
+  normalizeRetrievalConfigForSave,
+} from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
 import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
@@ -139,6 +142,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     try {
       setLoading(true)
       const { id, name, description, permission } = localeCurrentDataset
+      const retrievalModelForSave = normalizeRetrievalConfigForSave(retrievalConfig)
       const requestParams = {
         datasetId: id,
         body: {
@@ -148,9 +152,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
           indexing_technique: indexMethod,
           keyword_number: keywordNumber,
           retrieval_model: {
-            ...retrievalConfig,
-            score_threshold: retrievalConfig.score_threshold_enabled
-              ? retrievalConfig.score_threshold
+            ...retrievalModelForSave,
+            score_threshold: retrievalModelForSave.score_threshold_enabled
+              ? retrievalModelForSave.score_threshold
               : 0,
           },
           embedding_model: localeCurrentDataset.embedding_model,

@@ -7,6 +7,7 @@ import {
   ChunkingMode,
   DatasetPermission,
   DataSourceType,
+  RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
@@ -178,9 +179,15 @@ vi.mock('@/service/use-common', () => ({
   }),
 }))
 
-vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
-  isReRankModelSelected: () => true,
-}))
+vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()
+
+  return {
+    ...actual,
+    isReRankModelSelected: () => true,
+  }
+})
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -713,6 +720,42 @@ describe('useFormState', () => {
       })
 
       expect(result.current.retrievalConfig.reranking_enable).toBe(true)
+    })
+
+    it('should persist reranking_enable true on save for hybrid search with rerank model', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setRetrievalConfig({
+          ...result.current.retrievalConfig,
+          search_method: RETRIEVE_METHOD.hybrid,
+          reranking_enable: false,
+          reranking_mode: RerankingModeEnum.RerankingModel,
+          reranking_model: {
+            reranking_provider_name: 'cohere',
+            reranking_model_name: 'rerank-english-v3.0',
+          },
+        })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            search_method: RETRIEVE_METHOD.hybrid,
+            reranking_enable: true,
+            reranking_model: {
+              reranking_provider_name: 'cohere',
+              reranking_model_name: 'rerank-english-v3.0',
+            },
+          }),
+        }),
+      })
     })
 
     it('should include weights in save request when weights are set', async () => {

@@ -46,3 +46,21 @@ export const isReRankModelSelected = ({
 
   return true
 }
+
+/** Hybrid search has no rerank toggle; persist enable when a rerank model is selected. */
+export const normalizeRetrievalConfigForSave = (
+  retrievalConfig: RetrievalConfig,
+): RetrievalConfig => {
+  if (
+    retrievalConfig.search_method === RETRIEVE_METHOD.hybrid &&
+    retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel &&
+    retrievalConfig.reranking_model?.reranking_model_name
+  ) {
+    return {
+      ...retrievalConfig,
+      reranking_enable: true,
+    }
+  }
+
+  return retrievalConfig
+}

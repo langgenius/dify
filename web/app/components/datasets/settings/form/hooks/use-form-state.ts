@@ -8,7 +8,10 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import {
+  isReRankModelSelected,
+  normalizeRetrievalConfigForSave,
+} from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -169,9 +172,12 @@ export const useFormState = () => {
       return
     }
 
-    if (retrievalConfig.weights) {
-      retrievalConfig.weights.vector_setting.embedding_provider_name = embeddingModel.provider || ''
-      retrievalConfig.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
+    const retrievalModelForSave = normalizeRetrievalConfigForSave(retrievalConfig)
+
+    if (retrievalModelForSave.weights) {
+      retrievalModelForSave.weights.vector_setting.embedding_provider_name =
+        embeddingModel.provider || ''
+      retrievalModelForSave.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
     }
 
     try {
@@ -184,9 +190,9 @@ export const useFormState = () => {
         permission,
         indexing_technique: indexMethod,
         retrieval_model: {
-          ...retrievalConfig,
-          score_threshold: retrievalConfig.score_threshold_enabled
-            ? retrievalConfig.score_threshold
+          ...retrievalModelForSave,
+          score_threshold: retrievalModelForSave.score_threshold_enabled
+            ? retrievalModelForSave.score_threshold
             : 0,
         },
         embedding_model: embeddingModel.model,
