@@ -3,18 +3,15 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 import tempfile
 import zipfile
-from collections.abc import Callable, Generator, Sequence
-from dataclasses import dataclass
-from typing import BinaryIO, Literal, Protocol, cast
+from collections.abc import Callable, Sequence
+from typing import BinaryIO, cast
 from uuid import UUID
 
 import yaml
 from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -31,8 +28,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
-from models.model import App, AppMode, UploadFile
-from models.tools import ToolFile
+from models.model import App, AppMode
 from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import (
     AgentAppDsl,
@@ -43,9 +39,9 @@ from services.agent.dsl_entities import (
 from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionNotFoundError,
-    RosterAgentPackageExportFailedError,
     RosterAgentPackageTooLargeError,
 )
+from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource, _Storage
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
@@ -57,37 +53,11 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageSkill,
 )
 from services.agent.roster_service import AgentRosterService
-from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from services.skill_management_service import RuntimeAgentSkillArchive, SkillManagementService
+from services.skill_management_service import SkillManagementService
 
 
-class _Storage(Protocol):
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]: ...
-
-
-@dataclass(frozen=True)
-class _SkillSource:
-    path: str
-    storage_key: str
-    id: str
-    scope: Literal["agent_config", "workspace"]
-    name: str
-    display_name: str | None
-    description: str
-    priority: int | None
-    audit_ref: str
-
-
-@dataclass(frozen=True)
-class _FileSource:
-    path: str
-    storage_key: str
-    id: str
-    audit_ref: str
-
-
-class RosterAgentPackageExporter:
+class RosterAgentPackageExporter(AgentPackageResourceExporter):
     """Collect a Roster Agent through a dedicated read Session and build its archive."""
 
     def __init__(
@@ -96,7 +66,7 @@ class RosterAgentPackageExporter:
         storage_backend: _Storage = storage,
         dependency_provider: Callable[[str, list[str]], list[PluginDependency]] | None = None,
     ) -> None:
-        self._storage = storage_backend
+        super().__init__(storage_backend=storage_backend)
         self._dependency_provider = dependency_provider or DependenciesAnalysisService.generate_dependencies
 
     def export(self, *, tenant_id: str, agent_id: str, version_id: UUID | None) -> RosterAgentPackageExport:
@@ -222,59 +192,9 @@ class RosterAgentPackageExporter:
             skills: list[RosterAgentPackageSkill] = []
             files: list[RosterAgentPackageFile] = []
             with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
-                total_size = 0
-                nested_uncompressed_size = 0
-                skill_packages = SkillPackageService()
-                sources: list[_SkillSource | _FileSource] = [*skill_sources, *file_sources]
-                for source in sources:
-                    remaining_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - total_size
-                    if isinstance(source, _SkillSource):
-                        remaining_bytes = min(remaining_bytes, dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024)
-                    member_size, member_digest = self._write_storage_member(
-                        archive, path=source.path, storage_key=source.storage_key, max_bytes=remaining_bytes
-                    )
-                    total_size += member_size
-                    if isinstance(source, _SkillSource):
-                        # Inspect only the embedded Skill; our writer already owns
-                        # the outer container, resource sizes, and digests.
-                        try:
-                            inspection = skill_packages.inspect(content=archive.read(source.path), filename=source.path)
-                        except SkillPackageError as exc:
-                            raise RosterAgentPackageExportFailedError(
-                                f"Roster Agent package contains unusable Skill {source.name!r}"
-                            ) from exc
-                        if inspection.name != source.name:
-                            raise RosterAgentPackageExportFailedError(
-                                f"Roster Agent package contains unusable Skill {source.name!r}: name mismatch"
-                            )
-                        nested_uncompressed_size += inspection.uncompressed_size
-                        if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
-                            raise RosterAgentPackageTooLargeError(
-                                "Roster Agent package nested Skill contents exceed the size limit"
-                            )
-
-                        skills.append(
-                            RosterAgentPackageSkill(
-                                id=source.id,
-                                scope=source.scope,
-                                name=source.name,
-                                path=source.path,
-                                size=member_size,
-                                sha256=member_digest,
-                                audit=RosterAgentPackageAudit(ref=source.audit_ref),
-                            )
-                        )
-                    else:
-                        files.append(
-                            RosterAgentPackageFile(
-                                id=source.id,
-                                path=source.path,
-                                size=member_size,
-                                sha256=member_digest,
-                                audit=RosterAgentPackageAudit(ref=source.audit_ref),
-                            )
-                        )
-
+                skills, files, total_size = self._write_resources(
+                    archive, skill_sources=skill_sources, file_sources=file_sources
+                )
                 app_bytes = yaml.safe_dump(
                     app.model_dump(mode="json", exclude_none=True), allow_unicode=True, sort_keys=False
                 ).encode("utf-8")
@@ -314,163 +234,6 @@ class RosterAgentPackageExporter:
         except Exception:
             output.close()
             raise
-
-    def _collect_payloads(
-        self,
-        *,
-        session: Session,
-        tenant_id: str,
-        soul: AgentSoulConfig,
-    ) -> tuple[AgentSoulConfig, list[_SkillSource], list[_FileSource]]:
-        resource_data = soul.model_dump(mode="json")
-        skill_sources: list[_SkillSource] = []
-        file_sources: list[_FileSource] = []
-
-        skill_file_ids = [item.file_id for item in soul.config_skills if not item.is_missing]
-        tool_files = self._tool_files(session=session, tenant_id=tenant_id, file_ids=skill_file_ids)
-        for skill_ref, portable_skill_ref in zip(soul.config_skills, resource_data["config_skills"]):
-            if skill_ref.is_missing:
-                continue
-            resource_id = f"s_{len(skill_sources) + 1:06d}"
-            tool_file = tool_files.get(skill_ref.file_id)
-            if tool_file is None:
-                raise RosterAgentPackageExportFailedError(f"Config skill {skill_ref.name!r} payload is unavailable")
-            path = f"{resource_id}.zip"
-            portable_skill_ref["file_id"] = resource_id
-            portable_skill_ref["is_missing"] = False
-            skill_sources.append(
-                _SkillSource(
-                    path=path,
-                    storage_key=tool_file.file_key,
-                    id=resource_id,
-                    scope="agent_config",
-                    name=skill_ref.name,
-                    display_name=None,
-                    description=skill_ref.description,
-                    priority=None,
-                    audit_ref=tool_file.id,
-                )
-            )
-
-        tool_file_refs = [
-            item.file_id for item in soul.config_files if not item.is_missing and item.file_kind == "tool_file"
-        ]
-        upload_file_refs = [
-            item.file_id for item in soul.config_files if not item.is_missing and item.file_kind == "upload_file"
-        ]
-        file_tool_files = self._tool_files(session=session, tenant_id=tenant_id, file_ids=tool_file_refs)
-        upload_files = self._upload_files(session=session, tenant_id=tenant_id, file_ids=upload_file_refs)
-        for file_ref, portable_file_ref in zip(soul.config_files, resource_data["config_files"]):
-            if file_ref.is_missing:
-                continue
-            resource_id = f"f_{len(file_sources) + 1:06d}"
-            extension = self._safe_extension(file_ref.name)
-            path = f"{resource_id}{extension}"
-            if file_ref.file_kind == "tool_file":
-                tool_file = file_tool_files.get(file_ref.file_id)
-                if tool_file is None:
-                    raise RosterAgentPackageExportFailedError(f"Config file {file_ref.name!r} payload is unavailable")
-                storage_key = tool_file.file_key
-                mime_type = file_ref.mime_type or tool_file.mimetype
-                audit_ref = tool_file.id
-            else:
-                upload_file = upload_files.get(file_ref.file_id)
-                if upload_file is None:
-                    raise RosterAgentPackageExportFailedError(f"Config file {file_ref.name!r} payload is unavailable")
-                storage_key = upload_file.key
-                mime_type = file_ref.mime_type or upload_file.mime_type
-                audit_ref = upload_file.id
-            portable_file_ref["file_id"] = resource_id
-            portable_file_ref["is_missing"] = False
-            portable_file_ref["mime_type"] = mime_type or "application/octet-stream"
-            file_sources.append(
-                _FileSource(
-                    path=path,
-                    storage_key=storage_key,
-                    id=resource_id,
-                    audit_ref=audit_ref,
-                )
-            )
-
-        return AgentSoulConfig.model_validate(resource_data), skill_sources, file_sources
-
-    @staticmethod
-    def _workspace_skill_sources(
-        *, soul: AgentSoulConfig, archives: Sequence[RuntimeAgentSkillArchive], start_index: int
-    ) -> list[_SkillSource]:
-        sources: list[_SkillSource] = []
-        effective_skill_names = {item.name for item in soul.config_skills if not item.is_missing}
-        for archive in sorted(archives, key=lambda item: item.priority):
-            if archive.name in effective_skill_names:
-                continue
-            effective_skill_names.add(archive.name)
-            resource_id = f"s_{start_index + len(sources) + 1:06d}"
-            path = f"{resource_id}.zip"
-            sources.append(
-                _SkillSource(
-                    path=path,
-                    storage_key=archive.storage_key,
-                    id=resource_id,
-                    scope="workspace",
-                    name=archive.name,
-                    display_name=archive.display_name,
-                    description=archive.description,
-                    priority=archive.priority,
-                    audit_ref=archive.version_id,
-                )
-            )
-        return sources
-
-    @staticmethod
-    def _tool_files(*, session: Session, tenant_id: str, file_ids: Sequence[str]) -> dict[str, ToolFile]:
-        if not file_ids:
-            return {}
-        rows = session.scalars(
-            select(ToolFile).where(ToolFile.tenant_id == tenant_id, ToolFile.id.in_(set(file_ids)))
-        ).all()
-        return {item.id: item for item in rows}
-
-    @staticmethod
-    def _upload_files(*, session: Session, tenant_id: str, file_ids: Sequence[str]) -> dict[str, UploadFile]:
-        if not file_ids:
-            return {}
-        rows = session.scalars(
-            select(UploadFile).where(UploadFile.tenant_id == tenant_id, UploadFile.id.in_(set(file_ids)))
-        ).all()
-        return {item.id: item for item in rows}
-
-    def _write_storage_member(
-        self,
-        archive: zipfile.ZipFile,
-        *,
-        path: str,
-        storage_key: str,
-        max_bytes: int,
-    ) -> tuple[int, str]:
-        digest = hashlib.sha256()
-        size = 0
-        try:
-            with archive.open(path, "w", force_zip64=True) as target:
-                for chunk in self._storage.load_stream(storage_key):
-                    if not isinstance(chunk, bytes):
-                        raise TypeError("storage stream returned a non-bytes chunk")
-                    if size + len(chunk) > max_bytes:
-                        raise RosterAgentPackageTooLargeError("Roster Agent package payload exceeds the size limit")
-                    size += len(chunk)
-                    digest.update(chunk)
-                    target.write(chunk)
-        except RosterAgentPackageTooLargeError:
-            raise
-        except Exception as exc:
-            raise RosterAgentPackageExportFailedError(f"Unable to read package resource {path!r}") from exc
-        return size, digest.hexdigest()
-
-    @staticmethod
-    def _safe_extension(filename: str) -> str:
-        extension = os.path.splitext(filename)[1].lower()
-        if not extension or not re.fullmatch(r"\.[a-z0-9]{1,16}", extension):
-            return ".bin"
-        return extension
 
     @staticmethod
     def _safe_slug(name: str) -> str:

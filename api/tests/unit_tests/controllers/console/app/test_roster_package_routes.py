@@ -3,7 +3,7 @@ import zipfile
 from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 from uuid import UUID
 
 import httpx
@@ -338,7 +338,9 @@ def test_default_export_packages_ordinary_app_dsl(
         assert "my-app.ifpkg" in response.headers["Content-Disposition"]
         assert AppPackageService().read_dsl(io.BytesIO(response.get_data())) == dsl
         response.close()
-    export.assert_called_once_with(app_model=model, session=session, include_secret=True, workflow_id="revision-1")
+    export.assert_called_once_with(
+        app_model=model, session=ANY, include_secret=True, workflow_id="revision-1", resource_exporter=ANY
+    )
 
 
 @pytest.mark.parametrize("from_url", [False, True])
@@ -380,8 +382,11 @@ def test_ordinary_package_import_uses_dsl_permissions_and_confirmation(
             with app.test_request_context(method="POST", data=form):
                 assert unwrap(api.post)(api, account) == ({"status": "pending"}, status)
     import_dsl.assert_called_once_with(
-        import_module.AppImportPayload(mode="yaml-content", yaml_content=dsl, name="Renamed", app_id=app_id), account
+        import_module.AppImportPayload(mode="yaml-content", yaml_content=dsl, name="Renamed", app_id=app_id),
+        account,
+        package=ANY,
     )
+    assert import_dsl.call_args.kwargs["package"].archive.closed
     agent_import.assert_not_called()
 
 
