@@ -1101,6 +1101,48 @@ const lockoutWarning = "Your IP (203.0.113.42) isn't in this policy. You may los
 
 describe('trusted IP checks before saving', () => {
   it.each([true, false])(
+    'enables a paused policy after saving edits with a fresh IP check (allowed: %s)',
+    async (allowed) => {
+      const user = userEvent.setup()
+      const server = setupBindingServer(createBinding({ enabled: false }))
+      server.check.allowed = allowed
+      renderEntry({
+        plan: 'professional',
+        groups: server.groups,
+        binding: server.binding,
+        isPublished: true,
+      })
+      await user.click(getChip())
+      await user.click(screen.getByRole('button', { name: 'Edit' }))
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+      await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+      expect(within(getChip()).getByText('Off')).toBeInTheDocument()
+      expect(server.writes).toHaveLength(0)
+      const checksBeforeSave = server.checks
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      if (!allowed) {
+        const dialog = await screen.findByRole('alertdialog', { name: 'Save without your own IP?' })
+        expect(server.writes).toHaveLength(0)
+        await user.click(within(dialog).getByRole('button', { name: 'Save anyway' }))
+      }
+      await waitFor(() =>
+        expect(server.writes).toEqual([
+          {
+            enabled: true,
+            group_id: 'group-1',
+            access_points: ['webapp', 'service_api'],
+            expected_version: 2,
+          },
+        ]),
+      )
+      expect(server.checks).toBeGreaterThan(checksBeforeSave)
+      expect(await screen.findByRole('switch', { name: 'Enable access control' })).toBeChecked()
+      expect(within(getChip()).getByText('2 of 3')).toBeInTheDocument()
+    },
+  )
+
+  it.each([true, false])(
     'uses the server match result and only confirms a published denial (allowed: %s)',
     async (allowed) => {
       const user = userEvent.setup()

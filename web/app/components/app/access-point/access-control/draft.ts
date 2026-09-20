@@ -51,7 +51,6 @@ export function canSaveAccessControl({
 }) {
   if (!availableAccessPoints.length) return false
   if (baseline && isAccessControlDraftEqual(draft, baseline, availableAccessPoints)) return false
-  if (!draft.enabled) return Boolean(draft.selectedPolicyId)
   if (!draft.selectedPolicyId) return false
   return hasSelectedAccessPoint(draft, availableAccessPoints)
 }

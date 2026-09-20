@@ -162,19 +162,22 @@ describe('AccessControlConfigPanel', () => {
     },
   )
 
-  it('hides required-selection messages while access control is disabled', () => {
+  it('requires access points when editing a paused policy', () => {
     render(
       <PanelHarness
         initialDraft={{
           enabled: false,
-          selectedPolicyId: null,
+          selectedPolicyId: 'internal-network',
           scopes: { webApp: false, serviceApi: false, mcp: false, trigger: false },
         }}
       />,
     )
 
     expect(screen.queryByText('Please select an IP policy.')).not.toBeInTheDocument()
-    expect(screen.queryByText('Please choose at least one access point.')).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Apply to' })).toHaveAccessibleDescription(
+      'Please choose at least one access point.',
+    )
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 
   it('warns and disables save when every access point is off', async () => {

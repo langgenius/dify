@@ -21,13 +21,13 @@ describe('canSaveAccessControl', () => {
     ).toBe(false)
   })
 
-  it('disables save when every access point is off', () => {
+  it.each([true, false])('disables save with no access points (enabled: %s)', (enabled) => {
     expect(
       canSaveAccessControl({
         availableAccessPoints: ACCESS_POINT_ORDER,
         draft: {
           selectedPolicyId: 'policy-1',
-          enabled: true,
+          enabled,
           scopes: {
             webApp: false,
             serviceApi: false,
@@ -86,12 +86,12 @@ describe('canSaveAccessControl', () => {
     ).toBe(false)
   })
 
-  it('allows saving a pause when a policy is already selected', () => {
+  it('allows editing a paused configuration with a policy and access points', () => {
     expect(
       canSaveAccessControl({
         availableAccessPoints: ACCESS_POINT_ORDER,
-        draft: { ...selectedDraft, enabled: false },
-        baseline: selectedDraft,
+        draft: { ...selectedDraft, enabled: false, selectedPolicyId: 'policy-2' },
+        baseline: { ...selectedDraft, enabled: false },
       }),
     ).toBe(true)
   })

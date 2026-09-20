@@ -67,8 +67,8 @@ export function AccessControlConfigPanel({
   const title = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
   const hasSelectedPolicy = policies.some((policy) => policy.id === draft.selectedPolicyId)
   const hasPersistableSelection = hasSelectedAccessPoint(draft, availableAccessPoints)
-  const showPolicyError = draft.enabled && !hasSelectedPolicy
-  const showAccessPointError = draft.enabled && !hasPersistableSelection
+  const showPolicyError = !hasSelectedPolicy
+  const showAccessPointError = !hasPersistableSelection
   const canSave =
     !readOnly &&
     !saving &&

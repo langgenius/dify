@@ -298,7 +298,7 @@ function AccessControlSession({
   const saveDraft = (nextDraft: AccessControlDraft) => {
     persistBinding(
       {
-        enabled: nextDraft.enabled,
+        enabled: true,
         groupId: nextDraft.selectedPolicyId,
         accessPoints: accessPointsFromScopes(nextDraft.scopes, availableAccessPoints),
       },
@@ -320,10 +320,6 @@ function AccessControlSession({
       updateBinding.isPending
     )
       return
-    if (!nextDraft.enabled) {
-      saveDraft(nextDraft)
-      return
-    }
     const groupId = nextDraft.selectedPolicyId
     const attempt = ++saveAttemptRef.current
     saveCheck.mutate(
