@@ -139,10 +139,12 @@ def discover_resources(
         return []
     system = (
         "You are a Dify workflow resource recommender. From the AVAILABLE resources, pick the "
-        "ids relevant to the plan. Use ONLY listed ids. Reply with ONLY JSON: "
+        "ids relevant to the plan. Each is listed with its readiness: 'ready' or 'missing_config' "
+        "(installed but not authorized for this workspace, so it cannot actually be used) -- never "
+        "recommend a missing_config resource. Use ONLY listed ids. Reply with ONLY JSON: "
         '{"resource_ids": ["<id>", ...]}.'
     )
-    listing = "\n".join(f"- {rid} ({kind}): {ref.label}" for rid, (kind, ref) in catalog.items())
+    listing = "\n".join(f"- {rid} ({kind}, {ref.readiness}): {ref.label}" for rid, (kind, ref) in catalog.items())
     user = f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
@@ -169,7 +171,10 @@ def discover_resources(
 
 
 _GAP_SYSTEM = (
-    "You check whether a workflow plan can be built from the resources listed. "
+    "You check whether a workflow plan can be built from the resources listed. Each resource is "
+    "shown with its readiness: 'ready' or 'missing_config' -- installed but not authorized for "
+    "this workspace, so it is not usable; treat a missing_config resource as unavailable, the "
+    "same as if it were not listed at all. "
     "Name in ONE plain sentence any step no listed resource can perform, and say what "
     "capability is missing -- never which product to install. Reply with ONLY JSON: "
     '{"gap": "<sentence, or empty string when the plan is covered>"}.'

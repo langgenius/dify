@@ -553,6 +553,31 @@ class TestBuildToolCatalogue:
 
         assert [e["provider_name"] for e in entries] == ["time"]
 
+    def test_continues_when_a_providers_need_credentials_property_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Regression guard: `.need_credentials` used to be read OUTSIDE the
+        # per-provider try/except that guards get_tools() and per-tool
+        # description parsing. A provider whose property raises must be
+        # skipped like any other bad provider -- not propagate and break the
+        # whole catalogue call, which this file's cmd+K /create and /refine
+        # callers also depend on.
+        bad = _make_builtin_provider("broken", [_make_tool("x")])
+        good = _make_builtin_provider("time", [_make_tool("now")])
+        need_credentials = BuiltinToolProviderController.need_credentials
+
+        def credentials(provider: BuiltinToolProviderController) -> bool:
+            if provider is bad:
+                raise RuntimeError("credentials lookup boom")
+            return need_credentials.__get__(provider, type(provider))
+
+        monkeypatch.setattr(BuiltinToolProviderController, "need_credentials", property(credentials))
+        monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([bad, good]))
+
+        entries = build_tool_catalogue("tenant-1")
+
+        assert [e["provider_name"] for e in entries] == ["time"]
+
     def test_skips_individual_tools_when_their_metadata_is_broken(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # Per-tool try/except — a single mis-declared tool inside an otherwise
         # healthy provider gets dropped, the rest still surface.
