@@ -69,6 +69,7 @@ from dify_agent.protocol.schemas import (
     RunLayerSpec,
     RunSucceededEvent,
 )
+from dify_agent.runtime.compaction_observability import ObservableCompactionAdapter
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import (
@@ -713,8 +714,10 @@ def test_runner_passes_context_compaction(monkeypatch: pytest.MonkeyPatch) -> No
             capabilities = cast(list[object], kwargs["capabilities"])
             assert len(capabilities) == 1
             capability = capabilities[0]
-            assert isinstance(capability, TieredCompaction)
-            assert capability.target_tokens == 7_000
+            assert isinstance(capability, ObservableCompactionAdapter)
+            assert capability.run_id == "run-compaction"
+            assert isinstance(capability.delegate, TieredCompaction)
+            assert capability.delegate.target_tokens == 7_000
             return FakeAgentRunResult("done")
 
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
