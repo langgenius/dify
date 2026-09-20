@@ -194,7 +194,6 @@ def build_middleware_stack(repo_root: Path, services: list[str]) -> DockerCompos
         ),
         env_file=repo_root / "docker" / "middleware.env",
         services=tuple(services),
-        ready_delay_seconds=5.0,
         warmup_urls=("http://127.0.0.1:8194/health",),
     )
 

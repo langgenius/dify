@@ -114,7 +114,7 @@ def test_builders_use_expected_compose_files(tmp_path: Path):
         tmp_path / "docker" / "docker-compose.pytest.middleware.yaml",
     )
     assert middleware.env_file == tmp_path / "docker" / "middleware.env"
-    assert middleware.ready_delay_seconds == 5.0
+    assert middleware.ready_delay_seconds == 0.0
     assert vdb.compose_files == (
         tmp_path / "docker" / "docker-compose.yaml",
         tmp_path / "docker" / "docker-compose.pytest.ports.yaml",
