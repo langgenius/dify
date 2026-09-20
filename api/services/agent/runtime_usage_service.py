@@ -24,7 +24,6 @@ from libs.datetime_utils import naive_utc_now
 from models.agent_sandbox_usage import AgentSandboxExecution, AgentSandboxUsageEvent
 
 _T = TypeVar("_T")
-_OWNER_FIELDS = ("tenant_id", "app_id", "agent_id", "binding_id", "workspace_id")
 _APPLICATION_TYPES = {"operation_requested", "operation_observed", "collector_checkpoint", "collector_retention_gap"}
 _TERMINAL_TYPES = {"sandbox.lifecycle.paused", "sandbox.lifecycle.killed"}
 _NONTERMINAL_TYPES = {"sandbox.lifecycle.created", "sandbox.lifecycle.resumed", "sandbox.lifecycle.updated"}
@@ -348,7 +347,13 @@ class SandboxUsageService:
                     **owner,
                 )
                 session.add(row)
-            elif any(getattr(row, name) != value for name, value in owner.items()):
+            elif {
+                "tenant_id": row.tenant_id,
+                "app_id": row.app_id,
+                "agent_id": row.agent_id,
+                "binding_id": row.binding_id,
+                "workspace_id": row.workspace_id,
+            } != owner:
                 raise SandboxUsageError("allocation_owner_conflict", status_code=409)
             elif sandbox_id is not None:
                 if row.sandbox_id is not None and row.sandbox_id != sandbox_id:
@@ -578,8 +583,11 @@ class SandboxUsageService:
     @staticmethod
     def _copy_owner(target: AgentSandboxUsageEvent | AgentSandboxExecution, owner: AgentSandboxUsageEvent) -> None:
         target.allocation_id = owner.allocation_id
-        for name in _OWNER_FIELDS:
-            setattr(target, name, getattr(owner, name))
+        target.tenant_id = owner.tenant_id
+        target.app_id = owner.app_id
+        target.agent_id = owner.agent_id
+        target.binding_id = owner.binding_id
+        target.workspace_id = owner.workspace_id
         if isinstance(target, AgentSandboxExecution):
             target.attribution_status = "resolved"
 
@@ -708,9 +716,13 @@ class SandboxUsageService:
             owner.sandbox_id = row.sandbox_id
         elif row.allocation_id:
             execution.allocation_id = row.allocation_id
-        for field in ("template_id", "template_build_id", "vcpu_count", "memory_mib"):
+        for field, previous in (
+            ("template_id", execution.template_id),
+            ("template_build_id", execution.template_build_id),
+            ("vcpu_count", execution.vcpu_count),
+            ("memory_mib", execution.memory_mib),
+        ):
             value = data[field]
-            previous = getattr(execution, field)
             if previous is not None and value is not None and previous != value:
                 cls._conflict(session, row, "execution_resources_conflict", execution)
                 return

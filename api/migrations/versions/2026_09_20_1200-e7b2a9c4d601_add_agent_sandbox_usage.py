@@ -1,7 +1,7 @@
-"""Add independent sandbox execution accounting and merge deployment heads.
+"""Add independent sandbox execution accounting.
 
 Revision ID: e7b2a9c4d601
-Revises: d4e5f6a7b8c9, d8e4a6b1c902
+Revises: d8e4a6b1c902
 Create Date: 2026-09-20 12:00:00
 """
 
@@ -11,7 +11,7 @@ from alembic import op
 from models.types import StringUUID
 
 revision = "e7b2a9c4d601"
-down_revision = ("d4e5f6a7b8c9", "d8e4a6b1c902")
+down_revision = "d8e4a6b1c902"
 branch_labels = None
 depends_on = None
 
