@@ -132,6 +132,21 @@ beforeEach(() => {
 
 const getChip = () => screen.getByRole('button', { name: /Access Control/ })
 
+const createBinding = (
+  overrides: Partial<AppNetworkAccessGroupBindingResponse> = {},
+): AppNetworkAccessGroupBindingResponse => ({
+  id: 'binding-1',
+  tenant_id: 'workspace-1',
+  app_id: 'app-1',
+  enabled: true,
+  group_id: 'group-1',
+  access_points: ['webapp', 'service_api', 'mcp'],
+  version: 2,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+  ...overrides,
+})
+
 describe('AccessControlEntry', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -531,6 +546,53 @@ describe('AccessControlEntry', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
   })
 
+  it.each([false, true])(
+    'closes and restores a draft with the Close button (configured: %s)',
+    async (configured) => {
+      const user = userEvent.setup()
+      renderEntry({
+        plan: 'professional',
+        groups: [createNetworkAccessGroupFixture()],
+        binding: configured ? createBinding() : null,
+      })
+
+      await user.click(getChip())
+      if (configured) await user.click(screen.getByRole('button', { name: 'Edit' }))
+      else await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+      await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+
+      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(within(getChip()).getByText(configured ? 'ON' : 'Off')).toBeInTheDocument()
+
+      await user.click(getChip())
+      expect(screen.getByRole('combobox', { name: 'IP Policy' })).toHaveTextContent(
+        'Internal Network',
+      )
+      expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toBeChecked()
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+    },
+  )
+
+  it('closes a clean edit and reopens the saved preview with the Close button', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: createBinding(),
+    })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await user.click(getChip())
+    expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+  })
+
   it('discards an unsaved edit on Back', async () => {
     const user = userEvent.setup()
     renderEntry({
@@ -619,21 +681,6 @@ const capabilityCases = [
   points: AppNetworkAccessGroupResponse['available_access_points']
   labels: string[]
 }[]
-
-const createBinding = (
-  overrides: Partial<AppNetworkAccessGroupBindingResponse> = {},
-): AppNetworkAccessGroupBindingResponse => ({
-  id: 'binding-1',
-  tenant_id: 'workspace-1',
-  app_id: 'app-1',
-  enabled: true,
-  group_id: 'group-1',
-  access_points: ['webapp', 'service_api', 'mcp'],
-  version: 2,
-  created_at: '2026-01-01T00:00:00Z',
-  updated_at: '2026-01-01T00:00:00Z',
-  ...overrides,
-})
 
 describe('supported access points and binding permission', () => {
   beforeEach(() => vi.clearAllMocks())

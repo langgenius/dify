@@ -9,7 +9,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
+import { PopoverClose, PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { canSaveAccessControl, hasSelectedAccessPoint } from './draft'
@@ -103,14 +103,17 @@ export function AccessControlConfigPanel({
           <PopoverTitle className="min-w-0 flex-1 system-md-semibold text-text-primary">
             {title}
           </PopoverTitle>
-          <IconButton
-            type="button"
-            size="lg"
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            onClick={onCancel}
-          >
-            <span aria-hidden className="i-ri-close-line size-4" />
-          </IconButton>
+          <PopoverClose
+            render={
+              <IconButton
+                type="button"
+                size="lg"
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
         </div>
       </div>
       <PopoverDescription className="px-4 pb-2 system-sm-regular text-text-tertiary">
