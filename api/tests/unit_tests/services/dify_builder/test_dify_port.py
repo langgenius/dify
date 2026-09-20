@@ -10,9 +10,10 @@ The goal is to pin the adapter's ORCHESTRATION and the P2 plan's OSS gotchas:
   copy -- the workflow's own ``graph_dict`` stays untouched), and re-maps
   ``WorkflowHashNotEqualError`` to the domain ``HashMismatchError``.
 - ``run_draft`` calls ``AppGenerateService.generate`` with
-  ``invoke_from=InvokeFrom.DEBUGGER`` and ``streaming=False``, emits an
-  ``on_event`` per node execution, and returns the ``run_mapping``-mapped
-  ``Run``.
+  ``invoke_from=InvokeFrom.DEBUGGER`` and ``streaming=True``, emits an
+  ``on_event`` per node frame *as the run streams*, consumes that stream
+  outside the ``Session`` block, and still reads the node-execution rows once
+  at the end for the ``run_mapping``-mapped ``Run``.
 - ``publish`` calls ``publish_workflow`` AND sets ``app.workflow_id`` AND
   commits -- omitting the ``workflow_id`` update makes publish a silent
   no-op, so all three are asserted together.
@@ -21,6 +22,7 @@ The genuine red -> green -> publish end-to-end against a running local stack
 is Task 5's runbook, not this suite.
 """
 
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -523,23 +525,38 @@ def test_apply_repair_survives_delete_and_recreate_of_same_id_in_one_batch(mock_
 # ---- run_draft --------------------------------------------------------------
 
 
-def test_run_draft_invokes_generate_with_debugger_blocking_and_emits_node_events(mock_session: MagicMock):
-    account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-    _configure_session_get(mock_session, account=account, app=app)
+def _sse(chunk: dict) -> str:
+    """One event as ``AppGenerateService.generate(streaming=True)`` really emits it.
 
-    response = {
-        "data": {
-            "id": "run-1",
-            "workflow_id": "wf-1",
-            "status": "succeeded",
-            "outputs": {"answer": "42"},
-            "error": None,
-            "elapsed_time": 1.0,
-            "total_tokens": 10,
-        }
-    }
-    node_exec = SimpleNamespace(
+    ``BaseAppGenerator.convert_to_event_stream`` is the tail of every streaming
+    generate call and wraps each event mapping as ``"data: {json}\\n\\n"``.
+    """
+    return f"data: {json.dumps(chunk)}\n\n"
+
+
+_FINISHED_CHUNK = {
+    "event": "workflow_finished",
+    "workflow_run_id": "run-1",
+    "data": {
+        "id": "run-1",
+        "workflow_id": "wf-1",
+        "status": "succeeded",
+        "outputs": {"answer": "42"},
+        "error": None,
+        "elapsed_time": 1.0,
+        "total_tokens": 10,
+    },
+}
+
+
+def _configure_default_identity(session: MagicMock) -> None:
+    _configure_session_get(
+        session, account=SimpleNamespace(id="acc-1"), app=SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    )
+
+
+def _node_exec() -> SimpleNamespace:
+    return SimpleNamespace(
         node_id="node-1",
         node_type="code",
         title="Code",
@@ -549,15 +566,31 @@ def test_run_draft_invokes_generate_with_debugger_blocking_and_emits_node_events
         outputs_dict={"x": 1},
     )
 
+
+def test_run_draft_streams_node_events_while_the_run_is_still_going(mock_session: MagicMock):
+    """The point of streaming: the callback fires per event, not once at the end."""
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    chunks = [
+        "event: ping\n\n",
+        _sse({"event": "workflow_started", "data": {"id": "run-1"}}),
+        _sse({"event": "node_started", "data": {"node_id": "node-1", "title": "Code"}}),
+        "ping",
+        _sse({"event": "node_finished", "data": {"node_id": "node-1", "title": "Code", "status": "succeeded"}}),
+        _sse(_FINISHED_CHUNK),
+    ]
+
     events: list[NodeEvent] = []
 
     with (
         patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
         patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
     ):
-        mock_ags.generate.return_value = response
+        mock_ags.generate.return_value = iter(chunks)
         mock_node_exec_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
-        mock_node_exec_repo.get_executions_by_workflow_run.return_value = [node_exec]
+        mock_node_exec_repo.get_executions_by_workflow_run.return_value = [_node_exec()]
 
         run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {"q": "hi"}, events.append)
 
@@ -566,15 +599,155 @@ def test_run_draft_invokes_generate_with_debugger_blocking_and_emits_node_events
     assert kwargs["user"] is account
     assert kwargs["args"] == {"inputs": {"q": "hi"}}
     assert kwargs["invoke_from"] == InvokeFrom.DEBUGGER
-    assert kwargs["streaming"] is False
+    assert kwargs["streaming"] is True
     assert kwargs["session"] is mock_session
 
-    mock_node_exec_repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-1")
+    # Ping frames and workflow-level frames produce no node event.
+    assert events == [
+        NodeEvent(node_id="node-1", title="Code", status="running", error=""),
+        NodeEvent(node_id="node-1", title="Code", status="succeeded", error=""),
+    ]
 
-    assert events == [NodeEvent(node_id="node-1", title="Code", status="succeeded", error="")]
+    # The node-execution read stays: map_run_result needs it for per_node outputs.
+    mock_node_exec_repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-1")
     assert run.status == "succeeded"
     assert run.dify_run_id == "run-1"
     assert run.per_node[0].node_id == "node-1"
+    assert run.per_node[0].outputs == {"x": 1}
+
+
+def test_run_draft_consumes_the_stream_after_the_session_is_closed(mock_session: MagicMock):
+    """``generate`` needs the Session eagerly; iterating the stream does not.
+
+    Pulling chunks inside the ``with`` block would pin a DB connection for the
+    whole workflow run, so the loop must sit outside it.
+    """
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    session_open_at_pull: list[bool] = []
+
+    def _stream():
+        for chunk in (
+            _sse({"event": "node_started", "data": {"node_id": "node-1", "title": "Code"}}),
+            _sse(_FINISHED_CHUNK),
+        ):
+            session_open_at_pull.append(not mock_session.__exit__.called)
+            yield chunk
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = _stream()
+        repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        repo.get_executions_by_workflow_run.return_value = []
+
+        WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+
+    # generate() itself was called while the session was open...
+    assert mock_ags.generate.call_args.kwargs["session"] is mock_session
+    # ...but every chunk was pulled after it closed.
+    assert session_open_at_pull == [False, False]
+
+
+def test_run_draft_accepts_raw_mapping_chunks(mock_session: MagicMock):
+    """Defensive: the SSE wrapping layer is not the only shape we tolerate."""
+    _configure_default_identity(mock_session)
+    seen: list[str] = []
+
+    chunks = [
+        {"event": "node_started", "data": {"node_id": "n1", "title": "Start"}},
+        "ping",
+        {"event": "node_finished", "data": {"node_id": "n1", "title": "Start", "status": "succeeded"}},
+        {"event": "workflow_finished", "data": {"id": "run-1", "status": "succeeded", "outputs": {}}},
+    ]
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = iter(chunks)
+        repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        repo.get_executions_by_workflow_run.return_value = []
+
+        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda e: seen.append(e.status))
+
+    assert seen == ["running", "succeeded"]
+    assert run.status == "succeeded"
+    assert run.dify_run_id == "run-1"
+
+
+def test_run_draft_maps_a_paused_stream_to_a_failed_run(mock_session: MagicMock):
+    """``workflow_paused`` carries ``workflow_run_id`` where blocking carried ``id``."""
+    _configure_default_identity(mock_session)
+
+    paused = {
+        "event": "workflow_paused",
+        "workflow_run_id": "run-9",
+        "data": {
+            "workflow_run_id": "run-9",
+            "paused_nodes": ["human-1"],
+            "reasons": [{"node_id": "human-1"}],
+            "status": "paused",
+            "elapsed_time": 2.0,
+            "total_tokens": 3,
+        },
+    }
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = iter([_sse(paused)])
+        repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        repo.get_executions_by_workflow_run.return_value = []
+
+        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+
+    repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-9")
+    assert run.status == "failed"
+    assert run.dify_run_id == "run-9"
+
+
+def test_run_draft_survives_a_stream_that_never_reaches_a_terminal_event(mock_session: MagicMock):
+    """No terminal frame -> no run id -> skip the node-execution read, report failed."""
+    _configure_default_identity(mock_session)
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = iter(["event: ping\n\n"])
+        repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+
+        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+
+    repo.get_executions_by_workflow_run.assert_not_called()
+    assert run.status == "failed"
+    assert run.dify_run_id == ""
+
+
+def test_run_draft_closes_the_stream_when_the_callback_raises(mock_session: MagicMock):
+    """Streaming only releases the app's rate-limit slot on close()."""
+    _configure_default_identity(mock_session)
+
+    response = MagicMock()
+    response.__iter__ = lambda _self: iter([_sse({"event": "node_started", "data": {"node_id": "n1", "title": "S"}})])
+
+    def _boom(_event: NodeEvent) -> None:
+        raise RuntimeError("callback exploded")
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory"),
+    ):
+        mock_ags.generate.return_value = response
+        with pytest.raises(RuntimeError, match="callback exploded"):
+            WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, _boom)
+
+    response.close.assert_called_once_with()
 
 
 # ---- publish --------------------------------------------------------------
