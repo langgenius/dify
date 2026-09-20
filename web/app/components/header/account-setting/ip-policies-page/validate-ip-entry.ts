@@ -37,7 +37,15 @@ function parseIpv4(address: string): 'valid' | 'leadingZeros' | 'octetRange' | '
 }
 
 function parseIpv6(address: string): boolean {
-  if (address.includes('.')) return false
+  if (address.includes('.')) {
+    const lastColon = address.lastIndexOf(':')
+    const embeddedIpv4 = address.slice(lastColon + 1)
+    if (parseIpv4(embeddedIpv4) !== 'valid') return false
+    const octets = embeddedIpv4.split('.').map(Number)
+    const high = ((octets[0] ?? 0) * 256 + (octets[1] ?? 0)).toString(16)
+    const low = ((octets[2] ?? 0) * 256 + (octets[3] ?? 0)).toString(16)
+    address = `${address.slice(0, lastColon + 1)}${high}:${low}`
+  }
 
   const sides = address.split('::')
   if (sides.length > 2) return false
@@ -138,7 +146,6 @@ export function splitPolicySummary(addresses: readonly string[]): {
   if (addresses.length <= 2) return { listed: addresses, moreCount: 0 }
   return { listed: addresses.slice(0, 2), moreCount: addresses.length - 2 }
 }
-
 function ipv4ToInt(ip: string): number | null {
   const parts = ip.split('.')
   if (parts.length !== 4) return null

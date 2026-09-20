@@ -71,6 +71,32 @@ describe('validateIpEntry', () => {
     expect(validateIpEntry('10.0.0.*')).toEqual({ kind: 'invalid', code: 'unsupported' })
     expect(validateIpEntry('office.example.com')).toEqual({ kind: 'invalid', code: 'unsupported' })
   })
+
+  it.each([
+    '::ffff:203.0.113.42/128',
+    '::ffff:203.0.113.0/120',
+    '0:0:0:0:0:ffff:203.0.113.42',
+    '::ffff:cb00:712a/128',
+    '2001:db8::192.0.2.1/128',
+    '::/0',
+  ])('accepts valid IPv6 notation also accepted by the backend: %s', (entry) => {
+    expect(validateIpEntry(entry)).toEqual({ kind: 'valid' })
+    expect(canSubmitIpPolicy('Office', [entry])).toBe(true)
+  })
+
+  it.each([
+    '::ffff:203.0.113.256',
+    '::ffff:203.0.113.01',
+    '::ffff:203.0.113',
+    '::ffff::203.0.113.42',
+    '1:2:3:4:5:6:7:203.0.113.42',
+    '::ffff:203.0.113.42:1',
+    '::ffff:203.0.113.42/129',
+    '::ffff:203.0.113.42/128/1',
+  ])('blocks malformed embedded IPv4 or CIDR: %s', (entry) => {
+    expect(validateIpEntry(entry).kind).toBe('invalid')
+    expect(canSubmitIpPolicy('Office', [entry])).toBe(false)
+  })
 })
 
 describe('canSubmitIpPolicy', () => {

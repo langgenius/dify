@@ -111,3 +111,28 @@ describe('IpPolicyDialog', () => {
     })
   })
 })
+
+describe('trusted current IP and allowlist editing', () => {
+  it.each(['create', 'edit'] as const)(
+    'accepts a mapped IPv6 address in %s mode and submits it to the server',
+    async (mode) => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      render(
+        <IpPolicyDialog
+          open
+          mode={mode}
+          initialName="Office"
+          initialEntries={['::ffff:203.0.113.42/128']}
+          onOpenChange={vi.fn()}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: mode === 'create' ? 'Create' : 'Save' }))
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Office',
+        allowed_cidrs: ['::ffff:203.0.113.42/128'],
+      })
+    },
+  )
+})
