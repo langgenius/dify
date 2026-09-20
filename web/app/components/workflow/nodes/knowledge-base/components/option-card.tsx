@@ -3,6 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge'
 import {
   OptionCardEffectBlue,
   OptionCardEffectBlueLight,
@@ -128,9 +129,12 @@ const OptionCard = memo(
               <span className="flex grow items-center system-sm-medium text-text-secondary">
                 {title}
                 {isRecommended && (
-                  <span className="ml-1 badge h-4 badge-m border-text-accent-secondary px-1.25 py-0.5 system-2xs-medium text-text-accent-secondary">
+                  <Badge
+                    as="span"
+                    className="ml-1 h-4 border-text-accent-secondary text-text-accent-secondary"
+                  >
                     {t(($) => $['stepTwo.recommend'], { ns: 'datasetCreation' })}
-                  </span>
+                  </Badge>
                 )}
               </span>
               {enableRadio && (
