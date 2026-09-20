@@ -86,6 +86,60 @@ def test_state_exposes_persisted_scope_without_secret_or_environment(client: Fla
     }
 
 
+@pytest.mark.parametrize("query", ["", "?project_id=", f"?project_id={PROJECT}&unexpected=value"])
+def test_state_rejects_invalid_query_before_activation(
+    client: FlaskClient, sqlite_session_factory: sessionmaker[Session], query: str
+) -> None:
+    response = client.get(f"/inner/api/agent/sandbox-usage/state{query}", headers={"X-Inner-Api-Key": "test-inner"})
+    assert response.status_code == 400
+    body = response.get_json()
+    assert isinstance(body, dict)
+    assert body["code"] == "sandbox_usage_invalid_request"
+    with sqlite_session_factory() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(AgentSandboxUsageEvent)) == 0
+
+
+def test_state_rejects_project_outside_allowlist_without_activation(
+    client: FlaskClient, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    response = client.get(
+        "/inner/api/agent/sandbox-usage/state?project_id=other-project", headers={"X-Inner-Api-Key": "test-inner"}
+    )
+    assert response.status_code == 403
+    body = response.get_json()
+    assert isinstance(body, dict)
+    assert body["code"] == "sandbox_metering_project_not_allowed"
+    with sqlite_session_factory() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(AgentSandboxUsageEvent)) == 0
+
+
+def test_state_reports_start_change_conflict_and_preserves_activation(client: FlaskClient) -> None:
+    url = f"/inner/api/agent/sandbox-usage/state?project_id={PROJECT}"
+    headers = {"X-Inner-Api-Key": "test-inner"}
+    original = client.get(url, headers=headers)
+    assert original.status_code == 200
+    with config_overrides_context(AGENT_SANDBOX_METERING_START_AT="2026-09-21T00:00:00Z"):
+        changed = client.get(url, headers=headers)
+    assert changed.status_code == 409
+    body = changed.get_json()
+    assert isinstance(body, dict)
+    assert body["code"] == "sandbox_metering_start_is_immutable"
+    restored = client.get(url, headers=headers)
+    assert restored.status_code == 200
+    assert restored.json == original.json
+
+
+def test_state_reports_invalid_start_as_configuration_error(client: FlaskClient) -> None:
+    with config_overrides_context(AGENT_SANDBOX_METERING_START_AT="2026-09-20T00:00:00"):
+        response = client.get(
+            f"/inner/api/agent/sandbox-usage/state?project_id={PROJECT}", headers={"X-Inner-Api-Key": "test-inner"}
+        )
+    assert response.status_code == 503
+    body = response.get_json()
+    assert isinstance(body, dict)
+    assert body["code"] == "sandbox_metering_start_not_configured"
+
+
 def test_events_ack_only_after_persisted_and_duplicate_is_idempotent(
     client: FlaskClient, sqlite_session_factory: sessionmaker[Session]
 ) -> None:

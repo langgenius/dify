@@ -210,6 +210,7 @@ def test_unknown_duration_stays_null_and_enrichment_is_replayable(
 ) -> None:
     missing = provider_event(duration=None)
     ingest(missing)
+    assert ingest(missing)["duplicates"] == 1
     assert execution(sqlite_session_factory).metered_duration_ms is None
     assert execution(sqlite_session_factory).quality == "pending"
     assert ingest(provider_event())["accepted"] == 1
@@ -409,3 +410,186 @@ def test_disabled_registration_is_noop_and_ingestion_does_not_ack(
             ingest(provider_event())
     with sqlite_session_factory() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(AgentSandboxUsageEvent)) == 0
+
+
+@pytest.mark.parametrize(
+    ("timestamp", "error"),
+    [
+        (123, "invalid_timestamp"),
+        ("not-a-time", "invalid_timestamp"),
+        ("2026-09-20T00:00:14", "timestamp_requires_timezone"),
+    ],
+)
+def test_invalid_provider_time_rolls_back_entire_batch(
+    timestamp: JsonValue, error: str, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    bad = provider_event(event_id="bad-time", execution_id="bad-execution")
+    bad.payload["timestamp"] = timestamp
+    with pytest.raises(SandboxUsageError, match=error):
+        ingest(provider_event(), bad)
+    with sqlite_session_factory() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(AgentSandboxExecution)) == 0
+
+
+@pytest.mark.parametrize("quantity", [-1, True, 1.5, 2**63])
+def test_invalid_duration_is_rejected_before_any_accounting(quantity: JsonValue) -> None:
+    event = provider_event()
+    data = event.payload["eventData"]
+    assert isinstance(data, dict)
+    details = data["execution"]
+    assert isinstance(details, dict)
+    details["execution_time"] = quantity
+    with pytest.raises(SandboxUsageError, match="invalid_provider_quantity"):
+        ingest(event)
+
+
+@pytest.mark.parametrize("field", ["id", "sandboxId", "sandboxExecutionId"])
+def test_raw_identity_cannot_disagree_with_delivery_envelope(field: str) -> None:
+    event = provider_event()
+    event.payload[field] = "different-id"
+    with pytest.raises(SandboxUsageError, match="provider_envelope_mismatch"):
+        ingest(event)
+
+
+def test_invalid_provider_identifier_without_envelope_hint_is_rejected() -> None:
+    event = provider_event().model_copy(update={"sandbox_id": None})
+    event.payload["sandboxId"] = ""
+    with pytest.raises(SandboxUsageError, match="invalid_provider_identifier"):
+        ingest(event)
+
+
+@pytest.mark.parametrize(
+    ("configured_start", "error"),
+    [
+        ("invalid", "sandbox_metering_start_not_configured"),
+        ("2026-09-20T00:00:00.001Z", "sandbox_metering_start_requires_whole_second"),
+    ],
+)
+def test_invalid_activation_configuration_cannot_create_ledger_scope(configured_start: str, error: str) -> None:
+    with config_overrides_context(AGENT_SANDBOX_METERING_START_AT=configured_start):
+        with pytest.raises(SandboxUsageError, match=error) as result:
+            SandboxUsageService.get_state(project_id=PROJECT)
+        assert result.value.status_code == 503
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("dify.usage_allocation_id", 42),
+        ("dify.usage_allocation_id", "invalid-uuid"),
+        ("dify.binding_id", 42),
+        ("dify.binding_id", "invalid-uuid"),
+    ],
+)
+def test_invalid_owner_metadata_does_not_discard_metered_usage(
+    key: str, value: JsonValue, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    assert ingest(provider_event(metadata={key: value}))["accepted"] == 1
+    row = execution(sqlite_session_factory)
+    assert row.quality == "metered"
+    assert row.metered_duration_ms == 12345
+    assert row.tenant_id is None
+    assert row.attribution_status == "unresolved"
+
+
+def test_existing_sandbox_binding_metadata_resolves_registered_owner(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    registered = owner()
+    SandboxUsageService.register_allocation(**registered)
+    ingest(provider_event(metadata={"dify.binding_id": registered["binding_id"]}))
+    row = execution(sqlite_session_factory)
+    assert row.allocation_id == registered["allocation_id"]
+    assert row.app_id == registered["app_id"]
+    assert row.attribution_status == "resolved"
+
+
+def test_local_create_observation_resolves_provider_event_that_arrived_first(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    registered = owner()
+    SandboxUsageService.register_allocation(**registered)
+    ingest(provider_event())
+    assert execution(sqlite_session_factory).attribution_status == "unresolved"
+    observed = SandboxUsageEvent.model_validate(
+        {
+            "id": "create-observed",
+            "source": "application",
+            "type": "operation_observed",
+            "timestamp": START,
+            "allocation_id": registered["allocation_id"],
+            "sandbox_id": "sandbox-1",
+            "payload": {"operation": "create", "outcome": "success"},
+        }
+    )
+    assert ingest(observed)["accepted"] == 1
+    row = execution(sqlite_session_factory)
+    assert row.app_id == registered["app_id"]
+    assert row.attribution_status == "resolved"
+    assert row.metered_duration_ms == 12345
+
+
+def test_local_observation_cannot_claim_another_allocations_sandbox(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    first, second = owner(), owner()
+    SandboxUsageService.register_allocation(**first, sandbox_id="sandbox-1")
+    SandboxUsageService.register_allocation(**second)
+    observed = SandboxUsageEvent.model_validate(
+        {
+            "id": "wrong-create",
+            "source": "application",
+            "type": "operation_observed",
+            "timestamp": START,
+            "allocation_id": second["allocation_id"],
+            "sandbox_id": "sandbox-1",
+            "payload": {"operation": "create", "outcome": "success"},
+        }
+    )
+    assert ingest(observed)["conflicts"] == 1
+    with sqlite_session_factory() as session:
+        registration = session.scalars(
+            sa.select(AgentSandboxUsageEvent).where(
+                AgentSandboxUsageEvent.source_event_id == f"allocation:{second['allocation_id']}"
+            )
+        ).one()
+        assert registration.sandbox_id is None
+
+
+@pytest.mark.parametrize("change", ["sandbox", "started_at", "resources"])
+def test_execution_identity_and_resource_conflicts_preserve_original_usage(
+    change: str, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    ingest(provider_event())
+    different = provider_event(event_id="conflicting-terminal")
+    if change == "sandbox":
+        different = provider_event(event_id="conflicting-terminal", sandbox_id="other-sandbox")
+    elif change == "started_at":
+        different = provider_event(event_id="conflicting-terminal", started_at="2026-09-20T00:00:03Z")
+    else:
+        data = different.payload["eventData"]
+        assert isinstance(data, dict)
+        details = data["execution"]
+        assert isinstance(details, dict)
+        details["vcpu_count"] = 4
+    assert ingest(different)["conflicts"] == 1
+    row = execution(sqlite_session_factory)
+    assert row.quality == "conflict"
+    assert row.sandbox_id == "sandbox-1"
+    assert row.vcpu_count == 2
+    assert row.metered_duration_ms == 12345
+
+
+def test_unsupported_provider_contract_is_visible_without_fabricated_execution(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    event = provider_event()
+    event.payload["version"] = "unsupported"
+    assert ingest(event)["accepted"] == 1
+    with sqlite_session_factory() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(AgentSandboxExecution)) == 0
+        row = session.scalars(
+            sa.select(AgentSandboxUsageEvent).where(AgentSandboxUsageEvent.source_event_id == event.id)
+        ).one()
+        assert row.projection_status == "unresolved"
+        assert row.projection_error_code == "incomplete_provider_execution"
