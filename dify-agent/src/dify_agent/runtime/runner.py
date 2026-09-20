@@ -69,6 +69,7 @@ from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
 from dify_agent.runtime.compaction import build_compaction_capability
+from dify_agent.runtime.compaction_observability import wrap_compaction_observability
 from dify_agent.runtime_backend import BindingLostError
 from dify_agent.runtime.event_coalescer import (
     DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
@@ -368,6 +369,7 @@ class AgentRunRunner:
                         context_window_tokens=llm_layer.config.context_window_tokens,
                         model_settings=llm_layer.config.model_settings,
                     )
+                    compaction = wrap_compaction_observability(compaction, run_id=self.run_id)
                     model = llm_layer.get_model(
                         http_client=self.dify_api_http_client,
                         agent_run_id=self.run_id,
