@@ -8,6 +8,7 @@ tests below their directory, and this setup is shared by api/tests and api/provi
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -33,6 +34,12 @@ ensure_backend_test_environment(_REPO_ROOT)
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("dify")
+    group.addoption(
+        "--middleware-stop-timeout",
+        type=int,
+        default=None,
+        help="Override the shutdown grace period in seconds for pytest-started middleware only.",
+    )
     group.addoption(
         "--shard-index",
         type=int,
@@ -76,6 +83,9 @@ def pytest_configure(config: pytest.Config) -> None:
         raise pytest.UsageError("--shard-total must be at least 1")
     if not 1 <= shard_index <= shard_total:
         raise pytest.UsageError("--shard-index must be between 1 and --shard-total")
+    stop_timeout = config.getoption("middleware_stop_timeout")
+    if stop_timeout is not None and stop_timeout < 0:
+        raise pytest.UsageError("--middleware-stop-timeout must be nonnegative")
 
     config.stash[_DIFY_COMPOSE_STACKS_KEY] = []
 
@@ -106,6 +116,10 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     if config.getoption("start_middleware"):
         ensure_compose_env_files(_REPO_ROOT)
         stack = build_middleware_stack(_REPO_ROOT, parse_services(config.getoption("middleware_services")))
+        stack = replace(
+            stack,
+            shutdown_timeout_seconds=config.getoption("middleware_stop_timeout"),
+        )
         stack.up()
         stacks.append(stack)
 

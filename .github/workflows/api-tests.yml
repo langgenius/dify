@@ -126,6 +126,7 @@ jobs:
           uv run --project api pytest \
             -p no:benchmark \
             --start-middleware \
+            --middleware-stop-timeout 2 \
             -n auto \
             -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
