@@ -206,6 +206,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.knowledge_fs_upgrade_tasks",  # legacy Dataset upgrades use a dedicated queue and worker
         "tasks.knowledge_fs_background_tasks",  # local-engine tasks on dedicated prefork queues
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
+        "tasks.evaluation_task",  # evaluation run execution
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
