@@ -1,0 +1,93 @@
+name: Comment on slow API test files
+
+on:
+  workflow_run:
+    workflows: ['Main CI Pipeline']
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: api-slow-tests-comment-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: depot-ubuntu-24.04
+    permissions:
+      actions: read
+      checks: read
+      pull-requests: write
+    steps:
+      # Read only GitHub API metadata; never check out or execute the PR's code.
+      - name: Update slow-file comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const repo = context.repo;
+            const candidates = run.pull_requests?.length ? run.pull_requests :
+              await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+                ...repo, commit_sha: run.head_sha, per_page: 100,
+              });
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
+              ...repo, run_id: run.id, attempt_number: run.run_attempt, per_page: 100,
+            });
+            const testJobs = jobs.filter(job => /\/ API (Unit|Controller) Tests \(/.test(job.name));
+            if (!testJobs.length) return; // API tests were skipped; preserve the last actual report.
+            const slow = [];
+            for (const job of testJobs) {
+              const checkId = Number(job.check_run_url.split('/').pop());
+              const annotations = await github.paginate(github.rest.checks.listAnnotations, {
+                ...repo, check_run_id: checkId, per_page: 100,
+              });
+              for (const annotation of annotations) {
+                if (annotation.title !== 'Slow test file') continue;
+                const match = /^(\d+\.\d+)s across (\d+) cases \(slowest case (\d+\.\d+)s\)\./.exec(annotation.message);
+                if (!match || !/^api\/(tests\/unit_tests|providers)\/.+\.py$/.test(annotation.path)) continue;
+                slow.push({path: annotation.path, total: Number(match[1]), count: match[2], longest: match[3]});
+              }
+            }
+            slow.sort((a, b) => b.total - a.total || a.path.localeCompare(b.path));
+            const complete = testJobs.length === 3 && testJobs.every(job => job.conclusion === 'success');
+            const marker = '<!-- dify-api-slow-test-files -->';
+            for (const candidate of candidates) {
+              const {data: pr} = await github.rest.pulls.get({...repo, pull_number: candidate.number});
+              if (pr.state !== 'open' || pr.head.sha !== run.head_sha) continue;
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                ...repo, issue_number: pr.number, per_page: 100,
+              });
+              const existing = comments.find(comment =>
+                comment.user?.login === 'github-actions[bot]' && comment.body?.startsWith(marker));
+              const previous = existing?.body.match(/<!-- run:(\d+) attempt:(\d+) -->/);
+              if (previous && (Number(previous[1]) > run.id ||
+                (Number(previous[1]) === run.id && Number(previous[2]) > run.run_attempt))) continue;
+              if (!slow.length && !existing) continue;
+              const lines = [marker, `<!-- run:${run.id} attempt:${run.run_attempt} -->`,
+                '### Slow API test files', '',
+                `[CI run](${run.html_url}) · commit \`${run.head_sha.slice(0, 12)}\``, '',
+                'Files exceeding **10 seconds** of summed setup/call/teardown time across workers. '
+                  + 'Excludes collection; this is not wall time. **Advisory only.**', ''];
+              if (!complete) lines.push('⚠️ Some test jobs did not complete successfully; this report may be incomplete.', '');
+              if (slow.length) {
+                lines.push('| File | Total | Cases | Slowest case |', '| --- | ---: | ---: | ---: |');
+                for (const row of slow.slice(0, 40)) {
+                  const path = row.path.split('/').map(encodeURIComponent).join('/');
+                  const label = row.path.replace(/[\r\n`|<>\[\]]/g, '_');
+                  lines.push(`| [${label}](${context.serverUrl}/${repo.owner}/${repo.repo}/blob/${run.head_sha}/${path})`
+                    + ` | ${row.total.toFixed(2)}s | ${row.count} | ${row.longest}s |`);
+                }
+                if (slow.length > 40) lines.push('', `Showing the slowest 40 of ${slow.length} files; see the CI report for all files.`);
+                lines.push('', 'Consider splitting independent test groups into separate files. '
+                  + 'Inspect slow cases and shared setup first: splitting alone does not make an individual slow case faster.');
+              } else {
+                lines.push(complete ? 'No files exceeded the threshold in this run.' : 'No slow-file warnings were available in this incomplete run.');
+              }
+              const body = lines.join('\n');
+              if (existing) {
+                await github.rest.issues.updateComment({...repo, comment_id: existing.id, body});
+              } else {
+                await github.rest.issues.createComment({...repo, issue_number: pr.number, body});
+              }
+            }
