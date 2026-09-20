@@ -1814,3 +1814,65 @@ def test_the_empty_recommendation_notice_is_localizable():
     notice = next(i for i in res.items if i.kind == "notice")
 
     assert notice.payload["text"] in strings.PLAIN
+
+
+class _GapAgent(PlaceholderAgent):
+    def __init__(self, options, gap) -> None:
+        self.options = options
+        self.gap = gap
+
+    def discover_resources(self, _plan_items):
+        return self.options
+
+    def assess_capability_gap(self, _plan_items, _options):
+        return self.gap
+
+
+def _find_resources_with_agent(agent):
+    from core.dify_builder.handlers_build import handle_initial_plan
+
+    env, repo = _new_env(agent=agent)
+    s = _seed_build_session(repo, PcState.BUILD_INITIAL_PLAN, plan_items=["Send a notification"])
+    turn = Turn(action=Action(kind="find_resources", base_version=1), actor=_actor())
+    return handle_initial_plan(env, turn, *repo.get_session(s.id))
+
+
+def test_a_named_capability_gap_is_surfaced_as_a_notice():
+    from core.dify_builder.contract import ResourceOption
+
+    options = [ResourceOption(id="kb-1", label="KB", meta="", kind="knowledge", readiness="ready")]
+    res = _find_resources_with_agent(_GapAgent(options, "Nothing installed can send email."))
+
+    notice = next(i for i in res.items if i.kind == "notice")
+    assert notice.payload["text"] == "Nothing installed can send email."
+
+
+def test_a_capability_gap_and_the_empty_recommendation_notice_both_appear():
+    # The two notices are independent -- an empty recommendation AND an
+    # unnamed capability gap can both be true of the same plan.
+    res = _find_resources_with_agent(_GapAgent([], "Nothing installed can send email."))
+
+    notices = [i.payload["text"] for i in res.items if i.kind == "notice"]
+    assert "No workspace resources matched this plan — continuing without any." in notices
+    assert "Nothing installed can send email." in notices
+
+
+def test_no_gap_notice_when_the_agent_reports_no_gap():
+    from core.dify_builder.contract import ResourceOption
+
+    options = [ResourceOption(id="kb-1", label="KB", meta="", kind="knowledge", readiness="ready")]
+    res = _find_resources_with_agent(_GapAgent(options, ""))
+
+    assert not any(i.kind == "notice" for i in res.items)
+
+
+def test_a_missing_config_tool_still_lets_the_gap_agent_report_a_gap():
+    # readiness is threaded through to the agent unmodified -- the handler
+    # itself makes no readiness judgment, it only relays what the agent says.
+    from core.dify_builder.contract import ResourceOption
+
+    options = [ResourceOption(id="tool-1", label="Slack", meta="", kind="plugin", readiness="missing_config")]
+    res = _find_resources_with_agent(_GapAgent(options, "Nothing installed can send a Slack message."))
+
+    notice = next(i for i in res.items if i.kind == "notice")
+    assert notice.payload["text"] == "Nothing installed can send a Slack message."
