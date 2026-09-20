@@ -15,17 +15,20 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from extensions.ext_storage import storage
+from models.agent import Agent
 from models.agent_config_entities import AgentSoulConfig
 from models.model import UploadFile
 from models.tools import ToolFile
+from services.agent.dsl_entities import AgentPackage, AgentPackageWorkspaceSkill, make_portable_agent_package
 from services.agent.errors import RosterAgentPackageExportFailedError, RosterAgentPackageTooLargeError
 from services.agent.roster_package_entities import (
+    AgentPackageResources,
     RosterAgentPackageAudit,
     RosterAgentPackageFile,
     RosterAgentPackageSkill,
 )
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
-from services.skill_management_service import RuntimeAgentSkillArchive
+from services.skill_management_service import SkillManagementService
 
 
 class _Storage(Protocol):
@@ -39,9 +42,6 @@ class _SkillSource:
     id: str
     scope: Literal["agent_config", "workspace"]
     name: str
-    display_name: str | None
-    description: str
-    priority: int | None
     audit_ref: str
 
 
@@ -54,74 +54,138 @@ class _FileSource:
 
 
 class AgentPackageResourceExporter:
+    """Collect database references, resolve workspace Skills, then stream the archive."""
+
     def __init__(self, *, storage_backend: _Storage = storage) -> None:
         self._storage = storage_backend
+        self.sources: dict[str, tuple[list[_SkillSource], list[_FileSource]]] = {}
+        self.packages: dict[str, AgentPackage] = {}
+        self._workspace_sources: dict[str, tuple[str, str, str | None, bool]] = {}
 
-    def _write_resources(
+    def collect_package(
         self,
-        archive: zipfile.ZipFile,
         *,
-        skill_sources: Sequence[_SkillSource],
-        file_sources: Sequence[_FileSource],
-    ) -> tuple[list[RosterAgentPackageSkill], list[RosterAgentPackageFile], int]:
-        if len(skill_sources) + len(file_sources) + 2 > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
+        session: Session,
+        agent: Agent,
+        soul: AgentSoulConfig,
+        snapshot_id: str | None,
+        package_ref: str,
+        include_draft: bool = False,
+    ) -> AgentPackage:
+        soul, skills, files = self._collect_payloads(
+            session=session,
+            tenant_id=agent.tenant_id,
+            soul=soul,
+            skill_offset=sum(len(skills) for skills, _ in self.sources.values()),
+            file_offset=sum(len(files) for _, files in self.sources.values()),
+        )
+        self.sources[package_ref] = skills, files
+        package = make_portable_agent_package(agent, soul, include_assets=True)
+        self.packages[package_ref] = package
+        self._workspace_sources[package_ref] = agent.tenant_id, agent.id, snapshot_id, include_draft
+        return package
+
+    def collect_workspace_skills(self) -> None:
+        """Resolve legacy Skill metadata after the caller closes its database read session."""
+        for ref, (tenant_id, agent_id, snapshot_id, include_draft) in self._workspace_sources.items():
+            package = self.packages[ref]
+            archives = SkillManagementService().list_runtime_agent_skill_archives(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                config_snapshot_id=snapshot_id,
+                include_draft=include_draft,
+            )
+            skill_sources = self.sources[ref][0]
+            skill_index = sum(len(skills) for skills, _ in self.sources.values())
+            names = {item.name for item in package.soul.config_skills if not item.is_missing}
+            for archive in sorted(archives, key=lambda item: item.priority):
+                if archive.name in names:
+                    continue
+                names.add(archive.name)
+                skill_index += 1
+                resource_id = f"s_{skill_index:06d}"
+                skill_sources.append(
+                    _SkillSource(
+                        path=f"{resource_id}.zip",
+                        storage_key=archive.storage_key,
+                        id=resource_id,
+                        scope="workspace",
+                        name=archive.name,
+                        audit_ref=archive.version_id,
+                    )
+                )
+                package.workspace_skills.append(
+                    AgentPackageWorkspaceSkill(
+                        name=archive.name,
+                        display_name=archive.display_name,
+                        description=archive.description,
+                        priority=archive.priority,
+                    )
+                )
+        self._workspace_sources.clear()
+
+    def write_resources(self, archive: zipfile.ZipFile) -> tuple[dict[str, AgentPackageResources], int]:
+        entry_count = sum(len(skills) + len(files) for skills, files in self.sources.values()) + 2
+        if entry_count > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
             raise RosterAgentPackageTooLargeError("Agent package has too many members")
         total_size = 0
-        skills: list[RosterAgentPackageSkill] = []
-        files: list[RosterAgentPackageFile] = []
         nested_uncompressed_size = 0
         skill_packages = SkillPackageService()
-        sources: list[_SkillSource | _FileSource] = [*skill_sources, *file_sources]
-        for source in sources:
-            remaining_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - total_size
-            if isinstance(source, _SkillSource):
-                remaining_bytes = min(remaining_bytes, dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024)
-            member_size, member_digest = self._write_storage_member(
-                archive, path=source.path, storage_key=source.storage_key, max_bytes=remaining_bytes
-            )
-            total_size += member_size
-            if isinstance(source, _SkillSource):
-                # Inspect only the embedded Skill; our writer already owns
-                # the outer container, resource sizes, and digests.
-                try:
-                    inspection = skill_packages.inspect(content=archive.read(source.path), filename=source.path)
-                except SkillPackageError as exc:
-                    raise RosterAgentPackageExportFailedError(
-                        f"Roster Agent package contains unusable Skill {source.name!r}"
-                    ) from exc
-                if inspection.name != source.name:
-                    raise RosterAgentPackageExportFailedError(
-                        f"Roster Agent package contains unusable Skill {source.name!r}: name mismatch"
-                    )
-                nested_uncompressed_size += inspection.uncompressed_size
-                if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
-                    raise RosterAgentPackageTooLargeError(
-                        "Roster Agent package nested Skill contents exceed the size limit"
-                    )
-
-                skills.append(
-                    RosterAgentPackageSkill(
-                        id=source.id,
-                        scope=source.scope,
-                        name=source.name,
-                        path=source.path,
-                        size=member_size,
-                        sha256=member_digest,
-                        audit=RosterAgentPackageAudit(ref=source.audit_ref),
-                    )
+        resources: dict[str, AgentPackageResources] = {}
+        for ref, (skill_sources, file_sources) in self.sources.items():
+            skills: list[RosterAgentPackageSkill] = []
+            files: list[RosterAgentPackageFile] = []
+            sources: list[_SkillSource | _FileSource] = [*skill_sources, *file_sources]
+            for source in sources:
+                remaining_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - total_size
+                if isinstance(source, _SkillSource):
+                    remaining_bytes = min(remaining_bytes, dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024)
+                member_size, member_digest = self._write_storage_member(
+                    archive, path=source.path, storage_key=source.storage_key, max_bytes=remaining_bytes
                 )
-            else:
-                files.append(
-                    RosterAgentPackageFile(
-                        id=source.id,
-                        path=source.path,
-                        size=member_size,
-                        sha256=member_digest,
-                        audit=RosterAgentPackageAudit(ref=source.audit_ref),
-                    )
-                )
+                total_size += member_size
+                if isinstance(source, _SkillSource):
+                    # Inspect only the embedded Skill; our writer already owns
+                    # the outer container, resource sizes, and digests.
+                    try:
+                        inspection = skill_packages.inspect(content=archive.read(source.path), filename=source.path)
+                    except SkillPackageError as exc:
+                        raise RosterAgentPackageExportFailedError(
+                            f"Roster Agent package contains unusable Skill {source.name!r}"
+                        ) from exc
+                    if inspection.name != source.name:
+                        raise RosterAgentPackageExportFailedError(
+                            f"Roster Agent package contains unusable Skill {source.name!r}: name mismatch"
+                        )
+                    nested_uncompressed_size += inspection.uncompressed_size
+                    if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
+                        raise RosterAgentPackageTooLargeError(
+                            "Roster Agent package nested Skill contents exceed the size limit"
+                        )
 
-        return skills, files, total_size
+                    skills.append(
+                        RosterAgentPackageSkill(
+                            id=source.id,
+                            scope=source.scope,
+                            name=source.name,
+                            path=source.path,
+                            size=member_size,
+                            sha256=member_digest,
+                            audit=RosterAgentPackageAudit(ref=source.audit_ref),
+                        )
+                    )
+                else:
+                    files.append(
+                        RosterAgentPackageFile(
+                            id=source.id,
+                            path=source.path,
+                            size=member_size,
+                            sha256=member_digest,
+                            audit=RosterAgentPackageAudit(ref=source.audit_ref),
+                        )
+                    )
+            resources[ref] = AgentPackageResources(skills=skills, files=files)
+        return resources, total_size
 
     def _collect_payloads(
         self,
@@ -155,9 +219,6 @@ class AgentPackageResourceExporter:
                     id=resource_id,
                     scope="agent_config",
                     name=skill_ref.name,
-                    display_name=None,
-                    description=skill_ref.description,
-                    priority=None,
                     audit_ref=tool_file.id,
                 )
             )
@@ -203,33 +264,6 @@ class AgentPackageResourceExporter:
             )
 
         return AgentSoulConfig.model_validate(resource_data), skill_sources, file_sources
-
-    @staticmethod
-    def _workspace_skill_sources(
-        *, soul: AgentSoulConfig, archives: Sequence[RuntimeAgentSkillArchive], start_index: int
-    ) -> list[_SkillSource]:
-        sources: list[_SkillSource] = []
-        effective_skill_names = {item.name for item in soul.config_skills if not item.is_missing}
-        for archive in sorted(archives, key=lambda item: item.priority):
-            if archive.name in effective_skill_names:
-                continue
-            effective_skill_names.add(archive.name)
-            resource_id = f"s_{start_index + len(sources) + 1:06d}"
-            path = f"{resource_id}.zip"
-            sources.append(
-                _SkillSource(
-                    path=path,
-                    storage_key=archive.storage_key,
-                    id=resource_id,
-                    scope="workspace",
-                    name=archive.name,
-                    display_name=archive.display_name,
-                    description=archive.description,
-                    priority=archive.priority,
-                    audit_ref=archive.version_id,
-                )
-            )
-        return sources
 
     @staticmethod
     def _tool_files(*, session: Session, tenant_id: str, file_ids: Sequence[str]) -> dict[str, ToolFile]:

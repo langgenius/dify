@@ -33,8 +33,8 @@ from models.tools import ToolFile
 from models.workflow import Workflow, WorkflowType
 from services.agent.dsl_entities import AgentPackage
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageExportFailedError
+from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.package_resource_importer import AgentPackageResourceImporter
-from services.agent.workflow_package_exporter import WorkflowAgentPackageExporter
 from services.app_dsl_service import AppDslService, Import
 from services.app_package_service import AppPackageManifest, AppPackageService
 from services.entities.dsl_entities import ImportStatus
@@ -61,8 +61,8 @@ def storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _MemorySt
     backend = _MemoryStorage()
     monkeypatch.setattr("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine))
     monkeypatch.setattr(
-        "services.app_package_service.WorkflowAgentPackageExporter",
-        lambda: WorkflowAgentPackageExporter(storage_backend=backend),
+        "services.app_package_service.AgentPackageResourceExporter",
+        lambda: AgentPackageResourceExporter(storage_backend=backend),
     )
     monkeypatch.setattr(
         "services.app_package_service.AgentPackageResourceImporter",
@@ -281,7 +281,7 @@ def test_package_round_trip_restores_bound_agents_and_resources(
             "Bound snapshot 2",
         ]
         assert all(not p.omitted_assets for p in prepared.agents.values())
-        assert {r.name for group in prepared.agent_resources.values() for r in group.manifest.skills} == {
+        assert {r.name for group in prepared.agent_resources.values() for r in group.skills} == {
             "research",
             "workspace",
         }
@@ -464,12 +464,19 @@ def test_overwrite_replaces_inline_agents_and_reports_previous_owners(
     retirement.assert_called_once_with(tenant_id="tenant-2", agent_ids=old_agents, account_id="account-1")
 
 
+@pytest.mark.parametrize("legacy_skill", [False, True])
 def test_resource_io_runs_without_database_transactions(
     sqlite_session: Session,
     storage: _MemoryStorage,
     monkeypatch: pytest.MonkeyPatch,
+    legacy_skill: bool,
 ) -> None:
     app = _source(sqlite_session, storage)
+    if legacy_skill:
+        version = sqlite_session.get(SkillVersion, "source-skill-version")
+        assert version is not None
+        version.manifest = version.manifest.model_copy(update={"name": None})
+        sqlite_session.commit()
     engine = sqlite_session.get_bind()
     assert isinstance(engine, Engine)
     pool = engine.pool
@@ -479,6 +486,16 @@ def test_resource_io_runs_without_database_transactions(
         assert not sqlite_session.in_transaction()
         assert pool.checkedout() == 0
 
+    def load_legacy_skill(*, tenant_id: str, file_id: str) -> bytes:
+        assert tenant_id == "tenant-1"
+        assert file_id
+        before_io()
+        return storage.files["tools/workspace.zip"]
+
+    monkeypatch.setattr(
+        "services.skill_management_service.SkillManagementService._load_tool_file_bytes",
+        staticmethod(load_legacy_skill),
+    )
     load_stream = storage.load_stream
     save = storage.save
 

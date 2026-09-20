@@ -8,6 +8,7 @@ from uuid import UUID
 
 import httpx
 import pytest
+import yaml
 from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, Forbidden
@@ -323,10 +324,10 @@ def test_default_export_packages_ordinary_app_dsl(
 ) -> None:
     model = App(id="app-1", tenant_id="tenant-1", mode=mode, name="My App")
     dsl = f"kind: app\nversion: 0.7.0\napp:\n  mode: {mode}\n"
-    export = Mock(return_value=dsl)
+    export = Mock(return_value=yaml.safe_load(dsl))
     session = object()
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=lambda: session))
-    monkeypatch.setattr(app_module.AppDslService, "export_dsl", export)
+    monkeypatch.setattr(app_module.AppDslService, "export_data", export)
     with app.test_request_context():
         response = unwrap(app_module.AppExportApi.get)(
             app_module.AppExportApi(),
@@ -336,7 +337,10 @@ def test_default_export_packages_ordinary_app_dsl(
         response.direct_passthrough = False
         assert response.mimetype == "application/zip"
         assert "my-app.ifpkg" in response.headers["Content-Disposition"]
-        assert AppPackageService().read_dsl(io.BytesIO(response.get_data())) == dsl
+        prepared = AppPackageService().read_package(io.BytesIO(response.get_data()))
+        assert prepared is not None
+        with prepared:
+            assert yaml.safe_load(prepared.dsl) == yaml.safe_load(dsl)
         response.close()
     export.assert_called_once_with(
         app_model=model, session=ANY, include_secret=True, workflow_id="revision-1", resource_exporter=ANY

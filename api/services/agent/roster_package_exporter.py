@@ -6,7 +6,7 @@ import hashlib
 import re
 import tempfile
 import zipfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from typing import BinaryIO, cast
 from uuid import UUID
 
@@ -32,32 +32,27 @@ from models.model import App, AppMode
 from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import (
     AgentAppDsl,
-    AgentPackageWorkspaceSkill,
     make_agent_app_dsl,
-    make_portable_agent_package,
 )
 from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionNotFoundError,
     RosterAgentPackageTooLargeError,
 )
-from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource, _Storage
+from services.agent.package_resource_exporter import AgentPackageResourceExporter, _Storage
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
     RosterAgentPackageApp,
     RosterAgentPackageAudit,
     RosterAgentPackageExport,
-    RosterAgentPackageFile,
     RosterAgentPackageManifest,
-    RosterAgentPackageSkill,
 )
 from services.agent.roster_service import AgentRosterService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from services.skill_management_service import SkillManagementService
 
 
-class RosterAgentPackageExporter(AgentPackageResourceExporter):
+class RosterAgentPackageExporter:
     """Collect a Roster Agent through a dedicated read Session and build its archive."""
 
     def __init__(
@@ -66,11 +61,12 @@ class RosterAgentPackageExporter(AgentPackageResourceExporter):
         storage_backend: _Storage = storage,
         dependency_provider: Callable[[str, list[str]], list[PluginDependency]] | None = None,
     ) -> None:
-        super().__init__(storage_backend=storage_backend)
+        self._storage = storage_backend
         self._dependency_provider = dependency_provider or DependenciesAnalysisService.generate_dependencies
 
     def export(self, *, tenant_id: str, agent_id: str, version_id: UUID | None) -> RosterAgentPackageExport:
         """Export a visible version, or the shared draft with an active snapshot fallback."""
+        resources = AgentPackageResourceExporter(storage_backend=self._storage)
         with session_factory.create_session() as session:
             row = session.execute(
                 select(Agent, App)
@@ -130,71 +126,42 @@ class RosterAgentPackageExporter(AgentPackageResourceExporter):
                         raise AgentVersionNotFoundError()
                     soul = AgentSoulConfig.model_validate(active_snapshot.config_snapshot_dict)
 
-            resource_soul, skill_sources, file_sources = self._collect_payloads(
+            package = resources.collect_package(
                 session=session,
-                tenant_id=tenant_id,
+                agent=agent,
                 soul=soul,
+                snapshot_id=snapshot_id,
+                package_ref="agent_1",
+                include_draft=draft is not None,
             )
-            package = make_portable_agent_package(agent, resource_soul, include_assets=True)
             app = make_agent_app_dsl(app_model, package_ref="agent_1", packages={"agent_1": package}, dependencies=[])
             audit = RosterAgentPackageAudit(ref=agent.id)
             dependency_ids = extract_agent_soul_dependencies(package.soul)
 
-        workspace_skills = SkillManagementService().list_runtime_agent_skill_archives(
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            include_draft=draft is not None,
-            config_snapshot_id=snapshot_id,
-        )
-        skill_sources.extend(
-            self._workspace_skill_sources(
-                soul=package.soul,
-                archives=workspace_skills,
-                start_index=len(skill_sources),
-            )
-        )
-        package.workspace_skills = [
-            AgentPackageWorkspaceSkill(
-                name=item.name,
-                display_name=item.display_name or "",
-                description=item.description,
-                priority=item.priority,
-            )
-            for item in skill_sources
-            if item.scope == "workspace" and item.priority is not None
-        ]
+        resources.collect_workspace_skills()
         app.dependencies = self._dependency_provider(tenant_id, dependency_ids)
         return self._build_archive(
             app=app,
             audit=audit,
-            skill_sources=skill_sources,
-            file_sources=file_sources,
+            resources=resources,
         )
 
     def _build_archive(
         self,
         *,
         app: AgentAppDsl,
-        skill_sources: Sequence[_SkillSource],
-        file_sources: Sequence[_FileSource],
+        resources: AgentPackageResourceExporter,
         audit: RosterAgentPackageAudit | None = None,
     ) -> RosterAgentPackageExport:
-        required_entries = len(skill_sources) + len(file_sources) + 2
-        if required_entries > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
-            raise RosterAgentPackageTooLargeError("Roster Agent package has too many members")
-
         # Ownership is transferred to RosterAgentPackageExport.
         output = cast(
             BinaryIO,
             tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b"),  # noqa: SIM115
         )
         try:
-            skills: list[RosterAgentPackageSkill] = []
-            files: list[RosterAgentPackageFile] = []
             with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
-                skills, files, total_size = self._write_resources(
-                    archive, skill_sources=skill_sources, file_sources=file_sources
-                )
+                groups, total_size = resources.write_resources(archive)
+                group = groups[app.agent.package_ref]
                 app_bytes = yaml.safe_dump(
                     app.model_dump(mode="json", exclude_none=True), allow_unicode=True, sort_keys=False
                 ).encode("utf-8")
@@ -207,8 +174,8 @@ class RosterAgentPackageExporter(AgentPackageResourceExporter):
                             path="app.yaml", size=len(app_bytes), sha256=hashlib.sha256(app_bytes).hexdigest()
                         )
                     ],
-                    skills=skills,
-                    files=files,
+                    skills=group.skills,
+                    files=group.files,
                 )
                 manifest.validate_apps({"app.yaml": app})
                 manifest_bytes = yaml.safe_dump(

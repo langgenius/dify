@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 
 from constants.model_template import default_app_templates
 from core.db.session_factory import session_factory
+from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.agent import (
@@ -35,8 +36,9 @@ from services.agent.errors import (
     RosterAgentPackageResourceUnavailableError,
     RosterAgentPackageTooLargeError,
 )
-from services.agent.package_resource_importer import AgentPackageResourceImporter
+from services.agent.package_resource_importer import AgentPackageResourceImporter, _Storage
 from services.agent.roster_package_dependencies import check_package_dependencies
+from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.roster_service import AgentRosterService
 from services.app_creation_records import create_installed_app_record, create_site_record
 from services.app_service import AppService
@@ -53,8 +55,11 @@ class RosterAgentPackageImportResult:
     warnings: list[DslImportWarning]
 
 
-class RosterAgentPackageImporter(AgentPackageResourceImporter):
+class RosterAgentPackageImporter:
     """Commit uploaded file records before creating the Agent in a separate transaction."""
+
+    def __init__(self, *, storage_backend: _Storage = storage) -> None:
+        self._resources = AgentPackageResourceImporter(storage_backend=storage_backend)
 
     def import_package(
         self,
@@ -63,18 +68,19 @@ class RosterAgentPackageImporter(AgentPackageResourceImporter):
         tenant_id: str,
         account: Account,
     ) -> RosterAgentPackageImportResult:
-        with self._reader.read(source) as package:
+        with RosterAgentPackageReader().read(source) as package:
             if len(package.apps) != 1:
                 raise InvalidRosterAgentPackageError("Import requires exactly one Agent App")
             app_dsl = next(iter(package.apps.values()))
             agent_package = app_dsl.package
-            self.validate(package=package, agent_package=agent_package)
+            self._resources.validate(resources=package.manifest, agent_package=agent_package)
 
             check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=app_dsl.dependencies)
             try:
                 self._ensure_name_available(tenant_id=tenant_id, name=agent_package.metadata.name)
-                soul, skill_warnings = self._upload_resources(
-                    package=package,
+                materialized, skill_warnings = self._resources.materialize(
+                    archive=package,
+                    resources=package.manifest,
                     agent_package=agent_package,
                     tenant_id=tenant_id,
                     account_id=account.id,
@@ -82,7 +88,7 @@ class RosterAgentPackageImporter(AgentPackageResourceImporter):
                 with session_factory.create_session() as session:
                     resolved_soul, warnings = AgentDslService(session).resolve_package_soul(
                         tenant_id=tenant_id,
-                        package=AgentPackage(metadata=agent_package.metadata, soul=soul),
+                        package=AgentPackage(metadata=agent_package.metadata, soul=materialized.soul),
                         package_path="agent",
                     )
                 warnings = [*skill_warnings, *warnings]

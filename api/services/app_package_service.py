@@ -21,10 +21,11 @@ from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import App
 from services.agent.dsl_entities import AgentPackage
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
+from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.package_resource_importer import AgentPackageResourceImporter
 from services.agent.roster_package_entities import (
     AgentPackageResources,
-    PreparedAgentPackageResources,
+    PreparedPackageArchive,
     RosterAgentPackageApp,
     RosterAgentPackageExport,
     RosterAgentPackageFile,
@@ -32,7 +33,6 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageSkill,
 )
 from services.agent.roster_package_reader import RosterAgentPackageReader
-from services.agent.workflow_package_exporter import WorkflowAgentPackageExporter
 from services.dsl_content import DSL_MAX_SIZE
 from services.entities.dsl_entities import DslImportWarning
 
@@ -62,32 +62,22 @@ class AppPackageManifest(BaseModel):
         return self
 
 
-@dataclass
-class PreparedAppPackage:
-    archive: BinaryIO
+@dataclass(kw_only=True)
+class PreparedAppPackage(PreparedPackageArchive):
     dsl: str
     agents: dict[str, AgentPackage]
-    agent_resources: dict[str, PreparedAgentPackageResources]
-
-    def close(self) -> None:
-        self.archive.close()
-
-    def __enter__(self) -> PreparedAppPackage:
-        return self
-
-    def __exit__(self, *_args: object) -> None:
-        self.close()
+    agent_resources: dict[str, AgentPackageResources]
 
     def materialize_agents(self, *, tenant_id: str, account_id: str) -> tuple[dict[str, Any], list[DslImportWarning]]:
         importer = AgentPackageResourceImporter()
         # Validate every Agent before uploading any resource.
         for ref, resources in self.agent_resources.items():
-            importer.validate(package=resources, agent_package=self.agents[ref])
+            importer.validate(resources=resources, agent_package=self.agents[ref])
         agents = dict(self.agents)
         warnings: list[DslImportWarning] = []
         for ref, resources in self.agent_resources.items():
             agents[ref], resource_warnings = importer.materialize(
-                package=resources, agent_package=agents[ref], tenant_id=tenant_id, account_id=account_id
+                archive=self, resources=resources, agent_package=agents[ref], tenant_id=tenant_id, account_id=account_id
             )
             warnings.extend(
                 warning.model_copy(update={"path": f"agent_packages.{ref}.{warning.path}"})
@@ -98,16 +88,6 @@ class PreparedAppPackage:
 
 class AppPackageService(RosterAgentPackageReader):
     """Reuse the bounded ZIP reader; Apps retain DSL import semantics."""
-
-    def read_dsl(self, source: BinaryIO) -> str | None:
-        """Read a DSL-only archive without silently discarding packaged assets."""
-        prepared = self.read_package(source)
-        if prepared is None:
-            return None
-        with prepared:
-            if prepared.agent_resources:
-                raise InvalidRosterAgentPackageError("App package requires Agent resource materialization")
-            return prepared.dsl
 
     def read_package(self, source: BinaryIO) -> PreparedAppPackage | None:
         """Validate an App archive, or rewind a Roster package for its importer."""
@@ -158,12 +138,9 @@ class AppPackageService(RosterAgentPackageReader):
                 archive=spool,
                 dsl=dsl,
                 agents=agents,
-                agent_resources={
-                    ref: PreparedAgentPackageResources(
-                        archive=spool, manifest=group, members=members, invalid_skills=invalid_skills
-                    )
-                    for ref, group in manifest.agent_resources.items()
-                },
+                agent_resources=manifest.agent_resources,
+                members=members,
+                invalid_skills=invalid_skills,
             )
         except (InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError):
             spool.close()
@@ -207,19 +184,24 @@ class AppPackageService(RosterAgentPackageReader):
     ) -> RosterAgentPackageExport:
         from services.app_dsl_service import AppDslService
 
-        resources = WorkflowAgentPackageExporter()
+        resources = AgentPackageResourceExporter()
         with session_factory.create_session() as session:
-            dsl = AppDslService.export_dsl(
+            data = AppDslService.export_data(
                 app_model=app_model,
                 session=session,
                 include_secret=include_secret,
                 workflow_id=workflow_id,
                 resource_exporter=resources,
             )
-        return self.export(dsl=dsl, name=app_model.name, resources=resources)
+        resources.collect_workspace_skills()
+        if resources.packages:
+            data["agent_packages"] = {
+                ref: package.model_dump(mode="json") for ref, package in resources.packages.items()
+            }
+        return self.export(dsl=yaml.dump(data, allow_unicode=True), name=app_model.name, resources=resources)
 
     def export(
-        self, *, dsl: str, name: str, resources: WorkflowAgentPackageExporter | None = None
+        self, *, dsl: str, name: str, resources: AgentPackageResourceExporter | None = None
     ) -> RosterAgentPackageExport:
         payload = dsl.encode("utf-8")
         if len(payload) > DSL_MAX_SIZE:
@@ -227,7 +209,7 @@ class AppPackageService(RosterAgentPackageReader):
         archive = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b"))  # noqa: SIM115
         try:
             with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
-                agent_resources = resources.write_resources(package) if resources is not None else {}
+                agent_resources, _ = resources.write_resources(package) if resources is not None else ({}, 0)
                 manifest = AppPackageManifest(
                     format="dify.app",
                     format_version=1,

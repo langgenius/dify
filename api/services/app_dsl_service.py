@@ -49,8 +49,8 @@ from models.model import AppModelConfig, AppModelConfigDict, IconType, load_anno
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService
+from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.retirement_service import WorkflowAgentRetirementService
-from services.agent.workflow_package_exporter import WorkflowAgentPackageExporter
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.app_package_service import PreparedAppPackage
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
@@ -799,10 +799,31 @@ class AppDslService:
         include_secret: bool = False,
         workflow_id: str | None = None,
         version_id: uuid.UUID | None = None,
-        resource_exporter: WorkflowAgentPackageExporter | None = None,
     ) -> str:
+        return yaml.dump(
+            cls.export_data(
+                app_model,
+                session=session,
+                include_secret=include_secret,
+                workflow_id=workflow_id,
+                version_id=version_id,
+            ),
+            allow_unicode=True,
+        )
+
+    @classmethod
+    def export_data(
+        cls,
+        app_model: App,
+        *,
+        session: Session,
+        include_secret: bool = False,
+        workflow_id: str | None = None,
+        version_id: uuid.UUID | None = None,
+        resource_exporter: AgentPackageResourceExporter | None = None,
+    ) -> dict[str, Any]:
         """
-        Export app
+        Build the App definition before serializing it as YAML or a resource archive.
         :param app_model: App instance
         :param session: Database session used to load export data
         :param include_secret: Whether include secret variable
@@ -841,7 +862,7 @@ class AppDslService:
             else:
                 cls._append_model_config_export_data(export_data, app_model, session=session)
 
-        return yaml.dump(export_data, allow_unicode=True)
+        return export_data
 
     @classmethod
     def _append_workflow_export_data(
@@ -852,7 +873,7 @@ class AppDslService:
         include_secret: bool,
         session: Session,
         workflow_id: str | None = None,
-        resource_exporter: WorkflowAgentPackageExporter | None = None,
+        resource_exporter: AgentPackageResourceExporter | None = None,
     ):
         """
         Append workflow export data

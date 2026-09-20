@@ -21,7 +21,7 @@ from services.agent.dsl_entities import AgentAppDsl
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES,
-    PreparedAgentPackageResources,
+    PreparedPackageArchive,
     PreparedRosterAgentPackage,
     RosterAgentPackageApp,
     RosterAgentPackageFile,
@@ -63,7 +63,7 @@ class RosterAgentPackageReader:
             spool.close()
             raise
 
-    def read_member_bytes(self, package: PreparedAgentPackageResources, path: str, *, max_bytes: int) -> bytes:
+    def read_member_bytes(self, package: PreparedPackageArchive, path: str, *, max_bytes: int) -> bytes:
         """Read one already-validated member while rechecking its size and digest."""
 
         member = package.members.get(path)

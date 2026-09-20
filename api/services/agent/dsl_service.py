@@ -54,8 +54,8 @@ from services.agent.dsl_entities import (
     portable_ref,
 )
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
+from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_service import AgentRosterService
-from services.agent.workflow_package_exporter import WorkflowAgentPackageExporter
 from services.entities.dsl_entities import DslImportWarning
 
 
@@ -135,7 +135,7 @@ class AgentDslService:
         *,
         workflow: Workflow,
         graph: Mapping[str, Any],
-        resource_exporter: WorkflowAgentPackageExporter | None = None,
+        resource_exporter: AgentPackageResourceExporter | None = None,
     ) -> tuple[dict[str, Any], dict[str, AgentPackage]]:
         """Replace persisted bindings with portable packages, optionally collecting their assets."""
 
@@ -175,7 +175,11 @@ class AgentDslService:
                 package_refs_by_source[source_key] = package_ref
                 if resource_exporter is not None:
                     packages[package_ref] = resource_exporter.collect_package(
-                        session=self.session, agent=agent, snapshot=snapshot, package_ref=package_ref
+                        session=self.session,
+                        agent=agent,
+                        soul=AgentSoulConfig.model_validate(snapshot.config_snapshot_dict),
+                        snapshot_id=snapshot.id,
+                        package_ref=package_ref,
                     )
                 else:
                     packages[package_ref] = make_portable_agent_package(

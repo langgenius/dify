@@ -169,31 +169,28 @@ class RosterAgentPackageManifest(AgentPackageResources):
         self.validate_packages(app.package for app in apps.values())
 
 
-@dataclass(kw_only=True, frozen=True)
-class PreparedAgentPackageResources:
-    """Validated resources sharing their container's bounded archive."""
+@dataclass(kw_only=True)
+class PreparedPackageArchive:
+    """Own one validated archive and its member index until import finishes."""
 
     archive: BinaryIO
-    manifest: AgentPackageResources
     members: dict[str, RosterAgentPackageMember]
     invalid_skills: dict[str, str] = field(default_factory=dict)
-
-
-@dataclass(kw_only=True, frozen=True)
-class PreparedRosterAgentPackage(PreparedAgentPackageResources):
-    """Validated archive retained in a bounded spool for later materialization."""
-
-    manifest: RosterAgentPackageManifest
-    apps: dict[str, AgentAppDsl]
 
     def close(self) -> None:
         self.archive.close()
 
-    def __enter__(self) -> PreparedRosterAgentPackage:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_args: object) -> None:
         self.close()
+
+
+@dataclass(kw_only=True)
+class PreparedRosterAgentPackage(PreparedPackageArchive):
+    manifest: RosterAgentPackageManifest
+    apps: dict[str, AgentAppDsl]
 
 
 @dataclass
@@ -219,7 +216,7 @@ __all__ = [
     "ROSTER_AGENT_PACKAGE_FORMAT_VERSION",
     "ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES",
     "AgentPackageResources",
-    "PreparedAgentPackageResources",
+    "PreparedPackageArchive",
     "PreparedRosterAgentPackage",
     "RosterAgentPackageApp",
     "RosterAgentPackageAudit",

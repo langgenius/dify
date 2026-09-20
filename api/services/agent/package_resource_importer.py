@@ -24,7 +24,7 @@ from services.agent.errors import (
     PlaintextSecretNotAllowedError,
     RosterAgentPackageResourceUnavailableError,
 )
-from services.agent.roster_package_entities import PreparedAgentPackageResources
+from services.agent.roster_package_entities import AgentPackageResources, PreparedPackageArchive
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.entities.dsl_entities import DslImportWarning
@@ -41,40 +41,25 @@ class AgentPackageResourceImporter:
         self._skill_packages = SkillPackageService()
         self._storage = storage_backend
 
-    def validate(self, *, package: PreparedAgentPackageResources, agent_package: AgentPackage) -> None:
+    def validate(self, *, resources: AgentPackageResources, agent_package: AgentPackage) -> None:
         agent_package.soul = make_portable_agent_soul(agent_package.soul)
-        self._validate_supported_resources(package, soul=agent_package.soul)
+        self._validate_supported_resources(resources, soul=agent_package.soul)
         try:
             ComposerConfigValidator.validate_importable_agent_soul(agent_package.soul)
         except (InvalidComposerConfigError, PlaintextSecretNotAllowedError) as exc:
             raise InvalidRosterAgentPackageError("Agent package Soul is invalid") from exc
 
-    def materialize(
-        self,
-        *,
-        package: PreparedAgentPackageResources,
-        agent_package: AgentPackage,
-        tenant_id: str,
-        account_id: str,
-    ) -> tuple[AgentPackage, list[DslImportWarning]]:
-        """Upload previously validated resources and replace their package-local ids."""
-        soul, warnings = self._upload_resources(
-            package=package, agent_package=agent_package, tenant_id=tenant_id, account_id=account_id
-        )
-        # Workspace Skills become private config Skills; names in the target workspace must not change them.
-        return agent_package.model_copy(update={"soul": soul, "workspace_skills": []}), warnings
-
     @classmethod
-    def _validate_supported_resources(cls, package: PreparedAgentPackageResources, *, soul: AgentSoulConfig) -> None:
+    def _validate_supported_resources(cls, resources: AgentPackageResources, *, soul: AgentSoulConfig) -> None:
         skill_names = [item.name for item in soul.config_skills]
-        skill_names.extend(item.name for item in package.manifest.skills if item.scope == "workspace")
+        skill_names.extend(item.name for item in resources.skills if item.scope == "workspace")
         if len(skill_names) != len(set(skill_names)):
             raise InvalidRosterAgentPackageError("Roster Agent package contains duplicate effective Skill names")
         file_names = [item.name for item in soul.config_files]
         if len(file_names) != len(set(file_names)):
             raise InvalidRosterAgentPackageError("Roster Agent package contains duplicate config file names")
         file_refs = {item.file_id: item for item in soul.config_files if not item.is_missing}
-        for resource in package.manifest.files:
+        for resource in resources.files:
             filename = file_refs[resource.id].name
             extension = cls._extension(filename)
             limit = FileService.file_size_limit(extension=extension)
@@ -87,14 +72,15 @@ class AgentPackageResourceImporter:
                     f"Roster Agent package file extension '.{extension}' is not allowed"
                 )
 
-    def _upload_resources(
+    def materialize(
         self,
         *,
-        package: PreparedAgentPackageResources,
+        archive: PreparedPackageArchive,
+        resources: AgentPackageResources,
         agent_package: AgentPackage,
         tenant_id: str,
         account_id: str,
-    ) -> tuple[AgentSoulConfig, list[DslImportWarning]]:
+    ) -> tuple[AgentPackage, list[DslImportWarning]]:
         """Upload outside database transactions, then commit all file records together."""
         files: list[ToolFile | UploadFile] = []
         warnings: list[DslImportWarning] = []
@@ -108,7 +94,7 @@ class AgentPackageResourceImporter:
 
         skill_descriptions = {item.name: item.description for item in agent_package.workspace_skills}
         skill_descriptions.update({item.name: item.description for item in agent_package.soul.config_skills})
-        for skill_resource in package.manifest.skills:
+        for skill_resource in resources.skills:
             target_ref = skill_refs_by_package_id.get(skill_resource.id)
             if target_ref is None:
                 target_ref = {}
@@ -125,12 +111,12 @@ class AgentPackageResourceImporter:
                     "mime_type": "application/zip",
                 }
             )
-            reason = package.invalid_skills.get(skill_resource.id)
+            reason = archive.invalid_skills.get(skill_resource.id)
             normalized = None
             try:
                 if reason is None:
                     payload = self._reader.read_member_bytes(
-                        package,
+                        archive,
                         skill_resource.path,
                         max_bytes=dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024,
                     )
@@ -173,12 +159,12 @@ class AgentPackageResourceImporter:
                 }
             )
 
-        for file_resource in package.manifest.files:
+        for file_resource in resources.files:
             package_ref = file_refs_by_package_id[file_resource.id]
             file_kind = package_ref["file_kind"]
             mime_type = package_ref["mime_type"] or "application/octet-stream"
             extension = self._extension(package_ref["name"])
-            payload = self._reader.read_member_bytes(package, file_resource.path, max_bytes=file_resource.size)
+            payload = self._reader.read_member_bytes(archive, file_resource.path, max_bytes=file_resource.size)
             if file_kind == "tool_file":
                 storage_key = f"tools/{tenant_id}/{uuid4().hex}.{extension or 'bin'}"
                 row: ToolFile | UploadFile = ToolFile(
@@ -224,7 +210,8 @@ class AgentPackageResourceImporter:
         soul = AgentSoulConfig.model_validate(soul_data)
         with session_factory.create_session() as session, session.begin():
             session.add_all(files)
-        return soul, warnings
+        # Localized Skills must not bind to same-named Skills in the target workspace.
+        return agent_package.model_copy(update={"soul": soul, "workspace_skills": []}), warnings
 
     def _save_resource(
         self,
