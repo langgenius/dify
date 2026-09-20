@@ -38,8 +38,8 @@ export function getAccessControlChipState({
   assignment: AccessControlAssignment | null
   availableAccessPoints: readonly AccessPoint[]
 }): AccessControlChipState {
+  if (entitled === false) return { kind: 'pro', coveredCount: 0, inServiceCount: 0 }
   if (!assignment) {
-    if (entitled === false) return { kind: 'pro', coveredCount: 0, inServiceCount: 0 }
     return { kind: 'off', coveredCount: 0, inServiceCount: 0 }
   }
 

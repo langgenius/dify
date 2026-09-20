@@ -149,38 +149,47 @@ describe('AccessControlEntry', () => {
     expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
   })
 
-  it('shows a resume paywall for a saved assignment on Cloud sandbox', async () => {
-    const user = userEvent.setup()
-    renderEntry({
-      plan: 'sandbox',
-      groups: [createNetworkAccessGroupFixture()],
-      binding: {
-        id: 'binding-1',
-        tenant_id: 'workspace-1',
-        app_id: 'app-1',
-        enabled: true,
-        group_id: 'group-1',
-        access_points: ['webapp', 'service_api', 'mcp'],
-        version: 2,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
-      },
-    })
+  it.each([
+    { enabled: true, accessPoints: ['webapp', 'service_api', 'mcp'], coverage: '3 of 3' },
+    { enabled: true, accessPoints: ['webapp'], coverage: '1 of 3' },
+    { enabled: false, accessPoints: ['webapp', 'service_api', 'mcp'], coverage: '3 of 3' },
+  ] as const)(
+    'shows PRO and the saved resume configuration on Cloud sandbox (%j)',
+    async ({ enabled, accessPoints, coverage }) => {
+      const user = userEvent.setup()
+      renderEntry({
+        plan: 'sandbox',
+        groups: [createNetworkAccessGroupFixture()],
+        binding: {
+          id: 'binding-1',
+          tenant_id: 'workspace-1',
+          app_id: 'app-1',
+          enabled,
+          group_id: 'group-1',
+          access_points: [...accessPoints],
+          version: 2,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      })
 
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
-    await user.click(getChip())
-    expect(screen.getByText('This app is no longer protected')).toBeInTheDocument()
-    expect(screen.getByText('Access control needs the Pro plan.')).toBeInTheDocument()
-    expect(screen.getByText('Ready to resume')).toBeInTheDocument()
-    expect(screen.getByText('Internal Network')).toBeInTheDocument()
-    expect(screen.getByText('Protects 3 of 3 access points')).toBeInTheDocument()
-    expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('switch', { name: 'Enable access control' })).not.toBeInTheDocument()
+      expect(within(getChip()).getByText('PRO')).toBeInTheDocument()
+      await user.click(getChip())
+      expect(screen.getByText('This app is no longer protected')).toBeInTheDocument()
+      expect(screen.getByText('Access control needs the Pro plan.')).toBeInTheDocument()
+      expect(screen.getByText('Ready to resume')).toBeInTheDocument()
+      expect(screen.getByText('Internal Network')).toBeInTheDocument()
+      expect(screen.getByText(`Protects ${coverage} access points`)).toBeInTheDocument()
+      expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('switch', { name: 'Enable access control' }),
+      ).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Turn on Access Control' }))
-    expect(mockSetPricing).toHaveBeenCalledWith('open')
-  })
+      await user.click(screen.getByRole('button', { name: 'Turn on Access Control' }))
+      expect(mockSetPricing).toHaveBeenCalledWith('open')
+    },
+  )
 
   it('renders a single chip with a non-interactive PRO badge for Cloud sandbox', () => {
     renderEntry({ plan: 'sandbox' })

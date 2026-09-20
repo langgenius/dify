@@ -176,7 +176,7 @@ function AccessControlSession({
     availableAccessPoints,
   })
   const chip = getAccessControlChipState({ entitled, assignment, availableAccessPoints })
-  const showPaywall = chip.kind === 'pro'
+  const showPaywall = chip.kind === 'pro' && !assignment
   const showDowngrade = Boolean(assignment) && !entitled
   const showStatus = Boolean(assignment) && entitled && (!canMutate || view === 'status')
 
