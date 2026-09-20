@@ -196,6 +196,48 @@ def test_submitting_requirements_goes_straight_to_resources():
     assert "plan" not in kinds  # no plan card is shown a second time
 
 
+def test_submitting_requirements_progress_is_one_operation_with_monotonic_revisions():
+    """Regression: handle_goal_analysis used to build its own ProgressReporter
+    (build-review-requirements/build-draft-plan), finish() it, then
+    tail-call _discover_and_offer_resources, which built a SECOND reporter
+    under the SAME env.operation_id -- restarting `revision` at 1.
+    ProgressEventData's docstring (contract.py) requires revision to be
+    monotonic within an operation_id, and every other handler in this file
+    uses exactly one ProgressReporter per step. The straight-through path
+    (requirements submitted) must emit ONE operation_id with strictly
+    increasing revisions across all four progress steps (review-requirements,
+    draft-plan, discover-resources, prepare-resource-options)."""
+    from core.dify_builder.handlers_build import build_registry
+
+    events: list = []
+    env, repo = _new_env()
+    env.emit_progress = events.append
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_GOAL_ANALYSIS,
+        requirements={"currency": "USD"},
+        form_fields=[{"key": "currency", "label": "Currency", "type": "text"}],
+    )
+    runner = Runner(env, build_registry())
+    turn = Turn(action=Action(kind="submit_requirements", payload={"currency": "USD"}, base_version=1), actor=_actor())
+    runner.advance(s.id, turn)
+
+    assert events, "expected progress events to be emitted"
+    operation_ids = {e.operation_id for e in events}
+    assert len(operation_ids) == 1, f"expected a single operation_id across the whole step, got {operation_ids}"
+    revisions = [e.revision for e in events]
+    assert revisions == sorted(revisions), f"revision must be non-decreasing, got {revisions}"
+    assert len(revisions) == len(set(revisions)), f"revision must not repeat, got {revisions}"
+    # all four progress steps actually fired (review, draft, discover, prepare)
+    activity_ids = {a.id for e in events for a in e.execution.activities}
+    assert {
+        "build-review-requirements",
+        "build-draft-plan",
+        "build-discover-resources",
+        "build-prepare-resource-options",
+    } <= activity_ids
+
+
 def test_continue_adjusting_still_reaches_resource_discovery():
     """handle_initial_plan is now reachable only via the continue_adjusting/
     retry_after_revert loop-back (build.initial_plan has no straight-through
