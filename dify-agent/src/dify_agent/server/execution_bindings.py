@@ -17,6 +17,7 @@ from dify_agent.runtime_backend import (
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
+from dify_agent.runtime_backend.usage import runtime_usage_context
 
 
 class ExecutionBindingServiceError(RuntimeError):
@@ -60,13 +61,14 @@ class ExecutionBindingService:
 
     async def destroy_binding(self, request: DestroyExecutionBindingRequest) -> None:
         try:
-            await self.backend.destroy_binding(
-                ExecutionBindingDestroySpec(
-                    binding_ref=request.binding_ref,
-                    destroy_workspace=request.destroy_workspace,
-                    workspace_ref=request.workspace_ref,
+            with runtime_usage_context(purpose="cleanup"):
+                await self.backend.destroy_binding(
+                    ExecutionBindingDestroySpec(
+                        binding_ref=request.binding_ref,
+                        destroy_workspace=request.destroy_workspace,
+                        workspace_ref=request.workspace_ref,
+                    )
                 )
-            )
         except WorkspacePreservationUnsupportedError as exc:
             raise ExecutionBindingServiceError("workspace_preservation_unsupported", str(exc), status_code=409) from exc
         except BindingDestroyError as exc:

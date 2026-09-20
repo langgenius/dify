@@ -70,6 +70,7 @@ from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_ru
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
 from dify_agent.runtime.compaction import build_compaction_capability
 from dify_agent.runtime_backend import BindingLostError
+from dify_agent.runtime_backend.usage import runtime_usage_context
 from dify_agent.runtime.event_coalescer import (
     DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
     DEFAULT_TEXT_DELTA_MAX_CHARS,
@@ -246,6 +247,13 @@ class AgentRunRunner:
 
     async def run(self) -> None:
         """Execute the run and emit the documented event sequence."""
+        correlation = {"run_id": self.run_id}
+        if self.request.idempotency_key:
+            correlation["request_idempotency_key"] = self.request.idempotency_key
+        with runtime_usage_context(purpose="agent_run", correlation=correlation):
+            await self._run_with_usage_context()
+
+    async def _run_with_usage_context(self) -> None:
         self._terminal_session_snapshot = None
         self._terminal_usage = None
         if self.is_cancelled():

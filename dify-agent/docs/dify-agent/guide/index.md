@@ -2,7 +2,8 @@
 
 This guide describes how to run the MVP Dify Agent API server. The server is
 implemented in `dify-agent/src/dify_agent/server/app.py` and uses Redis for run
-records and per-run event streams only.
+records and per-run event streams. Optional E2B metering uses a separate delivery
+outbox; it does not change how Agent runs are scheduled.
 
 ## Default local startup
 
@@ -31,6 +32,9 @@ also reads `.env` and `dify-agent/.env` when present.
 
 OpenShell-specific settings are listed in the
 [OpenShell configuration reference](openshell.md#configuration).
+
+Independent E2B execution accounting, activation and rollout checks are described
+in [E2B runtime metering](runtime-metering.md).
 
 | Environment variable | Default | Description |
 | --- | --- | --- |

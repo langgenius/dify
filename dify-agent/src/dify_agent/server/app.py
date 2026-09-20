@@ -5,7 +5,8 @@ instances for plugin-daemon and Dify API inner calls, route wiring, and a
 process-local scheduler. Run execution happens in background ``asyncio`` tasks
 rather than request handlers, so client disconnects do not cancel the agent
 runtime. Redis persists run records and per-run event streams with configured
-retention only; it is not used as a job queue. Agenton layers and providers
+retention; optional sandbox metering uses a separate, untrimmed delivery outbox.
+It is not used as a run job queue. Agenton layers and providers
 stay state-only: they borrow the lifespan-owned clients through the runner and
 receive runtime-backend and Shell settings through provider construction rather
 than reading environment variables themselves. The standard server mounts the
@@ -14,6 +15,7 @@ app construction time and only exports remotely when Logfire's default
 environment configuration provides a token.
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing_extensions import cast
@@ -27,6 +29,7 @@ from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
+from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend
 from dify_agent.server.auth import create_bearer_token_dependency
 from dify_agent.server.observability import configure_server_observability
 from dify_agent.server.routes.runs import create_runs_router
@@ -37,6 +40,8 @@ from dify_agent.server.execution_bindings import ExecutionBindingService
 from dify_agent.server.binding_files import BindingFileService
 from dify_agent.server.home_snapshots import HomeSnapshotService
 from dify_agent.server.settings import ServerSettings
+from dify_agent.server.e2b_usage_collector import E2BUsageCollector
+from dify_agent.server.runtime_usage import BufferedRuntimeUsageObserver, RuntimeUsageClient, RuntimeUsageDispatcher
 from dify_agent.storage.redis_run_store import RedisRunStore
 
 
@@ -121,13 +126,63 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         )
         state["store"] = store
         state["scheduler"] = scheduler
+        usage_tasks: list[asyncio.Task[None]] = []
+        observer: BufferedRuntimeUsageObserver | None = None
+        provider_http_client: httpx.AsyncClient | None = None
+        if resolved_settings.sandbox_metering_enabled:
+            if runtime_backend_profile is None or not isinstance(
+                runtime_backend_profile.execution_bindings, E2BExecutionBindingBackend
+            ):
+                raise ValueError("Sandbox metering requires an E2B backend")
+            # This client has no inner API credentials or shared default headers.
+            provider_http_client = httpx.AsyncClient(timeout=15.0, trust_env=False)
+            usage_client = RuntimeUsageClient(
+                client=dify_api_inner_http_client,
+                base_url=resolved_settings.inner_api_url,
+                api_key=resolved_settings.inner_api_key or "",
+                project_id=resolved_settings.e2b_project_id,
+            )
+            observer = BufferedRuntimeUsageObserver(
+                redis=redis,
+                project_id=resolved_settings.e2b_project_id,
+                prefix=resolved_settings.redis_prefix,
+            )
+            runtime_backend_profile.execution_bindings.usage_observer = observer
+            dispatcher = RuntimeUsageDispatcher(redis=redis, observer=observer, client=usage_client)
+            collector = E2BUsageCollector(
+                provider_client=provider_http_client,
+                usage_client=usage_client,
+                api_key=resolved_settings.e2b_api_key or "",
+                project_id=resolved_settings.e2b_project_id,
+                poll_interval_seconds=resolved_settings.sandbox_metering_poll_interval_seconds,
+                overlap_seconds=resolved_settings.sandbox_metering_overlap_seconds,
+                full_scan_interval_seconds=resolved_settings.sandbox_metering_full_scan_interval_seconds,
+                max_pages=resolved_settings.sandbox_metering_max_pages,
+                redis=redis,
+                redis_prefix=resolved_settings.redis_prefix,
+            )
+            usage_tasks = [
+                asyncio.create_task(observer.run(), name="sandbox-usage-buffer"),
+                asyncio.create_task(dispatcher.run(), name="sandbox-usage-delivery"),
+                asyncio.create_task(collector.run(), name="sandbox-usage-collection"),
+            ]
         try:
             yield
         finally:
-            await scheduler.shutdown()
-            await dify_api_inner_http_client.aclose()
-            await plugin_daemon_http_client.aclose()
-            await redis.aclose()
+            try:
+                # Keep the observer/outbox available while active runs clean up.
+                await scheduler.shutdown()
+            finally:
+                if observer is not None:
+                    await observer.flush_on_shutdown()
+                for task in usage_tasks:
+                    task.cancel()
+                await asyncio.gather(*usage_tasks, return_exceptions=True)
+                if provider_http_client is not None:
+                    await provider_http_client.aclose()
+                await dify_api_inner_http_client.aclose()
+                await plugin_daemon_http_client.aclose()
+                await redis.aclose()
 
     app = FastAPI(title="Dify Agent Run Server", version="0.1.0", lifespan=lifespan)
     configure_server_observability(app)

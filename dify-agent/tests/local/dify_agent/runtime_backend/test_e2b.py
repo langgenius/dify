@@ -5,7 +5,7 @@ import posixpath
 from collections.abc import Callable
 from dataclasses import dataclass, field
 import logging
-from typing import cast
+from typing import Any, cast
 
 import httpx as e2b_httpx
 import httpx2 as httpx
@@ -33,6 +33,7 @@ from dify_agent.runtime_backend.e2b import (
     E2BSDKControlPlane,
 )
 from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease
+from dify_agent.runtime_backend.usage import runtime_usage_context
 
 
 @dataclass(frozen=True, slots=True)
@@ -1082,3 +1083,100 @@ async def test_e2b_acquire_preserves_health_failure_when_close_and_pause_fail(
     assert client.calls == 3
     assert data_plane.close_calls == 1
     assert sandbox.pauses == [True]
+
+
+@dataclass
+class _UsageObserver:
+    events: list[dict[str, Any]] = field(default_factory=list)
+
+    async def observe_safely(self, event: dict[str, Any]) -> None:
+        self.events.append(event)
+
+
+@pytest.mark.anyio
+async def test_usage_preserves_created_resource_and_compensation_evidence() -> None:
+    control = _ControlPlane(file_make_dir_errors=[RuntimeError("initialization failed")])
+    backend = _binding_backend(control)
+    observer = _UsageObserver()
+    backend.usage_observer = observer
+
+    with pytest.raises(BindingCreateError, match="initialization failed"):
+        await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant",
+                agent_id="agent",
+                binding_id="binding",
+                workspace_id="workspace",
+                existing_workspace_ref=None,
+            )
+        )
+
+    observed = [event for event in observer.events if event["type"] == "operation_observed"]
+    assert [(event["payload"]["operation"], event["payload"]["outcome"]) for event in observed] == [
+        ("create", "success"),
+        ("kill", "success"),
+    ]
+    assert all(event["sandbox_id"] == "sandbox-1" for event in observed)
+    assert all(event["allocation_id"] == "binding" for event in observed)
+    assert all(event["purpose"] == "binding_init" for event in observer.events)
+    assert control.sandboxes["sandbox-1"].killed == 1
+
+
+@pytest.mark.anyio
+async def test_usage_create_timeout_is_unknown_and_never_retried() -> None:
+    control = _ControlPlane(create_errors=[_transport_error(e2b_httpx.ReadTimeout)])
+    backend = _binding_backend(control)
+    observer = _UsageObserver()
+    backend.usage_observer = observer
+    with pytest.raises(BindingCreateError):
+        await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant",
+                agent_id="agent",
+                binding_id="binding",
+                workspace_id="workspace",
+                existing_workspace_ref=None,
+            )
+        )
+    assert len(control.created) == 1
+    assert observer.events[-1]["payload"]["outcome"] == "unknown"
+    assert observer.events[-1]["sandbox_id"] is None
+
+
+@pytest.mark.anyio
+async def test_usage_retry_shares_operation_id_and_keeps_lease_context(sleep_delays: list[float]) -> None:
+    backend, sandbox = _connected_backend()
+    sandbox.pause_errors = [_transport_error(e2b_httpx.ReadTimeout)]
+    observer = _UsageObserver()
+    backend.usage_observer = observer
+    data_plane = _ReleaseDataPlane()
+    with runtime_usage_context(purpose="file_read", lease_id="lease", correlation={"run_id": "run"}):
+        lease = E2BRuntimeLease(
+            sandbox=sandbox,  # pyright: ignore[reportArgumentType]
+            data_plane=cast(ShellctlRuntimeLease, cast(object, data_plane)),
+        )
+    await backend.release(lease)
+    assert len({event["operation_id"] for event in observer.events}) == 1
+    assert len({event["id"] for event in observer.events}) == 4
+    observed = [event for event in observer.events if event["type"] == "operation_observed"]
+    assert [(event["attempt"], event["payload"]["outcome"]) for event in observed] == [(1, "unknown"), (2, "success")]
+    assert all(event["purpose"] == "file_read" and event["lease_id"] == "lease" for event in observed)
+    assert all(event["correlation"] == {"run_id": "run"} for event in observed)
+    assert sandbox.pauses == [True, True]
+
+
+@pytest.mark.anyio
+async def test_usage_cancellation_still_attempts_pause_and_preserves_cancel() -> None:
+    backend, sandbox = _connected_backend()
+    observer = _UsageObserver()
+    backend.usage_observer = observer
+    data_plane = _ReleaseDataPlane(close_error=asyncio.CancelledError())
+    lease = E2BRuntimeLease(
+        sandbox=sandbox,  # pyright: ignore[reportArgumentType]
+        data_plane=cast(ShellctlRuntimeLease, cast(object, data_plane)),
+    )
+    with pytest.raises(asyncio.CancelledError):
+        await backend.release(lease)
+    assert sandbox.pauses == [True]
+    assert observer.events[-1]["payload"]["operation"] == "pause"
+    assert observer.events[-1]["payload"]["outcome"] == "success"
