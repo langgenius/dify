@@ -104,9 +104,8 @@ jobs:
         shardIndex:
           - 1
           - 2
-          - 3
         shardTotal:
-          - 3
+          - 2
 
     steps:
       - name: Checkout code
@@ -199,8 +198,8 @@ jobs:
             echo "expected 3 unit coverage artifacts, found ${#unit_coverage[@]}" >&2
             exit 1
           fi
-          if [[ "${#integration_coverage[@]}" -ne 3 ]]; then
-            echo "expected 3 integration coverage artifacts, found ${#integration_coverage[@]}" >&2
+          if [[ "${#integration_coverage[@]}" -ne 2 ]]; then
+            echo "expected 2 integration coverage artifacts, found ${#integration_coverage[@]}" >&2
             exit 1
           fi
 
