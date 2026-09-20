@@ -58,7 +58,12 @@ vi.mock('nuqs', async (importOriginal) => {
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: deploymentTranslations } = await import('@/i18n/en-US/deployments.json')
-  return createReactI18nextMock({ ...accessControlTranslations, ...deploymentTranslations })
+  const { default: commonTranslations } = await import('@/i18n/en-US/common.json')
+  return createReactI18nextMock({
+    ...commonTranslations,
+    ...accessControlTranslations,
+    ...deploymentTranslations,
+  })
 })
 
 const renderEntry = ({
@@ -69,6 +74,7 @@ const renderEntry = ({
   availableAccessPoints = ['webapp', 'service_api', 'mcp'],
   role = 'owner',
   canEditBinding = true,
+  isPublished = false,
 }: {
   plan?: CloudPlan
   deploymentEdition?: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
@@ -77,6 +83,7 @@ const renderEntry = ({
   availableAccessPoints?: AppNetworkAccessGroupResponse['available_access_points']
   role?: GetWorkspacesCurrentSummaryResponse['role']
   canEditBinding?: boolean
+  isPublished?: boolean
 } = {}) => {
   const queryClient = createConsoleQueryClient()
   const entitled = plan === 'professional' || plan === 'team'
@@ -88,7 +95,12 @@ const renderEntry = ({
   })
 
   return renderWithConsoleQuery(
-    <AccessControlEntry appId="app-1" appIcon={{}} canEditBinding={canEditBinding} />,
+    <AccessControlEntry
+      appId="app-1"
+      appIcon={{}}
+      isPublished={isPublished}
+      canEditBinding={canEditBinding}
+    />,
     {
       queryClient,
       currentWorkspace: { role },
@@ -105,6 +117,8 @@ const renderEntry = ({
 }
 
 const metadataResponse = (request: Request) => {
+  if (request.url.endsWith('/check-current-ip'))
+    return Response.json({ allowed: true, client_ip: '203.0.113.42', policy_version: 1 })
   if (request.url.endsWith('/network-access-groups/current-ip'))
     return Response.json({ client_ip: '203.0.113.42' })
 }
@@ -484,7 +498,7 @@ describe('AccessControlEntry', () => {
     expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toBeChecked()
     expect(screen.queryByRole('switch', { name: 'Trigger' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
     expect(within(getChip()).getByText('ON')).toBeInTheDocument()
   })
 
@@ -593,7 +607,6 @@ describe('AccessControlEntry', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
   })
-
   it('reopens the edit layer after dismissing a paused draft with Escape', async () => {
     const user = userEvent.setup()
     renderEntry({
@@ -674,6 +687,8 @@ describe('supported access points and binding permission', () => {
       const requests: Record<string, unknown>[] = []
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
         const request = new Request(input, init)
+        const metadata = metadataResponse(request)
+        if (metadata) return metadata
         if (request.method === 'PUT') {
           const payload = await request.json()
           requests.push(payload)
@@ -760,12 +775,14 @@ describe('supported access points and binding permission', () => {
     await user.click(screen.getByRole('button', { name: 'Manage IP policies' }))
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
     unmount()
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      Response.json({
-        binding: createBinding(),
-        available_access_points: ['webapp', 'service_api', 'mcp'],
-        effective_enabled: true,
-      }),
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async (input, init) =>
+        metadataResponse(new Request(input, init)) ??
+        Response.json({
+          binding: createBinding(),
+          available_access_points: ['webapp', 'service_api', 'mcp'],
+          effective_enabled: true,
+        }),
     )
     try {
       renderEntry({
@@ -776,8 +793,14 @@ describe('supported access points and binding permission', () => {
       await user.click(getChip())
       await user.click(screen.getByRole('option', { name: /Internal Network/ }))
       await user.click(screen.getByRole('button', { name: 'Save' }))
-      await waitFor(() => expect(fetchSpy).toHaveBeenCalled())
-      const [input, init] = fetchSpy.mock.calls[0]!
+      await waitFor(() =>
+        expect(
+          fetchSpy.mock.calls.some(([input, init]) => new Request(input, init).method === 'PUT'),
+        ).toBe(true),
+      )
+      const [input, init] = fetchSpy.mock.calls.find(
+        ([input, init]) => new Request(input, init).method === 'PUT',
+      )!
       expect(new Request(input, init).method).toBe('PUT')
     } finally {
       fetchSpy.mockRestore()
@@ -901,9 +924,11 @@ describe('supported access points and binding permission', () => {
     await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
     await user.click(screen.getByRole('option', { name: /Office/ }))
     await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
 
-    rendered.rerender(<AccessControlEntry appId="app-1" appIcon={{}} canEditBinding={false} />)
+    rendered.rerender(
+      <AccessControlEntry appId="app-1" appIcon={{}} isPublished={false} canEditBinding={false} />,
+    )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(getChip())
     expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
@@ -915,7 +940,9 @@ describe('supported access points and binding permission', () => {
       'true',
     )
 
-    rendered.rerender(<AccessControlEntry appId="app-1" appIcon={{}} canEditBinding />)
+    rendered.rerender(
+      <AccessControlEntry appId="app-1" appIcon={{}} isPublished={false} canEditBinding />,
+    )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(getChip())
     expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
@@ -938,13 +965,17 @@ describe('supported access points and binding permission', () => {
     await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
-    rendered.rerender(<AccessControlEntry appId="app-1" appIcon={{}} canEditBinding={false} />)
+    rendered.rerender(
+      <AccessControlEntry appId="app-1" appIcon={{}} isPublished={false} canEditBinding={false} />,
+    )
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     await user.click(getChip())
     expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
 
-    rendered.rerender(<AccessControlEntry appId="app-1" appIcon={{}} canEditBinding />)
+    rendered.rerender(
+      <AccessControlEntry appId="app-1" appIcon={{}} isPublished={false} canEditBinding />,
+    )
     await user.click(getChip())
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
@@ -986,8 +1017,10 @@ describe('supported access points and binding permission', () => {
     await user.click(getChip())
     await user.click(screen.getByRole('option', { name: /Internal Network/ }))
     await user.click(screen.getByRole('switch', { name: 'Web App' }))
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
-    rendered.rerender(<AccessControlEntry appId="app-2" appIcon={{}} canEditBinding />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+    rendered.rerender(
+      <AccessControlEntry appId="app-2" appIcon={{}} isPublished={false} canEditBinding />,
+    )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(getChip())
     expect(screen.getByRole('switch', { name: 'Web App' })).toBeChecked()
@@ -1018,10 +1051,13 @@ describe('supported access points and binding permission', () => {
     seedNetworkAccessGroups(queryClient, { entitled: true })
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response())
     try {
-      renderWithConsoleQuery(<AccessControlEntry appId="app-1" appIcon={{}} canEditBinding />, {
-        queryClient,
-        systemFeatures: { deployment_edition: 'CLOUD' },
-      })
+      renderWithConsoleQuery(
+        <AccessControlEntry appId="app-1" appIcon={{}} isPublished={false} canEditBinding />,
+        {
+          queryClient,
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
       await waitFor(() =>
         expect(
           queryClient.getQueryState(
@@ -1036,5 +1072,160 @@ describe('supported access points and binding permission', () => {
     } finally {
       fetchSpy.mockRestore()
     }
+  })
+})
+
+const setupBindingServer = (initialBinding: AppNetworkAccessGroupBindingResponse | null = null) => {
+  const state = {
+    binding: initialBinding,
+    groups: [createNetworkAccessGroupFixture()],
+    check: { allowed: false, client_ip: '203.0.113.42', policy_version: 1 },
+    checkStatus: 200,
+    checks: 0,
+    writes: [] as Record<string, unknown>[],
+    put: undefined as (() => Promise<Response>) | undefined,
+    createStatus: 201,
+  }
+  vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+    const request = new Request(input, init)
+    if (request.url.endsWith('/check-current-ip')) {
+      state.checks += 1
+      return Response.json(
+        state.checkStatus === 200 ? state.check : { message: 'IP unavailable' },
+        { status: state.checkStatus },
+      )
+    }
+    if (request.url.endsWith('/current-ip'))
+      return Response.json({ client_ip: state.check.client_ip })
+    if (request.method === 'PUT') {
+      const payload = await request.json()
+      state.writes.push(payload)
+      if (state.put) return state.put()
+      state.binding = createBinding({ ...payload, version: (state.binding?.version ?? 0) + 1 })
+      return Response.json({ binding: state.binding, effective_enabled: state.binding.enabled })
+    }
+    if (request.url.endsWith('/network-access-groups')) {
+      if (request.method === 'POST') {
+        if (state.createStatus !== 201)
+          return Response.json({ message: 'Creation failed' }, { status: state.createStatus })
+        const group = createNetworkAccessGroupFixture({
+          ...(await request.json()),
+          id: 'new-policy',
+        })
+        state.groups.push(group)
+        return Response.json({ group }, { status: 201 })
+      }
+      return Response.json({ tenant_id: 'workspace-1', entitled: true, groups: state.groups })
+    }
+    return Response.json({
+      tenant_id: 'workspace-1',
+      app_id: 'app-1',
+      entitled: true,
+      binding: state.binding,
+      effective_enabled: state.binding?.enabled ?? false,
+      available_access_points: ['webapp', 'service_api', 'mcp'],
+    })
+  })
+  return state
+}
+
+const openSelectedConfig = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(getChip())
+  await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+}
+
+const lockoutWarning = "Your IP (203.0.113.42) isn't in this policy. You may lose access."
+
+describe('trusted IP checks before saving', () => {
+  it.each([true, false])(
+    'uses the server match result and only confirms a published denial (allowed: %s)',
+    async (allowed) => {
+      const user = userEvent.setup()
+      const server = setupBindingServer()
+      server.check.allowed = allowed
+      renderEntry({ plan: 'professional', groups: server.groups, isPublished: true })
+      await openSelectedConfig(user)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+      expect(Boolean(screen.queryByText(lockoutWarning))).toBe(!allowed)
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      if (allowed) {
+        await waitFor(() => expect(server.writes).toHaveLength(1))
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      } else {
+        const dialog = await screen.findByRole('alertdialog', { name: 'Save without your own IP?' })
+        expect(within(dialog).getByText(lockoutWarning)).toBeInTheDocument()
+        expect(server.writes).toHaveLength(0)
+        await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+        expect(await screen.findByRole('button', { name: 'Save' })).toBeInTheDocument()
+        expect(server.writes).toHaveLength(0)
+        await user.click(screen.getByRole('button', { name: 'Save' }))
+        await user.click(await screen.findByRole('button', { name: 'Save anyway' }))
+        await waitFor(() => expect(server.writes).toHaveLength(1))
+      }
+    },
+  )
+
+  it('warns but saves an unpublished draft without confirmation', async () => {
+    const user = userEvent.setup()
+    const server = setupBindingServer()
+    renderEntry({ plan: 'professional', groups: server.groups })
+    await openSelectedConfig(user)
+    expect(await screen.findByText(lockoutWarning)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(server.writes).toHaveLength(1))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(server.checks).toBeGreaterThanOrEqual(2)
+  })
+
+  it('requires renewed confirmation when the policy changes before Save anyway', async () => {
+    const user = userEvent.setup()
+    const server = setupBindingServer()
+    renderEntry({ plan: 'professional', groups: server.groups, isPublished: true })
+    await openSelectedConfig(user)
+    await screen.findByText(lockoutWarning)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await screen.findByRole('alertdialog')
+    server.check.policy_version = 2
+    await user.click(screen.getByRole('button', { name: 'Save anyway' }))
+    expect(
+      await screen.findByText('This policy changed. Review the warning before saving again.'),
+    ).toBeInTheDocument()
+    expect(server.writes).toHaveLength(0)
+    await user.click(screen.getByRole('button', { name: 'Save anyway' }))
+    await waitFor(() => expect(server.writes).toHaveLength(1))
+  })
+
+  it('blocks saving on an unavailable IP check and recovers through Retry', async () => {
+    const user = userEvent.setup()
+    const server = setupBindingServer()
+    server.checkStatus = 503
+    renderEntry({ plan: 'professional', groups: server.groups, isPublished: true })
+    await openSelectedConfig(user)
+    expect(
+      await screen.findByText('Unable to check your IP address. Please try again.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(server.writes).toHaveLength(0)
+    server.checkStatus = 200
+    server.check.allowed = true
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(server.writes).toHaveLength(1))
+  })
+
+  it('does not write when the fresh save check fails after a successful initial check', async () => {
+    const user = userEvent.setup()
+    const server = setupBindingServer()
+    server.check.allowed = true
+    renderEntry({ plan: 'professional', groups: server.groups, isPublished: true })
+    await openSelectedConfig(user)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+    server.checkStatus = 503
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(
+      await screen.findByText('Unable to check your IP address. Please try again.'),
+    ).toBeInTheDocument()
+    expect(server.writes).toHaveLength(0)
   })
 })

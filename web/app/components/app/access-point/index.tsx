@@ -78,6 +78,12 @@ function AccessPointContent({
             </h1>
             <AccessControlEntry
               appId={appId}
+              isPublished={Boolean(
+                appInfo &&
+                (appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
+                  ? appInfo.workflow?.id
+                  : appInfo.model_config),
+              )}
               appIcon={{
                 iconType: appInfo?.icon_type,
                 icon: appInfo?.icon,

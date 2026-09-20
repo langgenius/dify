@@ -24,7 +24,9 @@ vi.mock('../components/workflow-references-table', () => ({ WorkflowReferencesTa
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  const { default: translations } = await import('@/i18n/en-US/deployments.json')
   return createReactI18nextMock({
+    ...translations,
     'studio.accessControl.entryLabel': 'Access Control',
     'studio.accessControl.chipOff': 'Off',
     'studio.accessControl.chipOn': 'ON',
@@ -105,6 +107,8 @@ describe('Agent IP access configuration', () => {
     const writes: Array<{ url: string; body: unknown }> = []
     vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
       const request = input instanceof Request ? input : new Request(String(input), init)
+      if (request.url.endsWith('/check-current-ip'))
+        return Response.json({ allowed: true, client_ip: '203.0.113.42', policy_version: 1 })
       if (request.method === 'PUT') {
         const body = await request.json()
         writes.push({ url: request.url, body })
@@ -120,6 +124,7 @@ describe('Agent IP access configuration', () => {
     expect(screen.queryByRole('switch', { name: 'MCP Server' })).not.toBeInTheDocument()
     expect(screen.queryByRole('switch', { name: 'Trigger' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
@@ -155,7 +160,7 @@ describe('Agent IP access configuration', () => {
     expect(screen.getByText('Protecting all 2 access points.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
-    const toggle = screen.getByRole('switch', { name: 'Restrict by IP address' })
+    const toggle = screen.getByRole('switch', { name: 'Enable access control' })
     expect(toggle).toHaveAttribute('aria-disabled', 'true')
     await user.click(toggle)
     expect(toggle).toBeChecked()
@@ -188,5 +193,25 @@ describe('Agent IP access configuration', () => {
     await user.click(screen.getByRole('button', { name: /Access Control/ }))
     expect(screen.getByRole('switch', { name: 'Backend Service API' })).toBeChecked()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+
+  it('requires lockout confirmation for an Agent with a published snapshot', async () => {
+    const user = userEvent.setup()
+    setup({ access_ready: true })
+    vi.mocked(globalThis.fetch).mockImplementation(async () =>
+      Response.json({ allowed: false, client_ip: '203.0.113.42', policy_version: 1 }),
+    )
+    await user.click(screen.getByRole('button', { name: /Access Control/ }))
+    await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(
+      await screen.findByRole('alertdialog', { name: 'Save without your own IP?' }),
+    ).toBeInTheDocument()
+    expect(
+      vi
+        .mocked(globalThis.fetch)
+        .mock.calls.every(([input, init]) => new Request(input, init).method === 'GET'),
+    ).toBe(true)
   })
 })

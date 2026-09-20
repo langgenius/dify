@@ -1,5 +1,6 @@
 'use client'
 
+import type { NetworkAccessGroupCurrentIpCheckResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AccessControlPolicy } from './draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,17 +17,16 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import {
-  policyIncludesIp,
-  splitPolicySummary,
-} from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
+import { splitPolicySummary } from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
 
 const CREATE_POLICY_VALUE = '__create-ip-policy__'
 
 type AccessControlPolicyFieldProps = {
   policies: readonly AccessControlPolicy[]
   selectedPolicyId: string | null
-  currentIp?: string
+  ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
+  ipCheckStatus?: 'loading' | 'error'
+  onRetryIpCheck?: () => void
   readOnly?: boolean
   canManagePolicies: boolean
   onCreatePolicy: () => void
@@ -37,7 +37,9 @@ type AccessControlPolicyFieldProps = {
 export function AccessControlPolicyField({
   policies,
   selectedPolicyId,
-  currentIp,
+  ipCheck,
+  ipCheckStatus,
+  onRetryIpCheck,
   readOnly = false,
   canManagePolicies,
   onCreatePolicy,
@@ -47,11 +49,6 @@ export function AccessControlPolicyField({
   const { t } = useTranslation()
   const selectedPolicy = policies.find((policy) => policy.id === selectedPolicyId)
   const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.allowed_cidrs) : undefined
-  const showLockout =
-    Boolean(selectedPolicy && currentIp) &&
-    selectedPolicy !== undefined &&
-    currentIp !== undefined &&
-    !policyIncludesIp(selectedPolicy.allowed_cidrs, currentIp)
   const selectLabel = t(($) => $['studio.accessControl.ipPolicy'], { ns: 'deployments' })
   const placeholder = t(($) => $['studio.accessControl.selectPolicy'], { ns: 'deployments' })
   const canCreatePolicy = canManagePolicies && !readOnly
@@ -225,11 +222,23 @@ export function AccessControlPolicyField({
                   })}
         </p>
       )}
-      {showLockout && currentIp && (
+      {ipCheckStatus && (
+        <p role="status" className="system-xs-regular text-text-warning">
+          {ipCheckStatus === 'loading'
+            ? t(($) => $['settings.ipPolicyCurrentIpLoading'], { ns: 'common' })
+            : t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
+          {ipCheckStatus === 'error' && onRetryIpCheck && (
+            <Button type="button" variant="ghost" size="small" onClick={onRetryIpCheck}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          )}
+        </p>
+      )}
+      {!ipCheckStatus && ipCheck && !ipCheck.allowed && (
         <p className="system-xs-regular text-text-warning">
           {t(($) => $['studio.accessControl.lockoutWarning'], {
             ns: 'deployments',
-            ip: currentIp,
+            ip: ipCheck.client_ip,
           })}
         </p>
       )}

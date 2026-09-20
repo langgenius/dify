@@ -54,6 +54,7 @@
   "studio.accessControl.notEnabled": "未啟用",
   "studio.accessControl.paywallDescription": "Restrict this app to IP addresses you trust.",
   "studio.accessControl.paywallTitle": "Access Control",
+  "studio.accessControl.policyChanged": "此原則已變更，請確認風險提示後再次儲存。",
   "studio.accessControl.policySummaryMany": "允許 {{listed}} 以及另外 {{count}} 個地址",
   "studio.accessControl.policySummaryNone": "未允許任何地址",
   "studio.accessControl.policySummaryOne": "允許 {{address}}",

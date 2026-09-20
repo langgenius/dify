@@ -54,6 +54,7 @@
   "studio.accessControl.notEnabled": "未有効",
   "studio.accessControl.paywallDescription": "信頼できる IP アドレスからのみ、このアプリにアクセスできるようにします。",
   "studio.accessControl.paywallTitle": "アクセス制御",
+  "studio.accessControl.policyChanged": "このポリシーは変更されました。警告を確認してから再度保存してください。",
   "studio.accessControl.policySummaryMany": "{{listed}} とさらに {{count}} 件のアドレスを許可",
   "studio.accessControl.policySummaryNone": "許可するアドレスはありません",
   "studio.accessControl.policySummaryOne": "{{address}} を許可",

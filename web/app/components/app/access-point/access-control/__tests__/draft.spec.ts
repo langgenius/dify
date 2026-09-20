@@ -1,8 +1,5 @@
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
-import {
-  policyIncludesIp,
-  splitPolicySummary,
-} from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
+import { splitPolicySummary } from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
 import {
   canSaveAccessControl,
   createDefaultAccessControlDraft,
@@ -119,17 +116,6 @@ describe('splitPolicySummary', () => {
       listed: ['203.0.113.42', '198.51.100.0/24'],
       moreCount: 2,
     })
-  })
-})
-
-describe('policyIncludesIp', () => {
-  it('matches an exact address and a covering CIDR', () => {
-    expect(policyIncludesIp(['203.0.113.42', '198.51.100.0/24'], '203.0.113.42')).toBe(true)
-    expect(policyIncludesIp(['198.51.100.0/24'], '198.51.100.20')).toBe(true)
-  })
-
-  it('does not match an address outside the policy', () => {
-    expect(policyIncludesIp(['198.51.100.0/24'], '203.0.113.42')).toBe(false)
   })
 })
 

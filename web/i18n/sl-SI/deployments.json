@@ -54,6 +54,7 @@
   "studio.accessControl.notEnabled": "Not enabled",
   "studio.accessControl.paywallDescription": "Restrict this app to IP addresses you trust.",
   "studio.accessControl.paywallTitle": "Access Control",
+  "studio.accessControl.policyChanged": "Ta pravilnik se je spremenil. Pred ponovnim shranjevanjem preglejte opozorilo.",
   "studio.accessControl.policySummaryMany": "Allows {{listed}} and {{count}} more addresses",
   "studio.accessControl.policySummaryNone": "Allows no addresses",
   "studio.accessControl.policySummaryOne": "Allows {{address}}",

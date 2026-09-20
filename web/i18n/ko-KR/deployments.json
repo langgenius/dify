@@ -54,6 +54,7 @@
   "studio.accessControl.notEnabled": "Not enabled",
   "studio.accessControl.paywallDescription": "Restrict this app to IP addresses you trust.",
   "studio.accessControl.paywallTitle": "Access Control",
+  "studio.accessControl.policyChanged": "이 정책이 변경되었습니다. 다시 저장하기 전에 경고를 확인하세요.",
   "studio.accessControl.policySummaryMany": "Allows {{listed}} and {{count}} more addresses",
   "studio.accessControl.policySummaryNone": "Allows no addresses",
   "studio.accessControl.policySummaryOne": "Allows {{address}}",

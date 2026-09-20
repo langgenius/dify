@@ -1,5 +1,6 @@
 'use client'
 
+import type { NetworkAccessGroupCurrentIpCheckResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FormEvent } from 'react'
 import type { AccessControlDraft, AccessControlPolicy } from './draft'
 import type { AccessControlAppIcon } from './index'
@@ -18,7 +19,9 @@ import { AccessControlScopeList } from './scope-list'
 type AccessControlConfigPanelProps = {
   draft: AccessControlDraft
   policies: readonly AccessControlPolicy[]
-  currentIp?: string
+  ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
+  ipCheckStatus?: 'loading' | 'error'
+  onRetryIpCheck?: () => void
   availableAccessPoints: readonly AccessPoint[]
   appIcon: AccessControlAppIcon
   readOnly?: boolean
@@ -37,7 +40,9 @@ type AccessControlConfigPanelProps = {
 export function AccessControlConfigPanel({
   draft,
   policies,
-  currentIp,
+  ipCheck,
+  ipCheckStatus,
+  onRetryIpCheck,
   availableAccessPoints,
   appIcon,
   readOnly = false,
@@ -60,7 +65,12 @@ export function AccessControlConfigPanel({
   const hasPersistableSelection = hasSelectedAccessPoint(draft, availableAccessPoints)
   const showPolicyError = draft.enabled && !hasSelectedPolicy
   const showAccessPointError = draft.enabled && !hasPersistableSelection
-  const canSave = !readOnly && canSaveAccessControl({ draft, baseline, availableAccessPoints })
+  const canSave =
+    !readOnly &&
+    !saving &&
+    ipCheckStatus === undefined &&
+    hasSelectedPolicy &&
+    canSaveAccessControl({ draft, baseline, availableAccessPoints })
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -114,8 +124,10 @@ export function AccessControlConfigPanel({
           <AccessControlPolicyField
             policies={policies}
             selectedPolicyId={draft.selectedPolicyId}
-            currentIp={currentIp}
-            readOnly={readOnly}
+            ipCheck={ipCheck}
+            ipCheckStatus={ipCheckStatus}
+            onRetryIpCheck={onRetryIpCheck}
+            readOnly={readOnly || saving}
             canManagePolicies={canManagePolicies}
             onCreatePolicy={onCreatePolicy}
             onManagePolicies={onManagePolicies}
@@ -147,7 +159,7 @@ export function AccessControlConfigPanel({
             draft={draft}
             appIcon={appIcon}
             availableAccessPoints={availableAccessPoints}
-            readOnly={readOnly}
+            readOnly={readOnly || saving}
             onDraftChange={onDraftChange}
           />
           {showAccessPointError && (
@@ -162,7 +174,7 @@ export function AccessControlConfigPanel({
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
           {!readOnly && (
-            <Button type="submit" variant="primary" disabled={!canSave || saving} loading={saving}>
+            <Button type="submit" variant="primary" disabled={!canSave} loading={saving}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           )}

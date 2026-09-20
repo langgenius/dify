@@ -1,3 +1,4 @@
+import type { NetworkAccessGroupCurrentIpCheckResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AccessControlDraft, AccessControlPolicy } from '../draft'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { screen } from '@testing-library/react'
@@ -38,7 +39,7 @@ vi.mock('react-i18next', async () => {
 })
 
 function PanelHarness({
-  currentIp,
+  ipCheck,
   initialDraft = createDefaultAccessControlDraft(ACCESS_POINT_ORDER),
   onSave = vi.fn(),
   onCreatePolicy = vi.fn(),
@@ -46,7 +47,7 @@ function PanelHarness({
   canManagePolicies = true,
   readOnly = false,
 }: {
-  currentIp?: string
+  ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
   initialDraft?: AccessControlDraft
   onSave?: () => void
   onCreatePolicy?: () => void
@@ -68,7 +69,7 @@ function PanelHarness({
           canManagePolicies={canManagePolicies}
           readOnly={readOnly}
           policies={policies}
-          currentIp={currentIp}
+          ipCheck={ipCheck}
           onCancel={onCancel}
           onCreatePolicy={onCreatePolicy}
           onManagePolicies={onManagePolicies}
@@ -198,7 +199,9 @@ describe('AccessControlConfigPanel', () => {
 
   it('shows a lockout warning when the current IP is outside the selected policy', async () => {
     const user = userEvent.setup()
-    render(<PanelHarness currentIp="203.0.113.42" />)
+    render(
+      <PanelHarness ipCheck={{ allowed: false, client_ip: '203.0.113.42', policy_version: 1 }} />,
+    )
 
     await user.click(await screen.findByRole('option', { name: /Office VPN/ }))
 
