@@ -31,9 +31,8 @@ jobs:
         shardIndex:
           - 1
           - 2
-          - 3
         shardTotal:
-          - 3
+          - 2
 
     steps:
       - name: Checkout code
@@ -71,16 +70,6 @@ jobs:
             --cov-report= \
             --junitxml=test-results/unit.xml \
             "@$RUNNER_TEMP/unit-test-files.txt"
-          # Controller tests register Flask routes at import time, so keep them out of xdist.
-          uv run --project api pytest \
-            --timeout "${PYTEST_TIMEOUT:-20}" \
-            --shard-index "${{ matrix.shardIndex }}" \
-            --shard-total "${{ matrix.shardTotal }}" \
-            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
-            --cov-report= \
-            --cov-append \
-            --junitxml=test-results/controllers.xml \
-            api/tests/unit_tests/controllers
 
       - name: Upload unit test reports
         if: ${{ !cancelled() }}
@@ -95,6 +84,58 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: api-coverage-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+          path: ${{ env.COVERAGE_FILE }}
+          if-no-files-found: error
+          retention-days: 1
+
+  api-controllers:
+    name: API Controller Tests (3.12)
+    runs-on: depot-ubuntu-24.04
+    env:
+      PYTHONUNBUFFERED: '1'
+      COVERAGE_FILE: coverage-controllers-3.12
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+
+      - name: Check UV lockfile
+        run: uv lock --project api --check
+
+      - name: Install dependencies
+        run: uv sync --project api --dev
+
+      - name: Run Controller Tests
+        # Controller tests register Flask routes at import time, so keep them out of xdist.
+        run: |
+          uv run --project api pytest \
+            --timeout "${PYTEST_TIMEOUT:-20}" \
+            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
+            --junitxml=test-results/controllers.xml \
+            api/tests/unit_tests/controllers
+
+      - name: Upload controller test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-test-results-controllers-3.12
+          path: test-results/*.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload controller coverage data
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-coverage-controllers-3.12
           path: ${{ env.COVERAGE_FILE }}
           if-no-files-found: error
           retention-days: 1
@@ -162,6 +203,7 @@ jobs:
     runs-on: depot-ubuntu-24.04
     needs:
       - api-unit
+      - api-controllers
       - api-integration
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -201,9 +243,14 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           mapfile -t unit_coverage < <(find coverage-data -type f -name 'coverage-unit-*' -print | sort)
+          mapfile -t controller_coverage < <(find coverage-data -type f -name 'coverage-controllers-*' -print | sort)
           mapfile -t integration_coverage < <(find coverage-data -type f -name 'coverage-integration-*' -print | sort)
-          if [[ "${#unit_coverage[@]}" -ne 3 ]]; then
-            echo "expected 3 unit coverage artifacts, found ${#unit_coverage[@]}" >&2
+          if [[ "${#unit_coverage[@]}" -ne 2 ]]; then
+            echo "expected 2 unit coverage artifacts, found ${#unit_coverage[@]}" >&2
+            exit 1
+          fi
+          if [[ "${#controller_coverage[@]}" -ne 1 ]]; then
+            echo "expected 1 controller coverage artifact, found ${#controller_coverage[@]}" >&2
             exit 1
           fi
           if [[ "${#integration_coverage[@]}" -ne 1 ]]; then
@@ -212,7 +259,7 @@ jobs:
           fi
 
           report_file="$(mktemp)"
-          uvx --from "coverage==$coverage_version" coverage combine "${unit_coverage[@]}" "${integration_coverage[@]}"
+          uvx --from "coverage==$coverage_version" coverage combine "${unit_coverage[@]}" "${controller_coverage[@]}" "${integration_coverage[@]}"
           uvx --from "coverage==$coverage_version" coverage report --show-missing | tee "$report_file"
           echo "Summary: \`$(tail -n 1 "$report_file")\`" >> "$GITHUB_STEP_SUMMARY"
           {
