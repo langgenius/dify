@@ -145,3 +145,11 @@ def test_get_summary_rejects_missing_app() -> None:
 
     with pytest.raises(AppDefinitionUnavailableError, match="App not found"):
         service.get_summary("missing")
+
+
+def test_get_site_configuration_rejects_missing_site() -> None:
+    service, definitions = _service()
+    definitions.get_site_configuration.return_value = None
+
+    with pytest.raises(AppDefinitionUnavailableError, match="Site not found"):
+        service.get_site_configuration("app-1")

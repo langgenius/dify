@@ -16,7 +16,7 @@ export function NodeContextmenu({ onClose }: { onClose: () => void }) {
   if (!nodeId || !currentNode) return null
 
   return (
-    <ContextMenuContent popupClassName={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME} sideOffset={4}>
+    <ContextMenuContent className={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME} sideOffset={4}>
       <NodeActionsContextMenuContent
         id={currentNode.id}
         data={currentNode.data}

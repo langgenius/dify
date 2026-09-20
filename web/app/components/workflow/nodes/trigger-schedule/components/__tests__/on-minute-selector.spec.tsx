@@ -9,7 +9,9 @@ describe('trigger-schedule/on-minute-selector', () => {
 
     render(<OnMinuteSelector value={15} onChange={onChange} />)
 
-    const slider = screen.getByLabelText('workflow.nodes.triggerSchedule.onMinute')
+    const slider = screen.getByRole('slider', {
+      name: 'workflow.nodes.triggerSchedule.onMinute',
+    })
     slider.focus()
     await user.keyboard('{ArrowRight}')
 

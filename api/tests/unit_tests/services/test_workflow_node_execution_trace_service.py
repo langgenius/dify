@@ -77,7 +77,7 @@ def _repository(full_process_data: dict[str, object] | None) -> DifyAPIWorkflowN
     return cast(DifyAPIWorkflowNodeExecutionRepository, repository)
 
 
-def test_assemble_expands_retry_history_before_terminal_trace() -> None:
+def test_assemble_expands_retry_history_before_terminal_trace(sqlite_session: Session) -> None:
     process_data = {
         "request": "successful-attempt",
         RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(2), _retry_attempt(1)],
@@ -85,7 +85,7 @@ def test_assemble_expands_retry_history_before_terminal_trace() -> None:
     execution = _execution(process_data)
     repository = _repository(process_data)
 
-    traces = assemble_workflow_node_execution_traces([execution], repository)
+    traces = assemble_workflow_node_execution_traces([execution], repository, session=sqlite_session)
 
     assert [trace.id for trace in traces] == ["exec-1:retry:1", "exec-1:retry:2", "exec-1"]
     assert [trace.status for trace in traces] == ["retry", "retry", "succeeded"]
@@ -104,18 +104,18 @@ def test_assemble_expands_retry_history_before_terminal_trace() -> None:
     repository.load_full_process_data.assert_called_once_with(execution)
 
 
-def test_assemble_keeps_old_execution_without_retry_history() -> None:
+def test_assemble_keeps_old_execution_without_retry_history(sqlite_session: Session) -> None:
     process_data = {"request": "terminal"}
     execution = _execution(process_data)
 
-    traces = assemble_workflow_node_execution_traces([execution], _repository(process_data))
+    traces = assemble_workflow_node_execution_traces([execution], _repository(process_data), session=sqlite_session)
 
     assert len(traces) == 1
     assert traces[0].id == "exec-1"
     assert traces[0].process_data == process_data
 
 
-def test_assemble_skips_malformed_and_duplicate_retry_attempts() -> None:
+def test_assemble_skips_malformed_and_duplicate_retry_attempts(sqlite_session: Session) -> None:
     process_data = {
         RETRY_HISTORY_PROCESS_DATA_KEY: [
             _retry_attempt(2),
@@ -125,35 +125,41 @@ def test_assemble_skips_malformed_and_duplicate_retry_attempts() -> None:
         ]
     }
 
-    traces = assemble_workflow_node_execution_traces([_execution(process_data)], _repository(process_data))
+    traces = assemble_workflow_node_execution_traces(
+        [_execution(process_data)], _repository(process_data), session=sqlite_session
+    )
 
     assert [trace.retry_index for trace in traces[:-1]] == [1, 2]
     assert traces[0].error == "attempt 1 failed"
 
 
-def test_assemble_truncates_retry_attempt_fields() -> None:
+def test_assemble_truncates_retry_attempt_fields(sqlite_session: Session) -> None:
     process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1, outputs={"body": "x" * 2_000_000})]}
 
-    traces = assemble_workflow_node_execution_traces([_execution(process_data)], _repository(process_data))
+    traces = assemble_workflow_node_execution_traces(
+        [_execution(process_data)], _repository(process_data), session=sqlite_session
+    )
 
     assert traces[0].outputs_truncated is True
     assert traces[-1].id == "exec-1"
 
 
-def test_assemble_falls_back_to_inline_process_data_when_loader_fails() -> None:
+def test_assemble_falls_back_to_inline_process_data_when_loader_fails(sqlite_session: Session) -> None:
     process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
     execution = _execution(process_data)
     repository = _repository(None)
     repository.load_full_process_data.side_effect = OSError("storage unavailable")
 
-    traces = assemble_workflow_node_execution_traces([execution], repository)
+    traces = assemble_workflow_node_execution_traces([execution], repository, session=sqlite_session)
 
     assert [trace.id for trace in traces] == ["exec-1:retry:1", "exec-1"]
 
 
-def test_virtual_trace_validates_through_node_execution_response() -> None:
+def test_virtual_trace_validates_through_node_execution_response(sqlite_session: Session) -> None:
     process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
-    traces = assemble_workflow_node_execution_traces([_execution(process_data)], _repository(process_data))
+    traces = assemble_workflow_node_execution_traces(
+        [_execution(process_data)], _repository(process_data), session=sqlite_session
+    )
 
     response = WorkflowRunNodeExecutionListResponse.model_validate({"data": traces}, from_attributes=True)
 

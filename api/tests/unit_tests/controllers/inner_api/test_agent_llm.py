@@ -15,6 +15,7 @@ from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResul
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from services.agent_llm_inner_service import AgentLLMInnerServiceError, PreparedAgentLLMInvocation
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _payload() -> dict[str, object]:
@@ -44,13 +45,12 @@ def _payload() -> dict[str, object]:
 @contextmanager
 def _agent_inner_auth() -> Generator[None]:
     with (
-        patch("configs.dify_config.PLUGIN_DAEMON_KEY", "plugin-daemon-key"),
-        patch("configs.dify_config.INNER_API_KEY_FOR_PLUGIN", "inner-key"),
+        config_overrides_context(PLUGIN_DAEMON_KEY="plugin-daemon-key", INNER_API_KEY_FOR_PLUGIN="inner-key"),
     ):
         yield
 
 
-def _app() -> Flask:
+def _flask_app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(inner_api_bp)
@@ -75,7 +75,7 @@ def test_post_streams_plugin_compatible_envelope() -> None:
         patch("controllers.inner_api.agent.llm.AgentLLMInnerService.invoke", return_value=iter([chunk])),
     ):
         response = (
-            _app()
+            _flask_app()
             .test_client()
             .post(
                 "/inner/api/agent/llm/invoke",
@@ -134,7 +134,7 @@ def test_post_preserves_prompt_messages_without_transport_validation() -> None:
         patch("controllers.inner_api.agent.llm.AgentLLMInnerService.invoke", return_value=iter([])),
     ):
         response = (
-            _app()
+            _flask_app()
             .test_client()
             .post(
                 "/inner/api/agent/llm/invoke",
@@ -150,7 +150,7 @@ def test_post_preserves_prompt_messages_without_transport_validation() -> None:
 def test_post_rejects_invalid_body_before_model_resolution() -> None:
     with _agent_inner_auth():
         response = (
-            _app()
+            _flask_app()
             .test_client()
             .post(
                 "/inner/api/agent/llm/invoke",
@@ -176,7 +176,7 @@ def test_post_preserves_preflight_quota_failure() -> None:
         ),
     ):
         response = (
-            _app()
+            _flask_app()
             .test_client()
             .post(
                 "/inner/api/agent/llm/invoke",
@@ -208,7 +208,7 @@ def test_post_preserves_stream_quota_failure() -> None:
         ),
     ):
         response = (
-            _app()
+            _flask_app()
             .test_client()
             .post(
                 "/inner/api/agent/llm/invoke",

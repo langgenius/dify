@@ -75,6 +75,8 @@ if "jsonschema" not in sys.modules:
     sys.modules["jsonschema.protocols"] = jsonschema_protocols_module
     sys.modules["jsonschema.validators"] = jsonschema_validators_module
 
+from dify_agent.layers.config import DIFY_CONFIG_LAYER_TYPE_ID, DifyConfigLayerConfig
+from dify_agent.layers.config.layer import DifyConfigLayer
 from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
 from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
@@ -98,6 +100,18 @@ def _runtime_backend_profile() -> RuntimeBackendProfile:
         home_snapshots=cast(HomeSnapshotBackend, cast(object, FakeProvider())),
         execution_bindings=cast(ExecutionBindingBackend, cast(object, FakeProvider())),
     )
+
+
+def test_default_layer_providers_register_config_layer() -> None:
+    providers = create_default_layer_providers()
+
+    config_provider = next(provider for provider in providers if provider.type_id == DIFY_CONFIG_LAYER_TYPE_ID)
+    config = DifyConfigLayerConfig(agent_id="agent-1")
+    layer = config_provider.create_layer(config)
+
+    assert isinstance(layer, DifyConfigLayer)
+    assert layer.type_id == DIFY_CONFIG_LAYER_TYPE_ID
+    assert layer.config == config
 
 
 def test_default_layer_providers_register_runtime_layer() -> None:

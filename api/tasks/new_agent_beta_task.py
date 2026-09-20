@@ -80,6 +80,35 @@ def register_new_agent_beta_publish_after_commit(
         )
 
 
+def register_new_agent_beta_workflow_publish_after_commit(
+    *, session: Session, published_workflow_id: str, published_at: datetime
+) -> None:
+    """Best-effort registration for a committed App Workflow publish."""
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        return
+
+    try:
+        if not _is_publish_in_activity_window(published_at):
+            return
+        cancelled = False
+
+        def cancel_on_rollback(_session: Session) -> None:
+            nonlocal cancelled
+            cancelled = True
+
+        def dispatch_after_commit(_session: Session) -> None:
+            if not cancelled:
+                schedule_new_agent_beta_workflow_ensure(published_workflow_id)
+
+        event.listen(session, "after_rollback", cancel_on_rollback, once=True)
+        event.listen(session, "after_commit", dispatch_after_commit, once=True)
+    except Exception:
+        logger.exception(
+            "Failed to register New Agent Beta Workflow publish event, published_workflow_id=%s",
+            published_workflow_id,
+        )
+
+
 @shared_task(
     queue=NEW_AGENT_BETA_QUEUE,
     bind=True,
@@ -88,19 +117,30 @@ def register_new_agent_beta_publish_after_commit(
     acks_late=True,
     reject_on_worker_lost=True,
 )
-def ensure_new_agent_beta_participation_task(self, revision_id: str) -> None:
+def ensure_new_agent_beta_participation_task(self, source_id: str, source_type: str) -> None:
+    if source_type not in {"revision", "workflow"}:
+        raise ValueError(f"Unsupported New Agent Beta source type: {source_type}")
+
     try:
-        BillingService.ensure_new_agent_beta_revision(revision_id)
+        if source_type == "revision":
+            BillingService.ensure_new_agent_beta_revision(source_id)
+        else:
+            BillingService.ensure_new_agent_beta_workflow(source_id)
     except Exception as exc:
         if self.request.retries >= _MAX_RETRIES:
-            logger.exception("New Agent Beta eligibility retry budget exhausted, revision_id=%s", revision_id)
+            logger.exception(
+                "New Agent Beta eligibility retry budget exhausted, source_type=%s, source_id=%s",
+                source_type,
+                source_id,
+            )
             raise
 
         logger.warning(
-            "New Agent Beta eligibility request failed, scheduling retry %d/%d, revision_id=%s",
+            "New Agent Beta eligibility request failed, scheduling retry %d/%d, source_type=%s, source_id=%s",
             self.request.retries + 1,
             _MAX_RETRIES,
-            revision_id,
+            source_type,
+            source_id,
             exc_info=True,
         )
         countdown = min(_RETRY_DELAY_SECONDS * (2**self.request.retries), _MAX_RETRY_DELAY_SECONDS)
@@ -109,6 +149,16 @@ def ensure_new_agent_beta_participation_task(self, revision_id: str) -> None:
 
 def schedule_new_agent_beta_ensure(revision_id: str) -> None:
     try:
-        ensure_new_agent_beta_participation_task.delay(revision_id)
+        ensure_new_agent_beta_participation_task.delay(revision_id, "revision")
     except Exception:
         logger.exception("Failed to dispatch New Agent Beta eligibility task, revision_id=%s", revision_id)
+
+
+def schedule_new_agent_beta_workflow_ensure(published_workflow_id: str) -> None:
+    try:
+        ensure_new_agent_beta_participation_task.delay(published_workflow_id, "workflow")
+    except Exception:
+        logger.exception(
+            "Failed to dispatch New Agent Beta Workflow eligibility task, published_workflow_id=%s",
+            published_workflow_id,
+        )

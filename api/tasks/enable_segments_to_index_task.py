@@ -14,6 +14,7 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import SegmentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +118,8 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                     dataset=dataset,
                     segment_ids=segment_ids_list,
                 )
-            except Exception as e:
-                logger.warning("Failed to enable summaries for segments: %s", str(e))
+            except Exception:
+                logger.warning("Failed to enable summaries for segments", exc_info=True)
 
             end_at = time.perf_counter()
             logger.info(click.style(f"Segments enabled to index latency: {end_at - start_at}", fg="green"))
@@ -133,7 +134,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                     DocumentSegment.dataset_id == dataset_id,
                     DocumentSegment.document_id == document_id,
                 )
-                .values(error=str(e), status="error", disabled_at=naive_utc_now(), enabled=False)
+                .values(error=str(e), status=SegmentStatus.ERROR, disabled_at=naive_utc_now(), enabled=False)
             )
             session.commit()
         finally:

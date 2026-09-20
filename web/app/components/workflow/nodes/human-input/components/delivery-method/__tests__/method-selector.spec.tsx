@@ -5,12 +5,16 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DeliveryMethodType } from '../../../types'
 import MethodSelector from '../method-selector'
 
+let emailDeliveryEnabled = true
+
 const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
+  renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { human_input_email_delivery_enabled: emailDeliveryEnabled },
+  })
 
 const mockUuid = vi.hoisted(() => vi.fn())
 const mockUseWorkflowNodes = vi.hoisted(() => vi.fn())
-const mockUseProviderContextSelector = vi.hoisted(() => vi.fn())
 
 vi.mock('uuid', () => ({
   v4: () => mockUuid(),
@@ -19,12 +23,6 @@ vi.mock('uuid', () => ({
 vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   __esModule: true,
   default: () => mockUseWorkflowNodes(),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { humanInputEmailDeliveryEnabled: boolean }) => boolean,
-  ) => mockUseProviderContextSelector(selector),
 }))
 
 describe('human-input/delivery-method/method-selector', () => {
@@ -37,11 +35,7 @@ describe('human-input/delivery-method/method-selector', () => {
         data: { type: BlockEnum.Start },
       },
     ] as Node[])
-    mockUseProviderContextSelector.mockImplementation((selector) =>
-      selector({
-        humanInputEmailDeliveryEnabled: true,
-      }),
-    )
+    emailDeliveryEnabled = true
   })
 
   it('should add webapp and email delivery methods when both entries are available', () => {
@@ -114,11 +108,7 @@ describe('human-input/delivery-method/method-selector', () => {
         data: { type: BlockEnum.TriggerSchedule },
       },
     ] as Node[])
-    mockUseProviderContextSelector.mockImplementation((selector) =>
-      selector({
-        humanInputEmailDeliveryEnabled: false,
-      }),
-    )
+    emailDeliveryEnabled = false
 
     render(<MethodSelector data={[]} onAdd={handleAdd} onShowUpgradeTip={handleShowUpgradeTip} />)
 

@@ -1,10 +1,10 @@
 'use client'
-import type { JsonObject2 } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type { JsonObject } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { useGetTryAppFlowPreview } from '@/service/use-try-app'
@@ -90,7 +90,7 @@ const getBlockType = (value: unknown) => {
   return blockTypeMap[value] || null
 }
 
-const normalizeWorkflowPreviewGraph = (graph: JsonObject2) => {
+const normalizeWorkflowPreviewGraph = (graph: JsonObject) => {
   const nodesData = Array.isArray(graph.nodes) ? graph.nodes : []
   const edgesData = Array.isArray(graph.edges) ? graph.edges : []
 
@@ -158,7 +158,7 @@ const FlowAppPreview: FC<Props> = ({ appId, className }) => {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }

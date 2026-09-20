@@ -5,10 +5,13 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
@@ -19,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
 import InputItem from './input-item'
-// import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'nodes.http'
 
@@ -125,16 +127,22 @@ const KeyValueItem: FC<Props> = ({
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent popupClassName="w-[80px]" listClassName="min-w-0">
-              <SelectItem value="text">
-                <SelectItemText>text</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-              <SelectItem value="file">
-                <SelectItemText>file</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            </SelectContent>
+            <SelectPortal>
+              <SelectPositioner>
+                <SelectPopup className="w-20">
+                  <SelectList className="min-w-0">
+                    <SelectItem value="text">
+                      <SelectItemText>text</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                    <SelectItem value="file">
+                      <SelectItemText>file</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  </SelectList>
+                </SelectPopup>
+              </SelectPositioner>
+            </SelectPortal>
           </Select>
         </div>
       )}

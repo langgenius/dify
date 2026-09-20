@@ -40,8 +40,9 @@ function PermissionTooltipWrapper({
   show,
 }: PermissionTooltipWrapperProps) {
   const trigger = (
-    <span aria-label={show ? content : undefined} className={cn('inline-flex', className)}>
+    <span className={cn('inline-flex', className)}>
       {children}
+      {show && <span className="sr-only">{content}</span>}
     </span>
   )
 
@@ -166,11 +167,7 @@ export function IntegrationSidebarUtilityActions({
         <Popover>
           <PopoverTrigger
             render={
-              <Button
-                variant="ghost"
-                className={sidebarUtilityActionClassName}
-                aria-label={permissionsLabel}
-              >
+              <Button variant="ghost" className={sidebarUtilityActionClassName}>
                 <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
                   <span className="i-ri-equalizer-2-line size-4" />
                 </span>
@@ -181,7 +178,7 @@ export function IntegrationSidebarUtilityActions({
           <PopoverContent
             placement="top-start"
             sideOffset={4}
-            popupClassName="border-0 bg-transparent p-0 shadow-none"
+            className="border-0 bg-transparent p-0 shadow-none"
           >
             <PermissionQuickPanel permission={permission} onChange={onPermissionChange} />
           </PopoverContent>

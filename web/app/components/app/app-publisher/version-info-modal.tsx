@@ -5,9 +5,9 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 
 type VersionInfoModalProps = {
   isOpen: boolean
@@ -113,10 +113,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         </div>
         <div className="flex justify-end p-6 pt-5">
           <div className="flex items-center gap-x-3">
-            <Button nativeButton={false} onClick={onClose}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button nativeButton={false} variant="primary" onClick={handlePublish}>
+            <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+            <Button variant="primary" onClick={handlePublish}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>

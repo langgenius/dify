@@ -8,12 +8,12 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from configs import dify_config
 from controllers.common.controller_schemas import MetadataUpdatePayload
+from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     enterprise_license_required,
     model_validate,
@@ -61,7 +61,7 @@ class DatasetMetadataCreateApi(Resource):
     @console_ns.expect(console_ns.models[MetadataArgs.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(MetadataArgs)
     def post(
@@ -92,7 +92,7 @@ class DatasetMetadataCreateApi(Resource):
     )
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -118,7 +118,7 @@ class DatasetMetadataApi(Resource):
     @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(MetadataUpdatePayload)
     def patch(
@@ -149,7 +149,7 @@ class DatasetMetadataApi(Resource):
     @console_ns.response(204, "Metadata deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def delete(
         self,
@@ -195,7 +195,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
     @enterprise_license_required
     @console_ns.response(204, "Action completed successfully")
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def post(self, session: Session, current_user: Account, dataset_id: UUID, action: Literal["enable", "disable"]):
         dataset_id_str = str(dataset_id)
@@ -227,7 +227,7 @@ class DocumentMetadataEditApi(Resource):
     @console_ns.response(404, "Dataset, document, or metadata not found")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(MetadataOperationData)
     def post(

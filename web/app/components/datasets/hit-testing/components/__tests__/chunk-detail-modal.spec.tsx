@@ -1,5 +1,6 @@
 import type { HitTesting } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChunkDetailModal from '../chunk-detail-modal'
 
@@ -129,9 +130,12 @@ describe('ChunkDetailModal', () => {
     expect(screen.getByTestId('mask')).toBeInTheDocument()
   })
 
-  it('should call onHide when close button is clicked', () => {
+  it('should call onHide when close button is clicked', async () => {
+    const user = userEvent.setup()
     render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
     expect(onHide).toHaveBeenCalled()
   })
 

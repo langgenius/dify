@@ -26,11 +26,24 @@ def app_task_command_channel_key(task_id: str) -> str:
     return f"workflow:{task_id}:commands"
 
 
+def app_task_stop_flag_key(task_id: str) -> str:
+    """Redis key of the legacy generate-task stop flag."""
+    return f"generate_task_stopped:{task_id}"
+
+
 def set_app_task_stop_flag(task_id: str) -> None:
     if not task_id:
         return
 
-    redis_client.setex(f"generate_task_stopped:{task_id}", 600, 1)
+    redis_client.setex(app_task_stop_flag_key(task_id), 600, 1)
+
+
+def is_app_task_stop_flag_set(task_id: str) -> bool:
+    """Return whether the legacy Redis stop flag is currently armed."""
+    if not task_id:
+        return False
+
+    return redis_client.get(app_task_stop_flag_key(task_id)) is not None
 
 
 def clear_app_task_cancellation_signals(task_id: str) -> None:
@@ -47,7 +60,7 @@ def clear_app_task_cancellation_signals(task_id: str) -> None:
         return
 
     try:
-        redis_client.delete(f"generate_task_stopped:{task_id}")
+        redis_client.delete(app_task_stop_flag_key(task_id))
     except Exception:
         logger.exception("Failed to clear stop flag for app task %s", task_id)
 

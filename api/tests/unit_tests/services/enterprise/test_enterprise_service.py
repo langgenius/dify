@@ -23,7 +23,12 @@ from services.enterprise.enterprise_service import (
     try_join_default_workspace,
 )
 from services.entities.feature_entities import LicenseStatus
-from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPIForbiddenError, EnterpriseAPIUnauthorizedError
+from services.errors.enterprise import (
+    EnterpriseAPIError,
+    EnterpriseAPIForbiddenError,
+    EnterpriseAPIUnauthorizedError,
+    EnterpriseServiceError,
+)
 
 MODULE = "services.enterprise.enterprise_service"
 
@@ -146,6 +151,12 @@ class TestWebAppAuth:
 
         assert isinstance(result, WebAppSettings)
         assert result.access_mode == "public"
+
+    def test_get_app_access_mode_raises_service_error_on_empty_response(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = None
+            with pytest.raises(EnterpriseServiceError, match="No data found"):
+                EnterpriseService.WebAppAuth.get_app_access_mode_by_id("a1")
 
     def test_batch_get_returns_empty_for_no_apps(self):
         assert EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id([]) == {}

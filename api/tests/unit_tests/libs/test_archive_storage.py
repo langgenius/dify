@@ -12,6 +12,7 @@ from libs.archive_storage import (
     ArchiveStorageError,
     ArchiveStorageNotConfiguredError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 BUCKET_NAME = "archive-bucket"
 
@@ -26,8 +27,7 @@ def _configure_storage(monkeypatch: pytest.MonkeyPatch, **overrides):
         "ARCHIVE_STORAGE_REGION": "auto",
     }
     defaults.update(overrides)
-    for key, value in defaults.items():
-        monkeypatch.setattr(storage_module.dify_config, key, value, raising=False)
+    apply_config_overrides(monkeypatch, **defaults)
 
 
 def _client_error(code: str) -> ClientError:

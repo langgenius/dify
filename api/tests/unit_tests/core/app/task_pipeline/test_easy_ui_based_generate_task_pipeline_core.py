@@ -55,12 +55,12 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager
-from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from tests.unit_tests.model_factories import make_upload_file
 
 
 class _DummyModelConf:
@@ -212,21 +212,17 @@ def _message_file(
 
 
 def _upload_file(*, file_id: str, name: str, mime_type: str, size: int, extension: str) -> UploadFile:
-    upload_file = UploadFile(
+    return make_upload_file(
+        file_id=file_id,
         tenant_id="tenant",
-        storage_type=StorageType.LOCAL,
         key=f"uploads/{file_id}",
         name=name,
         size=size,
         extension=extension,
         mime_type=mime_type,
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user",
         created_at=datetime.now(UTC),
-        used=False,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 def _agent_thought() -> MessageAgentThought:
@@ -419,7 +415,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "_save_message", lambda **kwargs: None)
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -593,7 +589,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return self._items
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 self.calls = 0
 
             def __enter__(self):
@@ -679,7 +675,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "error_to_stream_response", lambda err: ErrorStreamResponse(task_id="task", err=err))
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -706,6 +702,52 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert isinstance(responses[-1].err, ValueError)
         assert pipeline._task_state.llm_result.message.content == "annotated"
 
+    def test_process_stream_response_error_event_adds_trace_task(self, monkeypatch: pytest.MonkeyPatch):
+        conversation = _make_conversation(AppMode.CHAT)
+        message = _make_message()
+        application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+        application_generate_entity.extras = {"trace_session_id": "session-1"}
+
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=application_generate_entity,
+            queue_manager=_FakeQueueManager(),
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+        _set_queue_events(pipeline, [_queue_message(QueueErrorEvent(error=ValueError("boom")))])
+        _set_method(pipeline, "handle_error", lambda **kwargs: ValueError("boom"))
+        _set_method(pipeline, "error_to_stream_response", lambda err: ErrorStreamResponse(task_id="task", err=err))
+
+        trace_manager_double = _TraceManagerDouble()
+        trace_manager = cast(TraceQueueManager, trace_manager_double)
+
+        class _Session:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def commit(self):
+                return None
+
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
+        )
+
+        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
+
+        assert len(responses) == 1
+        assert isinstance(responses[0], ErrorStreamResponse)
+        trace_manager_double.add_trace_task.assert_called_once()
+        trace_task = trace_manager_double.add_trace_task.call_args.args[0]
+        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
+        assert trace_task.conversation_id == "conv"
+        assert trace_task.message_id == "msg"
+        assert trace_task.kwargs["trace_session_id"] == "session-1"
+
     def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
@@ -721,7 +763,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         agent_thought = _agent_thought()
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -812,7 +854,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert result == "streamed"
         pipeline._message_cycle_manager.generate_conversation_name.assert_called_once_with(
-            conversation_id="conv", query="hello"
+            conversation_id="conv", query="hello", message_id="msg"
         )
 
     def test_process_routes_to_blocking_for_completion_mode(self):
@@ -980,8 +1022,15 @@ class TestEasyUiBasedGenerateTaskPipeline:
         )
 
         class _Publisher:
-            def check_and_get_audio(self):
+            def check_and_get_audio(self, *, block=False):
+                assert block
                 return AudioTrunk("finish", "")
+
+            def publish(self, message):
+                assert message is None
+
+            def cancel(self):
+                return None
 
         inline_audio = MessageAudioStreamResponse(task_id="task", audio="inline")
         audio_calls = iter([inline_audio, None])
@@ -990,7 +1039,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([payload]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
-            lambda tenant_id, voice, language: _Publisher(),
+            lambda tenant_id, voice, language, app_type: _Publisher(),
         )
 
         responses = list(pipeline._wrapper_process_stream_response())
@@ -998,8 +1047,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert responses[0] == inline_audio
         assert responses[1] == payload
         assert isinstance(responses[-1], MessageAudioEndStreamResponse)
+        assert "audio_type" not in responses[-1].model_dump()
 
-    def test_wrapper_process_stream_response_timeout_yields_audio_chunk(self, monkeypatch: pytest.MonkeyPatch):
+    def test_wrapper_process_stream_response_waits_for_the_audio_terminal(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
         entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
@@ -1016,29 +1066,98 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         class _Publisher:
             def __init__(self):
-                self._events = iter([None, AudioTrunk("responding", "later"), AudioTrunk("finish", "")])
+                self._events = iter([AudioTrunk("responding", "later"), AudioTrunk("finish", "")])
 
-            def check_and_get_audio(self):
+            def check_and_get_audio(self, *, block=False):
+                assert block
                 return next(self._events)
 
-        clock = {"value": 0.0}
+            def publish(self, message):
+                assert message is None
 
-        def _fake_time():
-            clock["value"] += 0.1
-            return clock["value"]
+            def cancel(self):
+                return None
 
         _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
-            lambda tenant_id, voice, language: _Publisher(),
+            lambda tenant_id, voice, language, app_type: _Publisher(),
         )
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.time.time", _fake_time)
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.time.sleep", lambda _: None)
-
         responses = list(pipeline._wrapper_process_stream_response())
 
         assert any(isinstance(item, MessageAudioStreamResponse) for item in responses)
         assert isinstance(responses[-1], MessageAudioEndStreamResponse)
+
+    def test_wrapper_process_stream_response_ends_audio_before_reporting_tts_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        conversation = _make_conversation(AppMode.CHAT)
+        message = _make_message()
+        entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+        entity.app_config.app_model_config_dict = {
+            "text_to_speech": {"autoPlay": "enabled", "enabled": True, "voice": "v", "language": "en"}
+        }
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=entity,
+            queue_manager=_FakeQueueManager(),
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+        error = RuntimeError("tts failed")
+
+        class _Publisher:
+            def check_and_get_audio(self, *, block=False):
+                assert block
+                return AudioTrunk("error", b"", error=error)
+
+            def publish(self, message):
+                assert message is None
+
+            def cancel(self):
+                return None
+
+        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
+            lambda tenant_id, voice, language, app_type: _Publisher(),
+        )
+
+        responses = list(pipeline._wrapper_process_stream_response())
+
+        assert isinstance(responses[-2], MessageAudioEndStreamResponse)
+        assert isinstance(responses[-1], ErrorStreamResponse)
+        assert responses[-1].err is error
+
+    def test_wrapper_process_stream_response_ends_audio_before_a_main_error(self, monkeypatch: pytest.MonkeyPatch):
+        conversation = _make_conversation(AppMode.CHAT)
+        message = _make_message()
+        entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+        entity.app_config.app_model_config_dict = {
+            "text_to_speech": {"autoPlay": "enabled", "enabled": True, "voice": "v", "language": "en"}
+        }
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=entity,
+            queue_manager=_FakeQueueManager(),
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+        publisher = Mock()
+        publisher.check_and_get_audio.return_value = None
+        error = ErrorStreamResponse(task_id="task", err=RuntimeError("generation failed"))
+        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([error]))
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
+            lambda tenant_id, voice, language, app_type: publisher,
+        )
+
+        responses = list(pipeline._wrapper_process_stream_response())
+
+        assert isinstance(responses[-2], MessageAudioEndStreamResponse)
+        assert responses[-1] is error
+        assert publisher.cancel.called
+        publisher.publish.assert_not_called()
 
     def test_process_stream_response_handles_stop_event_and_output_replacement(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
@@ -1067,7 +1186,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         )
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1403,7 +1522,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return []
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1442,7 +1561,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return []
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1505,7 +1624,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return self._items
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 self.calls = 0
 
             def __enter__(self):
@@ -1567,7 +1686,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         )
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):

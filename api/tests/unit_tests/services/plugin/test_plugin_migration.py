@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -120,7 +121,7 @@ class TestHandlePluginInstanceInstall:
         assert result["success"] == []
         assert result["failed"] == ["langgenius/openai"]
 
-    def test_install_plugins_invalidates_cache_after_direct_tenant_install(self, tmp_path) -> None:
+    def test_install_plugins_invalidates_cache_after_direct_tenant_install(self, tmp_path: Path) -> None:
         extracted_plugins = tmp_path / "plugins.jsonl"
         output_file = tmp_path / "output.json"
         extracted_plugins.write_text('{"tenant_id":"tenant1","plugins":["langgenius/openai"]}\n')
@@ -146,7 +147,7 @@ class TestHandlePluginInstanceInstall:
         mock_installer.install_from_identifiers.assert_called_once()
         invalidate_cache.assert_called_once_with("tenant1")
 
-    def test_install_plugins_reports_missing_plugin_ids(self, tmp_path) -> None:
+    def test_install_plugins_reports_missing_plugin_ids(self, tmp_path: Path) -> None:
         extracted_plugins = tmp_path / "plugins.jsonl"
         output_file = tmp_path / "output.json"
         extracted_plugins.write_text('{"tenant_id":"tenant1","plugins":["langgenius/openai","langgenius/missing"]}\n')
@@ -177,7 +178,7 @@ class TestHandlePluginInstanceInstall:
         ]
         mock_installer.install_from_identifiers.assert_called_once()
 
-    def test_install_plugins_skips_unresolved_plugins(self, tmp_path) -> None:
+    def test_install_plugins_skips_unresolved_plugins(self, tmp_path: Path) -> None:
         extracted_plugins = tmp_path / "plugins.jsonl"
         output_file = tmp_path / "output.json"
         extracted_plugins.write_text('{"tenant_id":"tenant1","plugins":["langgenius/missing"]}\n')

@@ -236,15 +236,17 @@ export const CommentThread: FC<CommentThreadProps> = memo(
       [setCommentPreviewHovering],
     )
 
-    // P0: Auto-focus reply input when thread opens or comment changes
+    const canReply = Boolean(onReply)
+
+    // Focus on thread transitions, not callback changes after position updates.
     useEffect(() => {
       const timer = setTimeout(() => {
-        if (replyInputRef.current && !editingReply.id && !isCommentEditing && onReply)
+        if (replyInputRef.current && !editingReply.id && !isCommentEditing && canReply)
           replyInputRef.current.focus()
       }, 100)
 
       return () => clearTimeout(timer)
-    }, [comment.id, editingReply.id, isCommentEditing, onReply])
+    }, [comment.id, editingReply.id, isCommentEditing, canReply])
 
     // P2: Handle Esc key to close thread
     useEffect(() => {
@@ -575,7 +577,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     <DropdownMenuContent
                       placement="bottom-end"
                       sideOffset={4}
-                      popupClassName="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+                      className="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
                     >
                       <button
                         className="flex w-full items-center justify-start rounded-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
@@ -672,7 +674,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                             <DropdownMenuContent
                               placement="bottom-end"
                               sideOffset={4}
-                              popupClassName="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+                              className="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
                               data-reply-menu
                             >
                               <div

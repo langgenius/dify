@@ -2,6 +2,7 @@ import type { EnvironmentVariablePatch } from '@/service/workflow'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
@@ -542,6 +543,69 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
         hash: 'hash-123',
       }),
     )
+  })
+
+  it('should skip draft persistence without reporting an error while the app is being deleted', async () => {
+    const callbacks = {
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
+    markAppDeletionStarted('app-1')
+
+    try {
+      const { result } = renderUseNodesSyncDraft()
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft(false, callbacks)
+        result.current.syncWorkflowDraftWhenPageClose()
+      })
+
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+      expect(callbacks.onError).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    } finally {
+      markAppDeletionFailed('app-1')
+    }
+  })
+
+  it('should not report an in-flight draft failure after app deletion starts', async () => {
+    let rejectSync!: (reason?: unknown) => void
+    let resolveStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      resolveStarted = resolve
+    })
+    mockSyncWorkflowDraft.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectSync = reject
+          resolveStarted()
+        }),
+    )
+    const callbacks = {
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
+    const { result } = renderUseNodesSyncDraft()
+    let syncPromise!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+
+    act(() => {
+      syncPromise = result.current.doSyncWorkflowDraft(false, callbacks)
+    })
+    await started
+    markAppDeletionStarted('app-1')
+
+    try {
+      await act(async () => {
+        rejectSync(new Error('App not found'))
+        await syncPromise
+      })
+
+      expect(callbacks.onError).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    } finally {
+      markAppDeletionFailed('app-1')
+    }
   })
 
   it('should not post the local start placeholder when the page closes', () => {

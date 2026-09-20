@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -217,7 +218,8 @@ describe('NormalForm', () => {
     })
   })
 
-  it('should describe password visibility through its changing action name', () => {
+  it('should describe password visibility through its changing action name', async () => {
+    const user = userEvent.setup()
     mockQueryResults(
       nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
       nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
@@ -228,12 +230,56 @@ describe('NormalForm', () => {
     const showPasswordButton = screen.getByRole('button', { name: 'login.showPassword' })
     expect(showPasswordButton).not.toHaveAttribute('aria-pressed')
 
-    fireEvent.click(showPasswordButton)
+    await user.click(showPasswordButton)
 
     expect(screen.getByRole('button', { name: 'login.hidePassword' })).not.toHaveAttribute(
       'aria-pressed',
     )
     expect(screen.getByLabelText('login.password')).toHaveAttribute('type', 'text')
+  })
+
+  it('keeps credential inputs together before secondary password actions in the tab order', async () => {
+    const user = userEvent.setup()
+    mockQueryResults(
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+    )
+
+    render(<NormalForm />, {
+      systemFeatures: { is_email_setup: true },
+    })
+
+    const emailInput = screen.getByLabelText('login.email')
+    await user.click(emailInput)
+
+    await user.tab()
+    expect(screen.getByLabelText('login.password')).toHaveFocus()
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'login.showPassword' })).toHaveFocus()
+
+    await user.tab()
+    expect(screen.getByRole('link', { name: 'login.forget' })).toHaveFocus()
+  })
+
+  it('associates input validation errors with the invalid credential field', async () => {
+    const user = userEvent.setup()
+    mockQueryResults(
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+    )
+
+    render(<NormalForm />)
+
+    const emailInput = screen.getByLabelText('login.email')
+    await user.type(emailInput, 'invalid-email')
+    await user.type(screen.getByLabelText('login.password'), 'password')
+    await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
+
+    const error = await screen.findByText('login.error.emailInValid')
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true')
+    expect(emailInput).toHaveAccessibleDescription(error.textContent ?? '')
+    expect(emailInput).toHaveFocus()
   })
 
   it('should not expose SSO when it is enforced without a configured protocol', () => {

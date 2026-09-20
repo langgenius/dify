@@ -15,14 +15,15 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   useAuth,
   useCredentialData,
@@ -309,7 +310,17 @@ const ModelModal: FC<ModelModalProps> = ({
         backdropProps={{ forceRender: true }}
         className="flex w-160 max-w-160 flex-col overflow-hidden p-0"
       >
-        <DialogCloseButton className="top-5 right-5 size-8" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-5 right-5"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="shrink-0 p-6 pb-3">
           {modalTitle}
           {modalDesc}
@@ -349,7 +360,7 @@ const ModelModal: FC<ModelModalProps> = ({
           )}
           {isLoading && (
             <div className="mt-3 flex items-center justify-center">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
           {!isLoading && showCredentialForm && (

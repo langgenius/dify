@@ -6,7 +6,6 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type { AgentBuildDraftChangedKey } from './build-draft-changes-context'
-import type { ModelSelectorProvider } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -30,7 +29,10 @@ import { AgentKnowledgeRetrieval } from './knowledge'
 import { AgentModelField } from './model-config/field'
 import { AgentPromptEditor } from './prompt-editor'
 import { AgentConfigurePublishBar } from './publish-bar'
-import { AgentOrchestrateReadOnlyContext } from './read-only-context'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from './read-only-context'
 import { AgentSkills } from './skills'
 import { AgentTools } from './tools'
 
@@ -43,7 +45,6 @@ type AgentOrchestratePanelProps = {
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
   currentModel?: AgentComposerModel
-  textGenerationModelList: ModelSelectorProvider[]
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
@@ -68,7 +69,6 @@ export function AgentOrchestratePanel({
   agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
-  textGenerationModelList,
   isPublishing,
   className,
   readOnly = false,
@@ -139,9 +139,14 @@ export function AgentOrchestratePanel({
         />
       )}
 
-      <AgentOrchestrateReadOnlyContext value={readOnly}>
-        <div aria-readonly={readOnly} className="flex min-h-0 flex-1 flex-col">
-          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+      <ScrollArea
+        className={cn(
+          'min-h-0 flex-1 overflow-hidden',
+          showHeader ? 'rounded-b-[inherit]' : 'rounded-[inherit]',
+        )}
+      >
+        <AgentOrchestrateViewingVersionContext value={!!selectedVersionSnapshot}>
+          <AgentOrchestrateReadOnlyContext value={readOnly}>
             <ScrollAreaViewport
               aria-label={showHeader ? undefined : orchestrateLabel}
               aria-labelledby={showHeader ? orchestrateHeadingId : undefined}
@@ -156,11 +161,7 @@ export function AgentOrchestratePanel({
                         isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS
                       }
                     >
-                      <AgentModelField
-                        currentModel={currentModel}
-                        textGenerationModelList={textGenerationModelList}
-                        onSelect={onSelectModel}
-                      />
+                      <AgentModelField currentModel={currentModel} onSelect={onSelectModel} />
                       <AgentPromptEditor />
                       <AgentSkills />
                       <AgentFiles />
@@ -172,18 +173,17 @@ export function AgentOrchestratePanel({
                 </AgentConfigApiContextProvider>
               </ScrollAreaContent>
             </ScrollAreaViewport>
-            <ScrollAreaScrollbar className={hasBottomAction ? 'z-20' : undefined}>
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollArea>
-        </div>
-      </AgentOrchestrateReadOnlyContext>
-
-      {orchestrateBottomAction ? (
-        <AgentOrchestrateBottomActions shrinkOnOpen={!bottomAction}>
-          {orchestrateBottomAction}
-        </AgentOrchestrateBottomActions>
-      ) : null}
+          </AgentOrchestrateReadOnlyContext>
+        </AgentOrchestrateViewingVersionContext>
+        {orchestrateBottomAction ? (
+          <AgentOrchestrateBottomActions shrinkOnOpen={!bottomAction}>
+            {orchestrateBottomAction}
+          </AgentOrchestrateBottomActions>
+        ) : null}
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
+      </ScrollArea>
     </div>
   )
 }

@@ -34,10 +34,11 @@ describe('RetryOnPanel', () => {
     ).toBeChecked()
 
     const maxRetriesLabel = 'workflow.nodes.common.retry.maxRetries'
-    const maxRetriesGroup = screen.getByRole('group', { name: maxRetriesLabel })
-    expect(within(maxRetriesGroup).getByRole('slider', { name: maxRetriesLabel })).toHaveAttribute(
-      'aria-valuenow',
-      '3',
+    const maxRetriesSlider = screen.getByRole('slider', { name: maxRetriesLabel })
+    const maxRetriesGroup = maxRetriesSlider.closest('fieldset')!
+    expect(maxRetriesSlider).toHaveAttribute(
+      'aria-valuetext',
+      '3 workflow.nodes.common.retry.times',
     )
     const maxRetriesInput = within(maxRetriesGroup).getByRole('textbox', {
       name: maxRetriesLabel,
@@ -47,10 +48,12 @@ describe('RetryOnPanel', () => {
     expect(within(maxRetriesGroup).getByText('workflow.nodes.common.retry.times')).toBeVisible()
 
     const retryIntervalLabel = 'workflow.nodes.common.retry.retryInterval'
-    const retryIntervalGroup = screen.getByRole('group', { name: retryIntervalLabel })
-    expect(
-      within(retryIntervalGroup).getByRole('slider', { name: retryIntervalLabel }),
-    ).toHaveAttribute('aria-valuenow', '1000')
+    const retryIntervalSlider = screen.getByRole('slider', { name: retryIntervalLabel })
+    const retryIntervalGroup = retryIntervalSlider.closest('fieldset')!
+    expect(retryIntervalSlider).toHaveAttribute(
+      'aria-valuetext',
+      '1000 workflow.nodes.common.retry.ms',
+    )
     expect(
       within(retryIntervalGroup).getByRole('textbox', { name: retryIntervalLabel }),
     ).toHaveValue('1000')

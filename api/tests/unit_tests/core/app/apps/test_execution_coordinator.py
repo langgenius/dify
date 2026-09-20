@@ -6,7 +6,9 @@ from core.app.apps.execution_coordinator import (
     AppExecutionCoordinator,
     AppExecutionState,
     app_task_command_channel_key,
+    app_task_stop_flag_key,
     clear_app_task_cancellation_signals,
+    is_app_task_stop_flag_set,
 )
 
 
@@ -143,3 +145,22 @@ def test_stop_flag_failure_does_not_block_graph_stop(caplog: pytest.LogCaptureFi
         reason="test abort",
     )
     assert "Failed to set stop flag for app execution task=task" in caplog.text
+
+
+def test_stop_flag_key_matches_legacy_redis_flag() -> None:
+    assert app_task_stop_flag_key("task") == "generate_task_stopped:task"
+
+
+def test_is_app_task_stop_flag_set_reads_redis() -> None:
+    with patch("core.app.apps.execution_coordinator.redis_client") as redis_client:
+        redis_client.get.return_value = b"1"
+        assert is_app_task_stop_flag_set("task") is True
+        redis_client.get.assert_called_once_with("generate_task_stopped:task")
+
+
+def test_is_app_task_stop_flag_set_is_false_when_missing_or_empty() -> None:
+    with patch("core.app.apps.execution_coordinator.redis_client") as redis_client:
+        redis_client.get.return_value = None
+        assert is_app_task_stop_flag_set("task") is False
+        assert is_app_task_stop_flag_set("") is False
+        redis_client.get.assert_called_once_with("generate_task_stopped:task")

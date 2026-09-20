@@ -192,6 +192,12 @@ describe('MCPCard', () => {
       render(<MCPCard {...defaultProps} data={dataWithNoTools} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
     })
+
+    it('should show update time when not configured', () => {
+      const dataNotConfigured = createMockData({ tools: [], is_team_authorization: false })
+      render(<MCPCard {...defaultProps} data={dataNotConfigured} />, { wrapper: createWrapper() })
+      expect(screen.getByText(/tools.mcp.updateTime/)).toBeInTheDocument()
+    })
   })
 
   describe('Selected State', () => {

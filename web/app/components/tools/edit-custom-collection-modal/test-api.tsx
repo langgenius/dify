@@ -17,14 +17,14 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Input } from '@langgenius/dify-ui/input'
 import { RiSettings2Line } from '@remixicon/react'
 import * as React from 'react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import { useLocale } from '#i18n'
 import { AuthType } from '@/app/components/tools/types'
-import { useLocale } from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { getPluginLanguage } from '@/i18n/metadata'
 import { testAPIAvailable } from '@/service/tools'
 import ConfigCredentials from './config-credentials'
 
@@ -37,8 +37,9 @@ type Props = Readonly<{
 
 const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) => {
   const { t } = useTranslation()
+  const parameterId = useId()
   const locale = useLocale()
-  const language = getLanguage(locale)
+  const language = getPluginLanguage(locale)
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
   const [tempCredential, setTempCredential] = React.useState<Credential>(
     customCollection.credentials,
@@ -104,23 +105,30 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                     />
                   </div>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2">
+                <form
+                  className="min-h-0 flex-1 overflow-y-auto px-6 pt-2"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    void handleTest()
+                  }}
+                >
                   <div className="space-y-4">
                     <div>
                       <div className="py-2 system-sm-medium text-text-primary">
                         {t(($) => $['createTool.authMethod.title'], { ns: 'tools' })}
                       </div>
-                      <div
-                        className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5"
+                      <button
+                        type="button"
+                        className="flex h-9 w-full cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                         onClick={() => setCredentialsModalShow(true)}
                       >
-                        <div className="system-xs-regular text-text-primary">
+                        <span className="system-xs-regular text-text-primary">
                           {t(($) => $[`createTool.authMethod.types.${tempCredential.auth_type}`], {
                             ns: 'tools',
                           })}
-                        </div>
-                        <RiSettings2Line className="size-4 text-text-secondary" />
-                      </div>
+                        </span>
+                        <RiSettings2Line aria-hidden className="size-4 text-text-secondary" />
+                      </button>
                     </div>
 
                     <div>
@@ -145,18 +153,24 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                                 key={index}
                                 className="border-b border-divider-regular last:border-0"
                               >
-                                <td className="py-2 pr-2.5 pl-3">{item.label[language]}</td>
+                                <td className="py-2 pr-2.5 pl-3">
+                                  <label htmlFor={`${parameterId}-${item.name}`}>
+                                    {item.label[language]}
+                                  </label>
+                                </td>
                                 <td className="">
                                   <Input
+                                    id={`${parameterId}-${item.name}`}
+                                    name={item.name}
                                     value={parametersValue[item.name] || ''}
-                                    onChange={(e) =>
+                                    onValueChange={(value) =>
                                       setParametersValue({
                                         ...parametersValue,
-                                        [item.name]: e.target.value,
+                                        [item.name]: value,
                                       })
                                     }
                                     type="text"
-                                    className="!hover:border-transparent !hover:bg-transparent !focus:border-transparent !focus:bg-transparent border-transparent! bg-transparent!"
+                                    className="bg-transparent"
                                   />
                                 </td>
                               </tr>
@@ -170,8 +184,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                     variant="primary"
                     className="mt-4 h-10 w-full"
                     loading={testing}
-                    disabled={testing}
-                    onClick={handleTest}
+                    type="submit"
                   >
                     {t(($) => $['test.title'], { ns: 'tools' })}
                   </Button>
@@ -180,7 +193,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                       <div className="system-xs-semibold text-text-tertiary">
                         {t(($) => $['test.testResult'], { ns: 'tools' })}
                       </div>
-                      <div className="bg-[rgb(243, 244, 246)] h-px w-0 grow"></div>
+                      <div className="h-px w-0 grow"></div>
                     </div>
                     <div className="mt-2 h-50 overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-3 py-2 system-xs-regular text-text-secondary">
                       {result || (
@@ -190,7 +203,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                       )}
                     </div>
                   </div>
-                </div>
+                </form>
               </DrawerContent>
             </DrawerPopup>
           </DrawerViewport>
