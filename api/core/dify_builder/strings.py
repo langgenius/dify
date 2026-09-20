@@ -31,7 +31,6 @@ PLAIN: frozenset[str] = frozenset(
     {
         # reply_text microcopy
         "Let's clarify the requirements.",
-        "Here's the initial plan.",
         "Recommended resources.",
         "No workspace resources matched this plan — continuing without any.",
         "Plan v1 ready for approval.",
@@ -103,10 +102,8 @@ PLAIN: frozenset[str] = frozenset(
         "Pre-build checkpoint",
         "Pre-edit checkpoint",
         # form chrome / bodies / static summary items
-        "Ask each time",
         "Change",
         "Nodes",
-        "Prefer audited",
         "Status",
         "Workflow",
         "I filled in typical requirements; edit and submit to adjust.",

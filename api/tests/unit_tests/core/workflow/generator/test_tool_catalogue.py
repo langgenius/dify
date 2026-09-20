@@ -383,6 +383,25 @@ def _make_plugin_provider(name: str, plugin_id: str | None, tools: list, need_cr
     return provider
 
 
+class _RaisingNeedCredentialsProvider:
+    """A builtin-shaped provider whose ``need_credentials`` PROPERTY raises on
+    access -- regression guard for that read living inside the same
+    per-provider try/except that already guards ``get_tools()``."""
+
+    def __init__(self, name: str, tools: list):
+        self.entity = SimpleNamespace(identity=SimpleNamespace(name=name))
+        self.provider_type = _FakeProviderType(value="builtin")
+        self._tools = tools
+        self._is_builtin = True
+
+    @property
+    def need_credentials(self):
+        raise RuntimeError("credentials lookup boom")
+
+    def get_tools(self):
+        return self._tools
+
+
 def _make_unknown_provider(name: str):
     """A provider matching neither class — must be skipped."""
     return SimpleNamespace(
@@ -535,6 +554,23 @@ class TestBuildToolCatalogue:
         # per-provider try/except is what keeps generation usable in tenants
         # with broken installs.
         bad = _make_builtin_provider("broken", [], raises_on_get_tools=True)
+        good = _make_builtin_provider("time", [_make_tool("now")])
+        mock_list.return_value = iter([bad, good])
+
+        entries = build_tool_catalogue("tenant-1")
+
+        assert [e["provider_name"] for e in entries] == ["time"]
+
+    @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
+    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
+    def test_continues_when_a_providers_need_credentials_property_raises(self, mock_list, mock_isinstance):
+        # Regression guard: `.need_credentials` used to be read OUTSIDE the
+        # per-provider try/except that guards get_tools() and per-tool
+        # description parsing. A provider whose property raises must be
+        # skipped like any other bad provider -- not propagate and break the
+        # whole catalogue call, which this file's cmd+K /create and /refine
+        # callers also depend on.
+        bad = _RaisingNeedCredentialsProvider("broken", [_make_tool("x")])
         good = _make_builtin_provider("time", [_make_tool("now")])
         mock_list.return_value = iter([bad, good])
 

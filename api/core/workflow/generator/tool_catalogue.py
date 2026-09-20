@@ -122,9 +122,8 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
             # Unknown provider class — skip rather than guess.
             continue
 
-        needs_credentials = provider.need_credentials
-
         try:
+            needs_credentials = provider.need_credentials
             tools = list(provider.get_tools())
         except Exception:
             logger.exception(
