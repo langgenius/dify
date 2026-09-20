@@ -109,7 +109,10 @@ def test_builders_use_expected_compose_files(tmp_path: Path):
     middleware = build_middleware_stack(tmp_path, ["db_postgres"])
     vdb = build_vdb_stack(tmp_path, ["weaviate", "qdrant"])
 
-    assert middleware.compose_files == (tmp_path / "docker" / "docker-compose.middleware.yaml",)
+    assert middleware.compose_files == (
+        tmp_path / "docker" / "docker-compose.middleware.yaml",
+        tmp_path / "docker" / "docker-compose.pytest.middleware.yaml",
+    )
     assert middleware.env_file == tmp_path / "docker" / "middleware.env"
     assert middleware.ready_delay_seconds == 5.0
     assert vdb.compose_files == (

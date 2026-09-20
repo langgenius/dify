@@ -188,7 +188,10 @@ def build_middleware_stack(repo_root: Path, services: list[str]) -> DockerCompos
         name="middleware",
         project_name="dify-pytest-middleware",
         repo_root=repo_root,
-        compose_files=(repo_root / "docker" / "docker-compose.middleware.yaml",),
+        compose_files=(
+            repo_root / "docker" / "docker-compose.middleware.yaml",
+            repo_root / "docker" / "docker-compose.pytest.middleware.yaml",
+        ),
         env_file=repo_root / "docker" / "middleware.env",
         services=tuple(services),
         ready_delay_seconds=5.0,
