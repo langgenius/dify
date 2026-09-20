@@ -98,3 +98,19 @@ def test_edit_publish_is_working_and_edit_complete_is_terminal():
     assert is_terminal(PcState.EDIT_PUBLISH) is False
     assert PcState.EDIT_COMPLETE == "edit.complete"
     assert is_terminal(PcState.EDIT_COMPLETE) is True
+
+
+def test_build_initial_plan_is_working_not_waiting():
+    """build.initial_plan is reachable only via the continue_adjusting/
+    retry_after_revert loop-back, where it runs resource discovery
+    unconditionally and falls straight through to
+    build.resource_recommendation -- a pass-through step, not a state a user
+    waits at. It must classify as working (canvas locked, runner drives it
+    unconditionally on entry, no _ACTIONS_FOR/_BACKEND_ACTIONS_FOR entry), not
+    waiting -- else the runner's `is_waiting(next_state)` settle check would
+    stop the advance loop there with no action to ever move it forward."""
+    assert PcState.BUILD_INITIAL_PLAN == "build.initial_plan"
+    assert is_working(PcState.BUILD_INITIAL_PLAN) is True
+    assert is_waiting(PcState.BUILD_INITIAL_PLAN) is False
+    assert is_terminal(PcState.BUILD_INITIAL_PLAN) is False
+    assert canvas_read_only(PcState.BUILD_INITIAL_PLAN) is True
