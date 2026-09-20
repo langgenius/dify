@@ -126,7 +126,7 @@ def test_default_create_rejects_endpoint_conflicts(
             repository.create(_assignment(second_contact, second_identity), bound_by_account_id=None)
 
 
-@pytest.mark.parametrize("operation", ["create", "override"])
+@pytest.mark.parametrize("operation", ["create", "replace", "override"])
 def test_writes_reject_missing_and_cross_channel_identities(sqlite_engine: Engine, operation: str) -> None:
     _seed_identities(sqlite_engine, _CHANNEL_TWO, _IDENTITY_ONE)
     with Session(sqlite_engine) as session:
@@ -134,6 +134,12 @@ def test_writes_reject_missing_and_cross_channel_identities(sqlite_engine: Engin
         if operation == "create":
             mutation = partial(
                 repository.create,
+                _assignment(_CONTACT_ONE, _IDENTITY_ONE),
+                bound_by_account_id=None,
+            )
+        elif operation == "replace":
+            mutation = partial(
+                repository.replace,
                 _assignment(_CONTACT_ONE, _IDENTITY_ONE),
                 bound_by_account_id=None,
             )
@@ -150,58 +156,50 @@ def test_writes_reject_missing_and_cross_channel_identities(sqlite_engine: Engin
         assert session.scalar(sa.select(sa.func.count(HumanInputIMBindingWorkspaceOverride.id))) == 0
 
 
-def test_replace_and_delete_are_exact_idempotent_and_channel_scoped(sqlite_engine: Engine) -> None:
+def test_replace_creates_reassigns_and_preserves_identical_bindings_within_its_channel(sqlite_engine: Engine) -> None:
     _seed_identities(sqlite_engine, _CHANNEL_ONE, _IDENTITY_ONE, _IDENTITY_TWO)
+    _seed_identities(sqlite_engine, _CHANNEL_TWO, _IDENTITY_THREE)
     with Session(sqlite_engine, expire_on_commit=False) as session:
         repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_ONE)
-        created = repository.create(_assignment(_CONTACT_ONE, _IDENTITY_ONE), bound_by_account_id=_ACCOUNT_ONE)
+        created = repository.replace(_assignment(_CONTACT_ONE, _IDENTITY_ONE), bound_by_account_id=_ACCOUNT_ONE)
+        other_repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_TWO)
+        foreign = other_repository.replace(_assignment(_CONTACT_ONE, _IDENTITY_THREE), bound_by_account_id=None)
+        assert (
+            repository.replace(_assignment(_CONTACT_ONE, _IDENTITY_ONE, _LATER), bound_by_account_id=_ACCOUNT_TWO)
+            == created
+        )
+        assert session.get_one(HumanInputIMBinding, str(created.id)).bound_by_account_id == str(_ACCOUNT_ONE)
 
-        assert (
-            repository.replace(
-                created.id,
-                expected_identity_id=_IDENTITY_TWO,
-                next_identity_id=_IDENTITY_TWO,
-                bound_by_account_id=_ACCOUNT_TWO,
-                updated_at=_LATER,
-            )
-            is None
-        )
-        assert (
-            SQLAlchemyIMBindingRepository(session, _CHANNEL_TWO).replace(
-                created.id,
-                expected_identity_id=_IDENTITY_ONE,
-                next_identity_id=_IDENTITY_TWO,
-                bound_by_account_id=_ACCOUNT_TWO,
-                updated_at=_LATER,
-            )
-            is None
-        )
         replaced = repository.replace(
-            created.id,
-            expected_identity_id=_IDENTITY_ONE,
-            next_identity_id=_IDENTITY_TWO,
+            _assignment(_CONTACT_ONE, _IDENTITY_TWO, _LATER),
             bound_by_account_id=_ACCOUNT_TWO,
-            updated_at=_LATER,
         )
+        assert other_repository.get(foreign.id) == foreign
+        assert replaced is not None
+        assert replaced.id != created.id
         assert replaced == IMBinding(
-            created.id,
+            replaced.id,
             IMBindingKind.DEFAULT,
             _CONTACT_ONE,
             _IDENTITY_TWO,
-            _NOW,
+            _LATER,
             _LATER,
         )
+        assert session.get(HumanInputIMBinding, str(created.id)) is None
+        assert session.get_one(HumanInputIMBinding, str(replaced.id)).bound_by_account_id == str(_ACCOUNT_TWO)
 
         repository.delete(created.id, expected_identity_id=_IDENTITY_ONE)
-        assert repository.get(created.id) == replaced
+        assert repository.get(replaced.id) == replaced
         SQLAlchemyIMBindingRepository(session, _CHANNEL_TWO).delete(
-            created.id,
+            replaced.id,
             expected_identity_id=_IDENTITY_TWO,
         )
-        assert repository.get(created.id) == replaced
-        assert repository.delete(created.id, expected_identity_id=_IDENTITY_TWO) is None
-        assert repository.delete(created.id, expected_identity_id=_IDENTITY_TWO) is None
-        assert repository.get(created.id) is None
+        assert repository.get(replaced.id) == replaced
+        repository.delete(replaced.id, expected_identity_id=_IDENTITY_ONE)
+        assert repository.get(replaced.id) == replaced
+        assert repository.delete(replaced.id, expected_identity_id=_IDENTITY_TWO) is None
+        assert repository.delete(replaced.id, expected_identity_id=_IDENTITY_TWO) is None
+        assert repository.get(replaced.id) is None
 
 
 def test_workspace_overrides_preserve_identity_and_timestamp_and_support_one_repository_across_tenants(

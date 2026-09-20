@@ -74,15 +74,15 @@ class IMBindingRepository(Protocol):
 
     def replace(
         self,
-        binding_id: IMBindingId,
+        assignment: IMBindingAssignment,
         *,
-        expected_identity_id: IMIdentityId,
-        next_identity_id: IMIdentityId,
         bound_by_account_id: AccountId | None,
-        updated_at: NaiveDatetime,
-        # TODO(QuantumGhost): The API seems weird
-    ) -> IMBinding | None:
-        """Replace one exact default Binding, or return no value when stale."""
+    ) -> IMBinding:
+        """Bind the Contact, deleting its old Binding when the Identity changes.
+
+        Create a Binding when absent and preserve an identical assignment.
+        The caller owns the transaction covering deletion and creation.
+        """
         ...
 
     def delete(

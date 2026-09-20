@@ -827,7 +827,7 @@ class WorkspaceContactIMOverrideApi(Resource):
 class WorkspaceContactIMBindingsApi(Resource):
     @console_ns.doc(
         description=(
-            "Set an IM binding for a contact. Used for binding an IM identity to a contact. "
+            "Set an IM binding for a contact, replacing the existing default binding when the identity changes. "
             "This endpoint is not used for creating workspace IM override. "
             "For that purpose, use WorkspaceContactIMOverrideApi.put instead."
         ),
@@ -851,7 +851,7 @@ class WorkspaceContactIMBindingsApi(Resource):
         request_body = CreateIMBindingRequest.model_validate(console_ns.payload or {})
         tenant_id = TenantId(tenant_id)
         try:
-            contact = build_im_contact_sync_application().binding_service.create_organization_binding(
+            contact = build_im_contact_sync_application().binding_service.set_organization_binding(
                 organization_scope=WorkspaceScope(id=tenant_id),
                 tenant_id=tenant_id,
                 contact_id=ContactId(contact_id),

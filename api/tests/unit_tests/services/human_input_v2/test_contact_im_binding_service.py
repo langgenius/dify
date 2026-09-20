@@ -4,12 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from importlib import import_module
+from inspect import unwrap
+from types import SimpleNamespace
 
 import pytest
 import sqlalchemy as sa
+from flask import Flask
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from controllers.console.workspace.human_input import WorkspaceContactIMBindingsApi
 from core.human_input_v2.entities import HumanInputContactType, IMBindingScope, IMProvider
 from core.human_input_v2.im_integration import IMBindingCommandError, IMBindingCommandErrorCode
 from core.human_input_v2.shared import (
@@ -31,6 +37,7 @@ from models.human_input_v2 import (
     HumanInputPlatformContactWorkspaceEntry,
     IMEncryptedCredentials,
 )
+from repositories.human_input_v2.im_binding_repository import IMBindingAssignment
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
     IMChannelId,
@@ -38,6 +45,7 @@ from repositories.human_input_v2.im_channel_repository import (
     WebhookId,
 )
 from repositories.human_input_v2.im_identity_repository import IMIdentityObservation, OpaqueProviderPayload
+from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.human_input_v2.im_contact_sync.binding_service import ContactIMBindingService
 
@@ -129,7 +137,7 @@ def binding_context(sqlite_engine: Engine) -> _BindingContext:
 def test_default_create_and_delete_preserve_contact_projection_and_actor_metadata(
     binding_context: _BindingContext,
 ) -> None:
-    contact = binding_context.service.create_organization_binding(
+    contact = binding_context.service.set_organization_binding(
         organization_scope=_OWNER_SCOPE,
         tenant_id=_TENANT_ID,
         contact_id=_CONTACT_ID,
@@ -164,7 +172,7 @@ def test_default_create_and_delete_preserve_contact_projection_and_actor_metadat
 def test_workspace_override_reuses_one_service_across_mutations_and_reset_falls_back_to_default(
     binding_context: _BindingContext,
 ) -> None:
-    default_view = binding_context.service.create_organization_binding(
+    default_view = binding_context.service.set_organization_binding(
         organization_scope=_OWNER_SCOPE,
         tenant_id=_TENANT_ID,
         contact_id=_CONTACT_ID,
@@ -206,11 +214,144 @@ def test_workspace_override_reuses_one_service_across_mutations_and_reset_falls_
         assert session.scalar(sa.select(sa.func.count(HumanInputIMBindingWorkspaceOverride.id))) == 0
 
 
+@pytest.mark.parametrize("with_override", [False, True])
+def test_put_replaces_default_binding_and_retries_are_idempotent(
+    binding_context: _BindingContext,
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    with_override: bool,
+) -> None:
+    monkeypatch.setattr(
+        import_module("controllers.console.workspace.human_input"),
+        "build_im_contact_sync_application",
+        lambda: SimpleNamespace(binding_service=binding_context.service),
+    )
+    with binding_context.sessions() as session:
+        account = session.get_one(Account, str(_ACCOUNT_ID))
+
+    def put(identity_id: IMIdentityId) -> object:
+        with app.test_request_context(method="PUT", json={"identity_id": str(identity_id)}):
+            return unwrap(WorkspaceContactIMBindingsApi.put)(
+                WorkspaceContactIMBindingsApi(), str(_TENANT_ID), account, str(_CONTACT_ID)
+            )
+
+    first = put(_IDENTITY_ID)
+    assert isinstance(first, dict)
+    original_id = first["contact"]["im_bindings"][0]["id"]
+    override = None
+    if with_override:
+        override = binding_context.service.set_workspace_override(
+            organization_scope=_OWNER_SCOPE,
+            tenant_id=_TENANT_ID,
+            contact_id=_CONTACT_ID,
+            identity_id=_IDENTITY_ID,
+            bound_by_account_id=_OTHER_ACCOUNT_ID,
+        ).im_bindings[0]
+
+    replacement = put(_OTHER_IDENTITY_ID)
+    assert isinstance(replacement, dict)
+    with binding_context.sessions() as session:
+        assert session.get(HumanInputIMBinding, original_id) is None
+        record = session.scalars(sa.select(HumanInputIMBinding)).one()
+        assert record.im_identity_id == str(_OTHER_IDENTITY_ID)
+        assert record.bound_by_account_id == str(_ACCOUNT_ID)
+        new_id = record.id
+        if override is not None:
+            stored_override = session.get_one(HumanInputIMBindingWorkspaceOverride, str(override.id))
+            assert stored_override.im_identity_id == str(_IDENTITY_ID)
+            assert stored_override.bound_by_account_id == str(_OTHER_ACCOUNT_ID)
+            assert replacement["contact"]["im_bindings"][0]["id"] == str(override.id)
+        else:
+            assert replacement["contact"]["im_bindings"][0]["id"] == new_id
+
+    assert put(_OTHER_IDENTITY_ID) == replacement
+    with binding_context.sessions() as session:
+        assert session.scalars(sa.select(HumanInputIMBinding.id)).one() == new_id
+
+    if with_override:
+        reset = binding_context.service.reset_workspace_override(
+            organization_scope=_OWNER_SCOPE, tenant_id=_TENANT_ID, contact_id=_CONTACT_ID
+        )
+        assert str(reset.im_bindings[0].id) == new_id
+        assert reset.im_bindings[0].identity_id == _OTHER_IDENTITY_ID
+
+
+@pytest.mark.parametrize("occupied", [False, True])
+def test_failed_default_replacement_preserves_original_binding(
+    binding_context: _BindingContext, occupied: bool
+) -> None:
+    original = binding_context.service.set_organization_binding(
+        organization_scope=_OWNER_SCOPE,
+        tenant_id=_TENANT_ID,
+        contact_id=_CONTACT_ID,
+        identity_id=_IDENTITY_ID,
+        bound_by_account_id=_ACCOUNT_ID,
+    ).im_bindings[0]
+    next_identity_id = IMIdentityId("00000000-0000-0000-0000-000000000499")
+    expected_error = IMBindingCommandErrorCode.IDENTITY_NOT_FOUND
+    if occupied:
+        with binding_context.sessions.begin() as session:
+            SQLAlchemyIMBindingRepository(session, _CHANNEL_ID).create(
+                IMBindingAssignment(_OTHER_CONTACT_ID, _OTHER_IDENTITY_ID, _NOW),
+                bound_by_account_id=None,
+            )
+        next_identity_id = _OTHER_IDENTITY_ID
+        expected_error = IMBindingCommandErrorCode.BINDING_CONFLICT
+
+    with pytest.raises(IMBindingCommandError) as error_info:
+        binding_context.service.set_organization_binding(
+            organization_scope=_OWNER_SCOPE,
+            tenant_id=_TENANT_ID,
+            contact_id=_CONTACT_ID,
+            identity_id=next_identity_id,
+            bound_by_account_id=_OTHER_ACCOUNT_ID,
+        )
+    assert error_info.value.code is expected_error
+    with binding_context.sessions() as session:
+        record = session.get_one(HumanInputIMBinding, str(original.id))
+        assert record.im_identity_id == str(_IDENTITY_ID)
+        assert record.bound_by_account_id == str(_ACCOUNT_ID)
+
+
+def test_replacement_insert_failure_rolls_back_deleted_binding(binding_context: _BindingContext) -> None:
+    original = binding_context.service.set_organization_binding(
+        organization_scope=_OWNER_SCOPE,
+        tenant_id=_TENANT_ID,
+        contact_id=_CONTACT_ID,
+        identity_id=_IDENTITY_ID,
+        bound_by_account_id=_ACCOUNT_ID,
+    ).im_bindings[0]
+    with binding_context.sessions.begin() as session:
+        session.execute(
+            sa.text("""
+            CREATE TRIGGER reject_binding_insert BEFORE INSERT ON human_input_im_bindings
+            BEGIN
+                SELECT RAISE(ABORT, 'binding insert unavailable');
+            END
+        """)
+        )
+
+    with pytest.raises(IntegrityError, match="binding insert unavailable"):
+        binding_context.service.set_organization_binding(
+            organization_scope=_OWNER_SCOPE,
+            tenant_id=_TENANT_ID,
+            contact_id=_CONTACT_ID,
+            identity_id=_OTHER_IDENTITY_ID,
+            bound_by_account_id=_OTHER_ACCOUNT_ID,
+        )
+
+    with binding_context.sessions() as session:
+        record = session.scalars(sa.select(HumanInputIMBinding)).one()
+        assert record.id == str(original.id)
+        assert record.im_identity_id == str(_IDENTITY_ID)
+        assert record.bound_by_account_id == str(_ACCOUNT_ID)
+
+
 def test_missing_or_foreign_identity_maps_to_stable_error_without_partial_binding(
     binding_context: _BindingContext,
 ) -> None:
     with pytest.raises(IMBindingCommandError) as error_info:
-        binding_context.service.create_organization_binding(
+        binding_context.service.set_organization_binding(
             organization_scope=_OWNER_SCOPE,
             tenant_id=_TENANT_ID,
             contact_id=_CONTACT_ID,
@@ -247,7 +388,7 @@ def test_missing_channel_maps_to_not_configured_before_mutation(binding_context:
     service = ContactIMBindingService(binding_context.sessions, lambda _session, _scope: None)
 
     with pytest.raises(IMBindingCommandError) as error_info:
-        service.create_organization_binding(
+        service.set_organization_binding(
             organization_scope=_OWNER_SCOPE,
             tenant_id=_TENANT_ID,
             contact_id=_CONTACT_ID,
