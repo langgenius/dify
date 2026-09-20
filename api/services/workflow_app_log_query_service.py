@@ -50,6 +50,7 @@ class WorkflowAppLogItem:
     created_by_account: WorkflowAppLogAccount | None
     created_by_end_user: WorkflowAppLogEndUser | None
     created_at: datetime
+    evaluation: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

@@ -83,10 +83,27 @@ class WorkflowRunForLogResponse(ResponseModel):
         return to_timestamp(value)
 
 
+class WorkflowAppLogEvaluationNodeInfoResponse(ResponseModel):
+    node_id: str
+    type: str
+    title: str
+
+
+class WorkflowAppLogEvaluationItemResponse(ResponseModel):
+    name: str
+    value: Any = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    node_info: WorkflowAppLogEvaluationNodeInfoResponse | None = Field(
+        default=None,
+        serialization_alias="nodeInfo",
+    )
+
+
 class WorkflowAppLogPartialResponse(ResponseModel):
     id: str
     workflow_run: WorkflowRunForLogResponse | None = None
     details: Any = None
+    evaluation: list[WorkflowAppLogEvaluationItemResponse] = Field(default_factory=list)
     created_from: str | None = None
     created_by_role: str | None = None
     created_by_account: SimpleAccount | None = None
@@ -111,6 +128,8 @@ register_schema_models(
     console_ns,
     WorkflowAppLogQuery,
     WorkflowRunForLogResponse,
+    WorkflowAppLogEvaluationNodeInfoResponse,
+    WorkflowAppLogEvaluationItemResponse,
     WorkflowAppLogPartialResponse,
     WorkflowAppLogPaginationResponse,
 )
