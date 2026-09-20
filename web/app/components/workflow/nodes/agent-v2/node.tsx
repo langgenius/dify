@@ -1,8 +1,11 @@
 import type { NodeProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import type { AppIconType } from '@/types/app'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useUpdateNodeInternals } from 'reactflow'
 import AppIcon from '@/app/components/base/app-icon'
+import { NodeBranches } from '../_base/components/branch-list/node-branches'
 import { SettingItem } from '../_base/components/setting-item'
 import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'
 import { hasInlineAgentBinding, hasValidRosterAgentBinding } from './types'
@@ -96,7 +99,12 @@ function AgentNodeModel({
   )
 }
 
-export function AgentV2Node({ id, data }: NodeProps<AgentV2NodeType>) {
+export function AgentV2Node(props: NodeProps<AgentV2NodeType>) {
+  const { id, data } = props
+  const updateNodeInternals = useUpdateNodeInternals()
+  useEffect(() => {
+    updateNodeInternals(id)
+  }, [id, data.agent_output_routes, updateNodeInternals])
   const { t } = useTranslation()
   const hasValidAgent = hasValidRosterAgentBinding(data)
   const isInlineAgent = hasInlineAgentBinding(data)
@@ -110,11 +118,27 @@ export function AgentV2Node({ id, data }: NodeProps<AgentV2NodeType>) {
 
   if (isInlineAgent || hasValidAgent)
     return (
-      <AgentNodeModel
-        data={data}
-        agent={rosterAgentQuery.data}
-        isLoading={isInlineAgentDetailLoading}
-      />
+      <>
+        <AgentNodeModel
+          data={data}
+          agent={rosterAgentQuery.data}
+          isLoading={isInlineAgentDetailLoading}
+        />
+        {data.agent_output_routes?.enabled && (
+          <div className="px-3 pb-2">
+            <NodeBranches
+              node={props}
+              branches={(data.agent_output_routes.routes ?? []).map((route) => ({
+                ...route,
+                name: route.name ?? '',
+              }))}
+              defaultLabel={(index) =>
+                t(($) => $['nodes.agent.outputRoutes.route'], { ns: 'workflow', index })
+              }
+            />
+          </div>
+        )}
+      </>
     )
 
   return (

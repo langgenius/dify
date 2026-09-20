@@ -4,6 +4,7 @@ import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useStore } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import { hasErrorHandleNode } from '@/app/components/workflow/utils'
 import BlockIcon from '../../../../block-icon'
 import { useToolIcon } from '../../../../hooks/use-tool-icon'
@@ -65,7 +66,13 @@ const NextStep = ({ selectedNode }: NextStepProps) => {
             name:
               data.type === BlockEnum.QuestionClassifier
                 ? `${t(($) => $['nodes.questionClassifiers.class'], { ns: 'workflow' })} ${index + 1}`
-                : branch.name,
+                : hasAgentV2OutputRoutes(data)
+                  ? data.agent_output_routes?.routes?.[index]?.label ||
+                    t(($) => $['nodes.agent.outputRoutes.route'], {
+                      ns: 'workflow',
+                      index: index + 1,
+                    })
+                  : branch.name,
           },
           nextNodes,
         }
@@ -83,25 +90,25 @@ const NextStep = ({ selectedNode }: NextStepProps) => {
           nextNodes,
         },
       ]
+    }
 
-      if (data.error_strategy === ErrorHandleTypeEnum.failBranch && hasErrorHandleNode(data.type)) {
-        const connected = connectedEdges.filter(
-          (edge) => edge.sourceHandle === ErrorHandleTypeEnum.failBranch,
-        )
-        const nextNodes = resolveNextNodes(connected)
+    if (data.error_strategy === ErrorHandleTypeEnum.failBranch && hasErrorHandleNode(data.type)) {
+      const connected = connectedEdges.filter(
+        (edge) => edge.sourceHandle === ErrorHandleTypeEnum.failBranch,
+      )
+      const nextNodes = resolveNextNodes(connected)
 
-        items.push({
-          branch: {
-            id: ErrorHandleTypeEnum.failBranch,
-            name: t(($) => $['common.onFailure'], { ns: 'workflow' }),
-          },
-          nextNodes,
-        })
-      }
+      items.push({
+        branch: {
+          id: ErrorHandleTypeEnum.failBranch,
+          name: t(($) => $['common.onFailure'], { ns: 'workflow' }),
+        },
+        nextNodes,
+      })
     }
 
     return items
-  }, [branches, connectedEdges, data.error_strategy, data.type, outgoers, t])
+  }, [branches, connectedEdges, data, outgoers, t])
 
   return (
     <div className="flex py-1">

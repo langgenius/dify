@@ -3,8 +3,8 @@ import type { NodeProps } from 'reactflow'
 import type { QuestionClassifierNodeType } from '@/app/components/workflow/nodes/question-classifier/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { getDisplayClassLabel } from '@/app/components/workflow/nodes/_base/components/branch-list/class-label-utils'
 import InfoPanel from '@/app/components/workflow/nodes/_base/components/info-panel'
-import { getDisplayClassLabel } from '@/app/components/workflow/nodes/question-classifier/components/class-label-utils'
 import { NodeSourceHandle } from '../../node-handle'
 
 const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {

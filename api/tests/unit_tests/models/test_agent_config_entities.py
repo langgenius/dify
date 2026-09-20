@@ -246,3 +246,24 @@ def test_effective_declared_outputs_prepends_optional_system_text() -> None:
     assert [output.name for output in effective] == ["text", "summary"]
     assert effective[0].type == DeclaredOutputType.STRING
     assert effective[0].required is False
+
+
+@pytest.mark.parametrize(
+    ("enabled", "count", "expected"), [(False, 2, ["text"]), (True, 1, ["text"]), (True, 2, ["text", "switch"])]
+)
+def test_effective_outputs_follow_route_selection_contract(enabled, count, expected):
+    job = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": enabled,
+                "routes": [{"id": str(index), "name": "condition"} for index in range(count)],
+            }
+        }
+    )
+    assert [output.name for output in effective_declared_outputs([], job.output_routes)] == expected
+
+
+@pytest.mark.parametrize("ids", [[""], ["source"], ["fail-branch"], ["target"], ["same", "same"]])
+def test_output_routes_reject_invalid_handle_identities(ids):
+    with pytest.raises(ValueError):
+        WorkflowNodeJobConfig.model_validate({"output_routes": {"routes": [{"id": id, "name": ""} for id in ids]}})

@@ -1,5 +1,6 @@
 import type { Memory, ValueSelector, Var } from '../../types'
-import type { QuestionClassifierNodeType, Topic } from './types'
+import type { QuestionClassifierNodeType } from './types'
+import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
 import { produce } from 'immer'
 import { startTransition, useCallback, useEffect, useRef } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'

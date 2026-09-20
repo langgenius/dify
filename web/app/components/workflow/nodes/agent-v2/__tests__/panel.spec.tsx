@@ -8,6 +8,8 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
 import { AgentV2Panel } from '../panel'
 
+vi.mock('../components/agent-output-routes', () => ({ AgentOutputRoutes: () => null }))
+
 const {
   mockEditorFocus,
   mockEditorUpdate,

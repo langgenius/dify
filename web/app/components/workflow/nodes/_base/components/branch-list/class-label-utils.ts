@@ -31,12 +31,20 @@ const normalizeClassLabel = (label?: string | null) => label?.trim() ?? ''
 export const getDefaultClassLabel = (_t: TFunction, index: number) =>
   getCanonicalDefaultClassLabel(index)
 
-export const getDisplayClassLabel = (label: string | undefined, index: number, t: TFunction) =>
+export const getDisplayClassLabel = (
+  label: string | null | undefined,
+  index: number,
+  t: TFunction,
+) =>
   normalizeClassLabel(label) ||
   getTranslatedDefaultClassLabel(t, index) ||
   getCanonicalDefaultClassLabel(index)
 
-export const isDefaultClassLabel = (label: string | undefined, index: number, t: TFunction) => {
+export const isDefaultClassLabel = (
+  label: string | null | undefined,
+  index: number,
+  t: TFunction,
+) => {
   const normalizedLabel = normalizeClassLabel(label)
   if (!normalizedLabel) return true
 
@@ -46,7 +54,11 @@ export const isDefaultClassLabel = (label: string | undefined, index: number, t:
   )
 }
 
-export const getCanonicalClassLabel = (label: string | undefined, index: number, t: TFunction) => {
+export const getCanonicalClassLabel = (
+  label: string | null | undefined,
+  index: number,
+  t: TFunction,
+) => {
   const normalizedLabel = normalizeClassLabel(label)
   if (!normalizedLabel) return getCanonicalDefaultClassLabel(index)
 
