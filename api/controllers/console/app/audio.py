@@ -12,7 +12,10 @@ import services
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
+from controllers.console.agent.app_helpers import (
+    resolve_agent_runtime_app_model,
+    resolve_existing_agent_runtime_app_model,
+)
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -355,7 +358,7 @@ class AgentChatMessageTextApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     @model_validate(TextToSpeechPayload)
     def post(
         self,
@@ -371,7 +374,7 @@ class AgentChatMessageTextApi(Resource):
             checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())],
             path_args={"agent_id": str(agent_id)},
         )
-        app_model = resolve_agent_runtime_app_model(
+        app_model = resolve_existing_agent_runtime_app_model(
             session=session,
             tenant_id=current_tenant_id,
             agent_id=agent_id,
@@ -451,7 +454,7 @@ class AgentTextToSpeechVoicesApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     def get(
         self,
         session: Session,
@@ -466,7 +469,7 @@ class AgentTextToSpeechVoicesApi(Resource):
             checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())],
             path_args={"agent_id": str(agent_id)},
         )
-        app_model = resolve_agent_runtime_app_model(
+        app_model = resolve_existing_agent_runtime_app_model(
             session=session,
             tenant_id=current_tenant_id,
             agent_id=agent_id,

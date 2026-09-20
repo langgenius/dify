@@ -533,7 +533,7 @@ def test_agent_text_to_speech_voices_uses_backing_app_and_language(app: Flask, u
     voices = [{"name": "Voice 1", "value": "voice-1"}]
     api = AgentTextToSpeechVoicesApi()
     with (
-        patch.object(audio_module, "resolve_agent_runtime_app_model", return_value=app_model) as resolve_app,
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model", return_value=app_model) as resolve_app,
         patch.object(audio_module, "enforce_rbac_checks") as check_access,
         patch.object(AudioService, "transcript_tts_voices", return_value=voices) as get_voices,
         app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio/voices?language=en-US"),
@@ -565,7 +565,7 @@ def test_agent_text_to_speech_voices_does_not_query_provider_without_permission(
     agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
     api = AgentTextToSpeechVoicesApi()
     with (
-        patch.object(audio_module, "resolve_agent_runtime_app_model") as resolve_app,
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model") as resolve_app,
         patch.object(audio_module, "enforce_rbac_checks", side_effect=Forbidden()),
         patch.object(AudioService, "transcript_tts_voices") as get_voices,
         app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio/voices?language=en-US"),
@@ -594,7 +594,7 @@ def test_agent_text_to_speech_returns_audio_with_scoped_message(
     audio = Response(b"RIFF\x00\x00\x00\x00WAVE", content_type="audio/wav")
     api = AgentChatMessageTextApi()
     with (
-        patch.object(audio_module, "resolve_agent_runtime_app_model", return_value=app_model) as resolve_app,
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model", return_value=app_model) as resolve_app,
         patch.object(audio_module, "enforce_rbac_checks") as check_access,
         patch.object(AudioService, "transcript_tts", return_value=audio) as synthesize,
         app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio", method="POST"),
@@ -635,7 +635,7 @@ def test_agent_text_to_speech_denies_access_before_resolving_app(app: Flask, unb
     agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
     api = AgentChatMessageTextApi()
     with (
-        patch.object(audio_module, "resolve_agent_runtime_app_model") as resolve_app,
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model") as resolve_app,
         patch.object(audio_module, "enforce_rbac_checks", side_effect=Forbidden()),
         patch.object(AudioService, "transcript_tts") as synthesize,
         app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio", method="POST"),
@@ -668,7 +668,7 @@ def test_agent_tts_preserves_missing_agent_error(app: Flask, unbound_session: Se
     if not voices:
         args["req_data"] = TextToSpeechPayload(text="Preview")
     with (
-        patch.object(audio_module, "resolve_agent_runtime_app_model", side_effect=AgentNotFoundError()),
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model", side_effect=AgentNotFoundError()),
         patch.object(audio_module, "enforce_rbac_checks"),
         patch.object(AudioService, "transcript_tts") as synthesize,
         patch.object(AudioService, "transcript_tts_voices") as get_voices,
