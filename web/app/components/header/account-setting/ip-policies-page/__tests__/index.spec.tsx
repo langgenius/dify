@@ -516,4 +516,29 @@ describe('IpPoliciesPage', () => {
       }
     },
   )
+  it.each(['owner', 'admin'] as const)(
+    'opens edit directly from the policy row for %s',
+    async (role) => {
+      const user = userEvent.setup()
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, { groups: [createNetworkAccessGroupFixture()] })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          currentWorkspace: { role },
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
+      await user.click(screen.getByRole('button', { name: 'Internal Network' }))
+      expect(screen.getByRole('dialog', { name: 'Edit IP Policy' })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Internal Network')
+      await user.keyboard('{Escape}')
+      await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+      expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
 })

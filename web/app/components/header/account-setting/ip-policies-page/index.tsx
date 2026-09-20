@@ -156,7 +156,7 @@ export default function IpPoliciesPage() {
               key={group.id}
               group={group}
               canMutate={canMutate}
-              onView={(group) => setDialogState({ mode: 'view', group })}
+              onView={(group) => setDialogState({ mode: canMutate ? 'edit' : 'view', group })}
               onEdit={(group) => {
                 if (!canMutate) return
                 setDialogState({ mode: 'edit', group })

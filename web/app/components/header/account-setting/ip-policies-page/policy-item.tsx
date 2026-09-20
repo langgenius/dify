@@ -78,25 +78,25 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
 
   return (
     <div className={`${policyRowClassName} border-b border-divider-subtle py-3`}>
-      <div className={policyNameColClassName}>
-        <Button
-          variant="ghost"
-          size="small"
-          className="h-auto max-w-full justify-start p-0 text-text-secondary"
-          onClick={() => onView(group)}
-        >
-          <span className="truncate">{group.name}</span>
-        </Button>
-      </div>
-      <p className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}>
-        {group.allowed_cidrs.length}
-      </p>
-      <p className={`${policyEnforcingColClassName} system-sm-regular text-text-tertiary`}>
-        {enforcingLabel}
-      </p>
-      <p className={`${policyUpdatedColClassName} system-sm-regular text-text-tertiary`}>
-        {formatTimeFromNow(Date.parse(group.updated_at))}
-      </p>
+      <Button
+        variant="ghost"
+        aria-label={group.name}
+        className="h-auto min-w-0 flex-1 justify-start gap-0 rounded-none p-0 text-left"
+        onClick={() => onView(group)}
+      >
+        <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
+          {group.name}
+        </span>
+        <span className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}>
+          {group.allowed_cidrs.length}
+        </span>
+        <span className={`${policyEnforcingColClassName} system-sm-regular text-text-tertiary`}>
+          {enforcingLabel}
+        </span>
+        <span className={`${policyUpdatedColClassName} system-sm-regular text-text-tertiary`}>
+          {formatTimeFromNow(Date.parse(group.updated_at))}
+        </span>
+      </Button>
       <div className={policyActionsColClassName}>
         {canMutate && (
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
