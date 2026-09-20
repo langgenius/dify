@@ -23,6 +23,8 @@ Run commands from the repository root. Install dependencies and browsers once wi
 
 The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1` to force a frontend rebuild. Use `E2E_BROWSER=webkit` for focused cross-browser runs and `E2E_SLOW_MO=500` with a headed command for local action debugging.
 
+Core CI sets `E2E_FAST_REDIS_HEALTH=1` to use the E2E-only Compose override. It retains the authenticated Redis PONG probe, polls every second, and preserves the approximate failed-probe budget. Unset it for the default middleware health cadence.
+
 ## Runtime Ownership
 
 - `scripts/setup.ts` owns reset, middleware, backend, and frontend startup.

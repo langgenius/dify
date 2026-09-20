@@ -9,6 +9,11 @@ on:
         required: true
         default: '3'
         options: ['2', '3', '4']
+      fast-redis-health:
+        description: Poll the unchanged Redis health check every second for core E2E.
+        type: boolean
+        required: true
+        default: true
   workflow_call:
     inputs:
       run-external-runtime:
@@ -109,6 +114,7 @@ jobs:
       E2E_ADMIN_NAME: E2E Admin
       E2E_ADMIN_PASSWORD: E2eAdmin12345
       E2E_INIT_PASSWORD: E2eInit12345
+      E2E_FAST_REDIS_HEALTH: ${{ (github.event_name != 'workflow_dispatch' || inputs.fast-redis-health) && '1' || '0' }}
 
     steps:
       - name: Checkout code
@@ -167,6 +173,7 @@ jobs:
       E2E_ADMIN_PASSWORD: E2eAdmin12345
       E2E_BROWSER: webkit
       E2E_INIT_PASSWORD: E2eInit12345
+      E2E_FAST_REDIS_HEALTH: ${{ (github.event_name != 'workflow_dispatch' || inputs.fast-redis-health) && '1' || '0' }}
 
     steps:
       - name: Checkout code

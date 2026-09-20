@@ -1,0 +1,7 @@
+# Core E2E-only override. Inherit the authenticated PONG check from middleware.
+services:
+  redis:
+    healthcheck:
+      interval: 1s
+      # Preserve the default ~90-second failed-probe budget (3 x 30s).
+      retries: 90

@@ -72,6 +72,9 @@ const composeArgs = [
   'compose',
   '-f',
   middlewareComposeFile,
+  ...(process.env.E2E_FAST_REDIS_HEALTH === '1'
+    ? ['-f', path.join(e2eDir, 'docker-compose.health.yaml')]
+    : []),
   '--profile',
   'postgresql',
   '--profile',
