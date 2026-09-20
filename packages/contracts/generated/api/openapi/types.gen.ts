@@ -396,6 +396,7 @@ export type OpenApiErrorCode =
   | 'app_unavailable'
   | 'bad_gateway'
   | 'bad_request'
+  | 'catalog_stale'
   | 'completion_request_error'
   | 'conflict'
   | 'conversation_completed'
