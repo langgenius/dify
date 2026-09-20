@@ -19,8 +19,10 @@ from controllers.openapi._catalog import (
     catalog_for,
     iter_handlers,
 )
+from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._models import Hinted
 from controllers.openapi.auth.spec import EndpointSpec, Kind, spec_of
+from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 OP_ID_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
 MAX_DEPTH = 4
@@ -148,3 +150,24 @@ def test_catalog_route_serves_canonical_bytes_and_every_response_carries_the_fin
     assert fingerprint == hashlib.sha256(raw).hexdigest() == res.headers[CATALOG_HEADER]
     assert client.get("/openapi/v1/apps").headers[CATALOG_HEADER] == fingerprint
     assert client.get("/openapi/v1/does-not-exist").headers[CATALOG_HEADER] == fingerprint
+
+
+def test_a_guarded_route_refuses_a_request_that_does_not_name_the_current_catalog(
+    admitted_bearer: AdmittedWorld,
+) -> None:
+    """The wire shape of the refusal: 412 with the canonical body, and the
+    current fingerprint on the response so the client can refetch and retry.
+    The same bearer with the current fingerprint gets past the guard: the
+    unknown query answers 422 from `@accepts`, which sits inside it.
+    """
+    path = f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members?nope=1"
+    current = admitted_bearer.headers[CATALOG_HEADER]
+    without = {"Authorization": admitted_bearer.headers["Authorization"]}
+
+    refused = admitted_bearer.client.get(path, headers=without)
+    admitted = admitted_bearer.client.get(path, headers=admitted_bearer.headers)
+
+    assert refused.status_code == 412
+    assert refused.get_json()["code"] == OpenApiErrorCode.CATALOG_STALE
+    assert refused.headers[CATALOG_HEADER] == current
+    assert admitted.status_code == 422

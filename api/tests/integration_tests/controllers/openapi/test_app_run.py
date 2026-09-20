@@ -14,7 +14,7 @@ from models import App
 
 
 def test_run_chat_dispatches_to_chat_handler(
-    flask_app: Flask, account_token, app_in_workspace, monkeypatch: pytest.MonkeyPatch
+    flask_app: Flask, auth_headers, app_in_workspace, monkeypatch: pytest.MonkeyPatch
 ):
     captured = {}
 
@@ -38,7 +38,7 @@ def test_run_chat_dispatches_to_chat_handler(
     res = client.post(
         f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"inputs": {}, "query": "hi", "response_mode": "blocking", "user": "spoof@x.com"},
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     assert res.get_json()["mode"] == "chat"
@@ -81,20 +81,20 @@ def app_with_mode(flask_app: Flask, workspace_account):
 
 
 def test_run_chat_without_query_returns_422(
-    flask_app: Flask, account_token, app_in_workspace, monkeypatch: pytest.MonkeyPatch
+    flask_app: Flask, auth_headers, app_in_workspace, monkeypatch: pytest.MonkeyPatch
 ):
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"inputs": {}, "response_mode": "blocking"},
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 422
     assert b"query_required_for_chat" in res.data
 
 
 def test_run_completion_dispatches_to_completion_handler(
-    flask_app: Flask, account_token, app_with_mode, monkeypatch: pytest.MonkeyPatch
+    flask_app: Flask, auth_headers, app_with_mode, monkeypatch: pytest.MonkeyPatch
 ):
     app = app_with_mode("completion")
 
@@ -118,7 +118,7 @@ def test_run_completion_dispatches_to_completion_handler(
     res = client.post(
         f"/openapi/v1/apps/{app.id}:run",
         json={"inputs": {}, "response_mode": "blocking"},
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     assert res.get_json()["mode"] == "completion"
@@ -126,21 +126,21 @@ def test_run_completion_dispatches_to_completion_handler(
 
 
 def test_run_workflow_with_query_returns_422(
-    flask_app: Flask, account_token, app_with_mode, monkeypatch: pytest.MonkeyPatch
+    flask_app: Flask, auth_headers, app_with_mode, monkeypatch: pytest.MonkeyPatch
 ):
     app = app_with_mode("workflow")
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{app.id}:run",
         json={"inputs": {}, "query": "hi", "response_mode": "blocking"},
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 422
     assert b"query_not_supported_for_workflow" in res.data
 
 
 def test_run_workflow_no_query_dispatches_to_workflow_handler(
-    flask_app: Flask, account_token, app_with_mode, monkeypatch: pytest.MonkeyPatch
+    flask_app: Flask, auth_headers, app_with_mode, monkeypatch: pytest.MonkeyPatch
 ):
     app = app_with_mode("workflow")
 
@@ -156,7 +156,7 @@ def test_run_workflow_no_query_dispatches_to_workflow_handler(
     res = client.post(
         f"/openapi/v1/apps/{app.id}:run",
         json={"inputs": {}, "response_mode": "blocking"},
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     body = res.get_json()
@@ -165,14 +165,14 @@ def test_run_workflow_no_query_dispatches_to_workflow_handler(
 
 
 def test_run_unsupported_mode_returns_422(
-    flask_app: Flask, account_token, app_with_mode, monkeypatch: pytest.MonkeyPatch
+    flask_app: Flask, auth_headers, app_with_mode, monkeypatch: pytest.MonkeyPatch
 ):
     app = app_with_mode("channel")
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{app.id}:run",
         json={"inputs": {}, "response_mode": "blocking"},
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 422
     assert b"mode_not_runnable" in res.data
@@ -188,7 +188,7 @@ def test_run_without_bearer_returns_401(flask_app: Flask, app_in_workspace):
 
 
 def test_run_with_insufficient_scope_returns_403(
-    flask_app: Flask, account_token, app_in_workspace, monkeypatch: pytest.MonkeyPatch
+    flask_app: Flask, auth_headers, app_in_workspace, monkeypatch: pytest.MonkeyPatch
 ):
     """Stub the authenticator to return an AuthContext with empty scopes."""
     from libs import oauth_bearer
@@ -207,23 +207,23 @@ def test_run_with_insufficient_scope_returns_403(
     res = client.post(
         f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"inputs": {}, "query": "hi"},
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 403
 
 
-def test_run_with_unknown_app_returns_404(flask_app: Flask, account_token):
+def test_run_with_unknown_app_returns_404(flask_app: Flask, auth_headers):
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{uuid.uuid4()}:run",
         json={"inputs": {}, "query": "hi"},
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 404
 
 
 def test_run_streaming_returns_event_stream(
-    flask_app: Flask, account_token, app_in_workspace, monkeypatch: pytest.MonkeyPatch
+    flask_app: Flask, auth_headers, app_in_workspace, monkeypatch: pytest.MonkeyPatch
 ):
     def _stream() -> Generator[str, None, None]:
         yield 'event: message\ndata: {"x": 1}\n\n'
@@ -237,18 +237,18 @@ def test_run_streaming_returns_event_stream(
     res = client.post(
         f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"inputs": {}, "query": "hi", "response_mode": "streaming"},
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     assert res.headers["Content-Type"].startswith("text/event-stream")
     assert b"event: message" in res.data
 
 
-def test_run_without_inputs_returns_422(flask_app: Flask, account_token, app_in_workspace):
+def test_run_without_inputs_returns_422(flask_app: Flask, auth_headers, app_in_workspace):
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{app_in_workspace.id}:run",
         json={"query": "hi"},
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 422

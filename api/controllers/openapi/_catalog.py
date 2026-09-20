@@ -4,8 +4,10 @@ Built once per Flask app from the url map plus the ``EndpointSpec`` each guarded
 carries as ``__spec__``: the flat input schema (path + query + body, ``$ref``s inlined)
 and the ``bind`` table are derived here and nowhere else. Frozen to canonical bytes,
 fingerprinted with sha256, served at ``GET /openapi/v1/_catalog``, and the fingerprint
-rides on every response in ``X-Dify-Catalog`` so a client can tell its cached copy is
-stale without an extra round trip.
+rides on every response in ``X-Dify-Catalog``. A guarded request carries the fingerprint
+of the catalog it was built from in the same header; any other value, or none, is refused
+with 412 before a handler runs (``auth/pipelines``), so a request only ever acts on the
+server's current op table.
 """
 
 from __future__ import annotations

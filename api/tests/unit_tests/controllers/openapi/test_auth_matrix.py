@@ -77,6 +77,7 @@ import libs.rate_limit as rate_limit_module
 from app_factory import create_flask_app_with_configs
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -1091,7 +1092,7 @@ def _run_case(
     )
     settings = _access_mode_settings(scenario.access_mode)
 
-    headers: dict[str, str] = {}
+    headers: dict[str, str] = {CATALOG_HEADER: catalog_for(app)[1]}
     bearer = _bearer_for(route, scenario)
     if bearer is not None:
         headers["Authorization"] = f"Bearer {world.tokens[bearer]}"

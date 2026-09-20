@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 import libs.rate_limit as rate_limit_module
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
@@ -68,6 +69,10 @@ def _guard(
 
 def _nothing(**_kwargs: object) -> None:
     return None
+
+
+def _admitted(app: Flask) -> dict[str, str]:
+    return {"Authorization": "Bearer tok", CATALOG_HEADER: catalog_for(app)[1]}
 
 
 def test_endpoint_edition_gate_404s_before_the_bearer_is_read(
@@ -305,7 +310,7 @@ def test_an_account_token_reaches_the_view_with_a_resolved_context(
 
     view = _guard(handler)
 
-    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
+    with app.test_request_context("/openapi/v1/account", headers=_admitted(app)):
         result = view("self")
 
     assert result == "answered"
@@ -331,7 +336,7 @@ def test_a_mutation_is_committed_when_the_view_returns(
     monkeypatch.setattr(MOUNT, lambda _user: None)
     view = _guard(_rename_handler)
 
-    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
+    with app.test_request_context("/openapi/v1/account", headers=_admitted(app)):
         view()
 
     with sqlite_session_factory() as verify:
@@ -356,7 +361,7 @@ def test_a_mutation_is_rolled_back_when_the_view_raises(
     monkeypatch.setattr(MOUNT, lambda _user: None)
     view = _guard(_rename_then_fail)
 
-    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
+    with app.test_request_context("/openapi/v1/account", headers=_admitted(app)):
         with pytest.raises(RuntimeError, match="after the write"):
             view()
 

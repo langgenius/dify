@@ -37,6 +37,7 @@ from werkzeug.test import TestResponse
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi import workspaces as workspaces_module
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import (
     ErrorBody,
     MemberLicenseExceeded,
@@ -470,7 +471,7 @@ def test_invite_commits_the_invitation(
     response = openapi_app.test_client().post(
         f"/openapi/v1/workspaces/{ws_id}/members",
         json={"email": "new@example.com", "role": "normal"},
-        headers={"Authorization": "Bearer dfoa_matrix"},
+        headers={"Authorization": "Bearer dfoa_matrix", CATALOG_HEADER: catalog_for(openapi_app)[1]},
     )
 
     assert response.status_code == 201, response.get_json()
