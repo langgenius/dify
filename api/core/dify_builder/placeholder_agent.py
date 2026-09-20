@@ -127,6 +127,10 @@ class PlaceholderAgent:
             )
         ]
 
+    def assess_capability_gap(self, plan_items: list[str], options: list[ResourceOption]) -> str:
+        # No model, so no gap it could name -- see build.assess_capability_gap.
+        return ""
+
     def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]:
         return [
             "Ingest source documents",
