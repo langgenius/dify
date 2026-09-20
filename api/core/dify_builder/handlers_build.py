@@ -344,7 +344,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
             execution=execution,
-            reply_text="Plan v2 ready for approval.",
+            reply_text="Plan v1 ready for approval.",
             cards=["plan", "checkpoint"],
         ),
     )
