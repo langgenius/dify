@@ -85,6 +85,9 @@ import {
   zGetAgentByAgentIdStatisticsSummaryPath,
   zGetAgentByAgentIdStatisticsSummaryQuery,
   zGetAgentByAgentIdStatisticsSummaryResponse,
+  zGetAgentByAgentIdTextToAudioVoicesPath,
+  zGetAgentByAgentIdTextToAudioVoicesQuery,
+  zGetAgentByAgentIdTextToAudioVoicesResponse,
   zGetAgentByAgentIdVersionsByVersionIdPath,
   zGetAgentByAgentIdVersionsByVersionIdResponse,
   zGetAgentByAgentIdVersionsPath,
@@ -1111,6 +1114,34 @@ export const statistics = {
   summary,
 }
 
+/**
+ * Get available TTS voices for an Agent and language
+ */
+export const get28 = oc
+  .route({
+    description: 'Get available TTS voices for an Agent and language',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdTextToAudioVoices',
+    path: '/agent/{agent_id}/text-to-audio/voices',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdTextToAudioVoicesPath,
+      query: zGetAgentByAgentIdTextToAudioVoicesQuery,
+    }),
+  )
+  .output(zGetAgentByAgentIdTextToAudioVoicesResponse)
+
+export const voices = {
+  get: get28,
+}
+
+export const textToAudio = {
+  voices,
+}
+
 export const post17 = oc
   .route({
     inputStructure: 'detailed',
@@ -1126,7 +1157,7 @@ export const restore = {
   post: post17,
 }
 
-export const get28 = oc
+export const get29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1138,11 +1169,11 @@ export const get28 = oc
   .output(zGetAgentByAgentIdVersionsByVersionIdResponse)
 
 export const byVersionId = {
-  get: get28,
+  get: get29,
   restore,
 }
 
-export const get29 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1154,7 +1185,7 @@ export const get29 = oc
   .output(zGetAgentByAgentIdVersionsResponse)
 
 export const versions = {
-  get: get29,
+  get: get30,
   byVersionId,
 }
 
@@ -1170,7 +1201,7 @@ export const delete5 = oc
   .input(z.object({ params: zDeleteAgentByAgentIdPath }))
   .output(zDeleteAgentByAgentIdResponse)
 
-export const get30 = oc
+export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1194,7 +1225,7 @@ export const put3 = oc
 
 export const byAgentId = {
   delete: delete5,
-  get: get30,
+  get: get31,
   put: put3,
   apiAccess,
   apiEnable,
@@ -1216,10 +1247,11 @@ export const byAgentId = {
   referencingWorkflows,
   sandbox,
   statistics,
+  textToAudio,
   versions,
 }
 
-export const get31 = oc
+export const get32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1243,7 +1275,7 @@ export const post18 = oc
   .output(zPostAgentResponse)
 
 export const agent = {
-  get: get31,
+  get: get32,
   post: post18,
   inviteOptions,
   byAgentId,

@@ -322,6 +322,39 @@ class ChatMessageTextApi(Resource):
             raise InternalServerError()
 
 
+def _get_text_to_speech_voices(*, tenant_id: str, language: str):
+    try:
+        response = AudioService.transcript_tts_voices(
+            tenant_id=tenant_id,
+            language=language,
+        )
+
+        return dump_response(TextToSpeechVoiceListResponse, response)
+    except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
+        raise AppUnavailableError("Text to audio voices language parameter loss.")
+    except NoAudioUploadedServiceError:
+        raise NoAudioUploadedError()
+    except AudioTooLargeServiceError as e:
+        raise AudioTooLargeError(str(e))
+    except UnsupportedAudioTypeServiceError:
+        raise UnsupportedAudioTypeError()
+    except ProviderNotSupportSpeechToTextServiceError:
+        raise ProviderNotSupportSpeechToTextError()
+    except ProviderTokenNotInitError as ex:
+        raise ProviderNotInitializeError(ex.description)
+    except QuotaExceededError:
+        raise ProviderQuotaExceededError()
+    except ModelCurrentlyNotSupportError:
+        raise ProviderModelCurrentlyNotSupportError()
+    except InvokeError as e:
+        raise CompletionRequestError(e.description)
+    except ValueError as e:
+        raise e
+    except Exception as e:
+        logger.exception("Failed to handle get request to TextModesApi")
+        raise InternalServerError()
+
+
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
 class TextModesApi(Resource):
     @console_ns.doc("get_text_to_speech_voices")
@@ -340,33 +373,45 @@ class TextModesApi(Resource):
     @get_app_model
     @model_validate(TextToSpeechVoiceQuery)
     def get(self, req_data: TextToSpeechVoiceQuery, app_model: App):
-        try:
-            response = AudioService.transcript_tts_voices(
-                tenant_id=app_model.tenant_id,
-                language=req_data.language,
-            )
+        return _get_text_to_speech_voices(tenant_id=app_model.tenant_id, language=req_data.language)
 
-            return dump_response(TextToSpeechVoiceListResponse, response)
-        except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
-            raise AppUnavailableError("Text to audio voices language parameter loss.")
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logger.exception("Failed to handle get request to TextModesApi")
-            raise InternalServerError()
+
+@console_ns.route("/agent/<uuid:agent_id>/text-to-audio/voices")
+class AgentTextToSpeechVoicesApi(Resource):
+    @console_ns.doc("get_agent_text_to_speech_voices")
+    @console_ns.doc(description="Get available TTS voices for an Agent and language")
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(TextToSpeechVoiceQuery)})
+    @console_ns.response(
+        200,
+        "TTS voices retrieved successfully",
+        console_ns.models[TextToSpeechVoiceListResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid language parameter")
+    @console_ns.response(404, "Agent not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    @with_session
+    def get(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
+        query = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
+        # Agent routes expose Agent ids, while APP RBAC is keyed by the resolved runtime App id.
+        enforce_rbac_checks(
+            tenant_id=current_tenant_id,
+            account_id=current_user.id,
+            checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())],
+            path_args={"app_id": app_model.id},
+        )
+        return _get_text_to_speech_voices(tenant_id=app_model.tenant_id, language=query.language)

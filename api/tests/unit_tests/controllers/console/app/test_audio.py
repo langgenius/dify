@@ -14,6 +14,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError
 from controllers.console.app import audio as audio_module
 from controllers.console.app.audio import (
     AgentChatMessageAudioApi,
+    AgentTextToSpeechVoicesApi,
     ChatMessageAudioApi,
     ChatMessageTextApi,
     TextModesApi,
@@ -522,3 +523,59 @@ def test_text_to_audio_voices_with_language_filter(app: Flask, monkeypatch: pyte
     ):
         response = method(api, TextToSpeechVoiceQuery(language="en-US"), app_model=app_model)
         assert isinstance(response, list)
+
+
+def test_agent_text_to_speech_voices_uses_backing_app_and_language(app: Flask, unbound_session: Session) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    app_model = _app(app_id="backing-app-1")
+    current_user = _account()
+    voices = [{"name": "Voice 1", "value": "voice-1"}]
+    api = AgentTextToSpeechVoicesApi()
+    with (
+        patch.object(audio_module, "resolve_agent_runtime_app_model", return_value=app_model) as resolve_app,
+        patch.object(audio_module, "enforce_rbac_checks") as check_access,
+        patch.object(AudioService, "transcript_tts_voices", return_value=voices) as get_voices,
+        app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio/voices?language=en-US"),
+    ):
+        response = unwrap(api.get)(
+            api,
+            session=unbound_session,
+            current_tenant_id="tenant-1",
+            current_user=current_user,
+            agent_id=agent_id,
+        )
+
+    assert response == voices
+    resolve_app.assert_called_once_with(session=unbound_session, tenant_id="tenant-1", agent_id=agent_id)
+    check_access.assert_called_once()
+    rbac_call = check_access.call_args.kwargs
+    assert rbac_call["tenant_id"] == "tenant-1"
+    assert rbac_call["account_id"] == current_user.id
+    assert rbac_call["path_args"] == {"app_id": "backing-app-1"}
+    (rbac_check,) = rbac_call["checks"]
+    assert rbac_check.scene is audio_module.RBACPermission.APP_VIEW_LAYOUT
+    assert isinstance(rbac_check.locator, audio_module.PlainApp)
+    get_voices.assert_called_once_with(tenant_id="tenant-1", language="en-US")
+
+
+def test_agent_text_to_speech_voices_does_not_query_provider_without_permission(
+    app: Flask, unbound_session: Session
+) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    api = AgentTextToSpeechVoicesApi()
+    with (
+        patch.object(audio_module, "resolve_agent_runtime_app_model", return_value=_app(app_id="backing-app-1")),
+        patch.object(audio_module, "enforce_rbac_checks", side_effect=Forbidden()),
+        patch.object(AudioService, "transcript_tts_voices") as get_voices,
+        app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio/voices?language=en-US"),
+        pytest.raises(Forbidden),
+    ):
+        unwrap(api.get)(
+            api,
+            session=unbound_session,
+            current_tenant_id="tenant-1",
+            current_user=_account(),
+            agent_id=agent_id,
+        )
+
+    get_voices.assert_not_called()

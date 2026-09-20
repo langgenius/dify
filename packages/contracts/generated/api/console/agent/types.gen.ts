@@ -407,6 +407,8 @@ export type AgentStatisticSummaryEnvelopeResponse = {
   summary: AgentStatisticSummaryResponse
 }
 
+export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
+
 export type AgentConfigSnapshotListResponse = {
   data: Array<AgentConfigSnapshotSummaryResponse>
 }
@@ -956,6 +958,11 @@ export type AgentStatisticSummaryResponse = {
   total_price: string
   total_tokens: number
   user_satisfaction_rate: number
+}
+
+export type TextToSpeechVoiceResponse = {
+  name: string
+  value: string
 }
 
 export type AgentConfigRevisionResponse = {
@@ -2901,6 +2908,29 @@ export type GetAgentByAgentIdStatisticsSummaryResponses = {
 
 export type GetAgentByAgentIdStatisticsSummaryResponse =
   GetAgentByAgentIdStatisticsSummaryResponses[keyof GetAgentByAgentIdStatisticsSummaryResponses]
+
+export type GetAgentByAgentIdTextToAudioVoicesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    language: string
+  }
+  url: '/agent/{agent_id}/text-to-audio/voices'
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesResponses = {
+  200: TextToSpeechVoiceListResponse
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesResponse =
+  GetAgentByAgentIdTextToAudioVoicesResponses[keyof GetAgentByAgentIdTextToAudioVoicesResponses]
 
 export type GetAgentByAgentIdVersionsData = {
   body?: never

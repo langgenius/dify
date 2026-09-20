@@ -810,6 +810,21 @@ export const zAgentStatisticSummaryResponse = z.object({
 })
 
 /**
+ * TextToSpeechVoiceResponse
+ */
+export const zTextToSpeechVoiceResponse = z.object({
+  name: z.string(),
+  value: z.string(),
+})
+
+/**
+ * TextToSpeechVoiceListResponse
+ *
+ * Available voices
+ */
+export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
+
+/**
  * ModelConfigPartial
  */
 export const zModelConfigPartial = z.object({
@@ -3264,6 +3279,19 @@ export const zGetAgentByAgentIdStatisticsSummaryQuery = z.object({
  * Agent monitoring summary and chart data
  */
 export const zGetAgentByAgentIdStatisticsSummaryResponse = zAgentStatisticSummaryEnvelopeResponse
+
+export const zGetAgentByAgentIdTextToAudioVoicesPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdTextToAudioVoicesQuery = z.object({
+  language: z.string(),
+})
+
+/**
+ * TTS voices retrieved successfully
+ */
+export const zGetAgentByAgentIdTextToAudioVoicesResponse = zTextToSpeechVoiceListResponse
 
 export const zGetAgentByAgentIdVersionsPath = z.object({
   agent_id: z.uuid(),
