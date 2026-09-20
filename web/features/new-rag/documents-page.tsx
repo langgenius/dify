@@ -471,8 +471,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       return next
     })
   }, [auxiliaryTaskReadGuard, baseTasks, effectiveTaskById, taskListGeneration])
-  const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
-  const currentTaskVersionRef = useRef(new Map(tasks.map((task) => [task.id, task.updatedAt])))
+  const currentTaskStateRef = useRefWithInit(
+    () => new Map(tasks.map((task) => [task.id, task.state])),
+  )
+  const currentTaskVersionRef = useRefWithInit(
+    () => new Map(tasks.map((task) => [task.id, task.updatedAt])),
+  )
   useLayoutEffect(() => {
     const currentTaskIds = new Set(tasks.map((task) => task.id))
     for (const task of tasks) {
@@ -487,7 +491,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       currentTaskStateRef.current.delete(taskId)
       currentTaskVersionRef.current.delete(taskId)
     }
-  }, [tasks])
+  }, [tasks, currentTaskStateRef, currentTaskVersionRef])
 
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
   const documentStatuses = useMemo(
@@ -1123,7 +1127,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         window.clearTimeout(requestTimeout)
       }
     },
-    [auxiliaryTaskReadGuard, denyAuxiliaryTaskRead, knowledgeSpaceId, taskProgressStore],
+    [
+      auxiliaryTaskReadGuard,
+      denyAuxiliaryTaskRead,
+      knowledgeSpaceId,
+      taskProgressStore,
+      currentTaskStateRef,
+      currentTaskVersionRef,
+    ],
   )
 
   useEffect(() => {
@@ -1599,7 +1610,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }
       return true
     },
-    [reconcileTerminalTask, refreshDocuments, t, taskProgressStore],
+    [
+      reconcileTerminalTask,
+      refreshDocuments,
+      t,
+      taskProgressStore,
+      currentTaskStateRef,
+      currentTaskVersionRef,
+    ],
   )
 
   const handleTaskUpdated = useCallback(
@@ -1643,7 +1661,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         })
       }
     },
-    [auxiliaryTaskReadGuard, taskProgressStore],
+    [auxiliaryTaskReadGuard, taskProgressStore, currentTaskStateRef, currentTaskVersionRef],
   )
 
   useEffect(() => {
@@ -1767,6 +1785,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [
     auxiliaryTaskReadGuard,
     denyAuxiliaryTaskRead,
+    currentTaskVersionRef,
     failedTaskPollSignature,
     handleTaskUpdated,
     knowledgeSpaceId,
