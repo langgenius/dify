@@ -285,14 +285,14 @@ def _discover_and_offer_resources(
 
 
 def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) On ``find_resources`` discover the (canned, ready) resource
-    and transition to build.resource_recommendation. Reachable only via the
+    """(working, auto) Discover the (canned, ready) resource and fall straight
+    through to build.resource_recommendation. Reachable only via the
     continue_adjusting/retry_after_revert loop-back -- the straight-through
-    path no longer stops here (see handle_goal_analysis)."""
-    kind = action_kind(turn)
-    if kind != "find_resources":
-        return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
-
+    path no longer stops here (see handle_goal_analysis). Unconditional: this
+    is a working/pass-through state now (state.py), so the runner drives it
+    on entry with no action to gate on -- it must NOT re-require find_resources,
+    or the loop-back (which lands here with the action already consumed)
+    could never advance past it."""
     items, next_state = _discover_and_offer_resources(env, s, fc)
     return StepResult(next=next_state, context=fc, items=items)
 

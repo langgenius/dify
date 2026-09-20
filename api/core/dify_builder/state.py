@@ -74,6 +74,12 @@ _WORKING = frozenset(
         PcState.CHECKLIST_DIAGNOSE,
         PcState.CHECKLIST_PROPOSE,
         # Build/Edit: executing/auto-advance, canvas locked (spec §7).
+        # BUILD_INITIAL_PLAN: reachable only via the continue_adjusting/
+        # retry_after_revert loop-back (the straight-through path no longer
+        # stops there); it runs resource discovery unconditionally and falls
+        # straight through to BUILD_RESOURCE_RECOMMENDATION, so it is a
+        # pass-through working step, not a state a user waits at.
+        PcState.BUILD_INITIAL_PLAN,
         PcState.BUILD_TEST_AND_REPAIR,
         PcState.BUILD_PUBLISH,
         PcState.BUILD_GOVERNANCE_FEEDBACK,
@@ -93,7 +99,6 @@ _WAITING = frozenset(
         # states classified by where they come to rest (spec §7).
         PcState.BUILD_CAPABILITY_CHECK,
         PcState.BUILD_GOAL_ANALYSIS,
-        PcState.BUILD_INITIAL_PLAN,
         PcState.BUILD_RESOURCE_RECOMMENDATION,
         PcState.BUILD_PLAN_APPROVAL,
         PcState.BUILD_EXECUTION,
