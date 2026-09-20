@@ -222,10 +222,14 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     progress.activate("build-draft-plan")
     fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
     fc.plan_version_tag = "v1"
-    progress.finish()
 
     decision_items = append_card(fc, DecisionItem(text="Submitted requirements"))
-    resource_items, next_state = _discover_and_offer_resources(env, s, fc)
+    # Pass the live reporter through: this is still the SAME operation as the
+    # requirements review above, and every other handler in this file uses
+    # exactly one ProgressReporter per step. A second reporter under the same
+    # env.operation_id would restart `revision` at 1, breaking the documented
+    # per-operation-monotonic invariant (contract.py's ProgressEventData).
+    resource_items, next_state = _discover_and_offer_resources(env, s, fc, progress)
     return StepResult(
         next=next_state,
         context=fc,
@@ -234,24 +238,31 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
 
 def _discover_and_offer_resources(
-    env: Env, s: Session, fc: DifyBuilderContext
+    env: Env, s: Session, fc: DifyBuilderContext, progress: ProgressReporter | None = None
 ) -> tuple[list[ConversationItem], PcState]:
     """Discover tenant resources and emit the selection card.
 
-    Shared by the straight-through path (requirements submitted) and the
-    continue_adjusting path, which re-enters at BUILD_INITIAL_PLAN. One
+    Shared by the straight-through path (requirements submitted -- continues
+    the caller's still-open ``progress`` reporter, so the whole step stays
+    ONE operation with monotonically increasing revisions) and the
+    continue_adjusting path, which re-enters at BUILD_INITIAL_PLAN with no
+    reporter yet (``progress=None``, so one is created here). One
     implementation so the two entries cannot drift apart.
     """
-    progress = ProgressReporter.for_session(
-        emit=env.emit_progress,
-        operation_id=env.operation_id,
-        session=s,
-        stage_id=str(s.current_state),
-        steps=[
-            ("build-discover-resources", "Find compatible resources"),
-            ("build-prepare-resource-options", "Prepare resource recommendations"),
-        ],
-    )
+    steps = [
+        ("build-discover-resources", "Find compatible resources"),
+        ("build-prepare-resource-options", "Prepare resource recommendations"),
+    ]
+    if progress is None:
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            stage_id=str(s.current_state),
+            steps=steps,
+        )
+    else:
+        progress.add_steps(steps)
     progress.activate("build-discover-resources")
     options = env.agent.discover_resources(list(fc.plan_items))
     progress.activate("build-prepare-resource-options")
