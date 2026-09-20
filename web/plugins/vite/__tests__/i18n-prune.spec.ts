@@ -104,6 +104,7 @@ describe('i18n build check', () => {
     await expect(buildFixture()).resolves.toBeDefined()
   })
 
+  // Two rounds of three real builds need headroom under CI coverage and parallel load.
   it(
     'checks the union of client, SSR and RSC graphs only after every environment builds',
     { timeout: multiEnvironmentBuildTimeout },
