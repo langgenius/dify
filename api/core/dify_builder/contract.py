@@ -630,6 +630,9 @@ class TestResultCard(_Card):
     tone: str
     stats: list[TestStat] = field(default_factory=list)
     run_ids: list[str] = field(default_factory=list)
+    # The terminal node's outputs, pretty-printed. "" when the run produced
+    # none. A passing test that shows no result is not evidence of anything.
+    output: str = ""
 
 
 @dataclass
