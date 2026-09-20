@@ -20,7 +20,6 @@ from core.dify_builder.contract import (
     ChallengeCard,
     ChangeSetCard,
     CheckpointCard,
-    ConflictPolicyOption,
     DecisionItem,
     ErrorCard,
     ExecutionProgress,
@@ -266,10 +265,6 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         fc,
         ResourceSelectCard(
             recommended=options,
-            conflict_policy_options=[
-                ConflictPolicyOption(id="audited", label="Prefer audited", recommended=True),
-                ConflictPolicyOption(id="ask", label="Ask each time"),
-            ],
         ),
     )
     if not options:
@@ -322,16 +317,12 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     fc.checkpoint_seq = fc.next_seq
 
     resource_ids: list[str] = []
-    conflict_policy = ""
     if turn.action is not None and isinstance(turn.action.payload, dict):
         raw_ids = turn.action.payload.get("resource_ids")
         if isinstance(raw_ids, list):
             resource_ids = [r for r in raw_ids if isinstance(r, str)]
-        cp = turn.action.payload.get("conflict_policy")
-        if isinstance(cp, str):
-            conflict_policy = cp
-    fc.resource_selection = {"resource_ids": resource_ids, "conflict_policy": conflict_policy}
-    fc.plan_items = env.agent.bind_resources(list(fc.plan_items), resource_ids, conflict_policy)
+    fc.resource_selection = {"resource_ids": resource_ids}
+    fc.plan_items = env.agent.bind_resources(list(fc.plan_items), resource_ids)
     fc.plan_version_tag = "v2"
 
     progress.activate("build-create-checkpoint")

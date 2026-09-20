@@ -127,7 +127,7 @@ class PlaceholderAgent:
             )
         ]
 
-    def bind_resources(self, plan_items: list[str], resource_ids: list[str], conflict_policy: str) -> list[str]:
+    def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]:
         return [
             "Ingest source documents",
             "Retrieve from Company Knowledge Base",
