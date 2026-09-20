@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
-import { checkTranslationGraph } from '../i18n-prune/graph'
+import { checkTranslationGraph } from '../i18n-analysis/graph'
 
 let webRoot: string
 let modules: Map<string, string>
@@ -28,7 +28,7 @@ function sortedUnusedKeysByNamespace(result: ReturnType<typeof checkTranslationG
 describe('translation graph analysis', () => {
   beforeEach(() => {
     modules = new Map()
-    webRoot = mkdtempSync(path.join(tmpdir(), 'dify-i18n-prune-'))
+    webRoot = mkdtempSync(path.join(tmpdir(), 'dify-i18n-analysis-'))
     writeSource('placeholder.ts', '')
   })
 

@@ -108,20 +108,14 @@ class BuiltinToolProvider(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     # credential type, e.g., "api-key", "oauth2"
     credential_type: Mapped[CredentialType] = mapped_column(
-        EnumText(CredentialType, length=32),
-        nullable=False,
-        server_default=sa.text("'api-key'"),
-        default=CredentialType.API_KEY,
+        EnumText(CredentialType, length=32), nullable=False, default=CredentialType.API_KEY
     )
-    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
+    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=-1)
     visibility: Mapped[PermissionEnum] = mapped_column(
-        EnumText(PermissionEnum, length=40),
-        nullable=False,
-        server_default=sa.text("'all_team_members'"),
-        default=PermissionEnum.ALL_TEAM,
+        EnumText(PermissionEnum, length=40), nullable=False, default=PermissionEnum.ALL_TEAM
     )
 
     @property
@@ -337,10 +331,8 @@ class MCPToolProvider(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("30"), default=30.0)
-    sse_read_timeout: Mapped[float] = mapped_column(
-        sa.Float, nullable=False, server_default=sa.text("300"), default=300.0
-    )
+    timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, default=30.0)
+    sse_read_timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, default=300.0)
     # encrypted headers for MCP server requests
     encrypted_headers: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
 
@@ -348,9 +340,7 @@ class MCPToolProvider(TypeBase):
     # this provider uses. Reserved values:
     #   "off"       — no forwarding (default; preserves pre-M2 behaviour).
     #   "idp_token" — forward an SSO access token minted by dify-enterprise.
-    identity_mode: Mapped[str] = mapped_column(
-        sa.String(32), nullable=False, server_default=sa.text("'off'"), default="off"
-    )
+    identity_mode: Mapped[str] = mapped_column(sa.String(32), nullable=False, default="off")
 
     def load_user(self, session: Session) -> Account | None:
         return session.scalar(select(Account).where(Account.id == self.user_id))

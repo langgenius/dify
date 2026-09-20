@@ -99,7 +99,7 @@ When(
   async function (this: DifyWorld, versionNumber: number) {
     const page = this.getPage()
     const versionButton = page.getByRole('button', {
-      name: new RegExp(`\\bVersion ${versionNumber}\\b`),
+      name: new RegExp(`^Version ${versionNumber}\\b`),
     })
 
     await expect(versionButton).toBeVisible({ timeout: 30_000 })
