@@ -10,7 +10,7 @@ from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services
+import services.errors.base
 from controllers.common.fields import UsageCountResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -422,7 +422,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         HitTestingService.hit_testing_args_check(req_data.model_dump())

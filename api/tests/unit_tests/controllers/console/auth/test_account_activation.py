@@ -1,7 +1,6 @@
 """Transport-boundary tests for account invitation activation."""
 
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -17,15 +16,11 @@ from controllers.console.error import (
 from controllers.console.error import (
     EmailDomainSuspendedError as EmailDomainSuspendedHTTPError,
 )
-from services.account_activation_service import (
-    AccountActivationService,
-    FrozenAccountError,
-    InvalidInvitationError,
-    InvitationAccountMismatchError,
-)
-from services.account_activation_service import (
-    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
-)
+from libs.login import AccountWithTenant
+from models.account import Account
+from services.account_activation_service import AccountActivationService
+from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
+from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
 from services.entities.account_activation_entities import (
     ActivationCheckData,
     ActivationCheckResult,
@@ -46,8 +41,14 @@ def activation_service() -> Mock:
     return Mock(spec=AccountActivationService)
 
 
-def _services(service: Mock) -> SimpleNamespace:
-    return SimpleNamespace(account_activation=service)
+def _services(service: Mock) -> Mock:
+    from extensions.application_services.account import AccountServices
+    from extensions.ext_application_services import ApplicationServices
+
+    services = Mock(spec=ApplicationServices)
+    services.accounts = Mock(spec=AccountServices)
+    services.accounts.activation = service
+    return services
 
 
 class TestActivateCheckApi:
@@ -138,6 +139,8 @@ class TestActivateApi:
             "interface_language": "en-US",
             "timezone": "UTC",
         }
+        account = Account(name="User", email="user@example.com")
+        account.id = "account-123"
         with (
             app.test_request_context("/activate", method="POST", json=payload),
             patch(
@@ -147,7 +150,10 @@ class TestActivateApi:
             patch("controllers.console.auth.activate.extract_access_token", return_value="access-token"),
             patch(
                 "controllers.console.auth.activate.current_account_with_tenant",
-                return_value=SimpleNamespace(account=SimpleNamespace(id="account-123")),
+                return_value=AccountWithTenant(
+                    account=account,
+                    tenant_id="workspace-123",
+                ),
             ),
         ):
             response = unwrap(ActivateApi.post)(ActivateApi())

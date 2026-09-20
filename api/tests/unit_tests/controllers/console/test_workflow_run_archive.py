@@ -51,7 +51,6 @@ def _original(method):
 
 
 def _admission_injector(method):
-    method = inspect.getclosurevars(method).nonlocals["admitted"]
     while "inject_request_context" not in method.__code__.co_qualname:
         method = method.__wrapped__
     return method
@@ -101,12 +100,15 @@ def test_workflow_run_archive_endpoints_reject_non_manager_when_rbac_is_disabled
         (WorkflowRunArchiveDownloadFileApi.get, ("download-1",)),
     ],
 )
-def test_workflow_run_archive_endpoints_are_hidden_outside_cloud(
+def test_workflow_run_archive_endpoints_reject_unsupported_edition_after_initialization(
     monkeypatch: pytest.MonkeyPatch,
     method,
     args: tuple[object, ...],
 ) -> None:
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, LOGIN_DISABLED=True)
+    monkeypatch.setattr("controllers.console.wraps._is_setup_completed", lambda: True)
+    identity = AccountWithTenant(account=_account(TenantAccountRole.OWNER), tenant_id="tenant-1")
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: identity)
     app = Flask(__name__)
 
     with app.test_request_context(), pytest.raises(NotFound):

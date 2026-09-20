@@ -37,7 +37,6 @@ from models.agent_config_entities import AgentSoulConfig
 from models.model import AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from services import app_dsl_service
-from services.account_service import AccountService, TenantService
 from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY, make_portable_agent_package
 from services.agent.dsl_service import AgentDslService
 from services.app_dsl_service import (
@@ -55,6 +54,7 @@ from services.app_dsl_service import (
 from services.app_service import AppService, CreateAppParams
 from services.dsl_version import check_version_compatibility
 from services.errors.app import WorkflowNotFoundError
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 _DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -153,18 +153,16 @@ class TestAppDslService:
 
     def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         fake = Faker()
-        with patch("services.account_service.SystemFeatureService") as mock_account_feature_service:
+        with patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service:
             mock_account_feature_service.is_registration_allowed.return_value = True
-            account = AccountService.create_account(
+            account = account_fixtures.create_account(
                 email=fake.email(),
                 name=fake.name(),
                 interface_language="en-US",
                 password=generate_valid_password(fake),
                 session=db_session_with_containers,
             )
-            TenantService.create_owner_tenant_if_not_exist(
-                account, name=fake.company(), session=db_session_with_containers
-            )
+            account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
             tenant = account.current_tenant
             app_args = CreateAppParams(
                 name=fake.company(),

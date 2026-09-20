@@ -35,11 +35,11 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from extensions.ext_application_services import application_services
 from libs.oauth_bearer import Scope
 from models import App
 from models.enums import AppStatus
 from models.model import AppMode
-from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 
 
@@ -162,7 +162,8 @@ class AppListApi(Resource):
                 str(app.id), str(app.maintainer) if app.maintainer else None, account_id
             ):
                 return empty
-            tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
+            workspace = application_services().workspaces.management.get(workspace_id)
+            tenant_name = workspace.name if workspace else None
             item = AppListRow(
                 id=str(app.id),
                 name=app.name,
@@ -194,7 +195,8 @@ class AppListApi(Resource):
 
         tenant_name = None
         if pagination.items:
-            tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
+            workspace = application_services().workspaces.management.get(workspace_id)
+            tenant_name = workspace.name if workspace else None
 
         items = [
             AppListRow(

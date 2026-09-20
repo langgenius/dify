@@ -75,7 +75,6 @@ from models import Account, App
 from models.account import TenantStatus
 from models.model import AppMode, Site
 from models.workflow import Workflow
-from services.account_service import TenantService
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.app_ref_service import AppRefService
@@ -836,7 +835,7 @@ class TrialSitApi(Resource):
         if not site:
             raise Forbidden()
 
-        tenant = TenantService.get_tenant_by_id(app_model.tenant_id, session=session)
+        tenant = application_services().workspaces.identity.get_workspace(app_model.tenant_id)
         assert tenant
         if tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()

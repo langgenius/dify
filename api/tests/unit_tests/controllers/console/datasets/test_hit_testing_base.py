@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 import pytest
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services
+import services.errors.base
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -117,7 +117,7 @@ class TestGetAndValidateDataset:
             patch.object(
                 DatasetService,
                 "check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no access"),
+                side_effect=services.errors.base.NoPermissionError("no access"),
             ),
         ):
             with pytest.raises(Forbidden, match="no access"):

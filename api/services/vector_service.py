@@ -11,8 +11,8 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, Document
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile

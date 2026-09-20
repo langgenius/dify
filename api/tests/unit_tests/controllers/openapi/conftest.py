@@ -120,3 +120,12 @@ def admitted_bearer(
         member_id=str(uuid.uuid4()),
         headers={"Authorization": "Bearer dfoa_admitted"},
     )
+
+
+@pytest.fixture(autouse=True)
+def _account_services(monkeypatch: pytest.MonkeyPatch, account_application_services):
+    from controllers.openapi import apps, apps_permitted_external, oauth_device, oauth_device_sso, workspaces
+    from controllers.openapi.auth import loaders, subjects
+
+    for module in (apps, apps_permitted_external, oauth_device, oauth_device_sso, workspaces, loaders, subjects):
+        monkeypatch.setattr(module, "application_services", lambda: account_application_services)

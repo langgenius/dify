@@ -45,6 +45,7 @@ from controllers.openapi._models import (
     DeviceTokenResponse,
     WorkspacePayload,
 )
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import extract_remote_ip
@@ -56,7 +57,6 @@ from libs.rate_limit import (
     rate_limit,
 )
 from models import Account
-from services.account_service import TenantService
 from services.oauth_device_flow import (
     ACCOUNT_ISSUER_SENTINEL,
     DEFAULT_POLL_INTERVAL_SECONDS,
@@ -332,16 +332,16 @@ def _audit_cross_ip_if_needed(state) -> None:
 
 
 def _build_account_poll_payload(account, tenant, mint) -> PollPayload:
-    rows = TenantService.get_workspaces_for_account(str(account.id), session=db.session())
-    workspaces = [WorkspacePayload(id=str(t.id), name=t.name, role=getattr(m, "role", "")) for t, m in rows]
+    rows = application_services().workspaces.management.list_memberships(str(account.id))
+    workspaces = [WorkspacePayload(id=w.id, name=w.name, role=w.role or "") for w in rows]
     # Prefer active session tenant → DB-flagged current join → first membership.
     default_ws_id = None
     if tenant and any(w.id == str(tenant) for w in workspaces):
         default_ws_id = str(tenant)
     if default_ws_id is None:
-        for _t, m in rows:
-            if getattr(m, "current", False):
-                default_ws_id = str(m.tenant_id)
+        for workspace in rows:
+            if workspace.current:
+                default_ws_id = workspace.id
                 break
     if default_ws_id is None and workspaces:
         default_ws_id = workspaces[0].id

@@ -66,7 +66,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     RetrievalSetting as RagPipelineRetrievalSetting,
 )
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError

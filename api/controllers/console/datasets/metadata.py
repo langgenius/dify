@@ -5,7 +5,7 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from configs import dify_config
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.rbac import DatasetId, RBACCheck
@@ -102,7 +102,7 @@ class DatasetMetadataCreateApi(Resource):
         if not dify_config.RBAC_ENABLED:
             try:
                 DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
+            except services.errors.base.NoPermissionError as e:
                 raise Forbidden(str(e))
         metadata = MetadataService.get_dataset_metadatas(dataset, session)
         return dump_response(DatasetMetadataListResponse, metadata), 200

@@ -39,7 +39,7 @@ from services.app_dsl_service import (
 from services.app_import_source import download_app_import_source, try_read_yaml
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.system_feature_service import SystemFeatureService
 
 from .. import console_ns

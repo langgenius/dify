@@ -15,7 +15,7 @@ from controllers.openapi.auth.requirements import ResolveCaller
 from controllers.openapi.auth.subjects import subject_from_auth
 from libs.oauth_bearer import AuthContext, TokenType
 from models import Account, Tenant
-from services.account_service import AccountService, TenantService
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 _CLIENT_ID = "integration-cli"
@@ -36,14 +36,14 @@ def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
     """
 
     # Depend on db_session_with_containers so the app context / DB session is
-    # active for the real AccountService/TenantService calls below.
+    # active for the composed account and workspace services below.
     assert db_session_with_containers is not None
 
     def _make(*, with_owner_tenant: bool = True) -> Account:
         fake = Faker()
-        with patch("services.account_service.SystemFeatureService") as mock_feature_service:
+        with patch("services.account.login_adapters.SystemFeatureService") as mock_feature_service:
             mock_feature_service.is_registration_allowed.return_value = True
-            account = AccountService.create_account(
+            account = account_fixtures.create_account(
                 email=fake.email(),
                 name=fake.name(),
                 interface_language="en-US",
@@ -51,7 +51,7 @@ def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
                 session=db_session_with_containers,
             )
             if with_owner_tenant:
-                TenantService.create_owner_tenant_if_not_exist(
+                account_fixtures.create_owner_workspace(
                     account, name=fake.company(), session=db_session_with_containers
                 )
         return account
@@ -63,10 +63,10 @@ def add_tenant_for_account(
     account: Account, *, session: Session, role: str = "normal", name: str = "Second WS"
 ) -> Tenant:
     """Create an additional tenant and join ``account`` to it (real service calls)."""
-    with patch("services.account_service.SystemFeatureService") as mock_feature_service:
+    with patch("services.account.login_adapters.SystemFeatureService") as mock_feature_service:
         mock_feature_service.is_workspace_creation_allowed.return_value = True
-        tenant = TenantService.create_tenant(name=name, session=session)
-    TenantService.create_tenant_member(tenant, account, session, role=role)
+        tenant = account_fixtures.create_workspace(name=name, session=session)
+    account_fixtures.join_workspace(tenant, account, session, role=role)
     return tenant
 
 

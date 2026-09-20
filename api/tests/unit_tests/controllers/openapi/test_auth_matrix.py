@@ -77,6 +77,7 @@ import libs.rate_limit as rate_limit_module
 from app_factory import create_flask_app_with_configs
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi.auth import subjects
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -102,7 +103,6 @@ from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, Te
 from models.enums import EndUserType
 from models.model import App, EndUser
 from models.oauth import OAuthAccessToken
-from services.account_service import AccountService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus, SystemFeatureModel
@@ -1116,7 +1116,13 @@ def _run_case(
                 return_value=scenario.rbac_allows,
             )
         )
-        stack.enter_context(patch.object(AccountService, "get_account_by_email", return_value=_webapp_account()))
+        stack.enter_context(
+            patch.object(
+                subjects.application_services().accounts.identity,
+                "get_account_by_email",
+                return_value=_webapp_account(),
+            )
+        )
         client = app.test_client()
         return contextvars.copy_context().run(
             lambda: client.open(_url(route, world, scenario, bearer), method=route.method, headers=headers)

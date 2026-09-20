@@ -1,17 +1,70 @@
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
+from flask import Flask
 from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor import index_processor as index_processor_module
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor import IndexProcessor
+from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
+from core.rag.models.document import AttachmentDocument
 from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem
+from extensions.ext_application_services import ApplicationServices
+from extensions.ext_login import bind_account_loader
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
+
+
+class TestIndexingAccountLookup:
+    def test_indexes_attachments_with_the_registered_account_loader(
+        self, sqlite_session: Session, account_application_services: ApplicationServices
+    ) -> None:
+        app = Flask(__name__)
+        bind_account_loader(app, account_application_services.accounts.identity.load_user)
+        dataset, document = _persist_dataset_and_document(sqlite_session)
+        account = Account(name="Creator", email="creator@example.com")
+        account.id = document.created_by
+        tenant = Tenant(name="Creator workspace")
+        tenant.id = dataset.tenant_id
+        sqlite_session.add_all(
+            [
+                account,
+                tenant,
+                TenantAccountJoin(
+                    tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER, current=True
+                ),
+            ]
+        )
+        sqlite_session.commit()
+        attachment = AttachmentDocument(page_content="image", metadata={})
+
+        with (
+            app.app_context(),
+            patch.object(ParagraphIndexProcessor, "_get_content_files", return_value=[attachment]) as content_files,
+            patch("core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore", new=Mock()),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.Vector", new=Mock()),
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.calculate_segment_token_counts",
+                return_value=[1],
+            ),
+        ):
+            result = IndexProcessor().index_and_clean(
+                dataset_id=dataset.id,
+                document_id=document.id,
+                original_document_id=document.id,
+                chunks={"general_chunks": [{"content": "Image content"}]},
+                batch="batch-1",
+                session=sqlite_session,
+            )
+
+        assert result["display_status"] == "completed"
+        assert content_files.call_args.kwargs["current_user"].id == account.id
+        assert content_files.call_args.kwargs["session"] is sqlite_session
 
 
 def _persist_dataset_and_document(

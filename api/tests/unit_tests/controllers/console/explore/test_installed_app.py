@@ -13,6 +13,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import controllers.console.explore.installed_app as module
 import services.installed_app_service as service_module
+from extensions.ext_application_services import ApplicationServices
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp, RecommendedApp
@@ -135,7 +136,7 @@ def _controller_context(
 ) -> Generator[None]:
     with (
         patch.object(module.db, "session", database_session),
-        patch.object(module.TenantService, "get_user_role", return_value=role),
+        patch.object(module.application_services().workspaces.members, "get_role", return_value=role),
         patch.object(
             service_module.SystemFeatureService,
             "is_webapp_auth_enabled",
@@ -574,3 +575,8 @@ class TestInstalledAppApi:
         with app.test_request_context("/", json={}), patch.object(module.db, "session", database_session):
             result = unwrap(api.patch)(api, module.InstalledAppUpdatePayload(), installed)
         assert result["result"] == "success"
+
+
+@pytest.fixture(autouse=True)
+def _account_services(monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices) -> None:
+    monkeypatch.setattr(module, "application_services", lambda: account_application_services)

@@ -9,7 +9,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from controllers.console import console_ns
 from controllers.console.datasets.datasets_document import (
     DatasetDocumentListApi,
@@ -1506,7 +1506,7 @@ class TestDocumentPermissionCases(_UsesSQLiteSession):
             ),
             patch(
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("No permission"),
+                side_effect=services.errors.base.NoPermissionError("No permission"),
             ),
         ):
             with pytest.raises(Forbidden):
@@ -1580,7 +1580,7 @@ class TestDocumentPermissionCases(_UsesSQLiteSession):
             ),
             patch(
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("No permission"),
+                side_effect=services.errors.base.NoPermissionError("No permission"),
             ),
         ):
             with pytest.raises(Forbidden):

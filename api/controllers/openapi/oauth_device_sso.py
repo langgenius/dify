@@ -32,6 +32,7 @@ from werkzeug.exceptions import (
 from configs import dify_config
 from controllers.openapi import bp
 from controllers.openapi._models import ExtSubjectAssertionClaims
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import jws
@@ -53,7 +54,6 @@ from libs.rate_limit import (
     enforce,
     rate_limit,
 )
-from services.account_service import AccountService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.oauth_device_flow import (
     DeviceFlowRedis,
@@ -193,7 +193,7 @@ def _sso_complete_impl():
     if state.status is not DeviceFlowStatus.PENDING:
         return _device_error_redirect("sso_failed", user_code)
 
-    if AccountService.has_active_account_with_email(claims.email, session=db.session()):
+    if application_services().accounts.lifecycle.has_active_account_with_email(claims.email):
         _emit_external_rejection_audit(
             state,
             _RejectedClaims(subject_email=claims.email, subject_issuer=claims.issuer),
@@ -273,7 +273,7 @@ def approve_external():
     if state.status is not DeviceFlowStatus.PENDING:
         raise Conflict("user_code_not_pending")
 
-    if AccountService.has_active_account_with_email(claims.subject_email, session=db.session()):
+    if application_services().accounts.lifecycle.has_active_account_with_email(claims.subject_email):
         _emit_external_rejection_audit(state, claims, reason="email_belongs_to_dify_account")
         raise Forbidden("email_belongs_to_dify_account")
 

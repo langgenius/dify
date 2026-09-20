@@ -23,12 +23,12 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document, ParentChildStructureChunk
+from extensions.ext_login import load_account
 from libs import helper
 from models import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import ProcessRuleMode
-from services.account_service import AccountService
 from services.summary_index_service import SummaryIndexService
 
 logger = logging.getLogger(__name__)
@@ -298,8 +298,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     attachments.append(file_document)
                 doc.attachments = attachments
             else:
-                with session_factory.create_session() as account_session:
-                    account = AccountService.load_user(document.created_by, account_session)
+                account = load_account(document.created_by)
                 if not account:
                     raise ValueError("Invalid account")
                 doc.attachments = self._get_content_files(doc, current_user=account, session=session)

@@ -31,7 +31,7 @@ from flask import Flask
 from flask.views import MethodView
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 from werkzeug.test import TestResponse
 
@@ -52,15 +52,15 @@ from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, TokenType
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
-from services.account_service import TenantService as RealTenantService
-from services.errors.account import (
+from services.account_errors import AccountRegisterError
+from services.errors.base import NoPermissionError
+from services.errors.workspace import (
     AccountAlreadyInTenantError,
-    AccountNotLinkTenantError,
-    AccountRegisterError,
     CannotOperateSelfError,
+    InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
-    NoPermissionError,
     RoleAlreadyAssignedError,
+    WorkspaceNotLinkedError,
 )
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
@@ -150,20 +150,6 @@ def _persist_caller(session: Session, account_id: uuid.UUID) -> None:
     """
     session.add(_account(account_id=str(account_id), email="caller@example.com"))
     session.commit()
-
-
-def _tenant_service(**overrides) -> SimpleNamespace:
-    """Retain domain mutator doubles while delegating reads to the real service."""
-    methods: dict = {
-        "switch_tenant": RealTenantService.switch_tenant,
-        "get_tenant_members": RealTenantService.get_tenant_members,
-        "remove_member_from_tenant": Mock(),
-        "update_member_role": Mock(),
-        "get_tenant_by_id": RealTenantService.get_tenant_by_id,
-        "find_workspace_for_account": RealTenantService.find_workspace_for_account,
-    }
-    methods.update(overrides)
-    return SimpleNamespace(**methods)
 
 
 # ---------------------------------------------------------------------------
@@ -285,9 +271,9 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(
     )
 
     monkeypatch.setattr(
-        workspaces_module,
-        "TenantService",
-        _tenant_service(switch_tenant=Mock(side_effect=AccountNotLinkTenantError("…"))),
+        workspaces_module.application_services().workspaces.management,
+        "switch_membership",
+        Mock(side_effect=WorkspaceNotLinkedError("…")),
     )
 
     with pytest.raises(NotFound):
@@ -378,9 +364,7 @@ def test_invite_happy_path_returns_invite_url_and_member_id(monkeypatch: pytest.
     database_session.commit()
 
     monkeypatch.setattr(
-        workspaces_module,
-        "RegisterService",
-        SimpleNamespace(invite_new_member=Mock(return_value="tok-123")),
+        workspaces_module.application_services().workspaces.invitations, "invite", Mock(return_value="tok-123")
     )
 
     result = api.post.__handler__(
@@ -397,57 +381,6 @@ def test_invite_happy_path_returns_invite_url_and_member_id(monkeypatch: pytest.
     assert "token=tok-123" in result.invite_url
     assert "email=new%40example.com" in result.invite_url
     assert result.tenant_id == ws_id
-
-
-def test_invite_commits_the_invitation(
-    openapi_app: Flask,
-    sqlite_session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-):
-    """`RegisterService.invite_new_member` carries no commit of its own, so the
-    invitation persists only because the router commits the request's session.
-    The double stands in for that contract — it writes through the session it
-    is handed and returns a token — so this fails if the router stops committing.
-    """
-    ws_id = str(uuid.uuid4())
-    acct_id = uuid.uuid4()
-    invited_id = str(uuid.uuid4())
-
-    with sqlite_session_factory() as setup:
-        _persist_workspace(
-            setup,
-            ws_id,
-            [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, True)],
-        )
-        setup.add(_account(account_id=invited_id, email="new@example.com"))
-        setup.commit()
-
-    def _invite(*, tenant, email, language, role, inviter, session) -> str:
-        session.add(TenantAccountJoin(tenant_id=tenant.id, account_id=invited_id, role=TenantAccountRole.NORMAL))
-        return "tok-persist"
-
-    monkeypatch.setattr(workspaces_module, "RegisterService", SimpleNamespace(invite_new_member=_invite))
-    monkeypatch.setattr(
-        "controllers.openapi.auth.router.get_authenticator",
-        lambda: SimpleNamespace(authenticate=lambda _token: _auth_ctx(acct_id)),
-    )
-    monkeypatch.setattr("controllers.openapi.auth.pipelines._mount_flask_login", lambda _user: None)
-
-    response = openapi_app.test_client().post(
-        f"/openapi/v1/workspaces/{ws_id}/members",
-        json={"email": "new@example.com", "role": "normal"},
-        headers={"Authorization": "Bearer dfoa_matrix"},
-    )
-
-    assert response.status_code == 201, response.get_json()
-    with sqlite_session_factory() as verify:
-        persisted = verify.scalar(
-            select(TenantAccountJoin).where(
-                TenantAccountJoin.tenant_id == ws_id,
-                TenantAccountJoin.account_id == invited_id,
-            )
-        )
-    assert persisted is not None
 
 
 def _features(
@@ -493,11 +426,7 @@ def test_invite_blocked_by_saas_members_cap(monkeypatch: pytest.MonkeyPatch, dat
     )
 
     invite_mock = Mock()
-    monkeypatch.setattr(
-        workspaces_module,
-        "RegisterService",
-        SimpleNamespace(invite_new_member=invite_mock),
-    )
+    monkeypatch.setattr(workspaces_module.application_services().workspaces.invitations, "invite", invite_mock)
     monkeypatch.setattr(
         workspaces_module,
         "FeatureService",
@@ -531,11 +460,7 @@ def test_invite_blocked_by_ee_workspace_members_license(monkeypatch: pytest.Monk
     )
 
     invite_mock = Mock()
-    monkeypatch.setattr(
-        workspaces_module,
-        "RegisterService",
-        SimpleNamespace(invite_new_member=invite_mock),
-    )
+    monkeypatch.setattr(workspaces_module.application_services().workspaces.invitations, "invite", invite_mock)
     monkeypatch.setattr(
         workspaces_module,
         "FeatureService",
@@ -561,8 +486,9 @@ def test_invite_blocked_by_ee_workspace_members_license(monkeypatch: pytest.Monk
     [
         AccountAlreadyInTenantError("already in tenant"),
         AccountRegisterError("Workspace is not allowed to create."),
+        InvalidWorkspaceMemberRoleError("Dataset operators are not enabled."),
     ],
-    ids=["already_in_tenant", "register_error"],
+    ids=["already_in_tenant", "register_error", "invalid_role"],
 )
 def test_invite_400_on_registration_refusal(monkeypatch: pytest.MonkeyPatch, database_session: Session, exc: Exception):
     ws_id = str(uuid.uuid4())
@@ -576,9 +502,7 @@ def test_invite_400_on_registration_refusal(monkeypatch: pytest.MonkeyPatch, dat
     )
 
     monkeypatch.setattr(
-        workspaces_module,
-        "RegisterService",
-        SimpleNamespace(invite_new_member=Mock(side_effect=exc)),
+        workspaces_module.application_services().workspaces.invitations, "invite", Mock(side_effect=exc)
     )
 
     with pytest.raises(BadRequest):
@@ -610,11 +534,7 @@ def test_delete_member_happy_path(monkeypatch: pytest.MonkeyPatch, database_sess
     )
 
     remove_mock = Mock()
-    monkeypatch.setattr(
-        workspaces_module,
-        "TenantService",
-        _tenant_service(remove_member_from_tenant=remove_mock),
-    )
+    monkeypatch.setattr(workspaces_module.application_services().workspaces.members, "remove", remove_mock)
 
     result = api.delete.__handler__(
         api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, member_id=member_id
@@ -646,11 +566,7 @@ def test_delete_member_exception_mapping(monkeypatch, exc, expected, database_se
         ],
     )
 
-    monkeypatch.setattr(
-        workspaces_module,
-        "TenantService",
-        _tenant_service(remove_member_from_tenant=Mock(side_effect=exc)),
-    )
+    monkeypatch.setattr(workspaces_module.application_services().workspaces.members, "remove", Mock(side_effect=exc))
 
     with pytest.raises(expected):
         api.delete.__handler__(api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, member_id=member_id)
@@ -691,11 +607,7 @@ def test_update_role_happy_path(monkeypatch: pytest.MonkeyPatch, database_sessio
     )
 
     update_mock = Mock()
-    monkeypatch.setattr(
-        workspaces_module,
-        "TenantService",
-        _tenant_service(update_member_role=update_mock),
-    )
+    monkeypatch.setattr(workspaces_module.application_services().workspaces.members, "update_role", update_mock)
 
     result = api.patch.__handler__(
         api,
@@ -716,6 +628,7 @@ def test_update_role_happy_path(monkeypatch: pytest.MonkeyPatch, database_sessio
         (CannotOperateSelfError("cannot operate self"), BadRequest),
         (NoPermissionError("no permission"), BadRequest),
         (RoleAlreadyAssignedError("already"), BadRequest),
+        (InvalidWorkspaceMemberRoleError("Dataset operators are not enabled."), BadRequest),
         (MemberNotInTenantError("not in tenant"), NotFound),
     ],
 )
@@ -734,9 +647,7 @@ def test_update_role_exception_mapping(monkeypatch, exc, expected, database_sess
     )
 
     monkeypatch.setattr(
-        workspaces_module,
-        "TenantService",
-        _tenant_service(update_member_role=Mock(side_effect=exc)),
+        workspaces_module.application_services().workspaces.members, "update_role", Mock(side_effect=exc)
     )
 
     with pytest.raises(expected):

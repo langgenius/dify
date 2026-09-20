@@ -4,12 +4,10 @@ from typing import Any, Literal
 from flask import send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
@@ -21,6 +19,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -34,7 +33,6 @@ from services.entities.model_provider_entities import (
     ProviderResponse,
 )
 from services.model_provider_service import ModelProviderService
-from services.workspace_service import WorkspaceService
 
 
 class ParserModelList(BaseModel):
@@ -191,9 +189,8 @@ class ModelProviderCreditsApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str):
-        credit_pool = WorkspaceService.get_effective_credit_pool(tenant_id, session=session)
+    def get(self, tenant_id: str):
+        credit_pool = application_services().workspaces.management.get_effective_credit_pool(tenant_id)
         return dump_response(ModelProviderCreditsResponse, credit_pool)
 
 

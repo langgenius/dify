@@ -13,7 +13,7 @@ from controllers.openapi._models import AppDslImportPayload
 from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi
 from controllers.openapi.auth.spec import EndpointSpec
 from models import Account
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 
 
 class _EndpointView(Protocol):

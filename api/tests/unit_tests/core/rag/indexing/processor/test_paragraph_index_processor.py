@@ -17,6 +17,7 @@ from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from models.account import Account
 from models.dataset import Dataset, DocumentCreatedFrom, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DataSourceType
@@ -401,9 +402,11 @@ class TestParagraphIndexProcessor:
         chunk_without_files = SimpleNamespace(content="content-2", files=None)
         structure = SimpleNamespace(general_chunks=[chunk_with_files, chunk_without_files])
         session = self.session
-        account_session = self.session_factory()
+        loaded_account = Account(name="User", email="user@example.com")
+        load_user = Mock(return_value=loaded_account)
 
         with (
+            patch("core.rag.index_processor.processor.paragraph_index_processor.load_account", new=load_user),
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.MultimodalGeneralStructureChunk.model_validate",
                 return_value=structure,
@@ -411,14 +414,6 @@ class TestParagraphIndexProcessor:
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.helper.generate_text_hash",
                 return_value="hash",
-            ),
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.AccountService.load_user",
-                return_value=SimpleNamespace(id="user-1"),
-            ) as load_user,
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.session_factory.create_session",
-                return_value=nullcontext(account_session),
             ),
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="img", metadata={})]
@@ -433,8 +428,9 @@ class TestParagraphIndexProcessor:
             processor.index(dataset, dataset_document, {"general_chunks": []}, session)
 
         assert mock_files.call_count == 1
-        load_user.assert_called_once_with(dataset_document.created_by, account_session)
-        assert account_session is not session
+        load_user.assert_called_once_with(dataset_document.created_by)
+        assert mock_files.call_args.kwargs["current_user"] is loaded_account
+        assert mock_files.call_args.kwargs["session"] is session
 
     def test_index_multimodal_structure_requires_valid_account(
         self, processor: ParagraphIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
@@ -451,10 +447,7 @@ class TestParagraphIndexProcessor:
                 "core.rag.index_processor.processor.paragraph_index_processor.helper.generate_text_hash",
                 return_value="hash",
             ),
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.AccountService.load_user",
-                return_value=None,
-            ),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.load_account", return_value=None),
         ):
             with pytest.raises(ValueError, match="Invalid account"):
                 processor.index(dataset, dataset_document, {"general_chunks": []}, session)

@@ -15,11 +15,11 @@ from werkzeug.exceptions import Unauthorized
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import ExternalIdentity
 from controllers.openapi.auth.loaders import load_app, load_workspace, route_has_app
+from extensions.ext_application_services import application_services
 from libs.oauth_bearer import AuthContext, Scope, SubjectType
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser
-from services.account_service import AccountService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import WebAppAccessMode
 
@@ -86,7 +86,7 @@ class AccountSubject(Subject):
 
     @override
     def resolve_caller(self, ctx: Context, session: Session) -> Account:
-        account = AccountService.get_account_by_id(str(self.account_id), session=session)
+        account = application_services().accounts.identity.get_account_by_id(str(self.account_id))
         if account is None:
             raise Unauthorized("account not found")
         if ctx._workspace is not None:
@@ -142,7 +142,7 @@ class ExternalSsoSubject(Subject):
         identity = self.external_identity
         if identity is None:
             return None
-        account = AccountService.get_account_by_email(identity.email, session=session)
+        account = application_services().accounts.identity.get_account_by_email(identity.email)
         return str(account.id) if account is not None else None
 
 

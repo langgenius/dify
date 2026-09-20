@@ -18,7 +18,7 @@ from models.account import (
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.enums import DataSourceType
 from services.dataset_service import DatasetService
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 
 
 class DatasetUpdateTestDataFactory:

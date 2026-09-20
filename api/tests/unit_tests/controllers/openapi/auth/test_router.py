@@ -314,7 +314,9 @@ def test_an_account_token_reaches_the_view_with_a_resolved_context(
 
 
 def _rename_handler(*, ctx: Context) -> str:
-    ctx.caller.name = "renamed"
+    account = ctx.session.get(Account, ctx.caller.id)
+    assert account is not None
+    account.name = "renamed"
     return "ok"
 
 

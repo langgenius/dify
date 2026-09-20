@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from configs import dify_config
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.common.fields import SimpleResultResponse
@@ -202,7 +202,7 @@ class DatasetDocumentSegmentListApi(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
@@ -324,7 +324,7 @@ class DatasetDocumentSegmentListApi(Resource):
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segments(segment_ids, document, dataset, session)
         return "", 204
@@ -369,7 +369,7 @@ class DatasetDocumentSegmentApi(Resource):
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # check embedding model setting
@@ -455,7 +455,7 @@ class DatasetDocumentSegmentAddApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
         payload_dict = req_data.model_dump(exclude_none=True)
@@ -515,7 +515,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # check embedding model setting
@@ -594,7 +594,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
@@ -730,7 +730,7 @@ class ChildChunkAddApi(Resource):
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         # check embedding model setting
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
@@ -849,7 +849,7 @@ class ChildChunkAddApi(Resource):
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
@@ -902,7 +902,7 @@ class ChildChunkUpdateApi(Resource):
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         segment_id_str = str(segment_id)
         segment_ref, _ = _get_segment_for_document(session, dataset, document, segment_id_str)
@@ -957,7 +957,7 @@ class ChildChunkUpdateApi(Resource):
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         segment_id_str = str(segment_id)
         segment_ref, segment = _get_segment_for_document(session, dataset, document, segment_id_str)

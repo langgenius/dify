@@ -2,6 +2,7 @@ import os
 import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +10,10 @@ from flask import Flask
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
+
+if TYPE_CHECKING:
+    from extensions.ext_application_services import ApplicationServices
+    from tests.unit_tests.account_domain import AccountDomain
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -239,3 +244,50 @@ def persist_service_api_dataset_owner(
     """Persist the tenant-owner mapping resolved by dataset-token authentication."""
     session.add_all([tenant, tenant_account_join])
     session.commit()
+
+
+@pytest.fixture
+def account_domain(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> "AccountDomain":
+    from blinker import Signal
+
+    from enums import DeploymentEdition
+    from services.workspace import gateways
+    from tests.unit_tests.account_domain import build_account_domain
+
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
+    monkeypatch.setattr(gateways, "generate_key_pair", lambda _workspace_id: "public-key")
+    monkeypatch.setattr(gateways, "tenant_was_created", Signal())
+    return build_account_domain(sqlite_session_factory)
+
+
+@pytest.fixture
+def account_application_services(
+    sqlite_session_factory: sessionmaker[Session], account_domain: "AccountDomain"
+) -> "ApplicationServices":
+    from dataclasses import replace
+    from unittest.mock import Mock
+
+    from enums import DeploymentEdition
+    from extensions.ext_application_services import build_application_services
+    from extensions.ext_redis import RedisClientWrapper
+
+    services = build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=Mock(spec=RedisClientWrapper),
+    )
+    return replace(
+        services,
+        accounts=replace(services.accounts, lifecycle=account_domain.accounts),
+        workspaces=replace(
+            services.workspaces,
+            members=account_domain.members,
+            provisioning=account_domain.provisioning,
+            invitations=account_domain.invitations,
+        ),
+    )

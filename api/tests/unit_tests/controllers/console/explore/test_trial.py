@@ -37,6 +37,7 @@ from core.errors.error import (
 )
 from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
+from extensions.ext_application_services import ApplicationServices
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, StringVariable
 from models import Account, Tenant
@@ -1416,12 +1417,14 @@ class TestTrialSitApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.TenantService, "get_tenant_by_id", return_value=tenant) as get_tenant_by_id,
+            patch.object(
+                module.application_services().workspaces.identity, "get_workspace", return_value=tenant
+            ) as get_tenant_by_id,
         ):
             with pytest.raises(Forbidden):
                 method(api, sqlite_session, app_model)
 
-        get_tenant_by_id.assert_called_once_with("tenant-1", session=sqlite_session)
+        get_tenant_by_id.assert_called_once_with("tenant-1")
 
     def test_success(
         self,
@@ -1438,7 +1441,9 @@ class TestTrialSitApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.TenantService, "get_tenant_by_id", return_value=tenant) as get_tenant_by_id,
+            patch.object(
+                module.application_services().workspaces.identity, "get_workspace", return_value=tenant
+            ) as get_tenant_by_id,
             patch.object(module.SiteResponse, "model_validate") as mock_validate,
         ):
             mock_validate_result = MagicMock()
@@ -1447,7 +1452,7 @@ class TestTrialSitApi:
             result = method(api, sqlite_session, app_model)
 
         assert result == {"name": "test", "icon": "icon"}
-        get_tenant_by_id.assert_called_once_with("tenant-1", session=sqlite_session)
+        get_tenant_by_id.assert_called_once_with("tenant-1")
         mock_validate.assert_called_once_with(site)
 
 
@@ -1665,3 +1670,10 @@ class TestTrialChatTextApiExceptionHandlers:
                     account,
                     trial_app_chat,
                 )
+
+
+@pytest.fixture(autouse=True)
+def _account_services(monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices) -> None:
+    from controllers.console.explore import trial
+
+    monkeypatch.setattr(trial, "application_services", lambda: account_application_services)

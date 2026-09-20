@@ -15,7 +15,7 @@ from pydantic import (
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import (
@@ -612,7 +612,7 @@ class DatasetApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         data = _dump_service_dataset_detail(dataset, session=session)
         # check embedding setting
@@ -725,7 +725,6 @@ class DatasetApi(DatasetApiResource):
                 payload.partial_member_list,
                 session=session,
             )
-
         dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user, session=session)
 
         if dataset is None:
@@ -870,7 +869,7 @@ class DocumentStatusApi(DatasetApiResource):
         # Check user's permission
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         # Check dataset model setting

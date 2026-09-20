@@ -35,7 +35,7 @@ from controllers.console.error import (
     SeatsLimitExceeded,
 )
 from enums import DeploymentEdition
-from services.account_email_registration_service import AccountEmailRegistrationService
+from services.account.email_registration_service import AccountEmailRegistrationService
 from services.account_errors import (
     AccountEmailAlreadyInUseError,
     AccountEmailDomainSuspendedError,

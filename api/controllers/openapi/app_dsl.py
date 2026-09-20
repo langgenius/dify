@@ -23,8 +23,8 @@ from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
-from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.errors.base import NoPermissionError
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports")

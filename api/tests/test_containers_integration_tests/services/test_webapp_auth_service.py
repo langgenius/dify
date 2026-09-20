@@ -1,19 +1,16 @@
-import time
 import uuid
 from unittest.mock import ANY, patch
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import NotFound
 
-from libs.password import hash_password
+from extensions.ext_application_services import application_services
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, Site
-from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from services.webapp_auth_service import WebAppAuthService
-from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestWebAppAuthService:
@@ -60,7 +57,6 @@ class TestWebAppAuthService:
             tuple: (account, tenant) - Created account and tenant instances
         """
         fake = Faker()
-        import uuid
 
         # Create account with unique email to avoid collisions
         unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
@@ -96,69 +92,6 @@ class TestWebAppAuthService:
         account.current_tenant = tenant
 
         return account, tenant
-
-    def _create_test_account_with_password(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Helper method to create a test account with password for testing.
-
-        Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
-            mock_external_service_dependencies: Mock dependencies
-
-        Returns:
-            tuple: (account, tenant, password) - Created account, tenant and password
-        """
-        fake = Faker()
-        password = generate_valid_password(fake)
-
-        # Create account with password
-        import uuid
-
-        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
-        account = Account(
-            email=unique_email,
-            name=fake.name(),
-            interface_language="en-US",
-            status=AccountStatus.ACTIVE,
-        )
-
-        # Hash password
-        salt = b"test_salt_16_bytes"
-        password_hash = hash_password(password, salt)
-
-        # Convert to base64 for storage
-        import base64
-
-        account.password = base64.b64encode(password_hash).decode()
-        account.password_salt = base64.b64encode(salt).decode()
-
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
-
-        # Create tenant for the account
-        tenant = Tenant(
-            name=fake.company(),
-            status=TenantStatus.NORMAL,
-        )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
-
-        # Create tenant-account join
-        join = TenantAccountJoin(
-            tenant_id=tenant.id,
-            account_id=account.id,
-            role=TenantAccountRole.OWNER,
-            current=True,
-        )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
-
-        # Set current tenant for account
-        account.current_tenant = tenant
-
-        return account, tenant, password
 
     def _create_test_app_and_site(
         self, db_session_with_containers: Session, mock_external_service_dependencies, tenant
@@ -209,152 +142,6 @@ class TestWebAppAuthService:
 
         return app, site
 
-    def test_authenticate_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test successful authentication with valid email and password.
-
-        This test verifies:
-        - Proper authentication with valid credentials
-        - Correct account return
-        - Database state consistency
-        """
-        # Arrange: Create test data
-        account, tenant, password = self._create_test_account_with_password(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        # Act: Execute authentication
-        result = WebAppAuthService.authenticate(account.email, password, db_session_with_containers)
-
-        # Assert: Verify successful authentication
-        assert result is not None
-        assert result.id == account.id
-        assert result.email == account.email
-        assert result.name == account.name
-        assert result.status == AccountStatus.ACTIVE
-
-        # Verify database state
-        refreshed = db_session_with_containers.get(Account, result.id)
-        assert refreshed is not None
-        assert refreshed.password is not None
-        assert refreshed.password_salt is not None
-
-    def test_authenticate_account_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test authentication with non-existent email.
-
-        This test verifies:
-        - Proper error handling for non-existent accounts
-        - Correct exception type and message
-        """
-        # Arrange: Generate a guaranteed non-existent email
-        # Use UUID and timestamp to ensure uniqueness
-        unique_id = str(uuid.uuid4()).replace("-", "")
-        timestamp = str(int(time.time() * 1000000))  # microseconds
-        non_existent_email = f"nonexistent_{unique_id}_{timestamp}@test-domain-that-never-exists.invalid"
-
-        # Double-check this email doesn't exist in the database
-        existing_account = db_session_with_containers.query(Account).filter_by(email=non_existent_email).first()
-        assert existing_account is None, f"Test email {non_existent_email} already exists in database"
-
-        # Act & Assert: Verify proper error handling
-        with pytest.raises(AccountNotFoundError):
-            WebAppAuthService.authenticate(non_existent_email, "any_password", db_session_with_containers)
-
-    def test_authenticate_account_banned(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test authentication with banned account.
-
-        This test verifies:
-        - Proper error handling for banned accounts
-        - Correct exception type and message
-        """
-        # Arrange: Create banned account
-        fake = Faker()
-        password = generate_valid_password(fake)
-        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
-
-        account = Account(
-            email=unique_email,
-            name=fake.name(),
-            interface_language="en-US",
-            status=AccountStatus.BANNED,
-        )
-
-        # Hash password
-        salt = b"test_salt_16_bytes"
-        password_hash = hash_password(password, salt)
-
-        # Convert to base64 for storage
-        import base64
-
-        account.password = base64.b64encode(password_hash).decode()
-        account.password_salt = base64.b64encode(salt).decode()
-
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
-
-        # Act & Assert: Verify proper error handling
-        with pytest.raises(AccountLoginError) as exc_info:
-            WebAppAuthService.authenticate(account.email, password, db_session_with_containers)
-
-        assert "Account is banned." in str(exc_info.value)
-
-    def test_authenticate_invalid_password(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test authentication with invalid password.
-
-        This test verifies:
-        - Proper error handling for invalid passwords
-        - Correct exception type and message
-        """
-        # Arrange: Create account with password
-        account, tenant, correct_password = self._create_test_account_with_password(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        # Act & Assert: Verify proper error handling with wrong password
-        with pytest.raises(AccountPasswordError) as exc_info:
-            WebAppAuthService.authenticate(account.email, "wrong_password", db_session_with_containers)
-
-        assert "Invalid email or password." in str(exc_info.value)
-
-    def test_authenticate_account_without_password(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test authentication for account without password.
-
-        This test verifies:
-        - Proper error handling for accounts without password
-        - Correct exception type and message
-        """
-        # Arrange: Create account without password
-        fake = Faker()
-        import uuid
-
-        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
-
-        account = Account(
-            email=unique_email,
-            name=fake.name(),
-            interface_language="en-US",
-            status=AccountStatus.ACTIVE,
-        )
-
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
-
-        # Act & Assert: Verify proper error handling
-        with pytest.raises(AccountPasswordError) as exc_info:
-            WebAppAuthService.authenticate(account.email, "any_password", db_session_with_containers)
-
-        assert "Invalid email or password." in str(exc_info.value)
-
     def test_login_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful login and JWT token generation.
@@ -370,7 +157,9 @@ class TestWebAppAuthService:
         )
 
         # Act: Execute login
-        result = WebAppAuthService.login(account)
+        snapshot = application_services().accounts.lifecycle.get_account_by_id(account.id)
+        assert snapshot is not None
+        result = WebAppAuthService.login(snapshot)
 
         # Assert: Verify successful login
         assert result is not None
@@ -386,87 +175,6 @@ class TestWebAppAuthService:
         assert call_args["token_source"] == "webapp_login_token"
         assert call_args["auth_type"] == "internal"
         assert "exp" in call_args
-
-    def test_get_user_through_email_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful user retrieval through email.
-
-        This test verifies:
-        - Proper user retrieval by email
-        - Correct account return
-        - Database state consistency
-        """
-        # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        # Act: Execute user retrieval
-        result = WebAppAuthService.get_user_through_email(account.email, db_session_with_containers)
-
-        # Assert: Verify successful retrieval
-        assert result is not None
-        assert result.id == account.id
-        assert result.email == account.email
-        assert result.name == account.name
-        assert result.status == AccountStatus.ACTIVE
-
-        # Verify database state
-        refreshed = db_session_with_containers.get(Account, result.id)
-        assert refreshed is not None
-
-    def test_get_user_through_email_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test user retrieval with non-existent email.
-
-        This test verifies:
-        - Proper handling for non-existent users
-        - Correct return value (None)
-        """
-        # Arrange: Use non-existent email
-        non_existent_email = f"nonexistent_{uuid.uuid4().hex}@example.com"
-
-        # Act: Execute user retrieval
-        result = WebAppAuthService.get_user_through_email(non_existent_email, db_session_with_containers)
-
-        # Assert: Verify proper handling
-        assert result is None
-
-    def test_get_user_through_email_banned(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test user retrieval with banned account.
-
-        This test verifies:
-        - Proper error handling for banned accounts
-        - Correct exception type and message
-        """
-        # Arrange: Create banned account
-        fake = Faker()
-        import uuid
-
-        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
-
-        account = Account(
-            email=unique_email,
-            name=fake.name(),
-            interface_language="en-US",
-            status=AccountStatus.BANNED,
-        )
-
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
-
-        # Act & Assert: Verify proper error handling
-        with pytest.raises(Unauthorized) as exc_info:
-            WebAppAuthService.get_user_through_email(account.email, db_session_with_containers)
-
-        assert "Account is banned." in str(exc_info.value)
 
     def test_send_email_code_login_email_with_account(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -486,7 +194,9 @@ class TestWebAppAuthService:
         )
 
         # Act: Execute email code login email sending
-        result = WebAppAuthService.send_email_code_login_email(account=account, language="en-US")
+        snapshot = application_services().accounts.lifecycle.get_account_by_id(account.id)
+        assert snapshot is not None
+        result = WebAppAuthService.send_email_code_login_email(account=snapshot, language="en-US")
 
         # Assert: Verify successful email sending
         assert result is not None

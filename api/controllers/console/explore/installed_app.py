@@ -19,6 +19,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
@@ -27,7 +28,6 @@ from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App, InstalledApp, RecommendedApp
 from models.model import AppMode, IconType
-from services.account_service import TenantService
 from services.installed_app_service import InstalledAppCursor, InstalledAppService
 
 
@@ -169,7 +169,7 @@ class InstalledAppsListApi(Resource):
             session=db.session,
         )
 
-        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant, session=db.session())
+        current_user.role = application_services().workspaces.members.get_role(current_tenant_id, current_user.id)
         installed_app_list = [
             _installed_app_response_data(
                 installed_app,
@@ -257,7 +257,7 @@ class InstalledAppApi(InstalledAppResource):
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")
 
-        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant, session=db.session())
+        current_user.role = application_services().workspaces.members.get_role(current_tenant_id, current_user.id)
         return dump_response(
             InstalledAppResponse,
             _installed_app_response_data(

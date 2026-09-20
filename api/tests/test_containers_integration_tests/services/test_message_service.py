@@ -24,7 +24,7 @@ class TestMessageService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
+            patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
             patch("services.message_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.message_service.WorkflowService") as mock_workflow_service,
             patch("services.message_service.AdvancedChatAppConfigManager") as mock_app_config_manager,
@@ -88,16 +88,16 @@ class TestMessageService:
         mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant first
-        from services.account_service import AccountService, TenantService
+        from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Setup app creation arguments
@@ -699,18 +699,16 @@ class TestMessageService:
         message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Create another account
-        from services.account_service import AccountService, TenantService
+        from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 
-        other_account = AccountService.create_account(
+        other_account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(
-            other_account, name=fake.company(), session=db_session_with_containers
-        )
+        account_fixtures.create_owner_workspace(other_account, name=fake.company(), session=db_session_with_containers)
 
         # Test getting message with different user
         with pytest.raises(MessageNotExistsError):

@@ -4,60 +4,31 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from libs.helper import TokenManager
 from libs.passport import PassportService
-from libs.password import compare_password
-from models import Account, AccountStatus
 from models.enums import EndUserType
 from models.model import App, EndUser, Site
-from services.account_service import AccountService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import PERMISSION_CHECK_MODES, EnterpriseService
-from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
+from services.entities.account_entities import AccountSnapshot
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 
 
 class WebAppAuthService:
     """Service for web app authentication."""
 
-    @staticmethod
-    def authenticate(email: str, password: str, session: Session) -> Account:
-        """authenticate account with email and password"""
-        account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
-        if not account:
-            raise AccountNotFoundError()
-
-        if account.status == AccountStatus.BANNED:
-            raise AccountLoginError("Account is banned.")
-
-        if account.password is None or not compare_password(password, account.password, account.password_salt):
-            raise AccountPasswordError("Invalid email or password.")
-
-        return account
-
     @classmethod
-    def login(cls, account: Account) -> str:
+    def login(cls, account: AccountSnapshot) -> str:
         access_token = cls._get_account_jwt_token(account=account)
 
         return access_token
 
     @classmethod
-    def get_user_through_email(cls, email: str, session: Session):
-        account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
-        if not account:
-            return None
-
-        if account.status == AccountStatus.BANNED:
-            raise Unauthorized("Account is banned.")
-
-        return account
-
-    @classmethod
     def send_email_code_login_email(
-        cls, account: Account | None = None, email: str | None = None, language: str = "en-US"
+        cls, account: AccountSnapshot | None = None, email: str | None = None, language: str = "en-US"
     ):
         email = account.email if account else email
         if email is None:
@@ -109,7 +80,7 @@ class WebAppAuthService:
         return end_user
 
     @classmethod
-    def _get_account_jwt_token(cls, account: Account) -> str:
+    def _get_account_jwt_token(cls, account: AccountSnapshot) -> str:
         exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
         exp = int(exp_dt.timestamp())
 
