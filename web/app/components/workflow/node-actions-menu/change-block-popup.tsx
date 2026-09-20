@@ -1,8 +1,9 @@
 import type { CommonNodeType, Node, OnSelectBlock } from '@/app/components/workflow/types'
+import { PopoverClose, PopoverPopup, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { intersection } from 'es-toolkit/array'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockSelector from '@/app/components/workflow/block-selector'
+import { BlockSelectorContent } from '@/app/components/workflow/block-selector'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
@@ -12,18 +13,22 @@ import { useAvailableBlocks } from '../hooks/use-available-blocks'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useIsChatMode } from '../hooks/use-workflow'
 
-type ChangeBlockMenuTriggerProps = {
+type ChangeBlockPopupProps = {
   nodeId: string
   nodeData: Node['data']
   sourceHandle: string
+  onComplete: () => void
 }
 
-export function ChangeBlockMenuTrigger({
+export function ChangeBlockPopup({
   nodeId,
   nodeData,
   sourceHandle,
-}: ChangeBlockMenuTriggerProps) {
+  onComplete,
+}: ChangeBlockPopupProps) {
   const { t } = useTranslation()
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const completedRef = useRef(false)
   const { handleNodeChange } = useNodesInteractions()
   const nodeCatalogType = getNodeCatalogType(nodeData)
   const { availablePrevBlocks, availableNextBlocks } = useAvailableBlocks(
@@ -53,33 +58,42 @@ export function ChangeBlockMenuTrigger({
     return availableNextBlocks
   }, [availablePrevBlocks, availableNextBlocks])
 
+  const handleComplete = useCallback(() => {
+    completedRef.current = true
+    onComplete()
+  }, [onComplete])
+
   const handleSelect = useCallback<OnSelectBlock>(
     (type, pluginDefaultValue) => {
+      handleComplete()
       handleNodeChange(nodeId, type, sourceHandle, pluginDefaultValue)
     },
-    [handleNodeChange, nodeId, sourceHandle],
-  )
-
-  const triggerElement = (
-    <button
-      type="button"
-      className="mx-1 flex h-8 w-[calc(100%-8px)] cursor-pointer items-center rounded-lg border-0 bg-transparent px-2 text-left text-sm text-text-secondary outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
-    >
-      {t(($) => $['panel.changeBlock'], { ns: 'workflow' })}
-    </button>
+    [handleNodeChange, nodeId, sourceHandle, handleComplete],
   )
 
   return (
-    <BlockSelector
-      onSelect={handleSelect}
-      trigger={triggerElement}
-      popupClassName="min-w-[240px]"
-      availableBlocksTypes={availableNodes}
-      showStartTab={showStartTab}
-      ignoreNodeIds={ignoreNodeIds}
-      forceEnableStartTab={nodeData.type === BlockEnum.Start}
-      allowUserInputSelection={allowStartNodeSelection}
-      isolateKeyboardEvents
-    />
+    <PopoverPopup
+      initialFocus={searchInputRef}
+      finalFocus={() => !completedRef.current}
+      className="w-100 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg"
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <PopoverTitle className="sr-only">
+        {t(($) => $['panel.changeBlock'], { ns: 'workflow' })}
+      </PopoverTitle>
+      <BlockSelectorContent
+        onSelect={handleSelect}
+        onRequestClose={handleComplete}
+        searchInputRef={searchInputRef}
+        availableBlocksTypes={availableNodes}
+        showStartTab={showStartTab}
+        ignoreNodeIds={ignoreNodeIds}
+        forceEnableStartTab={nodeData.type === BlockEnum.Start}
+        allowUserInputSelection={allowStartNodeSelection}
+      />
+      <PopoverClose className="sr-only" tabIndex={-1}>
+        {t(($) => $['operation.close'], { ns: 'common' })}
+      </PopoverClose>
+    </PopoverPopup>
   )
 }

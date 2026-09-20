@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "ट्रिगर घटनाएँ",
   "upgrade.addChunks.description": "आप इस योजना के लिए टुकड़े जोड़ने की सीमा तक पहुँच चुके हैं।",
   "upgrade.addChunks.title": "अधिक चंक्स जोड़ने के लिए अपग्रेड करें",
+  "upgrade.agentRestore.description": "आपकी वर्तमान योजना में एजेंट ऐप संस्करण पुनर्स्थापना उपलब्ध नहीं है।",
+  "upgrade.agentRestore.title": "एजेंट ऐप संस्करणों को पुनर्स्थापित करने के लिए अपग्रेड करें",
   "upgrade.uploadMultipleFiles.description": "एक साथ कई दस्तावेज़ अपलोड करें और प्रति फ़ाइल अधिकतम साइज़ सीमा बढ़ाकर 50 MB करें।",
   "upgrade.uploadMultipleFiles.title": "बैच अपलोड और बड़ी फ़ाइलों की सुविधा अनलॉक करने के लिए अपग्रेड करें",
   "upgrade.uploadMultiplePages.description": "आपने अपलोड की सीमा तक पहुँच लिया है — आपके वर्तमान प्लान पर एक समय में केवल एक ही दस्तावेज़ चुना और अपलोड किया जा सकता है।",
