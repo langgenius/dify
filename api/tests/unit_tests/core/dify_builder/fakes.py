@@ -308,6 +308,10 @@ class FakeDifyPort:
         self.published: bool = False
         self.verify_pass: bool = True
         self.run_draft_inputs: Inputs = {}
+        # Settable outputs seeded onto the success-path NodeOutput's `outputs`,
+        # so a passing run_draft has something for a caller (e.g. the test
+        # result card) to show. Empty by default -- most tests don't care.
+        self.run_outputs: Inputs = {}
 
     def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
         return copy.deepcopy(self.graph), self.hash
@@ -348,7 +352,7 @@ class FakeDifyPort:
             return Run(
                 dify_run_id="dify-run-1",
                 status="succeeded",
-                per_node=[NodeOutput(node_id="output", status="success")],
+                per_node=[NodeOutput(node_id="output", status="success", outputs=dict(self.run_outputs))],
             )
         on_event(NodeEvent(node_id="output", status="failed", error="still broken"))
         return Run(
