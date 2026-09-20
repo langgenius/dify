@@ -143,7 +143,7 @@ def test_discover_resources_keeps_only_ids_the_model_actually_picked(monkeypatch
 def test_bind_resources_names_bound_label(monkeypatch):
     monkeypatch.setattr(build.resources, "list_tenant_resources", lambda t: resources.TenantResources(  # noqa: ARG005
         models=[], datasets=[resources.ResourceRef(id="kb-1", label="Company KB")], tools=[]))
-    out = build.bind_resources(None, "t1", ["Retrieve knowledge"], ["kb-1"], "audited")
+    out = build.bind_resources(None, "t1", ["Retrieve knowledge"], ["kb-1"])
     assert any("Company KB" in item for item in out)
 
 

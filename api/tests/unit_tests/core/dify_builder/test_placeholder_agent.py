@@ -132,7 +132,7 @@ def test_propose_plan_v1_and_bind_resources_return_ordered_strings():
     v1 = a.propose_plan_v1({"currency": "USD"})
     assert v1
     assert all(isinstance(x, str) for x in v1)
-    v2 = a.bind_resources(v1, ["kb-company"], "audited")
+    v2 = a.bind_resources(v1, ["kb-company"])
     assert v2
     assert all(isinstance(x, str) for x in v2)
 

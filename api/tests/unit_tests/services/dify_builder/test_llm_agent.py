@@ -61,8 +61,8 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
         seen["discover_resources"] = (model, tenant_id, plan_items)
         return []
 
-    def mock_bind_resources(model, tenant_id, plan_items, resource_ids, conflict_policy):
-        seen["bind_resources"] = (model, tenant_id, plan_items, resource_ids, conflict_policy)
+    def mock_bind_resources(model, tenant_id, plan_items, resource_ids):
+        seen["bind_resources"] = (model, tenant_id, plan_items, resource_ids)
         return []
 
     def mock_build_nodes(tenant_id, model_config, plan_items, resource_ids=()):
@@ -89,8 +89,8 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     agent.discover_resources(["step"])
     assert seen["discover_resources"] == ("MODEL", "t1", ["step"])
 
-    agent.bind_resources(["step"], ["rid"], "audited")
-    assert seen["bind_resources"] == ("MODEL", "t1", ["step"], ["rid"], "audited")
+    agent.bind_resources(["step"], ["rid"])
+    assert seen["bind_resources"] == ("MODEL", "t1", ["step"], ["rid"])
 
     agent.build_nodes(["step"])
     assert seen["build_nodes"] == ("t1", model_config, ["step"], ())
