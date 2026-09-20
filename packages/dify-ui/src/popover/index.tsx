@@ -25,6 +25,14 @@ type PopoverCloseProps = BasePopover.Close.Props
 type PopoverTitleProps = BasePopover.Title.Props
 type PopoverDescriptionProps = BasePopover.Description.Props
 
+type PopoverBackdropProps = Omit<BasePopover.Backdrop.Props, 'className'> & {
+  className?: string
+}
+
+function PopoverBackdrop({ className, ...props }: PopoverBackdropProps) {
+  return <BasePopover.Backdrop className={cn('fixed inset-0 z-50', className)} {...props} />
+}
+
 type PopoverPositionerProps = Omit<BasePopover.Positioner.Props, 'className' | 'side' | 'align'> & {
   className?: string
   placement?: Placement
@@ -103,6 +111,7 @@ export {
   createPopoverHandle,
   Popover,
   PopoverArrow,
+  PopoverBackdrop,
   PopoverClose,
   PopoverContent,
   PopoverDescription,
@@ -114,6 +123,7 @@ export {
 }
 export type {
   PopoverArrowProps,
+  PopoverBackdropProps,
   PopoverCloseProps,
   PopoverContentProps,
   PopoverDescriptionProps,
