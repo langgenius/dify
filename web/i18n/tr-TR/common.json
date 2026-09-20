@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "Kullanan uygulamalar",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "IP adresiniz kontrol edilemiyor. Lütfen tekrar deneyin.",
+  "settings.ipPolicyCurrentIpLoading": "IP adresiniz kontrol ediliyor…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "Bu uygulamalar herhangi bir IP adresinden erişime izin verecek. Bu işlem geri alınamaz.",
   "settings.ipPolicyDeleteConfirm": "“{{name}}” silinsin mi?",

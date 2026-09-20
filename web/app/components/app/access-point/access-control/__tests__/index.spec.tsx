@@ -104,6 +104,18 @@ const renderEntry = ({
   )
 }
 
+const metadataResponse = (request: Request) => {
+  if (request.url.endsWith('/network-access-groups/current-ip'))
+    return Response.json({ client_ip: '203.0.113.42' })
+}
+
+beforeEach(() => {
+  const fallback = vi.mocked(globalThis.fetch).getMockImplementation()!
+  vi.mocked(globalThis.fetch).mockImplementation(
+    async (input, init) => metadataResponse(new Request(input, init)) ?? fallback(input, init),
+  )
+})
+
 const getChip = () => screen.getByRole('button', { name: /Access Control/ })
 
 describe('AccessControlEntry', () => {
@@ -279,6 +291,8 @@ describe('AccessControlEntry', () => {
     const posted: Array<{ method: string; url: string; body: unknown }> = []
     vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
       const request = input instanceof Request ? input : new Request(String(input), init)
+      const metadata = metadataResponse(request)
+      if (metadata) return metadata
       const bodyText =
         request.method === 'GET' || request.method === 'HEAD' ? '' : await request.text()
       posted.push({
@@ -286,10 +300,19 @@ describe('AccessControlEntry', () => {
         url: request.url,
         body: bodyText ? JSON.parse(bodyText) : null,
       })
-      return new Response(JSON.stringify({ group: created }), {
-        status: 201,
-        headers: { 'content-type': 'application/json' },
-      })
+      if (request.method === 'GET') {
+        return request.url.endsWith('/network-access-groups')
+          ? Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [created] })
+          : Response.json({
+              tenant_id: 'workspace-1',
+              app_id: 'app-1',
+              entitled: true,
+              binding: null,
+              available_access_points: ['webapp', 'service_api', 'mcp'],
+              effective_enabled: false,
+            })
+      }
+      return Response.json({ group: created }, { status: 201 })
     })
     renderEntry({ plan: 'professional' })
 

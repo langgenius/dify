@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "사용 중인 앱",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "IP 주소를 확인할 수 없습니다. 다시 시도하세요.",
+  "settings.ipPolicyCurrentIpLoading": "IP 주소 확인 중…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "이 앱들은 모든 IP 주소에서 접근할 수 있게 됩니다. 이 작업은 되돌릴 수 없습니다.",
   "settings.ipPolicyDeleteConfirm": "“{{name}}”을(를) 삭제하시겠습니까?",

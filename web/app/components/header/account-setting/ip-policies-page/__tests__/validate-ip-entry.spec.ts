@@ -4,6 +4,7 @@ import {
   collectIpAddresses,
   IP_POLICY_CIDR_MAX_COUNT,
   IP_POLICY_NAME_MAX_LENGTH,
+  isSameIpAddress,
   toAllowedCidr,
   validateIpEntry,
 } from '../validate-ip-entry'
@@ -96,6 +97,24 @@ describe('validateIpEntry', () => {
   ])('blocks malformed embedded IPv4 or CIDR: %s', (entry) => {
     expect(validateIpEntry(entry).kind).toBe('invalid')
     expect(canSubmitIpPolicy('Office', [entry])).toBe(false)
+  })
+})
+
+describe('isSameIpAddress', () => {
+  it.each([
+    ['203.0.113.42/32', '203.0.113.42'],
+    ['::ffff:203.0.113.42/128', '203.0.113.42'],
+    ['::ffff:cb00:712a', '203.0.113.42'],
+    ['2001:0DB8:0:0:0:0:0:1/128', '2001:db8::1'],
+  ])('recognizes duplicate host entries %s and %s', (entry, ip) => {
+    expect(isSameIpAddress(entry, ip)).toBe(true)
+  })
+
+  it('keeps ranges and distinct addresses separate from host entries', () => {
+    expect(isSameIpAddress('203.0.113.0/24', '203.0.113.42')).toBe(false)
+    expect(isSameIpAddress('2001:db8::/32', '2001:db8::1')).toBe(false)
+    expect(isSameIpAddress('203.0.113.43', '203.0.113.42')).toBe(false)
+    expect(isSameIpAddress('invalid', '203.0.113.42')).toBe(false)
   })
 })
 

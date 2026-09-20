@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "生效应用",
   "settings.ipPolicyCreate": "创建",
   "settings.ipPolicyCurrentIp": "你当前的 IP 是 {{ip}}",
+  "settings.ipPolicyCurrentIpError": "无法检查您的 IP 地址，请重试。",
+  "settings.ipPolicyCurrentIpLoading": "正在检查您的 IP 地址…",
   "settings.ipPolicyDeleteBound": "该策略正在使用中",
   "settings.ipPolicyDeleteBoundDescription": "正在引用此策略的应用将完全开放访问。此操作无法撤销。",
   "settings.ipPolicyDeleteConfirm": "删除“{{name}}”？",

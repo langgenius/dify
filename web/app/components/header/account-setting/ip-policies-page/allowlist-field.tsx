@@ -8,15 +8,23 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useTranslation } from 'react-i18next'
 import { createAllowlistRow } from './allowlist-row'
-import { validateIpEntry } from './validate-ip-entry'
+import { IP_POLICY_CIDR_MAX_COUNT, isSameIpAddress, validateIpEntry } from './validate-ip-entry'
 
 type AllowlistFieldProps = {
   entries: AllowlistRow[]
   currentIp?: string
+  currentIpStatus?: 'loading' | 'error'
+  onRetryCurrentIp?: () => void
   onEntriesChange: (entries: AllowlistRow[]) => void
 }
 
-export function AllowlistField({ entries, currentIp, onEntriesChange }: AllowlistFieldProps) {
+export function AllowlistField({
+  entries,
+  currentIp,
+  currentIpStatus,
+  onRetryCurrentIp,
+  onEntriesChange,
+}: AllowlistFieldProps) {
   const { t } = useTranslation()
 
   const errorMessage = (code: IpEntryErrorCode, max?: 32 | 128) => {
@@ -54,13 +62,14 @@ export function AllowlistField({ entries, currentIp, onEntriesChange }: Allowlis
 
   const addCurrentIp = () => {
     if (!currentIp) return
-    if (entries.some((entry) => entry.value.trim() === currentIp)) return
+    if (entries.some((entry) => isSameIpAddress(entry.value, currentIp))) return
     const emptyRow = entries.find((entry) => entry.value.trim() === '')
     if (emptyRow) {
       updateEntry(emptyRow.id, currentIp)
       return
     }
-    onEntriesChange([...entries, createAllowlistRow(currentIp)])
+    if (entries.length < IP_POLICY_CIDR_MAX_COUNT)
+      onEntriesChange([...entries, createAllowlistRow(currentIp)])
   }
 
   return (
@@ -119,22 +128,42 @@ export function AllowlistField({ entries, currentIp, onEntriesChange }: Allowlis
         variant="secondary"
         size="small"
         className="shrink-0 self-start"
+        disabled={entries.length >= IP_POLICY_CIDR_MAX_COUNT}
         onClick={() => onEntriesChange([...entries, createAllowlistRow()])}
       >
         <span aria-hidden className="i-ri-add-line size-4" />
         {t(($) => $['settings.ipPolicyAddEntry'], { ns: 'common' })}
       </Button>
 
+      {currentIpStatus && (
+        <p role="status" className="system-xs-regular text-text-tertiary">
+          {currentIpStatus === 'loading'
+            ? t(($) => $['settings.ipPolicyCurrentIpLoading'], { ns: 'common' })
+            : t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
+          {currentIpStatus === 'error' && onRetryCurrentIp && (
+            <Button type="button" variant="ghost" size="small" onClick={onRetryCurrentIp}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          )}
+        </p>
+      )}
+
       {currentIp && (
         <p className="flex shrink-0 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary">
           <span>{t(($) => $['settings.ipPolicyCurrentIp'], { ns: 'common', ip: currentIp })}</span>
-          <button
+          <Button
             type="button"
-            className="system-xs-medium text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            variant="ghost-accent"
+            size="small"
+            disabled={
+              entries.some((entry) => isSameIpAddress(entry.value, currentIp)) ||
+              (entries.length >= IP_POLICY_CIDR_MAX_COUNT &&
+                entries.every((entry) => entry.value.trim() !== ''))
+            }
             onClick={addCurrentIp}
           >
             {t(($) => $['settings.ipPolicyAddCurrentIp'], { ns: 'common' })}
-          </button>
+          </Button>
         </p>
       )}
     </Field>

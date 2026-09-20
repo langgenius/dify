@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "使用中的應用程式",
   "settings.ipPolicyCreate": "建立",
   "settings.ipPolicyCurrentIp": "你目前的 IP 是 {{ip}}",
+  "settings.ipPolicyCurrentIpError": "無法檢查您的 IP 位址，請重試。",
+  "settings.ipPolicyCurrentIpLoading": "正在檢查您的 IP 位址…",
   "settings.ipPolicyDeleteBound": "該策略正在使用中",
   "settings.ipPolicyDeleteBoundDescription": "這些應用程式將允許從任何 IP 位址存取。此操作無法復原。",
   "settings.ipPolicyDeleteConfirm": "確定刪除 “{{name}}”？",

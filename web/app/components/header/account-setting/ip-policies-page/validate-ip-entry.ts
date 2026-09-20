@@ -139,6 +139,26 @@ export function collectAllowedCidrs(entries: readonly string[]) {
   return collectIpAddresses(entries).map(toAllowedCidr)
 }
 
+/** Compare host entries, including compressed and IPv4-mapped IPv6, without matching ranges. */
+export function isSameIpAddress(entry: string, ip: string): boolean {
+  const normalize = (raw: string) => {
+    const value = raw.trim()
+    if (validateIpEntry(value).kind !== 'valid') return null
+    const [address = '', prefix] = value.split('/')
+    const ipv6 = address.includes(':')
+    if (prefix !== undefined && Number(prefix) !== (ipv6 ? 128 : 32)) return null
+    if (!ipv6) return address
+    const canonical = new URL(`http://[${address}]/`).hostname.slice(1, -1)
+    const mapped = /^::ffff:([0-9a-f]+):([0-9a-f]+)$/.exec(canonical)
+    if (!mapped) return canonical
+    const high = Number.parseInt(mapped[1] ?? '', 16)
+    const low = Number.parseInt(mapped[2] ?? '', 16)
+    return [high >> 8, high & 255, low >> 8, low & 255].join('.')
+  }
+  const address = normalize(entry)
+  return address !== null && address === normalize(ip)
+}
+
 export function splitPolicySummary(addresses: readonly string[]): {
   listed: readonly string[]
   moreCount: number

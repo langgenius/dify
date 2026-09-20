@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "ใช้งานโดย",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "ไม่สามารถตรวจสอบที่อยู่ IP ของคุณได้ โปรดลองอีกครั้ง",
+  "settings.ipPolicyCurrentIpLoading": "กำลังตรวจสอบที่อยู่ IP ของคุณ…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "แอปเหล่านี้จะอนุญาตให้เข้าถึงจากที่อยู่ IP ใดก็ได้ การดำเนินการนี้ไม่สามารถยกเลิกได้",
   "settings.ipPolicyDeleteConfirm": "ลบ “{{name}}” หรือไม่?",

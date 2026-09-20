@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "Được sử dụng bởi",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "Không thể kiểm tra địa chỉ IP của bạn. Vui lòng thử lại.",
+  "settings.ipPolicyCurrentIpLoading": "Đang kiểm tra địa chỉ IP của bạn…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "Các ứng dụng này sẽ cho phép truy cập từ mọi địa chỉ IP. Không thể hoàn tác thao tác này.",
   "settings.ipPolicyDeleteConfirm": "Xóa “{{name}}”?",

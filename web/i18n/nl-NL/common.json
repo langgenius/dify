@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "Gebruikt door",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "Je IP-adres kan niet worden gecontroleerd. Probeer het opnieuw.",
+  "settings.ipPolicyCurrentIpLoading": "Je IP-adres wordt gecontroleerd…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "Deze apps staan dan toegang vanaf elk IP-adres toe. Dit kan niet ongedaan worden gemaakt.",
   "settings.ipPolicyDeleteConfirm": "“{{name}}” verwijderen?",

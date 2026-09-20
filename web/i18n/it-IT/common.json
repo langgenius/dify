@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "Utilizzata da",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "Impossibile verificare il tuo indirizzo IP. Riprova.",
+  "settings.ipPolicyCurrentIpLoading": "Verifica dell’indirizzo IP…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "Queste app consentiranno l’accesso da qualsiasi indirizzo IP. Questa azione non può essere annullata.",
   "settings.ipPolicyDeleteConfirm": "Eliminare “{{name}}”?",

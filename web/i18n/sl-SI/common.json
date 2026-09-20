@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "Uporabljajo",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "Vašega naslova IP ni mogoče preveriti. Poskusite znova.",
+  "settings.ipPolicyCurrentIpLoading": "Preverjanje vašega naslova IP…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "Te aplikacije bodo dovolile dostop s katerega koli naslova IP. Tega dejanja ni mogoče razveljaviti.",
   "settings.ipPolicyDeleteConfirm": "Izbrišem “{{name}}”?",

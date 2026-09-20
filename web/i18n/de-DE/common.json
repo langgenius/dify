@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "Verwendet von",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "Ihre IP-Adresse konnte nicht überprüft werden. Bitte versuchen Sie es erneut.",
+  "settings.ipPolicyCurrentIpLoading": "Ihre IP-Adresse wird überprüft…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "Diese Apps erlauben dann den Zugriff von jeder IP-Adresse. Dies kann nicht rückgängig gemacht werden.",
   "settings.ipPolicyDeleteConfirm": "“{{name}}” löschen?",

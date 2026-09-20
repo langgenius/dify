@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "Digunakan oleh",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "Alamat IP Anda tidak dapat diperiksa. Coba lagi.",
+  "settings.ipPolicyCurrentIpLoading": "Memeriksa alamat IP Anda…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "Aplikasi ini akan mengizinkan akses dari alamat IP mana pun. Tindakan ini tidak dapat dibatalkan.",
   "settings.ipPolicyDeleteConfirm": "Hapus “{{name}}”?",

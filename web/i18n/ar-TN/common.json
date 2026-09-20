@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "مستخدمة في",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "تعذّر التحقق من عنوان IP الخاص بك. يرجى المحاولة مرة أخرى.",
+  "settings.ipPolicyCurrentIpLoading": "جارٍ التحقق من عنوان IP الخاص بك…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "ستسمح هذه التطبيقات بالوصول من أي عنوان IP. لا يمكن التراجع عن هذا الإجراء.",
   "settings.ipPolicyDeleteConfirm": "هل تريد حذف “{{name}}”؟",

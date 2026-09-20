@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "Використовується",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "Не вдалося перевірити вашу IP-адресу. Спробуйте ще раз.",
+  "settings.ipPolicyCurrentIpLoading": "Перевірка вашої IP-адреси…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "Ці застосунки дозволятимуть доступ із будь-якої IP-адреси. Цю дію неможливо скасувати.",
   "settings.ipPolicyDeleteConfirm": "Видалити “{{name}}”?",

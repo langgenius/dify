@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "استفاده‌شده توسط",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "بررسی نشانی IP شما ممکن نیست. لطفاً دوباره تلاش کنید.",
+  "settings.ipPolicyCurrentIpLoading": "در حال بررسی نشانی IP شما…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "این برنامه‌ها دسترسی از هر نشانی IP را مجاز خواهند کرد. این اقدام قابل بازگشت نیست.",
   "settings.ipPolicyDeleteConfirm": "آیا “{{name}}” حذف شود؟",

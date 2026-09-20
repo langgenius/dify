@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "ນຳໃຊ້ໂດຍ",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "ບໍ່ສາມາດກວດສອບທີ່ຢູ່ IP ຂອງທ່ານໄດ້. ກະລຸນາລອງໃໝ່.",
+  "settings.ipPolicyCurrentIpLoading": "ກຳລັງກວດສອບທີ່ຢູ່ IP ຂອງທ່ານ…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "ແອັບເຫຼົ່ານີ້ຈະອະນຸຍາດໃຫ້ເຂົ້າເຖິງຈາກທີ່ຢູ່ IP ໃດກໍໄດ້. ການດຳເນີນການນີ້ບໍ່ສາມາດຍົກເລີກໄດ້.",
   "settings.ipPolicyDeleteConfirm": "ລຶບ “{{name}}” ຫຼືບໍ່?",

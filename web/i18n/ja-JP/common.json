@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "使用中のアプリ",
   "settings.ipPolicyCreate": "作成",
   "settings.ipPolicyCurrentIp": "現在の IP は {{ip}} です",
+  "settings.ipPolicyCurrentIpError": "IP アドレスを確認できません。もう一度お試しください。",
+  "settings.ipPolicyCurrentIpLoading": "IP アドレスを確認しています…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "このポリシーを使用しているアプリには、すべての IP アドレスからアクセスできるようになります。この操作は元に戻せません。",
   "settings.ipPolicyDeleteConfirm": "「{{name}}」を削除しますか？",

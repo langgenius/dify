@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "Utilizată de",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "Adresa IP nu poate fi verificată. Încercați din nou.",
+  "settings.ipPolicyCurrentIpLoading": "Se verifică adresa IP…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "Aceste aplicații vor permite accesul de la orice adresă IP. Această acțiune nu poate fi anulată.",
   "settings.ipPolicyDeleteConfirm": "Ștergeți “{{name}}”?",

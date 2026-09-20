@@ -18,6 +18,9 @@ vi.unmock('react-i18next')
 describe('IpPoliciesPage', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
+    vi.mocked(globalThis.fetch).mockImplementation(async () =>
+      Response.json({ client_ip: '203.0.113.42' }),
+    )
     await createInstance()
       .use(initReactI18next)
       .init({
@@ -207,7 +210,11 @@ describe('IpPoliciesPage', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       }
-      expect(globalThis.fetch).not.toHaveBeenCalled()
+      expect(
+        vi
+          .mocked(globalThis.fetch)
+          .mock.calls.filter(([input, init]) => new Request(input, init).method !== 'GET'),
+      ).toHaveLength(0)
     },
   )
 
@@ -516,6 +523,7 @@ describe('IpPoliciesPage', () => {
       }
     },
   )
+
   it.each(['owner', 'admin'] as const)(
     'opens edit directly from the policy row for %s',
     async (role) => {

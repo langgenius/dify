@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "उपयोगकर्ता ऐप",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "आपके IP पते की जाँच नहीं हो सकी। कृपया फिर से प्रयास करें।",
+  "settings.ipPolicyCurrentIpLoading": "आपके IP पते की जाँच की जा रही है…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "ये ऐप किसी भी IP पते से एक्सेस की अनुमति देंगे। इस कार्रवाई को पूर्ववत नहीं किया जा सकता।",
   "settings.ipPolicyDeleteConfirm": "“{{name}}” हटाएं?",

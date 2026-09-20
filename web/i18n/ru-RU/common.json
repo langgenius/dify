@@ -570,6 +570,8 @@
   "settings.ipPolicyColumnUsedBy": "Используется",
   "settings.ipPolicyCreate": "Create",
   "settings.ipPolicyCurrentIp": "Your current IP is {{ip}}",
+  "settings.ipPolicyCurrentIpError": "Не удалось проверить ваш IP-адрес. Повторите попытку.",
+  "settings.ipPolicyCurrentIpLoading": "Проверка вашего IP-адреса…",
   "settings.ipPolicyDeleteBound": "This policy is in use",
   "settings.ipPolicyDeleteBoundDescription": "Эти приложения станут доступны с любого IP-адреса. Это действие нельзя отменить.",
   "settings.ipPolicyDeleteConfirm": "Удалить “{{name}}”?",
