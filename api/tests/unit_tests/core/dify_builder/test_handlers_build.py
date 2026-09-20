@@ -122,7 +122,12 @@ def test_build_registry_maps_capability_check():
     assert build_registry()[PcState.BUILD_CAPABILITY_CHECK] is handle_capability_check
 
 
-def test_goal_analysis_submit_requirements_advances_to_initial_plan_with_plan_v1():
+def test_submitting_requirements_goes_straight_to_resources():
+    """The decision-free find_resources gate at build.initial_plan is gone --
+    submit_requirements now tail-calls the shared discovery helper directly,
+    so the resource card arrives in the SAME step and no plan card is shown
+    (the plan is still computed internally; it just isn't displayed until
+    build.resource_recommendation confirms it, per task 3's renumbering)."""
     from core.dify_builder.handlers_build import handle_goal_analysis
 
     env, repo = _new_env()
@@ -146,20 +151,26 @@ def test_goal_analysis_submit_requirements_advances_to_initial_plan_with_plan_v1
     )
     res = handle_goal_analysis(env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1])
 
-    assert res.next == PcState.BUILD_INITIAL_PLAN
+    assert res.next == PcState.BUILD_RESOURCE_RECOMMENDATION
     assert res.context.requirements["currency"] == "EUR"  # payload overrides
     assert res.context.requirements["audience"] == "board"  # new listed key merged
     assert res.context.requirements["metrics"] == "revenue"  # untouched key survives (not blind-overwrite)
     assert "junk" not in res.context.requirements  # non-listed key excluded
     assert res.context.plan_version_tag == "v1"
-    assert res.context.plan_items
+    assert res.context.plan_items  # the plan is still drafted internally
     kinds = [i.kind for i in res.items]
     assert "decision" in kinds
-    assert "plan" in kinds
+    assert "resource_select" in kinds
     assert "assistant_turn" in kinds
+    assert "plan" not in kinds  # no plan card is shown a second time
 
 
-def test_initial_plan_find_resources_advances_to_resource_recommendation():
+def test_continue_adjusting_still_reaches_resource_discovery():
+    """handle_initial_plan is now reachable only via the continue_adjusting/
+    retry_after_revert loop-back (build.initial_plan has no straight-through
+    entry and no projected UI action -- see test_initial_plan_state_offers_no_
+    actions in test_service.py). Driving it directly with find_resources must
+    still reach the resource card via the shared discovery helper."""
     from core.dify_builder.handlers_build import handle_initial_plan
 
     env, repo = _new_env()
@@ -1000,22 +1011,20 @@ def test_full_build_flow_goal_to_complete():
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_GOAL_ANALYSIS
 
-    # 2) submit_requirements -> build.initial_plan
+    # 2) submit_requirements -> build.resource_recommendation directly (the
+    # decision-free find_resources gate at build.initial_plan is gone --
+    # handle_goal_analysis tail-calls the shared discovery helper itself)
     reqs_action = Action(kind="submit_requirements", payload={"currency": "USD"}, base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
-    assert out.current_state == PcState.BUILD_INITIAL_PLAN
-
-    # 3) find_resources -> build.resource_recommendation
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
 
-    # 4) confirm_resources -> build.plan_approval
+    # 3) confirm_resources -> build.plan_approval
     confirm_payload = {"resource_ids": ["kb-company"]}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_PLAN_APPROVAL
 
-    # 5) approve_plan (-> approve_repair) -> THE BUILD -> build.execution
+    # 4) approve_plan (-> approve_repair) -> THE BUILD -> build.execution
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_EXECUTION
     # the graph was actually built.
@@ -1023,23 +1032,23 @@ def test_full_build_flow_goal_to_complete():
     assert len(graph["nodes"]) == 4
     assert len(graph["edges"]) == 3
 
-    # 6) run_test -> build.await_testdata (gate; no test input prepared yet)
+    # 5) run_test -> build.await_testdata (gate; no test input prepared yet)
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
 
-    # 6b) provide_testdata (mock) -> build.test_and_repair (working, auto) -> rest at build.review
+    # 5b) provide_testdata (mock) -> build.test_and_repair (working, auto) -> rest at build.review
     testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
     out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_REVIEW
 
-    # 7) publish_workflow -> build.publish (auto) -> governance_feedback (auto)
+    # 6) publish_workflow -> build.publish (auto) -> governance_feedback (auto)
     # -> rests at build.await_learning (default policy "ask")
     publish_action = Action(kind="publish_workflow", base_version=out.version)
     out = runner.advance(s.id, Turn(action=publish_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_AWAIT_LEARNING
     assert dify.published is True
 
-    # 8) skip_learning -> build.complete
+    # 7) skip_learning -> build.complete
     out = runner.advance(s.id, Turn(action=Action(kind="skip_learning", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_COMPLETE
 
@@ -1079,9 +1088,10 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
 
     goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
+    # submit_requirements now goes straight to build.resource_recommendation
+    # (the decision-free find_resources gate at build.initial_plan is gone).
     reqs_action = Action(kind="submit_requirements", base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
     confirm_payload = {"resource_ids": ["kb-company"]}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
@@ -1120,9 +1130,10 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
 
     goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
+    # submit_requirements now goes straight to build.resource_recommendation
+    # (the decision-free find_resources gate at build.initial_plan is gone).
     reqs_action = Action(kind="submit_requirements", base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
     confirm_payload = {"resource_ids": ["kb-company"]}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
@@ -1259,10 +1270,11 @@ def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
     out = runner.advance(
         s.id, Turn(action=Action(kind="send_goal", payload={"text": "Build it"}, base_version=1), actor=_actor())
     )
+    # submit_requirements now goes straight to build.resource_recommendation
+    # (the decision-free find_resources gate at build.initial_plan is gone).
     out = runner.advance(
         s.id, Turn(action=Action(kind="submit_requirements", base_version=out.version), actor=_actor())
     )
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
     confirm_payload = {"resource_ids": ["kb-company"]}
     out = runner.advance(
         s.id,

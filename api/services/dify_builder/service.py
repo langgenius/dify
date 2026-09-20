@@ -186,17 +186,15 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             id="submit_requirements",
             label="Submit requirements",
             kind=ActionKind.PRIMARY,
-            next_state="build.initial_plan",
-        ),
-    ],
-    PcState.BUILD_INITIAL_PLAN: [
-        UiAction(
-            id="find_resources",
-            label="Find resources",
-            kind=ActionKind.PRIMARY,
             next_state="build.resource_recommendation",
         ),
     ],
+    # build.initial_plan offers no UI action: the straight-through path no
+    # longer stops there (submit_requirements now goes directly to resource
+    # discovery -- see handlers_build.handle_goal_analysis). The state itself
+    # survives only as the continue_adjusting/retry_after_revert loop-back
+    # target; those re-entries still require find_resources at the handler
+    # level (_BACKEND_ACTIONS_FOR below), just not as a projected UI action.
     PcState.BUILD_RESOURCE_RECOMMENDATION: [
         UiAction(
             id="confirm_resources", label="Confirm resources", kind=ActionKind.PRIMARY, next_state="build.plan_approval"

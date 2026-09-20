@@ -190,7 +190,11 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
 
 def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) On ``submit_requirements`` merge the form payload, propose
-    plan v1, and transition to build.initial_plan emitting the plan card."""
+    plan v1, and go straight to resource discovery (build.resource_recommendation)
+    via the shared ``_discover_and_offer_resources`` helper. The decision-free
+    find_resources gate that used to sit at build.initial_plan (showing the
+    same plan a second time) is gone; that state is now reached only via the
+    continue_adjusting/retry_after_revert loop-back (handle_initial_plan)."""
     kind = action_kind(turn)
     if kind != "submit_requirements":
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
@@ -213,41 +217,26 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     progress.activate("build-draft-plan")
     fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
     fc.plan_version_tag = "v1"
+    progress.finish()
 
     decision_items = append_card(fc, DecisionItem(text="Submitted requirements"))
-    plan_items = append_card(
-        fc,
-        PlanCard(
-            title="Build plan",
-            version_tag="v1",
-            items=list(fc.plan_items),
-        ),
-    )
-    execution = progress.finish()
-    turn_items = append_card(
-        fc,
-        AssistantTurnItem(
-            turn_id=progress.operation_id,
-            stage_id=str(s.current_state),
-            execution=execution,
-            reply_text="Here's the initial plan.",
-            cards=["plan"],
-        ),
-    )
+    resource_items, next_state = _discover_and_offer_resources(env, s, fc)
     return StepResult(
-        next=PcState.BUILD_INITIAL_PLAN,
+        next=next_state,
         context=fc,
-        items=[*decision_items, *plan_items, *turn_items],
+        items=[*decision_items, *resource_items],
     )
 
 
-def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) On ``find_resources`` discover the (canned, ready) resource
-    and transition to build.resource_recommendation."""
-    kind = action_kind(turn)
-    if kind != "find_resources":
-        return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
+def _discover_and_offer_resources(
+    env: Env, s: Session, fc: DifyBuilderContext
+) -> tuple[list[ConversationItem], PcState]:
+    """Discover tenant resources and emit the selection card.
 
+    Shared by the straight-through path (requirements submitted) and the
+    continue_adjusting path, which re-enters at BUILD_INITIAL_PLAN. One
+    implementation so the two entries cannot drift apart.
+    """
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,
@@ -287,11 +276,20 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             cards=["resource_select"],
         ),
     )
-    return StepResult(
-        next=PcState.BUILD_RESOURCE_RECOMMENDATION,
-        context=fc,
-        items=[*rs_items, *turn_items],
-    )
+    return [*rs_items, *turn_items], PcState.BUILD_RESOURCE_RECOMMENDATION
+
+
+def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    """(waiting) On ``find_resources`` discover the (canned, ready) resource
+    and transition to build.resource_recommendation. Reachable only via the
+    continue_adjusting/retry_after_revert loop-back -- the straight-through
+    path no longer stops here (see handle_goal_analysis)."""
+    kind = action_kind(turn)
+    if kind != "find_resources":
+        return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
+
+    items, next_state = _discover_and_offer_resources(env, s, fc)
+    return StepResult(next=next_state, context=fc, items=items)
 
 
 def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
