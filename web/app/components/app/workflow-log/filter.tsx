@@ -66,6 +66,8 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           { value: 'failed', name: 'Fail' },
           { value: 'stopped', name: 'Stop' },
           { value: 'partial-succeeded', name: 'Partial Success' },
+          { value: 'running', name: 'Running' },
+          { value: 'paused', name: 'Paused' },
         ]}
       />
       <Chip

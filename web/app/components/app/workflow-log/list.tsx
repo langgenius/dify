@@ -97,7 +97,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="warning" />
-          <span className="text-util-colors-warning-warning-600">Pending</span>
+          <span className="text-util-colors-warning-warning-600">Paused</span>
         </div>
       )
     }

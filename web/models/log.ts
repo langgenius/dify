@@ -234,7 +234,7 @@ type WorkflowLogDetails = {
 export type WorkflowRunDetail = {
   id: string
   version: string
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded' | 'paused'
   error?: string
   triggered_from?: WorkflowRunTriggeredFrom
   elapsed_time: number
@@ -283,7 +283,7 @@ export type WorkflowRunDetailResponse = {
   }
   inputs: string
   inputs_truncated: boolean
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded' | 'paused'
   outputs?: string
   outputs_truncated: boolean
   outputs_full_content?: {

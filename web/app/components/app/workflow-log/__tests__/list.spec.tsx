@@ -3,7 +3,7 @@
  *
  * Tests the workflow log list component which displays:
  * - Table of workflow run logs with sortable columns
- * - Status indicators (success, failed, stopped, running, partial-succeeded)
+ * - Status indicators (success, failed, stopped, running, partial-succeeded, paused)
  * - Trigger display for workflow apps
  * - Drawer with run details
  * - Loading states
@@ -304,11 +304,27 @@ describe('WorkflowAppLogList', () => {
       expect(screen.getByText('Running'))!.toBeInTheDocument()
     })
 
+    it('should render paused status correctly', () => {
+      const logs = createMockLogsResponse([
+        createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({
+            status: 'paused',
+          }),
+        }),
+      ])
+
+      render(
+        <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
+      )
+
+      expect(screen.getByText('Paused'))!.toBeInTheDocument()
+    })
+
     it('should render partial-succeeded status correctly', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           workflow_run: createMockWorkflowRun({
-            status: 'partial-succeeded' as WorkflowRunDetail['status'],
+            status: 'partial-succeeded',
           }),
         }),
       ])

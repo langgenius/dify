@@ -2,7 +2,7 @@
  * Filter Component Tests
  *
  * Tests the workflow log filter component which provides:
- * - Status filtering (all, succeeded, failed, stopped, partial-succeeded)
+ * - Status filtering (all, succeeded, failed, stopped, partial-succeeded, running, paused)
  * - Time period selection
  * - Keyword search
  */
@@ -122,6 +122,8 @@ describe('Filter', () => {
         expect(screen.getByText('Fail'))!.toBeInTheDocument()
         expect(screen.getByText('Stop'))!.toBeInTheDocument()
         expect(screen.getByText('Partial Success'))!.toBeInTheDocument()
+        expect(screen.getByText('Running'))!.toBeInTheDocument()
+        expect(screen.getByText('Paused'))!.toBeInTheDocument()
       })
     })
 
@@ -152,6 +154,24 @@ describe('Filter', () => {
 
       expect(mockTrackEvent).toHaveBeenCalledWith('workflow_log_filter_status_selected', {
         workflow_log_filter_status: 'failed',
+      })
+    })
+
+    it.each([
+      ['running', 'Running'],
+      ['paused', 'Paused'],
+    ])('should pass the %s status to the query params', async (statusValue, label) => {
+      const user = userEvent.setup()
+      const setQueryParams = vi.fn()
+
+      render(<Filter queryParams={createDefaultQueryParams()} setQueryParams={setQueryParams} />)
+
+      await user.click(screen.getByText('All'))
+      await user.click(await screen.findByText(label))
+
+      expect(setQueryParams).toHaveBeenCalledWith({
+        status: statusValue,
+        period: '2',
       })
     })
 
@@ -186,6 +206,8 @@ describe('Filter', () => {
       ['failed', 'Fail'],
       ['stopped', 'Stop'],
       ['partial-succeeded', 'Partial Success'],
+      ['running', 'Running'],
+      ['paused', 'Paused'],
     ])('should display correct label for %s status', (statusValue, expectedLabel) => {
       render(
         <Filter
