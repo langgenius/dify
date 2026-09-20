@@ -13,8 +13,13 @@ from types import SimpleNamespace
 from core.dify_builder.models import NodeEvent, NodeOutput, Run
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from services.dify_builder.run_mapping import (
+    TRUNCATED_STREAM_ERROR,
+    is_unfinished_run_status,
     map_run_result,
+    map_unknown_run_outcome,
     node_event_from_stream_chunk,
+    run_id_from_stream_chunk,
+    run_result_data_from_run_row,
     run_result_data_from_terminal_chunk,
     stream_chunk_as_mapping,
     to_node_event,
@@ -325,3 +330,85 @@ def test_workflow_paused_backfills_the_run_id_map_run_result_requires():
     # A paused run is never green.
     assert run.status == "failed"
     assert run.dify_run_id == "run-9"
+
+
+# ---- truncated streams: the run id, and the database as the authority --------
+
+
+def test_every_non_ping_frame_carries_the_run_id_at_the_top_level():
+    """``convert_stream_full_response`` stamps ``workflow_run_id`` on each frame."""
+    chunk = {"event": "node_started", "workflow_run_id": "run-1", "data": {"node_id": "n1"}}
+
+    assert run_id_from_stream_chunk(chunk) == "run-1"
+
+
+def test_a_node_frames_data_id_is_never_read_as_the_run_id():
+    """On a node frame ``data["id"]`` is the NODE-EXECUTION id, not the run id."""
+    chunk = {"event": "node_started", "data": {"id": "node-exec-1", "node_id": "n1"}}
+
+    assert run_id_from_stream_chunk(chunk) == ""
+
+
+def test_workflow_level_frames_fall_back_to_their_data_id():
+    assert run_id_from_stream_chunk({"event": "workflow_started", "data": {"id": "run-1"}}) == "run-1"
+    assert run_id_from_stream_chunk({"event": "workflow_finished", "data": {"id": "run-2"}}) == "run-2"
+
+
+def test_paused_frames_fall_back_to_their_data_workflow_run_id():
+    chunk = {"event": "workflow_paused", "data": {"workflow_run_id": "run-9"}}
+
+    assert run_id_from_stream_chunk(chunk) == "run-9"
+
+
+def test_a_frame_with_no_run_id_yields_empty_string():
+    assert run_id_from_stream_chunk({"event": "ping"}) == ""
+    assert run_id_from_stream_chunk({"event": "node_started", "data": "not-a-mapping"}) == ""
+
+
+def test_run_row_maps_to_the_shape_map_run_result_expects():
+    row = SimpleNamespace(
+        id="run-1",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=361.0,
+        total_tokens=99,
+    )
+
+    data = run_result_data_from_run_row(row)
+
+    assert data == {"id": "run-1", "status": "succeeded", "error": "", "elapsed_time": 361.0, "total_tokens": 99}
+    run = map_run_result(data, [])
+    assert run.status == "succeeded"
+    assert run.dify_run_id == "run-1"
+    assert run.elapsed_ms == 361000
+
+
+def test_unfinished_statuses_are_the_ones_that_mean_not_over_yet():
+    assert is_unfinished_run_status("running") is True
+    assert is_unfinished_run_status("scheduled") is True
+    assert is_unfinished_run_status(WorkflowExecutionStatus.RUNNING) is True
+    assert is_unfinished_run_status("") is True
+    assert is_unfinished_run_status(None) is True
+    assert is_unfinished_run_status("succeeded") is False
+    assert is_unfinished_run_status("failed") is False
+    assert is_unfinished_run_status(WorkflowExecutionStatus.PARTIAL_SUCCEEDED) is False
+
+
+def test_an_unknown_outcome_is_running_with_a_visible_reason_not_failed():
+    """A run we merely lost sight of must not read as a failed run."""
+    run = map_unknown_run_outcome({"id": "run-1", "status": "running"}, [])
+
+    assert run.status == "running"
+    assert run.status != "failed"
+    assert run.error == TRUNCATED_STREAM_ERROR
+    assert run.dify_run_id == "run-1"
+
+
+def test_an_unknown_outcome_still_carries_the_per_node_rows_it_has():
+    node = _node_exec("node-1", "code", "Code", WorkflowNodeExecutionStatus.SUCCEEDED, outputs_dict={"x": 1})
+
+    run = map_unknown_run_outcome({"id": "run-1"}, [node])
+
+    assert run.status == "running"
+    assert [n.node_id for n in run.per_node] == ["node-1"]
+    assert run.per_node[0].outputs == {"x": 1}

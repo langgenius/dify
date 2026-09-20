@@ -13,7 +13,9 @@ The goal is to pin the adapter's ORCHESTRATION and the P2 plan's OSS gotchas:
   ``invoke_from=InvokeFrom.DEBUGGER`` and ``streaming=True``, emits an
   ``on_event`` per node frame *as the run streams*, consumes that stream
   outside the ``Session`` block, and still reads the node-execution rows once
-  at the end for the ``run_mapping``-mapped ``Run``.
+  at the end for the ``run_mapping``-mapped ``Run``. A stream that ends without
+  a terminal frame never fabricates a failure -- it recovers the run's real
+  status from the database, or reports the outcome as unknown.
 - ``publish`` calls ``publish_workflow`` AND sets ``app.workflow_id`` AND
   commits -- omitting the ``workflow_id`` update makes publish a silent
   no-op, so all three are asserted together.
@@ -33,6 +35,7 @@ from core.dify_builder.models import Actor, ChangedNode, MutationIntent, NodeEve
 from core.dify_builder.ports import DifyPort
 from models.account import Account
 from models.model import App
+from services.dify_builder import run_mapping
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializedError
 from services.errors.app import WorkflowHashNotEqualError
@@ -711,8 +714,126 @@ def test_run_draft_maps_a_paused_stream_to_a_failed_run(mock_session: MagicMock)
     assert run.dify_run_id == "run-9"
 
 
-def test_run_draft_survives_a_stream_that_never_reaches_a_terminal_event(mock_session: MagicMock):
-    """No terminal frame -> no run id -> skip the node-execution read, report failed."""
+# ---- run_draft: truncated streams must never fabricate a failure -------------
+
+
+def _truncated_stream() -> list[str]:
+    """A stream that stamps the run id and then just stops -- no terminal frame.
+
+    This is what the subscription's idle timeout (or a dead publishing worker)
+    leaves behind.
+    """
+    return [
+        _sse({"event": "workflow_started", "workflow_run_id": "run-1", "data": {"id": "run-1"}}),
+        _sse(
+            {
+                "event": "node_started",
+                "workflow_run_id": "run-1",
+                "data": {"id": "node-exec-1", "node_id": "node-1", "title": "Code"},
+            }
+        ),
+    ]
+
+
+def test_a_truncated_stream_reports_the_runs_real_status_from_the_database(mock_session: MagicMock):
+    """THE regression this guards: a slow run that SUCCEEDED must not read as failed.
+
+    The stream can end early while the run is still fine. Synthesising "failed"
+    would send a perfectly good build into the repair loop.
+    """
+    _configure_default_identity(mock_session)
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = iter(_truncated_stream())
+        node_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        node_repo.get_executions_by_workflow_run.return_value = [_node_exec()]
+        run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
+        run_repo.get_workflow_run_by_id.return_value = SimpleNamespace(
+            id="run-1", status="succeeded", error=None, elapsed_time=361.0, total_tokens=99
+        )
+
+        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+
+    # The run id came off a non-terminal frame, so both reads could still happen.
+    node_repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-1")
+    run_repo.get_workflow_run_by_id.assert_called_once_with(tenant_id="tenant-1", app_id="app-1", run_id="run-1")
+    assert run.status == "succeeded"
+    assert run.error == ""
+    assert run.dify_run_id == "run-1"
+    assert run.tokens == 99
+    assert run.per_node[0].node_id == "node-1"
+
+
+def test_a_truncated_stream_reports_a_real_database_failure_as_failed(mock_session: MagicMock):
+    """The flip side: a genuine failure recovered from the row still reads failed."""
+    _configure_default_identity(mock_session)
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = iter(_truncated_stream())
+        node_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        node_repo.get_executions_by_workflow_run.return_value = []
+        run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
+        run_repo.get_workflow_run_by_id.return_value = SimpleNamespace(
+            id="run-1", status="failed", error="node blew up", elapsed_time=1.0, total_tokens=1
+        )
+
+        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+
+    assert run.status == "failed"
+    assert run.dify_run_id == "run-1"
+
+
+def test_a_truncated_stream_over_a_still_running_run_is_unknown_not_failed(mock_session: MagicMock):
+    """Outcome genuinely unknown -> "running" + a visible reason, never "failed"."""
+    _configure_default_identity(mock_session)
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = iter(_truncated_stream())
+        node_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        node_repo.get_executions_by_workflow_run.return_value = []
+        run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
+        run_repo.get_workflow_run_by_id.return_value = SimpleNamespace(
+            id="run-1", status="running", error=None, elapsed_time=300.0, total_tokens=5
+        )
+
+        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+
+    assert run.status == "running"
+    assert run.status != "failed"
+    assert run.error == run_mapping.TRUNCATED_STREAM_ERROR
+    assert run.dify_run_id == "run-1"
+
+
+def test_a_truncated_stream_with_no_run_row_is_unknown_not_failed(mock_session: MagicMock):
+    _configure_default_identity(mock_session)
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = iter(_truncated_stream())
+        node_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        node_repo.get_executions_by_workflow_run.return_value = []
+        run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
+        run_repo.get_workflow_run_by_id.return_value = None
+
+        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+
+    assert run.status == "running"
+    assert run.error == run_mapping.TRUNCATED_STREAM_ERROR
+
+
+def test_a_stream_of_nothing_but_keep_alives_is_unknown_not_failed(mock_session: MagicMock):
+    """No frame ever carried a run id, so there is nothing to look up."""
     _configure_default_identity(mock_session)
 
     with (
@@ -720,12 +841,16 @@ def test_run_draft_survives_a_stream_that_never_reaches_a_terminal_event(mock_se
         patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
     ):
         mock_ags.generate.return_value = iter(["event: ping\n\n"])
-        repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        node_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
 
         run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
 
-    repo.get_executions_by_workflow_run.assert_not_called()
-    assert run.status == "failed"
+    node_repo.get_executions_by_workflow_run.assert_not_called()
+    run_repo.get_workflow_run_by_id.assert_not_called()
+    assert run.status == "running"
+    assert run.status != "failed"
+    assert run.error == run_mapping.TRUNCATED_STREAM_ERROR
     assert run.dify_run_id == ""
 
 
