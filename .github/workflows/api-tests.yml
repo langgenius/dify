@@ -58,7 +58,6 @@ jobs:
           uv run --project api python api/dev/pytest_sharding.py \
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
-            --durations api/dev/pytest_file_durations.json \
             --ignore api/tests/unit_tests/controllers \
             api/tests/unit_tests \
             api/providers/vdb/*/tests/unit_tests \
@@ -71,6 +70,7 @@ jobs:
             --cov-report= \
             --durations=50 \
             --report-collection-timing \
+            --slow-test-file-threshold=10 \
             --junitxml=test-results/unit.xml \
             "@$RUNNER_TEMP/unit-test-files.txt"
 
@@ -125,6 +125,7 @@ jobs:
             --cov-report= \
             --durations=50 \
             --report-collection-timing \
+            --slow-test-file-threshold=10 \
             --junitxml=test-results/controllers.xml \
             api/tests/unit_tests/controllers
 

@@ -35,6 +35,12 @@ ensure_backend_test_environment(_REPO_ROOT)
 def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("dify")
     group.addoption(
+        "--slow-test-file-threshold",
+        type=float,
+        default=None,
+        help="Warn about files whose summed testcase time exceeds this many seconds; does not fail tests.",
+    )
+    group.addoption(
         "--report-collection-timing",
         action="store_true",
         help="Report collection wall time separately for each pytest process.",
@@ -91,6 +97,17 @@ def pytest_configure(config: pytest.Config) -> None:
     stop_timeout = config.getoption("middleware_stop_timeout")
     if stop_timeout is not None and stop_timeout < 0:
         raise pytest.UsageError("--middleware-stop-timeout must be nonnegative")
+
+    slow_file_threshold = config.getoption("slow_test_file_threshold")
+    if slow_file_threshold is not None:
+        import math
+
+        if not math.isfinite(slow_file_threshold) or slow_file_threshold <= 0:
+            raise pytest.UsageError("--slow-test-file-threshold must be finite and positive")
+        if not hasattr(config, "workerinput"):
+            from tests.pytest_timing import SlowTestFilesPlugin
+
+            config.pluginmanager.register(SlowTestFilesPlugin(slow_file_threshold), "dify-slow-test-files")
 
     config.stash[_DIFY_COMPOSE_STACKS_KEY] = []
     if config.getoption("report_collection_timing"):

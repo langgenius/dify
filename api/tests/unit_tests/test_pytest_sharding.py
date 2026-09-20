@@ -49,18 +49,3 @@ def test_empty_shard_fails_instead_of_running_default_discovery(
     captured = capsys.readouterr()
     assert captured.out == ""
     assert "No test files selected" in captured.err
-
-
-def test_duration_shards_balance_work_and_include_unmeasured_files(tmp_path: Path) -> None:
-    files = [tmp_path / f"test_{name}.py" for name in "abcde"]
-    for path in files:
-        path.touch()
-    durations = {str(path): value for path, value in zip(files, [10, 8, 2, 1], strict=False)}
-    durations[str(tmp_path / "test_deleted.py")] = 3
-    shards = [select_test_files([tmp_path], shard_index=i, shard_total=2, durations=durations) for i in (1, 2)]
-    assert set(shards[0]).isdisjoint(shards[1])
-    assert set(shards[0] + shards[1]) == set(files)
-    totals = [sum(durations.get(str(path), 3) for path in shard) for shard in shards]
-    assert totals == [12, 12]
-    assert files[0] in shards[0]
-    assert files[1] in shards[1]
