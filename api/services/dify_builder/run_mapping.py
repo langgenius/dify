@@ -22,11 +22,20 @@ read as green to the user, even if it's technically "still running"
 
 import json
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from typing import Any
 
 from core.dify_builder.models import NodeEvent, NodeOutput, Run
 
 _FAILED_NODE_STATUSES = {"failed", "exception"}
+
+# Workflow-run statuses that mean "not over yet" (``WorkflowExecutionStatus``);
+# "" covers a row we could not read at all.
+_UNFINISHED_RUN_STATUSES = {"", "scheduled", "running"}
+
+# What a truncated stream reports instead of a fabricated failure. Kept in the
+# domain ``Run.error`` so the reason reaches the user rather than a bare status.
+TRUNCATED_STREAM_ERROR = "the workflow run's progress stream ended before the run did, so its outcome is unknown"
 
 # ``BaseAppGenerator.convert_to_event_stream`` (the tail of every streaming
 # ``AppGenerateService.generate``) emits ``f"data: {json}\n\n"`` for an event
@@ -39,6 +48,10 @@ _NODE_STREAM_EVENTS = {"node_started": "running", "node_finished": ""}
 
 # The two events that end a stream (``streaming_utils._normalize_terminal_events``).
 _TERMINAL_STREAM_EVENTS = {"workflow_finished", "workflow_paused"}
+
+# Events whose ``data["id"]`` is the RUN id. On a node frame ``data["id"]`` is
+# the node-execution id instead, so it must never be read as a run id.
+_RUN_ID_DATA_EVENTS = {"workflow_started", "workflow_finished", "workflow_paused"}
 
 
 def _status_value(status: Any) -> Any:
@@ -96,6 +109,62 @@ def node_event_from_stream_chunk(chunk: Mapping[str, Any]) -> NodeEvent | None:
         status=str(status or ""),
         error=str(data.get("error") or ""),
     )
+
+
+def run_id_from_stream_chunk(chunk: Mapping[str, Any]) -> str:
+    """The workflow run id a chunk carries, or ``""``.
+
+    ``convert_stream_full_response`` stamps ``workflow_run_id`` on *every*
+    non-ping frame, so the run id is known from the first frame onwards --
+    long before the terminal frame that may never arrive. That is what lets a
+    truncated stream still ask the database how the run actually went.
+    """
+    direct = chunk.get("workflow_run_id")
+    if direct:
+        return str(direct)
+    data = chunk.get("data")
+    if not isinstance(data, Mapping):
+        return ""
+    if data.get("workflow_run_id"):
+        return str(data["workflow_run_id"])
+    if str(chunk.get("event") or "") in _RUN_ID_DATA_EVENTS:
+        return str(data.get("id") or "")
+    return ""
+
+
+def run_result_data_from_run_row(run_row: Any) -> dict[str, Any]:
+    """A ``WorkflowRun`` row shaped the way ``map_run_result`` expects it.
+
+    The stream is the fast path, not the authority: when it ends without a
+    terminal frame the row is what actually says how the run went. Duck-typed
+    like the node-execution rows, so tests can pass stand-ins.
+    """
+    return {
+        "id": str(getattr(run_row, "id", "") or ""),
+        "status": _status_value(getattr(run_row, "status", "")) or "",
+        "error": getattr(run_row, "error", "") or "",
+        "elapsed_time": getattr(run_row, "elapsed_time", 0) or 0,
+        "total_tokens": getattr(run_row, "total_tokens", 0) or 0,
+    }
+
+
+def is_unfinished_run_status(status: Any) -> bool:
+    """True while a workflow run has not reached any final state."""
+    return str(_status_value(status) or "") in _UNFINISHED_RUN_STATUSES
+
+
+def map_unknown_run_outcome(data: Mapping[str, Any], node_execs: Sequence[Any]) -> Run:
+    """A run whose outcome nothing could establish -- NOT a failed run.
+
+    ``map_run_result`` is deliberately conservative: anything that is not a
+    clean ``succeeded`` reads as ``failed``. That is right for a run we watched
+    end, and wrong for one we merely lost sight of -- a fabricated ``failed``
+    sends a build that may well have succeeded straight into the repair loop.
+    ``Run.status`` documents ``running`` alongside ``succeeded``/``failed``
+    exactly for this "not over / not known" case, and ``Run.error`` carries the
+    reason so it is visible instead of silent.
+    """
+    return replace(map_run_result(data, node_execs), status="running", error=TRUNCATED_STREAM_ERROR)
 
 
 def run_result_data_from_terminal_chunk(chunk: Mapping[str, Any]) -> dict[str, Any] | None:

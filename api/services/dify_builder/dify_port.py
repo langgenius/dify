@@ -28,7 +28,11 @@ the P2 plan's Global Constraints):
   ``AppGenerateService`` hand the execution to the
   ``workflow_based_app_execution`` Celery queue and hand *us* a Redis-backed
   event stream; the Builder's own task runs on the separate ``dify_builder``
-  queue, so the two never contend for the same worker slots.
+  queue, so the two never contend for the same worker slots. If the stream
+  ends WITHOUT a terminal frame (idle timeout, dead publishing worker), the
+  outcome is recovered from the workflow-run row rather than synthesised as a
+  failure -- reporting a run that actually succeeded as failed would feed the
+  repair loop a lie.
 - ``publish`` MUST update ``app.workflow_id`` in the same transaction as
   ``publish_workflow``: ``publish_workflow`` only creates the new published
   ``Workflow`` row: it does not repoint the app at it. Skipping that update
@@ -68,8 +72,12 @@ from services.dify_builder import graph_ops
 from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializedError
 from services.dify_builder.identity import load_app, resolve_account
 from services.dify_builder.run_mapping import (
+    is_unfinished_run_status,
     map_run_result,
+    map_unknown_run_outcome,
     node_event_from_stream_chunk,
+    run_id_from_stream_chunk,
+    run_result_data_from_run_row,
     run_result_data_from_terminal_chunk,
     stream_chunk_as_mapping,
 )
@@ -322,7 +330,8 @@ class WorkflowServiceDifyPort:
                 streaming=True,
             )
 
-        final: dict[str, Any] = {"id": ""}
+        final: dict[str, Any] = {}
+        stream_run_id = ""
         try:
             for chunk in response:
                 # Streaming yields SSE-formatted strings ("data: {...}" events
@@ -330,6 +339,9 @@ class WorkflowServiceDifyPort:
                 payload = stream_chunk_as_mapping(chunk)
                 if payload is None:
                     continue
+                # Every non-ping frame stamps the run id, so it is known long
+                # before the terminal frame -- which may never arrive.
+                stream_run_id = stream_run_id or run_id_from_stream_chunk(payload)
                 node_event = node_event_from_stream_chunk(payload)
                 if node_event is not None:
                     on_event(node_event)
@@ -346,7 +358,7 @@ class WorkflowServiceDifyPort:
             if callable(close):
                 close()
 
-        run_id = str(final.get("id") or "")
+        run_id = str(final.get("id") or stream_run_id or "")
 
         # The stream carries progress, not outputs: ``map_run_result`` still
         # needs the node-execution rows for ``per_node[].outputs``.
@@ -358,7 +370,36 @@ class WorkflowServiceDifyPort:
             else []
         )
 
-        return map_run_result(final, node_execs)
+        if final:
+            return map_run_result(final, node_execs)
+
+        # The stream ended without a terminal frame -- the subscription hit its
+        # idle timeout, or the publishing worker died. The stream is no longer
+        # the authority on how the run went; the database is. Synthesising
+        # "failed" here would report a run that may well have SUCCEEDED as a
+        # failed build and feed the repair loop a lie.
+        return self._run_result_without_terminal_frame(tenant_id, app_id, run_id, node_execs)
+
+    @staticmethod
+    def _run_result_without_terminal_frame(tenant_id: str, app_id: str, run_id: str, node_execs: list[Any]) -> Run:
+        """Recover a truncated stream's outcome from the workflow-run row."""
+        run_row = (
+            DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+                sessionmaker(bind=db.engine)
+            ).get_workflow_run_by_id(tenant_id=tenant_id, app_id=app_id, run_id=run_id)
+            if run_id
+            else None
+        )
+        if run_row is None:
+            # No id, or no row: nothing can say how this went.
+            return map_unknown_run_outcome({"id": run_id}, node_execs)
+
+        recovered = run_result_data_from_run_row(run_row)
+        if is_unfinished_run_status(recovered["status"]):
+            # The row says the run is still going, so its outcome is genuinely
+            # unknown rather than bad.
+            return map_unknown_run_outcome(recovered, node_execs)
+        return map_run_result(recovered, node_execs)
 
     def publish(self, app_id: str, actor: Actor) -> None:
         with _session_factory()() as session:
