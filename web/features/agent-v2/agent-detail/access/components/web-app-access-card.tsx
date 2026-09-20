@@ -40,6 +40,7 @@ export function WebAppAccessCard({
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation('app')
   const queryClient = useQueryClient()
   const appId = agent?.app_id
   const apiBaseUrl = agent?.api_base_url
@@ -151,7 +152,11 @@ export function WebAppAccessCard({
   const icon = agent ? getSettingsIcon(agent) : null
   const notAvailableLabel = t(($) => $['agentDetail.access.workflow.notAvailable'])
   const openUrl =
-    accessReady && webAppUrl && agent?.enable_site && !toggleSiteMutation.isPending
+    accessReady &&
+    webAppUrl &&
+    agent?.enable_site &&
+    !toggleSiteMutation.isPending &&
+    !accessControl.noAccessPermission
       ? webAppUrl
       : undefined
   const publishRequiredMessage = t(($) => $['agentDetail.access.publishRequired'])
@@ -297,7 +302,13 @@ export function WebAppAccessCard({
           showOpen
           showQrCode
           showRegenerate
-          openDisabledReason={showPublishRequiredMessage ? publishRequiredMessage : undefined}
+          openDisabledReason={
+            showPublishRequiredMessage
+              ? publishRequiredMessage
+              : accessControl.noAccessPermission
+                ? tApp(($) => $.noAccessPermission)
+                : undefined
+          }
           openLabel={t(($) => $['agentDetail.access.webApp.actions.open'])}
           openUrl={openUrl}
           qrCodeLabel={t(($) => $['agentDetail.access.webApp.showQrCode'])}
@@ -354,7 +365,10 @@ export function WebAppAccessCard({
         <AccessControl
           app={accessControl.app}
           onClose={() => setShowAccessControl(false)}
-          onConfirm={() => setShowAccessControl(false)}
+          onConfirm={async () => {
+            await accessControl.refetchUserCanAccessApp()
+            setShowAccessControl(false)
+          }}
         />
       )}
     </>
