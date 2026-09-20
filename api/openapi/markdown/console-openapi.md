@@ -16847,14 +16847,6 @@ Enum class for configurate method of provider model.
 | ---- | ---- | ----------- | -------- |
 | ConfigurateMethod | string | Enum class for configurate method of provider model. |  |
 
-#### ConflictPolicyOption
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | Yes |
-| label | string |  | Yes |
-| recommended | boolean |  | No |
-
 #### ConsoleDatasetListQuery
 
 | Name | Type | Description | Required |
@@ -22533,7 +22525,6 @@ Resource types understood by access policies.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conflict_policy_options | [ [ConflictPolicyOption](#conflictpolicyoption) ] |  | No |
 | recommended | [ [ResourceOption](#resourceoption) ] |  | No |
 
 #### ResourceUserAccessPolicies
