@@ -32,7 +32,6 @@ let mockChecklistItems: ChecklistItem[] = [
 const mockHandleNodeSelect = vi.fn()
 const mockSetOpenInlineAgentPanelNodeId = vi.fn()
 const mockStartChecklistFix = vi.fn(async () => true)
-const mockSyncDraft = vi.fn(async () => undefined)
 
 vi.mock('reactflow', () => ({
   useEdges: () => [],
@@ -110,7 +109,6 @@ const renderChecklist = (
     canEdit,
     enabled,
     getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
-    onSyncDraft: mockSyncDraft,
     session: {
       getTrace: vi.fn(() => ({ entries: [], truncated: false })),
       loadOlderConversation: vi.fn(async () => true),
@@ -236,10 +234,10 @@ describe('WorkflowChecklist', () => {
     const user = userEvent.setup()
     const { store } = renderChecklist({ disabled: false })
 
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' }))
 
-    expect(screen.getByRole('button', { name: 'workflow.panel.checklist' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'workflow.panel.checklist 2' })).toHaveAttribute(
       'aria-expanded',
       'false',
     )
@@ -262,7 +260,7 @@ describe('WorkflowChecklist', () => {
     const user = userEvent.setup()
     renderChecklist({ disabled: false }, { enabled: false })
 
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
 
     expect(
       screen.queryByRole('button', { name: 'workflow.difyBuilder.fixRun' }),
@@ -273,12 +271,12 @@ describe('WorkflowChecklist', () => {
     const user = userEvent.setup()
     const { unmount } = renderChecklist({ disabled: false }, { canEdit: false })
 
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     expect(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' })).toBeDisabled()
 
     unmount()
     renderChecklist({ disabled: false }, { busy: true })
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     expect(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' })).toBeDisabled()
   })
 })

@@ -65,14 +65,22 @@ export const useWorkflowRefreshDraft = () => {
             // reconnects. Its graph recovery will restore the shared baseline.
             const syncToCollaboration =
               options?.syncToCollaboration ??
-              (!options?.resolveConflict || collaborationManager.canApplyLocalGraphMutation())
-            const applied = handleUpdateWorkflowCanvas(
-              getWorkflowDraftGraphForCanvas(response.graph),
-              {
-                syncToCollaboration,
-                features: response.features,
-              },
-            )
+              (!options?.resolveConflict || collaborationManager.canRestoreGraphFromCrdt())
+            const useServerWriter = syncToCollaboration && collaborationManager.isConnected()
+            let graph = getWorkflowDraftGraphForCanvas(response.graph)
+            if (useServerWriter) {
+              const synced = await collaborationManager.requestServerDraftSync()
+              if (!isCurrent() || synced.hash !== response.hash) return false
+              graph = {
+                ...graph,
+                nodes: collaborationManager.getNodes(),
+                edges: collaborationManager.getEdges(),
+              }
+            }
+            const applied = handleUpdateWorkflowCanvas(graph, {
+              syncToCollaboration: syncToCollaboration && !useServerWriter,
+              features: response.features,
+            })
             if (!applied) return false
             // The hash is a baseline for this graph, never for a metadata-only refresh.
             setSyncWorkflowDraftHash(response.hash)

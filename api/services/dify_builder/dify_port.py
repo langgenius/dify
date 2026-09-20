@@ -66,6 +66,7 @@ from services.dify_builder.identity import load_app, resolve_account
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.run_mapping import map_run_result, to_node_event
 from services.errors.app import WorkflowHashNotEqualError
+from services.workflow_draft_sync_service import notify_workflow_draft_changed
 from services.workflow_service import WorkflowService
 
 __all__ = ["WorkflowServiceDifyPort"]
@@ -270,6 +271,7 @@ class WorkflowServiceDifyPort:
             changes, scope = graph_ops.diff_graphs(before_graph, graph)
 
             updated = _sync_graph_only(app, graph, workflow, unique_hash, account, session, app_id)
+            notify_workflow_draft_changed(updated, previous_graph=before_graph)
 
             return ApplyResult(
                 changed_nodes=changed_nodes,
@@ -299,6 +301,7 @@ class WorkflowServiceDifyPort:
             if execution_revision(workflow) != expected_revision:
                 raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
             updated = _sync_graph_only(app, graph, workflow, workflow.unique_hash, account, session, app_id)
+            notify_workflow_draft_changed(updated)
             return execution_revision(updated)
 
     def run_draft(self, app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run:
