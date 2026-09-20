@@ -6,15 +6,21 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useRef } from 'react'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import dynamic from '@/next/dynamic'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum } from '../types'
 import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
-import Tools from './tools'
 import { ViewType } from './types'
+
+const Tools = dynamic(() => import('./tools'), {
+  ssr: false,
+  loading: () => <LoadingPlaceholder className="py-2" />,
+})
 
 type DataSourcesProps = {
   className?: string

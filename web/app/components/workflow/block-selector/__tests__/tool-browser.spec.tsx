@@ -109,7 +109,7 @@ describe('ToolBrowser', () => {
       />,
     )
 
-    expect(screen.getByText('Built In Provider')).toBeInTheDocument()
+    expect(await screen.findByText('Built In Provider')).toBeInTheDocument()
     expect(screen.getByText('Custom Provider')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'workflow.tabs.customTool' }))
@@ -220,7 +220,7 @@ describe('ToolBrowser', () => {
     expect(screen.getByText('tools.allMCP')).toBeInTheDocument()
   })
 
-  it('filters the rendered tools by the search text', () => {
+  it('filters the rendered tools by the search text', async () => {
     render(
       <ToolBrowser
         searchText="report"
@@ -242,7 +242,7 @@ describe('ToolBrowser', () => {
       />,
     )
 
-    expect(screen.getByText('Report Toolkit')).toBeInTheDocument()
+    expect(await screen.findByText('Report Toolkit')).toBeInTheDocument()
     expect(screen.queryByText('Other Toolkit')).not.toBeInTheDocument()
   })
 

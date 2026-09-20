@@ -507,7 +507,7 @@ describe('ToolPicker', () => {
     })
 
     expect(screen.queryByText('Built-in Provider')).not.toBeInTheDocument()
-    expect(screen.getByText('Custom Provider')).toBeInTheDocument()
+    expect(await screen.findByText('Custom Provider')).toBeInTheDocument()
     expect(screen.getByText('MCP Provider')).toBeInTheDocument()
 
     await user.type(screen.getByRole('searchbox', { name: 'plugin.searchTools' }), 'weather')
@@ -612,7 +612,7 @@ describe('ToolPicker', () => {
 
       renderToolPicker({ isShow: true, scope, selectedTools: [] })
 
-      expect(screen.getByText(visibleProvider)).toBeInTheDocument()
+      expect(await screen.findByText(visibleProvider)).toBeInTheDocument()
       expect(screen.queryByText(hiddenProvider)).not.toBeInTheDocument()
       expect(screen.queryByText('Built-in Provider')).not.toBeInTheDocument()
 

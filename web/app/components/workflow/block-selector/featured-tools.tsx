@@ -23,6 +23,7 @@ import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/
 import Action from '@/app/components/workflow/block-selector/marketplace-plugin/action'
 import { useFeaturedToolsCollapsed } from '@/app/components/workflow/block-selector/storage'
 import { useGetLanguage } from '@/context/i18n'
+import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -30,8 +31,12 @@ import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { BlockSelectorPreviewCardContent } from './preview-card'
-import Tools from './tools'
 import { ToolType, ViewType } from './types'
+
+const Tools = dynamic(() => import('./tools'), {
+  ssr: false,
+  loading: () => <LoadingPlaceholder className="py-2" />,
+})
 
 const MAX_RECOMMENDED_COUNT = 15
 const INITIAL_VISIBLE_COUNT = 5

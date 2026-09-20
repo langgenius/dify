@@ -88,7 +88,7 @@ describe('DataSources', () => {
 
       render(<DataSources searchText="" onSelect={onSelect} dataSources={[createToolProvider()]} />)
 
-      await user.click(screen.getByText('File Source'))
+      await user.click(await screen.findByText('File Source'))
       await user.click(screen.getByText('Local File'))
 
       expect(onSelect).toHaveBeenCalledWith(
@@ -102,7 +102,7 @@ describe('DataSources', () => {
       )
     })
 
-    it('should filter providers by search text', () => {
+    it('should filter providers by search text', async () => {
       render(
         <DataSources
           searchText="searchable"
@@ -133,7 +133,7 @@ describe('DataSources', () => {
         />,
       )
 
-      expect(screen.getByText('Searchable Source')).toBeInTheDocument()
+      expect(await screen.findByText('Searchable Source')).toBeInTheDocument()
       expect(screen.queryByText('Other Source')).not.toBeInTheDocument()
     })
   })

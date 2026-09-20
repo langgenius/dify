@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SearchInput } from '@/app/components/base/search-input'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
@@ -19,14 +20,19 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { useStrategyProviders } from '@/service/use-strategy'
-import Tools from '../../../block-selector/tools'
 import { ViewType } from '../../../block-selector/types'
 import ViewTypeSelect from '../../../block-selector/view-type-select'
 import { useStrategyInfo } from '../../agent/use-config'
 import { InstallPluginButton } from './install-plugin-button'
 import { SwitchPluginVersion } from './switch-plugin-version'
+
+const Tools = dynamic(() => import('../../../block-selector/tools'), {
+  ssr: false,
+  loading: () => <LoadingPlaceholder className="py-2" />,
+})
 
 const DEFAULT_TAGS: ListProps['tags'] = []
 

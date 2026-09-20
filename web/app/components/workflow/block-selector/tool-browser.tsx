@@ -13,20 +13,26 @@ import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { PluginCategoryEnum } from '../../plugins/types'
 import FeaturedTools from './featured-tools'
 import { useToolTabs } from './hooks'
 import { RAGToolRecommendations } from './rag-tool-recommendations'
-import Tools from './tools'
 import { ToolType, ViewType } from './types'
 import ViewTypeSelect from './view-type-select'
+
+const Tools = dynamic(() => import('./tools'), {
+  ssr: false,
+  loading: () => <LoadingPlaceholder className="py-2" />,
+})
 
 const marketplaceFooterClassName =
   'system-sm-medium flex h-8 flex-none items-center border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-1'
