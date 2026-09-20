@@ -224,6 +224,44 @@ return dump_response(WorkflowRunDetailResponse, workflow_run)
 Use manual `model_validate(...).model_dump(...)` only when the endpoint needs behavior that `dump_response(...)` does
 not provide, such as returning a non-dict payload, intentionally excluding fields, or composing a `(body, status)` tuple.
 
+## App-access 404 metadata
+
+The Web and Console blueprints add optional request-local `client_ip` metadata
+to their existing JSON app-not-found responses. This is transport error metadata,
+not an App property, a new endpoint, or a field in successful response DTOs.
+
+- Preserve the original HTTP status, error `code`, `message`, and any other fields.
+- A typed `app_not_found` 404 is eligible. Generic 404s are eligible only for
+  matched GET app-identity routes: Web bootstrap (`site`, `parameters`, `meta`,
+  `passport`, `login/status`, `webapp/access-mode`) and Console App/Agent,
+  installed-App detail/parameters/meta, and trial-App detail/parameters.
+- The field is a single normalized IP resolved using the configured trusted
+  proxy boundary. Do not accept a caller's query/body IP or use unverified
+  forwarding headers. If trust configuration or resolution is unavailable,
+  omit `client_ip` instead of guessing a proxy address or changing the 404 to 503.
+- These eligible errors use `Cache-Control: no-store`, because their IP metadata
+  must not be shared between callers through URL-based error caching.
+- Leave HITL/form 404s, ordinary resource 404s, unmatched routes, non-JSON/streamed
+  responses, other status codes, and Service/Inner API contracts unchanged.
+  In particular, do not turn a trial 403 or a Gateway `policy_unavailable` 503
+  into an app 404.
+
+For example, a Web passport `not_found` response may become:
+
+```json
+{
+  "code": "not_found",
+  "message": "App not found.",
+  "status": 404,
+  "client_ip": "203.0.113.42"
+}
+```
+
+The existing frontend error transport already accepts optional `client_ip`;
+success OpenAPI/TypeScript/Zod/oRPC contracts do not change for this enrichment.
+Add coverage at the final serialized-response boundary, including exceptions
+with their own `data`, so Flask-RESTX cannot silently discard the metadata.
+
 ## Legacy Flask-RESTX Patterns
 
 Avoid adding these patterns to new or migrated endpoints:

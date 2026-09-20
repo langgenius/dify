@@ -1,9 +1,11 @@
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.common.app_access_error import register_app_access_error_metadata
 from libs.external_api import ExternalApi
 
 bp = Blueprint("web", __name__, url_prefix="/api")
+register_app_access_error_metadata(bp, surface="web")
 
 api = ExternalApi(
     bp,
