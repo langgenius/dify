@@ -567,4 +567,65 @@ describe('IpPoliciesPage', () => {
       expect(screen.queryByText('Enforcing')).not.toBeInTheDocument()
     },
   )
+
+  it.each(['view', 'edit', 'delete'] as const)(
+    'links agent and regular app references correctly in %s',
+    async (mode) => {
+      const user = userEvent.setup()
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, {
+        groups: [
+          createNetworkAccessGroupFixture({
+            used_by_count: 2,
+            enforcing_count: 1,
+            apps: [
+              {
+                id: 'backing-app',
+                bound_agent_id: 'agent-1',
+                name: 'New Agent',
+                mode: 'workflow',
+                icon: null,
+                icon_type: null,
+                icon_background: null,
+              },
+              {
+                id: 'app-2',
+                name: 'Workflow',
+                mode: 'workflow',
+                icon: null,
+                icon_type: null,
+                icon_background: null,
+              },
+            ],
+          }),
+        ],
+      })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          currentWorkspace: { role: mode === 'view' ? 'editor' : 'owner' },
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
+      if (mode === 'delete') {
+        await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+        expect(screen.getByText('Still used by 2 apps')).toBeInTheDocument()
+      } else {
+        await user.click(screen.getByRole('button', { name: 'Internal Network' }))
+      }
+      expect(screen.getByRole('link', { name: 'New Agent' })).toHaveAttribute(
+        'href',
+        '/agents/agent-1/configure',
+      )
+      expect(screen.getByRole('link', { name: 'New Agent' })).toHaveAttribute('target', '_blank')
+      expect(screen.getByRole('link', { name: 'Workflow' })).toHaveAttribute(
+        'href',
+        '/app/app-2/overview',
+      )
+    },
+  )
 })

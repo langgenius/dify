@@ -32,7 +32,11 @@ export function PolicyReferencedApps({ apps, usedByCount }: PolicyReferencedApps
       {apps.map((app) => (
         <li key={app.id} className="max-w-full min-w-0">
           <a
-            href={`/app/${app.id}/overview`}
+            href={
+              app.bound_agent_id
+                ? `/agents/${app.bound_agent_id}/configure`
+                : `/app/${app.id}/overview`
+            }
             target="_blank"
             rel="noreferrer"
             className="flex min-h-7 max-w-full items-center gap-1.5 rounded-md border border-components-panel-border-subtle bg-background-default py-1 pr-1.5 pl-1 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
