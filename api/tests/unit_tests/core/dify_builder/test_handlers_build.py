@@ -1231,6 +1231,57 @@ def test_full_build_flow_goal_to_complete():
     assert any(i.kind == "summary" and i.payload.get("variant") == "completion" for i in items)
 
 
+def test_full_build_flow_file_schema_routes_through_testdata_gate_via_fsm():
+    """End-to-end FSM coverage for the OTHER branch of handle_execution's
+    conditional gate (needs_upload_inputs): a built graph whose Start node
+    declares a file variable must still stop at BUILD_AWAIT_TESTDATA with a
+    testdata form shown, and a real provide_testdata action submitted
+    through the Runner (not a direct handler call) must be what unsticks
+    it. test_full_build_flow_goal_to_complete is the complementary case --
+    its generated graph declares no file variable, so run_test there
+    bypasses the gate and lands straight at build.review; together the two
+    tests exercise both branches of the conditional through the real state
+    machine, not via disconnected direct-handler-call fragments."""
+    from core.dify_builder.handlers_build import build_registry
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
+    runner = Runner(env, build_registry())
+
+    goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
+    out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
+    reqs_action = Action(kind="submit_requirements", base_version=out.version)
+    out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
+    confirm_payload = {"resource_ids": ["kb-company"]}
+    confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_EXECUTION
+
+    # Give THIS test's built graph a file-declaring Start node -- mutating
+    # the fake's already-built graph directly, not the shared default
+    # config the other full-flow tests rely on.
+    start_node = next(n for n in dify.graph["nodes"] if n.get("data", {}).get("type") == "start")
+    start_node["data"]["variables"] = [{"variable": "doc", "type": "file"}]
+
+    # run_test -> the file variable can't be mocked -> build.await_testdata,
+    # with a testdata form card actually emitted.
+    out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
+    items = repo.list_conversation(s.id)
+    form_cards = [i for i in items if i.kind == "form" and i.payload.get("variant") == "testdata"]
+    assert form_cards
+    assert form_cards[-1].payload["fields"][0]["type"] == "file"
+
+    # provide_testdata, submitted through the real Runner -> unsticks the
+    # gate and the run proceeds to build.review.
+    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
+    assert out.current_state == PcState.BUILD_REVIEW
+
+
 def test_full_build_flow_keep_draft_reaches_complete_without_publish():
     from core.dify_builder.handlers_build import build_registry
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
