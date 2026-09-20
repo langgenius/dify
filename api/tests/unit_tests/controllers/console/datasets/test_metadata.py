@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.controller_schemas import MetadataUpdatePayload
+from controllers.common.rbac import DatasetId
 from controllers.console import api as console_api
 from controllers.console import console_ns
 from controllers.console.datasets.metadata import (
@@ -20,6 +21,7 @@ from controllers.console.datasets.metadata import (
     DatasetMetadataCreateApi,
     DocumentMetadataEditApi,
 )
+from controllers.console.wraps import RBACPermission
 from models.account import Account
 from models.dataset import Dataset
 from services.dataset_service import DatasetService
@@ -28,6 +30,7 @@ from services.errors.base import NoPermissionError
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 @pytest.fixture
@@ -117,6 +120,12 @@ def test_metadata_permission_error_http_contract(
 
 
 class TestDatasetMetadataCreateApi:
+    def test_get_requires_dataset_readonly_permission(self):
+        [check] = rbac_checks(DatasetMetadataCreateApi.get)
+
+        assert check.scene is RBACPermission.DATASET_READONLY
+        assert isinstance(check.locator, DatasetId)
+
     def test_create_metadata_success(self, app: Flask, current_user, dataset, dataset_id, sqlite_session: Session):
         api = DatasetMetadataCreateApi()
         method = unwrap(api.post)

@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "ПОДІЇ-ТРИГЕРИ",
   "upgrade.addChunks.description": "Ви досягли межі додавання фрагментів для цього плану.",
   "upgrade.addChunks.title": "Оновіть, щоб продовжити додавати частини",
+  "upgrade.agentRestore.description": "Відновлення версій застосунку агента недоступне у вашому поточному плані.",
+  "upgrade.agentRestore.title": "Оновіть план, щоб відновлювати версії застосунку агента",
   "upgrade.uploadMultipleFiles.description": "Завантажуйте кілька документів одночасно та збільште максимальний розмір одного файлу до 50 МБ.",
   "upgrade.uploadMultipleFiles.title": "Перейдіть на вищий тариф, щоб розблокувати пакетне завантаження та більші файли",
   "upgrade.uploadMultiplePages.description": "Ви досягли ліміту завантаження — на вашому поточному плані можна вибрати та завантажити лише один документ одночасно.",

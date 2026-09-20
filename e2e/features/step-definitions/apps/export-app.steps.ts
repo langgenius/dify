@@ -1,8 +1,10 @@
 import type { DifyWorld } from '../../support/world'
+import { Buffer } from 'node:buffer'
+import { readFile } from 'node:fs/promises'
 import { Then } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 
-Then('a YAML file named after the app should be downloaded', async function (this: DifyWorld) {
+Then('an app package named after the app should be downloaded', async function (this: DifyWorld) {
   const appName = this.lastCreatedAppName
   if (!appName) {
     throw new Error(
@@ -15,5 +17,7 @@ Then('a YAML file named after the app should be downloaded', async function (thi
   await expect.poll(() => this.capturedDownloads.length, { timeout: 10_000 }).toBeGreaterThan(0)
 
   const download = this.capturedDownloads.at(-1)!
-  expect(download.suggestedFilename()).toBe(`${appName}.yml`)
+  expect(download.suggestedFilename()).toBe(`${appName}.ifpkg`)
+  const content = await readFile(await download.path())
+  expect(content.subarray(0, 4)).toEqual(Buffer.from([0x50, 0x4b, 0x03, 0x04]))
 })

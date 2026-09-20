@@ -92,7 +92,7 @@ class DatasetMetadataCreateApi(Resource):
     )
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)

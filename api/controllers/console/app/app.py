@@ -56,6 +56,7 @@ from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import AppMode, IconType
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app_dsl_service import AppDslService
+from services.app_package_service import AppPackageService
 from services.app_service import (
     AppListParams,
     AppListSortBy,
@@ -186,7 +187,7 @@ class CopyAppPayload(BaseModel):
 
 class AppExportQuery(BaseModel):
     format: Literal["yaml", "ifpkg"] | None = Field(
-        default=None, description="Export format; defaults to ifpkg for Agent Apps and yaml for other Apps"
+        default=None, description="Export format; defaults to ifpkg for all Apps"
     )
     include_secret: bool = Field(default=False, description="Include secrets in export")
     workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
@@ -1076,15 +1077,24 @@ class AppExportApi(Resource):
             ):
                 raise Forbidden("This feature requires a paid plan.")
 
-        if req_data.format == "ifpkg" or (req_data.format is None and app_model.mode == AppMode.AGENT):
-            if app_model.mode != AppMode.AGENT:
-                raise BadRequest("The ifpkg format is only available for Agent Apps")
-            agent_id = app_model.bound_agent_id_with_session(session=db.session())
-            if agent_id is None:
-                raise NotFound("Agent not found")
-            exported = RosterAgentPackageExporter().export(
-                tenant_id=app_model.tenant_id, agent_id=agent_id, version_id=req_data.version_id
-            )
+        if req_data.format != "yaml":
+            if app_model.mode == AppMode.AGENT:
+                agent_id = app_model.bound_agent_id_with_session(session=db.session())
+                if agent_id is None:
+                    raise NotFound("Agent not found")
+                exported = RosterAgentPackageExporter().export(
+                    tenant_id=app_model.tenant_id, agent_id=agent_id, version_id=req_data.version_id
+                )
+            else:
+                exported = AppPackageService().export(
+                    dsl=AppDslService.export_dsl(
+                        app_model=app_model,
+                        session=db.session(),
+                        include_secret=req_data.include_secret,
+                        workflow_id=req_data.workflow_id,
+                    ),
+                    name=app_model.name,
+                )
             try:
                 archive_response = send_file(
                     exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
