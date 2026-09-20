@@ -1,6 +1,8 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { initReactI18next } from 'react-i18next'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import {
   createNetworkAccessGroupFixture,
@@ -33,8 +35,11 @@ const translations = vi.hoisted(() => ({
   'settings.ipPolicyEnforcingOne': '1 app',
   'settings.ipPolicyDeleteBound': 'This policy is in use',
   'settings.ipPolicyDeleteBoundDescription':
-    '{{name}} is applied to {{count}} apps. Deleting it turns off IP restriction for those apps, so they can be reached from any IP. Other app permissions stay the same.',
-  'settings.ipPolicyDeleteConfirm': 'Delete “{{name}}”?',
+    'Delete <policyName>{{name}}</policyName>? These apps will allow access from any IP address. This cannot be undone.',
+  'settings.ipPolicyDeleteConfirm': 'Delete IP policy?',
+  'settings.ipPolicyDeleteDescription':
+    'Delete <policyName>{{name}}</policyName>? This cannot be undone.',
+  'settings.ipPolicyUsedBy': 'Used by {{count}} apps',
   'settings.ipPolicyUsedByLabel': 'Used by',
   'settings.ipPolicyDialogDescription':
     'Specify which IP addresses or ranges can access your apps.',
@@ -47,14 +52,21 @@ const translations = vi.hoisted(() => ({
   'studio.accessControl.policySummaryTwo': 'Allows {{first}} and {{second}}',
 }))
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock(translations)
-})
+vi.unmock('react-i18next')
 
 describe('IpPoliciesPage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    await createInstance()
+      .use(initReactI18next)
+      .init({
+        lng: 'en-US',
+        fallbackLng: 'en-US',
+        defaultNS: 'common',
+        keySeparator: false,
+        interpolation: { escapeValue: false },
+        resources: { 'en-US': { common: translations, deployments: translations } },
+      })
   })
 
   it.each([true, false])(
@@ -433,17 +445,114 @@ describe('IpPoliciesPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
     await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
-    expect(screen.getByRole('heading', { name: 'Delete “Internal Network”?' })).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'Internal Network is applied to 2 apps. Deleting it turns off IP restriction for those apps, so they can be reached from any IP. Other app permissions stay the same.',
-      ),
-    ).toBeInTheDocument()
-    const dialog = screen.getByRole('alertdialog')
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete IP policy?' })
+    expect(dialog).toHaveAccessibleDescription(
+      /Delete Internal Network\s*\? These apps will allow access from any IP address\. This cannot be undone\./,
+    )
+    expect(within(dialog).getByText('Internal Network', { selector: 'strong' })).toBeInTheDocument()
+    expect(within(dialog).getByText('Used by 2 apps')).toBeInTheDocument()
+    expect(globalThis.fetch).not.toHaveBeenCalled()
     expect(within(dialog).getByRole('button', { name: 'Delete' })).toBeEnabled()
     expect(within(dialog).getByRole('link', { name: 'Support Bot' })).toHaveAttribute(
       'href',
       '/app/app-a/overview',
     )
   })
+
+  it.each(['Cancel', 'Close'])(
+    'dismisses deletion through %s without deleting the policy',
+    async (button) => {
+      const user = userEvent.setup()
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, { groups: [createNetworkAccessGroupFixture()] })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
+      )
+
+      await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+      await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+      const dialog = screen.getByRole('alertdialog', { name: 'Delete IP policy?' })
+      expect(dialog).toHaveAccessibleDescription(
+        /Delete Internal Network\s*\? This cannot be undone\./,
+      )
+      expect(within(dialog).queryByText(/Used by/)).not.toBeInTheDocument()
+      await user.click(within(dialog).getByRole('button', { name: button }))
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(screen.getByRole('button', { name: 'Internal Network' })).toBeInTheDocument()
+      expect(globalThis.fetch).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([true, false])(
+    'waits for deletion and only closes on success (success: %s)',
+    async (succeeds) => {
+      const user = userEvent.setup()
+      const queryClient = createConsoleQueryClient()
+      const group = createNetworkAccessGroupFixture({ version: 7 })
+      seedNetworkAccessGroups(queryClient, { groups: [group] })
+      let resolveDeletion!: (response: Response) => void
+      const deletion = new Promise<Response>((resolve) => {
+        resolveDeletion = resolve
+      })
+      const deleteRequests: Request[] = []
+      vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+        const request = input instanceof Request ? input : new Request(String(input), init)
+        if (request.method === 'DELETE') {
+          deleteRequests.push(request)
+          return deletion
+        }
+        return new Response(JSON.stringify({ groups: [], entitled: true }), {
+          headers: { 'content-type': 'application/json' },
+        })
+      })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
+      )
+
+      await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+      await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+      const dialog = screen.getByRole('alertdialog', { name: 'Delete IP policy?' })
+      const deleteButton = within(dialog).getByRole('button', { name: 'Delete' })
+      await user.click(deleteButton)
+
+      await waitFor(() => expect(deleteButton).toHaveAttribute('aria-disabled', 'true'))
+      expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+      expect(within(dialog).getByRole('button', { name: 'Close' })).toBeDisabled()
+      await user.click(deleteButton)
+      await user.keyboard('{Escape}')
+      expect(dialog).toBeInTheDocument()
+      expect(deleteRequests).toHaveLength(1)
+      expect(deleteRequests[0]?.url).toContain('group-1?expected_version=7')
+
+      await act(async () => {
+        resolveDeletion(
+          succeeds
+            ? new Response(null, { status: 204 })
+            : new Response(JSON.stringify({ message: 'Unable to delete policy' }), {
+                status: 500,
+                headers: { 'content-type': 'application/json' },
+              }),
+        )
+      })
+
+      if (succeeds) {
+        await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+        expect(screen.queryByRole('button', { name: 'Internal Network' })).not.toBeInTheDocument()
+      } else {
+        await waitFor(() => expect(deleteButton).not.toHaveAttribute('aria-disabled', 'true'))
+        expect(dialog).toBeInTheDocument()
+        expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeEnabled()
+        await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+        await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+        expect(screen.getByRole('button', { name: 'Internal Network' })).toBeInTheDocument()
+      }
+    },
+  )
 })
