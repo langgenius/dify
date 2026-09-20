@@ -37,7 +37,9 @@ from core.workflow.generator.tool_catalogue import (
 )
 
 
-def _entry(provider: str, tool: str, *, label: str = "", description: str = "") -> ToolCatalogueEntry:
+def _entry(
+    provider: str, tool: str, *, label: str = "", description: str = "", needs_credentials: bool = False
+) -> ToolCatalogueEntry:
     return ToolCatalogueEntry(
         provider_name=provider,
         provider_type="builtin",
@@ -45,6 +47,7 @@ def _entry(provider: str, tool: str, *, label: str = "", description: str = "") 
         tool_name=tool,
         tool_label=label,
         description=description,
+        needs_credentials=needs_credentials,
     )
 
 
@@ -384,10 +387,18 @@ def _make_tool(name: str, label_en: str = "", description_llm: str = "") -> Buil
     )
 
 
-def _make_builtin_provider(name: str, tools: list[BuiltinTool]) -> BuiltinToolProviderController:
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+
+
+def _make_builtin_provider(
+    name: str, tools: list[BuiltinTool], *, need_credentials: bool = False
+) -> BuiltinToolProviderController:
     """Load the shipped time provider, then configure its real tool inventory."""
     provider = WikiPediaProvider()
     provider.entity.identity.name = name
+    provider.entity.credentials_schema = (
+        [ProviderConfig(name="api_key", type=ProviderConfigType.SECRET_INPUT)] if need_credentials else []
+    )
     provider.tools = tools
     return provider
 
@@ -398,9 +409,18 @@ def _provider_identity(name: str) -> ToolProviderIdentity:
     )
 
 
-def _make_plugin_provider(name: str, plugin_id: str, tools: list[BuiltinTool]) -> PluginToolProviderController:
-    return PluginToolProviderController(
+def _make_plugin_provider(
+    name: str, plugin_id: str, tools: list[BuiltinTool], *, need_credentials: bool = False
+) -> PluginToolProviderController:
+    entity_kwargs = dict(
         entity=ToolProviderEntityWithPlugin(identity=_provider_identity(name), tools=[tool.entity for tool in tools]),
+    )
+    if need_credentials:
+        entity_kwargs["entity"].credentials_schema = [
+            ProviderConfig(name="api_key", type=ProviderConfigType.SECRET_INPUT)
+        ]
+    return PluginToolProviderController(
+        **entity_kwargs,
         plugin_id=plugin_id,
         plugin_unique_identifier=f"{plugin_id}:1.0@checksum" if plugin_id else "",
         tenant_id="tenant-1",
@@ -466,11 +486,13 @@ class TestBuildToolCatalogue:
         hardcoded = _make_builtin_provider(
             "time",
             [_make_tool("current_time", label_en="Current Time", description_llm="Return now.")],
+            need_credentials=False,
         )
         plugin = _make_plugin_provider(
             "google",
             plugin_id="langgenius/google",
             tools=[_make_tool("search", label_en="Google Search", description_llm="Search the web.")],
+            need_credentials=True,
         )
         monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([hardcoded, plugin]))
 
@@ -489,9 +511,14 @@ class TestBuildToolCatalogue:
         assert google["plugin_unique_identifier"] == "langgenius/google:1.0@checksum"
         assert google["tool_label"] == "Google Search"
         assert google["description"] == "Search the web."
+        # Carries the provider's credential requirement so the Builder can
+        # tell a usable tool from one that will fail authorization at test
+        # time (see services/dify_builder/agent/resources.py).
+        assert google["needs_credentials"] is True
         time_entry = entries[1]
         assert time_entry["provider_type"] == "builtin"
         assert time_entry["plugin_id"] == ""
+        assert time_entry["needs_credentials"] is False
 
     def test_skips_unknown_provider_classes(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # If ToolManager ever yields a provider the catalogue doesn't know how
