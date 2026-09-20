@@ -123,6 +123,10 @@ class NetworkAccessGroupDeleteResponse(ResponseModel):
     deleted: bool
 
 
+class NetworkAccessGroupCurrentIPResponse(ResponseModel):
+    client_ip: str
+
+
 class NetworkAccessGroupCurrentIPCheckResponse(ResponseModel):
     client_ip: str
     allowed: bool
@@ -189,6 +193,7 @@ register_response_schema_models(
     NetworkAccessGroupListResponse,
     NetworkAccessGroupMutationResponse,
     NetworkAccessGroupDeleteResponse,
+    NetworkAccessGroupCurrentIPResponse,
     NetworkAccessGroupCurrentIPCheckResponse,
     AppNetworkAccessGroupBindingResponse,
     AppNetworkAccessGroupResponse,
@@ -364,6 +369,34 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
         except NetworkAccessGroupError as exc:
             raise _translate_service_error(exc) from exc
         return _serialize_response(NetworkAccessGroupDeleteResponse, payload)
+
+
+@console_ns.route("/workspaces/current/network-access-groups/current-ip")
+class CurrentWorkspaceNetworkAccessGroupCurrentIPApi(Resource):
+    @console_ns.response(
+        200,
+        "Trusted current client IP retrieved without requiring an existing network access group",
+        console_ns.models[NetworkAccessGroupCurrentIPResponse.__name__],
+    )
+    @console_ns.response(403, "The workspace role does not allow network access policy reads")
+    @console_ns.response(503, "A trusted current client IP is unavailable")
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext) -> dict[str, Any]:
+        @after_this_request
+        def disable_client_ip_response_cache(response: Response) -> Response:
+            response.headers["Cache-Control"] = "no-store"
+            return response
+
+        try:
+            payload = application_services().network_access_groups.get_current_ip(
+                request_context,
+                client_ip_supplier=_resolve_current_network_access_client_ip,
+            )
+        except NetworkAccessClientIPUnavailableError as exc:
+            raise ServiceUnavailable("Current client IP is unavailable.") from exc
+        except NetworkAccessGroupError as exc:
+            raise _translate_service_error(exc) from exc
+        return _serialize_response(NetworkAccessGroupCurrentIPResponse, payload)
 
 
 @console_ns.route("/workspaces/current/network-access-groups/<uuid:group_id>/check-current-ip")

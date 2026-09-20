@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
-from flask import Flask
+from flask import Flask, Response
 from pydantic import ValidationError
 from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, HTTPException, NotFound, ServiceUnavailable
 
@@ -16,15 +16,18 @@ from controllers.console.workspace.network_access_group import (
     AppNetworkAccessGroupApi,
     AppNetworkAccessGroupUpdatePayload,
     CurrentWorkspaceNetworkAccessGroupApi,
+    CurrentWorkspaceNetworkAccessGroupCurrentIPApi,
     CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi,
     CurrentWorkspaceNetworkAccessGroupsApi,
     NetworkAccessGroupCreatePayload,
+    NetworkAccessGroupCurrentIPResponse,
     NetworkAccessGroupDeleteQuery,
     NetworkAccessGroupUpdatePayload,
     _translate_service_error,
     _translate_upstream_error,
 )
 from core.network_access.client_ip import NetworkAccessClientIPUnavailableError
+from enums import DeploymentEdition
 from machinery.context import RequestContext
 from services.network_access_group_service import (
     NetworkAccessGroupAccessDeniedError,
@@ -497,3 +500,147 @@ def test_group_response_rejects_enforcing_count_greater_than_used_by_count() -> 
             CurrentWorkspaceNetworkAccessGroupsApi(),
             request_context=_request_context(),
         )
+
+
+@pytest.mark.parametrize(
+    ("peer", "forwarded", "expected"),
+    [
+        ("172.18.0.3", "203.0.113.7", "203.0.113.7"),
+        ("172.18.0.3", "2001:db8::42", "2001:db8::42"),
+        ("172.18.0.3", "::ffff:203.0.113.7", "203.0.113.7"),
+        ("203.0.113.7", "192.0.2.1", "203.0.113.7"),
+        ("172.18.0.3", "192.0.2.1, 203.0.113.7, 172.18.0.4", "203.0.113.7"),
+    ],
+    ids=["ipv4", "ipv6", "mapped-ipv6", "untrusted-peer-spoof", "trusted-proxy-appended-peer"],
+)
+def test_current_ip_read_uses_trusted_resolver_and_ignores_client_supplied_ip(
+    config_overrides: Callable[..., None],
+    peer: str,
+    forwarded: str,
+    expected: str,
+) -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
+    service.get_current_ip.side_effect = lambda _context, *, client_ip_supplier: {"client_ip": client_ip_supplier()}
+    api = CurrentWorkspaceNetworkAccessGroupCurrentIPApi()
+
+    with (
+        app.test_request_context(
+            "/workspaces/current/network-access-groups/current-ip?client_ip=192.0.2.1&group_id=ignored",
+            headers={
+                "X-Forwarded-For": forwarded,
+                "CF-Connecting-IP": "192.0.2.1",
+                "X-Real-IP": "192.0.2.1",
+                "Forwarded": "for=192.0.2.1",
+            },
+            json={"client_ip": "192.0.2.1"},
+            environ_base={"REMOTE_ADDR": peer},
+        ),
+        _application_services(service),
+    ):
+        result = unwrap(api.get)(api, request_context=_request_context())
+        response = app.process_response(app.make_response(result))
+
+    assert result == {"client_ip": expected}
+    assert response.headers["Cache-Control"] == "no-store"
+    assert service.get_current_ip.call_args.args == (_request_context(),)
+    assert set(service.get_current_ip.call_args.kwargs) == {"client_ip_supplier"}
+    service.get_group.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("trusted_proxies", "forwarded"),
+    [
+        ("", "203.0.113.7"),
+        ("not-a-cidr", "203.0.113.7"),
+        ("172.18.0.0/16", None),
+        ("172.18.0.0/16", "malformed"),
+        ("172.18.0.0/16", "172.18.0.4"),
+    ],
+    ids=["missing-proxy-config", "invalid-proxy-config", "missing-xff", "invalid-xff", "all-trusted-hops"],
+)
+def test_current_ip_read_fails_closed_with_no_store_on_503(
+    config_overrides: Callable[..., None], trusted_proxies: str, forwarded: str | None
+) -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS=trusted_proxies)
+    service.get_current_ip.side_effect = lambda _context, *, client_ip_supplier: {"client_ip": client_ip_supplier()}
+    api = CurrentWorkspaceNetworkAccessGroupCurrentIPApi()
+
+    with (
+        app.test_request_context(
+            headers={"X-Forwarded-For": forwarded} if forwarded is not None else {},
+            environ_base={"REMOTE_ADDR": "172.18.0.3"},
+        ),
+        _application_services(service),
+    ):
+        with pytest.raises(ServiceUnavailable, match="Current client IP is unavailable") as exc_info:
+            unwrap(api.get)(api, request_context=_request_context())
+        response = app.process_response(app.make_response(exc_info.value.get_response()))
+
+    assert response.status_code == 503
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_current_ip_read_maps_role_denial_without_resolving_ip() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    service.get_current_ip.side_effect = NetworkAccessGroupAccessDeniedError
+    api = CurrentWorkspaceNetworkAccessGroupCurrentIPApi()
+
+    with (
+        app.test_request_context(),
+        _application_services(service),
+        patch(
+            "controllers.console.workspace.network_access_group.resolve_network_access_client_ip"
+        ) as resolve_client_ip,
+    ):
+        with pytest.raises(Forbidden, match="workspace role") as exc_info:
+            unwrap(api.get)(api, request_context=_request_context())
+        response = app.process_response(app.make_response(exc_info.value.get_response()))
+
+    resolve_client_ip.assert_not_called()
+    assert response.status_code == 403
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
+def test_current_ip_read_is_cloud_only(config_overrides: Callable[..., None], edition: DeploymentEdition) -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    with app.test_request_context(), _application_services(service), pytest.raises(NotFound):
+        CurrentWorkspaceNetworkAccessGroupCurrentIPApi().get()
+
+    service.get_current_ip.assert_not_called()
+
+
+def test_current_ip_read_requires_authenticated_account(config_overrides: Callable[..., None]) -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, LOGIN_DISABLED=False)
+    login_manager = MagicMock()
+    login_manager.unauthorized.return_value = Response(status=401)
+
+    with (
+        app.test_request_context(),
+        _application_services(service),
+        patch("libs.login._resolve_current_user", return_value=None),
+        patch("libs.login._get_login_manager", return_value=login_manager),
+    ):
+        response = CurrentWorkspaceNetworkAccessGroupCurrentIPApi().get()
+
+    assert isinstance(response, Response)
+    assert response.status_code == 401
+    service.get_current_ip.assert_not_called()
+
+
+def test_current_ip_read_response_schema_exposes_only_client_ip() -> None:
+    schema = NetworkAccessGroupCurrentIPResponse.model_json_schema(mode="serialization")
+
+    assert schema["required"] == ["client_ip"]
+    assert set(schema["properties"]) == {"client_ip"}
+    assert schema["properties"]["client_ip"]["type"] == "string"

@@ -390,6 +390,10 @@ export type NetworkAccessGroupMutationResponse = {
   group: NetworkAccessGroupResponse
 }
 
+export type NetworkAccessGroupCurrentIpResponse = {
+  client_ip: string
+}
+
 export type NetworkAccessGroupDeleteResponse = {
   deleted: boolean
 }
@@ -3947,6 +3951,25 @@ export type PostWorkspacesCurrentNetworkAccessGroupsResponses = {
 
 export type PostWorkspacesCurrentNetworkAccessGroupsResponse =
   PostWorkspacesCurrentNetworkAccessGroupsResponses[keyof PostWorkspacesCurrentNetworkAccessGroupsResponses]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/network-access-groups/current-ip'
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpErrors = {
+  403: unknown
+  503: unknown
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponses = {
+  200: NetworkAccessGroupCurrentIpResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponse =
+  GetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponses[keyof GetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponses]
 
 export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdData = {
   body?: never

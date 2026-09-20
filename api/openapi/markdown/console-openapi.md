@@ -10771,6 +10771,15 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 201 | Workspace network access group created successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
 
+### [GET] /workspaces/current/network-access-groups/current-ip
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Trusted current client IP retrieved without requiring an existing network access group | **application/json**: [NetworkAccessGroupCurrentIPResponse](#networkaccessgroupcurrentipresponse)<br> |
+| 403 | The workspace role does not allow network access policy reads |  |
+| 503 | A trusted current client IP is unavailable |  |
+
 ### [DELETE] /workspaces/current/network-access-groups/{group_id}
 #### Parameters
 
@@ -19980,6 +19989,12 @@ Model with provider entity.
 | allowed | boolean |  | Yes |
 | client_ip | string |  | Yes |
 | policy_version | integer |  | Yes |
+
+#### NetworkAccessGroupCurrentIPResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_ip | string |  | Yes |
 
 #### NetworkAccessGroupDeleteResponse
 

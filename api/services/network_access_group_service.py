@@ -287,6 +287,23 @@ class NetworkAccessGroupService:
         self._finalize_effective_enabled(payload)
         return payload
 
+    def get_current_ip(
+        self,
+        context: RequestContext,
+        *,
+        client_ip_supplier: Callable[[], str],
+    ) -> dict[str, str]:
+        """Return trusted request metadata without requiring a saved policy.
+
+        Like policy reads and the existing IP preflight, this read-only helper
+        authorizes the persisted workspace role before resolving the request IP.
+        It does not create a policy, enable enforcement, or require a paid plan;
+        policy mutations keep their separate paid-plan admission.
+        """
+
+        self._ensure_workspace_role(context, _POLICY_READ_ROLES)
+        return {"client_ip": client_ip_supplier()}
+
     def check_current_ip(
         self,
         context: RequestContext,
