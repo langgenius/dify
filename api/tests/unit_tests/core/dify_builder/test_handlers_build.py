@@ -903,6 +903,11 @@ def test_review_keep_draft_skips_publish_to_governance():
 
 
 def test_review_continue_adjusting_returns_to_initial_plan_with_fresh_plan():
+    """The plan is drafted (fc.plan_items/plan_version_tag) but NOT shown as
+    a card here: build.initial_plan (next) falls straight through to
+    build.resource_recommendation, which shows the ONE plan card for this
+    pass (v1, resources bound). Showing it here too would be the same
+    duplicate-card task 2 already removed from the straight-through path."""
     from core.dify_builder.handlers_build import handle_review
 
     env, repo = _new_env()
@@ -911,7 +916,9 @@ def test_review_continue_adjusting_returns_to_initial_plan_with_fresh_plan():
     res = handle_review(env, re_fix_turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_INITIAL_PLAN
     assert res.context.plan_version_tag == "v1"
-    assert any(i.kind == "plan" for i in res.items)
+    assert res.context.plan_items  # drafted internally
+    assert not any(i.kind == "plan" for i in res.items)  # not shown yet
+    assert any(i.kind == "decision" for i in res.items)
 
 
 def test_review_revert_records_intent_only():
@@ -1040,6 +1047,10 @@ def test_await_learning_skip_completes_without_learning():
 
 
 def test_reverted_retry_returns_to_initial_plan():
+    """Same duplicate-card removal as handle_review's re_fix branch: the plan
+    is drafted but not shown here -- build.initial_plan (next) falls
+    straight through to build.resource_recommendation, which shows the ONE
+    plan card for this pass."""
     from core.dify_builder.handlers_build import handle_reverted
 
     env, repo = _new_env()
@@ -1049,7 +1060,8 @@ def test_reverted_retry_returns_to_initial_plan():
     )
     assert res.next == PcState.BUILD_INITIAL_PLAN
     assert res.context.plan_version_tag == "v1"
-    assert any(i.kind == "plan" for i in res.items)
+    assert res.context.plan_items  # drafted internally
+    assert not any(i.kind == "plan" for i in res.items)  # not shown yet
 
 
 def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
@@ -1269,13 +1281,24 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
     # loop back: continue_adjusting (-> re_fix) -> build.initial_plan (re-plan)
     # -> falls straight through (working/pass-through, no action needed) to
     # build.resource_recommendation, all within this one advance() call.
+    plan_cards_before_loop_back = sum(1 for i in repo.list_conversation(s.id) if i.kind == "plan")
     out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    # re_fix must NOT show the plan card a second time -- it drafts fc.plan_items
+    # but defers display to confirm_resources below, exactly like the
+    # straight-through path (task 2's duplicate-card removal).
+    assert sum(1 for i in repo.list_conversation(s.id) if i.kind == "plan") == plan_cards_before_loop_back
 
     # confirm_resources -> approve_plan
     confirm_action_2 = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action_2, actor=_actor()))
     assert out.current_state == PcState.BUILD_PLAN_APPROVAL
+    # exactly ONE plan card for this whole loop-back pass (re_fix + discovery
+    # + confirm_resources): the same "v1, resources bound" card the
+    # straight-through path shows, not two under different version tags.
+    plan_cards_after_confirm = [i for i in repo.list_conversation(s.id) if i.kind == "plan"]
+    assert len(plan_cards_after_confirm) == plan_cards_before_loop_back + 1
+    assert plan_cards_after_confirm[-1].payload["version_tag"] == "v1"
 
     # THE re-approve: must not raise ValueError, must reach build.execution,
     # and must not double the graph (idempotent -- everything already exists).
