@@ -258,6 +258,30 @@ describe('consoleQuery transport context', () => {
     expect(new Uint8Array(await result.arrayBuffer())).toEqual(bytes)
   })
 
+  it('preserves agent audition audio bytes and the provider content type', async () => {
+    const bytes = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x00, 0xff])
+    const request = vi
+      .fn()
+      .mockResolvedValue(new Response(bytes, { headers: { 'content-type': 'audio/wav' } }))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const mutation = new MutationObserver(
+      new QueryClient(),
+      consoleQuery.agent.byAgentId.textToAudio.post.mutationOptions(),
+    )
+    const audio = await mutation.mutate({
+      params: { agent_id: 'agent-1' },
+      body: { text: 'Preview this voice', voice: 'echo' },
+    })
+
+    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(outgoing.url).toContain('/agent/agent-1/text-to-audio')
+    expect(outgoing.method).toBe('POST')
+    expect(await outgoing.json()).toEqual({ text: 'Preview this voice', voice: 'echo' })
+    expect(audio).toBeInstanceOf(Blob)
+    expect(audio.type).toBe('audio/wav')
+    expect(new Uint8Array(await audio.arrayBuffer())).toEqual(bytes)
+  })
+
   it('should forward silent context to the base request transport', async () => {
     const request = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({}), {
