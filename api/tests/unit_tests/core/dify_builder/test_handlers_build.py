@@ -785,6 +785,45 @@ def test_test_and_repair_model_config_failure_surfaces_without_repair():
     assert "model" in error.payload["body"].lower()  # diagnosis names the model-config issue
 
 
+def test_test_and_repair_running_status_is_not_treated_as_failure():
+    """A truncated-stream run (status="running" -- the outcome is genuinely
+    unknown, per Run.status's third value) must NOT be diagnosed or repaired:
+    it returns to build.execution (re-runnable) with a neutral notice
+    instead of the failure path."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import Run
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    diagnose_calls: list[object] = []
+    agent = StubAgent()
+    agent.diagnose = lambda *a, **kw: diagnose_calls.append((a, kw))
+    env, _ = _new_env(agent=agent)
+    env.dify = FakeBuildDifyPort()
+    env.dify.run_draft = lambda *_a, **_k: Run(
+        dify_run_id="",
+        status="running",
+        per_node=[],
+        error="the workflow run's progress stream ended before the run did, so its outcome is unknown",
+    )
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_EXECUTION
+    assert result.run is not None
+    assert result.run.status == "running"
+    assert not diagnose_calls  # diagnose must NOT be called for an unknown outcome
+    assert result.context.staged_repair == []
+    assert result.context.diagnosis is None
+    kinds = [i.kind for i in result.items]
+    assert "notice" in kinds
+    assert "test_result" not in kinds  # not labeled pass/fail
+    assert "error" not in kinds
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert assistant.payload["cards"] == ["notice"]
+
+
 def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed():
     """run_draft raising must not crash the advance -- the try/except degrade
     path converts the exception into a failed run and still routes to the
