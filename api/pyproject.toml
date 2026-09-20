@@ -221,6 +221,21 @@ storage = [
 tools = ["cloudscraper>=1.2.71,<2.0.0", "nltk>=3.10.4,<4.0.0"]
 
 ############################################################
+# [ Evaluation ] dependency group
+# Installed in API/worker images; pinned to the adapter API used here.
+############################################################
+evaluation = [
+    "ragas==0.3.2",
+    # RAGAS 0.3.2 still imports integrations removed by LangChain 1.x.
+    "langchain>=0.3.27,<0.4.0",
+    "langchain-community>=0.3.27,<0.4.0",
+    "langchain-core>=0.3.79,<0.4.0",
+    "langchain-openai>=0.3.35,<0.4.0",
+    # Keep the API SDK aligned with the version already locked by the main runtime.
+    "openai==2.24.0",
+]
+
+############################################################
 # [ VDB ] workspace plugins — hollow packages under providers/vdb/*
 # Each declares its own third-party deps and registers dify.vector_backends entry points.
 # Use: uv sync --group vdb-all | uv sync --group vdb-qdrant
