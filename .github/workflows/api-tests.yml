@@ -138,6 +138,8 @@ jobs:
             -n auto \
             --dist worksteal \
             --durations=20 \
+            --shard-durations api/tests/integration-test-durations.json \
+            --write-test-durations "integration-durations-${{ matrix.shardIndex }}.json" \
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
             -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
@@ -151,7 +153,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: api-coverage-integration-${{ matrix.python-version }}-${{ matrix.shardIndex }}
-          path: ${{ env.COVERAGE_FILE }}
+          path: |
+            ${{ env.COVERAGE_FILE }}
+            integration-durations-${{ matrix.shardIndex }}.json
           if-no-files-found: error
           retention-days: 1
 
@@ -185,6 +189,26 @@ jobs:
           path: coverage-data
           pattern: api-coverage-*
           merge-multiple: true
+
+      - name: Merge integration test durations
+        run: |
+          PYTHONPATH=api python3 - <<'PYTHON'
+          from pathlib import Path
+          from tests.pytest_sharding import merge_duration_files
+
+          reports = sorted(Path("coverage-data").glob("integration-durations-*.json"))
+          if len(reports) != 4:
+              raise SystemExit(f"Expected 4 duration reports, found {len(reports)}")
+          merge_duration_files(reports, Path("integration-test-durations.json"))
+          PYTHON
+
+      - name: Upload integration test durations
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-integration-duration-history
+          path: integration-test-durations.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Combine coverage
         run: |
