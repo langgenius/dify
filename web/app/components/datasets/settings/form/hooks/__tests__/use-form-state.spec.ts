@@ -179,7 +179,10 @@ vi.mock('@/service/use-common', () => ({
   }),
 }))
 
-vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
+vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/app/components/datasets/common/check-rerank-model')
+  >()),
   isReRankModelSelected: () => true,
 }))
 
