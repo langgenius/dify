@@ -206,7 +206,7 @@ class ChangedNode:
 
 @dataclass(kw_only=True)
 class ApplyResult:
-    """Reports what a repair changed and the draft's new hash."""
+    """Reports what a repair changed and the draft's new execution revision."""
 
     changed_nodes: list[str] = field(default_factory=list)
     nodes: list[ChangedNode] = field(default_factory=list)
@@ -251,6 +251,7 @@ class DifyBuilderContext:
     checkpoint_id: str = ""
     verify_run_id: str = ""
     test_input_ref: str = ""
+    # Execution revision, distinct from the editor's full graph persistence hash.
     last_snapshot_hash: str = ""
     next_seq: int = 0
     # source distinguishes diagnosis origin: "" (run, default) | "checklist".
@@ -306,7 +307,7 @@ class Action:
     kind: str = ""
     payload: dict[str, Any] = field(default_factory=dict)
     base_version: int = 0
-    # Opaque draft-workflow revision observed in the latest server view.
+    # Opaque execution revision observed in the latest server view.
     # Empty means the action does not mutate or otherwise depend on the app
     # draft (for example a free-text conversation turn).
     base_app_revision: str = ""

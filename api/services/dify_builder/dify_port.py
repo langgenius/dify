@@ -63,6 +63,7 @@ from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
 from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializedError
 from services.dify_builder.identity import load_app, resolve_account
+from services.dify_builder.revision import execution_revision
 from services.dify_builder.run_mapping import map_run_result, to_node_event
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
@@ -166,7 +167,7 @@ class WorkflowServiceDifyPort:
         with _session_factory()() as session:
             app = load_app(session, app_id, actor)
             workflow = _load_draft_workflow_or_raise(app, session=session)
-            return dict(workflow.graph_dict), workflow.unique_hash
+            return dict(workflow.graph_dict), execution_revision(workflow)
 
     def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]:
         with _session_factory()() as session:
@@ -195,11 +196,21 @@ class WorkflowServiceDifyPort:
         actor: Actor,
         intents: list[MutationIntent],
         on_canvas: Callable[[dict], None] | None = None,
+        *,
+        expected_revision: str,
     ) -> ApplyResult:
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
             workflow = _load_draft_workflow_or_raise(app, session=session)
+
+            # Lock AND refresh before inspecting the graph: this Session may
+            # already contain an older Workflow in its identity map. Keep the
+            # execution check and mutation in the same short transaction.
+            session.refresh(workflow, with_for_update=True)
+            revision = execution_revision(workflow)
+            if revision != expected_revision:
+                raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
 
             before_graph: Graph = dict(workflow.graph_dict)
             graph: Graph = before_graph
@@ -250,7 +261,7 @@ class WorkflowServiceDifyPort:
             if not changed_nodes:
                 return ApplyResult(
                     changed_nodes=[],
-                    new_hash=unique_hash,
+                    new_hash=revision,
                     changes=[],
                     scope="",
                     structure_fingerprint=graph_ops.structural_fingerprint(before_graph),
@@ -263,7 +274,7 @@ class WorkflowServiceDifyPort:
             return ApplyResult(
                 changed_nodes=changed_nodes,
                 nodes=describe_changed_nodes(changed_nodes, before_graph, graph),
-                new_hash=updated.unique_hash,
+                new_hash=execution_revision(updated),
                 changes=changes,
                 scope=scope,
                 structure_fingerprint=graph_ops.structural_fingerprint(graph),
@@ -275,17 +286,20 @@ class WorkflowServiceDifyPort:
     def graph_node_ids(self, graph: Graph) -> list[str]:
         return graph_ops.node_ids(graph)
 
-    def restore_graph(self, app_id: str, actor: Actor, graph: Graph) -> str:
+    def restore_graph(self, app_id: str, actor: Actor, graph: Graph, *, expected_revision: str) -> str:
         """Restore the draft to a prior snapshot graph (Slice 4 revert): write
         the whole graph back via the same graph-only sync apply_repair uses.
-        Returns the new draft hash. Raises HashMismatchError if the draft
-        changed since the caller read it (same contract as apply_repair)."""
+        Returns the new execution revision. Raises HashMismatchError if the
+        execution configuration changed since the caller read it."""
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
             workflow = _load_draft_workflow_or_raise(app, session=session)
+            session.refresh(workflow, with_for_update=True)
+            if execution_revision(workflow) != expected_revision:
+                raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
             updated = _sync_graph_only(app, graph, workflow, workflow.unique_hash, account, session, app_id)
-            return updated.unique_hash
+            return execution_revision(updated)
 
     def run_draft(self, app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run:
         with _session_factory()() as session:

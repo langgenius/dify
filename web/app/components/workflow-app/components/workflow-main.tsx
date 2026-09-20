@@ -202,9 +202,8 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     [featuresStore, workflowStore],
   )
 
-  const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraftByCanEdit(
-    appACLCapabilities.canEdit,
-  )
+  const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose, prepareWorkflowDraftForBuilder } =
+    useNodesSyncDraftByCanEdit(appACLCapabilities.canEdit)
   const varsUpdateGenerationRef = useRef(0)
   const varsUpdateAppliedGenerationRef = useRef(0)
   const varsUpdateFailedGenerationRef = useRef(0)
@@ -536,15 +535,12 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     }),
     [reactFlow],
   )
-  const handleDifyBuilderSyncDraft = useCallback(async () => {
-    const result = await doSyncWorkflowDraft()
-    if (!result) throw new Error('Workflow draft sync failed.')
-  }, [doSyncWorkflowDraft])
   const handleDifyBuilderRefreshCanvas = useCallback(
     async (shouldApply: () => boolean) => {
       const refreshed = await handleRefreshWorkflowDraft(false, {
         shouldApply,
         resolveConflict: true,
+        builderRefresh: true,
       })
       if (refreshed && appId && isCollaborationEnabled)
         collaborationManager.emitWorkflowUpdate(appId)
@@ -570,7 +566,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       }
       getCanvasSnapshot={getDifyBuilderCanvasSnapshot}
       onFocusCanvas={handleDifyBuilderFocusCanvas}
-      onSyncDraft={handleDifyBuilderSyncDraft}
+      onSyncDraft={prepareWorkflowDraftForBuilder}
       onRefreshCanvas={handleDifyBuilderRefreshCanvas}
       tenantId={currentWorkspaceId}
       userId={currentUserId}

@@ -10,6 +10,7 @@ type RefreshWorkflowDraftOptions = {
   shouldApply?: () => boolean
   syncToCollaboration?: boolean
   resolveConflict?: boolean
+  builderRefresh?: boolean
 }
 
 export const useWorkflowRefreshDraft = () => {
@@ -20,6 +21,8 @@ export const useWorkflowRefreshDraft = () => {
 
   const handleRefreshWorkflowDraft = useCallback(
     (notUpdateCanvas?: boolean, options?: RefreshWorkflowDraftOptions) => {
+      if (workflowStore.getState().workflowDraftSyncPhase !== 'idle' && !options?.builderRefresh)
+        return Promise.resolve(false)
       if (options?.shouldApply && !options.shouldApply()) return Promise.resolve(false)
       // Background refreshes must not discard the local edits preserved after a conflict.
       if (workflowStore.getState().hasWorkflowDraftConflict && !options?.resolveConflict)
@@ -51,8 +54,10 @@ export const useWorkflowRefreshDraft = () => {
         )
       }
       setIsSyncingWorkflowDraft(true)
-      return fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-        .then((response) => {
+      return workflowStore.getState().enqueueWorkflowDraftOperation(async () => {
+        try {
+          if (!isCurrent()) return false
+          const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
           if (!isCurrent()) return false
 
           if (!notUpdateCanvas) {
@@ -93,14 +98,16 @@ export const useWorkflowRefreshDraft = () => {
             setDraftUpdatedAt(response.updated_at)
             setIsWorkflowDataLoaded(true)
             setWorkflowDraftConflict(false)
+            if (options?.builderRefresh) workflowStore.getState().setWorkflowDraftSyncPhase('idle')
           }
           return true
-        })
-        .catch(() => false)
-        .finally(() => {
+        } catch {
+          return false
+        } finally {
           if (workflowStore.getState().workflowDraftGeneration === generation)
             setIsSyncingWorkflowDraft(false)
-        })
+        }
+      })
     },
     [getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
   )

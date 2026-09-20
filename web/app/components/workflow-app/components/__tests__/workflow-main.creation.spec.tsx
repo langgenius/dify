@@ -1,24 +1,27 @@
+import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ReactNode } from 'react'
+import type { SessionView } from '../dify-builder/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { StrictMode, useState } from 'react'
+import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { builderModel, createBuilderQueryClient } from '../dify-builder/__tests__/model-fixtures'
 import { difyBuilderPendingCreationAtom } from '../dify-builder/creation'
-import { difyBuilderDraftAtom, difyBuilderLocalErrorAtom } from '../dify-builder/store'
+import { difyBuilderDraftAtom, difyBuilderErrorAtom } from '../dify-builder/store'
 import WorkflowMain from '../workflow-main'
+
+let workflowStore: ReturnType<typeof createWorkflowStore>
 
 const mocks = vi.hoisted(() => ({
   collaborative: true,
   graphReady: false,
   graphReadyListener: undefined as ((ready: boolean) => void) | undefined,
   setShowPanel: vi.fn(),
-  setCanvasReadOnly: vi.fn(),
-  setDraftUpdatedAt: vi.fn(),
-  setSyncWorkflowDraftHash: vi.fn(),
   syncWorkflowDraft: vi.fn(async () => ({ hash: 'saved-hash', updated_at: 1 })),
-  startBuild: vi.fn(async () => true),
+  create: vi.fn(),
+  conversation: vi.fn(),
   refreshDraft: vi.fn(async () => true),
   getNodes: () => [{ id: 'start-placeholder', data: { type: 'start-placeholder' } }],
   getEdges: () => [],
@@ -35,22 +38,12 @@ vi.mock('@/context/workspace-state', async () => {
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeaturesStore: () => ({ getState: () => ({ features: {} }) }),
 }))
-vi.mock('@/app/components/workflow/store', () => {
-  const state = {
-    appId: 'created-app',
-    isWorkflowDataLoaded: true,
-    conversationVariables: [],
-    syncWorkflowDraftHash: 'initial-hash',
-    showDifyBuilderPanel: false,
-    setShowDifyBuilderPanel: mocks.setShowPanel,
-    setCanvasReadOnly: mocks.setCanvasReadOnly,
-    setDraftUpdatedAt: mocks.setDraftUpdatedAt,
-    setSyncWorkflowDraftHash: mocks.setSyncWorkflowDraftHash,
-  }
-  const store = { getState: () => state }
+vi.mock('@/app/components/workflow/store', async () => {
+  const { useStore } = await import('zustand')
   return {
-    useStore: <T,>(selector: (value: typeof state) => T) => selector(state),
-    useWorkflowStore: () => store,
+    useStore: <T,>(selector: (value: ReturnType<typeof workflowStore.getState>) => T) =>
+      useStore(workflowStore, selector),
+    useWorkflowStore: () => workflowStore,
   }
 })
 vi.mock('reactflow', () => {
@@ -66,7 +59,7 @@ vi.mock('@/app/components/workflow', () => ({
 vi.mock('../workflow-children', () => ({
   default: function BuilderStatus() {
     const draft = useAtomValue(difyBuilderDraftAtom)
-    const error = useAtomValue(difyBuilderLocalErrorAtom)
+    const error = useAtomValue(difyBuilderErrorAtom)
     return (
       <>
         <output aria-label="Builder draft">{draft}</output>
@@ -102,14 +95,23 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     onWorkflowUpdate: () => () => {},
     onSyncRequest: () => () => {},
     onGraphReloadRequired: () => () => {},
+    emitWorkflowUpdate: vi.fn(),
   },
 }))
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnlyByCanEdit: () => ({ getNodesReadOnly: () => false }),
 }))
 vi.mock('@/service/workflow', () => ({ syncWorkflowDraft: mocks.syncWorkflowDraft }))
-vi.mock('../dify-builder/session/use-session-controller', () => ({
-  useDifyBuilderSessionController: () => ({ startBuild: mocks.startBuild }),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    difyBuilder: {
+      sessions: {
+        post: mocks.create,
+        bySessionId: { conversation: { get: mocks.conversation } },
+      },
+    },
+  },
 }))
 vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({}),
@@ -157,6 +159,39 @@ describe('Workflow creation with App Builder', () => {
     mocks.collaborative = true
     mocks.graphReady = false
     mocks.graphReadyListener = undefined
+    workflowStore = createWorkflowStore({})
+    workflowStore.setState({
+      appId: 'created-app',
+      isWorkflowDataLoaded: true,
+      syncWorkflowDraftHash: 'initial-hash',
+      setShowDifyBuilderPanel: mocks.setShowPanel,
+    })
+    mocks.refreshDraft.mockImplementation(async () => {
+      workflowStore.getState().setWorkflowDraftSyncPhase('idle')
+      return true
+    })
+    mocks.conversation.mockResolvedValue({
+      data: [],
+      has_more: false,
+      first_seq: null,
+      last_seq: null,
+    })
+    mocks.create.mockImplementation(
+      async function* (): AsyncGenerator<DifyBuilderStreamEventResponse> {
+        const view: SessionView = {
+          app_id: 'created-app',
+          session_id: 'session-1',
+          state: 'build.goal_analysis',
+          version: 1,
+          canvas_read_only: false,
+          run_status: 'waiting_input',
+          interrupted: false,
+          conversation_last_seq: -1,
+        }
+        yield { event: 'command_started', data: { kind: 'command_started', ...view } }
+        yield { event: 'state', data: { kind: 'state', ...view } }
+      },
+    )
     window.sessionStorage.clear()
   })
 
@@ -178,7 +213,7 @@ describe('Workflow creation with App Builder', () => {
     await user.click(screen.getByRole('button', { name: 'Open created app' }))
 
     expect(mocks.syncWorkflowDraft).not.toHaveBeenCalled()
-    expect(mocks.startBuild).not.toHaveBeenCalled()
+    expect(mocks.create).not.toHaveBeenCalled()
     expect(screen.getByRole('status', { name: 'Builder error' })).toBeEmptyDOMElement()
 
     act(() => {
@@ -187,10 +222,15 @@ describe('Workflow creation with App Builder', () => {
     })
 
     await waitFor(() =>
-      expect(mocks.startBuild).toHaveBeenCalledWith(
-        'created-app',
-        'Build an expense workflow',
-        builderModel,
+      expect(mocks.create).toHaveBeenCalledWith(
+        {
+          body: expect.objectContaining({
+            app_id: 'created-app',
+            goal_text: 'Build an expense workflow',
+            model_config: builderModel,
+          }),
+        },
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       ),
     )
     expect(mocks.setShowPanel).toHaveBeenCalledWith(true)
@@ -199,7 +239,7 @@ describe('Workflow creation with App Builder', () => {
     expect(screen.getByRole('status', { name: 'Builder error' })).toBeEmptyDOMElement()
 
     act(() => mocks.graphReadyListener?.(true))
-    expect(mocks.startBuild).toHaveBeenCalledOnce()
+    expect(mocks.create).toHaveBeenCalledOnce()
   })
 
   it('syncs and sends without waiting for collaboration when collaboration is disabled', async () => {
@@ -216,10 +256,15 @@ describe('Workflow creation with App Builder', () => {
     await user.click(screen.getByRole('button', { name: 'Open created app' }))
 
     await waitFor(() =>
-      expect(mocks.startBuild).toHaveBeenCalledWith(
-        'created-app',
-        'Build an expense workflow',
-        builderModel,
+      expect(mocks.create).toHaveBeenCalledWith(
+        {
+          body: expect.objectContaining({
+            app_id: 'created-app',
+            goal_text: 'Build an expense workflow',
+            model_config: builderModel,
+          }),
+        },
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       ),
     )
     expect(mocks.syncWorkflowDraft).toHaveBeenCalledOnce()

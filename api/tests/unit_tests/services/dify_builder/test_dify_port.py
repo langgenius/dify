@@ -21,6 +21,7 @@ The genuine red -> green -> publish end-to-end against a running local stack
 is Task 5's runbook, not this suite.
 """
 
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -31,9 +32,21 @@ from core.dify_builder.models import Actor, ChangedNode, MutationIntent, NodeEve
 from core.dify_builder.ports import DifyPort
 from models.account import Account
 from models.model import App
+from models.workflow import Workflow
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializedError
+from services.dify_builder.revision import execution_revision
 from services.errors.app import WorkflowHashNotEqualError
+
+
+def _workflow(*, graph_dict: dict | None = None, features_dict: dict | None = None) -> Workflow:
+    return Workflow(
+        tenant_id="tenant-1",
+        graph=json.dumps(graph_dict or {"nodes": [], "edges": []}),
+        features=json.dumps(features_dict or {}),
+        environment_variables=[],
+        conversation_variables=[],
+    )
 
 
 def _actor() -> Actor:
@@ -77,10 +90,10 @@ def _mock_sessionmaker(mock_session: MagicMock):
 # ---- read_graph --------------------------------------------------------------
 
 
-def test_read_graph_returns_graph_dict_and_unique_hash(mock_session: MagicMock):
+def test_read_graph_returns_graph_and_execution_revision(mock_session: MagicMock):
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, app=app)
-    workflow = SimpleNamespace(graph_dict={"nodes": [], "edges": []}, unique_hash="hash-1")
+    workflow = _workflow(graph_dict={"nodes": [], "edges": []})
 
     with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
@@ -88,7 +101,8 @@ def test_read_graph_returns_graph_dict_and_unique_hash(mock_session: MagicMock):
         graph, unique_hash = WorkflowServiceDifyPort().read_graph("app-1", _actor())
 
     assert graph == {"nodes": [], "edges": []}
-    assert unique_hash == "hash-1"
+    assert unique_hash == execution_revision(workflow)
+    assert unique_hash != workflow.unique_hash
     mock_ws_cls.return_value.get_draft_workflow.assert_called_once_with(app, session=mock_session)
 
 
@@ -161,23 +175,23 @@ def test_apply_repair_syncs_mutated_graph_with_graph_only_and_no_agent_binding_s
     _configure_session_get(mock_session, account=account, app=app)
 
     original_graph = {"nodes": [{"id": "node-1", "data": {"code": "old"}}], "edges": []}
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict=original_graph,
-        unique_hash="hash-1",
         features_dict={"feature": True},
-        conversation_variables=["conv-var"],
     )
-    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    updated_workflow = _workflow()
     intents = [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "new"})]
 
     with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
         mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
 
-        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+        result = WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+        )
 
     assert result.changed_nodes == ["node-1"]
-    assert result.new_hash == "hash-2"
+    assert result.new_hash == execution_revision(updated_workflow)
 
     _, kwargs = mock_ws_cls.return_value.sync_draft_workflow.call_args
     # graph_only=True means sync_draft_workflow IGNORES the features/conversation_variables
@@ -189,7 +203,7 @@ def test_apply_repair_syncs_mutated_graph_with_graph_only_and_no_agent_binding_s
     assert kwargs["commit"] is True
     assert kwargs["preserve_environment_variables"] is True
     assert kwargs["environment_variables"] == []
-    assert kwargs["unique_hash"] == "hash-1"
+    assert kwargs["unique_hash"] == workflow.unique_hash
     assert kwargs["account"] is account
     assert kwargs["app_model"] is app
     assert kwargs["session"] is mock_session
@@ -205,11 +219,9 @@ def test_apply_repair_ignores_unknown_op_intents(mock_session: MagicMock):
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
 
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={"nodes": [{"id": "node-1", "data": {}}], "edges": []},
-        unique_hash="hash-1",
         features_dict={},
-        conversation_variables=[],
     )
     # Ops the dispatch table doesn't recognize are silently skipped -- this
     # is forward-compat for future verbs, distinct from a *recognized* op
@@ -220,14 +232,16 @@ def test_apply_repair_ignores_unknown_op_intents(mock_session: MagicMock):
     with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
 
-        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+        result = WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+        )
 
     assert result.changed_nodes == []
     # No node changed -> no reason to write the draft back: sync_draft_workflow must not
     # be called at all (avoids a wasteful no-op DB write + signal), and the hash returned
     # is simply the one that was read.
     mock_ws_cls.return_value.sync_draft_workflow.assert_not_called()
-    assert result.new_hash == "hash-1"
+    assert result.new_hash == execution_revision(workflow)
 
 
 def test_apply_repair_maps_hash_mismatch_to_domain_error(mock_session: MagicMock):
@@ -235,11 +249,9 @@ def test_apply_repair_maps_hash_mismatch_to_domain_error(mock_session: MagicMock
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
 
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={"nodes": [{"id": "node-1", "data": {}}], "edges": []},
-        unique_hash="hash-1",
         features_dict={},
-        conversation_variables=[],
     )
     intents = [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "x"})]
 
@@ -248,7 +260,9 @@ def test_apply_repair_maps_hash_mismatch_to_domain_error(mock_session: MagicMock
         mock_ws_cls.return_value.sync_draft_workflow.side_effect = WorkflowHashNotEqualError()
 
         with pytest.raises(HashMismatchError):
-            WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+            WorkflowServiceDifyPort().apply_repair(
+                "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+            )
 
 
 def test_apply_repair_dispatches_create_node(mock_session: MagicMock):
@@ -256,20 +270,20 @@ def test_apply_repair_dispatches_create_node(mock_session: MagicMock):
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
 
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={"nodes": [], "edges": []},
-        unique_hash="hash-1",
         features_dict={},
-        conversation_variables=[],
     )
-    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    updated_workflow = _workflow()
     intents = [MutationIntent(op="create_node", args={"node_type": "llm", "config": {}})]
 
     with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
         mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
 
-        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+        result = WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+        )
 
     assert len(result.changed_nodes) == 1
     _, kwargs = mock_ws_cls.return_value.sync_draft_workflow.call_args
@@ -282,11 +296,9 @@ def test_apply_repair_dispatches_connect_and_reports_dangling_ref_as_value_error
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
 
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={"nodes": [{"id": "a", "data": {}}], "edges": []},
-        unique_hash="hash-1",
         features_dict={},
-        conversation_variables=[],
     )
     intents = [MutationIntent(op="connect", args={"from_node": "a", "to_node": "missing"})]
 
@@ -294,7 +306,9 @@ def test_apply_repair_dispatches_connect_and_reports_dangling_ref_as_value_error
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
 
         with pytest.raises(ValueError):
-            WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+            WorkflowServiceDifyPort().apply_repair(
+                "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+            )
 
 
 def test_apply_repair_computes_real_diff_changes_and_scope_for_structural_edit(mock_session: MagicMock):
@@ -302,13 +316,11 @@ def test_apply_repair_computes_real_diff_changes_and_scope_for_structural_edit(m
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
 
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={"nodes": [{"id": "a", "data": {}}], "edges": []},
-        unique_hash="hash-1",
         features_dict={},
-        conversation_variables=[],
     )
-    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    updated_workflow = _workflow()
     intents = [
         MutationIntent(op="create_node", args={"node_type": "llm", "config": {}, "node_id": "llm-1"}),
         MutationIntent(op="connect", args={"from_node": "a", "to_node": "llm-1"}),
@@ -318,7 +330,9 @@ def test_apply_repair_computes_real_diff_changes_and_scope_for_structural_edit(m
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
         mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
 
-        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+        result = WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+        )
 
     assert result.scope == "structure"
     assert "added node llm-1" in result.changes
@@ -331,20 +345,20 @@ def test_apply_repair_computes_configuration_scope_for_set_node_config(mock_sess
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
 
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={"nodes": [{"id": "node-1", "data": {"code": "old"}}], "edges": []},
-        unique_hash="hash-1",
         features_dict={},
-        conversation_variables=[],
     )
-    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    updated_workflow = _workflow()
     intents = [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "new"})]
 
     with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
         mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
 
-        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+        result = WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+        )
 
     assert result.scope == "configuration"
     assert result.changes == ["node-1: code updated"]
@@ -356,13 +370,11 @@ def test_apply_repair_invokes_on_canvas_once_per_applied_intent(mock_session: Ma
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
 
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={"nodes": [{"id": "node-1", "data": {}}], "edges": []},
-        unique_hash="hash-1",
         features_dict={},
-        conversation_variables=[],
     )
-    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    updated_workflow = _workflow()
     intents = [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "x"})]
     events: list[dict] = []
 
@@ -370,7 +382,9 @@ def test_apply_repair_invokes_on_canvas_once_per_applied_intent(mock_session: Ma
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
         mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
 
-        WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents, on_canvas=events.append)
+        WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, on_canvas=events.append, expected_revision=execution_revision(workflow)
+        )
 
     assert events == [{"event": "apply_error_fix", "node_id": "node-1"}]
 
@@ -392,13 +406,11 @@ def test_apply_repair_maps_create_node_by_node_type_to_the_right_add_node_event(
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
 
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={"nodes": [], "edges": []},
-        unique_hash="hash-1",
         features_dict={},
-        conversation_variables=[],
     )
-    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    updated_workflow = _workflow()
     intents = [MutationIntent(op="create_node", args={"node_type": node_type, "config": {}})]
     events: list[dict] = []
 
@@ -406,7 +418,9 @@ def test_apply_repair_maps_create_node_by_node_type_to_the_right_add_node_event(
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
         mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
 
-        WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents, on_canvas=events.append)
+        WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, on_canvas=events.append, expected_revision=execution_revision(workflow)
+        )
 
     assert events[0]["event"] == expected_event
 
@@ -416,13 +430,11 @@ def test_apply_repair_skips_on_canvas_when_not_provided(mock_session: MagicMock)
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
 
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={"nodes": [{"id": "node-1", "data": {}}], "edges": []},
-        unique_hash="hash-1",
         features_dict={},
-        conversation_variables=[],
     )
-    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    updated_workflow = _workflow()
     intents = [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "x"})]
 
     with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
@@ -430,7 +442,9 @@ def test_apply_repair_skips_on_canvas_when_not_provided(mock_session: MagicMock)
         mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
 
         # must not raise even though on_canvas is omitted (default None)
-        WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+        WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+        )
 
 
 def test_apply_repair_skips_already_present_create_and_connect(mock_session: MagicMock):
@@ -449,11 +463,9 @@ def test_apply_repair_skips_already_present_create_and_connect(mock_session: Mag
         ],
         "edges": [{"id": "e1", "source": "start_1", "target": "llm_1"}],
     }
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict=existing_graph,
-        unique_hash="h0",
         features_dict={},
-        conversation_variables=[],
     )
     intents = [
         MutationIntent(op="create_node", args={"node_type": "llm", "node_id": "llm_1", "config": {"title": "new"}}),
@@ -463,11 +475,13 @@ def test_apply_repair_skips_already_present_create_and_connect(mock_session: Mag
     with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
 
-        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+        result = WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+        )
 
     # Both intents were already present -> filtered -> no changes -> no-op ApplyResult, no ValueError.
     assert result.changed_nodes == []
-    assert result.new_hash == "h0"
+    assert result.new_hash == execution_revision(workflow)
     mock_ws_cls.return_value.sync_draft_workflow.assert_not_called()
 
 
@@ -489,13 +503,11 @@ def test_apply_repair_survives_delete_and_recreate_of_same_id_in_one_batch(mock_
         "nodes": [{"id": "start", "data": {"type": "start"}}],
         "edges": [],
     }
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict=existing_graph,
-        unique_hash="h0",
         features_dict={},
-        conversation_variables=[],
     )
-    updated_workflow = SimpleNamespace(unique_hash="h1")
+    updated_workflow = _workflow()
     intents = [
         MutationIntent(op="delete_node", args={"node_id": "start"}),
         MutationIntent(op="create_node", args={"node_type": "start", "node_id": "start", "config": {}}),
@@ -508,9 +520,11 @@ def test_apply_repair_survives_delete_and_recreate_of_same_id_in_one_batch(mock_
         mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
 
         # Must not raise -- the recreate of "start" must survive the filter.
-        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+        result = WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+        )
 
-    assert result.new_hash == "h1"
+    assert result.new_hash == execution_revision(updated_workflow)
     _, kwargs = mock_ws_cls.return_value.sync_draft_workflow.call_args
     synced_nodes = {n["id"] for n in kwargs["graph"]["nodes"]}
     synced_edges = {(e["source"], e["target"]) for e in kwargs["graph"]["edges"]}
@@ -521,6 +535,96 @@ def test_apply_repair_survives_delete_and_recreate_of_same_id_in_one_batch(mock_
 
 
 # ---- run_draft --------------------------------------------------------------
+
+
+@pytest.mark.parametrize("operation", ["apply", "restore"])
+def test_mutations_recheck_execution_revision_after_locking(mock_session: MagicMock, operation: str):
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+    workflow = _workflow(graph_dict={"nodes": [{"id": "node-1", "data": {"code": "old"}}], "edges": []})
+    expected = execution_revision(workflow)
+
+    def concurrent_edit(_workflow, *, with_for_update):
+        assert with_for_update is True
+        workflow.graph = json.dumps({"nodes": [{"id": "node-1", "data": {"code": "human edit"}}], "edges": []})
+
+    mock_session.refresh.side_effect = concurrent_edit
+    events = []
+    with patch("services.dify_builder.dify_port.WorkflowService") as service:
+        service.return_value.get_draft_workflow.return_value = workflow
+        port = WorkflowServiceDifyPort()
+        if operation == "apply":
+            with pytest.raises(HashMismatchError, match="execution configuration changed"):
+                port.apply_repair(
+                    "app-1",
+                    _actor(),
+                    [
+                        MutationIntent(
+                            op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "AI edit"}
+                        )
+                    ],
+                    on_canvas=events.append,
+                    expected_revision=expected,
+                )
+        else:
+            with pytest.raises(HashMismatchError, match="execution configuration changed"):
+                port.restore_graph("app-1", _actor(), {"nodes": [], "edges": []}, expected_revision=expected)
+        service.return_value.sync_draft_workflow.assert_not_called()
+    assert events == []
+    assert workflow.graph_dict["nodes"][0]["data"]["code"] == "human edit"
+
+
+def test_repair_preserves_layout_committed_while_builder_was_planning(mock_session: MagicMock):
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+    workflow = _workflow(
+        graph_dict={
+            "nodes": [
+                {"id": "node-1", "type": "custom", "data": {"type": "code", "code": "old"}},
+                {"id": "end", "type": "custom", "data": {"type": "end"}},
+            ],
+            "edges": [{"id": "node-1-end", "source": "node-1", "target": "end", "type": "custom"}],
+        }
+    )
+    expected = execution_revision(workflow)
+
+    def move_node(_workflow, *, with_for_update):
+        assert with_for_update is True
+        graph = dict(workflow.graph_dict)
+        graph["nodes"][0]["position"] = {"x": 900, "y": 500}
+        graph["edges"][0].update(
+            sourceHandle="source",
+            targetHandle="target",
+            data={"sourceType": "code", "targetType": "end", "isInIteration": False, "isInLoop": False},
+        )
+        graph["viewport"] = {"x": 50, "y": 70, "zoom": 2}
+        workflow.graph = json.dumps(graph)
+
+    mock_session.refresh.side_effect = move_node
+    with patch("services.dify_builder.dify_port.WorkflowService") as service:
+        service.return_value.get_draft_workflow.return_value = workflow
+
+        def sync_graph(**kwargs):
+            assert kwargs["unique_hash"] == workflow.unique_hash
+            workflow.graph = json.dumps(kwargs["graph"])
+            return workflow
+
+        service.return_value.sync_draft_workflow.side_effect = sync_graph
+        result = WorkflowServiceDifyPort().apply_repair(
+            "app-1",
+            _actor(),
+            [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "AI edit"})],
+            expected_revision=expected,
+        )
+
+    assert workflow.graph_dict["nodes"][0]["position"] == {"x": 900, "y": 500}
+    assert workflow.graph_dict["nodes"][0]["data"]["code"] == "AI edit"
+    assert workflow.graph_dict["edges"][0]["data"]["sourceType"] == "code"
+    assert workflow.graph_dict["viewport"]["zoom"] == 2
+    assert result.new_hash == execution_revision(workflow)
+    assert result.new_hash != expected
 
 
 def test_run_draft_invokes_generate_with_debugger_blocking_and_emits_node_events(mock_session: MagicMock):

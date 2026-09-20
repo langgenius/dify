@@ -24,7 +24,7 @@ type DifyBuilderProviderProps = {
   getCanvasSnapshot: () => { nodes: DifyBuilderCanvasNode[]; edgeCount: number }
   onFocusCanvas: () => void
   onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
-  onSyncDraft: () => Promise<unknown>
+  onSyncDraft: (saveDraft: boolean, signal: AbortSignal) => Promise<void>
   tenantId?: string
   userId?: string
 }
@@ -47,18 +47,17 @@ const DifyBuilderProviderContent = ({
     }),
   )
   const setShowPanel = useStore((state) => state.setShowDifyBuilderPanel)
-  const session = useDifyBuilderSessionController()
+  const session = useDifyBuilderSessionController(onSyncDraft)
   const runtime = useMemo(
     () => ({
       appId,
       canEdit,
       enabled,
       getCanvasSnapshot,
-      onSyncDraft,
       session,
       setShowPanel,
     }),
-    [appId, canEdit, enabled, getCanvasSnapshot, onSyncDraft, session, setShowPanel],
+    [appId, canEdit, enabled, getCanvasSnapshot, session, setShowPanel],
   )
 
   useHydrateAtoms([[difyBuilderRuntimeAtom, runtime]] as const, {

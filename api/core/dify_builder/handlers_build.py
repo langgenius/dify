@@ -491,7 +491,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     to_apply = delete_intents + [intent for intent in intents if not _already_present(intent)]
 
     progress.activate("build-apply-graph")
-    result = env.dify.apply_repair(s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas)
+    result = env.dify.apply_repair(
+        s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
+    )
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
     fc.built_node_ids = [
@@ -901,7 +903,13 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             ],
         )
         progress.activate("build-apply-repair")
-        result = env.dify.apply_repair(s.app_id, turn.actor, list(fc.staged_repair), on_canvas=env.emit_canvas)
+        result = env.dify.apply_repair(
+            s.app_id,
+            turn.actor,
+            list(fc.staged_repair),
+            on_canvas=env.emit_canvas,
+            expected_revision=fc.last_snapshot_hash,
+        )
         fc.last_snapshot_hash = result.new_hash
         fc.last_structure_fingerprint = result.structure_fingerprint
         fc.staged_repair = []

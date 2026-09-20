@@ -7,7 +7,6 @@ import type {
 import type { DifyBuilderCanvasNode } from './utils'
 import { atom } from 'jotai'
 import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
-import { requestErrorMessage } from './session/errors'
 import {
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
@@ -22,7 +21,6 @@ export type DifyBuilderRuntime = {
   canEdit: boolean
   enabled: boolean
   getCanvasSnapshot: () => { nodes: DifyBuilderCanvasNode[]; edgeCount: number }
-  onSyncDraft: () => Promise<unknown>
   session: DifyBuilderSessionController
   setShowPanel: (show: boolean) => void
 }
@@ -186,7 +184,7 @@ export const difyBuilderCanStartFixAtom = atom((get) => {
   )
 })
 
-const prepareDifyBuilderSessionAtom = atom(null, async (get, set) => {
+const prepareDifyBuilderSessionAtom = atom(null, (get, set) => {
   const runtime = get(difyBuilderRuntimeAtom)
   if (
     !runtime?.enabled ||
@@ -197,14 +195,7 @@ const prepareDifyBuilderSessionAtom = atom(null, async (get, set) => {
     return false
 
   set(difyBuilderLocalErrorAtom, '')
-  try {
-    await runtime.onSyncDraft()
-    return true
-  } catch (error) {
-    const message = await requestErrorMessage(error)
-    if (get(difyBuilderRuntimeAtom) === runtime) set(difyBuilderLocalErrorAtom, message)
-    return false
-  }
+  return true
 })
 
 const startDifyBuilderPromptAtom = atom(
@@ -225,10 +216,10 @@ const startDifyBuilderPromptAtom = atom(
     runtime.setShowPanel(true)
     if (view && !isTerminalStatus(view.run_status)) {
       if (!canContinueConversation(view.run_status)) return false
-      if (!(await set(prepareDifyBuilderSessionAtom))) return false
+      if (!set(prepareDifyBuilderSessionAtom)) return false
       return runtime.session.sendMessage(prompt)
     }
-    if (!(await set(prepareDifyBuilderSessionAtom))) return false
+    if (!set(prepareDifyBuilderSessionAtom)) return false
 
     const { nodes, edgeCount } = runtime.getCanvasSnapshot()
     if (shouldStartBuildSession(nodes, edgeCount) && get(difyBuilderDeriveAppNameAtom)) {
@@ -280,13 +271,16 @@ const startDifyBuilderFixAtom = atom(
     // Check preparation guards before this mutation marks Builder interactions busy.
     const prepared = set(prepareDifyBuilderSessionAtom)
     return mutation.mutateAsync(async () => {
-      if (!(await prepared)) return false
+      if (!prepared) return false
 
+      const draft = get(difyBuilderDraftAtom)
       set(difyBuilderDraftAtom, '')
       const model = get(difyBuilderSelectedModelAtom) ?? undefined
-      return 'failedRunId' in target
+      const started = await ('failedRunId' in target
         ? runtime.session.startFix(appId, target.failedRunId, model)
-        : runtime.session.startChecklistFix(appId, target.errors, model)
+        : runtime.session.startChecklistFix(appId, target.errors, model))
+      if (!started && !get(difyBuilderDraftAtom)) set(difyBuilderDraftAtom, draft)
+      return started
     })
   },
 )
