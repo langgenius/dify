@@ -1250,6 +1250,31 @@ class TestDocumentListApi(SQLiteControllerTest):
         assert response["page"] == 1
         assert mock_paginate.call_args.kwargs["per_page"] == 100
 
+    @patch("controllers.service_api.dataset.document.paginate_query")
+    @patch("controllers.service_api.dataset.document.DocumentService")
+    def test_list_documents_normalizes_non_positive_pagination(
+        self, mock_doc_svc, mock_paginate, app: Flask, mock_tenant, mock_dataset
+    ):
+        """Response pagination must match the normalized query page and limit."""
+        self._persist_dataset(mock_dataset)
+        document = make_serializable_document(
+            id="doc-1", name="Document 1", tenant_id=mock_tenant, dataset_id=mock_dataset.id
+        )
+        mock_paginate.return_value = _PaginationRecord(items=[document], total=2)
+        mock_doc_svc.enrich_documents_with_summary_index_status.return_value = None
+
+        with app.test_request_context(f"/datasets/{mock_dataset.id}/documents?page=0&limit=0", method="GET"):
+            api = DocumentListApi()
+            response = inspect.unwrap(type(api).get)(
+                api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+            )
+
+        assert response["has_more"] is True
+        assert response["limit"] == 1
+        assert response["page"] == 1
+        assert mock_paginate.call_args.kwargs["page"] == 1
+        assert mock_paginate.call_args.kwargs["per_page"] == 1
+
     def test_list_documents_dataset_not_found(self, app: Flask, mock_tenant, mock_dataset):
         """Test 404 when dataset not found."""
         # Arrange

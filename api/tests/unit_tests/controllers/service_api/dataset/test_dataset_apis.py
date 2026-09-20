@@ -317,6 +317,34 @@ class TestDatasetListApiGet:
         assert response["page"] == 1
         assert mock_dataset_svc.get_datasets.call_args.args[1] == 100
 
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_normalizes_non_positive_pagination(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """Response pagination must match the normalized query page and limit."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset], 2)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=0&limit=0", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["has_more"] is True
+        assert response["limit"] == 1
+        assert response["page"] == 1
+        assert mock_dataset_svc.get_datasets.call_args.args[:2] == (1, 1)
+
 
 class TestDatasetListApiPost:
     """Test suite for DatasetListApi.post() endpoint."""
