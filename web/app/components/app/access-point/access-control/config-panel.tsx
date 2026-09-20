@@ -61,7 +61,7 @@ export function AccessControlConfigPanel({
   const policyErrorId = useId()
   const accessPointErrorId = useId()
   const title = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
-  const hasSelectedPolicy = Boolean(draft.selectedPolicyId)
+  const hasSelectedPolicy = policies.some((policy) => policy.id === draft.selectedPolicyId)
   const hasPersistableSelection = hasSelectedAccessPoint(draft, availableAccessPoints)
   const showPolicyError = draft.enabled && !hasSelectedPolicy
   const showAccessPointError = draft.enabled && !hasPersistableSelection
@@ -159,7 +159,7 @@ export function AccessControlConfigPanel({
             draft={draft}
             appIcon={appIcon}
             availableAccessPoints={availableAccessPoints}
-            readOnly={readOnly || saving}
+            readOnly={readOnly || saving || !hasSelectedPolicy}
             onDraftChange={onDraftChange}
           />
           {showAccessPointError && (

@@ -253,15 +253,12 @@ describe('AccessControlEntry', () => {
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Web App' })).not.toHaveAttribute(
+    expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('switch', { name: 'Backend Service API' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByRole('switch', { name: 'Backend Service API' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toHaveAttribute(
+    expect(screen.getByRole('switch', { name: 'MCP Server' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
@@ -429,14 +426,16 @@ describe('AccessControlEntry', () => {
 
   it('discards an unsaved first-time draft on Cancel', async () => {
     const user = userEvent.setup()
-    renderEntry({ plan: 'professional' })
+    renderEntry({ plan: 'professional', groups: [createNetworkAccessGroupFixture()] })
 
     await user.click(getChip())
+    await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
     await user.click(screen.getByRole('switch', { name: 'Web App' }))
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
     await waitFor(() => {
-      expect(screen.queryByText('No IP policies in this workspace yet')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     })
 
     await user.click(getChip())
@@ -446,22 +445,26 @@ describe('AccessControlEntry', () => {
 
   it('restores an unsaved first-time draft after Escape', async () => {
     const user = userEvent.setup()
-    renderEntry({ plan: 'professional' })
+    renderEntry({ plan: 'professional', groups: [createNetworkAccessGroupFixture()] })
 
     await user.click(getChip())
+    await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
     await user.click(screen.getByRole('switch', { name: 'Web App' }))
     expect(screen.getByRole('switch', { name: 'Web App' })).not.toBeChecked()
 
     await user.keyboard('{Escape}')
     await waitFor(() => {
-      expect(screen.queryByText('No IP policies in this workspace yet')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     })
 
     await user.click(getChip())
-    expect(screen.getByText('No IP policies in this workspace yet')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'IP Policy' })).toHaveTextContent(
+      'Internal Network',
+    )
     expect(screen.getByRole('switch', { name: 'Web App' })).not.toBeChecked()
     expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
   })
 
   it('restores an unsaved edit after Escape and keeps the saved chip', async () => {

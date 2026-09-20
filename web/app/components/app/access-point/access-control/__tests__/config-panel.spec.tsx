@@ -90,22 +90,16 @@ describe('AccessControlConfigPanel', () => {
       'Please select an IP policy.',
     )
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Web App' })).not.toHaveAttribute(
+    expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('switch', { name: 'Backend Service API' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByRole('switch', { name: 'Backend Service API' })).not.toHaveAttribute(
+    expect(screen.getByRole('switch', { name: 'MCP Server' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(screen.getByRole('switch', { name: 'Trigger' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.getByRole('switch', { name: 'Trigger' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('enables save after a policy is selected', async () => {
@@ -229,4 +223,32 @@ describe('AccessControlConfigPanel', () => {
     await user.click(screen.getByRole('switch', { name: 'Trigger' }))
     expect(screen.getByRole('switch', { name: 'Trigger' })).not.toBeChecked()
   })
+})
+
+it('ignores pointer and keyboard scope changes until a policy is selected', async () => {
+  const user = userEvent.setup()
+  render(<PanelHarness />)
+  const scope = screen.getByRole('switch', { name: 'Web App' })
+  await user.click(scope)
+  expect(scope).toBeChecked()
+  expect(scope).toHaveAttribute('tabindex', '-1')
+  scope.focus()
+  await user.keyboard(' {Enter}')
+  expect(scope).toBeChecked()
+  await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+  await user.click(scope)
+  expect(scope).not.toBeChecked()
+})
+
+it('requires a policy that is still present in the workspace before enabling configuration', () => {
+  render(
+    <PanelHarness
+      initialDraft={{
+        ...createDefaultAccessControlDraft(ACCESS_POINT_ORDER),
+        selectedPolicyId: 'deleted-policy',
+      }}
+    />,
+  )
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
 })
