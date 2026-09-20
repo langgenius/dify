@@ -5,6 +5,7 @@ import type { RefObject } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import styles from './home-trending.module.css'
 
@@ -49,8 +50,8 @@ function TrendingNavigation({
   const { t } = useTranslation('plugin')
   const progressRef = useRef<HTMLSpanElement>(null)
   const progressAnimationRef = useRef<Animation | null>(null)
-  const pauseReasonsRef = useRef(
-    new Set<AutoplayPauseReason>(pauseWhenOffscreen ? ['viewport'] : []),
+  const pauseReasonsRef = useRefWithInit(
+    () => new Set<AutoplayPauseReason>(pauseWhenOffscreen ? ['viewport'] : []),
   )
   const [isUserPaused, setIsUserPaused] = useState(false)
   const [isReducedMotionPaused, setIsReducedMotionPaused] = useState(false)
@@ -72,7 +73,7 @@ function TrendingNavigation({
       if (isPaused) progressAnimation.pause()
       else progressAnimation.play()
     },
-    [onPausedChange],
+    [onPausedChange, pauseReasonsRef],
   )
 
   useEffect(() => {
@@ -103,7 +104,7 @@ function TrendingNavigation({
       progressAnimation.cancel()
       if (progressAnimationRef.current === progressAnimation) progressAnimationRef.current = null
     }
-  }, [onNext, selectedIndex])
+  }, [onNext, selectedIndex, pauseReasonsRef])
 
   useEffect(() => {
     const carouselRoot = carouselRootRef.current

@@ -450,6 +450,8 @@
   "operation.confirmAction": "請確認您的操作。",
   "operation.copied": "複製",
   "operation.copy": "複製",
+  "operation.copyErrorDetails": "複製錯誤詳細資訊",
+  "operation.copyErrorFailed": "複製失敗，重試",
   "operation.copyImage": "複製圖像",
   "operation.create": "建立",
   "operation.deSelectAll": "全不選",

@@ -8,7 +8,9 @@ import pytest
 from flask import Flask
 from flask_restx import Api
 
+from controllers.common.rbac import DatasetId, RBACPermission
 from controllers.console import console_ns
+from controllers.console.datasets.metadata import DatasetMetadataCreateApi
 from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from models.account import Account, TenantAccountRole
@@ -16,6 +18,7 @@ from services.errors.metadata import MetadataResourceNotFoundError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.metadata.application import MetadataService
 from services.knowledge.resource_scope import DatasetRef
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 @pytest.fixture
@@ -111,3 +114,9 @@ def test_document_metadata_missing_resource_is_not_found(routes):
     service.update_documents_metadata.side_effect = MetadataResourceNotFoundError("Document not found.")
     response = client.post(f"/console/api/datasets/{uuid4()}/documents/metadata", json={"operation_data": []})
     assert response.status_code == 404
+
+
+def test_get_requires_dataset_readonly_permission():
+    [check] = rbac_checks(DatasetMetadataCreateApi.get)
+    assert check.scene is RBACPermission.DATASET_READONLY
+    assert isinstance(check.locator, DatasetId)

@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useRef } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { getPluginLinkInMarketplace } from '../utils'
 import MarketplaceDetailDialogFrame from './frame'
 import { useSilentMarketplaceInstall } from './use-silent-install'
@@ -45,14 +46,14 @@ function OpenMarketplaceDetailDialog({
   title: string
 }) {
   const { install } = useSilentMarketplaceInstall()
-  const timeoutIdsRef = useRef(new Set<number>())
+  const timeoutIdsRef = useRefWithInit(() => new Set<number>())
 
   useEffect(
     () => () => {
       timeoutIdsRef.current.forEach((id) => window.clearTimeout(id))
       timeoutIdsRef.current.clear()
     },
-    [],
+    [timeoutIdsRef],
   )
 
   const handleMessage = useCallback(
@@ -96,7 +97,7 @@ function OpenMarketplaceDetailDialog({
         })
       })
     },
-    [canInstallPlugin, install, plugin],
+    [canInstallPlugin, install, plugin, timeoutIdsRef],
   )
 
   return (

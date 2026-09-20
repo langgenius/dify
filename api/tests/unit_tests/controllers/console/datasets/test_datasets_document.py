@@ -8,6 +8,7 @@ import pytest
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.rbac import DatasetByDocument, DatasetId, RBACPermission
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets import datasets_document as controller
 from controllers.console.datasets.datasets_document import (
@@ -64,6 +65,7 @@ from services.knowledge.indexing.estimate import (
     IndexingEstimateProviderUnavailableError,
     UnsupportedEstimateSourceError,
 )
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
 DS = UUID(int=1)
@@ -78,6 +80,33 @@ def documents(monkeypatch):
     )
     monkeypatch.setattr(controller, "check_knowledge_rate_limit", lambda: None)
     return documents
+
+
+def test_process_rule_authorizes_document_dataset_before_read(app, documents):
+    with (
+        app.test_request_context(f"/?document_id={DOC}"),
+        patch.object(controller, "enforce_rbac_checks", side_effect=Forbidden) as enforce_checks,
+        pytest.raises(Forbidden),
+    ):
+        unwrap(GetProcessRuleApi.get)(GetProcessRuleApi(), CONTEXT)
+
+    enforce_checks.assert_called_once()
+    kwargs = enforce_checks.call_args.kwargs
+    assert kwargs["tenant_id"] == CONTEXT.active_workspace_id
+    assert kwargs["account_id"] == CONTEXT.account_id
+    assert kwargs["path_args"] == {"document_id": str(DOC)}
+    [check] = kwargs["checks"]
+    assert check.scene is RBACPermission.DATASET_READONLY
+    assert isinstance(check.locator, DatasetByDocument)
+    documents.get_process_rule.assert_not_called()
+
+
+def test_default_process_rule_does_not_require_dataset_permission(app, documents):
+    documents.get_process_rule.return_value = {"mode": "automatic", "rules": {}, "limits": {}}
+    with app.test_request_context("/"), patch.object(controller, "enforce_rbac_checks") as enforce_checks:
+        unwrap(GetProcessRuleApi.get)(GetProcessRuleApi(), CONTEXT)
+    enforce_checks.assert_not_called()
+    documents.get_process_rule.assert_called_once_with(CONTEXT, document_id=None)
 
 
 @pytest.mark.parametrize(
@@ -470,3 +499,32 @@ class TestIndexingEstimateExceptionMapping:
         ):
             with pytest.raises(expected_http_error):
                 method(api, context, UUID(int=1), "unknown-batch")
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        DatasetDocumentListApi.get,
+        DocumentBatchIndexingStatusApi.get,
+        DocumentIndexingStatusApi.get,
+        DocumentApi.get,
+        DocumentPipelineExecutionLogApi.get,
+        DocumentSummaryStatusApi.get,
+    ],
+)
+def test_document_read_routes_require_dataset_readonly_permission(method) -> None:
+    [check] = rbac_checks(method)
+
+    assert check.scene is RBACPermission.DATASET_READONLY
+    assert isinstance(check.locator, DatasetId)
+
+
+@pytest.mark.parametrize(
+    "method",
+    [DocumentIndexingEstimateApi.get, DocumentBatchIndexingEstimateApi.get],
+)
+def test_document_indexing_estimates_require_dataset_use_permission(method) -> None:
+    [check] = rbac_checks(method)
+
+    assert check.scene is RBACPermission.DATASET_USE
+    assert isinstance(check.locator, DatasetId)

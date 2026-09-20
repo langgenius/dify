@@ -304,7 +304,7 @@ class DataSourceNotionIndexingEstimateApi(Resource):
 class DataSourceNotionDatasetSyncApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
-        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),),
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     def get(self, request_context: RequestContext, dataset_id: UUID) -> tuple[dict[str, object], int]:
         try:
@@ -318,7 +318,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
 class DataSourceNotionDocumentSyncApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
-        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),),
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     def get(
         self,

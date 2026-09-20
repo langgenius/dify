@@ -73,7 +73,7 @@ class DatasetMetadataCreateApi(Resource):
         200, "Metadata retrieved successfully", console_ns.models[DatasetMetadataListResponse.__name__]
     )
     @console_account_admission(
-        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),),
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),),
     )
     @metadata_errors
     def get(self, request_context: RequestContext, dataset_id: UUID):

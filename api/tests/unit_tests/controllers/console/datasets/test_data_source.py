@@ -12,6 +12,7 @@ from flask.testing import FlaskClient
 from flask_restx import Api
 
 from controllers.common.errors import NotFoundError
+from controllers.common.rbac import DatasetId
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 
@@ -50,6 +51,7 @@ from services.knowledge.indexing.estimate import (
     IndexingEstimateProviderUnavailableError,
 )
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 if TYPE_CHECKING:
     from models import Account
@@ -583,3 +585,13 @@ def test_sync_route_does_not_dispatch_cross_workspace_dataset(collaborators: Con
     assert response.status_code == 404
     assert response.get_json()["code"] == "not_found"
     assert collaborators.dispatcher.calls == []
+
+
+@pytest.mark.parametrize(
+    "resource",
+    [data_source_controller.DataSourceNotionDatasetSyncApi, data_source_controller.DataSourceNotionDocumentSyncApi],
+)
+def test_notion_sync_requires_dataset_edit_permission(resource):
+    [check] = rbac_checks(resource.get)
+    assert check.scene is RBACPermission.DATASET_EDIT
+    assert isinstance(check.locator, DatasetId)

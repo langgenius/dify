@@ -450,6 +450,8 @@
   "operation.confirmAction": "귀하의 행동을 확인해 주세요.",
   "operation.copied": "복사",
   "operation.copy": "복사",
+  "operation.copyErrorDetails": "오류 세부 정보 복사",
+  "operation.copyErrorFailed": "복사 실패. 다시 시도",
   "operation.copyImage": "이미지 복사",
   "operation.create": "생성",
   "operation.deSelectAll": "모두 선택 해제",

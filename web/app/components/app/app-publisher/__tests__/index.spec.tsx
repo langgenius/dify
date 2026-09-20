@@ -160,7 +160,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
     success: (...args: unknown[]) => mockToastSuccess(...args),

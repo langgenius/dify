@@ -86,10 +86,10 @@ jobs:
           retention-days: 1
 
   api-integration:
-    name: API Integration Tests (${{ matrix.python-version }}, shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    name: API Integration Tests (${{ matrix.python-version }})
     runs-on: depot-ubuntu-24.04-4
     env:
-      COVERAGE_FILE: coverage-integration-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+      COVERAGE_FILE: coverage-integration-${{ matrix.python-version }}
       STORAGE_TYPE: opendal
       OPENDAL_SCHEME: fs
       OPENDAL_FS_ROOT: /tmp/dify-storage
@@ -101,13 +101,6 @@ jobs:
       matrix:
         python-version:
           - '3.12'
-        shardIndex:
-          - 1
-          - 2
-          - 3
-          - 4
-        shardTotal:
-          - 4
 
     steps:
       - name: Checkout code
@@ -133,9 +126,8 @@ jobs:
           uv run --project api pytest \
             -p no:benchmark \
             --start-middleware \
+            --middleware-stop-timeout 2 \
             -n auto \
-            --shard-index "${{ matrix.shardIndex }}" \
-            --shard-total "${{ matrix.shardTotal }}" \
             -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
@@ -146,7 +138,7 @@ jobs:
       - name: Upload integration coverage data
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: api-coverage-integration-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+          name: api-coverage-integration-${{ matrix.python-version }}
           path: ${{ env.COVERAGE_FILE }}
           if-no-files-found: error
           retention-days: 1
@@ -168,18 +160,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
-          enable-cache: true
           python-version: '3.12'
-          cache-dependency-glob: api/uv.lock
-
-      - name: Install dependencies
-        run: uv sync --project api --dev
 
       - name: Download coverage data
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -191,11 +177,14 @@ jobs:
       - name: Combine coverage
         run: |
           set -euo pipefail
+          coverage_version=$(python3 -c 'import tomllib; print(next(p["version"] for p in tomllib.load(open("api/uv.lock", "rb"))["package"] if p["name"] == "coverage"))')
 
-          echo "### API Coverage" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Merged backend coverage report generated for Codecov project status." >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### API Coverage"
+            echo ""
+            echo "Merged backend coverage report generated for Codecov project status."
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
 
           mapfile -t unit_coverage < <(find coverage-data -type f -name 'coverage-unit-*' -print | sort)
           mapfile -t integration_coverage < <(find coverage-data -type f -name 'coverage-integration-*' -print | sort)
@@ -203,14 +192,14 @@ jobs:
             echo "expected 3 unit coverage artifacts, found ${#unit_coverage[@]}" >&2
             exit 1
           fi
-          if [[ "${#integration_coverage[@]}" -ne 4 ]]; then
-            echo "expected 4 integration coverage artifacts, found ${#integration_coverage[@]}" >&2
+          if [[ "${#integration_coverage[@]}" -ne 1 ]]; then
+            echo "expected 1 integration coverage artifact, found ${#integration_coverage[@]}" >&2
             exit 1
           fi
 
           report_file="$(mktemp)"
-          uv run --project api coverage combine "${unit_coverage[@]}" "${integration_coverage[@]}"
-          uv run --project api coverage report --show-missing | tee "$report_file"
+          uvx --from "coverage==$coverage_version" coverage combine "${unit_coverage[@]}" "${integration_coverage[@]}"
+          uvx --from "coverage==$coverage_version" coverage report --show-missing | tee "$report_file"
           echo "Summary: \`$(tail -n 1 "$report_file")\`" >> "$GITHUB_STEP_SUMMARY"
           {
             echo ""
@@ -221,7 +210,7 @@ jobs:
             echo '```'
             echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
-          uv run --project api coverage xml -o coverage.xml
+          uvx --from "coverage==$coverage_version" coverage xml -o coverage.xml
 
       - name: Report coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1

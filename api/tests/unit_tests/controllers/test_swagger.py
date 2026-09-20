@@ -952,3 +952,29 @@ def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path:
         "source",
         "version",
     }
+
+
+def test_agent_tts_routes_document_voice_queries_and_binary_audio():
+    from controllers.console import bp as console_bp
+    from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(console_bp)
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+
+    voices = payload["paths"]["/agent/{agent_id}/text-to-audio/voices"]["get"]
+    language = _parameters_by_name(voices)["language"]
+    assert language["in"] == "query"
+    assert language["required"] is True
+    assert "requestBody" not in voices
+
+    preview = payload["paths"]["/agent/{agent_id}/text-to-audio"]["post"]
+    required_fields = _json_body_schema(payload, preview)["required"]
+    assert isinstance(required_fields, list)
+    assert "text" in required_fields
+    assert _response_content_types(preview) == set(SUPPORTED_TTS_AUDIO_MIME_TYPES)
+    for media in preview["responses"]["200"]["content"].values():
+        assert media["schema"] == {"type": "string", "format": "binary"}
+    for status in ("400", "403", "404"):
+        assert _response_content_types(preview, status) == {"application/json"}

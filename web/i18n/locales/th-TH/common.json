@@ -450,6 +450,8 @@
   "operation.confirmAction": "กรุณายืนยันการกระทำของคุณ",
   "operation.copied": "คัด ลอก",
   "operation.copy": "ลอก",
+  "operation.copyErrorDetails": "คัดลอกรายละเอียดข้อผิดพลาด",
+  "operation.copyErrorFailed": "คัดลอกไม่สำเร็จ ลองอีกครั้ง",
   "operation.copyImage": "คัดลอกรูปภาพ",
   "operation.create": "สร้าง",
   "operation.deSelectAll": "ยกเลิกการเลือกทั้งหมด",

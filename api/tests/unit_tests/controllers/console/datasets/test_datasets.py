@@ -9,6 +9,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
 from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.rbac import DatasetId, RBACPermission, Workspace
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets import datasets as controller
 from controllers.console.datasets.datasets import (
@@ -330,3 +331,37 @@ def test_new_source_estimate_maps_application_errors(
     with patch("controllers.console.datasets.datasets.application_services", return_value=registry):
         with pytest.raises(expected_http_error):
             method(api, payload, context)
+
+
+@pytest.mark.parametrize(
+    ("dataset_id", "scene", "locator_type"),
+    [
+        ("dataset-1", RBACPermission.DATASET_USE, DatasetId),
+        (None, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace),
+    ],
+)
+def test_new_source_estimate_authorizes_before_execution(dataset_id, scene, locator_type):
+    estimates = MagicMock()
+    registry = SimpleNamespace(knowledge=SimpleNamespace(indexing_estimates=estimates))
+    payload = IndexingEstimatePayload(
+        info_list={"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file-1"]}},
+        process_rule={"mode": "automatic"},
+        indexing_technique="economy",
+        dataset_id=dataset_id,
+    )
+    with (
+        patch.object(controller, "application_services", return_value=registry),
+        patch.object(controller, "enforce_rbac_checks", side_effect=Forbidden) as enforce_checks,
+        pytest.raises(Forbidden),
+    ):
+        unwrap(DatasetIndexingEstimateApi.post)(DatasetIndexingEstimateApi(), payload, CONTEXT)
+
+    enforce_checks.assert_called_once()
+    kwargs = enforce_checks.call_args.kwargs
+    assert kwargs["tenant_id"] == CONTEXT.active_workspace_id
+    assert kwargs["account_id"] == CONTEXT.account_id
+    assert kwargs["path_args"] == ({"dataset_id": dataset_id} if dataset_id else None)
+    [check] = kwargs["checks"]
+    assert check.scene is scene
+    assert isinstance(check.locator, locator_type)
+    estimates.estimate_new_sources.assert_not_called()

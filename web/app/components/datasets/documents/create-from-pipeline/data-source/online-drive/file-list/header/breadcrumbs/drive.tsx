@@ -1,33 +1,19 @@
-import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import BreadcrumbItem from './item'
 
 type DriveProps = {
   breadcrumbs: string[]
   handleBackToRoot: () => void
 }
 
-const Drive = ({ breadcrumbs, handleBackToRoot }: DriveProps) => {
+export default function Drive({ breadcrumbs, handleBackToRoot }: DriveProps) {
   const { t } = useTranslation()
 
   return (
-    <>
-      <button
-        type="button"
-        className={cn(
-          'max-w-full shrink truncate rounded-md px-1.25 py-1',
-          breadcrumbs.length > 0 &&
-            'system-sm-regular text-text-tertiary hover:bg-state-base-hover',
-          breadcrumbs.length === 0 && 'system-sm-medium text-text-secondary',
-        )}
-        onClick={handleBackToRoot}
-        disabled={breadcrumbs.length === 0}
-      >
-        {t(($) => $['onlineDrive.breadcrumbs.allFiles'], { ns: 'datasetPipeline' })}
-      </button>
-      {breadcrumbs.length > 0 && <span className="system-xs-regular text-divider-deep">/</span>}
-    </>
+    <BreadcrumbItem
+      name={t(($) => $['onlineDrive.breadcrumbs.allFiles'], { ns: 'datasetPipeline' })}
+      current={breadcrumbs.length === 0}
+      onClick={handleBackToRoot}
+    />
   )
 }
-
-export default React.memo(Drive)

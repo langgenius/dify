@@ -9,7 +9,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
-from controllers.common.rbac import DatasetId, RBACCheck, Workspace
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.apikey import ApiKeyItem, ApiKeyList
@@ -526,6 +526,18 @@ class DatasetIndexingEstimateApi(Resource):
     @console_account_admission()
     @model_validate(IndexingEstimatePayload)
     def post(self, req_data: IndexingEstimatePayload, request_context: RequestContext):
+        if req_data.dataset_id:
+            checks = [RBACCheck(RBACPermission.DATASET_USE, DatasetId())]
+            path_args = {"dataset_id": req_data.dataset_id}
+        else:
+            checks = [RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace())]
+            path_args = None
+        enforce_rbac_checks(
+            tenant_id=request_context.active_workspace_id,
+            account_id=request_context.account_id,
+            checks=checks,
+            path_args=path_args,
+        )
         command = NewSourcesEstimateCommand(
             sources=_new_estimate_sources(req_data.info_list),
             process_rule=req_data.process_rule,

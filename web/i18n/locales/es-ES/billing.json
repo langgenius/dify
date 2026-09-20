@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "EVENTOS DESENCADENANTES",
   "upgrade.addChunks.description": "Has alcanzado el límite de agregar fragmentos para este plan.",
   "upgrade.addChunks.title": "Actualiza para seguir agregando fragmentos",
+  "upgrade.agentRestore.description": "La restauración de versiones de la aplicación de agente no está disponible en tu plan actual.",
+  "upgrade.agentRestore.title": "Actualiza para restaurar versiones de la aplicación de agente",
   "upgrade.uploadMultipleFiles.description": "Sube varios documentos a la vez y aumenta el tamaño máximo por archivo a 50 MB.",
   "upgrade.uploadMultipleFiles.title": "Mejora tu plan para desbloquear las cargas por lotes y los archivos de mayor tamaño",
   "upgrade.uploadMultiplePages.description": "Has alcanzado el límite de carga: solo se puede seleccionar y subir un documento a la vez en tu plan actual.",

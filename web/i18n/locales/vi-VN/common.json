@@ -450,6 +450,8 @@
   "operation.confirmAction": "Vui lòng xác nhận hành động của bạn.",
   "operation.copied": "Sao chép",
   "operation.copy": "Sao chép",
+  "operation.copyErrorDetails": "Sao chép chi tiết lỗi",
+  "operation.copyErrorFailed": "Sao chép thất bại. Thử lại",
   "operation.copyImage": "Sao chép hình ảnh",
   "operation.create": "Tạo mới",
   "operation.deSelectAll": "Bỏ chọn tất cả",

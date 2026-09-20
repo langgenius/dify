@@ -196,7 +196,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
@@ -535,10 +535,26 @@ vi.mock('../components/preview/header', () => ({
 }))
 
 vi.mock('../components/preview/versions-panel', () => ({
-  AgentPreviewVersionsPanel: (props: { onSelectVersion: (versionId: string) => void }) => (
-    <button type="button" onClick={() => props.onSelectVersion('snapshot-2')}>
-      select version
-    </button>
+  AgentPreviewVersionsPanel: (props: {
+    onBeforeRestore?: () => Promise<void>
+    onSelectVersion: (versionId: string | null) => void
+    onVersionRestored?: () => Promise<void>
+  }) => (
+    <>
+      <button type="button" onClick={() => props.onSelectVersion('snapshot-2')}>
+        select version
+      </button>
+      <button
+        type="button"
+        onClick={async () => {
+          await props.onBeforeRestore?.()
+          await props.onVersionRestored?.()
+          props.onSelectVersion(null)
+        }}
+      >
+        restore from version menu
+      </button>
+    </>
   ),
 }))
 
@@ -976,6 +992,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -990,6 +1007,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -1091,6 +1109,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -1105,6 +1124,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -1387,7 +1407,9 @@ describe('AgentConfigurePage', () => {
       mocks.checkoutBuildDraft.mockRejectedValueOnce(new Error('checkout failed'))
       mocks.queryState.composer = {
         data: {
-          agent_soul: {},
+          agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          },
         },
         isFetching: false,
         isError: false,
@@ -1840,7 +1862,9 @@ describe('AgentConfigurePage', () => {
       mocks.checkoutBuildDraft.mockRejectedValueOnce(new Error('checkout failed'))
       mocks.queryState.composer = {
         data: {
-          agent_soul: {},
+          agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          },
         },
         isFetching: false,
         isError: false,
@@ -2010,6 +2034,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2024,6 +2049,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2066,6 +2092,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2080,6 +2107,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2244,6 +2272,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2311,9 +2340,8 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
     })
 
-    it('should block build chat checkout when no model is configured', async () => {
+    it('should require an explicit model even when the workspace has a default', async () => {
       const queryClient = createQueryClient()
-      modelHooksState.defaultTextGenerationModel = undefined
       mocks.queryState.composer = {
         data: {
           agent_soul: {
@@ -2364,6 +2392,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2378,6 +2407,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2431,6 +2461,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2445,6 +2476,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2494,6 +2526,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2580,6 +2613,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2594,6 +2628,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2643,6 +2678,7 @@ describe('AgentConfigurePage', () => {
       refetchBuildDraft.mockReturnValueOnce(staleRefresh.promise)
       mocks.checkoutBuildDraft.mockResolvedValue({
         agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
           prompt: {
             system_prompt: 'build prompt',
           },
@@ -2653,6 +2689,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2667,6 +2704,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2707,6 +2745,7 @@ describe('AgentConfigurePage', () => {
         staleRefresh.resolve({
           data: {
             agent_soul: {
+              model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
               prompt: {
                 system_prompt: 'stale refreshed prompt',
               },
@@ -2736,7 +2775,9 @@ describe('AgentConfigurePage', () => {
       }
       mocks.queryState.buildDraft = {
         data: {
-          agent_soul: {},
+          agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          },
           draft: {},
           variant: 'agent_app',
         },
@@ -2832,6 +2873,64 @@ describe('AgentConfigurePage', () => {
         'publish:yes',
       )
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+    })
+
+    it('should save pending draft edits before restoring from the version menu and rebase the composer', async () => {
+      const user = userEvent.setup()
+      const queryClient = createQueryClient()
+      const draftSave = createDeferredPromise<{ agent_soul: object }>()
+      mocks.saveComposerDraft.mockReturnValue(draftSave.promise)
+      const refetchComposer = vi.fn(async () => {
+        mocks.queryState.composer = {
+          ...mocks.queryState.composer,
+          data: {
+            agent_soul: {
+              prompt: { system_prompt: 'restored prompt' },
+            },
+          },
+        }
+        return {}
+      })
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: { system_prompt: 'draft prompt' },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: refetchComposer,
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'edit prompt' }))
+      await user.click(screen.getByRole('button', { name: 'open versions' }))
+      await user.click(screen.getByRole('button', { name: 'restore from version menu' }))
+
+      expect(mocks.saveComposerDraft).toHaveBeenCalledTimes(1)
+      expect(refetchComposer).not.toHaveBeenCalled()
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:edited draft prompt',
+      )
+
+      draftSave.resolve({ agent_soul: {} })
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+          'prompt:restored prompt',
+        )
+      })
+      expect(refetchComposer).toHaveBeenCalledTimes(1)
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
     })
 
     it('should rebase the composer from the restored version', async () => {

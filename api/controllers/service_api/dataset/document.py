@@ -73,7 +73,7 @@ from fields.document_fields import (
 )
 from libs.helper import dump_response
 from libs.login import current_user
-from libs.pagination import paginate_query
+from libs.pagination import clamp_pagination, paginate_query
 from models.dataset import Dataset, Document
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_creator,
@@ -1045,9 +1045,9 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
-        effective_limit = min(query_params.limit, 100)
+        effective_page, effective_limit = clamp_pagination(query_params.page, query_params.limit, 100)
         paginated_documents = paginate_query(
-            query, session=session, page=query_params.page, per_page=effective_limit, max_per_page=100
+            query, session=session, page=effective_page, per_page=effective_limit, max_per_page=100
         )
         documents = paginated_documents.items
 
@@ -1060,10 +1060,10 @@ class DocumentListApi(DatasetApiResource):
 
         response = {
             "data": load_document_details(documents, session=session),
-            "has_more": query_params.page * effective_limit < paginated_documents.total,
-            "limit": effective_limit,
+            "has_more": paginated_documents.has_next,
+            "limit": paginated_documents.per_page,
             "total": paginated_documents.total,
-            "page": query_params.page,
+            "page": paginated_documents.page,
         }
 
         return dump_response(DocumentListResponse, response)

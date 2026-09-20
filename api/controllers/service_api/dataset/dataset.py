@@ -39,6 +39,7 @@ from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResp
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_user
+from libs.pagination import clamp_pagination
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
@@ -433,10 +434,10 @@ class DatasetListApi(DatasetApiResource):
             query_params["tag_ids"] = request.args.getlist("tag_ids")
         query = DatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
-        effective_limit = min(query.limit, 100)
+        effective_page, effective_limit = clamp_pagination(query.page, query.limit, 100)
 
         datasets, total = DatasetService.get_datasets(
-            query.page,
+            effective_page,
             effective_limit,
             session,
             tenant_id,
@@ -471,10 +472,10 @@ class DatasetListApi(DatasetApiResource):
                 item["embedding_available"] = True
         response = {
             "data": data,
-            "has_more": query.page * effective_limit < total,
+            "has_more": effective_page * effective_limit < total,
             "limit": effective_limit,
             "total": total,
-            "page": query.page,
+            "page": effective_page,
         }
         return _dump_service_dataset_list(response), 200
 

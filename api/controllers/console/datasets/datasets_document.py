@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
-from controllers.common.rbac import DatasetId, RBACCheck
+from controllers.common.rbac import DatasetByDocument, DatasetId, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -309,9 +309,17 @@ class GetProcessRuleApi(Resource):
     @console_ns.response(200, "Process rules retrieved successfully", console_ns.models[ProcessRuleResponse.__name__])
     @console_account_admission()
     def get(self, request_context: RequestContext):
+        document_id = request.args.get("document_id")
+        if document_id:
+            enforce_rbac_checks(
+                tenant_id=request_context.active_workspace_id,
+                account_id=request_context.account_id,
+                checks=[RBACCheck(RBACPermission.DATASET_READONLY, DatasetByDocument())],
+                path_args={"document_id": document_id},
+            )
         try:
             result = application_services().knowledge.documents.get_process_rule(
-                request_context, document_id=request.args.get("document_id")
+                request_context, document_id=document_id
             )
         except Exception as error:
             _raise_document_error(error)
@@ -338,7 +346,7 @@ class DatasetDocumentListApi(Resource):
         "Documents retrieved successfully",
         console_ns.models[DocumentWithSegmentsListResponse.__name__],
     )
-    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
     def get(self, request_context: RequestContext, dataset_id: UUID):
         args = DocumentDatasetListParam.model_validate(request.args.to_dict())
         try:
@@ -426,7 +434,7 @@ class DocumentIndexingEstimateApi(Resource):
     @console_ns.response(404, "Document not found")
     @console_ns.response(400, "Document already finished")
     @console_account_admission(
-        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),),
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_USE, DatasetId()),),
     )
     def get(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID):
         try:
@@ -463,7 +471,7 @@ class DocumentBatchIndexingEstimateApi(Resource):
         console_ns.models[IndexingEstimateResponse.__name__],
     )
     @console_account_admission(
-        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),),
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_USE, DatasetId()),),
     )
     def get(self, request_context: RequestContext, dataset_id: UUID, batch: str):
         try:
@@ -497,7 +505,7 @@ class DocumentBatchIndexingStatusApi(Resource):
     @console_ns.response(
         200, "Indexing status retrieved successfully", console_ns.models[DocumentStatusListResponse.__name__]
     )
-    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
     def get(self, request_context: RequestContext, dataset_id: UUID, batch: str):
         try:
             result = application_services().knowledge.documents.get_batch_indexing_status(
@@ -517,7 +525,7 @@ class DocumentIndexingStatusApi(Resource):
         200, "Indexing status retrieved successfully", console_ns.models[DocumentStatusResponse.__name__]
     )
     @console_ns.response(404, "Document not found")
-    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
     def get(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID):
         try:
             result = application_services().knowledge.documents.get_indexing_status(
@@ -543,7 +551,7 @@ class DocumentApi(Resource):
     )
     @console_ns.response(200, "Document retrieved successfully", console_ns.models[DocumentDetailResponse.__name__])
     @console_ns.response(404, "Document not found")
-    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
     def get(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID):
         metadata = request.args.get("metadata", "all")
         if metadata not in self.METADATA_CHOICES:
@@ -831,7 +839,7 @@ class DocumentPipelineExecutionLogApi(Resource):
         "Pipeline execution log retrieved successfully",
         console_ns.models[DocumentPipelineExecutionLogResponse.__name__],
     )
-    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
     def get(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID):
         try:
             result = application_services().knowledge.documents.get_execution_log(
@@ -891,7 +899,7 @@ class DocumentSummaryStatusApi(Resource):
         console_ns.models[DocumentSummaryStatusResponse.__name__],
     )
     @console_ns.response(404, "Document not found")
-    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
     def get(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID):
         """
         Get summary index generation status for a document.

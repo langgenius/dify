@@ -19,7 +19,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
@@ -47,6 +46,7 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { toast } from '@/app/notifications'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {

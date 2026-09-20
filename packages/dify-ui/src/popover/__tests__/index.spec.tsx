@@ -3,6 +3,8 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Popover,
+  PopoverBackdrop,
+  PopoverClose,
   PopoverContent,
   PopoverDescription,
   PopoverPopup,
@@ -11,6 +13,12 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '..'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../dropdown-menu'
 
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
@@ -95,6 +103,47 @@ describe('PopoverContent', () => {
 })
 
 describe('Popover anatomy', () => {
+  it('places the backdrop above a parent menu and below the interactive popup', async () => {
+    const backdropRef = React.createRef<HTMLDivElement>()
+    const screen = await renderWithSafeViewport(
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger>Actions</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>Primary action</DropdownMenuItem>
+          <Popover modal="trap-focus">
+            <DropdownMenuItem
+              closeOnClick={false}
+              render={<PopoverTrigger nativeButton={false} render={<div />} />}
+            >
+              More options
+            </DropdownMenuItem>
+            <PopoverPortal>
+              <PopoverBackdrop ref={backdropRef} />
+              <PopoverPositioner placement="right-start">
+                <PopoverPopup>
+                  <PopoverTitle>More options</PopoverTitle>
+                  <input aria-label="Filter options" />
+                  <PopoverClose>Close</PopoverClose>
+                </PopoverPopup>
+              </PopoverPositioner>
+            </PopoverPortal>
+          </Popover>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    )
+
+    await screen.getByRole('button', { name: 'Actions' }).click()
+    const primaryAction = screen.getByRole('menuitem', { name: 'Primary action' }).element()
+    await screen.getByRole('menuitem', { name: 'More options' }).click()
+    const input = screen.getByRole('textbox', { name: 'Filter options' })
+
+    const { x, y, width, height } = primaryAction.getBoundingClientRect()
+    expect(document.elementFromPoint(x + width / 2, y + height / 2)).toBe(backdropRef.current)
+    await input.click()
+    await input.fill('Example')
+    await expect.element(input).toHaveValue('Example')
+  })
+
   it('should use the default positioner placement', async () => {
     const screen = await renderWithSafeViewport(
       <Popover open>

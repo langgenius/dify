@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, Mock, call
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import console_ns
 from controllers.console.agent import composer as composer_controller
@@ -63,6 +63,7 @@ from controllers.console.app.message import (
     AgentMessageSuggestedQuestionApi,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums import CloudPlan, DeploymentEdition
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
 from models.enums import ApiTokenType, ConversationFromSource
@@ -1173,9 +1174,12 @@ def test_invite_options_get_applies_resource_visibility(
     assert captured["accessible_agent_ids"] == ["agent-1", "agent-2"]
 
 
-def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_agent_version_queries_do_not_require_paid_plan(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     version_id = "00000000-0000-0000-0000-000000000002"
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    get_plan = Mock(return_value=CloudPlan.SANDBOX)
+    monkeypatch.setattr(roster_controller.FeatureService, "get_workspace_plan", get_plan)
     monkeypatch.setattr(
         roster_controller.AgentRosterService, "list_agent_versions", lambda _self, **kwargs: [_version_response()]
     )
@@ -1201,13 +1205,6 @@ def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatc
             ],
         },
     )
-    captured_restore: dict[str, object] = {}
-
-    def restore_agent_version(_self, **kwargs):
-        captured_restore.update(kwargs)
-        return {"result": "success", "active_config_snapshot_id": kwargs["version_id"]}
-
-    monkeypatch.setattr(roster_controller.AgentRosterService, "restore_agent_version", restore_agent_version)
     assert (
         unwrap(AgentRosterVersionsApi.get)(AgentRosterVersionsApi(), MagicMock(), "tenant-1", agent_id)["data"][0]["id"]
         == "version-1"
@@ -1217,21 +1214,60 @@ def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatc
     )
     assert version_detail["id"] == version_id
     assert version_detail["agent_id"] == agent_id
-    restored = unwrap(AgentRosterVersionRestoreApi.post)(
-        AgentRosterVersionRestoreApi(), MagicMock(), "tenant-1", _account(), agent_id, version_id
-    )
-    assert restored == {
-        "result": "success",
-        "active_config_snapshot_id": version_id,
-        "draft_config_id": None,
-        "restored_version_id": None,
-    }
-    assert captured_restore == {
-        "tenant_id": "tenant-1",
-        "agent_id": agent_id,
-        "version_id": version_id,
-        "account_id": "account-1",
-    }
+    get_plan.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("edition", "plan", "allowed"),
+    [
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True),
+    ],
+)
+def test_agent_version_restore_requires_cloud_paid_plan(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    plan: CloudPlan,
+    allowed: bool,
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    version_id = "00000000-0000-0000-0000-000000000002"
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
+    get_plan = Mock(return_value=plan)
+    monkeypatch.setattr(roster_controller.FeatureService, "get_workspace_plan", get_plan)
+    restore = Mock(return_value={"result": "success", "active_config_snapshot_id": version_id})
+    monkeypatch.setattr(roster_controller.AgentRosterService, "restore_agent_version", restore)
+    session = MagicMock(spec=Session)
+    api = AgentRosterVersionRestoreApi()
+
+    if not allowed:
+        with pytest.raises(Forbidden, match="This feature requires a paid plan.") as exc_info:
+            unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
+        assert exc_info.value.code == 403
+        restore.assert_not_called()
+        assert session.mock_calls == []
+    else:
+        restored = unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
+        assert restored == {
+            "result": "success",
+            "active_config_snapshot_id": version_id,
+            "draft_config_id": None,
+            "restored_version_id": None,
+        }
+        restore.assert_called_once_with(
+            tenant_id="tenant-1",
+            agent_id=agent_id,
+            version_id=version_id,
+            account_id="account-1",
+        )
+
+    if edition == DeploymentEdition.CLOUD:
+        get_plan.assert_called_once_with("tenant-1")
+    else:
+        get_plan.assert_not_called()
 
 
 def test_agent_observability_routes_resolve_app_from_agent_id(

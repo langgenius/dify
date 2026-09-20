@@ -1153,6 +1153,15 @@ export const lintConfig = {
     {
       files: ['packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {
+        'unicorn/import-style': [
+          'error',
+          {
+            extendDefaultStyles: false,
+            styles: {
+              react: { namespace: true },
+            },
+          },
+        ],
         'react/exhaustive-deps': [
           'error',
           {
