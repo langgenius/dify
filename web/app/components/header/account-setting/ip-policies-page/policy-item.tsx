@@ -30,7 +30,7 @@ import { PolicyReferencedApps } from './referenced-apps'
 export const policyRowClassName = 'flex items-center pl-3 pr-1'
 export const policyNameColClassName = 'min-w-0 flex-1 truncate'
 export const policyIpEntriesColClassName = 'w-30 shrink-0'
-export const policyEnforcingColClassName = 'w-32 shrink-0'
+export const policyUsedByColClassName = 'w-32 shrink-0'
 export const policyUpdatedColClassName = 'w-52 shrink-0'
 export const policyActionsColClassName = 'flex w-8 shrink-0 items-center justify-center'
 
@@ -50,7 +50,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
     consoleQuery.workspaces.current.networkAccessGroups.byGroupId.delete.mutationOptions(),
   )
   const isBound = group.used_by_count > 0
-  const enforcingLabel =
+  const usedByLabel =
     group.used_by_count <= 0
       ? t(($) => $['settings.ipPolicyEnforcingNone'], { ns: 'common' })
       : group.used_by_count === 1
@@ -90,8 +90,8 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
         <span className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}>
           {group.allowed_cidrs.length}
         </span>
-        <span className={`${policyEnforcingColClassName} system-sm-regular text-text-tertiary`}>
-          {enforcingLabel}
+        <span className={`${policyUsedByColClassName} system-sm-regular text-text-tertiary`}>
+          {usedByLabel}
         </span>
         <span className={`${policyUpdatedColClassName} system-sm-regular text-text-tertiary`}>
           {formatTimeFromNow(Date.parse(group.updated_at))}

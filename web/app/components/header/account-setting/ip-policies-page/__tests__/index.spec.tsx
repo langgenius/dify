@@ -541,4 +541,30 @@ describe('IpPoliciesPage', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     },
   )
+
+  it.each([0, 1])(
+    'shows total references under Used by even when only %s apps enforce the policy',
+    (enforcingCount) => {
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, {
+        groups: [
+          createNetworkAccessGroupFixture({ used_by_count: 2, enforcing_count: enforcingCount }),
+        ],
+      })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
+      expect(screen.getByText('Used by')).toBeInTheDocument()
+      expect(
+        within(screen.getByRole('button', { name: 'Internal Network' })).getByText('2 apps'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('Enforcing')).not.toBeInTheDocument()
+    },
+  )
 })
