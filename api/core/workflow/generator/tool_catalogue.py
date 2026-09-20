@@ -76,6 +76,7 @@ class ToolCatalogueEntry(TypedDict):
     tool_name: str
     tool_label: str
     description: str  # one-line LLM-friendly description
+    needs_credentials: bool  # provider_controller.need_credentials — see ToolTransformService
     parameters: NotRequired[list[dict[str, Any]]]
     output_schema: NotRequired[dict[str, Any]]
 
@@ -121,6 +122,8 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
             # Unknown provider class — skip rather than guess.
             continue
 
+        needs_credentials = provider.need_credentials
+
         try:
             tools = list(provider.get_tools())
         except Exception:
@@ -144,6 +147,7 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
                         tool_name=tool_name,
                         tool_label=tool_label,
                         description=description,
+                        needs_credentials=needs_credentials,
                         parameters=[parameter.model_dump(mode="json") for parameter in tool.entity.parameters],
                         output_schema=dict(tool.entity.output_schema),
                     )

@@ -22,7 +22,9 @@ from core.workflow.generator.tool_catalogue import (
 )
 
 
-def _entry(provider: str, tool: str, *, label: str = "", description: str = "") -> ToolCatalogueEntry:
+def _entry(
+    provider: str, tool: str, *, label: str = "", description: str = "", needs_credentials: bool = False
+) -> ToolCatalogueEntry:
     return ToolCatalogueEntry(
         provider_name=provider,
         provider_type="builtin",
@@ -30,6 +32,7 @@ def _entry(provider: str, tool: str, *, label: str = "", description: str = "") 
         tool_name=tool,
         tool_label=label,
         description=description,
+        needs_credentials=needs_credentials,
     )
 
 
@@ -351,7 +354,7 @@ class _FakeProviderType(SimpleNamespace):
     """Stand-in for ``ToolProviderType`` — only ``.value`` is read."""
 
 
-def _make_builtin_provider(name: str, tools: list, raises_on_get_tools: bool = False):
+def _make_builtin_provider(name: str, tools: list, raises_on_get_tools: bool = False, need_credentials: bool = False):
     """
     Build something ``isinstance(..., BuiltinToolProviderController)`` will
     answer True to without actually constructing one (those require real
@@ -361,18 +364,20 @@ def _make_builtin_provider(name: str, tools: list, raises_on_get_tools: bool = F
         entity=SimpleNamespace(identity=SimpleNamespace(name=name)),
         provider_type=_FakeProviderType(value="builtin"),
         get_tools=((lambda: (_ for _ in ()).throw(RuntimeError("boom"))) if raises_on_get_tools else (lambda: tools)),
+        need_credentials=need_credentials,
     )
     provider._is_builtin = True
     return provider
 
 
-def _make_plugin_provider(name: str, plugin_id: str | None, tools: list):
+def _make_plugin_provider(name: str, plugin_id: str | None, tools: list, need_credentials: bool = False):
     provider = SimpleNamespace(
         entity=SimpleNamespace(identity=SimpleNamespace(name=name)),
         provider_type=_FakeProviderType(value="plugin"),
         plugin_id=plugin_id,
         plugin_unique_identifier=f"{plugin_id}:1.0@checksum" if plugin_id else "",
         get_tools=lambda: tools,
+        need_credentials=need_credentials,
     )
     provider._is_plugin = True
     return provider
@@ -475,11 +480,13 @@ class TestBuildToolCatalogue:
         hardcoded = _make_builtin_provider(
             "time",
             [_make_tool("current_time", label_en="Current Time", description_llm="Return now.")],
+            need_credentials=False,
         )
         plugin = _make_plugin_provider(
             "google",
             plugin_id="langgenius/google",
             tools=[_make_tool("search", label_en="Google Search", description_llm="Search the web.")],
+            need_credentials=True,
         )
         mock_list.return_value = iter([hardcoded, plugin])
 
@@ -498,9 +505,14 @@ class TestBuildToolCatalogue:
         assert google["plugin_unique_identifier"] == "langgenius/google:1.0@checksum"
         assert google["tool_label"] == "Google Search"
         assert google["description"] == "Search the web."
+        # Carries the provider's credential requirement so the Builder can
+        # tell a usable tool from one that will fail authorization at test
+        # time (see services/dify_builder/agent/resources.py).
+        assert google["needs_credentials"] is True
         time_entry = entries[1]
         assert time_entry["provider_type"] == "builtin"
         assert time_entry["plugin_id"] == ""
+        assert time_entry["needs_credentials"] is False
 
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
     @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
