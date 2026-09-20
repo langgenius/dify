@@ -14,11 +14,12 @@ import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { DatasetPermission } from '@/models/datasets'
+import { DatasetPermission, RerankingModeEnum } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useMembers } from '@/service/use-common'
+import { RETRIEVE_METHOD } from '@/types/app'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { checkShowMultiModalTip } from '../../utils'
 
@@ -172,6 +173,20 @@ export const useFormState = () => {
     if (retrievalConfig.weights) {
       retrievalConfig.weights.vector_setting.embedding_provider_name = embeddingModel.provider || ''
       retrievalConfig.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
+    }
+
+    // Hybrid Search renders no rerank on/off switch, so `reranking_enable` is only ever written
+    // when the retrieval method is switched. A dataset configured as "open -> pick rerank model ->
+    // save" therefore keeps the stale `false` default and silently never reranks, even though the
+    // model is displayed in the UI. Derive the flag from the selection here instead: in Hybrid
+    // Search a chosen rerank model is exactly what `isReRankModelSelected` already validates above.
+    if (
+      retrievalConfig.search_method === RETRIEVE_METHOD.hybrid &&
+      retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel &&
+      retrievalConfig.reranking_model?.reranking_provider_name &&
+      retrievalConfig.reranking_model?.reranking_model_name
+    ) {
+      retrievalConfig.reranking_enable = true
     }
 
     try {
