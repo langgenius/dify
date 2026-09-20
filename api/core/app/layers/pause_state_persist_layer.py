@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
+from core.workflow.response_stream_filter import DifyResponseStreamFilter
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.layers import GraphEngineLayer
@@ -60,7 +61,7 @@ class WorkflowResumptionContext(BaseModel):
         return self.generate_entity.entity
 
     def get_response_stream_filter(self) -> ResponseStreamFilter:
-        response_stream_filter = ResponseStreamFilter()
+        response_stream_filter = DifyResponseStreamFilter()
         if self.serialized_response_stream_filter_state is not None:
             response_stream_filter.loads(self.serialized_response_stream_filter_state)
         return response_stream_filter
