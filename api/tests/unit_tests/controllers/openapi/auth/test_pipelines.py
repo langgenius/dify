@@ -265,7 +265,7 @@ def test_a_request_built_from_another_catalog_is_refused(
     sent: str | None,
 ) -> None:
     subject = account_subject()
-    headers = {} if sent is None else {CATALOG_HEADER: sent}
+    headers: dict[str, str] = {} if sent is None else {CATALOG_HEADER: sent}
 
     with app.test_request_context("/openapi/v1/account", headers=headers):
         with pytest.raises(CatalogStale):
