@@ -574,10 +574,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         ref={containerRef}
         value={tabType}
         onValueChange={(selectedValue) => setTabType(selectedValue)}
-        className={cn(
-          'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear',
-          isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto',
-        )}
+        className="flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear"
         style={
           {
             width: `${nodePanelWidth}px`,
@@ -585,7 +582,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
           } as CSSProperties
         }
       >
-        <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
+        <div className="shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
             {!isStartPlaceholderPanel && (
               <BlockIcon className="mr-1 shrink-0" type={data.type} toolIcon={toolIcon} size="md" />
@@ -725,7 +722,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         )}
 
         {!isStartPlaceholderPanel && (
-          <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col">
+          <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col overflow-y-auto">
             <LastRun
               appId={appDetail?.id || ''}
               nodeId={id}
