@@ -1,11 +1,14 @@
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
-from repositories.workspace.workspace_member_query_repository import WorkspaceMemberQueryRepository
-from services.workspace.contracts import WorkspaceMemberRecord
+from repositories.workspace.workspace_repository import WorkspaceRepository
+from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberRoleSubject
+from services.workspace.member_service import WorkspaceMemberQueryService
 
 
 def make_account(
@@ -93,7 +96,7 @@ def test_list_for_workspace_uses_join_membership_and_preserves_account_lifecycle
         )
         session.commit()
 
-    result = WorkspaceMemberQueryRepository(sqlite_session_factory).list_for_workspace(workspace.id)
+    result = WorkspaceRepository(sqlite_session_factory).list_for_workspace(workspace.id)
 
     by_id = {member.id: member for member in result}
     assert set(by_id) == {"active", "uninitialized", "pending", "banned", "closed"}
@@ -122,7 +125,7 @@ def test_list_for_workspace_returns_empty_tuple_without_membership(
         session.add(make_tenant("workspace-1"))
         session.commit()
 
-    result = WorkspaceMemberQueryRepository(sqlite_session_factory).list_for_workspace("workspace-1")
+    result = WorkspaceRepository(sqlite_session_factory).list_for_workspace("workspace-1")
 
     assert result == ()
 
@@ -150,7 +153,7 @@ def test_dataset_operators_are_filtered_by_sql_within_workspace(
 
     event.listen(sqlite_engine, "before_cursor_execute", capture_sql)
     try:
-        records = WorkspaceMemberQueryRepository(sqlite_session_factory).list_for_workspace(
+        records = WorkspaceRepository(sqlite_session_factory).list_for_workspace(
             workspace.id, role=TenantAccountRole.DATASET_OPERATOR
         )
     finally:
@@ -159,3 +162,43 @@ def test_dataset_operators_are_filtered_by_sql_within_workspace(
     assert [record.id for record in records] == ["operator"]
     assert len(queries) == 1
     assert "tenant_account_joins.role =" in queries[0].partition("WHERE")[2]
+
+
+def test_member_queries_observe_committed_roles_and_release_session_before_role_resolution(
+    sqlite_session_factory: sessionmaker[Session], sqlite_engine: Engine
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(make_tenant("workspace"))
+        session.add(make_account("member", status=AccountStatus.ACTIVE, created_at=datetime(2026, 1, 1)))
+        session.add(TenantAccountJoin(tenant_id="workspace", account_id="member", role=TenantAccountRole.NORMAL))
+
+    checked_out: set[int] = set()
+
+    def checkout(connection: object, _record: object, _proxy: object) -> None:
+        checked_out.add(id(connection))
+
+    def checkin(connection: object, _record: object) -> None:
+        checked_out.discard(id(connection))
+
+    class RoleResolver:
+        def resolve_many(
+            self, workspace_id: str, actor_account_id: str, subjects: Sequence[WorkspaceMemberRoleSubject]
+        ) -> Mapping[str, Sequence[WorkspaceMemberRole]]:
+            assert not checked_out
+            assert (workspace_id, actor_account_id) == ("workspace", "actor")
+            assert subjects == (WorkspaceMemberRoleSubject("member", "editor"),)
+            return {"member": (WorkspaceMemberRole("editor", "Editor"),)}
+
+    event.listen(sqlite_engine, "checkout", checkout)
+    event.listen(sqlite_engine, "checkin", checkin)
+    try:
+        repository = WorkspaceRepository(sqlite_session_factory)
+        repository.update_member_role(workspace_id="workspace", account_id="member", role=TenantAccountRole.EDITOR)
+        service = WorkspaceMemberQueryService(members=repository, roles=RoleResolver())
+        result = service.list_current(RequestContext("request", None, "actor", "workspace"))
+        assert result[0].role == "editor"
+        assert result[0].roles == (WorkspaceMemberRole("editor", "Editor"),)
+        assert not checked_out
+    finally:
+        event.remove(sqlite_engine, "checkout", checkout)
+        event.remove(sqlite_engine, "checkin", checkin)

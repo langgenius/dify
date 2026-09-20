@@ -8,7 +8,9 @@ import pytest
 from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
 from services.account.adapters import RedisInvitationTokenStore
+from services.enterprise.enterprise_service import WorkspacePermission
 from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel, LimitationModel
+from services.errors.base import NoPermissionError
 from services.errors.workspace import WorkspaceInvitationQuotaError
 from services.workspace import gateways
 from tests.unit_tests.account_domain import AccountDomain
@@ -18,6 +20,29 @@ from tests.unit_tests.account_domain import AccountDomain
 def invitations() -> gateways.WorkspaceInvitationGateway:
     redis = Mock(spec=RedisClientWrapper)
     return gateways.WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
+
+
+@pytest.mark.parametrize("allowed", [True, False])
+def test_invitation_policy_exposes_domain_errors(
+    invitations: gateways.WorkspaceInvitationGateway,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    allowed: bool,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    requested: list[str] = []
+
+    def get_permission(workspace_id: str) -> WorkspacePermission:
+        requested.append(workspace_id)
+        return WorkspacePermission(workspaceId=workspace_id, allowMemberInvite=allowed)
+
+    monkeypatch.setattr(gateways.EnterpriseService.WorkspacePermissionService, "get_permission", get_permission)
+    if allowed:
+        invitations.ensure_allowed("workspace")
+    else:
+        with pytest.raises(NoPermissionError, match="Workspace policy prohibits member invitations"):
+            invitations.ensure_allowed("workspace")
+    assert requested == ["workspace"]
 
 
 @pytest.mark.parametrize(("limit", "allowed"), [(0, True), (-1, True), (4, True), (5, True), (3, False)])

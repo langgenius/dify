@@ -6,7 +6,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from controllers.common.fields import SimpleResultDataResponse, SimpleResultResponse, VerificationTokenResponse
@@ -184,6 +184,8 @@ class MemberInviteEmailApi(Resource):
             )
         except InvalidWorkspaceMemberRoleError:
             raise InvalidMemberRoleError() from None
+        except NoPermissionError as error:
+            raise Forbidden(str(error)) from error
         except WorkspaceInvitationQuotaError as error:
             if error.seats:
                 raise SeatsLimitExceeded() from error

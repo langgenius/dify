@@ -320,7 +320,6 @@ def build_application_services(
         activation_accounts=activation_accounts,
     )
     workspace_services = build_workspace_services(
-        database_client=database_client,
         workspaces=workspace_repository,
         accounts=accounts,
         files=file_service,

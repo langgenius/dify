@@ -40,12 +40,14 @@ from services.workspace.contracts import (
     CreatedWorkspace,
     WorkspaceCreation,
     WorkspaceCustomConfig,
+    WorkspaceMemberRecord,
     WorkspaceMemberRemoval,
     WorkspaceMemberWrite,
     WorkspacePage,
     WorkspaceRecord,
     WorkspaceSnapshot,
 )
+from services.workspace.member_service import WorkspaceMemberQuery
 from services.workspace.service import WorkspaceQuery, WorkspaceStore
 
 
@@ -55,6 +57,7 @@ class WorkspaceRepository(
     AccountWorkspaceMembershipQuery,
     AccountWorkspaceSnapshotQuery,
     ConsoleAuthWorkspaceQuery,
+    WorkspaceMemberQuery,
 ):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -354,6 +357,56 @@ class WorkspaceRepository(
                     TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.account_id == account_id
                 )
             ).scalar_one_or_none()
+
+    @override
+    def list_for_workspace(
+        self, workspace_id: str, *, role: TenantAccountRole | None = None
+    ) -> tuple[WorkspaceMemberRecord, ...]:
+        """Read membership snapshots without retaining a Session during role resolution."""
+        stmt = (
+            select(
+                Account.id,
+                Account.name,
+                Account.email,
+                Account.avatar,
+                Account.last_login_at,
+                Account.last_active_at,
+                Account.created_at,
+                Account.status,
+                TenantAccountJoin.role,
+            )
+            .select_from(Account)
+            .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+            .where(TenantAccountJoin.tenant_id == workspace_id)
+        )
+        if role is not None:
+            stmt = stmt.where(TenantAccountJoin.role == role)
+
+        with self._session_factory() as session:
+            return tuple(
+                WorkspaceMemberRecord(
+                    id=account_id,
+                    name=name,
+                    email=email,
+                    avatar=avatar,
+                    last_login_at=last_login_at,
+                    last_active_at=last_active_at,
+                    created_at=created_at,
+                    status=status.value,
+                    legacy_role=member_role.value,
+                )
+                for (
+                    account_id,
+                    name,
+                    email,
+                    avatar,
+                    last_login_at,
+                    last_active_at,
+                    created_at,
+                    status,
+                    member_role,
+                ) in session.execute(stmt).all()
+            )
 
     def owner_id(self, workspace_id: str) -> str | None:
         with self._session_factory() as session:

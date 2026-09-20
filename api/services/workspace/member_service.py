@@ -1,4 +1,4 @@
-"""Application service for listing members of the active Console workspace."""
+"""Workspace membership, invitation and ownership use cases with application-owned ports."""
 
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager

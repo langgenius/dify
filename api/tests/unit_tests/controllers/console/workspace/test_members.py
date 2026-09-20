@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 from flask import Flask
 from flask_restx import Api, Resource
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -51,7 +51,7 @@ from services.errors.workspace import (
     WorkspaceNotFoundError,
     WorkspaceNotLinkedError,
 )
-from services.workspace.contracts import WorkspaceMemberRole, WorkspaceMemberSummary
+from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberSummary
 from services.workspace.member_service import WorkspaceMemberQueryService, WorkspaceMemberService
 
 
@@ -235,6 +235,54 @@ def test_dataset_operator_list_uses_admitted_workspace(app: Flask, services: Moc
     services.workspaces.member_queries.list_members.assert_called_once_with("workspace", dataset_operators_only=True)
 
 
+def test_dataset_operator_list_serializes_membership_snapshot(app: Flask, services: Mock) -> None:
+    timestamp = datetime(2026, 1, 1)
+    services.workspaces.member_queries.list_members.return_value = (
+        WorkspaceMemberRecord(
+            id="operator",
+            name="Operator",
+            email="operator@example.com",
+            avatar=None,
+            last_login_at=None,
+            last_active_at=timestamp,
+            created_at=timestamp,
+            status="active",
+            legacy_role="dataset_operator",
+        ),
+    )
+    api = DatasetOperatorMemberListApi()
+    with app.test_request_context("/"):
+        result, status = unwrap(api.get)(api, RequestContext("request", None, "actor", "workspace"))
+    assert status == 200
+    assert result["accounts"] == [
+        {
+            "id": "operator",
+            "name": "Operator",
+            "email": "operator@example.com",
+            "avatar": None,
+            "avatar_url": None,
+            "last_login_at": None,
+            "last_active_at": int(timestamp.timestamp()),
+            "created_at": int(timestamp.timestamp()),
+            "role": "dataset_operator",
+            "roles": [],
+            "status": "active",
+        }
+    ]
+
+
+def test_invitation_policy_denial_preserves_http_status(app: Flask, services: Mock) -> None:
+    services.workspaces.invitations.invite_many.side_effect = NoPermissionError(
+        "Workspace policy prohibits member invitations"
+    )
+    api = MemberInviteEmailApi()
+    with (
+        app.test_request_context("/", method="POST", json={"emails": ["a@example.com"], "role": "normal"}),
+        pytest.raises(Forbidden, match="Workspace policy prohibits member invitations"),
+    ):
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
+
+
 def test_bulk_invite_serializes_results_and_normalizes_input(app: Flask, services: Mock) -> None:
     from services.workspace.contracts import WorkspaceInvitationResult
 
@@ -380,7 +428,7 @@ def test_member_errors_reach_the_http_boundary(
     register_external_error_handlers(http_api)
 
     class Endpoint(Resource):
-        def post(self):
+        def post(self) -> object:
             if has_member_id:
                 return method(resource, context, "member")
             return method(resource, context)
@@ -388,6 +436,8 @@ def test_member_errors_reach_the_http_boundary(
     http_api.add_resource(Endpoint, "/members")
     response = http_app.test_client().post("/members", json={"role": "editor", "token": "token", "code": "123456"})
     assert response.status_code == status
-    assert response.json["code"] == code
+    payload = response.get_json()
+    assert isinstance(payload, dict)
+    assert payload["code"] == code
     if status == 500:
-        assert response.json["message"] == "Internal Server Error"
+        assert payload["message"] == "Internal Server Error"

@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
-from repositories.workspace.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
 from services.file_service import FileService
@@ -70,7 +69,6 @@ def build_workspace_membership_services(
 
 def build_workspace_services(
     *,
-    database_client: sessionmaker[Session],
     workspaces: WorkspaceRepository,
     accounts: SQLAlchemyAccountRepository,
     files: FileService,
@@ -90,7 +88,7 @@ def build_workspace_services(
         provisioning=provisioning,
         members=members,
         member_queries=WorkspaceMemberQueryService(
-            members=WorkspaceMemberQueryRepository(session_factory=database_client),
+            members=workspaces,
             roles=DeploymentWorkspaceMemberRoleResolver(),
         ),
         owner_transfer=WorkspaceOwnerTransferService(

@@ -8,6 +8,7 @@ from typing import Literal, override
 from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition
@@ -34,6 +35,7 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise.rbac_service import ListOption, RBACService
 from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_entities import AccountSnapshot
+from services.errors.base import NoPermissionError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     OwnerTransferSendRateLimitError,
@@ -165,7 +167,10 @@ class WorkspaceInvitationGateway:
             raise WorkspaceInvitationQuotaError()
 
     def ensure_allowed(self, workspace_id: str) -> None:
-        check_workspace_member_invite_permission(workspace_id)
+        try:
+            check_workspace_member_invite_permission(workspace_id)
+        except Forbidden as error:
+            raise NoPermissionError(error.description) from error
 
     def create(self, invitation: InvitationToken) -> str:
         return self._tokens.create(invitation)
