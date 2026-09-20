@@ -74,6 +74,104 @@ def test_malformed_tool_record_degrades():
     assert out.datasets == []
 
 
+def test_an_unauthorized_tool_is_reported_as_missing_config(monkeypatch):
+    """Recommending an unusable tool is how a build fails at test time."""
+    from services.dify_builder.agent import resources
+
+    monkeypatch.setattr(
+        resources,
+        "_list_tools",
+        lambda _t: [
+            {
+                "provider_name": "gmail",
+                "tool_name": "send",
+                "tool_label": "Send",
+                "description": "",
+                "needs_credentials": True,
+            }
+        ],
+    )
+    monkeypatch.setattr(resources, "_authorized_providers", lambda _t: set())
+    inv = resources.list_tenant_resources("t1")
+    assert inv.tools[0].readiness == "missing_config"
+
+
+def test_a_tool_needing_no_credentials_is_ready(monkeypatch):
+    from services.dify_builder.agent import resources
+
+    monkeypatch.setattr(
+        resources,
+        "_list_tools",
+        lambda _t: [
+            {
+                "provider_name": "time",
+                "tool_name": "now",
+                "tool_label": "Now",
+                "description": "",
+                "needs_credentials": False,
+            }
+        ],
+    )
+    monkeypatch.setattr(resources, "_authorized_providers", lambda _t: set())
+    assert resources.list_tenant_resources("t1").tools[0].readiness == "ready"
+
+
+def test_an_authorized_tool_is_ready(monkeypatch):
+    from services.dify_builder.agent import resources
+
+    monkeypatch.setattr(
+        resources,
+        "_list_tools",
+        lambda _t: [
+            {
+                "provider_name": "gmail",
+                "tool_name": "send",
+                "tool_label": "Send",
+                "description": "",
+                "needs_credentials": True,
+            }
+        ],
+    )
+    monkeypatch.setattr(resources, "_authorized_providers", lambda _t: {"gmail"})
+    assert resources.list_tenant_resources("t1").tools[0].readiness == "ready"
+
+
+def test_authorization_lookup_failure_fails_open_to_ready(caplog):
+    """A transient failure of the credential query must not mass-label every
+    credentialed tool "missing_config" -- that would hide tools the tenant
+    genuinely has configured. It degrades to "ready" (unchecked), same as
+    before this readiness check existed.
+    """
+    from services.dify_builder.agent import resources
+
+    def _boom(_t):
+        raise RuntimeError("db down")
+
+    with patch.object(resources, "_list_models", return_value=[]), \
+         patch.object(resources, "_list_datasets", return_value=[]), \
+         patch.object(
+             resources,
+             "_list_tools",
+             return_value=[
+                 {
+                     "provider_name": "gmail",
+                     "tool_name": "send",
+                     "tool_label": "Send",
+                     "description": "",
+                     "needs_credentials": True,
+                 }
+             ],
+         ), \
+         patch.object(resources, "_authorized_providers", _boom), \
+         caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.resources"):
+        out = resources.list_tenant_resources("t1")
+
+    assert out.tools[0].readiness == "ready"
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "authorization" in warnings[0].getMessage()
+
+
 def test_list_tenant_resources_logs_when_a_source_fails(caplog):
     from services.dify_builder.agent import resources
 
