@@ -24,7 +24,6 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue } from 'jotai'
@@ -37,6 +36,7 @@ import { SearchInput } from '@/app/components/base/search-input'
 import AppNavItem from '@/app/components/explore/installed-app-navigation/app-nav-item'
 import { InstalledAppPaginationSkeleton } from '@/app/components/explore/installed-app-navigation/pagination-skeleton'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'

@@ -29,6 +29,13 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
@@ -50,7 +57,6 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay, matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -63,6 +69,7 @@ import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
+import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { fetchSkillFileBlob, uploadSkillFile } from '../client'
@@ -1198,23 +1205,29 @@ export function FileTree({
             data-testid="skill-detail-sidebar-header"
             className="flex h-12 shrink-0 items-center py-2 pr-2 pl-1"
           >
-            <div className="flex min-w-0 flex-1 items-center gap-px">
-              <Link
-                href="/skills"
-                className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary outline-hidden hover:bg-background-default-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                aria-label={t(($) => $['skillManagement.detail.back'])}
-              >
-                <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-                <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
-              </Link>
-              <span className="shrink-0 system-md-regular text-text-quaternary">/</span>
-              <Link
-                href="/skills"
-                className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              >
-                SKILLS
-              </Link>
-            </div>
+            <Breadcrumb aria-label={tCommon(($) => $['mainNav.skills'])} className="flex-1">
+              <BreadcrumbList className="gap-px">
+                <BreadcrumbItem className="shrink-0">
+                  <BreadcrumbLink
+                    render={<Link href="/skills" />}
+                    className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+                    aria-label={t(($) => $['skillManagement.detail.back'])}
+                  >
+                    <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+                    <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="system-md-regular" />
+                <BreadcrumbItem className="shrink-0">
+                  <BreadcrumbLink
+                    render={<Link href="/skills" />}
+                    className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
+                  >
+                    SKILLS
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
             <Tooltip>
               <TooltipTrigger
                 render={

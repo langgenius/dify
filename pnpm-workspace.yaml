@@ -183,7 +183,7 @@ catalog:
   eslint-plugin-yml: 3.8.1
   eventsource-parser: 4.1.1
   fast-deep-equal: 3.1.3
-  foxact: 0.3.11
+  foxact: 0.3.12
   frimousse: 0.3.0
   fuse.js: 7.5.0
   happy-dom: 20.14.5
@@ -255,9 +255,9 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.2
   vinext: 1.0.0-beta.10
-  vite: npm:@voidzero-dev/vite-plus-core@0.3.2
+  vite: npm:@voidzero-dev/vite-plus-core@0.3.3
   vite-plugin-inspect: 12.0.2
-  vite-plus: 0.3.2
+  vite-plus: 0.3.3
   vitest: 4.1.11
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0

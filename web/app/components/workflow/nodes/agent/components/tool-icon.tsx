@@ -13,6 +13,7 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { matchesProviderReference } from '@/utils/provider-reference'
 
 type Status = 'not-installed' | 'not-authorized' | undefined
 
@@ -36,7 +37,10 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
       ...(mcpTools || []),
     ]
     return mergedTools.find((toolWithProvider) => {
-      return toolWithProvider.name === providerName || toolWithProvider.id === providerName
+      return (
+        toolWithProvider.name === providerName ||
+        matchesProviderReference(toolWithProvider, providerName)
+      )
     })
   }, [buildInTools, customTools, providerName, workflowTools, mcpTools])
 

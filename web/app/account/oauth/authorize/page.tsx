@@ -3,7 +3,6 @@
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAccountCircleLine,
   RiGlobalLine,
@@ -16,6 +15,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'

@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "ຊຸດນີ້ບໍ່ມີ SKILL.md. ເພີ່ມໄຟລ໌ແລະນໍາເຂົ້າມັນອີກເທື່ອຫນຶ່ງ.",
   "skillManagement.errors.nameConflict": "ທັກສະທີ່ມີຊື່ວ່າ \"{{name}}\" ມີຢູ່ແລ້ວ. ປ່ຽນຊື່ມັນຢູ່ໃນ SKILL.md ແລະນໍາເຂົ້າອີກເທື່ອຫນຶ່ງ.",
   "skillManagement.errors.workspaceLimit": "ພື້ນທີ່ເຮັດວຽກຂອງທ່ານຮອດຂີດຈຳກັດຂອງ 500 ທັກສະແລ້ວ. ລຶບທັກສະເພື່ອເພີ່ມອັນໃໝ່.",
-  "skillManagement.exportDialog.description": "ການດຳເນີນການນີ້ຈະສົ່ງອອກສະບັບຮ່າງຂອງທັກສະທີ່ບັນທຶກໄວ້ໃນປັດຈຸບັນ. ຖ້າມີການປ່ຽນແປງທີ່ຍັງບໍ່ໄດ້ບັນທຶກໃນຕົວແກ້ໄຂ, ກະລຸນາບັນທຶກກ່ອນສົ່ງອອກ.",
-  "skillManagement.exportDialog.title": "ສົ່ງອອກສະບັບຮ່າງທີ່ບັນທຶກໄວ້ໃນປັດຈຸບັນ",
   "skillManagement.import": "ນຳເຂົ້າ",
   "skillManagement.importFailed": "ລົ້ມເຫລວໃນການນໍາເຂົ້າທັກສະ.",
   "skillManagement.importSuccess": "Skill ນໍາເຂົ້າ.",

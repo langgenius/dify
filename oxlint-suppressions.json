@@ -5082,11 +5082,6 @@
       "count": 4
     }
   },
-  "web/features/agent-v2/agent-detail/configure/use-agent-configure-build-draft.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    }
-  },
   "web/features/agent-v2/agent-detail/logs/__tests__/page.spec.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 1
@@ -5308,7 +5303,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "web/service/datasets.ts": {

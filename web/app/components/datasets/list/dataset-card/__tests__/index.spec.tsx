@@ -1,6 +1,7 @@
 import type { DataSet } from '@/models/datasets'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
@@ -51,7 +52,7 @@ const toastMocks = vi.hoisted(() => {
   return { record, api }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
@@ -113,8 +114,10 @@ vi.mock('../components/corner-labels', () => ({
   default: () => <div data-testid="corner-labels" />,
 }))
 vi.mock('../components/dataset-card-header', () => ({
-  default: ({ dataset }: { dataset: DataSet }) => (
-    <div data-testid="card-header">{dataset.name}</div>
+  default: ({ dataset, nameId }: { dataset: DataSet; nameId?: string }) => (
+    <div id={nameId} data-testid="card-header">
+      {dataset.name}
+    </div>
   ),
 }))
 vi.mock('../components/dataset-card-modals', () => ({
@@ -369,12 +372,16 @@ describe('DatasetCard Component', () => {
     }
   })
 
-  it('should render and navigate to documents when clicked', () => {
+  it('exposes the document entry as a named link reachable by keyboard', async () => {
+    const user = userEvent.setup()
     const dataset = createMockDataset()
     render(<DatasetCard dataset={dataset} />)
 
-    fireEvent.click(screen.getByText('Test Dataset'))
-    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents')
+    const link = screen.getByRole('link', { name: dataset.name })
+    expect(link).toHaveAttribute('href', '/datasets/dataset-1/documents')
+    await user.tab()
+    expect(link).toHaveFocus()
+    expect(screen.getByTestId('tag-area').closest('a')).toBeNull()
   })
 
   it('should render preview-only dataset as a dimmed information-only card', () => {
@@ -388,7 +395,7 @@ describe('DatasetCard Component', () => {
     render(<DatasetCard dataset={dataset} />)
 
     const card = screen.getByRole('button', { name: 'Preview Only Dataset' })
-    expect(card).toHaveClass('opacity-60')
+    expect(screen.queryByRole('link', { name: dataset.name })).not.toBeInTheDocument()
     expect(card).not.toHaveAttribute('aria-disabled')
     expect(screen.getByText('Preview Only Dataset')).toBeInTheDocument()
     const tagArea = screen.getByTestId('tag-area')
@@ -404,20 +411,27 @@ describe('DatasetCard Component', () => {
     })
   })
 
-  it('should not navigate preview-only external dataset to a detail page', () => {
+  it('explains preview-only access through the keyboard without exposing a detail link', async () => {
+    const user = userEvent.setup()
     const dataset = createMockDataset({
       provider: 'external',
       permission_keys: [DatasetACLPermission.Preview],
     })
     render(<DatasetCard dataset={dataset} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Test Dataset' }))
+    const entry = screen.getByRole('button', { name: 'Test Dataset' })
+    expect(screen.queryByRole('link', { name: 'Test Dataset' })).not.toBeInTheDocument()
+    await user.tab()
+    expect(entry).toHaveFocus()
+    await user.keyboard('{Enter}')
 
     expect(mockPush).not.toHaveBeenCalled()
     expect(toastMocks.record).toHaveBeenCalledWith({
       type: 'warning',
       message: 'app.noAccessResourcePermission',
     })
+    await user.keyboard(' ')
+    expect(toastMocks.record).toHaveBeenCalledTimes(2)
   })
 
   it('should use the hover background treatment', () => {
@@ -450,8 +464,10 @@ describe('DatasetCard Component', () => {
     })
     render(<DatasetCard dataset={dataset} />)
 
-    fireEvent.click(screen.getByText('Test Dataset'))
-    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/hitTesting')
+    expect(screen.getByRole('link', { name: dataset.name })).toHaveAttribute(
+      'href',
+      '/datasets/dataset-1/hitTesting',
+    )
   })
 
   it('should navigate to settings for external provider when retrieval recall permission is missing', () => {
@@ -461,16 +477,20 @@ describe('DatasetCard Component', () => {
     })
     render(<DatasetCard dataset={dataset} />)
 
-    fireEvent.click(screen.getByText('Test Dataset'))
-    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/settings')
+    expect(screen.getByRole('link', { name: dataset.name })).toHaveAttribute(
+      'href',
+      '/datasets/dataset-1/settings',
+    )
   })
 
   it('should navigate to pipeline for unpublished pipeline', () => {
     const dataset = createMockDataset({ runtime_mode: 'rag_pipeline', is_published: false })
     render(<DatasetCard dataset={dataset} />)
 
-    fireEvent.click(screen.getByText('Test Dataset'))
-    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/pipeline')
+    expect(screen.getByRole('link', { name: dataset.name })).toHaveAttribute(
+      'href',
+      '/datasets/dataset-1/pipeline',
+    )
   })
 
   it('should allow tag binding when dataset has edit ACL', () => {

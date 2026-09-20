@@ -5,7 +5,6 @@ import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/type
 import type { ConfigParams, SettingsAppInfo } from '@/app/components/app/overview/settings'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +18,7 @@ import SettingsModal from '@/app/components/app/overview/settings'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/console'
@@ -40,6 +40,7 @@ export function WebAppAccessCard({
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation('app')
   const queryClient = useQueryClient()
   const appId = agent?.app_id
   const apiBaseUrl = agent?.api_base_url
@@ -151,7 +152,11 @@ export function WebAppAccessCard({
   const icon = agent ? getSettingsIcon(agent) : null
   const notAvailableLabel = t(($) => $['agentDetail.access.workflow.notAvailable'])
   const openUrl =
-    accessReady && webAppUrl && agent?.enable_site && !toggleSiteMutation.isPending
+    accessReady &&
+    webAppUrl &&
+    agent?.enable_site &&
+    !toggleSiteMutation.isPending &&
+    !accessControl.noAccessPermission
       ? webAppUrl
       : undefined
   const publishRequiredMessage = t(($) => $['agentDetail.access.publishRequired'])
@@ -297,7 +302,13 @@ export function WebAppAccessCard({
           showOpen
           showQrCode
           showRegenerate
-          openDisabledReason={showPublishRequiredMessage ? publishRequiredMessage : undefined}
+          openDisabledReason={
+            showPublishRequiredMessage
+              ? publishRequiredMessage
+              : accessControl.noAccessPermission
+                ? tApp(($) => $.noAccessPermission)
+                : undefined
+          }
           openLabel={t(($) => $['agentDetail.access.webApp.actions.open'])}
           openUrl={openUrl}
           qrCodeLabel={t(($) => $['agentDetail.access.webApp.showQrCode'])}
@@ -354,7 +365,10 @@ export function WebAppAccessCard({
         <AccessControl
           app={accessControl.app}
           onClose={() => setShowAccessControl(false)}
-          onConfirm={() => setShowAccessControl(false)}
+          onConfirm={async () => {
+            await accessControl.refetchUserCanAccessApp()
+            setShowAccessControl(false)
+          }}
         />
       )}
     </>
