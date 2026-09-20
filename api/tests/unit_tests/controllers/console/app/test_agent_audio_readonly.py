@@ -6,9 +6,18 @@ import pytest
 from flask import Flask, Response
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import InternalServerError
 
 from controllers.console import wraps
 from controllers.console.app import audio
+from controllers.console.app.error import (
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode
 from services.agent.errors import AgentNotFoundError
@@ -166,4 +175,35 @@ def test_audio_scopes_both_agent_and_runtime_app_to_the_current_tenant(
         invoke()
 
     provider.assert_not_called()
+    assert persistence_events == []
+
+
+@pytest.mark.parametrize(
+    ("provider_error", "expected_error"),
+    [
+        (ProviderTokenNotInitError("No TTS model configured"), ProviderNotInitializeError),
+        (QuotaExceededError(), ProviderQuotaExceededError),
+        (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),
+        (InvokeError("TTS provider unavailable"), CompletionRequestError),
+        (ValueError("Unknown voice"), ValueError),
+        (RuntimeError("Unexpected provider failure"), InternalServerError),
+    ],
+)
+def test_provider_failures_preserve_error_contract_and_readonly_state(
+    sqlite_session: Session,
+    request_audio: tuple[Callable[[], object], Mock],
+    persistence_events: list[str],
+    provider_error: Exception,
+    expected_error: type[Exception],
+) -> None:
+    sqlite_session.add_all([_agent(AgentScope.ROSTER), make_app(app_id="runtime-app-1", mode=AppMode.AGENT)])
+    sqlite_session.commit()
+    persistence_events.clear()
+    invoke, provider = request_audio
+    provider.side_effect = provider_error
+
+    with pytest.raises(expected_error):
+        invoke()
+
+    provider.assert_called_once()
     assert persistence_events == []
