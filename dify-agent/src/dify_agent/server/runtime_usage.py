@@ -1,9 +1,9 @@
-"""Bounded, fail-open lifecycle observation and durable inner-API delivery.
+"""Best-effort lifecycle diagnostics and the shared usage ingestion client.
 
-This stream has no run TTL or automatic trim. Entries are deleted only after the
-API confirms its database commit. Concurrent dispatchers can redeliver a batch;
-stable event IDs make that safe. Redis durability remains an operator concern,
-and enqueue failures are visible rather than being presented as lossless capture.
+Application observations use a bounded, process-local queue and direct HTTP
+delivery. Overflow, network failure, shutdown, or restart can lose these logs;
+they are not retried or persisted locally. Authoritative E2B execution events
+are collected separately and do not depend on this diagnostic sender.
 """
 
 from __future__ import annotations
@@ -17,7 +17,6 @@ from typing import Any
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
-from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 _MAX_EVENT_BYTES = 64 * 1024
@@ -72,8 +71,8 @@ class RuntimeUsageClient:
         if not events or len(events) > 100:
             raise ValueError("sandbox usage batches require 1 to 100 events")
         # The API limits the whole HTTP body, not just its event count. Splitting
-        # here covers both provider pages and outbox batches. Partial success is
-        # safe: callers retry stable IDs and acknowledge only after all chunks.
+        # here covers provider pages and application observations. The collector
+        # retries stable provider IDs; the best-effort sender drops failed batches.
         batch: list[dict[str, Any]] = []
         for event in events:
             candidate = [*batch, event]
@@ -114,32 +113,26 @@ class RuntimeUsageClient:
 
 
 @dataclass(slots=True)
-class BufferedRuntimeUsageObserver:
-    redis: Redis
-    project_id: str
-    prefix: str = "dify-agent"
+class BestEffortRuntimeUsageObserver:
+    client: RuntimeUsageClient
     buffer_size: int = 1000
-    redis_timeout_seconds: float = 5.0
-    retry_interval_seconds: float = 5.0
+    send_timeout_seconds: float = 15.0
     dropped_events: int = field(default=0, init=False)
-    failed_flushes: int = field(default=0, init=False)
+    failed_batches: int = field(default=0, init=False)
     _queue: asyncio.Queue[str] = field(init=False)
 
     def __post_init__(self) -> None:
         if self.buffer_size < 1:
             raise ValueError("sandbox usage buffer size must be positive")
+        if self.send_timeout_seconds <= 0:
+            raise ValueError("sandbox usage send timeout must be positive")
         self._queue = asyncio.Queue(maxsize=self.buffer_size)
-
-    @property
-    def stream_key(self) -> str:
-        return f"{self.prefix}:sandbox-usage:{self.project_id}:outbox"
 
     async def observe_safely(self, event: dict[str, Any]) -> None:
         """Enqueue without suspension, so cancellation cannot strand an E2B handle.
 
-        The small local diagnostic buffer is not durable until the flusher XADD
-        succeeds. Overflow/crash can lose observations; provider events and the
-        independently committed API allocation recover authoritative usage.
+        This queue is intentionally lossy. It snapshots only diagnostic event
+        data; delivery never adds a cancellation point to an E2B lifecycle call.
         """
         try:
             payload = json.dumps(event, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
@@ -154,68 +147,55 @@ class BufferedRuntimeUsageObserver:
             logger.warning("sandbox usage enqueue failed", extra={"error_type": type(exc).__name__})
 
     async def run(self) -> None:
-        while True:
-            payload = await self._queue.get()
+        try:
+            while True:
+                payloads = [await self._queue.get()]
+                while len(payloads) < 100:
+                    try:
+                        payloads.append(self._queue.get_nowait())
+                    except asyncio.QueueEmpty:
+                        break
+                try:
+                    async with asyncio.timeout(self.send_timeout_seconds):
+                        await self.client.post_events([json.loads(payload) for payload in payloads])
+                except asyncio.CancelledError:
+                    self._record_dropped_batch(len(payloads), "CancelledError")
+                    raise
+                except Exception as exc:
+                    self._record_dropped_batch(len(payloads), type(exc).__name__)
+                finally:
+                    for _ in payloads:
+                        self._queue.task_done()
+        finally:
+            # Shutdown does not retain local observations for a future process.
+            pending = 0
             while True:
                 try:
-                    async with asyncio.timeout(self.redis_timeout_seconds):
-                        await self.redis.xadd(self.stream_key, {"event": payload})
-                    self._queue.task_done()
+                    self._queue.get_nowait()
+                except asyncio.QueueEmpty:
                     break
-                except Exception as exc:
-                    self.failed_flushes += 1
-                    logger.warning("sandbox usage Redis flush failed", extra={"error_type": type(exc).__name__})
-                    await asyncio.sleep(self.retry_interval_seconds)
+                self._queue.task_done()
+                pending += 1
+            if pending:
+                self.dropped_events += pending
+                logger.warning("sandbox usage queued observations dropped on shutdown", extra={"events": pending})
+
+    def _record_dropped_batch(self, count: int, error_type: str) -> None:
+        self.failed_batches += 1
+        self.dropped_events += count
+        # The remote API may have committed before an ACK was lost. This is the
+        # number abandoned locally, not a claim that none reached the database.
+        logger.warning(
+            "sandbox usage observation batch dropped without retry",
+            extra={"events": count, "error_type": error_type},
+        )
 
     async def flush_on_shutdown(self, timeout_seconds: float = 2.0) -> None:
         try:
             async with asyncio.timeout(timeout_seconds):
                 await self._queue.join()
         except TimeoutError:
-            logger.warning("sandbox usage local buffer not fully durable at shutdown")
-
-
-@dataclass(slots=True)
-class RuntimeUsageDispatcher:
-    redis: Redis
-    observer: BufferedRuntimeUsageObserver
-    client: RuntimeUsageClient
-    retry_interval_seconds: float = 5.0
-
-    async def dispatch_once(self) -> int:
-        entries = await self.redis.xrange(self.observer.stream_key, count=100)
-        if not entries:
-            return 0
-        events: list[dict[str, Any]] = []
-        ids: list[Any] = []
-        for entry_id, fields in entries:
-            raw = fields.get(b"event", fields.get("event"))
-            event = json.loads(raw)
-            if not isinstance(event, dict):
-                raise ValueError("sandbox usage outbox contains invalid event")
-            if events and len(self.client._encode_batch([*events, event])) > _MAX_BATCH_BYTES:
-                break
-            events.append(event)
-            ids.append(entry_id)
-        await self.client.post_events(events)
-        await self.redis.xdel(self.observer.stream_key, *ids)
-        pending = await self.redis.xlen(self.observer.stream_key)
-        if pending >= 1000:
-            logger.warning("sandbox usage delivery backlog", extra={"pending_events": pending})
-        return len(ids)
-
-    async def run(self) -> None:
-        while True:
-            try:
-                async with asyncio.timeout(30):
-                    sent = await self.dispatch_once()
-                if sent:
-                    continue
-            except Exception as exc:
-                logger.warning(
-                    "sandbox usage delivery failed; batch retained", extra={"error_type": type(exc).__name__}
-                )
-            await asyncio.sleep(self.retry_interval_seconds)
+            logger.warning("sandbox usage shutdown drain timed out; remaining observations will be dropped")
 
 
 def utc_now() -> datetime:

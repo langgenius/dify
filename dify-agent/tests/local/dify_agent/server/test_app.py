@@ -489,8 +489,7 @@ def test_metering_tasks_are_lifespan_owned_and_flush_after_run_cleanup(monkeypat
             assert FakeRunScheduler.created[-1].shutdown_called
             order.append("flush")
 
-    monkeypatch.setattr(app_module, "BufferedRuntimeUsageObserver", MeteringTask)
-    monkeypatch.setattr(app_module, "RuntimeUsageDispatcher", MeteringTask)
+    monkeypatch.setattr(app_module, "BestEffortRuntimeUsageObserver", MeteringTask)
     monkeypatch.setattr(app_module, "E2BUsageCollector", MeteringTask)
     settings = ServerSettings(
         _env_file=None,
@@ -505,12 +504,14 @@ def test_metering_tasks_are_lifespan_owned_and_flush_after_run_cleanup(monkeypat
     assert isinstance(profile.execution_bindings, E2BExecutionBindingBackend)
     monkeypatch.setattr(ServerSettings, "build_runtime_backend_profile", lambda self: profile)
     with TestClient(create_app(settings)):
-        assert len(instances) == 3
+        assert len(instances) == 2
         assert profile.execution_bindings.usage_observer is instances[0]
-        provider_client = instances[2].kwargs["provider_client"]
+        assert set(instances[0].kwargs) == {"client"}
+        provider_client = instances[1].kwargs["provider_client"]
         assert "X-Inner-Api-Key" not in provider_client.headers
-        assert instances[2].kwargs["usage_client"].api_key == "inner-key"
-        assert instances[2].kwargs["api_key"] == "provider-key"
+        assert instances[1].kwargs["usage_client"].api_key == "inner-key"
+        assert instances[1].kwargs["api_key"] == "provider-key"
+        assert instances[1].kwargs["redis"] is FakeRedisModule.fake_redis
     assert order == ["flush"]
     assert all(instance.stopped for instance in instances)
     assert provider_client.is_closed
