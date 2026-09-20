@@ -132,6 +132,21 @@ beforeEach(() => {
 
 const getChip = () => screen.getByRole('button', { name: /Access Control/ })
 
+const createBinding = (
+  overrides: Partial<AppNetworkAccessGroupBindingResponse> = {},
+): AppNetworkAccessGroupBindingResponse => ({
+  id: 'binding-1',
+  tenant_id: 'workspace-1',
+  app_id: 'app-1',
+  enabled: true,
+  group_id: 'group-1',
+  access_points: ['webapp', 'service_api', 'mcp'],
+  version: 2,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+  ...overrides,
+})
+
 describe('AccessControlEntry', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -149,38 +164,47 @@ describe('AccessControlEntry', () => {
     expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
   })
 
-  it('shows a resume paywall for a saved assignment on Cloud sandbox', async () => {
-    const user = userEvent.setup()
-    renderEntry({
-      plan: 'sandbox',
-      groups: [createNetworkAccessGroupFixture()],
-      binding: {
-        id: 'binding-1',
-        tenant_id: 'workspace-1',
-        app_id: 'app-1',
-        enabled: true,
-        group_id: 'group-1',
-        access_points: ['webapp', 'service_api', 'mcp'],
-        version: 2,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
-      },
-    })
+  it.each([
+    { enabled: true, accessPoints: ['webapp', 'service_api', 'mcp'], coverage: '3 of 3' },
+    { enabled: true, accessPoints: ['webapp'], coverage: '1 of 3' },
+    { enabled: false, accessPoints: ['webapp', 'service_api', 'mcp'], coverage: '3 of 3' },
+  ] as const)(
+    'shows PRO and the saved resume configuration on Cloud sandbox (%j)',
+    async ({ enabled, accessPoints, coverage }) => {
+      const user = userEvent.setup()
+      renderEntry({
+        plan: 'sandbox',
+        groups: [createNetworkAccessGroupFixture()],
+        binding: {
+          id: 'binding-1',
+          tenant_id: 'workspace-1',
+          app_id: 'app-1',
+          enabled,
+          group_id: 'group-1',
+          access_points: [...accessPoints],
+          version: 2,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      })
 
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
-    await user.click(getChip())
-    expect(screen.getByText('This app is no longer protected')).toBeInTheDocument()
-    expect(screen.getByText('Access control needs the Pro plan.')).toBeInTheDocument()
-    expect(screen.getByText('Ready to resume')).toBeInTheDocument()
-    expect(screen.getByText('Internal Network')).toBeInTheDocument()
-    expect(screen.getByText('Protects 3 of 3 access points')).toBeInTheDocument()
-    expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('switch', { name: 'Enable access control' })).not.toBeInTheDocument()
+      expect(within(getChip()).getByText('PRO')).toBeInTheDocument()
+      await user.click(getChip())
+      expect(screen.getByText('This app is no longer protected')).toBeInTheDocument()
+      expect(screen.getByText('Access control needs the Pro plan.')).toBeInTheDocument()
+      expect(screen.getByText('Ready to resume')).toBeInTheDocument()
+      expect(screen.getByText('Internal Network')).toBeInTheDocument()
+      expect(screen.getByText(`Protects ${coverage} access points`)).toBeInTheDocument()
+      expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('switch', { name: 'Enable access control' }),
+      ).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Turn on Access Control' }))
-    expect(mockSetPricing).toHaveBeenCalledWith('open')
-  })
+      await user.click(screen.getByRole('button', { name: 'Turn on Access Control' }))
+      expect(mockSetPricing).toHaveBeenCalledWith('open')
+    },
+  )
 
   it('renders a single chip with a non-interactive PRO badge for Cloud sandbox', () => {
     renderEntry({ plan: 'sandbox' })
@@ -522,6 +546,53 @@ describe('AccessControlEntry', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
   })
 
+  it.each([false, true])(
+    'closes and restores a draft with the Close button (configured: %s)',
+    async (configured) => {
+      const user = userEvent.setup()
+      renderEntry({
+        plan: 'professional',
+        groups: [createNetworkAccessGroupFixture()],
+        binding: configured ? createBinding() : null,
+      })
+
+      await user.click(getChip())
+      if (configured) await user.click(screen.getByRole('button', { name: 'Edit' }))
+      else await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+      await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+
+      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(within(getChip()).getByText(configured ? 'ON' : 'Off')).toBeInTheDocument()
+
+      await user.click(getChip())
+      expect(screen.getByRole('combobox', { name: 'IP Policy' })).toHaveTextContent(
+        'Internal Network',
+      )
+      expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toBeChecked()
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+    },
+  )
+
+  it('closes a clean edit and reopens the saved preview with the Close button', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: createBinding(),
+    })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await user.click(getChip())
+    expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+  })
+
   it('discards an unsaved edit on Back', async () => {
     const user = userEvent.setup()
     renderEntry({
@@ -610,21 +681,6 @@ const capabilityCases = [
   points: AppNetworkAccessGroupResponse['available_access_points']
   labels: string[]
 }[]
-
-const createBinding = (
-  overrides: Partial<AppNetworkAccessGroupBindingResponse> = {},
-): AppNetworkAccessGroupBindingResponse => ({
-  id: 'binding-1',
-  tenant_id: 'workspace-1',
-  app_id: 'app-1',
-  enabled: true,
-  group_id: 'group-1',
-  access_points: ['webapp', 'service_api', 'mcp'],
-  version: 2,
-  created_at: '2026-01-01T00:00:00Z',
-  updated_at: '2026-01-01T00:00:00Z',
-  ...overrides,
-})
 
 describe('supported access points and binding permission', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -1091,6 +1147,48 @@ const openSelectedConfig = async (user: ReturnType<typeof userEvent.setup>) => {
 const lockoutWarning = "Your IP (203.0.113.42) isn't in this policy. You may lose access."
 
 describe('trusted IP checks before saving', () => {
+  it.each([true, false])(
+    'enables a paused policy after saving edits with a fresh IP check (allowed: %s)',
+    async (allowed) => {
+      const user = userEvent.setup()
+      const server = setupBindingServer(createBinding({ enabled: false }))
+      server.check.allowed = allowed
+      renderEntry({
+        plan: 'professional',
+        groups: server.groups,
+        binding: server.binding,
+        isPublished: true,
+      })
+      await user.click(getChip())
+      await user.click(screen.getByRole('button', { name: 'Edit' }))
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+      await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+      expect(within(getChip()).getByText('Off')).toBeInTheDocument()
+      expect(server.writes).toHaveLength(0)
+      const checksBeforeSave = server.checks
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      if (!allowed) {
+        const dialog = await screen.findByRole('alertdialog', { name: 'Save without your own IP?' })
+        expect(server.writes).toHaveLength(0)
+        await user.click(within(dialog).getByRole('button', { name: 'Save anyway' }))
+      }
+      await waitFor(() =>
+        expect(server.writes).toEqual([
+          {
+            enabled: true,
+            group_id: 'group-1',
+            access_points: ['webapp', 'service_api'],
+            expected_version: 2,
+          },
+        ]),
+      )
+      expect(server.checks).toBeGreaterThan(checksBeforeSave)
+      expect(await screen.findByRole('switch', { name: 'Enable access control' })).toBeChecked()
+      expect(within(getChip()).getByText('2 of 3')).toBeInTheDocument()
+    },
+  )
+
   it.each([true, false])(
     'uses the server match result and only confirms a published denial (allowed: %s)',
     async (allowed) => {

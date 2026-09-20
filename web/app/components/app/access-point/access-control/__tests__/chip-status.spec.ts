@@ -35,14 +35,14 @@ describe('getAccessControlChipState', () => {
     ).toBe('pro')
   })
 
-  it('keeps the saved assignment visible when the workspace is not entitled', () => {
+  it.each([true, false])('returns pro for an expired assignment (enabled: %s)', (enabled) => {
     expect(
       getAccessControlChipState({
         availableAccessPoints: ACCESS_POINT_ORDER,
         entitled: false,
-        assignment,
+        assignment: { ...assignment, enabled },
       }).kind,
-    ).toBe('on')
+    ).toBe('pro')
   })
 
   it('returns off when the app has never been configured', () => {
