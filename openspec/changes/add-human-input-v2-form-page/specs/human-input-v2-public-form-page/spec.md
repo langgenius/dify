@@ -1,13 +1,23 @@
 ## ADDED Requirements
 
-### Requirement: Human Input v2 shall have an isolated public route
+### Requirement: Human Input v2 shall have an isolated public Email-proof route
 
-The frontend MUST expose Human Input v2 forms at `/form-v2/<form_token>`. The v2 route MUST use v2 orchestration and canonical `human-input` transport paths, while `/form/<form_token>` MUST retain its legacy UI, underscore endpoints, payload, and behavior.
+The frontend MUST expose Email-proof Human Input v2 forms at `/form-v2/<form_token>`. This route MUST serve External contacts, one-time Email recipients, and Dynamic Email grants accepted by the public Email API, and MUST use only public v2 orchestration and canonical `/api/form/human-input/...` transport paths. It MUST treat `form_token` as an opaque capability and leave recipient and `auth_type` resolution to the server-side delivery record. Workspace and Platform contacts MUST use a separate authenticated approval page and `/console/api/form/human-input/...`; `/form-v2` MUST NOT select or fall back to that surface. `/form/<form_token>` MUST retain its legacy UI, underscore endpoints, payload, and behavior.
 
-#### Scenario: Open a v2 form link
+#### Scenario: Open a public Email-proof v2 form link
 
-- **WHEN** a user opens `/form-v2/token-v2`
-- **THEN** the frontend MUST load the v2 route with `token-v2` and MUST NOT invoke the legacy form query or submit hook
+- **WHEN** an External contact, one-time Email recipient, or EmailAddress-backed Dynamic Email approver opens `/form-v2/token-v2`
+- **THEN** the frontend MUST load the public v2 route with `token-v2` and MUST NOT invoke the legacy or authenticated Contact query/submit flow
+
+#### Scenario: Authenticated Contact token is presented to the public page
+
+- **WHEN** the public definition request rejects a token issued for a workspace or Platform contact
+- **THEN** the frontend MUST present the normalized invalid/not-found state, MUST NOT request Email OTP, and MUST NOT retry through or redirect to the authenticated Contact surface
+
+#### Scenario: Dify session exists on the public Email page
+
+- **WHEN** the browser has a valid Dify Account session while an accepted public Email-proof token is open
+- **THEN** the frontend MUST continue requiring Email OTP and Challenge Token and MUST NOT substitute the Dify session as submit proof
 
 #### Scenario: Open a legacy form link
 
@@ -21,11 +31,11 @@ The frontend MUST expose Human Input v2 forms at `/form-v2/<form_token>`. The v2
 
 ### Requirement: The v2 page shall load and render a resolved form definition
 
-The v2 page MUST request the form definition through the selected v2 transport and render resolved form content, inputs, default values, actions, expiration, and optional branding using version-neutral presentation. It MUST not trigger access-request until a valid definition is available.
+The v2 page MUST request the form definition through the selected public Email transport and render resolved form content, inputs, default values, actions, expiration, and optional branding using version-neutral presentation. It MUST not trigger access-request until the public API has accepted the token and returned a valid definition.
 
 #### Scenario: Form definition loads successfully
 
-- **WHEN** the v2 transport returns a valid form definition
+- **WHEN** the public Email transport returns a valid form definition
 - **THEN** the page MUST initialize fields from resolved defaults, render content and actions in declared order, display expiration, and proceed to Email access-request
 
 #### Scenario: Optional branding is absent
@@ -57,9 +67,14 @@ Not-found, expired, already-submitted, and form-level rate-limit responses MUST 
 - **WHEN** the v2 transport reports an invalid or unknown form token
 - **THEN** the page MUST display the localized not-found state without exposing raw transport details
 
+#### Scenario: Token belongs to another authentication surface
+
+- **WHEN** the public transport rejects a workspace/Platform Contact token or any token not owned by the public Email surface
+- **THEN** the page MUST stop before access-request and MUST NOT inspect browser session state or contact data to choose another flow
+
 ### Requirement: Form actions shall validate and submit processed field values
 
-The v2 page MUST reuse version-neutral initialization, required-field validation, file-value processing, and action styling. It MUST provide the selected action and processed inputs to the Email Challenge session, and MUST prevent duplicate or invalid submissions.
+The v2 public Email page MUST reuse version-neutral initialization, required-field validation, file-value processing, and action styling. It MUST provide the selected action and processed inputs to the Email Challenge session, and MUST prevent duplicate or invalid submissions.
 
 #### Scenario: Required field is incomplete
 
@@ -83,7 +98,7 @@ The v2 page MUST reuse version-neutral initialization, required-field validation
 
 ### Requirement: Human Input file upload shall be version-aware
 
-The frontend MUST classify `/form/<token>` as legacy, `/form-v2/<token>` as v2, and unrelated paths as non-form. V2 file and file-list inputs MUST use the selected v2 upload-token transport; legacy inputs MUST keep their existing upload endpoint and behavior.
+The frontend MUST classify `/form/<token>` as legacy, `/form-v2/<token>` as public Email v2, and unrelated paths as non-form. V2 file and file-list inputs MUST use the selected public v2 upload-token transport; legacy inputs MUST keep their existing upload endpoint and behavior. The authenticated Contact upload surface is outside this change.
 
 #### Scenario: Upload from v2 form
 
@@ -135,7 +150,7 @@ Every new v2 page, OTP, resend, status, and error string MUST come from the shar
 
 ### Requirement: The implementation shall remain frontend-only
 
-The change MUST be limited to frontend code, frontend mocks/tests, and its OpenSpec artifacts. It MUST NOT implement backend routes, mail delivery, OTP verification, generated API files, workflow runtime, or Human Input node/editor behavior.
+The change MUST be limited to the public Email frontend code, frontend mocks/tests, and its OpenSpec artifacts. It MUST NOT implement backend routes, mail delivery, OTP verification, surface-aware link generation, the authenticated Contact approval page/client, generated API files, workflow runtime, or Human Input node/editor behavior.
 
 #### Scenario: Backend contract is still unavailable
 

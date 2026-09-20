@@ -527,14 +527,125 @@ describe('ContactsDirectoryPage', () => {
     expect(screen.getByRole('button', { name: 'contacts.action.retry' })).toBeInTheDocument()
   })
 
-  it('keeps loaded rows when the next page fails', async () => {
-    const user = userEvent.setup()
-    renderDirectory(createContactsMockScenario(ContactsMockScenario.NextPageFailure))
-    expect(await screen.findByText('Ralph Edwards')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'contacts.action.loadMore' }))
+  describe('automatic pagination', () => {
+    let intersect: () => void
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('contacts.directory.pageError')
-    expect(screen.getByText('Ralph Edwards')).toBeInTheDocument()
+    beforeEach(() => {
+      const observers = new Set<MockIntersectionObserver>()
+      class MockIntersectionObserver implements IntersectionObserver {
+        readonly root: Element | Document | null = null
+        readonly rootMargin = '0px'
+        readonly scrollMargin = '0px'
+        readonly thresholds = [0]
+        private readonly targets = new Set<Element>()
+        private readonly callback: IntersectionObserverCallback
+
+        constructor(callback: IntersectionObserverCallback) {
+          this.callback = callback
+          observers.add(this)
+        }
+
+        observe(target: Element) {
+          this.targets.add(target)
+        }
+
+        unobserve(target: Element) {
+          this.targets.delete(target)
+        }
+
+        disconnect() {
+          this.targets.clear()
+        }
+
+        takeRecords(): IntersectionObserverEntry[] {
+          return []
+        }
+
+        intersect() {
+          const entries = [...this.targets].map((target) => ({
+            boundingClientRect: target.getBoundingClientRect(),
+            intersectionRatio: 1,
+            intersectionRect: target.getBoundingClientRect(),
+            isIntersecting: true,
+            rootBounds: null,
+            target,
+            time: 0,
+          }))
+          if (entries.length) this.callback(entries, this)
+        }
+      }
+      vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
+      intersect = () => act(() => observers.forEach((observer) => observer.intersect()))
+    })
+
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('loads subsequent contacts automatically, stops at the end, and restores loaded pages from the URL', async () => {
+      const scenario = createContactsMockScenario(ContactsMockScenario.Paginated)
+      const repository = createContactsMockRepository({ scenario })
+      const listContacts = vi.spyOn(repository, 'listContacts')
+      const listPages = () =>
+        listContacts.mock.calls.filter(([query]) => query.limit === 20).map(([query]) => query.page)
+      const { onUrlUpdate, unmount } = renderDirectory(scenario, '', repository)
+      expect(await screen.findByText('Partner 17')).toBeInTheDocument()
+      expect(screen.queryByText('Partner 18')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'contacts.action.loadMore' }),
+      ).not.toBeInTheDocument()
+
+      intersect()
+
+      expect(await screen.findByText('Partner 20')).toBeInTheDocument()
+      expect(screen.getAllByRole('row')).toHaveLength(scenario.contacts.length + 1)
+      for (const contact of scenario.contacts)
+        expect(screen.getAllByText(contact.name)).toHaveLength(1)
+      expect(listPages()).toEqual([1, 2])
+      await waitFor(() => {
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('contact_pages')).toBe('2')
+      })
+      intersect()
+      expect(listPages()).toEqual([1, 2])
+
+      unmount()
+      listContacts.mockClear()
+      renderDirectory(scenario, '?contact_pages=2', repository)
+      expect(await screen.findByText('Partner 20')).toBeInTheDocument()
+      expect(screen.getAllByRole('row')).toHaveLength(scenario.contacts.length + 1)
+      expect(listPages()).toEqual([1, 2])
+    })
+
+    it('keeps loaded rows after an automatic page failure and waits for an explicit retry', async () => {
+      const user = userEvent.setup()
+      const scenario = createContactsMockScenario(ContactsMockScenario.Paginated)
+      const repository = createContactsMockRepository({ scenario })
+      const list = repository.listContacts
+      let failNextPage = true
+      const listContacts = vi.spyOn(repository, 'listContacts').mockImplementation((query) => {
+        if (query.page === 2 && failNextPage) {
+          failNextPage = false
+          return Promise.reject(new Error('contacts_next_page_failed'))
+        }
+        return list(query)
+      })
+      const nextPageCalls = () => listContacts.mock.calls.filter(([query]) => query.page === 2)
+      renderDirectory(scenario, '', repository)
+      expect(await screen.findByText('Ralph Edwards')).toBeInTheDocument()
+
+      intersect()
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('contacts.directory.pageError')
+      expect(screen.getByText('Ralph Edwards')).toBeInTheDocument()
+      expect(screen.queryByText('Partner 18')).not.toBeInTheDocument()
+      intersect()
+      expect(nextPageCalls()).toHaveLength(1)
+
+      await user.click(screen.getByRole('button', { name: 'contacts.action.retry' }))
+
+      expect(await screen.findByText('Partner 20')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getAllByRole('row')).toHaveLength(scenario.contacts.length + 1)
+      expect(nextPageCalls()).toHaveLength(2)
+    })
   })
 })
 
@@ -587,9 +698,10 @@ describe('Contact IM binding controls', () => {
     const user = userEvent.setup()
     await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.add' }))
     const dialog = await screen.findByRole('dialog', { name: 'contacts.imBinding.title' })
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'contacts.imBinding.notConfigured',
+    await user.click(
+      within(dialog).getByRole('combobox', { name: 'contacts.imBinding.contactLabel' }),
     )
+    expect(await screen.findByRole('alert')).toHaveTextContent('contacts.imBinding.notConfigured')
     expect(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' })).toBeDisabled()
     expect(repository.setIMBinding).not.toHaveBeenCalled()
   })
@@ -621,22 +733,22 @@ describe('Contact IM binding controls', () => {
       }),
     )
     const dialog = await screen.findByRole('dialog', { name: 'contacts.imBinding.title' })
+    const picker = within(dialog).getByRole('combobox', {
+      name: 'contacts.imBinding.contactLabel',
+    })
+    await user.click(picker)
     await user.type(
-      within(dialog).getByRole('searchbox', { name: 'contacts.imBinding.search' }),
+      await screen.findByRole('combobox', { name: 'contacts.imBinding.search' }),
       'Member',
     )
-    await user.click(
-      await within(dialog).findByRole('button', { name: 'contacts.action.loadMore' }),
-    )
-    await user.click(await within(dialog).findByRole('button', { name: /Second Member/ }))
+    await user.click(await screen.findByRole('button', { name: 'contacts.action.loadMore' }))
+    await user.click(await screen.findByRole('option', { name: /Second Member/ }))
+    await waitFor(() => expect(picker).toHaveAttribute('aria-expanded', 'false'))
     await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
       'contacts.imBinding.conflict',
     )
-    expect(within(dialog).getByRole('button', { name: /Second Member/ })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    expect(picker).toHaveTextContent('Second Member')
     expect(within(details).queryByText('Feishu')).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -677,21 +789,114 @@ describe('Contact IM binding controls', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps External contacts email-only and Enterprise bindings read-only', async () => {
+  it('keeps a selected identity when a later search has no matching results', async () => {
+    const { scenario, repository, contact } = setup()
+    vi.mocked(repository.listIMIdentities).mockImplementation(async ({ search, page, limit }) => ({
+      data: search === 'Nobody' ? [] : [identity],
+      page,
+      limit,
+      total: search === 'Nobody' ? 0 : 1,
+      has_more: false,
+    }))
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const user = userEvent.setup()
+    const details = await findLoadedDetails(contact.name)
+    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.add' }))
+    const dialog = await screen.findByRole('dialog', { name: 'contacts.imBinding.title' })
+    const picker = within(dialog).getByRole('combobox', {
+      name: 'contacts.imBinding.contactLabel',
+    })
+    await user.click(picker)
+    await user.click(await screen.findByRole('option', { name: /Synced Member/ }))
+    await waitFor(() => expect(picker).toHaveAttribute('aria-expanded', 'false'))
+    await user.click(picker)
+    const search = await screen.findByRole('combobox', { name: 'contacts.imBinding.search' })
+    await user.clear(search)
+    await user.type(search, 'Nobody')
+    expect(await screen.findByText('contacts.imBinding.empty')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(picker).toHaveAttribute('aria-expanded', 'false'))
+    expect(screen.getByRole('dialog', { name: 'contacts.imBinding.title' })).toBeInTheDocument()
+    expect(picker).toHaveTextContent('Synced Member')
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' }))
+    await waitFor(() =>
+      expect(repository.setIMBinding).toHaveBeenCalledWith({
+        contactId: contact.id,
+        identityId: identity.id,
+        override: false,
+      }),
+    )
+  })
+
+  it('does not offer IM binding for External contacts', async () => {
     const { scenario, repository } = setup()
-    const external = scenario.contacts.find((contact) => contact.type === 'external')!
+    const external = {
+      ...scenario.contacts.find((contact) => contact.type === 'external')!,
+      im_bindings: [],
+    }
     vi.mocked(repository.getContact).mockResolvedValue(external)
-    const externalView = renderDirectory(scenario, `?contact_id=${external.id}`, repository)
-    let details = await findLoadedDetails(external.name)
+    renderDirectory(scenario, `?contact_id=${external.id}`, repository)
+    const details = await findLoadedDetails(external.name)
+    expect(within(details).queryByText('Feishu')).not.toBeInTheDocument()
     expect(
       within(details).queryByRole('button', { name: 'contacts.imBinding.add' }),
     ).not.toBeInTheDocument()
-    expect(within(details).queryByText('Feishu')).not.toBeInTheDocument()
-    externalView.unmount()
+    expect(repository.listIMIdentities).not.toHaveBeenCalled()
+    expect(repository.setIMBinding).not.toHaveBeenCalled()
+  })
+
+  it('does not present channel default binding status as the current workspace selection', async () => {
+    const { scenario, repository, contact } = setup()
+    const defaultIdentity: ContactIMIdentity = { ...identity, binding_status: 'bound' }
+    const overrideIdentity: ContactIMIdentity = {
+      ...identity,
+      id: 'identity-override',
+      display_name: 'Workspace Member',
+      provider_user_id: 'feishu-user-override',
+    }
+    vi.mocked(repository.getContact).mockResolvedValue({
+      ...contact,
+      im_bindings: [{ id: 'binding-override', provider: 'feishu', scope: 'workspace' }],
+    })
+    vi.mocked(repository.listIMIdentities).mockImplementation(async ({ page, limit }) => ({
+      data: [defaultIdentity, overrideIdentity],
+      page,
+      limit,
+      total: 2,
+      has_more: false,
+    }))
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const user = userEvent.setup()
+    const details = await findLoadedDetails(contact.name)
+    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.edit' }))
+    const dialog = await screen.findByRole('dialog', { name: 'contacts.imBinding.title' })
+    const picker = within(dialog).getByRole('combobox', {
+      name: 'contacts.imBinding.contactLabel',
+    })
+    expect(picker).not.toHaveTextContent('Synced Member')
+    await user.click(picker)
+    const defaultOption = await screen.findByRole('option', { name: /Synced Member/ })
+    expect(defaultOption).toHaveAttribute('aria-selected', 'false')
+    expect(screen.queryByText('contacts.imBinding.bound')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: /Workspace Member/ }))
+    await waitFor(() => expect(picker).toHaveAttribute('aria-expanded', 'false'))
+    expect(picker).toHaveTextContent('Workspace Member')
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' }))
+    await waitFor(() =>
+      expect(repository.setIMBinding).toHaveBeenCalledWith({
+        contactId: contact.id,
+        identityId: overrideIdentity.id,
+        override: true,
+      }),
+    )
+  })
+
+  it('keeps Enterprise bindings read-only', async () => {
+    const { scenario, repository } = setup()
     const member = scenario.contacts.find((contact) => contact.type === 'workspace')!
     vi.mocked(repository.getContact).mockResolvedValue(member)
     renderDirectory({ ...scenario, deployment: 'ee' }, `?contact_id=${member.id}`, repository)
-    details = await findLoadedDetails(member.name)
+    const details = await findLoadedDetails(member.name)
     expect(within(details).getByText('contacts.imBinding.enterpriseReadOnly')).toBeInTheDocument()
     expect(
       within(details).queryByRole('button', { name: 'contacts.imBinding.edit' }),

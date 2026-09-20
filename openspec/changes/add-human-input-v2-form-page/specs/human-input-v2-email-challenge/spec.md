@@ -1,8 +1,27 @@
 ## ADDED Requirements
 
+### Requirement: Email Challenge shall remain limited to public Email-proof approvers
+
+The frontend MUST apply the Email OTP and Challenge Token flow only to External contacts, one-time Email recipients, and Dynamic Email grants accepted by the public `/api/form/human-input/...` surface. It MUST NOT inspect Dify Account session state, match an email to a Contact, or react to public-token failure by selecting authenticated Contact approval. Workspace and Platform contacts belong to a separate authenticated page and console API.
+
+#### Scenario: Public Email-proof approver loads successfully
+
+- **WHEN** the public API accepts an External contact, one-time Email, or EmailAddress-backed Dynamic Email token and returns a valid definition
+- **THEN** the frontend MUST enter the Email Challenge flow and request OTP exactly once
+
+#### Scenario: Authenticated Contact token is rejected during definition load
+
+- **WHEN** the public API rejects a token issued for a workspace or Platform contact
+- **THEN** the frontend MUST NOT call access-request, MUST NOT use a Dify session as proof, and MUST NOT switch to the console API
+
+#### Scenario: Public approver also has a Dify session
+
+- **WHEN** an accepted public Email-proof approver is currently signed in to Dify
+- **THEN** the frontend MUST still require OTP and Challenge Token because browser login state MUST NOT rewrite the token's authorization surface
+
 ### Requirement: A valid form load shall start exactly one automatic access request
 
-After the current token's valid form definition loads, the frontend MUST invoke `POST /api/form/human-input/<form_token>/access-request` through the selected transport exactly once. It MUST disable automatic retry/refetch paths that could send duplicate Email OTP messages.
+After the public Email API accepts the current token and its valid form definition loads, the frontend MUST invoke `POST /api/form/human-input/<form_token>/access-request` through the selected transport exactly once. It MUST disable automatic retry/refetch paths that could send duplicate Email OTP messages.
 
 #### Scenario: First valid form load requests OTP
 
@@ -64,7 +83,7 @@ The resend action MUST remain disabled until the server-provided cooldown expire
 
 ### Requirement: Submit shall carry OTP and Challenge Token atomically
 
-Every v2 public completion request MUST send processed `inputs`, selected `action`, `otp_code`, and the current `challenge_token` together to `POST /api/form/human-input/<form_token>`. A form token alone MUST never be treated by the frontend as sufficient submit proof.
+Every v2 public Email completion request MUST send processed `inputs`, selected `action`, `otp_code`, and the current `challenge_token` together to `POST /api/form/human-input/<form_token>`. A form token or Dify Account session alone MUST never be treated by the frontend as sufficient submit proof.
 
 #### Scenario: Submit valid proof
 
@@ -80,6 +99,11 @@ Every v2 public completion request MUST send processed `inputs`, selected `actio
 
 - **WHEN** there is no usable Challenge Token
 - **THEN** the frontend MUST reject submit locally and direct the user to request a new code
+
+#### Scenario: Dify session is present without Email proof
+
+- **WHEN** the browser is signed in to Dify but the public Email page has no valid OTP and Challenge Token
+- **THEN** completion actions MUST remain disabled and the frontend MUST NOT call the authenticated Contact submit API
 
 #### Scenario: Double action activation
 
@@ -131,7 +155,7 @@ The frontend MUST keep OTP and Challenge Token only in the current in-memory pag
 
 ### Requirement: Blocked backend operations shall have a contract-shaped mock transport
 
-The frontend MUST provide an explicit development/test mock implementation of get-form, access-request, submit, and upload-token using the same feature transport interface as the real adapter. Mock mode MUST be selected only through a feature-owned development/test configuration or dependency injection and MUST NOT be activated by normal production failure or public URL input.
+The frontend MUST provide an explicit development/test mock implementation of public Email get-form, access-request, submit, and upload-token using the same feature transport interface as the real adapter. Mock mode MUST be selected only through a feature-owned development/test configuration or dependency injection and MUST NOT be activated by normal production failure, browser login state, or public URL input.
 
 #### Scenario: Develop happy path without backend
 

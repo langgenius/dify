@@ -63,6 +63,7 @@ export function useContactsDirectory(query: Omit<ContactsListQuery, 'deployment'
     hasNextPage: result.hasNextPage,
     isError: result.isError,
     isFetchNextPageError: result.isFetchNextPageError,
+    isFetching: result.isFetching,
     isFetchingNextPage: result.isFetchingNextPage,
     isPending: result.isPending,
     refetch: result.refetch,

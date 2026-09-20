@@ -24,13 +24,13 @@
 - [x] 3.6 Add deterministic tests for valid, expired, submitted, not-found, rate-limited, delivery-failure, invalid-OTP, stale-challenge, concurrent-completion, and upload scenarios without making network requests.
 - [x] 3.7 Add configuration tests proving production cannot accept the mock OTP or silently fall back to mock data when the real adapter is unavailable.
 
-## 4. V2 Route and Form Loading
+## 4. Public Email V2 Route and Form Loading
 
-- [x] 4.1 Add failing route tests proving `/form-v2/[token]` resolves the v2 token, does not invoke legacy hooks, and resets all route-owned state when the token changes.
-- [x] 4.2 Create the `web/app/(humanInputLayout)/form-v2/[token]/` page and route-owned feature composition using the selected transport and shared presentation primitives.
+- [x] 4.1 Add failing route tests proving `/form-v2/[token]` resolves the public Email v2 token, does not invoke legacy or authenticated Contact hooks, and resets all route-owned state when the token changes.
+- [x] 4.2 Create the public Email-only `web/app/(humanInputLayout)/form-v2/[token]/` page and route-owned feature composition using the selected transport and shared presentation primitives.
 - [x] 4.3 Implement v2 form loading with implicit retry/refocus/reconnect behavior disabled where it could trigger access side effects, plus explicit retry for recoverable definition failures.
 - [x] 4.4 Render resolved content, defaults, ordered actions, expiration, optional branding, loading, and neutral no-branding states through the version-neutral presentation layer.
-- [x] 4.5 Implement localized not-found, expired, already-submitted, form-rate-limit, unavailable, and unknown status treatments that prevent access/upload/submit in terminal states.
+- [x] 4.5 Implement localized not-found (including backend-normalized wrong-auth-surface rejection), expired, already-submitted, form-rate-limit, unavailable, and unknown status treatments that prevent access/upload/submit and never fall back to authenticated Contact approval.
 - [x] 4.6 Add stale request tests proving a late definition/access response for a previous route token cannot update the current v2 page.
 
 ## 5. Email OTP and Challenge Session
@@ -64,9 +64,9 @@
 
 - [x] 8.1 Add v2 form, OTP, sent/requesting, resend/cooldown, challenge expiry, success, terminal, and recoverable error strings to `web/i18n/en-US/share.json` and `web/i18n/zh-Hans/share.json` only.
 - [x] 8.2 Add locale tests proving all new English and Simplified Chinese strings resolve from i18n with no hardcoded user-facing copy or English fallback in `zh-Hans`.
-- [x] 8.3 Add a full mocked route test covering load definition, one automatic access request, OTP entry, form validation, action submit with Challenge Token, and success.
+- [x] 8.3 Add a full mocked public Email route test covering load definition, one automatic access request, OTP entry, form validation, action submit with Challenge Token, and success without Dify-session substitution.
 - [x] 8.4 Add mocked recovery-flow tests for initial access retry, cooldown resend, invalid OTP correction, challenge replacement/expiry, concurrent completion, route token change, and file upload.
 - [x] 8.5 Run focused legacy/v2 form, shared presentation, mock transport, session state, file uploader, and locale Vitest suites and resolve failures.
 - [x] 8.6 Run the repository frontend formatting, Oxlint/ESLint, and TypeScript checks through `pnpm check`, documenting only unrelated pre-existing failures.
-- [x] 8.7 Audit the final diff to prove it contains only `web/` plus this OpenSpec change, changes only `en-US`/`zh-Hans` locales, preserves `/form`, and adds no backend, runtime, generated-client, mail, or node-editor changes.
-- [x] 8.8 Record the real-adapter handoff checklist: finalized Challenge/OTP fields and errors, canonical definition/branding DTO, upload contract, generated/public client mapping, v2 mail link, and mock/real contract-parity verification.
+- [x] 8.7 Audit the final diff to prove it contains only `web/` plus this OpenSpec change, changes only `en-US`/`zh-Hans` locales, preserves `/form`, and adds no backend, authenticated Contact page/client, runtime, generated-client, mail, or node-editor changes.
+- [x] 8.8 Record the runtime handoff checklist: finalized Challenge/OTP errors, canonical definition/branding DTO, upload contract, generated/public client mapping, `/form-v2` links only for `EMAIL_OTP` deliveries, a separate authenticated workspace/Platform Contact page and console API, and mock/real contract-parity verification.
