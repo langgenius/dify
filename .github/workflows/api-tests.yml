@@ -127,6 +127,7 @@ jobs:
             -p no:benchmark \
             --start-middleware \
             -n auto \
+            --dist worksteal \
             -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
