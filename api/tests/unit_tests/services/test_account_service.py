@@ -3027,6 +3027,24 @@ def test_get_account_by_email_with_case_fallback_finds_uppercase_row_from_lowerc
     assert result is account
 
 
+def test_get_account_by_email_with_case_fallback_returns_oldest_when_normalized_email_is_duplicated(
+    sqlite_session: Session,
+) -> None:
+    """normalized_email is indexed but not unique, so installations can already hold equivalent
+    accounts. The fallback must not raise and must resolve to the same (oldest) account every time.
+    """
+    newer = Account(name="Newer", email="user@example.com", normalized_email=normalize_email("user@example.com"))
+    newer.created_at = datetime(2026, 9, 2)
+    older = Account(name="Older", email="User@Example.com", normalized_email=normalize_email("User@Example.com"))
+    older.created_at = datetime(2026, 9, 1)
+    sqlite_session.add_all([newer, older])
+    sqlite_session.commit()
+
+    result = AccountService.get_account_by_email_with_case_fallback("USER@EXAMPLE.COM", session=sqlite_session)
+
+    assert result is older
+
+
 class TestIsEmailSendIpLimit:
     """The 10-minute first-strike window must actually take effect (#39477)."""
 

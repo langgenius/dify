@@ -851,7 +851,10 @@ class AccountService:
             return account
 
         return session.execute(
-            select(Account).where(Account.normalized_email == normalize_email(email))
+            select(Account)
+            .where(Account.normalized_email == normalize_email(email))
+            .order_by(Account.created_at)
+            .limit(1)
         ).scalar_one_or_none()
 
     @staticmethod
