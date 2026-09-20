@@ -1,8 +1,10 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import type { Window } from 'happy-dom'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { render } from '@/test/console/render'
 import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import HomeTrending from '../home-trending'
 
@@ -18,6 +20,7 @@ vi.mock('@/utils/marketplace-site-track', () => ({
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
+    useLocale: () => 'en-US',
     useTranslation: (namespace: string) => ({
       t: withSelectorKey((key: string) => `${namespace}.${key}`),
     }),
@@ -80,6 +83,15 @@ vi.mock('../../templates/template-detail-dialog', () => ({
       </div>
     ) : null,
 }))
+
+const deploymentState = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+}))
+
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+  return createSystemFeaturesStateModuleMock(() => deploymentState)
+})
 
 const banners: PluginBanner[] = [
   {
@@ -162,11 +174,17 @@ const banners: PluginBanner[] = [
 const mockTrackEvent = vi.mocked(trackEvent)
 const mockTrackMarketplaceSiteEvent = vi.mocked(trackMarketplaceSiteEvent)
 
+const navigationSettings = (window as unknown as Window).happyDOM.settings.navigation
+const originalNavigation = navigationSettings.disableMainFrameNavigation
+
 beforeEach(() => {
+  navigationSettings.disableMainFrameNavigation = true
+  deploymentState.deploymentEdition = 'CLOUD'
   vi.clearAllMocks()
 })
 
 afterEach(() => {
+  navigationSettings.disableMainFrameNavigation = originalNavigation
   vi.unstubAllGlobals()
 })
 
@@ -1130,4 +1148,55 @@ describe('HomeTrending', () => {
       vi.useRealTimers()
     }
   })
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'links %s recommendations directly to the official site',
+    (edition) => {
+      deploymentState.deploymentEdition = edition
+      const mixedBanner: PluginBanner = {
+        id: 'mixed',
+        style_type: 'recommend',
+        title: 'Trending',
+        sort: 0,
+        language: 'en',
+        content: {
+          theme_type: 'hottest',
+          cards: [
+            {
+              item_type: 'plugin',
+              item_id: 'langgenius/dropbox',
+              display_name: 'Dropbox',
+              link: '',
+              card_position: 0,
+            },
+            {
+              item_type: 'template',
+              item_id: 'tpl-1',
+              display_name: 'Support Bot',
+              creator: 'aisa-team',
+              link: '',
+              card_position: 1,
+            },
+          ],
+        },
+      }
+      render(<HomeTrending banners={[mixedBanner]} isMarketplacePlatform={false} page="plugins" />)
+      const links = screen
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('href')?.startsWith('https://marketplace.dify.ai/'))
+      expect(links.length).toBeGreaterThan(0)
+      expect(
+        links.some((link) => new URL(link.getAttribute('href')!).pathname.startsWith('/plugin/')),
+      ).toBe(true)
+      expect(
+        links.some((link) => new URL(link.getAttribute('href')!).pathname.startsWith('/template/')),
+      ).toBe(true)
+      for (const link of links) {
+        expect(link).toHaveAttribute('target', '_blank')
+        expect(new URL(link.getAttribute('href')!).searchParams.get('source')).toBe(
+          window.location.origin,
+        )
+      }
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
 })
