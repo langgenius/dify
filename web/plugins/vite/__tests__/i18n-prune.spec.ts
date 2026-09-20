@@ -101,6 +101,7 @@ describe('i18n build check', () => {
     await expect(buildFixture()).resolves.toBeDefined()
   })
 
+  // Two rounds of three real builds need headroom under CI coverage and parallel load.
   it('checks the union of client, SSR and RSC graphs only after every environment builds', async () => {
     writeFileSync(localeFile, JSON.stringify({ client: 'Client', ssr: 'SSR', rsc: 'RSC' }))
     for (const name of ['client', 'ssr', 'rsc']) {
@@ -144,7 +145,7 @@ describe('i18n build check', () => {
     // A second build must not inherit the first build's server usage.
     writeFileSync(path.join(root, 'ssr.ts'), 'export const value = 1')
     await expect(builder.buildApp()).rejects.toThrow('app:ssr')
-  })
+  }, 15_000)
 
   it('retains usages from environment-specific versions of the same module', async () => {
     writeFileSync(localeFile, JSON.stringify({ client: 'Client', ssr: 'SSR' }))
