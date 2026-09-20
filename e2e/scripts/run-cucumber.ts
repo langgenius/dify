@@ -4,6 +4,7 @@ import path from 'node:path'
 import { runCleanupTasks } from '../support/cleanup'
 import { assertCucumberScenariosStarted } from '../support/cucumber-messages'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
+import { runStartupStages, runTimedStage } from '../support/startup-stages'
 import { startWebServer, stopWebServer } from '../support/web-server'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
 import { e2eDir, isMainModule, runCommand } from './common'
@@ -121,84 +122,95 @@ const main = async () => {
   try {
     if (full) await resetState()
 
-    if (full) {
-      middlewareStarted = true
-      await startMiddleware()
-    }
-
     if (!seedOnly) await rm(cucumberReportDir, { force: true, recursive: true })
     await mkdir(logDir, { recursive: true })
 
-    if (startAgentBackendForRun) {
-      shellctlProcess = await startLoggedProcess({
+    const startBackend = async () => {
+      if (full) {
+        middlewareStarted = true
+        await runTimedStage('Middleware readiness', startMiddleware)
+      }
+
+      if (startAgentBackendForRun) {
+        shellctlProcess = await startLoggedProcess({
+          command: process.execPath,
+          args: ['--import', 'tsx', './scripts/setup.ts', 'shellctl-sandbox'],
+          cwd: e2eDir,
+          label: 'shellctl sandbox',
+          logFilePath: path.join(logDir, 'cucumber-shellctl-sandbox.log'),
+        })
+        const shellctlPort = process.env.E2E_SHELLCTL_PORT || '5004'
+        await waitForManagedProcess({
+          errorMessage: 'Shellctl sandbox did not become ready.',
+          managedProcess: shellctlProcess,
+          url: `http://127.0.0.1:${shellctlPort}/healthz`,
+        })
+
+        difyAgentProcess = await startLoggedProcess({
+          command: process.execPath,
+          args: ['--import', 'tsx', './scripts/setup.ts', 'agent-backend'],
+          cwd: e2eDir,
+          env: { E2E_START_AGENT_BACKEND: '1' },
+          label: 'agent backend',
+          logFilePath: path.join(logDir, 'cucumber-agent-backend.log'),
+        })
+        const agentBackendPort = process.env.E2E_AGENT_BACKEND_PORT || '5050'
+        await waitForManagedProcess({
+          errorMessage: 'Agent backend did not become ready.',
+          managedProcess: difyAgentProcess,
+          url: `http://127.0.0.1:${agentBackendPort}/openapi.json`,
+        })
+      }
+
+      apiProcess = await startLoggedProcess({
         command: process.execPath,
-        args: ['--import', 'tsx', './scripts/setup.ts', 'shellctl-sandbox'],
+        args: ['--import', 'tsx', './scripts/setup.ts', 'api'],
         cwd: e2eDir,
-        label: 'shellctl sandbox',
-        logFilePath: path.join(logDir, 'cucumber-shellctl-sandbox.log'),
+        env: startAgentBackendForRun ? { E2E_START_AGENT_BACKEND: '1' } : undefined,
+        label: 'api server',
+        logFilePath: path.join(logDir, 'cucumber-api.log'),
       })
-      const shellctlPort = process.env.E2E_SHELLCTL_PORT || '5004'
       await waitForManagedProcess({
-        errorMessage: 'Shellctl sandbox did not become ready.',
-        managedProcess: shellctlProcess,
-        url: `http://127.0.0.1:${shellctlPort}/healthz`,
+        errorMessage: `API did not become ready at ${apiURL}/health.`,
+        managedProcess: apiProcess,
+        url: `${apiURL}/health`,
       })
 
-      difyAgentProcess = await startLoggedProcess({
+      celeryProcess = await startLoggedProcess({
         command: process.execPath,
-        args: ['--import', 'tsx', './scripts/setup.ts', 'agent-backend'],
+        args: [
+          '--import',
+          'tsx',
+          './scripts/setup.ts',
+          'celery',
+          ...(seed ? ['--queues', seedCeleryQueues] : []),
+        ],
         cwd: e2eDir,
-        env: { E2E_START_AGENT_BACKEND: '1' },
-        label: 'agent backend',
-        logFilePath: path.join(logDir, 'cucumber-agent-backend.log'),
+        label: 'celery worker',
+        logFilePath: path.join(logDir, 'cucumber-celery.log'),
       })
-      const agentBackendPort = process.env.E2E_AGENT_BACKEND_PORT || '5050'
-      await waitForManagedProcess({
-        errorMessage: 'Agent backend did not become ready.',
-        managedProcess: difyAgentProcess,
-        url: `http://127.0.0.1:${agentBackendPort}/openapi.json`,
+    }
+    const startWeb = async () => {
+      await startWebServer({
+        baseURL,
+        command: process.execPath,
+        args: ['--import', 'tsx', './scripts/setup.ts', 'web'],
+        cwd: e2eDir,
+        logFilePath: path.join(logDir, 'cucumber-web.log'),
+        reuseExistingServer: reuseExistingWebServer,
+        timeoutMs: 300_000,
       })
     }
 
-    apiProcess = await startLoggedProcess({
-      command: process.execPath,
-      args: ['--import', 'tsx', './scripts/setup.ts', 'api'],
-      cwd: e2eDir,
-      env: startAgentBackendForRun ? { E2E_START_AGENT_BACKEND: '1' } : undefined,
-      label: 'api server',
-      logFilePath: path.join(logDir, 'cucumber-api.log'),
-    })
-    await waitForManagedProcess({
-      errorMessage: `API did not become ready at ${apiURL}/health.`,
-      managedProcess: apiProcess,
-      url: `${apiURL}/health`,
-    })
-
-    celeryProcess = await startLoggedProcess({
-      command: process.execPath,
-      args: [
-        '--import',
-        'tsx',
-        './scripts/setup.ts',
-        'celery',
-        ...(seed ? ['--queues', seedCeleryQueues] : []),
+    await runStartupStages(
+      [
+        { label: 'Backend readiness', run: startBackend },
+        { label: 'Web build and readiness', run: startWeb },
       ],
-      cwd: e2eDir,
-      label: 'celery worker',
-      logFilePath: path.join(logDir, 'cucumber-celery.log'),
-    })
+      process.env.E2E_PARALLEL_STARTUP === '1',
+    )
 
-    await startWebServer({
-      baseURL,
-      command: process.execPath,
-      args: ['--import', 'tsx', './scripts/setup.ts', 'web'],
-      cwd: e2eDir,
-      logFilePath: path.join(logDir, 'cucumber-web.log'),
-      reuseExistingServer: reuseExistingWebServer,
-      timeoutMs: 300_000,
-    })
-
-    if (seed) await runSeed(seed)
+    if (seed) await runTimedStage('Seed', () => runSeed(seed))
 
     if (!seedOnly) {
       const cucumberEnv: NodeJS.ProcessEnv = {

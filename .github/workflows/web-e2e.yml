@@ -1,6 +1,13 @@
 name: Web Full-Stack E2E
 
 on:
+  workflow_dispatch:
+    inputs:
+      run-external-runtime:
+        description: Run the prepared and external runtime suite.
+        required: true
+        default: true
+        type: boolean
   workflow_call:
     inputs:
       run-external-runtime:
@@ -220,6 +227,15 @@ jobs:
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
 
+      - name: Restore external Next.js build cache
+        id: external-next-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: web/.next/cache
+          key: e2e-external-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            e2e-external-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-
+
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
@@ -247,6 +263,7 @@ jobs:
           E2E_AGENT_DECISION_MODEL_PROVIDER: ${{ vars.E2E_AGENT_DECISION_MODEL_PROVIDER || 'openai' }}
           E2E_AGENT_DECISION_MODEL_TYPE: ${{ vars.E2E_AGENT_DECISION_MODEL_TYPE || 'llm' }}
           E2E_FORCE_WEB_BUILD: '1'
+          E2E_PARALLEL_STARTUP: '1'
           E2E_INIT_PASSWORD: E2eInit12345
           E2E_MARKETPLACE_API_URL: ${{ vars.E2E_MARKETPLACE_API_URL }}
           E2E_MARKETPLACE_PLUGIN_IDS: ${{ vars.E2E_MARKETPLACE_PLUGIN_IDS }}
@@ -293,3 +310,10 @@ jobs:
           if-no-files-found: ignore
           overwrite: true
           retention-days: 7
+
+      - name: Save external Next.js build cache
+        if: steps.external-next-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: web/.next/cache
+          key: ${{ steps.external-next-cache.outputs.cache-primary-key }}
