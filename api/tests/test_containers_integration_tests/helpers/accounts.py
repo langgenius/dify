@@ -18,7 +18,10 @@ def create_account(
 
 
 def create_owner_workspace(account: Account, name: str | None = None, *, session: Session) -> None:
-    application_services().workspaces.provisioning.create_owner_workspace(account.id, name=name, if_missing=True)
+    """Seed a test identity even when self-service workspace creation is disabled."""
+    application_services().workspaces.provisioning.create_owner_workspace(
+        account.id, name=name, is_setup=True, if_missing=True
+    )
     memberships = application_services().workspaces.management.list_memberships(account.id)
     assert memberships
     account.set_tenant_id_with_session(memberships[0].id, session=session)

@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import Mock, patch
 
 import pytest
@@ -61,10 +62,10 @@ def test_token_gateway_issues_verified_registration_state() -> None:
 
 
 @pytest.mark.parametrize(("count", "limited"), [(0, False), (1, False), (2, True)])
-def test_security_gateway_preserves_shared_ip_limit(monkeypatch: pytest.MonkeyPatch, count: int, limited: bool) -> None:
-    from configs import dify_config
-
-    monkeypatch.setattr(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 1)
+def test_security_gateway_preserves_shared_ip_limit(
+    config_overrides: Callable[..., None], count: int, limited: bool
+) -> None:
+    config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
     redis = Mock(spec=RedisClientWrapper)
     redis.get.side_effect = [None, str(count), None]
     redis.set.return_value = True
