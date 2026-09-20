@@ -52,7 +52,7 @@ jobs:
             const slowest = shards.at(-1);
             const gap = slowest.seconds - fastest.seconds;
             const relativeGap = gap / fastest.seconds;
-            const imbalanced = gap > 30 && relativeGap > 0.20;
+            const imbalanced = gap > 20 && relativeGap > 0.15;
             const slow = [];
             if (imbalanced) {
               const checkId = Number(slowest.job.check_run_url.split('/').pop());
@@ -84,7 +84,7 @@ jobs:
                 '### API unit test shard balance', '',
                 `[CI run](${run.html_url}) · commit \`${run.head_sha.slice(0, 12)}\``, '',
                 'Compare the **Run Unit Tests** step, excluding dependency installation and artifact uploads. '
-                  + 'Comment only when the slowest shard exceeds the fastest by **both 20% and 30 seconds**. '
+                  + 'Comment only when the slowest shard exceeds the fastest by **both 15% and 20 seconds**. '
                   + '**Advisory only.**', '',
                 '| Shard | Test step |', '| --- | ---: |'];
               for (const shard of [...shards].sort((a, b) => a.index - b.index)) {
