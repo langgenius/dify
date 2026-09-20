@@ -70,7 +70,7 @@ jobs:
             --cov-report= \
             --durations=50 \
             --report-collection-timing \
-            --slow-test-file-threshold=10 \
+            --report-slowest-test-files=5 \
             --junitxml=test-results/unit.xml \
             "@$RUNNER_TEMP/unit-test-files.txt"
 
@@ -125,7 +125,6 @@ jobs:
             --cov-report= \
             --durations=50 \
             --report-collection-timing \
-            --slow-test-file-threshold=10 \
             --junitxml=test-results/controllers.xml \
             api/tests/unit_tests/controllers
 

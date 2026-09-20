@@ -34,23 +34,39 @@ jobs:
             const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
               ...repo, run_id: run.id, attempt_number: run.run_attempt, per_page: 100,
             });
-            const testJobs = jobs.filter(job => /\/ API (Unit|Controller) Tests \(/.test(job.name));
-            if (!testJobs.length) return; // API tests were skipped; preserve the last actual report.
+            const testJobs = jobs.filter(job => /\/ API Unit Tests \(/.test(job.name));
+            const shards = testJobs.map(job => {
+              const match = /shard (\d+)\/(\d+)\)/.exec(job.name);
+              const step = job.steps.find(step => step.name === 'Run Unit Tests');
+              const seconds = step && (Date.parse(step.completed_at) - Date.parse(step.started_at)) / 1000;
+              return {job, index: Number(match?.[1]), total: Number(match?.[2]), step, seconds};
+            });
+            // Compare only a complete successful matrix from the same run attempt.
+            if (shards.length < 2 || shards.some(shard =>
+              shard.total !== shards.length || shard.index < 1 || shard.index > shards.length ||
+              shard.job.conclusion !== 'success' || shard.step?.conclusion !== 'success' ||
+              !Number.isFinite(shard.seconds) || shard.seconds <= 0) ||
+              new Set(shards.map(shard => shard.index)).size !== shards.length) return;
+            shards.sort((a, b) => a.seconds - b.seconds || a.index - b.index);
+            const fastest = shards[0];
+            const slowest = shards.at(-1);
+            const gap = slowest.seconds - fastest.seconds;
+            const relativeGap = gap / fastest.seconds;
+            const imbalanced = gap > 30 && relativeGap > 0.20;
             const slow = [];
-            for (const job of testJobs) {
-              const checkId = Number(job.check_run_url.split('/').pop());
+            if (imbalanced) {
+              const checkId = Number(slowest.job.check_run_url.split('/').pop());
               const annotations = await github.paginate(github.rest.checks.listAnnotations, {
                 ...repo, check_run_id: checkId, per_page: 100,
               });
               for (const annotation of annotations) {
-                if (annotation.title !== 'Slow test file') continue;
+                if (annotation.title !== 'API test file timing') continue;
                 const match = /^(\d+\.\d+)s across (\d+) cases \(slowest case (\d+\.\d+)s\)\./.exec(annotation.message);
                 if (!match || !/^api\/(tests\/unit_tests|providers)\/.+\.py$/.test(annotation.path)) continue;
                 slow.push({path: annotation.path, total: Number(match[1]), count: match[2], longest: match[3]});
               }
             }
             slow.sort((a, b) => b.total - a.total || a.path.localeCompare(b.path));
-            const complete = testJobs.length === 3 && testJobs.every(job => job.conclusion === 'success');
             const marker = '<!-- dify-api-slow-test-files -->';
             for (const candidate of candidates) {
               const {data: pr} = await github.rest.pulls.get({...repo, pull_number: candidate.number});
@@ -63,26 +79,37 @@ jobs:
               const previous = existing?.body.match(/<!-- run:(\d+) attempt:(\d+) -->/);
               if (previous && (Number(previous[1]) > run.id ||
                 (Number(previous[1]) === run.id && Number(previous[2]) > run.run_attempt))) continue;
-              if (!slow.length && !existing) continue;
+              if (!imbalanced && !existing) continue;
               const lines = [marker, `<!-- run:${run.id} attempt:${run.run_attempt} -->`,
-                '### Slow API test files', '',
+                '### API unit test shard balance', '',
                 `[CI run](${run.html_url}) · commit \`${run.head_sha.slice(0, 12)}\``, '',
-                'Files exceeding **10 seconds** of summed setup/call/teardown time across workers. '
-                  + 'Excludes collection; this is not wall time. **Advisory only.**', ''];
-              if (!complete) lines.push('⚠️ Some test jobs did not complete successfully; this report may be incomplete.', '');
-              if (slow.length) {
-                lines.push('| File | Total | Cases | Slowest case |', '| --- | ---: | ---: | ---: |');
-                for (const row of slow.slice(0, 40)) {
-                  const path = row.path.split('/').map(encodeURIComponent).join('/');
-                  const label = row.path.replace(/[\r\n`|<>\[\]]/g, '_');
-                  lines.push(`| [${label}](${context.serverUrl}/${repo.owner}/${repo.repo}/blob/${run.head_sha}/${path})`
-                    + ` | ${row.total.toFixed(2)}s | ${row.count} | ${row.longest}s |`);
+                'Compare the **Run Unit Tests** step, excluding dependency installation and artifact uploads. '
+                  + 'Comment only when the slowest shard exceeds the fastest by **both 20% and 30 seconds**. '
+                  + '**Advisory only.**', '',
+                '| Shard | Test step |', '| --- | ---: |'];
+              for (const shard of [...shards].sort((a, b) => a.index - b.index)) {
+                lines.push(`| [${shard.index}/${shard.total}](${shard.job.html_url}) | ${shard.seconds.toFixed(0)}s |`);
+              }
+              lines.push('', `Difference: **${gap.toFixed(0)}s (${(relativeGap * 100).toFixed(1)}%)** relative to the fastest shard.`);
+              if (imbalanced) {
+                lines.push('', `#### Top 5 files in shard ${slowest.index}/${slowest.total}`, '',
+                  'File times sum setup/call/teardown across workers and exclude collection; they are not wall time.', '');
+                if (slow.length) {
+                  lines.push('| File | Total | Cases | Slowest case |', '| --- | ---: | ---: | ---: |');
+                  for (const row of slow.slice(0, 5)) {
+                    const path = row.path.split('/').map(encodeURIComponent).join('/');
+                    const label = row.path.replace(/[\r\n`|<>\[\]]/g, '_');
+                    lines.push(`| [${label}](${context.serverUrl}/${repo.owner}/${repo.repo}/blob/${run.head_sha}/${path})`
+                      + ` | ${row.total.toFixed(2)}s | ${row.count} | ${row.longest}s |`);
+                  }
+                } else {
+                  lines.push('File timing data is unavailable; see the linked test job logs.');
                 }
-                if (slow.length > 40) lines.push('', `Showing the slowest 40 of ${slow.length} files; see the CI report for all files.`);
                 lines.push('', 'Consider splitting independent test groups into separate files. '
-                  + 'Inspect slow cases and shared setup first: splitting alone does not make an individual slow case faster.');
+                  + 'Inspect slow cases and shared setup first: splitting alone does not make an individual slow case faster. '
+                  + 'Collection/startup differences can also contribute to the shard gap.');
               } else {
-                lines.push(complete ? 'No files exceeded the threshold in this run.' : 'No slow-file warnings were available in this incomplete run.');
+                lines.push('', '✅ The shard difference no longer exceeds both thresholds.');
               }
               const body = lines.join('\n');
               if (existing) {

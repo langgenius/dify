@@ -48,11 +48,11 @@ class SlowTestFilesPlugin:
 
     Durations include setup/call/teardown and sum concurrent worker time. They
     describe work per file, not wall time, and exclude collection. No history is
-    persisted and warnings do not change pytest's exit status.
+    persisted and diagnostics do not change pytest's exit status.
     """
 
-    def __init__(self, threshold: float) -> None:
-        self.threshold = threshold
+    def __init__(self, count: int) -> None:
+        self.count = count
         self.files: dict[str, dict[str, float]] = {}
 
     def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
@@ -72,14 +72,14 @@ class SlowTestFilesPlugin:
             ),
             key=lambda row: (-row[1], row[0]),
         )
-        slow = [row for row in rows if row[1] > self.threshold]
-        terminalreporter.section(f"slow test files (> {self.threshold:g}s summed testcase time)")
+        slow = rows[: self.count]
+        terminalreporter.section(f"slowest {self.count} test files (summed testcase time)")
         explanation = "Includes setup/call/teardown across workers; excludes collection. Advisory only, not wall time."
         terminalreporter.write_line(explanation)
         summary = ["### Slow test files", "", explanation, ""]
         if not slow:
-            terminalreporter.write_line("No files exceeded the threshold.")
-            summary.append("No files exceeded the threshold.")
+            terminalreporter.write_line("No test reports available.")
+            summary.append("No test reports available.")
         else:
             summary.extend(["| File | Total | Cases | Slowest case |", "| --- | ---: | ---: | ---: |"])
         for filename, total, count, longest in slow:
@@ -96,7 +96,7 @@ class SlowTestFilesPlugin:
                 # Escape workflow-command delimiters, including user-controlled nodeids.
                 path = path.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
                 path = path.replace(":", "%3A").replace(",", "%2C")
-                terminalreporter.write_line(f"::warning file={path},title=Slow test file::{message}")
+                terminalreporter.write_line(f"::notice file={path},title=API test file timing::{message}")
         if slow:
             summary.extend(
                 ["", "Consider splitting independent test groups; inspect slow cases and shared setup first."]
