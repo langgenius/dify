@@ -1,8 +1,9 @@
 """Pure mapping from a Dify workflow-run result into the dify_builder domain.
 
-``AppGenerateService.generate(..., streaming=False)`` returns a blocking
-response dict; its ``["data"]`` sub-mapping plus the run's per-node
-execution rows are all these functions need to build a dify_builder ``Run`` /
+``AppGenerateService.generate(..., streaming=True)`` yields a stream of
+*SSE-formatted strings*; ``stream_chunk_as_mapping`` turns one back into the
+event mapping it carries, and that mapping plus the run's per-node execution
+rows are all these functions need to build a dify_builder ``Run`` /
 ``NodeEvent``. No DB, no services, no I/O — node-execution rows are
 duck-typed (``node_id``, ``node_type``, ``title``, ``status``, ``error``,
 ``.outputs_dict``/``.inputs_dict``) rather than importing the real
@@ -19,12 +20,25 @@ read as green to the user, even if it's technically "still running"
 (paused) or "mostly fine" (partial success) rather than an outright error.
 """
 
+import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.dify_builder.models import NodeEvent, NodeOutput, Run
 
 _FAILED_NODE_STATUSES = {"failed", "exception"}
+
+# ``BaseAppGenerator.convert_to_event_stream`` (the tail of every streaming
+# ``AppGenerateService.generate``) emits ``f"data: {json}\n\n"`` for an event
+# mapping and ``f"event: {msg}\n\n"`` for a bare keep-alive such as ``"ping"``.
+_STREAM_DATA_PREFIX = "data: "
+
+# ``node_started`` carries no status yet, so it reports ``running``; the empty
+# string means "take the status off the chunk itself" (``node_finished``).
+_NODE_STREAM_EVENTS = {"node_started": "running", "node_finished": ""}
+
+# The two events that end a stream (``streaming_utils._normalize_terminal_events``).
+_TERMINAL_STREAM_EVENTS = {"workflow_finished", "workflow_paused"}
 
 
 def _status_value(status: Any) -> Any:
@@ -43,8 +57,70 @@ def _is_paused_shape(data: Mapping[str, Any]) -> bool:
     return "paused_nodes" in data or "reasons" in data
 
 
+def stream_chunk_as_mapping(chunk: Any) -> Mapping[str, Any] | None:
+    """One ``AppGenerateService.generate(streaming=True)`` item as its event
+    mapping, or ``None`` when it carries no event.
+
+    The streaming stack hands back SSE-formatted strings, not dicts: the
+    workflow app generator's ``convert_stream_full_response`` builds the event
+    dicts, but ``convert_to_event_stream`` then wraps each one as
+    ``"data: {json}\\n\\n"`` and every keep-alive as ``"event: ping\\n\\n"``.
+    Plain mappings are still accepted so callers stay correct if that last
+    wrapping layer is ever removed.
+    """
+    if isinstance(chunk, Mapping):
+        return chunk
+    if not isinstance(chunk, str):
+        return None
+    text = chunk.strip()
+    if not text.startswith(_STREAM_DATA_PREFIX):
+        return None  # "ping" / "event: ping\n\n" keep-alives
+    try:
+        payload = json.loads(text[len(_STREAM_DATA_PREFIX) :])
+    except ValueError:
+        return None
+    return payload if isinstance(payload, Mapping) else None
+
+
+def node_event_from_stream_chunk(chunk: Mapping[str, Any]) -> NodeEvent | None:
+    """One streaming chunk as a ``NodeEvent``, or ``None`` when it is not
+    about a node (ping frames, workflow-level frames, ...)."""
+    event = str(chunk.get("event") or "")
+    if event not in _NODE_STREAM_EVENTS:
+        return None
+    data = chunk.get("data") or {}
+    status = _NODE_STREAM_EVENTS[event] or _status_value(data.get("status"))
+    return NodeEvent(
+        node_id=str(data.get("node_id") or ""),
+        title=str(data.get("title") or ""),
+        status=str(status or ""),
+        error=str(data.get("error") or ""),
+    )
+
+
+def run_result_data_from_terminal_chunk(chunk: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The ``data`` a terminal streaming chunk carries, shaped the way
+    ``map_run_result`` expects it, or ``None`` for a non-terminal chunk.
+
+    ``map_run_result`` was written against the *blocking* response, whose
+    ``data`` always carries ``id`` (``WorkflowAppBlockingResponse.Data`` and
+    ``WorkflowAppPausedBlockingResponse.Data`` both declare it). The streaming
+    ``workflow_finished`` frame matches that shape, but the streaming
+    ``workflow_paused`` frame (``WorkflowPauseStreamResponse.Data``) carries
+    ``workflow_run_id`` instead of ``id``. Rather than loosen
+    ``map_run_result`` — the fix/edit flows share it — the run id is backfilled
+    here, at the call site's edge.
+    """
+    if str(chunk.get("event") or "") not in _TERMINAL_STREAM_EVENTS:
+        return None
+    data = dict(chunk.get("data") or {})
+    if not data.get("id"):
+        data["id"] = str(data.get("workflow_run_id") or chunk.get("workflow_run_id") or "")
+    return data
+
+
 def map_run_result(data: Mapping[str, Any], node_execs: Sequence[Any]) -> Run:
-    """Map a blocking ``AppGenerateService.generate`` result into a ``Run``.
+    """Map a ``AppGenerateService.generate`` run result into a ``Run``.
 
     ``Run.id`` is deliberately left ``""`` — the caller (``handle_verify``)
     assigns the id and sets ``DifyBuilderContext.verify_run_id``, not this function.
