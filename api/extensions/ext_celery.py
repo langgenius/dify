@@ -216,6 +216,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
         "tasks.trace_delivery_task",  # trace delivery and provider export retries
         "tasks.ops_trace_task",  # retired endpoint; old workers must drain pre-upgrade tasks
+        "tasks.evaluation_task",  # evaluation run execution
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
