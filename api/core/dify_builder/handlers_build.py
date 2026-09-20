@@ -958,12 +958,17 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             steps=[("build-revise-plan", "Revise the workflow plan")],
         )
         progress.activate("build-revise-plan")
+        # Draft the plan, but do NOT show it yet: build.initial_plan (next)
+        # runs resource discovery unconditionally and falls straight through
+        # to build.resource_recommendation, which shows the ONE plan card for
+        # this pass (v1, resources bound) -- exactly the duplicate-card
+        # removal task 2 already did for the straight-through path. Showing
+        # it here too would mean two "Build plan" v1 cards in one pass.
         fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
         fc.plan_version_tag = "v1"
         fc.test_input_ref = ""
         fc.verify_run_id = ""
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
-        plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
         execution = progress.finish()
         turn_items = append_card(
             fc,
@@ -972,13 +977,13 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
                 stage_id=str(s.current_state),
                 execution=execution,
                 reply_text="Revised plan.",
-                cards=["plan"],
+                cards=[],
             ),
         )
         return StepResult(
             next=PcState.BUILD_INITIAL_PLAN,
             context=fc,
-            items=[*decision_items, *plan_items, *turn_items],
+            items=[*decision_items, *turn_items],
         )
     if kind == "undo":  # revert
         perform_revert(env, turn, s, fc)
@@ -1077,11 +1082,14 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         steps=[("build-restart-plan", "Rebuild the workflow plan")],
     )
     progress.activate("build-restart-plan")
+    # Draft the plan, but do NOT show it yet -- same duplicate-card removal
+    # as handle_review's re_fix branch: build.initial_plan (next) falls
+    # straight through to build.resource_recommendation, which shows the ONE
+    # plan card for this pass (v1, resources bound).
     fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
     fc.plan_version_tag = "v1"
     fc.test_input_ref = ""
     fc.verify_run_id = ""
-    plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
     execution = progress.finish()
     turn_items = append_card(
         fc,
@@ -1090,10 +1098,10 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
             stage_id=str(s.current_state),
             execution=execution,
             reply_text="Restarting the plan.",
-            cards=["plan"],
+            cards=[],
         ),
     )
-    return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc, items=[*plan_items, *turn_items])
+    return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc, items=list(turn_items))
 
 
 def build_registry() -> dict[PcState, Handler]:
