@@ -97,7 +97,7 @@ def test_context_round_trips_build_fields():
         requirements={"currency": "USD", "prefer_audited": True},
         plan_items=["Retrieve", "Summarize", "Emit"],
         plan_version_tag="v2",
-        resource_selection={"resource_ids": ["kb-company"], "conflict_policy": "audited"},
+        resource_selection={"resource_ids": ["kb-company"]},
         built_node_ids=["start", "llm", "end"],
     )
     out = context_from_dict(context_to_dict(fc))

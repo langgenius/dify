@@ -175,7 +175,7 @@ def test_initial_plan_find_resources_advances_to_resource_recommendation():
     assert res.next == PcState.BUILD_RESOURCE_RECOMMENDATION
     rs = next(i for i in res.items if i.kind == "resource_select")
     assert rs.payload["recommended"][0]["readiness"] == "ready"
-    assert len(rs.payload["conflict_policy_options"]) == 2
+    assert "conflict_policy_options" not in rs.payload
 
 
 def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v2():
@@ -189,7 +189,7 @@ def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v2():
     turn = Turn(
         action=Action(
             kind="confirm_resources",
-            payload={"resource_ids": ["kb-company"], "conflict_policy": "audited"},
+            payload={"resource_ids": ["kb-company"]},
             base_version=1,
         ),
         actor=_actor(),
@@ -198,7 +198,7 @@ def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v2():
 
     assert res.next == PcState.BUILD_PLAN_APPROVAL
     assert res.context.plan_version_tag == "v2"
-    assert res.context.resource_selection == {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    assert res.context.resource_selection == {"resource_ids": ["kb-company"]}
     assert res.context.checkpoint_id
     assert res.context.last_structure_fingerprint != ""
     cp, _snap = repo.get_checkpoint(res.context.checkpoint_id)
@@ -1010,7 +1010,7 @@ def test_full_build_flow_goal_to_complete():
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
 
     # 4) confirm_resources -> build.plan_approval
-    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    confirm_payload = {"resource_ids": ["kb-company"]}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_PLAN_APPROVAL
@@ -1082,7 +1082,7 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
     reqs_action = Action(kind="submit_requirements", base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
-    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    confirm_payload = {"resource_ids": ["kb-company"]}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
@@ -1123,7 +1123,7 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
     reqs_action = Action(kind="submit_requirements", base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
-    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    confirm_payload = {"resource_ids": ["kb-company"]}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
 
@@ -1263,7 +1263,7 @@ def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
         s.id, Turn(action=Action(kind="submit_requirements", base_version=out.version), actor=_actor())
     )
     out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
-    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    confirm_payload = {"resource_ids": ["kb-company"]}
     out = runner.advance(
         s.id,
         Turn(

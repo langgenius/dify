@@ -168,9 +168,7 @@ def discover_resources(
     ]
 
 
-def bind_resources(
-    model, tenant_id: str, plan_items: list[str], resource_ids: list[str], conflict_policy: str
-) -> list[str]:
+def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: list[str]) -> list[str]:
     inv = resources.list_tenant_resources(tenant_id)
     by_id = {r.id: r for r in (*inv.datasets, *inv.tools, *inv.models)}
     labels = [by_id[rid].label for rid in resource_ids if rid in by_id]
