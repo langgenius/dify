@@ -5308,7 +5308,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "web/service/datasets.ts": {
