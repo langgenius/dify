@@ -1,7 +1,7 @@
 """Tests for the pure run-result mapping used by ``run_draft``/``verify``.
 
-``AppGenerateService.generate(..., streaming=False)`` returns a blocking
-response whose ``["data"]`` sub-mapping (plus a sequence of per-node
+``AppGenerateService.generate(..., streaming=True)`` yields SSE-formatted
+strings; the event mapping one carries (plus a sequence of per-node
 execution rows) is all the dify_builder domain ``Run``/``NodeEvent`` need. These
 mapping functions are pure — no DB, no services, no I/O — so tests use
 ``SimpleNamespace`` stand-ins for the node-execution rows instead of the
@@ -12,7 +12,13 @@ from types import SimpleNamespace
 
 from core.dify_builder.models import NodeEvent, NodeOutput, Run
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from services.dify_builder.run_mapping import map_run_result, to_node_event
+from services.dify_builder.run_mapping import (
+    map_run_result,
+    node_event_from_stream_chunk,
+    run_result_data_from_terminal_chunk,
+    stream_chunk_as_mapping,
+    to_node_event,
+)
 
 
 def _node_exec(
@@ -215,3 +221,107 @@ def test_to_node_event_defaults_missing_error_to_empty_string():
     event = to_node_event(node)
 
     assert event.error == ""
+
+
+# ---- streaming chunks --------------------------------------------------------
+
+
+def test_stream_chunk_as_mapping_unwraps_the_sse_data_frame():
+    """What ``convert_to_event_stream`` actually emits for an event mapping."""
+    chunk = 'data: {"event": "node_started", "data": {"node_id": "n1"}}\n\n'
+
+    assert stream_chunk_as_mapping(chunk) == {"event": "node_started", "data": {"node_id": "n1"}}
+
+
+def test_stream_chunk_as_mapping_passes_a_plain_mapping_through():
+    chunk = {"event": "node_started", "data": {"node_id": "n1"}}
+
+    assert stream_chunk_as_mapping(chunk) == chunk
+
+
+def test_stream_chunk_as_mapping_ignores_keep_alives():
+    # Both the bare keep-alive and its SSE wrapping carry no event.
+    assert stream_chunk_as_mapping("ping") is None
+    assert stream_chunk_as_mapping("event: ping\n\n") is None
+
+
+def test_stream_chunk_as_mapping_ignores_undecodable_or_non_object_frames():
+    assert stream_chunk_as_mapping("data: not-json\n\n") is None
+    assert stream_chunk_as_mapping('data: ["a"]\n\n') is None
+    assert stream_chunk_as_mapping(None) is None
+
+
+def test_a_ping_chunk_is_not_a_node_event():
+    assert node_event_from_stream_chunk({"event": "ping"}) is None
+
+
+def test_a_workflow_level_chunk_is_not_a_node_event():
+    assert node_event_from_stream_chunk({"event": "workflow_finished", "data": {"id": "r1"}}) is None
+
+
+def test_node_started_reports_running_because_it_has_no_status_yet():
+    chunk = {"event": "node_started", "data": {"node_id": "n1", "title": "Start"}}
+
+    assert node_event_from_stream_chunk(chunk) == NodeEvent(node_id="n1", title="Start", status="running", error="")
+
+
+def test_node_finished_carries_its_own_status_and_error():
+    chunk = {
+        "event": "node_finished",
+        "data": {"node_id": "n2", "title": "LLM", "status": "failed", "error": "kaboom"},
+    }
+
+    assert node_event_from_stream_chunk(chunk) == NodeEvent(node_id="n2", title="LLM", status="failed", error="kaboom")
+
+
+def test_node_finished_unwraps_an_enum_status():
+    chunk = {
+        "event": "node_finished",
+        "data": {"node_id": "n3", "title": "Code", "status": WorkflowNodeExecutionStatus.SUCCEEDED},
+    }
+
+    assert node_event_from_stream_chunk(chunk).status == "succeeded"
+
+
+def test_node_chunk_tolerates_missing_fields():
+    assert node_event_from_stream_chunk({"event": "node_started"}) == NodeEvent(
+        node_id="", title="", status="running", error=""
+    )
+
+
+def test_terminal_chunk_adapter_ignores_non_terminal_events():
+    assert run_result_data_from_terminal_chunk({"event": "node_finished", "data": {}}) is None
+
+
+def test_workflow_finished_data_already_has_the_keys_map_run_result_reads():
+    chunk = {
+        "event": "workflow_finished",
+        "workflow_run_id": "run-1",
+        "data": {"id": "run-1", "status": "succeeded", "elapsed_time": 1.5, "total_tokens": 7},
+    }
+
+    data = run_result_data_from_terminal_chunk(chunk)
+
+    assert data["id"] == "run-1"
+    run = map_run_result(data, [])
+    assert run.status == "succeeded"
+    assert run.dify_run_id == "run-1"
+    assert run.elapsed_ms == 1500
+    assert run.tokens == 7
+
+
+def test_workflow_paused_backfills_the_run_id_map_run_result_requires():
+    """The paused STREAM frame carries ``workflow_run_id``; the blocking one carried ``id``."""
+    chunk = {
+        "event": "workflow_paused",
+        "workflow_run_id": "run-9",
+        "data": {"workflow_run_id": "run-9", "paused_nodes": ["human-1"], "status": "paused"},
+    }
+
+    data = run_result_data_from_terminal_chunk(chunk)
+
+    assert data["id"] == "run-9"
+    run = map_run_result(data, [])
+    # A paused run is never green.
+    assert run.status == "failed"
+    assert run.dify_run_id == "run-9"
