@@ -1,9 +1,10 @@
 import type { ManagedProcess } from '../support/process'
-import { mkdir, readFile, rm } from 'node:fs/promises'
+import { appendFile, mkdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { runCleanupTasks } from '../support/cleanup'
 import { assertCucumberScenariosStarted } from '../support/cucumber-messages'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
+import { runStartupTasks } from '../support/startup'
 import { startWebServer, stopWebServer } from '../support/web-server'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
 import { e2eDir, isMainModule, runCommand } from './common'
@@ -78,6 +79,17 @@ const main = async () => {
   const startAgentBackendForRun = shouldStartManagedAgentBackend()
   const cucumberReportDir = path.join(e2eDir, 'cucumber-report')
   const logDir = path.join(e2eDir, '.logs')
+  const timings: { phase: string; seconds: number }[] = []
+  const timed = async <T>(phase: string, run: () => Promise<T>) => {
+    const started = performance.now()
+    try {
+      return await run()
+    } finally {
+      const seconds = (performance.now() - started) / 1000
+      timings.push({ phase, seconds })
+      console.log(`[E2E timing] ${phase}: ${seconds.toFixed(2)}s`)
+    }
+  }
   let apiProcess: ManagedProcess | undefined
   let celeryProcess: ManagedProcess | undefined
   let difyAgentProcess: ManagedProcess | undefined
@@ -119,11 +131,11 @@ const main = async () => {
   process.once('SIGTERM', onTerminate)
 
   try {
-    if (full) await resetState()
+    if (full) await timed('reset', resetState)
 
     if (full) {
       middlewareStarted = true
-      await startMiddleware()
+      await timed('middleware', startMiddleware)
     }
 
     if (!seedOnly) await rm(cucumberReportDir, { force: true, recursive: true })
@@ -160,45 +172,60 @@ const main = async () => {
       })
     }
 
-    apiProcess = await startLoggedProcess({
-      command: process.execPath,
-      args: ['--import', 'tsx', './scripts/setup.ts', 'api'],
-      cwd: e2eDir,
-      env: startAgentBackendForRun ? { E2E_START_AGENT_BACKEND: '1' } : undefined,
-      label: 'api server',
-      logFilePath: path.join(logDir, 'cucumber-api.log'),
-    })
-    await waitForManagedProcess({
-      errorMessage: `API did not become ready at ${apiURL}/health.`,
-      managedProcess: apiProcess,
-      url: `${apiURL}/health`,
-    })
+    await timed('service startup', () =>
+      runStartupTasks(
+        [
+          async () => {
+            const startedApi = await startLoggedProcess({
+              command: process.execPath,
+              args: ['--import', 'tsx', './scripts/setup.ts', 'api'],
+              cwd: e2eDir,
+              env: startAgentBackendForRun ? { E2E_START_AGENT_BACKEND: '1' } : undefined,
+              label: 'api server',
+              logFilePath: path.join(logDir, 'cucumber-api.log'),
+            })
+            apiProcess = startedApi
+            await timed('API readiness (including migration)', () =>
+              waitForManagedProcess({
+                errorMessage: `API did not become ready at ${apiURL}/health.`,
+                managedProcess: startedApi,
+                url: `${apiURL}/health`,
+              }),
+            )
 
-    celeryProcess = await startLoggedProcess({
-      command: process.execPath,
-      args: [
-        '--import',
-        'tsx',
-        './scripts/setup.ts',
-        'celery',
-        ...(seed ? ['--queues', seedCeleryQueues] : []),
-      ],
-      cwd: e2eDir,
-      label: 'celery worker',
-      logFilePath: path.join(logDir, 'cucumber-celery.log'),
-    })
+            celeryProcess = await startLoggedProcess({
+              command: process.execPath,
+              args: [
+                '--import',
+                'tsx',
+                './scripts/setup.ts',
+                'celery',
+                ...(seed ? ['--queues', seedCeleryQueues] : []),
+              ],
+              cwd: e2eDir,
+              label: 'celery worker',
+              logFilePath: path.join(logDir, 'cucumber-celery.log'),
+            })
+          },
+          async () => {
+            await timed('Web readiness', () =>
+              startWebServer({
+                baseURL,
+                command: process.execPath,
+                args: ['--import', 'tsx', './scripts/setup.ts', 'web'],
+                cwd: e2eDir,
+                logFilePath: path.join(logDir, 'cucumber-web.log'),
+                reuseExistingServer: reuseExistingWebServer,
+                timeoutMs: 300_000,
+              }),
+            )
+          },
+        ],
+        process.env.E2E_PARALLEL_STARTUP === '1',
+      ),
+    )
 
-    await startWebServer({
-      baseURL,
-      command: process.execPath,
-      args: ['--import', 'tsx', './scripts/setup.ts', 'web'],
-      cwd: e2eDir,
-      logFilePath: path.join(logDir, 'cucumber-web.log'),
-      reuseExistingServer: reuseExistingWebServer,
-      timeoutMs: 300_000,
-    })
-
-    if (seed) await runSeed(seed)
+    if (seed) await timed('seed', () => runSeed(seed))
 
     if (!seedOnly) {
       const cucumberEnv: NodeJS.ProcessEnv = {
@@ -208,19 +235,21 @@ const main = async () => {
 
       if (full && !hasCustomTags(forwardArgs)) cucumberEnv.E2E_CUCUMBER_TAGS = fullNonExternalTags
 
-      const result = await runCommand({
-        command: process.execPath,
-        args: [
-          '--import',
-          'tsx',
-          './node_modules/@cucumber/cucumber/bin/cucumber.js',
-          '--config',
-          './cucumber.config.ts',
-          ...forwardArgs,
-        ],
-        cwd: e2eDir,
-        env: cucumberEnv,
-      })
+      const result = await timed('Cucumber', () =>
+        runCommand({
+          command: process.execPath,
+          args: [
+            '--import',
+            'tsx',
+            './node_modules/@cucumber/cucumber/bin/cucumber.js',
+            '--config',
+            './cucumber.config.ts',
+            ...forwardArgs,
+          ],
+          cwd: e2eDir,
+          env: cucumberEnv,
+        }),
+      )
 
       if (result.exitCode === 0) {
         const messages = await readFile(path.join(cucumberReportDir, 'report.ndjson'), 'utf8')
@@ -232,7 +261,17 @@ const main = async () => {
   } finally {
     process.off('SIGINT', onTerminate)
     process.off('SIGTERM', onTerminate)
-    await cleanup()
+    try {
+      await timed('cleanup', cleanup)
+    } finally {
+      if (process.env.GITHUB_STEP_SUMMARY) {
+        const rows = timings.map(({ phase, seconds }) => `| ${phase} | ${seconds.toFixed(2)} |`)
+        await appendFile(
+          process.env.GITHUB_STEP_SUMMARY,
+          `\n### E2E runtime phases\n\n| Phase | Seconds |\n| --- | ---: |\n${rows.join('\n')}\n`,
+        )
+      }
+    }
   }
 }
 

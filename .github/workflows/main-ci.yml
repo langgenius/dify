@@ -109,6 +109,8 @@ jobs:
               - 'docker/ssrf_proxy/**'
               - 'docker/volumes/sandbox/conf/**'
               - '.github/workflows/web-e2e.yml'
+              - '.github/workflows/e2e-web-build.yml'
+              - '.github/workflows/e2e-cache-warm.yml'
               - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'
               - '.github/actions/setup-core-e2e/**'
@@ -215,6 +217,8 @@ jobs:
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed == 'true'
     uses: ./.github/workflows/api-tests.yml
+    with:
+      performance-experiments: ${{ contains(github.event.pull_request.labels.*.name, 'ci-performance-experiment') }}
     secrets: inherit
 
   api-tests-skip:
@@ -397,6 +401,7 @@ jobs:
     uses: ./.github/workflows/web-e2e.yml
     with:
       run-external-runtime: false
+      performance-experiments: ${{ contains(github.event.pull_request.labels.*.name, 'ci-performance-experiment') }}
     secrets: inherit
 
   web-e2e-skip:
