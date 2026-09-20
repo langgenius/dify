@@ -4434,6 +4434,7 @@ export type GetAppsByAppIdExportData = {
   query?: {
     format?: 'ifpkg' | 'yaml'
     include_secret?: boolean
+    version_id?: string
     workflow_id?: string
   }
   url: '/apps/{app_id}/export'

@@ -102,7 +102,6 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
             expand={expand}
             onToggle={onToggle}
             icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
-            className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
           />
         )}
       </div>
@@ -162,7 +161,6 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
           expand={expand}
           onToggle={onToggle}
           icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
-          className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
         />
       )}
     </div>
