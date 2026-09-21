@@ -97,6 +97,15 @@ resolved. Each route includes `unknownNamespaceSources` for reachable affected
 modules, including shared boundaries, lazy dependencies, slots, and client bridges.
 An empty list means no unknown expression was detected, not proof that all APIs or
 dependencies were understood.
+Direct function declarations forwarding namespace parameters are summarized and
+checked at their concrete call sites, including aliases and multi-hop forwarding.
+Parameter assignments and method calls on parameters prevent passthrough summaries.
+Uncalled entry functions remain unknown; passing a forwarding function as a call
+argument reports an escape instead of assuming its future arguments. Runtime
+route-dependent provider props are not inferred from the route catalog.
+Unresolved import evidence includes the specifier, a syntactic kind (style, asset,
+package, virtual, or source), and whether the import appears in source or was
+introduced by transforms. These labels do not prove relevance or suppress checks.
 A dynamic key can protect an entire namespace; these records explain which calls
 prevent an unused-key conclusion. Unresolved imports make the analysis incomplete.
 

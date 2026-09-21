@@ -37,6 +37,61 @@ describe('translation graph analysis', () => {
   })
 
   describe('Usage Analysis', () => {
+    it.each(['static', 'dynamic', 'escape'] as const)(
+      'attributes forwarded namespaces to %s callers',
+      (mode) => {
+        writeJson('i18n/locales/en-US/login.json', {})
+        writeSource(
+          'wrapper.ts',
+          `
+        import { useTranslation } from 'react-i18next'
+        function load(ns: string) { return useTranslation(ns) }
+        export function forward(ns: string) { return load(ns) }
+      `,
+        )
+        writeSource(
+          'page.ts',
+          `
+        import { forward } from './wrapper'
+        ${
+          mode === 'static'
+            ? "export const page = forward('login')"
+            : mode === 'dynamic'
+              ? 'export function page(ns: string) { return forward(ns) }'
+              : 'declare function register(fn: unknown): void; register(forward)'
+        }
+      `,
+        )
+        const result = checkTranslationGraph(webRoot, modules)
+        expect(result.moduleNamespaces.get(path.join(webRoot, 'wrapper.ts'))).toEqual(new Set())
+        if (mode === 'static')
+          expect(result.moduleNamespaces.get(path.join(webRoot, 'page.ts'))).toEqual(
+            new Set(['login']),
+          )
+        const unknown = result.evidence.filter((item) => item.kind === 'unknown-namespace')
+        expect(unknown.map((item) => item.file)).toEqual(mode === 'static' ? [] : ['page.ts'])
+      },
+    )
+
+    it('does not summarize a reassigned namespace parameter as a passthrough', () => {
+      writeJson('i18n/locales/en-US/login.json', {})
+      writeSource(
+        'wrapper.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+        declare function runtimeNamespace(): string
+        export function forward(ns: string) { ns = runtimeNamespace(); return useTranslation(ns) }
+      `,
+      )
+      writeSource('page.ts', `import { forward } from './wrapper'; forward('login')`)
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(
+        result.evidence
+          .filter((item) => item.kind === 'unknown-namespace')
+          .map((item) => item.file),
+      ).toEqual(['wrapper.ts'])
+    })
+
     it('preserves a finite key type when an initializer cannot be evaluated', () => {
       writeJson('i18n/locales/en-US/app.json', { used: 'Used', unused: 'Unused' })
       writeSource(

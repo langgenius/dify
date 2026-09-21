@@ -124,10 +124,16 @@ export function i18nAnalysisPlugin(
       `[i18n] Analysis: ${metrics.totalMs.toFixed(0)}ms; ${metrics.environments.reduce((sum, item) => sum + item.modules, 0)} environment modules; ${metrics.environments.reduce((sum, item) => sum + item.resolveCalls, 0)} resolver calls.`,
     )
     const unresolved = evidence.filter((item) => item.kind === 'unresolved-import')
-    if (unresolved.length)
+    if (unresolved.length) {
+      const categories = new Map<string, number>()
+      for (const item of unresolved) {
+        const category = item.import?.kind ?? 'source'
+        categories.set(category, (categories.get(category) ?? 0) + 1)
+      }
       logger.warn(
-        `[i18n] ${unresolved.length} runtime imports could not be traced; inspect the report before trusting unused-key findings.`,
+        `[i18n] ${unresolved.length} runtime imports could not be traced (${[...categories].map(([kind, count]) => `${kind}: ${count}`).join(', ')}); inspect the report before trusting unused-key findings.`,
       )
+    }
     const incomplete = routes.filter((route) => route.unknownNamespaceSources?.length)
     if (incomplete.length)
       logger.warn(

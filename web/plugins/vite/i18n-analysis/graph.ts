@@ -60,6 +60,11 @@ export type AnalysisEvidence = {
   column: number
   namespaces: string[]
   message: string
+  import?: {
+    specifier: string
+    kind: 'style' | 'asset' | 'package' | 'virtual' | 'source'
+    origin: 'source' | 'generated'
+  }
 }
 
 export function createAnalysisContext(root: string) {
@@ -89,7 +94,12 @@ export function checkTranslationGraph(
   const evidence = new Map<string, AnalysisEvidence>()
   let currentModule = ''
   let currentSite: ts.Node | undefined
-  function explain(kind: AnalysisEvidence['kind'], namespaces: string[], message: string) {
+  function explain(
+    kind: AnalysisEvidence['kind'],
+    namespaces: string[],
+    message: string,
+    importInfo?: AnalysisEvidence['import'],
+  ) {
     if (!currentSite) return
     const location = currentSite
       .getSourceFile()
@@ -102,6 +112,7 @@ export function checkTranslationGraph(
       column: location.character + 1,
       namespaces: [...namespaces].sort(),
       message,
+      ...(importInfo ? { import: importInfo } : {}),
     }
     evidence.set(JSON.stringify(item), item)
   }
@@ -515,6 +526,114 @@ export function checkTranslationGraph(
     )
   }
 
+  // Summarize direct namespace forwarding before scanning usage. Attribute the
+  // forwarded load to callers, not every route importing a shared wrapper.
+  const forwarding = new Map<ts.FunctionDeclaration, Set<number>>()
+  const calls: { node: ts.CallExpression; owner?: ts.FunctionDeclaration }[] = []
+  function enclosingFunction(node: ts.Node): ts.FunctionDeclaration | undefined {
+    for (let parent = node.parent; parent; parent = parent.parent) {
+      if (ts.isFunctionLike(parent)) return ts.isFunctionDeclaration(parent) ? parent : undefined
+    }
+  }
+  const targetCache = new Map<ts.Expression, ts.FunctionDeclaration[]>()
+  function forwardingTargets(expression: ts.Expression) {
+    let targets = targetCache.get(expression)
+    if (!targets) {
+      targets = alternatives(expression).filter(
+        (value): value is ts.FunctionDeclaration =>
+          !!value && ts.isFunctionDeclaration(value) && forwarding.has(value),
+      )
+      targetCache.set(expression, targets)
+    }
+    return targets
+  }
+  const writtenParameters = new Set<ts.ParameterDeclaration>()
+  function forwardedParameters(
+    expression: ts.Expression,
+    owner: ts.FunctionDeclaration,
+  ): Set<number> | undefined {
+    const node = unwrap(expression)
+    if (ts.isStringLiteralLike(node)) return new Set()
+    if (ts.isSpreadElement(node)) return forwardedParameters(node.expression, owner)
+    if (ts.isArrayLiteralExpression(node)) {
+      const items = node.elements.map((item) => forwardedParameters(item, owner))
+      return items.some((item) => !item) ? undefined : new Set(items.flatMap((item) => [...item!]))
+    }
+    if (ts.isIdentifier(node)) {
+      const index = owner.parameters.findIndex(
+        (parameter) => !writtenParameters.has(parameter) && declarations(node).includes(parameter),
+      )
+      if (index >= 0) return new Set([index])
+    }
+  }
+  function markWrites(target: ts.Node) {
+    if (ts.isIdentifier(target)) {
+      for (const declaration of declarations(target))
+        if (ts.isParameter(declaration)) writtenParameters.add(declaration)
+    }
+    ts.forEachChild(target, markWrites)
+  }
+  for (const id of modules.keys()) {
+    if (id.endsWith('.json')) continue
+    const source = program.getSourceFile(fileNames.get(id)!)
+    if (!source) continue
+    const collect = (node: ts.Node) => {
+      if (
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+        node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+      )
+        markWrites(node.left)
+      if (
+        (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+        (node.operator === ts.SyntaxKind.PlusPlusToken ||
+          node.operator === ts.SyntaxKind.MinusMinusToken)
+      )
+        markWrites(node.operand)
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression))
+        markWrites(node.expression.expression)
+      if (ts.isFunctionDeclaration(node) && node.body) forwarding.set(node, new Set())
+      if (ts.isCallExpression(node)) calls.push({ node, owner: enclosingFunction(node) })
+      ts.forEachChild(node, collect)
+    }
+    collect(source)
+  }
+  const calledFunctions = new Set(
+    calls.flatMap(({ node }) => [node.expression, ...node.arguments].flatMap(forwardingTargets)),
+  )
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const { node, owner } of calls) {
+      if (!owner || !forwarding.has(owner)) continue
+      const api = translationApi(node.expression)
+      const indexes =
+        api === 'useTranslation'
+          ? [0]
+          : api === 'getTranslation'
+            ? [1]
+            : forwardingTargets(node.expression).flatMap((target) => [...forwarding.get(target)!])
+      for (const index of indexes) {
+        const argument = node.arguments[index]
+        if (!argument) continue
+        for (const parameter of forwardedParameters(argument, owner) ?? []) {
+          const summary = forwarding.get(owner)!
+          if (!summary.has(parameter)) {
+            summary.add(parameter)
+            changed = true
+          }
+        }
+      }
+    }
+  }
+  function isForwarded(expression: ts.Expression) {
+    const owner = enclosingFunction(expression)
+    if (!owner || (!calledFunctions.has(owner) && !(owner.name && translationApi(owner.name))))
+      return false
+    const parameters = forwardedParameters(expression, owner)
+    return !!parameters?.size && [...parameters].every((index) => forwarding.get(owner)?.has(index))
+  }
+
   function visit(node: ts.Node) {
     currentSite = node
     if (ts.isStringLiteralLike(node) && (node.text.includes('.') || node.text.includes(':'))) {
@@ -536,8 +655,29 @@ export function checkTranslationGraph(
         // Do not mark translation keys as used merely because a namespace loads.
         const nsIndex = api === 'getTranslation' ? 1 : 0
         const argument = node.arguments[nsIndex]
-        if (argument && !recordLoadedNamespaces(argument))
+        if (argument && !recordLoadedNamespaces(argument) && !isForwarded(argument))
           explain('unknown-namespace', [], 'The explicit namespace load cannot be fully resolved.')
+      }
+      if (api !== 'useTranslation' && api !== 'getTranslation') {
+        for (const target of forwardingTargets(node.expression)) {
+          for (const index of forwarding.get(target)!) {
+            const argument = node.arguments[index] ?? target.parameters[index]?.initializer
+            if (argument && !recordLoadedNamespaces(argument) && !isForwarded(argument))
+              explain(
+                'unknown-namespace',
+                [],
+                'The forwarded namespace cannot be resolved at this call site.',
+              )
+          }
+        }
+      }
+      for (const argument of node.arguments) {
+        if (forwardingTargets(argument).some((target) => forwarding.get(target)!.size))
+          explain(
+            'unknown-namespace',
+            [],
+            'A namespace-forwarding function escapes through a call argument.',
+          )
       }
       const info = translation(node.expression, node)
       const argument = info && node.arguments[info.argument]
@@ -545,7 +685,7 @@ export function checkTranslationGraph(
         const options = node.arguments.at(-1)
         const namespaceOption = property(options, 'ns')
         const namespaces = strings(namespaceOption)
-        if (namespaceOption && !namespaces)
+        if (namespaceOption && !namespaces && !isForwarded(namespaceOption))
           explain(
             'unknown-namespace',
             [],
@@ -590,6 +730,9 @@ export function checkTranslationGraph(
     currentNamespaces = new Set<string>()
     moduleNamespaces.set(id, currentNamespaces)
     if (source) {
+      const sourceImports = new Set(
+        ts.preProcessFile(source.text, true, true).importedFiles.map((item) => item.fileName),
+      )
       for (const [specifier, resolved] of resolutions.get(id) ?? []) {
         if (resolved !== null) continue
         currentSite =
@@ -603,6 +746,20 @@ export function checkTranslationGraph(
           'unresolved-import',
           [],
           `Cannot trace runtime import ${specifier} after transforms; the original file was not used as a fallback.`,
+          {
+            specifier,
+            kind: /\.(?:css|scss|sass|less|styl)(?:\?|$)|vite-rsc\/css/.test(specifier)
+              ? 'style'
+              : /\.(?:svg|png|jpe?g|webp|gif|ico|woff2?)(?:\?|$)/.test(specifier)
+                ? 'asset'
+                : specifier.startsWith('\0') || specifier.startsWith('virtual:')
+                  ? 'virtual'
+                  : specifier.includes('/node_modules/') ||
+                      /^(?:@[^/]+\/[^/]+|[\w-]+)(?:\/|$)/.test(specifier)
+                    ? 'package'
+                    : 'source',
+            origin: sourceImports.has(specifier) ? 'source' : 'generated',
+          },
         )
       }
       visit(source)
