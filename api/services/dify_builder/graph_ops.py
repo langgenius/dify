@@ -183,11 +183,17 @@ def _build_node(
     position: dict[str, float] | None,
     node_id: str | None,
     parent_id: str | None = None,
+    flow_type: str | None = None,
 ) -> dict[str, Any]:
     """Construct one ``GraphNodeDict``-shaped node, generating an id/position
     when omitted (mirrors the generator's ``_fill_node_defaults``,
     ``core/workflow/generator/runner.py:2387-2394``). Raises ``ValueError``
     if a caller-supplied ``node_id`` already exists in ``graph["nodes"]``.
+
+    ``flow_type`` is the node-level ReactFlow type. Almost every node is the
+    generic ``"custom"`` (the default), but iteration/loop start markers carry
+    ``"custom-iteration-start"`` / ``"custom-loop-start"`` and the canvas has
+    no component for them under ``"custom"`` (React error #130, ESQ1-288).
     """
     existing_ids = {n.get("id") for n in graph.get("nodes", [])}
     if node_id is not None:
@@ -205,7 +211,7 @@ def _build_node(
 
     node: dict[str, Any] = {
         "id": new_id,
-        "type": "custom",
+        "type": flow_type or "custom",
         "position": position if position is not None else _default_position(graph),
         "data": data,
     }
@@ -227,6 +233,7 @@ def apply_create_node(
     position: dict[str, float] | None = None,
     node_id: str | None = None,
     parent_id: str | None = None,
+    flow_type: str | None = None,
 ) -> tuple[Graph, list[str]]:
     """Append a new ``GraphNodeDict``-shaped node to the graph.
 
@@ -235,10 +242,12 @@ def apply_create_node(
     a collision with an existing node id raises ``ValueError`` (the Slice 1
     duplicate-id validation). ``parent_id``, when truthy, nests the new node
     inside an existing iteration/loop container and adds the matching
-    ``extent``/``zIndex`` wrapper keys. Returns ``(new_graph, [new_node_id])``.
+    ``extent``/``zIndex`` wrapper keys. ``flow_type``, when truthy, overrides
+    the node-level ReactFlow type (defaults to ``"custom"``); container start
+    markers need their own. Returns ``(new_graph, [new_node_id])``.
     """
     new_graph = copy.deepcopy(graph)
-    node = _build_node(new_graph, node_type, config, position, node_id, parent_id)
+    node = _build_node(new_graph, node_type, config, position, node_id, parent_id, flow_type)
     new_graph.setdefault("nodes", []).append(node)
     return new_graph, [node["id"]]
 
