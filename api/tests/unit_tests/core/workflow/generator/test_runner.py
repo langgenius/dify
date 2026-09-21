@@ -4756,6 +4756,23 @@ def test_tool_node_fails_open_without_an_output_schema():
     assert G._declares_variable(_tool_node(output_schema={}), "anything") is True
 
 
+def test_tool_node_fails_open_when_output_schema_is_not_a_dict():
+    """A hand-edited or legacy graph can carry a malformed output_schema;
+    that must degrade to fail-open, not raise."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    assert G._declares_variable(_tool_node(output_schema=" oops "), "anything") is True
+    assert G._declares_variable(_tool_node(output_schema=["a"]), "anything") is True
+    assert G._declares_variable(_tool_node(output_schema=7), "anything") is True
+
+
+def test_tool_node_fails_open_when_properties_is_not_a_dict():
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _tool_node(output_schema={"properties": "oops"})
+    assert G._declares_variable(node, "anything") is True
+
+
 def test_tool_result_is_aliased_to_text():
     """Self-heal the common mistake rather than failing the build for it."""
     from core.workflow.generator.runner import WorkflowGenerator as G

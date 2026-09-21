@@ -1872,10 +1872,13 @@ class WorkflowGenerator:
             # Fails OPEN when no schema is present: this file is shared with
             # cmd+K, and a tool we cannot describe must keep behaving exactly
             # as it did before. We reject only references we can prove wrong.
+            # An unreadable schema shape (not a dict, or a `properties` that
+            # isn't a dict) also fails open rather than raising.
             if var in {"text", "files", "json"}:
                 return True
-            properties = (data.get("output_schema") or {}).get("properties") or {}
-            if not properties:
+            output_schema = data.get("output_schema")
+            properties = output_schema.get("properties") if isinstance(output_schema, dict) else None
+            if not isinstance(properties, dict) or not properties:
                 return True
             return var in properties
         if node_type in (BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP):
