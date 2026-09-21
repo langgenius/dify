@@ -247,6 +247,40 @@ class ImageOptimizationTests(unittest.TestCase):
         for path, source in originals.items():
             self.assertEqual(path.read_bytes(), source)
 
+    def test_fix_preserves_sprite_definitions_referenced_from_another_file(self):
+        self.run_git("init", "-q")
+        sprite = (
+            b'<svg xmlns="http://www.w3.org/2000/svg"><defs>'
+            + b"\n    " * 80
+            + b'<symbol id="check" viewBox="0 0 20 20"><path d="M1 10 L8 17 L19 1"/></symbol>'
+            b'<rect id="tile" width="10" height="10"/></defs></svg>'
+        )
+        path = self.write("images/sprite.svg", sprite)
+        consumer = b'<svg><use href="images/sprite.svg#check"/></svg>'
+        self.write("page.html", consumer)
+        self.run_git("add", ".")
+        scripts = self.root / "scripts/image-resources"
+        scripts.mkdir(parents=True)
+        shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        (scripts / "ignore.json").write_text("[]")
+        result = subprocess.run(
+            [sys.executable, str(scripts / "check_image_resources.py"), "--all", "--fix"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("1 fixed", result.stdout)
+        root = ET.fromstring(path.read_bytes())
+        ns = {"svg": "http://www.w3.org/2000/svg"}
+        symbol = root.find("svg:defs/svg:symbol[@id='check']", ns)
+        self.assertIsNotNone(symbol)
+        self.assertEqual(symbol.get("viewBox"), "0 0 20 20")
+        self.assertIsNotNone(symbol.find("svg:path", ns))
+        self.assertIsNotNone(root.find("svg:defs/svg:rect[@id='tile']", ns))
+        self.assertEqual((self.root / "page.html").read_bytes(), consumer)
+        self.assertEqual(checker.inspect_image("images/sprite.svg", self.root)[0], "passed")
+
     def test_svg_markup_is_optimized(self):
         data = (
             b'<svg xmlns="http://www.w3.org/2000/svg">' + b"\n        " * 100 + b'<rect width="10" height="10"/></svg>'

@@ -152,6 +152,8 @@ def compress_svg(data: bytes) -> tuple[bytes, str]:
             # Inline styles outrank stylesheets; presentation attributes do not.
             "--disable-style-to-xml",
             "--disable-embed-rasters",
+            # Sprite definitions may be referenced by fragments in other files.
+            "--keep-unreferenced-defs",
             "--strip-xml-prolog",
             "--indent=none",
             "--no-line-breaks",

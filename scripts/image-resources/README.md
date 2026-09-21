@@ -20,6 +20,8 @@ SVGs containing `<style>`, inline `style` attributes (including on the root), st
 
 SVGs using unqualified `href` on elements other than `<image>`, or fragment references such as `<image href="#tile">`, are also skipped entirely: Scour may remove definitions referenced with SVG 2 `href`. Legacy `xlink:href` references and embedded raster data URLs remain supported.
 
+Unreferenced `<defs>` entries are retained with `--keep-unreferenced-defs`: sprite symbols and other definitions may be referenced from external files, so local reference counts cannot establish that they are unused.
+
 For SVGs, the percentage compares the complete original and optimized file sizes, including embedded data. It is not a production transfer estimate. Already-compressed images can pass regardless of their absolute size. An exactly 25% reduction passes; a greater reduction fails. Failed trials do not silently pass as optimized resources.
 
 ## Scope
