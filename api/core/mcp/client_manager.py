@@ -5,16 +5,28 @@ as the call returned, which discards any per-session state a stateful MCP
 server keeps (for example the browser context of the Playwright MCP server:
 `browser_navigate` succeeds, the next call lands on a fresh `about:blank`
 page). This module keeps successfully initialized clients in a process-wide
-pool keyed by server URL and effective request headers, so consecutive calls
-within the idle TTL reuse the same session.
+pool so consecutive calls reuse the same session.
 
-The pool is deliberately conservative: each pooled client is guarded by a
-lock (the sync `ClientSession` processes messages on a single worker),
-entries are evicted after an idle TTL or when the pool exceeds its size cap,
-and a pooled connection that died is dropped and retried once on a fresh
-connection, keeping the per-call robustness of connect-per-invocation.
+The pool key is the execution scope — tenant, end user, provider config —
+plus the server URL and timeouts: stable identities, never the per-call
+credentials. Credentials change between calls (a freshly minted
+forwarded-identity token, or an OAuth token after a refresh); keying on them
+would prevent all reuse, while the session they authenticated at
+`initialize()` keeps working and the pooled client refreshes its own token on
+401. Distinct tenants, end users and provider configs therefore map to
+distinct connections, so a stateful server never shares session state across
+them.
+
+Locking is two-level and strictly ordered: the registry lock only guards the
+`_clients` dict, and per-entry locks serialize calls on one connection.
+Entries are never closed while holding the registry lock — an in-flight call
+holds the entry lock for as long as the server takes to answer (the session
+has no read timeout), so eviction removes the entry under the registry lock
+and closes it afterwards; a busy entry is marked doomed and closed by its
+in-flight call on the way out.
 """
 
+import atexit
 import hashlib
 import json
 import logging
@@ -30,21 +42,18 @@ from core.mcp.types import CallToolResult
 
 logger = logging.getLogger(__name__)
 
-# Seconds after which an idle pooled client is closed on its next acquire, and
-# the maximum number of clients kept open per process. Overridable for tests
-# and for deployments that rely on long-lived stateful MCP servers.
-DEFAULT_IDLE_TTL_SECONDS = float(os.getenv("MCP_CLIENT_POOL_IDLE_TTL", "300"))
-DEFAULT_MAX_SIZE = int(os.getenv("MCP_CLIENT_POOL_MAX_SIZE", "100"))
-
 
 class _PooledClient:
     def __init__(self, client: MCPClientWithAuthRetry, key: str):
         self.client = client
-        # The pool key this entry was registered under. Kept explicitly because
-        # the client may refresh its own Authorization header after an auth
-        # retry, which would change a recomputed key.
+        # The pool key this entry was registered under, kept explicitly so
+        # eviction never has to recompute it from mutable client state.
         self.key = key
         self.last_used = time.monotonic()
+        # Set when the entry has been removed from the registry but its lock
+        # is held by an in-flight call; that call closes it on the way out.
+        self.doomed = False
+        self.closed = False
         # ClientSession drives a single-worker executor; serialize calls that
         # share one pooled connection.
         self.lock = threading.Lock()
@@ -55,30 +64,41 @@ class MCPClientManager:
 
     def __init__(
         self,
-        idle_ttl_seconds: float = DEFAULT_IDLE_TTL_SECONDS,
-        max_size: int = DEFAULT_MAX_SIZE,
+        idle_ttl_seconds: float | None = None,
+        max_size: int | None = None,
     ):
         self._clients: dict[str, _PooledClient] = {}
         self._lock = threading.Lock()
-        self._idle_ttl_seconds = idle_ttl_seconds
-        self._max_size = max_size
+        # Read when the manager is constructed, so the knobs respond to
+        # environment changes without re-importing the module.
+        self._idle_ttl_seconds = (
+            float(os.getenv("MCP_CLIENT_POOL_IDLE_TTL", "300")) if idle_ttl_seconds is None else idle_ttl_seconds
+        )
+        self._max_size = int(os.getenv("MCP_CLIENT_POOL_MAX_SIZE", "100")) if max_size is None else max_size
 
     @staticmethod
     def _make_key(
+        tenant_id: str,
+        user_id: str | None,
         server_url: str,
-        headers: dict[str, str] | None,
+        provider_id: str | None,
         timeout: float | None,
         sse_read_timeout: float | None,
     ) -> str:
-        """Identify a connection by everything that goes into building it.
+        """Identify a pooled connection by stable scope, never by credentials.
 
-        Headers carry the (possibly per-user) credentials, so distinct tenants,
-        users or tokens naturally map to distinct pooled connections.
+        tenant/user/provider separate tenants, end users (including forwarded
+        identities) and provider configs; server URL and timeouts are the
+        connection fingerprint. Per-call credentials are deliberately
+        excluded: forwarded-identity tokens are minted per call and OAuth
+        tokens rotate, so keying on either would prevent all reuse.
         """
         material = json.dumps(
             {
+                "tenant_id": tenant_id,
+                "user_id": user_id,
                 "server_url": server_url,
-                "headers": dict(sorted((headers or {}).items())),
+                "provider_id": provider_id,
                 "timeout": timeout,
                 "sse_read_timeout": sse_read_timeout,
             },
@@ -86,30 +106,56 @@ class MCPClientManager:
         )
         return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
-    def _close_entry(self, entry: _PooledClient) -> None:
-        with entry.lock:
-            try:
-                entry.client.cleanup()
-            except Exception:
-                logger.warning("Failed to clean up a pooled MCP client", exc_info=True)
+    def _shutdown_entry(self, entry: _PooledClient) -> None:
+        """Idempotently close the underlying client."""
+        if entry.closed:
+            return
+        entry.closed = True
+        try:
+            entry.client.cleanup()
+        except Exception:
+            logger.warning("Failed to clean up a pooled MCP client", exc_info=True)
 
-    def _evict_expired(self) -> None:
+    def _close_entry(self, entry: _PooledClient) -> None:
+        """Close `entry`; must be called without holding the registry lock.
+
+        An in-flight call holds the entry lock for as long as the server takes
+        to answer, so the registry lock must never wait on it. When the entry
+        is busy, mark it doomed and let the in-flight call close it in its
+        finally block instead.
+        """
+        if not entry.lock.acquire(blocking=False):
+            entry.doomed = True
+            return
+        try:
+            self._shutdown_entry(entry)
+        finally:
+            entry.lock.release()
+
+    def _evict_expired(self) -> list[_PooledClient]:
+        """Remove idle-expired entries; caller closes them outside the lock."""
         now = time.monotonic()
+        victims = []
         for key, entry in list(self._clients.items()):
             if now - entry.last_used >= self._idle_ttl_seconds:
                 del self._clients[key]
-                self._close_entry(entry)
+                victims.append(entry)
+        return victims
 
-    def _evict_to_capacity(self) -> None:
+    def _evict_to_capacity(self) -> list[_PooledClient]:
+        """Drop least-recently-used entries above the size cap; caller closes them."""
         overflow = len(self._clients) - self._max_size
         if overflow <= 0:
-            return
+            return []
+        victims = []
         for key, entry in sorted(self._clients.items(), key=lambda item: item[1].last_used)[:overflow]:
             del self._clients[key]
-            self._close_entry(entry)
+            victims.append(entry)
+        return victims
 
     def _acquire(
         self,
+        key: str,
         server_url: str,
         headers: dict[str, str] | None,
         timeout: float | None,
@@ -118,47 +164,52 @@ class MCPClientManager:
         forward_identity_active: bool,
     ) -> _PooledClient:
         """Return a live pooled entry, connecting (with auth retry) if needed."""
-        key = self._make_key(server_url, headers, timeout, sse_read_timeout)
-        while True:
-            with self._lock:
-                self._evict_expired()
-                entry = self._clients.get(key)
-                if entry is not None:
-                    entry.last_used = time.monotonic()
-                    return entry
+        with self._lock:
+            victims = self._evict_expired()
+            entry = self._clients.get(key)
+            if entry is not None:
+                entry.last_used = time.monotonic()
+        for victim in victims:
+            self._close_entry(victim)
+        if entry is not None:
+            return entry
 
-            # Connect outside the registry lock: initialization performs
-            # network I/O (and possibly an OAuth refresh) that must not block
-            # unrelated MCP calls.
-            client = MCPClientWithAuthRetry(
-                server_url=server_url,
-                headers=headers,
-                timeout=timeout,
-                sse_read_timeout=sse_read_timeout,
-                provider_entity=provider_entity,
-                forward_identity_active=forward_identity_active,
-            )
+        # Connect outside the registry lock: initialization performs network
+        # I/O (and possibly an OAuth refresh) that must not block unrelated
+        # MCP calls. Credentials may differ between calls of the same scope;
+        # the first caller's headers authenticate the session and the pooled
+        # client refreshes its own token on 401.
+        client = MCPClientWithAuthRetry(
+            server_url=server_url,
+            headers=headers,
+            timeout=timeout,
+            sse_read_timeout=sse_read_timeout,
+            provider_entity=provider_entity,
+            forward_identity_active=forward_identity_active,
+        )
+        try:
+            client.__enter__()
+        except Exception:
+            # Never pool a client that failed to initialize; keep the
+            # connect-per-invocation behavior for failing servers.
             try:
-                client.__enter__()
+                client.cleanup()
             except Exception:
-                # Never pool a client that failed to initialize; keep the
-                # connect-per-invocation behavior for failing servers.
-                try:
-                    client.cleanup()
-                except Exception:
-                    logger.warning("Failed to clean up an MCP client whose initialization failed", exc_info=True)
-                raise
-            candidate = _PooledClient(client, key)
-            with self._lock:
-                existing = self._clients.get(key)
-                if existing is not None:
-                    # Lost a race creating the same connection: use the winner.
-                    self._close_entry(candidate)
-                    existing.last_used = time.monotonic()
-                    return existing
+                logger.warning("Failed to clean up an MCP client whose initialization failed", exc_info=True)
+            raise
+        candidate = _PooledClient(client, key)
+        with self._lock:
+            existing = self._clients.get(key)
+            if existing is None:
                 self._clients[key] = candidate
-                self._evict_to_capacity()
-                return candidate
+                victims = self._evict_to_capacity()
+        for victim in victims:
+            self._close_entry(victim)
+        if existing is not None:
+            # Lost a race creating the same connection: use the winner.
+            self._close_entry(candidate)
+            return existing
+        return candidate
 
     def _evict(self, entry: _PooledClient) -> None:
         with self._lock:
@@ -170,7 +221,10 @@ class MCPClientManager:
     def invoke_tool(
         self,
         *,
+        tenant_id: str,
+        user_id: str | None,
         server_url: str,
+        provider_id: str | None,
         headers: dict[str, str] | None,
         timeout: float | None,
         sse_read_timeout: float | None,
@@ -182,14 +236,20 @@ class MCPClientManager:
         """Invoke a tool on a pooled connection.
 
         A pooled connection that turns out to be dead (`MCPConnectionError`)
-        is closed and the call is retried once on a fresh connection, so a
+        is evicted and the call retried once on a fresh connection, so a
         stale pool entry fails no more calls than connect-per-invocation did.
-        Auth failures must not retry here (`MCPAuthError` also extends
-        `MCPConnectionError`): the pooled client refreshes tokens internally,
-        so an error that escapes it means re-auth is not possible, and
-        re-invoking could execute the tool twice. They propagate untouched.
+        Auth failures are deliberately not retried (`MCPAuthError` also
+        extends `MCPConnectionError`): token refresh already happened inside
+        the client, so an auth error that escapes it means re-auth is not
+        possible, and re-invoking could execute the tool twice. Any other
+        error escaping a session (e.g. a `ValueError` from transport-level
+        parsing) evicts the entry without a retry — the next call reconnects
+        instead of failing on the same broken session for a full TTL.
         """
-        entry = self._acquire(server_url, headers, timeout, sse_read_timeout, provider_entity, forward_identity_active)
+        key = self._make_key(tenant_id, user_id, server_url, provider_id, timeout, sse_read_timeout)
+        entry = self._acquire(
+            key, server_url, headers, timeout, sse_read_timeout, provider_entity, forward_identity_active
+        )
         try:
             with entry.lock:
                 return entry.client.invoke_tool(tool_name=tool_name, tool_args=tool_args)
@@ -199,15 +259,23 @@ class MCPClientManager:
             logger.info("Pooled MCP connection to %s died; reconnecting once", server_url)
             self._evict(entry)
             entry = self._acquire(
-                server_url, headers, timeout, sse_read_timeout, provider_entity, forward_identity_active
+                key, server_url, headers, timeout, sse_read_timeout, provider_entity, forward_identity_active
             )
             with entry.lock:
                 return entry.client.invoke_tool(tool_name=tool_name, tool_args=tool_args)
+        except ValueError:
+            # The session may be corrupted (e.g. an unexpected content type in
+            # the streamable client kills its receive loop): drop it so the
+            # next call reconnects. No retry — the tool may already have run.
+            self._evict(entry)
+            raise
         finally:
             entry.last_used = time.monotonic()
+            if entry.doomed:
+                self._shutdown_entry(entry)
 
     def close_all(self) -> None:
-        """Close every pooled client (used on shutdown and in tests)."""
+        """Close every pooled client (registered as an atexit hook)."""
         with self._lock:
             entries = list(self._clients.values())
             self._clients.clear()
@@ -227,6 +295,14 @@ def get_mcp_client_manager() -> MCPClientManager:
         return _manager
 
 
+def close_all_mcp_clients() -> None:
+    """Close every pooled client, so stateful servers do not outlive the process."""
+    with _manager_lock:
+        manager = _manager
+    if manager is not None:
+        manager.close_all()
+
+
 def reset_mcp_client_manager() -> None:
     """Drop the process-wide manager (tests only)."""
     global _manager
@@ -235,3 +311,9 @@ def reset_mcp_client_manager() -> None:
         _manager = None
     if manager is not None:
         manager.close_all()
+
+
+# Mirror core/helper/http_client_pooling.py: pooled resources get an atexit
+# hook so long-lived sessions (e.g. a Playwright browser) are closed when the
+# process exits instead of idling until the TTL.
+atexit.register(close_all_mcp_clients)

@@ -322,15 +322,20 @@ class MCPTool(Tool):
             forward_identity_active = True
 
         # Step 2: Session is now closed, perform network operations without holding database connection.
-        # The pooled manager reuses one connection across calls so stateful MCP
-        # servers (e.g. Playwright) keep their session state between calls; it
-        # reconnects once when a pooled connection has died, and auth retries
-        # are handled inside the pooled client.
+        # The pooled manager reuses one connection per stable scope (tenant,
+        # end user, provider config, server) so stateful MCP servers (e.g.
+        # Playwright) keep their session state between calls without sharing
+        # it across users; per-call credentials are used to connect but not
+        # to key the pool. It reconnects once when a pooled connection has
+        # died, and auth retries are handled inside the pooled client.
         from core.mcp.client_manager import get_mcp_client_manager
 
         try:
             return get_mcp_client_manager().invoke_tool(
+                tenant_id=self.tenant_id,
+                user_id=user_id,
                 server_url=server_url,
+                provider_id=provider_entity.id,
                 headers=headers,
                 timeout=self.timeout,
                 sse_read_timeout=self.sse_read_timeout,
