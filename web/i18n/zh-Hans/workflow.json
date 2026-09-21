@@ -690,6 +690,7 @@
   "nodes.humanInputV2.debug.channel.slack": "Slack",
   "nodes.humanInputV2.debug.channel.we_com": "企业微信",
   "nodes.humanInputV2.debug.configure": "配置调试模式",
+  "nodes.humanInputV2.debug.keepOneChannel": "至少保留一个渠道开启",
   "nodes.humanInputV2.debug.sendVia": "通过以下渠道发送调试通知",
   "nodes.humanInputV2.debug.title": "调试模式",
   "nodes.humanInputV2.debug.toggle": "启用调试模式",

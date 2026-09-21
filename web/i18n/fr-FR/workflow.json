@@ -642,6 +642,7 @@
   "nodes.humanInputMigration.error.graphChanged": "Le workflow a été modifié pendant la migration. Réessayez ; vos modifications actuelles ont été conservées.",
   "nodes.humanInputMigration.error.sync": "Le workflow migré n’a pas pu être enregistré. Vérifiez le brouillon actuel et réessayez.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
+  "nodes.humanInputV2.debug.keepOneChannel": "Gardez au moins un canal activé",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Tous les contacts de l’espace de travail",
   "nodes.humanInputV2.recipients.allWorkspaceContactsDescription": "Tous les contacts de l’espace de travail actuel peuvent répondre.",
   "nodes.humanInputV2.recipients.type.all_workspace_contacts": "Tous les contacts de l’espace de travail",

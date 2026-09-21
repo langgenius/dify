@@ -1,10 +1,12 @@
 import type { HumanInputV2NodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import Divider from '@/app/components/base/divider'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import HumanInputSharedPanelSections from '@/app/components/workflow/nodes/human-input/shared/panel-sections'
 import { VarType } from '@/app/components/workflow/types'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import DebugMode from './components/debug-mode'
 import MessageTemplate from './components/message-template'
 import Recipients from './components/recipients'
@@ -12,6 +14,10 @@ import useHumanInputV2Config from './use-config'
 
 export const HumanInputV2Panel = ({ id, data }: NodePanelProps<HumanInputV2NodeType>) => {
   const config = useHumanInputV2Config(id, data)
+  const { data: email } = useQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: (variable: Var) =>
@@ -26,6 +32,7 @@ export const HumanInputV2Panel = ({ id, data }: NodePanelProps<HumanInputV2NodeT
           value={config.inputs.recipients_spec}
           onChange={config.handleRecipientsChange}
           readonly={config.readOnly}
+          availableNodes={availableNodesWithParent}
         />
         <div className="px-4 py-2">
           <Divider className="my-0! h-px! bg-divider-subtle!" />
@@ -39,6 +46,7 @@ export const HumanInputV2Panel = ({ id, data }: NodePanelProps<HumanInputV2NodeT
           availableNodes={availableNodesWithParent}
         />
         <DebugMode
+          email={email}
           value={config.inputs.debug_mode}
           onChange={config.handleDebugModeChange}
           readonly={config.readOnly}

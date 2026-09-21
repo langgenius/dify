@@ -690,6 +690,7 @@
   "nodes.humanInputV2.debug.channel.slack": "Slack",
   "nodes.humanInputV2.debug.channel.we_com": "WeCom",
   "nodes.humanInputV2.debug.configure": "Configure Debug Mode",
+  "nodes.humanInputV2.debug.keepOneChannel": "Keep at least one channel on",
   "nodes.humanInputV2.debug.sendVia": "Send debug notifications via",
   "nodes.humanInputV2.debug.title": "Debug Mode",
   "nodes.humanInputV2.debug.toggle": "Enable Debug Mode",

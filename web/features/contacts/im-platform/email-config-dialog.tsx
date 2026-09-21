@@ -15,7 +15,8 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import { useSaveContactImCredentials, useTestContactImConnection } from './hooks'
 import { ContactImProvider, ContactImRepositoryError, ContactImRepositoryErrorCode } from './types'
 
@@ -39,6 +40,7 @@ export function ContactEmailConfigDialog({
 }: ContactEmailConfigDialogProps) {
   const { t } = useTranslation('contacts')
   const { t: tCommon } = useTranslation('common')
+  const docLink = useDocLink()
   const formRef = useRef<HTMLFormElement>(null)
   const saveCredentials = useSaveContactImCredentials()
   const testConnection = useTestContactImConnection()
@@ -134,10 +136,14 @@ export function ContactEmailConfigDialog({
             {t(($) => $['imPlatform.email.title'])}
           </DialogTitle>
           <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $['imPlatform.email.description'])}{' '}
+            <Trans
+              ns="contacts"
+              i18nKey={($) => $['imPlatform.email.description']}
+              components={{ emphasis: <span className="text-text-secondary" /> }}
+            />{' '}
             <a
               className="text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              href="https://docs.dify.ai/"
+              href={docLink('/use-dify/nodes/human-input')}
               rel="noreferrer"
               target="_blank"
             >
@@ -171,7 +177,32 @@ export function ContactEmailConfigDialog({
               </div>
 
               <p className="pb-0.5 body-xs-regular text-text-tertiary">
-                {t(($) => $['imPlatform.email.resendDescription'])}
+                <Trans
+                  ns="contacts"
+                  i18nKey={($) => $['imPlatform.email.resendDescription']}
+                  components={{
+                    apiKey: (
+                      <a
+                        className="rounded-sm underline decoration-text-tertiary/30 underline-offset-2 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                        href="https://resend.com/docs/dashboard/api-keys/introduction"
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Resend {t(($) => $['imPlatform.email.apiKey'])}
+                      </a>
+                    ),
+                    resend: (
+                      <a
+                        className="rounded-sm underline decoration-text-tertiary/30 underline-offset-2 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                        href="https://www.resend.com/"
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Resend
+                      </a>
+                    ),
+                  }}
+                />
               </p>
 
               <Field name="senderEmail">

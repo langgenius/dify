@@ -642,6 +642,7 @@
   "nodes.humanInputMigration.error.graphChanged": "Alur kerja berubah selama migrasi. Coba lagi; perubahan Anda saat ini telah dipertahankan.",
   "nodes.humanInputMigration.error.sync": "Alur kerja yang dimigrasikan tidak dapat disimpan. Periksa draf saat ini dan coba lagi.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
+  "nodes.humanInputV2.debug.keepOneChannel": "Biarkan setidaknya satu saluran tetap aktif",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Semua kontak ruang kerja",
   "nodes.humanInputV2.recipients.allWorkspaceContactsDescription": "Semua kontak di ruang kerja saat ini dapat merespons.",
   "nodes.humanInputV2.recipients.type.all_workspace_contacts": "Semua kontak ruang kerja",

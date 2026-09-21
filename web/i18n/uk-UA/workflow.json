@@ -642,6 +642,7 @@
   "nodes.humanInputMigration.error.graphChanged": "Робочий процес змінився під час міграції. Спробуйте ще раз; поточні зміни збережено.",
   "nodes.humanInputMigration.error.sync": "Не вдалося зберегти перенесений робочий процес. Перегляньте поточну чернетку та спробуйте ще раз.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
+  "nodes.humanInputV2.debug.keepOneChannel": "Залиште ввімкненим принаймні один канал",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Усі контакти робочого простору",
   "nodes.humanInputV2.recipients.allWorkspaceContactsDescription": "Усі контакти поточного робочого простору можуть відповісти.",
   "nodes.humanInputV2.recipients.type.all_workspace_contacts": "Усі контакти робочого простору",

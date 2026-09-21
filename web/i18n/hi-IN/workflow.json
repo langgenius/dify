@@ -642,6 +642,7 @@
   "nodes.humanInputMigration.error.graphChanged": "माइग्रेशन के दौरान वर्कफ़्लो बदल गया। फिर से कोशिश करें; आपके वर्तमान संपादन सुरक्षित हैं।",
   "nodes.humanInputMigration.error.sync": "माइग्रेट किए गए वर्कफ़्लो को सहेजा नहीं जा सका। वर्तमान ड्राफ़्ट की जाँच करें और फिर से कोशिश करें।",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
+  "nodes.humanInputV2.debug.keepOneChannel": "कम से कम एक चैनल चालू रखें",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "कार्यस्थान के सभी संपर्क",
   "nodes.humanInputV2.recipients.allWorkspaceContactsDescription": "वर्तमान कार्यस्थान के सभी संपर्क जवाब दे सकते हैं।",
   "nodes.humanInputV2.recipients.type.all_workspace_contacts": "कार्यस्थान के सभी संपर्क",

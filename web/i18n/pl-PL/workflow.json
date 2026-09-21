@@ -642,6 +642,7 @@
   "nodes.humanInputMigration.error.graphChanged": "Przepływ pracy zmienił się podczas migracji. Spróbuj ponownie; bieżące zmiany zostały zachowane.",
   "nodes.humanInputMigration.error.sync": "Nie udało się zapisać zmigrowanego przepływu pracy. Sprawdź bieżący szkic i spróbuj ponownie.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
+  "nodes.humanInputV2.debug.keepOneChannel": "Pozostaw włączony co najmniej jeden kanał",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Wszystkie kontakty w obszarze roboczym",
   "nodes.humanInputV2.recipients.allWorkspaceContactsDescription": "Wszystkie kontakty w bieżącym obszarze roboczym mogą odpowiedzieć.",
   "nodes.humanInputV2.recipients.type.all_workspace_contacts": "Wszystkie kontakty w obszarze roboczym",

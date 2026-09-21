@@ -31,6 +31,11 @@ vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(() => true),
 }))
 
+vi.mock('@/context/i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/context/i18n')>()),
+  useDocLink: () => (path: string) => `https://docs.dify.ai/en/cloud${path}`,
+}))
+
 const organization = {
   canManage: true,
   organizationId: 'org-surface',
@@ -203,13 +208,22 @@ describe('Contacts IM platform binding flows', () => {
     )
 
     expect(copy).toHaveBeenCalledWith('https://example.dify.test/contacts/im/slack/callback')
+    expect(
+      screen.getByRole('link', { name: 'contacts.imPlatform.action.setupGuide' }),
+    ).toHaveAttribute(
+      'href',
+      'https://docs.slack.dev/app-manifests/configuring-apps-with-app-manifests/',
+    )
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.connect' }),
+    ).toBeInTheDocument()
   })
 
   it('associates required credential errors with their fields', async () => {
     const user = userEvent.setup()
     renderSurface()
     await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
-    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.connect' }))
 
     expect(screen.getAllByText('contacts.imPlatform.bindingDialog.required')).toHaveLength(2)
     const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
@@ -260,7 +274,7 @@ describe('Contacts IM platform binding flows', () => {
       screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
       submittedSecret,
     )
-    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.connect' }))
 
     expect(await screen.findByText('contacts.imPlatform.status.configured')).toBeInTheDocument()
     expect(screen.queryByDisplayValue(submittedSecret)).not.toBeInTheDocument()
@@ -284,7 +298,7 @@ describe('Contacts IM platform binding flows', () => {
       screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
       'feishu-test-secret',
     )
-    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.connect' }))
 
     expect(await screen.findByText('contacts.imPlatform.status.configured')).toBeInTheDocument()
     expect(authorize).not.toHaveBeenCalled()
@@ -305,7 +319,7 @@ describe('Contacts IM platform binding flows', () => {
     const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret')
     await user.type(appId, 'safe-app-id')
     await user.type(secret, 'clear-on-failure')
-    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.connect' }))
 
     expect(
       await screen.findByText('contacts.imPlatform.bindingDialog.saveFailed'),
@@ -333,7 +347,7 @@ describe('Contacts IM platform binding flows', () => {
       screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
       'replacement-test-secret',
     )
-    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.connect' }))
 
     await waitFor(async () => {
       const integrations = await repository.getIntegrations(organization.organizationId)
@@ -362,7 +376,7 @@ describe('Contacts IM platform binding flows', () => {
       screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
       'pending-secret',
     )
-    const saveButton = screen.getByRole('button', { name: 'contacts.imPlatform.action.save' })
+    const saveButton = screen.getByRole('button', { name: 'contacts.imPlatform.action.connect' })
     await user.click(saveButton)
 
     expect(saveButton).toHaveAttribute('aria-disabled', 'true')
@@ -412,6 +426,10 @@ describe('Contacts IM platform binding flows', () => {
     expect(screen.getByLabelText('contacts.imPlatform.email.senderEmail')).toBeRequired()
     expect(screen.getByLabelText('contacts.imPlatform.email.senderName')).toBeRequired()
     expect(screen.getByLabelText('contacts.imPlatform.email.apiKey')).toBeRequired()
+    expect(screen.getByRole('link', { name: 'contacts.imPlatform.learnMore' })).toHaveAttribute(
+      'href',
+      'https://docs.dify.ai/en/cloud/use-dify/nodes/human-input',
+    )
   })
 
   it('tests a valid Email configuration without closing the dialog or retaining the API key', async () => {
@@ -879,7 +897,7 @@ describe('Contacts channel credential API contracts', () => {
       screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
       'replacement-secret',
     )
-    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.connect' }))
     expect(await screen.findByText('contacts.imPlatform.configurationUpdated')).toBeInTheDocument()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(save).toHaveBeenCalledWith(

@@ -7,6 +7,34 @@ import { HUMAN_INPUT_V2_DEBUG_CHANNELS } from '../types'
 const channelLabel = (channel: string) => `workflow.nodes.humanInputV2.debug.channel.${channel}`
 
 describe('Human Input v2 Debug Mode', () => {
+  it('shows the real email and prevents clearing the final selected channel with an explanatory tooltip', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <DebugMode
+        value={{ enabled: true, channels: ['email'] }}
+        onChange={onChange}
+        readonly={false}
+        email="reviewer@example.com"
+      />,
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.debug.configure' }),
+    )
+    const checkbox = screen.getByRole('checkbox', { name: channelLabel('email') })
+    expect(checkbox).toBeChecked()
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('reviewer@example.com')).toBeInTheDocument()
+    await user.click(screen.getByText(channelLabel('email')))
+    expect(onChange).not.toHaveBeenCalled()
+    await user.unhover(screen.getByText(channelLabel('email')))
+    await user.hover(checkbox)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'workflow.nodes.humanInputV2.debug.keepOneChannel',
+    )
+    await user.click(screen.getByRole('checkbox', { name: channelLabel('slack') }))
+    expect(onChange).toHaveBeenLastCalledWith({ enabled: true, channels: ['email', 'slack'] })
+  })
   it('edits supported channel values and only emits DSL changes', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

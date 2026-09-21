@@ -3,10 +3,13 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { downloadBlob } from '@/utils/download'
 import { ContactsImPlatformProvider } from '../composition'
 import { createContactImMockRepository } from '../mock/repository'
 import { createContactImSyncApi } from '../repository'
 import { ContactImSyncDetailsDialog } from '../sync-details-dialog'
+
+vi.mock('@/utils/download', () => ({ downloadBlob: vi.fn() }))
 
 type SyncClient = NonNullable<Parameters<typeof createContactImSyncApi>[1]>
 type ImSyncResultItem = Awaited<
@@ -150,6 +153,106 @@ const renderDetails = ({
 }
 
 describe('Contact IM sync details dialog', () => {
+  beforeEach(() => vi.mocked(downloadBlob).mockClear())
+
+  it('exports every page and result category, escaping spreadsheet formulas and CSV values', async () => {
+    const user = userEvent.setup()
+    const { results } = renderDetails()
+    expect(await screen.findByText('Member 1')).toBeInTheDocument()
+    const getResults = results.getMockImplementation()
+    if (!getResults) throw new Error('Expected the real-contract result fixture')
+    results.mockImplementation(async (...args) => {
+      const response = await getResults(...args)
+      const first = response.data[0]?.result
+      if (first?.type === 'added') {
+        first.contact.name = ' =HYPERLINK("https://example.com")'
+        if (first.entry) first.entry.display_name = 'Name, "quoted"'
+      }
+      return response
+    })
+
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.details.downloadReport' }),
+    )
+
+    await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1))
+    const download = vi.mocked(downloadBlob).mock.calls[0]?.[0]
+    if (!download) throw new Error('Expected a complete CSV download')
+    const content = await download.data.text()
+    expect(download.fileName).toBe('im-sync-sync-latest.csv')
+    expect(content.split('\r\n')).toHaveLength(26)
+    expect(content).toContain("' =HYPERLINK")
+    expect(content).toContain('"Name, ""quoted"""')
+    expect(content).toContain('member-21')
+    expect(content).toContain('removed-member')
+    expect(content).toContain('Directory access denied')
+    for (const result of ['added', 'not_matched', 'failed', 'removed', 'skipped'])
+      expect(results).toHaveBeenCalledWith(
+        { query: { result, page: 1, limit: 20 } },
+        { context: { silent: true } },
+      )
+    expect(results).toHaveBeenCalledWith(
+      { query: { result: 'added', page: 2, limit: 20 } },
+      { context: { silent: true } },
+    )
+  })
+
+  it('does not download a partial report when a page fails and permits a complete retry', async () => {
+    const user = userEvent.setup()
+    renderDetails({ pageFailure: true })
+    expect(await screen.findByText('Member 1')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.details.downloadReport' }),
+    )
+    expect(
+      await screen.findByText('contacts.imPlatform.details.downloadFailed'),
+    ).toBeInTheDocument()
+    expect(downloadBlob).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.details.downloadReport' }),
+    )
+    await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1))
+  })
+
+  it('refuses the report if another sync becomes latest while a result page loads', async () => {
+    const user = userEvent.setup()
+    const { latest, results } = renderDetails()
+    expect(await screen.findByText('Member 1')).toBeInTheDocument()
+    const getResults = results.getMockImplementation()
+    if (!getResults) throw new Error('Expected the real-contract result fixture')
+    results.mockImplementationOnce(async (...args) => {
+      latest.mockResolvedValue({ run: createRun({ id: 'new-run' }) })
+      return getResults(...args)
+    })
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.details.downloadReport' }),
+    )
+    expect(await screen.findByText('contacts.imPlatform.details.reportChanged')).toBeInTheDocument()
+    expect(downloadBlob).not.toHaveBeenCalled()
+  })
+
+  it('refuses incomplete result totals instead of exporting a truncated report', async () => {
+    const user = userEvent.setup()
+    const { results } = renderDetails()
+    expect(await screen.findByText('Member 1')).toBeInTheDocument()
+    results.mockResolvedValueOnce({ data: [addedItem(1)], page: 1, limit: 20, total: 1 })
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.details.downloadReport' }),
+    )
+    expect(
+      await screen.findByText('contacts.imPlatform.details.downloadFailed'),
+    ).toBeInTheDocument()
+    expect(downloadBlob).not.toHaveBeenCalled()
+  })
+
+  it('disables report download until the synchronization reaches a terminal state', async () => {
+    renderDetails({ run: createRun({ status: 'running', finished_at: null }) })
+    expect(
+      await screen.findByRole('button', { name: 'contacts.imPlatform.details.downloadReport' }),
+    ).toBeDisabled()
+    expect(downloadBlob).not.toHaveBeenCalled()
+  })
+
   it('uses the five server result categories and never requests an all-results filter', async () => {
     const { results } = renderDetails()
     expect(await screen.findByText('Member 1')).toBeInTheDocument()

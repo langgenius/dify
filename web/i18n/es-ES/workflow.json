@@ -642,6 +642,7 @@
   "nodes.humanInputMigration.error.graphChanged": "El flujo de trabajo cambió durante la migración. Inténtalo de nuevo; se han conservado tus cambios actuales.",
   "nodes.humanInputMigration.error.sync": "No se pudo guardar el flujo de trabajo migrado. Revisa el borrador actual e inténtalo de nuevo.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
+  "nodes.humanInputV2.debug.keepOneChannel": "Mantén al menos un canal activado",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Todos los contactos del espacio de trabajo",
   "nodes.humanInputV2.recipients.allWorkspaceContactsDescription": "Todos los contactos del espacio de trabajo actual pueden responder.",
   "nodes.humanInputV2.recipients.type.all_workspace_contacts": "Todos los contactos del espacio de trabajo",

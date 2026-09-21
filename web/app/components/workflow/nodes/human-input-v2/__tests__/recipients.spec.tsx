@@ -5,12 +5,14 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2Recipient } from '../types'
+import type { Node } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useState } from 'react'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/client'
 import Recipients from '../components/recipients'
 
@@ -80,11 +82,13 @@ const Harness = ({
   optionProvider = provider(),
   readonly = false,
   observe,
+  availableNodes,
 }: {
   initial?: HumanInputV2Recipient[]
   optionProvider?: ContactRecipientOptionProvider
   readonly?: boolean
   observe?: (value: HumanInputV2Recipient[]) => void
+  availableNodes?: Node[]
 }) => {
   const [value, setValue] = useState(initial)
   return (
@@ -92,6 +96,7 @@ const Harness = ({
       nodeId="human-input-v2"
       value={value}
       provider={optionProvider}
+      availableNodes={availableNodes}
       readonly={readonly}
       onChange={(nextValue) => {
         setValue(nextValue)
@@ -106,6 +111,183 @@ describe('Human Input v2 Recipients', () => {
     vi.clearAllMocks()
     runtimeApi.contacts.mockResolvedValue({ data: [], total: 7, page: 1, limit: 1 })
     runtimeApi.options.mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 })
+  })
+
+  it('searches and selects real contacts directly from the main recipient input', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    const optionProvider = provider()
+    render(<Harness optionProvider={optionProvider} observe={observe} />)
+
+    const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+    await user.type(input, 'Evan')
+    expect(optionProvider.search).toHaveBeenLastCalledWith('Evan')
+    expect(input).toHaveFocus()
+    await user.click(await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' }))
+
+    expect(observe).toHaveBeenLastCalledWith([{ type: 'contact', contact_id: contact.id }])
+    expect(input).toHaveValue('')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('uses Enter to choose a matching contact name instead of reporting an invalid email', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    render(<Harness observe={observe} />)
+
+    await user.type(
+      screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'),
+      'Evan',
+    )
+    await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+    await user.keyboard('{Enter}')
+
+    expect(observe).toHaveBeenLastCalledWith([{ type: 'contact', contact_id: contact.id }])
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('does not add a previous search result when Enter is pressed after clearing the input', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    render(<Harness observe={observe} />)
+    const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+
+    await user.type(input, 'Evan')
+    await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+    await user.clear(input)
+    await user.keyboard('{Enter}')
+
+    expect(observe).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('only selects a result from the active source filter when Enter is pressed in the main input', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    render(
+      <Harness
+        observe={observe}
+        optionProvider={provider({ search: vi.fn(async () => [contact, organizationContact]) })}
+      />,
+    )
+    const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+    await user.type(input, 'a')
+    await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.organization',
+      }),
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).not.toBeInTheDocument()
+    act(() => input.focus())
+    await user.keyboard('{Enter}')
+
+    expect(observe).toHaveBeenLastCalledWith([
+      { type: 'contact', contact_id: organizationContact.id },
+    ])
+  })
+
+  it('keeps the selected contact label while pending but removes it when the server cannot resolve it', async () => {
+    const user = userEvent.setup()
+    let finishResolve: (options: ContactRecipientOption[]) => void = () => undefined
+    const resolve = vi.fn(
+      () =>
+        new Promise<ContactRecipientOption[]>((finish) => {
+          finishResolve = finish
+        }),
+    )
+    render(<Harness optionProvider={provider({ resolve })} />)
+    await user.type(
+      screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'),
+      'Evan',
+    )
+    await user.click(await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' }))
+
+    expect(
+      screen.getByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(contact.id)).not.toBeInTheDocument()
+    await act(async () => finishResolve([]))
+    expect(
+      screen.queryByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText(contact.id)).toBeInTheDocument()
+  })
+
+  it('discards a previously resolved contact after a later successful response omits it', async () => {
+    const resolve = vi.fn().mockResolvedValueOnce([contact]).mockResolvedValueOnce([])
+    const optionProvider = provider({ resolve })
+    const recipients: HumanInputV2Recipient[] = [{ type: 'contact', contact_id: contact.id }]
+    const { rerender } = render(
+      <Recipients
+        nodeId="human-input-v2"
+        value={recipients}
+        provider={optionProvider}
+        readonly={false}
+        onChange={vi.fn()}
+      />,
+    )
+    await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+
+    rerender(
+      <Recipients
+        nodeId="human-input-v2"
+        value={[...recipients, { type: 'initiator' }]}
+        provider={optionProvider}
+        readonly={false}
+        onChange={vi.fn()}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: 'Evan Zhang · evan@example.com',
+        }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(screen.getByText(contact.id)).toBeInTheDocument()
+  })
+
+  it('does not select a recipient while confirming an IME composition', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    render(<Harness observe={observe} />)
+    const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+    await user.type(input, 'Evan')
+    await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
+    expect(observe).not.toHaveBeenCalled()
+    expect(input).toHaveValue('Evan')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('displays and updates the node title for a dynamic recipient instead of its internal id', () => {
+    const source: Node = {
+      id: 'node-17290001',
+      position: { x: 0, y: 0 },
+      data: { type: BlockEnum.Start, title: 'Request details', desc: '' },
+    }
+    const initial: HumanInputV2Recipient[] = [
+      { type: 'dynamic_email', selector: [source.id, 'owner_email'] },
+    ]
+    const { rerender } = render(<Harness initial={initial} availableNodes={[source]} readonly />)
+
+    expect(screen.getByText('Request details')).toBeInTheDocument()
+    expect(screen.getByText('owner_email')).toBeInTheDocument()
+    expect(screen.queryByText(/node-17290001/)).not.toBeInTheDocument()
+    rerender(
+      <Harness
+        initial={initial}
+        availableNodes={[{ ...source, data: { ...source.data, title: 'Requester' } }]}
+        readonly
+      />,
+    )
+    expect(screen.getByText('Requester')).toBeInTheDocument()
+    expect(screen.queryByText('Request details')).not.toBeInTheDocument()
   })
 
   it.each(['owner', 'editor'] as const)(
@@ -259,7 +441,7 @@ describe('Human Input v2 Recipients', () => {
     const observe = vi.fn()
     render(<Harness observe={observe} />)
 
-    const emailInput = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.emailLabel')
+    const emailInput = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
     await user.type(emailInput, 'owner@example.com{Enter}')
     await user.click(
       screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
@@ -301,7 +483,7 @@ describe('Human Input v2 Recipients', () => {
       1,
     )
     await user.type(
-      screen.getByLabelText('workflow.nodes.humanInputV2.recipients.emailLabel'),
+      screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'),
       'OWNER@example.com{Enter}',
     )
     expect(screen.getByRole('alert')).toHaveTextContent(

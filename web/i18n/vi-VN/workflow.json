@@ -642,6 +642,7 @@
   "nodes.humanInputMigration.error.graphChanged": "Quy trình đã thay đổi trong khi di chuyển. Hãy thử lại; các chỉnh sửa hiện tại đã được giữ lại.",
   "nodes.humanInputMigration.error.sync": "Không thể lưu quy trình đã di chuyển. Hãy kiểm tra bản nháp hiện tại và thử lại.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
+  "nodes.humanInputV2.debug.keepOneChannel": "Giữ ít nhất một kênh được bật",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Tất cả liên hệ trong không gian làm việc",
   "nodes.humanInputV2.recipients.allWorkspaceContactsDescription": "Tất cả liên hệ trong không gian làm việc hiện tại đều có thể trả lời.",
   "nodes.humanInputV2.recipients.type.all_workspace_contacts": "Tất cả liên hệ trong không gian làm việc",

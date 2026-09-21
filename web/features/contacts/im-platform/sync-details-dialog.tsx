@@ -17,11 +17,18 @@ import {
   SegmentedControlDivider,
   SegmentedControlItem,
 } from '@langgenius/dify-ui/segmented-control'
+import { useMutation } from '@tanstack/react-query'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { jsonToCSV } from 'react-papaparse'
+import { downloadBlob } from '@/utils/download'
 import { ContactChannelIcon } from '../management/channel-icon'
+import { useContactsImPlatformRepository } from './composition-context'
 import { useContactImSyncItems, useContactImSyncRun } from './hooks'
+import { loadContactImSyncReport } from './repository'
 import {
+  ContactImRepositoryError,
+  ContactImRepositoryErrorCode,
   ContactImSyncStatus,
   ContactImSafeReason as SafeReason,
   ContactImSyncResult as SyncResult,
@@ -58,6 +65,45 @@ export function ContactImSyncDetailsDialog({
 }) {
   const { t, i18n } = useTranslation('contacts')
   const { t: tCommon } = useTranslation('common')
+  const repository = useContactsImPlatformRepository()
+  const reportDownload = useMutation({
+    mutationFn: (id: string) => loadContactImSyncReport(repository, id),
+    onSuccess: ({ run: reportRun, items: reportItems }) => {
+      const content = jsonToCSV(
+        {
+          fields: [
+            'run_id',
+            'result',
+            'contact_id',
+            'contact_name',
+            'contact_email',
+            'provider',
+            'platform_user_id',
+            'platform_display_name',
+            'platform_email',
+            'reason',
+          ],
+          data: reportItems.map((item) => [
+            reportRun.id,
+            item.result,
+            item.matchedContact?.id ?? '',
+            item.matchedContact?.name ?? '',
+            item.matchedContact?.email ?? '',
+            reportRun.provider ?? '',
+            item.platformIdentity.platformUserId ?? '',
+            item.platformIdentity.displayName ?? '',
+            item.platformIdentity.email ?? '',
+            item.reason ?? item.safeReason ?? '',
+          ]),
+        },
+        { escapeFormulae: /^[\t\r\n]|^\s*[=+\-@]/ },
+      )
+      downloadBlob({
+        data: new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' }),
+        fileName: `im-sync-${reportRun.id}.csv`,
+      })
+    },
+  })
   const [resultFilter, setResultFilter] = useState<ContactImSyncResult>(SyncResult.Added)
   const runQuery = useContactImSyncRun(open ? runId : null)
   const run = runQuery.data
@@ -175,44 +221,69 @@ export function ContactImSyncDetailsDialog({
           />
         ) : (
           <>
-            <div className="shrink-0 overflow-x-auto px-6 py-1">
-              <SegmentedControl
-                aria-label={t(($) => $['imPlatform.details.filters'])}
-                value={resultFilter}
-                onValueChange={(value) => {
-                  const result = results.find((result) => result === value)
-                  if (result) setResultFilter(result)
-                }}
-              >
-                {results.map((result, index) => (
-                  <Fragment key={result}>
-                    {index > 0 && (
-                      <SegmentedControlDivider
-                        className={cn(
-                          '-mx-px',
-                          (resultFilter === result || resultFilter === results[index - 1]) &&
-                            'invisible',
-                        )}
-                      />
-                    )}
-                    <SegmentedControlItem
-                      className="gap-1 px-2.5 data-checked:text-text-primary"
-                      value={result}
-                    >
-                      {resultLabels[result]}{' '}
-                      <span
-                        className={cn(
-                          'min-w-4 rounded-[5px] border px-0.75 text-center text-[10px] leading-3 font-medium',
-                          resultToneClassNames[result],
-                        )}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-6 py-1">
+              <div className="min-w-0 overflow-x-auto">
+                <SegmentedControl
+                  aria-label={t(($) => $['imPlatform.details.filters'])}
+                  value={resultFilter}
+                  onValueChange={(value) => {
+                    const result = results.find((result) => result === value)
+                    if (result) setResultFilter(result)
+                  }}
+                >
+                  {results.map((result, index) => (
+                    <Fragment key={result}>
+                      {index > 0 && (
+                        <SegmentedControlDivider
+                          className={cn(
+                            '-mx-px',
+                            (resultFilter === result || resultFilter === results[index - 1]) &&
+                              'invisible',
+                          )}
+                        />
+                      )}
+                      <SegmentedControlItem
+                        className="gap-1 px-2.5 data-checked:text-text-primary"
+                        value={result}
                       >
-                        {run.counts[result] ?? 0}
-                      </span>
-                    </SegmentedControlItem>
-                  </Fragment>
-                ))}
-              </SegmentedControl>
+                        {resultLabels[result]}{' '}
+                        <span
+                          className={cn(
+                            'min-w-4 rounded-[5px] border px-0.75 text-center text-[10px] leading-3 font-medium',
+                            resultToneClassNames[result],
+                          )}
+                        >
+                          {run.counts[result] ?? 0}
+                        </span>
+                      </SegmentedControlItem>
+                    </Fragment>
+                  ))}
+                </SegmentedControl>
+              </div>
+              <Button
+                className="shrink-0"
+                disabled={
+                  run.status === ContactImSyncStatus.Queued ||
+                  run.status === ContactImSyncStatus.Running
+                }
+                loading={reportDownload.isPending}
+                onClick={() => reportDownload.mutate(run.id)}
+              >
+                <span aria-hidden className="i-ri-download-line size-4" />
+                {reportDownload.isPending
+                  ? t(($) => $['imPlatform.details.downloadingReport'])
+                  : t(($) => $['imPlatform.details.downloadReport'])}
+              </Button>
             </div>
+
+            {reportDownload.isError && (
+              <div role="alert" className="px-6 pt-2 system-xs-regular text-text-destructive">
+                {reportDownload.error instanceof ContactImRepositoryError &&
+                reportDownload.error.code === ContactImRepositoryErrorCode.SyncRunNotFound
+                  ? t(($) => $['imPlatform.details.reportChanged'])
+                  : t(($) => $['imPlatform.details.downloadFailed'])}
+              </div>
+            )}
 
             <div className="min-h-0 flex-1 overflow-auto px-6 pt-2 pb-6">
               <table className="w-full table-fixed border-collapse text-left">
@@ -239,7 +310,7 @@ export function ContactImSyncDetailsDialog({
                             />
                           )}
                           <div className="min-w-0">
-                            <div className="truncate system-md-regular text-text-secondary">
+                            <div className="truncate system-md-medium text-text-secondary">
                               {item.matchedContact?.name ?? missing}
                             </div>
                             {item.matchedContact?.email && (

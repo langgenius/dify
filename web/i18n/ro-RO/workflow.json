@@ -642,6 +642,7 @@
   "nodes.humanInputMigration.error.graphChanged": "Fluxul de lucru s-a modificat în timpul migrării. Încercați din nou; modificările curente au fost păstrate.",
   "nodes.humanInputMigration.error.sync": "Fluxul de lucru migrat nu a putut fi salvat. Verificați schița curentă și încercați din nou.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
+  "nodes.humanInputV2.debug.keepOneChannel": "Păstrează cel puțin un canal activ",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Toate contactele din spațiul de lucru",
   "nodes.humanInputV2.recipients.allWorkspaceContactsDescription": "Toate contactele din spațiul de lucru curent pot răspunde.",
   "nodes.humanInputV2.recipients.type.all_workspace_contacts": "Toate contactele din spațiul de lucru",

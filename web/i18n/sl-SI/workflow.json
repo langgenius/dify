@@ -642,6 +642,7 @@
   "nodes.humanInputMigration.error.graphChanged": "Delovni tok se je med selitvijo spremenil. Poskusite znova; trenutne spremembe so ohranjene.",
   "nodes.humanInputMigration.error.sync": "Preseljenega delovnega toka ni bilo mogoče shraniti. Preglejte trenutni osnutek in poskusite znova.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
+  "nodes.humanInputV2.debug.keepOneChannel": "Ohranite vklopljen vsaj en kanal",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Vsi stiki v delovnem prostoru",
   "nodes.humanInputV2.recipients.allWorkspaceContactsDescription": "Vsi stiki v trenutnem delovnem prostoru lahko odgovorijo.",
   "nodes.humanInputV2.recipients.type.all_workspace_contacts": "Vsi stiki v delovnem prostoru",

@@ -4,11 +4,10 @@ import type { ReactElement } from 'react'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2RecipientType } from '../recipient-utils'
 import type { HumanInputV2Recipient } from '../types'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Node, ValueSelector, Var } from '@/app/components/workflow/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -19,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { VariableLabelInEditor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { ContactChannelIcon } from '@/features/contacts/management/channel-icon'
@@ -41,6 +41,7 @@ type RecipientsProps = {
   readonly: boolean
   provider?: ContactRecipientOptionProvider
   workspace?: { name: string; contactCount?: number }
+  availableNodes?: Node[]
 }
 
 const getOptionLabel = (option: ContactRecipientOption) =>
@@ -127,9 +128,11 @@ const RecipientsContent = ({
   readonly,
   provider,
   workspace,
+  availableNodes = [],
 }: RecipientsProps & { provider: ContactRecipientOptionProvider }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [searchFromInput, setSearchFromInput] = useState(false)
   const [query, setQuery] = useState('')
   const [options, setOptions] = useState<ContactRecipientOption[]>([])
   const [sourceFilter, setSourceFilter] = useState<ContactSourceFilter>('all')
@@ -146,6 +149,7 @@ const RecipientsContent = ({
   const [editor, setEditor] = useState<RecipientEditorState>()
   const [editorError, setEditorError] = useState<'invalid' | 'duplicate'>()
   const firstOptionRef = useRef<HTMLButtonElement>(null)
+  const recipientInputRef = useRef<HTMLInputElement>(null)
 
   const selectedKeys = useMemo(
     () => new Set(value.map(getRecipientCanonicalKey).filter((key): key is string => !!key)),
@@ -191,7 +195,8 @@ const RecipientsContent = ({
         if (active) setResolvedOptions(result)
       })
       .catch(() => {
-        if (active) setResolvedOptions([])
+        if (active)
+          setResolvedOptions((current) => current.filter((option) => ids.includes(option.id)))
       })
     return () => {
       active = false
@@ -247,6 +252,7 @@ const RecipientsContent = ({
     if (readonly) return
     setOpen(nextOpen)
     if (nextOpen) {
+      setSearchFromInput(false)
       setQuery('')
       setSourceFilter('all')
       void loadOptions('')
@@ -255,7 +261,19 @@ const RecipientsContent = ({
 
   const add = (recipient: HumanInputV2Recipient) => {
     const nextValue = addRecipient(value, recipient)
+    if (recipient.type === 'contact') {
+      const option = options.find((option) => option.id === recipient.contact_id)
+      if (option) {
+        setResolvedOptions((current) => [
+          ...current.filter((item) => item.id !== option.id),
+          option,
+        ])
+      }
+    }
     if (nextValue !== value) onChange(nextValue)
+    setEmailDraft('')
+    setQuery('')
+    setEmailError(false)
     setOpen(false)
   }
 
@@ -267,6 +285,8 @@ const RecipientsContent = ({
     if (invalid || duplicate) return
     onChange([...value, recipient])
     setEmailDraft('')
+    setQuery('')
+    setOpen(false)
   }
 
   const openEditor = (index?: number) => {
@@ -326,7 +346,12 @@ const RecipientsContent = ({
       return resolvedMap.get(recipient.contact_id)
         ? getOptionLabel(resolvedMap.get(recipient.contact_id)!)
         : recipient.contact_id
-    if (recipient.type === 'dynamic_email') return recipient.selector.join(' / ')
+    if (recipient.type === 'dynamic_email') {
+      const node = availableNodes.find((node) => node.id === recipient.selector[0])
+      return (
+        node ? [node.data.title, ...recipient.selector.slice(1)] : recipient.selector.slice(1)
+      ).join(' / ')
+    }
     return recipient.email
   }
 
@@ -375,12 +400,6 @@ const RecipientsContent = ({
                     invalid && 'bg-state-destructive-hover text-text-destructive',
                   )}
                 >
-                  {recipient.type === 'dynamic_email' && (
-                    <span
-                      className="i-custom-vender-line-others-global-variable size-3.5 text-text-accent"
-                      aria-hidden
-                    />
-                  )}
                   {recipient.type === 'onetime_email' && (
                     <Avatar
                       avatar={null}
@@ -429,6 +448,16 @@ const RecipientsContent = ({
                         <span className="max-w-[260px] truncate px-0.5">{contact.name}</span>
                       </button>
                     </RecipientContactPreview>
+                  ) : recipient.type === 'dynamic_email' ? (
+                    <VariableLabelInEditor
+                      variables={recipient.selector}
+                      nodeType={
+                        availableNodes.find((node) => node.id === recipient.selector[0])?.data.type
+                      }
+                      nodeTitle={
+                        availableNodes.find((node) => node.id === recipient.selector[0])?.data.title
+                      }
+                    />
                   ) : (
                     <span className="max-w-[260px] truncate px-0.5">
                       {getRecipientLabel(recipient)}
@@ -479,18 +508,52 @@ const RecipientsContent = ({
         {!readonly && (
           <div className="flex min-h-11 items-start gap-1 px-3 pt-2 pb-2">
             <Input
-              aria-label={t(($) => $['nodes.humanInputV2.recipients.emailLabel'], {
+              ref={recipientInputRef}
+              aria-label={t(($) => $['nodes.humanInputV2.recipients.placeholder'], {
                 ns: 'workflow',
               })}
               value={emailDraft}
               onChange={(event) => {
-                setEmailDraft(event.target.value)
+                const nextQuery = event.target.value
+                setEmailDraft(nextQuery)
+                setQuery(nextQuery)
                 setEmailError(false)
+                setSearchFromInput(true)
+                setSourceFilter('all')
+                setOpen(!!nextQuery.trim())
+                if (nextQuery.trim()) void loadOptions(nextQuery)
+                else {
+                  searchRequestRef.current += 1
+                  searchQueryRef.current = ''
+                  setOptions([])
+                  setLoading(false)
+                  setLoadingMore(false)
+                  setLoadError(false)
+                  setHasMore(false)
+                }
               }}
               onKeyDown={(event) => {
+                if (event.nativeEvent.isComposing) return
+                if (event.key === 'ArrowDown' && open) {
+                  event.preventDefault()
+                  firstOptionRef.current?.focus()
+                }
+                if (event.key === 'Escape') setOpen(false)
                 if (event.key === 'Enter') {
                   event.preventDefault()
-                  addOneTimeEmail()
+                  const searchValue = emailDraft.trim().toLowerCase()
+                  if (!searchValue) return
+                  const option =
+                    !loading &&
+                    !loadError &&
+                    searchQueryRef.current === emailDraft &&
+                    visibleOptions.find(
+                      (option) =>
+                        !selectedKeys.has(`contact:${option.id}`) &&
+                        (!searchValue.includes('@') || option.email.toLowerCase() === searchValue),
+                    )
+                  if (option) add({ type: 'contact', contact_id: option.id })
+                  else addOneTimeEmail()
                 }
               }}
               placeholder={t(($) => $['nodes.humanInputV2.recipients.placeholder'], {
@@ -500,7 +563,7 @@ const RecipientsContent = ({
               aria-describedby={emailError ? `${nodeId}-recipient-email-error` : undefined}
               className="h-5 min-w-0 grow rounded-none border-0 bg-transparent p-0 shadow-none hover:bg-transparent focus:bg-transparent focus:shadow-none"
             />
-            {!!emailDraft && (
+            {emailDraft.includes('@') && (
               <Button size="small" onClick={addOneTimeEmail}>
                 {t(($) => $['nodes.humanInputV2.recipients.addEmail'], { ns: 'workflow' })}
               </Button>
@@ -539,46 +602,54 @@ const RecipientsContent = ({
                 }
               />
               <PopoverContent
+                initialFocus={searchFromInput ? false : undefined}
+                finalFocus={searchFromInput ? recipientInputRef : undefined}
                 placement="bottom-start"
                 sideOffset={4}
                 className="w-80 bg-components-panel-bg-blur p-0 backdrop-blur-[5px]"
               >
-                <div className="px-2 pt-2 pb-1">
-                  <InputGroup className="h-8">
-                    <InputGroupAddon className="ps-1.75 pe-1.25">
-                      <span
-                        className="i-ri-search-line size-4 text-components-input-text-placeholder"
-                        aria-hidden
+                {!searchFromInput && (
+                  <div className="px-2 pt-2 pb-1">
+                    <InputGroup className="h-8">
+                      <InputGroupAddon className="ps-1.75 pe-1.25">
+                        <span
+                          className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                          aria-hidden
+                        />
+                      </InputGroupAddon>
+                      <InputGroupInput
+                        aria-label={t(($) => $['nodes.humanInputV2.recipients.search'], {
+                          ns: 'workflow',
+                        })}
+                        value={query}
+                        onChange={(event) => {
+                          setQuery(event.target.value)
+                          void loadOptions(event.target.value)
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.nativeEvent.isComposing) return
+                          if (event.key === 'ArrowDown') {
+                            event.preventDefault()
+                            firstOptionRef.current?.focus()
+                          }
+                          if (event.key === 'Enter') {
+                            const option = visibleOptions.find(
+                              (option) => !selectedKeys.has(`contact:${option.id}`),
+                            )
+                            if (option) add({ type: 'contact', contact_id: option.id })
+                          }
+                          if (event.key === 'Escape') setOpen(false)
+                        }}
+                        placeholder={t(
+                          ($) => $['nodes.humanInputV2.recipients.searchPlaceholder'],
+                          {
+                            ns: 'workflow',
+                          },
+                        )}
                       />
-                    </InputGroupAddon>
-                    <InputGroupInput
-                      aria-label={t(($) => $['nodes.humanInputV2.recipients.search'], {
-                        ns: 'workflow',
-                      })}
-                      value={query}
-                      onChange={(event) => {
-                        setQuery(event.target.value)
-                        void loadOptions(event.target.value)
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'ArrowDown') {
-                          event.preventDefault()
-                          firstOptionRef.current?.focus()
-                        }
-                        if (event.key === 'Enter') {
-                          const option = visibleOptions.find(
-                            (option) => !selectedKeys.has(`contact:${option.id}`),
-                          )
-                          if (option) add({ type: 'contact', contact_id: option.id })
-                        }
-                        if (event.key === 'Escape') setOpen(false)
-                      }}
-                      placeholder={t(($) => $['nodes.humanInputV2.recipients.searchPlaceholder'], {
-                        ns: 'workflow',
-                      })}
-                    />
-                  </InputGroup>
-                </div>
+                    </InputGroup>
+                  </div>
+                )}
                 <div
                   className="flex gap-0.5 overflow-x-auto px-2 py-1"
                   role="tablist"
@@ -627,7 +698,14 @@ const RecipientsContent = ({
                         <RecipientContactPreview key={option.id} contact={option}>
                           <button
                             aria-label={getOptionLabel(option)}
-                            ref={index === 0 ? firstOptionRef : undefined}
+                            ref={
+                              index ===
+                              visibleOptions.findIndex(
+                                (item) => !selectedKeys.has(`contact:${item.id}`),
+                              )
+                                ? firstOptionRef
+                                : undefined
+                            }
                             type="button"
                             disabled={added}
                             className="flex min-h-10 w-full items-center gap-2 rounded-lg border-0 bg-transparent py-1 pr-3 pl-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid"
@@ -766,15 +844,6 @@ const RecipientsContent = ({
               }}
             />
             <div className="ml-auto flex shrink-0 items-center gap-1">
-              <IconButton
-                aria-label={t(($) => $['nodes.humanInputV2.recipients.addRecipient'], {
-                  ns: 'workflow',
-                })}
-                size="md"
-                onClick={() => openEditor()}
-              >
-                <span className="i-ri-add-line size-3.5" aria-hidden />
-              </IconButton>
               <Infotip
                 aria-label={t(($) => $['nodes.humanInputV2.recipients.help'], { ns: 'workflow' })}
               >

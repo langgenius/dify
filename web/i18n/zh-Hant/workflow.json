@@ -642,6 +642,7 @@
   "nodes.humanInputMigration.error.graphChanged": "遷移期間工作流程已更新，請重試。目前的編輯已保留。",
   "nodes.humanInputMigration.error.sync": "無法儲存遷移後的工作流程。請檢查目前的草稿後重試。",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
+  "nodes.humanInputV2.debug.keepOneChannel": "至少保留一個管道開啟",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "工作區所有聯絡人",
   "nodes.humanInputV2.recipients.allWorkspaceContactsDescription": "目前工作區中的所有聯絡人都可以回覆。",
   "nodes.humanInputV2.recipients.type.all_workspace_contacts": "工作區所有聯絡人",

@@ -260,6 +260,16 @@ export function ContactImBindingDialog({
                 </FieldError>
               </Field>
             ))}
+            <Button
+              disabled={saveCredentials.isPending}
+              loading={testConnection.isPending}
+              onClick={handleTestConnection}
+            >
+              <span aria-hidden className="i-ri-send-plane-2-line size-4" />
+              {testConnection.isPending
+                ? t(($) => $['imPlatform.action.testing'])
+                : t(($) => $['imPlatform.action.testConnection'])}
+            </Button>
             {testSucceeded && (
               <div role="status" className="system-xs-regular text-text-success">
                 {t(($) => $['imPlatform.email.testSucceeded'])}
@@ -283,15 +293,15 @@ export function ContactImBindingDialog({
             )}
           </div>
           <div className="mt-auto flex shrink-0 items-center justify-between gap-3 px-6 pt-5 pb-6">
-            <Button
-              disabled={saveCredentials.isPending}
-              loading={testConnection.isPending}
-              onClick={handleTestConnection}
+            <a
+              className="inline-flex items-center gap-1 rounded-sm system-xs-regular text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              href={adapter.setupGuideUrl}
+              rel="noreferrer"
+              target="_blank"
             >
-              {testConnection.isPending
-                ? t(($) => $['imPlatform.action.testing'])
-                : t(($) => $['imPlatform.action.testConnection'])}
-            </Button>
+              {t(($) => $['imPlatform.action.setupGuide'])}
+              <span aria-hidden className="i-ri-external-link-line size-3" />
+            </a>
             <div className="flex gap-2">
               <Button className="min-w-18" disabled={isPending} onClick={closeDialog}>
                 {tCommon(($) => $['operation.cancel'])}
@@ -305,7 +315,9 @@ export function ContactImBindingDialog({
               >
                 {saveCredentials.isPending
                   ? t(($) => $['imPlatform.action.saving'])
-                  : t(($) => $['imPlatform.action.save'])}
+                  : isCurrentProvider
+                    ? t(($) => $['imPlatform.action.save'])
+                    : t(($) => $['imPlatform.action.connect'])}
               </Button>
             </div>
           </div>
