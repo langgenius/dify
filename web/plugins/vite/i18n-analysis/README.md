@@ -26,7 +26,7 @@ Vite owns module identity and runtime import resolution. Each completed environm
 retains original source in module metadata and resolves surviving imports through
 that environment's plugin resolver. When a transform changes an import specifier,
 matching import/export bindings connect it back to the original source. Ambiguous
-or removed value imports, including unchanged imports resolved to unanalyzed virtual
+or removed application value imports, including unchanged imports resolved to unanalyzed virtual
 modules, are reported as unresolved instead of silently reading
 the old runtime module from disk. Rewritten or removed literal dynamic imports
 are also blocked: without a stable binding, their replacement cannot be inferred
@@ -36,8 +36,8 @@ TypeScript host blocks that specifier as a whole because its resolution is share
 across import occurrences. Explicit type-only imports and package declarations
 continue to use TypeScript resolution. Package barrel rewrites retain declaration
 resolution only when every imported local binding is traced to the same external
-package. Vite-recognized asset imports without queries are excluded from missing
-source-import diagnostics; query variants remain eligible for diagnostics. Query variants remain distinct throughout dependency and
+package. Resource imports are excluded from diagnostics, while application source
+query variants remain distinct throughout dependency and
 usage analysis, with separate in-memory compiler filenames. Built JSON modules use
 Vite-transformed JavaScript under synthetic compiler filenames, preserving inferred
 object keys without loading a different JSON file from disk. JSON data modules inform
@@ -110,11 +110,18 @@ static object-map lookup, and syntactic template-prefix protection. Function bod
 are not executed to infer call results; keys returned by runtime helpers protect
 the relevant namespace. This deliberately accepts fewer unused-key findings.
 
-Unresolved import evidence includes the specifier, a syntactic kind (style, asset,
-package, virtual, or source), and whether the import appears in source or was
-introduced by transforms. These labels do not prove relevance or suppress checks.
+Unresolved import warnings focus on untraceable application source imports.
+External packages, explicit node_modules paths, styles, Vite assets (including
+query variants), server/client boundary markers and imports introduced only by
+transforms are opaque analysis boundaries, not individual warnings. This does not
+allow TypeScript to fall back to stale runtime files: blocked targets stay blocked.
+Local imports rewritten to virtual or external targets still produce diagnostics.
+Missing key or namespace information continues to use the normal conservative
+fallbacks. No dependency implementations are scanned to classify their behavior.
+An empty unresolved-import list does not imply complete dependency coverage.
+
 A dynamic key can protect an entire namespace; these records explain which calls
-prevent an unused-key conclusion. Unresolved imports make the analysis incomplete.
+prevent an unused-key conclusion.
 
 `metrics` records shared setup, per-environment resolution, Program/checker setup,
 semantic analysis and route traversal durations, plus module and resolver-call

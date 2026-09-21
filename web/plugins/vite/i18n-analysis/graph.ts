@@ -602,7 +602,7 @@ export function checkTranslationGraph(
         ts.preProcessFile(source.text, true, true).importedFiles.map((item) => item.fileName),
       )
       for (const [specifier, resolved] of resolutions.get(id) ?? []) {
-        if (resolved !== null) continue
+        if (!resolved.diagnostic) continue
         currentSite =
           source.statements.find(
             (statement) =>

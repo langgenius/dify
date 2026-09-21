@@ -1,7 +1,8 @@
 import path from 'node:path'
 import * as ts from 'typescript'
 
-export type ModuleResolutions = ReadonlyMap<string, ReadonlyMap<string, string | null>>
+type ModuleResolution = { id: string | null; diagnostic: boolean }
+export type ModuleResolutions = ReadonlyMap<string, ReadonlyMap<string, ModuleResolution>>
 
 // Resolve in Vite's environment before creating the synchronous TypeScript host.
 // Read surviving imports from Vite's transformed code so erased type imports
@@ -144,7 +145,7 @@ export async function resolveTranslationImports(
   ) => Promise<{ id: string; external?: boolean } | undefined>,
   isAsset: (specifier: string) => boolean = () => false,
 ) {
-  const resolutions = new Map<string, Map<string, string | null>>()
+  const resolutions = new Map<string, Map<string, ModuleResolution>>()
   let resolveCalls = 0
   await Promise.all(
     [...modules].map(async ([id, source]) => {
@@ -155,11 +156,18 @@ export async function resolveTranslationImports(
       )
       const targets = new Map<string, string | undefined>()
       const declarationImports = new Set<string>()
+      const externalImports = new Set<string>()
       await Promise.all(
         [...surviving].map(async (specifier) => {
           resolveCalls++
           const resolved = await resolve(specifier, id)
           targets.set(specifier, resolved?.id)
+          if (
+            !/^[.#/]/.test(specifier) &&
+            !specifier.startsWith('@/') &&
+            (resolved?.external || resolved?.id.includes('/node_modules/'))
+          )
+            externalImports.add(specifier)
           const packageName = specifier.startsWith('@')
             ? specifier.split('/').slice(0, 2).join('/')
             : specifier.split('/')[0]!
@@ -242,7 +250,31 @@ export async function resolveTranslationImports(
           else imports.delete(specifier)
         }
       }
-      resolutions.set(id, imports)
+      // Resolution and diagnostics have different scopes: opaque dependencies
+      // still block stale disk fallback, but only source imports need warnings.
+      const sourceImports = new Set(
+        before.filter((binding) => !binding.typeOnly).map((binding) => binding.specifier),
+      )
+      resolutions.set(
+        id,
+        new Map(
+          [...imports].map(([specifier, target]) => [
+            specifier,
+            {
+              id: target,
+              diagnostic:
+                target === null &&
+                sourceImports.has(specifier) &&
+                !externalImports.has(specifier) &&
+                !specifier.includes('/node_modules/') &&
+                specifier !== 'server-only' &&
+                specifier !== 'client-only' &&
+                !/\.(?:css|scss|sass|less|styl)(?:\?|$)/.test(specifier) &&
+                !isAsset(specifier.split('?')[0]!),
+            },
+          ]),
+        ),
+      )
     }),
   )
   return { resolutions, resolveCalls }
@@ -315,7 +347,7 @@ export function createTranslationProgram(
   ) =>
     literals.map((literal) => {
       const importer = moduleIds.get(containingFile)
-      const resolvedId = importer && resolutions.get(importer)?.get(literal.text)
+      const resolvedId = importer && resolutions.get(importer)?.get(literal.text)?.id
       if (resolvedId === null) return { resolvedModule: undefined }
       const resolvedFileName = resolvedId && fileNames.get(resolvedId)
       if (resolvedFileName) {

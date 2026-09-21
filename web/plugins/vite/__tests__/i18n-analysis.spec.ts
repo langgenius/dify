@@ -778,50 +778,56 @@ describe('i18n build check', () => {
     expect(reports[0]!.metrics.totalMs).toBeGreaterThan(0)
   })
 
-  it('does not read a disk namespace when Vite resolves the unchanged import to a virtual module', async () => {
-    writeFileSync(localeFile, '{}')
-    for (const namespace of ['old', 'actual'])
+  it.each(['virtual', 'external'] as const)(
+    'does not read a disk namespace when Vite resolves the unchanged import to an %s module',
+    async (target) => {
+      writeFileSync(localeFile, '{}')
+      for (const namespace of ['old', 'actual'])
+        writeFileSync(
+          path.join(root, `i18n/locales/en-US/${namespace}.json`),
+          JSON.stringify({ title: namespace }),
+        )
+      mkdirSync(path.join(root, 'app'), { recursive: true })
+      writeFileSync(path.join(root, 'app/ns.ts'), `export const ns = 'old'`)
       writeFileSync(
-        path.join(root, `i18n/locales/en-US/${namespace}.json`),
-        JSON.stringify({ title: namespace }),
+        path.join(root, 'app/page.ts'),
+        `import { ns } from './ns'; export function page(t: (key: string, options: { ns: string }) => string) { return t('title', { ns: ns }) }`,
       )
-    mkdirSync(path.join(root, 'app'), { recursive: true })
-    writeFileSync(path.join(root, 'app/ns.ts'), `export const ns = 'old'`)
-    writeFileSync(
-      path.join(root, 'app/page.ts'),
-      `import { ns } from './ns'; export function page(t: (key: string, options: { ns: string }) => string) { return t('title', { ns: ns }) }`,
-    )
-    const reports: AnalysisReport[] = []
-    await expect(
-      build({
-        root,
-        configFile: false,
-        logLevel: 'silent',
-        plugins: [
-          i18nAnalysisPlugin({
-            onAnalysis: (report) => reports.push(report),
-            getDeclaredNamespaces: () => ['old'],
-          }),
-          {
-            name: 'virtual-namespace',
-            enforce: 'pre',
-            resolveId(id) {
-              if (id === './ns') return '\0namespace'
+      const reports: AnalysisReport[] = []
+      await expect(
+        build({
+          root,
+          configFile: false,
+          logLevel: 'silent',
+          plugins: [
+            i18nAnalysisPlugin({
+              onAnalysis: (report) => reports.push(report),
+              getDeclaredNamespaces: () => ['old'],
+            }),
+            {
+              name: 'virtual-namespace',
+              enforce: 'pre',
+              resolveId(id) {
+                if (id === './ns')
+                  return target === 'virtual'
+                    ? '\0namespace'
+                    : { id: 'external-namespace', external: true }
+              },
+              load(id) {
+                if (id === '\0namespace') return `export const ns = 'actual'`
+              },
             },
-            load(id) {
-              if (id === '\0namespace') return `export const ns = 'actual'`
-            },
-          },
-        ],
-        build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
-      }),
-    ).rejects.toThrow(/Undeclared namespace: actual/)
-    expect(reports[0]!.evidence).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ kind: 'unresolved-import', file: 'app/page.ts' }),
-      ]),
-    )
-  })
+          ],
+          build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+        }),
+      ).rejects.toThrow(/Undeclared namespace: actual/)
+      expect(reports[0]!.evidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ kind: 'unresolved-import', file: 'app/page.ts' }),
+        ]),
+      )
+    },
+  )
 
   it.each(['rewrite', 'inline', 'retained static import', 'retained dynamic import'] as const)(
     'blocks disk fallback after a dynamic import %s',
@@ -1037,6 +1043,53 @@ describe('i18n build check', () => {
                     "import identity from 'test-hooks/identity'",
                   )
                   .replace("import icon from './icon.svg'", "const icon = 'data:image/svg+xml,svg'")
+            },
+          },
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
+      }),
+    ).rejects.toThrow(/Found 1 potentially unused i18n keys[\s\S]*app:unused/)
+    expect(reports[0]!.evidence.some((item) => item.kind === 'unresolved-import')).toBe(false)
+  })
+
+  it('omits opaque dependency diagnostics while retaining application key analysis', async () => {
+    writeFileSync(localeFile, JSON.stringify({ used: 'Used', unused: 'Unused' }))
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'opaque-fixture' }))
+    const packageDirectory = path.join(root, 'node_modules/actual-package')
+    mkdirSync(packageDirectory, { recursive: true })
+    writeFileSync(path.join(packageDirectory, 'index.js'), 'export default 1')
+    writeFileSync(path.join(root, 'style.css'), '.example { color: red }')
+    writeFileSync(
+      path.join(root, 'entry.ts'),
+      `
+      import value from 'package-alias'
+      import 'server-only'
+      import './style.css'
+      import image from './icon.svg?metadata'
+      export const dependencies = [value, image]
+      export function translate(t: (key: string) => string) { return t('app:used') }
+    `,
+    )
+    const reports: AnalysisReport[] = []
+    await expect(
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          i18nAnalysisPlugin({ onAnalysis: (report) => reports.push(report) }),
+          {
+            name: 'opaque-dependencies',
+            resolveId(id) {
+              if (id === 'package-alias') return path.join(packageDirectory, 'index.js')
+              if (id === 'server-only' || id === './icon.svg?metadata' || id === 'virtual:helper')
+                return `\0${id}`
+            },
+            load(id) {
+              if (id.startsWith('\0')) return 'export default 1'
+            },
+            transform(code, id) {
+              if (id.endsWith('/entry.ts')) return `import 'virtual:helper';\n${code}`
             },
           },
         ],
