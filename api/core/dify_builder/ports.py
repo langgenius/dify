@@ -141,7 +141,9 @@ class DifyPort(Protocol):
     who is driving the call (Go: ``auth ForwardAuth``).
     """
 
-    def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]: ...
+    def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:
+        """Return the graph and its execution revision, excluding canvas presentation."""
+        ...
 
     def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]: ...
 
@@ -151,13 +153,15 @@ class DifyPort(Protocol):
         actor: Actor,
         intents: list[MutationIntent],
         on_canvas: Callable[[dict], None] | None = None,
+        *,
+        expected_revision: str,
     ) -> ApplyResult: ...
 
     def run_draft(self, app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run: ...
 
     def publish(self, app_id: str, actor: Actor) -> None: ...
 
-    def restore_graph(self, app_id: str, actor: Actor, graph: Graph) -> str: ...
+    def restore_graph(self, app_id: str, actor: Actor, graph: Graph, *, expected_revision: str) -> str: ...
 
     def structural_fingerprint(self, graph: Graph) -> str:
         """Stable hash of the graph's structure (node identity+type + edges),

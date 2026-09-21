@@ -76,7 +76,6 @@ describe('DifyBuilderPanel layout', () => {
       canEdit: true,
       enabled: true,
       getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
-      onSyncDraft: vi.fn(async () => undefined),
       session: {
         refresh: vi.fn(async () => true),
         getTrace: vi.fn(() => ({ entries: [], truncated: false })),

@@ -63,16 +63,10 @@ const getCanvasInstruction = (data: CanvasEventData): CanvasInstruction => {
 export const DifyBuilderCanvasLockSync = () => {
   const locked = useAtomValue(difyBuilderCanvasLockedAtom)
   const setCanvasReadOnly = useStore((state) => state.setCanvasReadOnly)
-  const busy = useAtomValue(difyBuilderSessionBusyAtom)
-  const invalidateWorkflowDraftSync = useStore((state) => state.invalidateWorkflowDraftSync)
 
   useLayoutEffect(() => {
     setCanvasReadOnly(locked)
   }, [locked, setCanvasReadOnly])
-
-  useLayoutEffect(() => {
-    if (busy) invalidateWorkflowDraftSync()
-  }, [busy, invalidateWorkflowDraftSync])
 
   useEffect(() => {
     return () => setCanvasReadOnly(false)
@@ -89,6 +83,7 @@ export const DifyBuilderCanvasRefreshSync = ({
   onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
 }) => {
   const sessionStore = useJotaiStore()
+  const builderNeedsRefresh = useStore((state) => state.workflowDraftSyncPhase === 'builder')
   const busy = useAtomValue(difyBuilderSessionBusyAtom)
   const lastCanvasEvent = useAtomValue(difyBuilderSessionLastCanvasEventAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
@@ -101,11 +96,10 @@ export const DifyBuilderCanvasRefreshSync = ({
   const setCanvasRefreshing = useSetAtom(difyBuilderCanvasRefreshingAtom)
   const setLocalError = useSetAtom(difyBuilderLocalErrorAtom)
   const lastCanvasEventIdRef = useRef(0)
-  const lastRefreshRef = useRef<{ sessionId: string; version: number } | null>(null)
+  const lastRefreshRef = useRef<{ sessionId: string | null; version: number } | null>(null)
   const lastRetryRequestRef = useRef(0)
   const pendingFocusNodeIdRef = useRef<string | null>(null)
   const pendingRefreshRef = useRef(false)
-  const refreshQueueRef = useRef<Promise<boolean>>(Promise.resolve(true))
   const refreshRequestIdRef = useRef(0)
 
   useEffect(
@@ -128,7 +122,13 @@ export const DifyBuilderCanvasRefreshSync = ({
       if (instruction.refresh) pendingRefreshRef.current = true
     }
 
-    if (!sessionId) {
+    if (busy) {
+      refreshRequestIdRef.current += 1
+      if (sessionStore.get(difyBuilderCanvasRefreshingAtom)) pendingRefreshRef.current = true
+      return
+    }
+
+    if (!sessionId && !builderNeedsRefresh) {
       refreshRequestIdRef.current += 1
       lastCanvasEventIdRef.current = 0
       lastRefreshRef.current = null
@@ -141,20 +141,19 @@ export const DifyBuilderCanvasRefreshSync = ({
       return
     }
 
-    if (busy) {
-      refreshRequestIdRef.current += 1
-      lastRefreshRef.current = null
-      if (sessionStore.get(difyBuilderCanvasRefreshingAtom)) pendingRefreshRef.current = true
-      return
-    }
-
     const lastRefresh = lastRefreshRef.current
     const versionNeedsRefresh =
       (!lastRefresh || lastRefresh.sessionId !== sessionId || version > lastRefresh.version) &&
       !!phase &&
       DIFY_BUILDER_CANVAS_REFRESH_PHASES.has(phase)
     const retryRequested = retryRequest > lastRetryRequestRef.current
-    if (!retryRequested && !pendingRefreshRef.current && !versionNeedsRefresh) return
+    if (
+      !retryRequested &&
+      !pendingRefreshRef.current &&
+      !versionNeedsRefresh &&
+      !builderNeedsRefresh
+    )
+      return
 
     lastRefreshRef.current = { sessionId, version }
     lastRetryRequestRef.current = retryRequest
@@ -169,10 +168,7 @@ export const DifyBuilderCanvasRefreshSync = ({
       sessionStore.get(difyBuilderSessionIdAtom) === sessionId &&
       sessionStore.get(difyBuilderViewVersionAtom) === version &&
       !sessionStore.get(difyBuilderSessionBusyAtom)
-    const refreshPromise = refreshQueueRef.current
-      .catch(() => false)
-      .then(() => (shouldApply() ? onRefreshCanvas(shouldApply) : false))
-    refreshQueueRef.current = refreshPromise
+    const refreshPromise = onRefreshCanvas(shouldApply)
     void refreshPromise
       .then((refreshed) => {
         if (!shouldApply()) return
@@ -182,7 +178,7 @@ export const DifyBuilderCanvasRefreshSync = ({
           return
         }
         setCanvasRefreshGeneration((generation) => generation + 1)
-        setCanvasAppliedView({ sessionId, version })
+        setCanvasAppliedView(sessionId ? { sessionId, version } : null)
         setCanvasRefreshFailed(false)
         const nodeId = pendingFocusNodeIdRef.current
         pendingFocusNodeIdRef.current = null
@@ -198,6 +194,7 @@ export const DifyBuilderCanvasRefreshSync = ({
         if (requestId === refreshRequestIdRef.current) setCanvasRefreshing(false)
       })
   }, [
+    builderNeedsRefresh,
     busy,
     lastCanvasEvent,
     onFocusCanvas,

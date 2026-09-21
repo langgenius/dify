@@ -20,7 +20,6 @@ import {
   difyBuilderCanvasRefreshingAtom,
   difyBuilderDraftAtom,
   difyBuilderInteractionBusyAtom,
-  difyBuilderLocalErrorAtom,
   difyBuilderModelReadonlyAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRegisterChecklistErrorsAtom,
@@ -59,7 +58,6 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
     canEdit: true,
     enabled: true,
     getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
-    onSyncDraft: vi.fn(async (): Promise<void> => undefined),
     session: {
       refresh: vi.fn(async () => true),
       getTrace: vi.fn(() => ({ entries: [], truncated: false })),
@@ -208,15 +206,15 @@ describe('Dify Builder store', () => {
     },
   )
 
-  it('rejects a second Fix entry while the first is syncing the draft', async () => {
+  it('rejects a second Fix entry while the first command is preparing', async () => {
     const store = createStore()
     store.set(queryClientAtom, new QueryClient())
     const runtime = createRuntime(vi.fn(async () => true))
-    let finishSync!: () => void
-    const sync = new Promise<void>((resolve) => {
+    let finishSync!: (started: boolean) => void
+    const sync = new Promise<boolean>((resolve) => {
       finishSync = resolve
     })
-    runtime.onSyncDraft = vi.fn(() => sync)
+    runtime.session.startFix = vi.fn(() => sync)
     store.set(difyBuilderRuntimeAtom, runtime)
 
     const starting = store.set(difyBuilderStartRunFixAtom, 'failed-run-42')
@@ -231,12 +229,11 @@ describe('Dify Builder store', () => {
         unconnected: false,
       },
     ])
-    finishSync()
+    finishSync(true)
 
     expect(await starting).toBe(true)
     expect(await duplicate).toBe(false)
     expect(await checklist).toBe(false)
-    expect(runtime.onSyncDraft).toHaveBeenCalledOnce()
     expect(runtime.session.startFix).toHaveBeenCalledExactlyOnceWith(
       'app-1',
       'failed-run-42',
@@ -250,21 +247,20 @@ describe('Dify Builder store', () => {
     store.set(queryClientAtom, new QueryClient())
     const runtime = createRuntime(vi.fn(async () => true))
     const waiting = createSessionView({ run_status: 'waiting_confirmation' })
-    runtime.onSyncDraft.mockRejectedValueOnce(new Error('Workflow draft sync failed.'))
+    runtime.session.startFix.mockResolvedValueOnce(false)
     store.set(difyBuilderRuntimeAtom, runtime)
     store.set(difyBuilderSessionViewAtom, waiting)
     store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
     store.set(difyBuilderDraftAtom, 'Continue the build')
 
     expect(await store.set(difyBuilderStartRunFixAtom, 'failed-run-42')).toBe(false)
-    expect(runtime.session.startFix).not.toHaveBeenCalled()
+    expect(runtime.session.startFix).toHaveBeenCalledOnce()
     expect(store.get(difyBuilderSessionViewAtom)).toEqual(waiting)
     expect(store.get(difyBuilderActiveSessionIdAtom)).toBe(waiting.session_id)
     expect(store.get(difyBuilderDraftAtom)).toBe('Continue the build')
-    expect(store.get(difyBuilderLocalErrorAtom)).toBe('Workflow draft sync failed.')
 
     expect(await store.set(difyBuilderStartRunFixAtom, 'failed-run-42')).toBe(true)
-    expect(runtime.session.startFix).toHaveBeenCalledOnce()
+    expect(runtime.session.startFix).toHaveBeenCalledTimes(2)
   })
 
   it('makes an interrupted execution resettable without releasing its canvas lock', () => {
@@ -352,7 +348,7 @@ describe('Dify Builder store', () => {
     unsubscribe()
   })
 
-  it('syncs the draft and routes active waiting-flow composer text to a multi-turn message', async () => {
+  it('routes active waiting-flow composer text to a multi-turn message', async () => {
     const store = createStore()
     const runtime = createRuntime(vi.fn(async () => true))
     store.set(difyBuilderRuntimeAtom, runtime)
@@ -367,7 +363,6 @@ describe('Dify Builder store', () => {
         model: builderModel,
       }),
     ).toBe(true)
-    expect(runtime.onSyncDraft).toHaveBeenCalledOnce()
     expect(runtime.session.sendMessage).toHaveBeenCalledWith('Make the change smaller')
   })
 
@@ -478,7 +473,6 @@ describe('Dify Builder store', () => {
         model: builderModel,
       }),
     ).toBe(false)
-    expect(runtime.onSyncDraft).not.toHaveBeenCalled()
     expect(runtime.session.startBuild).not.toHaveBeenCalled()
   })
 
