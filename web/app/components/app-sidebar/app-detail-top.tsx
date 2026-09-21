@@ -87,11 +87,9 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
               />
             }
           />
-          <TooltipContent placement="bottom" className="flex items-start gap-1">
-            <span className="min-w-0 flex-1 px-0.5">
-              {t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}
-            </span>
-            <KbdGroup className="shrink-0">
+          <TooltipContent placement="bottom" className="flex items-center gap-1">
+            <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
+            <KbdGroup>
               {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
                 <Kbd key={key}>{formatForDisplay(key)}</Kbd>
               ))}

@@ -160,11 +160,9 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
             />
           }
         />
-        <TooltipContent placement="bottom" className="flex items-start gap-1">
-          <span className="min-w-0 flex-1 px-0.5">
-            {tApp(($) => $['gotoAnything.quickAction'])}
-          </span>
-          <KbdGroup className="shrink-0">
+        <TooltipContent placement="bottom" className="flex items-center gap-1">
+          <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
+          <KbdGroup>
             {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
               <Kbd key={key}>{formatForDisplay(key)}</Kbd>
             ))}

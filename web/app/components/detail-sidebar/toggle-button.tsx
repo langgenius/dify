@@ -42,9 +42,9 @@ export function DetailSidebarToggleButton({
           </IconButton>
         }
       />
-      <TooltipContent placement="right" className="flex items-start gap-1">
-        <span className="min-w-0 flex-1 px-0.5">{label}</span>
-        <KbdGroup className="shrink-0">
+      <TooltipContent placement="right" className="flex items-center gap-1">
+        <span className="px-0.5">{label}</span>
+        <KbdGroup>
           {detailSidebarToggleShortcutKeys.map((key) => (
             <Kbd key={key}>{formatForDisplay(key)}</Kbd>
           ))}

@@ -13,9 +13,9 @@ const TipPopup = ({ title, children, shortcut }: TipPopupProps) => {
   return (
     <Tooltip>
       <TooltipTrigger render={children} />
-      <TooltipContent sideOffset={4} className="flex max-w-none items-start gap-1">
-        <span className="min-w-0 flex-1 px-0.5">{title}</span>
-        {shortcut && <ShortcutKbd shortcut={shortcut} className="shrink-0" />}
+      <TooltipContent sideOffset={4} className="flex max-w-none items-center gap-1">
+        <span className="px-0.5">{title}</span>
+        {shortcut && <ShortcutKbd shortcut={shortcut} />}
       </TooltipContent>
     </Tooltip>
   )

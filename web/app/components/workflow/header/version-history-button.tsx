@@ -47,11 +47,11 @@ export function VersionHistoryButton({ onClick }: VersionHistoryButtonProps) {
           </IconButton>
         }
       />
-      <TooltipContent className="flex items-start gap-1">
-        <span className="min-w-0 flex-1 px-0.5">{label}</span>
+      <TooltipContent className="flex items-center gap-1">
+        <span className="px-0.5">{label}</span>
         <ShortcutKbd
           hotkey={VERSION_HISTORY_HOTKEY}
-          className="shrink-0"
+
           bgColor="gray"
           textColor="secondary"
         />
