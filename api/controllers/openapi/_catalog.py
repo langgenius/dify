@@ -30,9 +30,11 @@ from controllers.openapi._upload import has_binary_leaf
 from controllers.openapi.auth.spec import spec_of
 
 CATALOG_HEADER: Final = HEADER_NAME_CATALOG
+_SURFACE: Final = "/openapi/v1"
 # Trailing slash: `/openapi/v1beta/x` is a different surface, not this one.
-_PREFIX: Final = "/openapi/v1/"
-CATALOG_PATH: Final = f"{_PREFIX}_catalog"
+_PREFIX: Final = f"{_SURFACE}/"
+CATALOG_ROUTE: Final = "/_catalog"
+CATALOG_PATH: Final = f"{_SURFACE}{CATALOG_ROUTE}"
 _VERBS: Final = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE"})
 _EXT_KEY: Final = "openapi_catalog"
 _PLACEHOLDER_RE: Final = re.compile(r"<(?:\w+:)?(\w+)>")
@@ -151,8 +153,13 @@ def catalog_for(app: Flask) -> tuple[bytes, str]:
     return cached
 
 
+def current_catalog() -> tuple[bytes, str]:
+    """The catalog and fingerprint of the app handling this request."""
+    return catalog_for(current_app._get_current_object())  # type: ignore[attr-defined]
+
+
 def catalog_response() -> Response:
-    raw, _ = catalog_for(current_app._get_current_object())  # type: ignore[attr-defined]
+    raw, _ = current_catalog()
     return Response(raw, status=200, mimetype="application/json")
 
 
@@ -160,6 +167,6 @@ def attach_catalog(bp: Blueprint) -> None:
     @bp.after_app_request
     def _stamp_fingerprint(response: Response) -> Response:  # pyright: ignore[reportUnusedFunction]
         if request.path.startswith(_PREFIX):
-            _, fingerprint = catalog_for(current_app._get_current_object())  # type: ignore[attr-defined]
+            _, fingerprint = current_catalog()
             response.headers[CATALOG_HEADER] = fingerprint
         return response

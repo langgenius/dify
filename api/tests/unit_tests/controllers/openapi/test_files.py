@@ -11,7 +11,7 @@ from controllers.common.errors import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
-from controllers.openapi._models import FileUploadRequest
+from controllers.openapi._models import FileUploadPayload
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
 from controllers.openapi.files import AppFileUploadApi
@@ -38,8 +38,8 @@ def _upload_result() -> SimpleNamespace:
     )
 
 
-def _body() -> FileUploadRequest:
-    return FileUploadRequest.model_validate(body_from_request(file_fields=file_fields(FileUploadRequest)))
+def _body() -> FileUploadPayload:
+    return FileUploadPayload.model_validate(body_from_request(file_fields=file_fields(FileUploadPayload)))
 
 
 def _file_service(monkeypatch: pytest.MonkeyPatch) -> Mock:

@@ -317,9 +317,9 @@ export const zFileResponse = z.object({
 })
 
 /**
- * FileUploadRequest
+ * FileUploadPayload
  */
-export const zFileUploadRequest = z.object({
+export const zFileUploadPayload = z.object({
   file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
@@ -986,7 +986,7 @@ export const zGetAppsByAppIdDslQuery = z.object({
  */
 export const zGetAppsByAppIdDslResponse = zAppDslExportResponse
 
-export const zPostAppsByAppIdFilesBody = zFileUploadRequest
+export const zPostAppsByAppIdFilesBody = zFileUploadPayload
 
 export const zPostAppsByAppIdFilesPath = z.object({
   app_id: z.string(),

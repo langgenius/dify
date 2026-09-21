@@ -259,7 +259,7 @@ export type FileResponse = {
   user_id?: string | null
 }
 
-export type FileUploadRequest = {
+export type FileUploadPayload = {
   file: Blob | File
 }
 
@@ -877,7 +877,7 @@ export type GetAppsByAppIdDslResponses = {
 export type GetAppsByAppIdDslResponse = GetAppsByAppIdDslResponses[keyof GetAppsByAppIdDslResponses]
 
 export type PostAppsByAppIdFilesData = {
-  body: FileUploadRequest
+  body: FileUploadPayload
   path: {
     app_id: string
   }

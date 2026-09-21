@@ -225,7 +225,7 @@ Upload a file to use as an input variable when running the app
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [FileUploadRequest](#fileuploadrequest)<br> |
+|  Yes | **application/json**: [FileUploadPayload](#fileuploadpayload)<br> |
 
 #### Responses
 
@@ -913,7 +913,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | tenant_id | string |  | No |
 | user_id | string |  | No |
 
-#### FileUploadRequest
+#### FileUploadPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

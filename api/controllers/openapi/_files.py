@@ -24,7 +24,7 @@ import services
 from controllers.common.errors import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 from controllers.openapi._errors import FilenameNotExists, InvalidFilePart
 from extensions.ext_application_services import application_services
-from graphon.file import standardize_file_type
+from graphon.file import FileTransferMethod, standardize_file_type
 from models.model import UploadFile
 
 FileMapping = dict[str, Any]
@@ -55,7 +55,7 @@ def upload(part: FileStorage, caller: Any) -> UploadFile:
 def _mapping(part: FileStorage, caller: Any) -> FileMapping:
     uploaded = upload(part, caller)
     return {
-        "transfer_method": "local_file",
+        "transfer_method": FileTransferMethod.LOCAL_FILE,
         "upload_file_id": str(uploaded.id),
         "type": standardize_file_type(extension="." + uploaded.extension, mime_type=uploaded.mime_type),
     }

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+from controllers.openapi._catalog import CATALOG_HEADER, current_catalog
 from controllers.openapi._errors import CatalogStale
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller
@@ -73,7 +73,7 @@ class _RequiresCurrentCatalog(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        _, fingerprint = catalog_for(current_app._get_current_object())  # type: ignore[attr-defined]
+        _, fingerprint = current_catalog()
         if request.headers.get(CATALOG_HEADER) != fingerprint:
             raise CatalogStale()
 

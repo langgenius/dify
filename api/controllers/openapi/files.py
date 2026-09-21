@@ -7,7 +7,7 @@ from flask_restx import Resource
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._files import upload
-from controllers.openapi._models import FileUploadRequest
+from controllers.openapi._models import FileUploadPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -45,8 +45,8 @@ class AppFileUploadApi(Resource):
             CheckScope(Scope.APPS_RUN),
             CheckAppAccess(),
         ),
-        body=FileUploadRequest,
+        body=FileUploadPayload,
         returns=(201, FileResponse, "File uploaded"),
     )
-    def post(self, ctx: Context, app_id: str, *, body: FileUploadRequest):
+    def post(self, ctx: Context, app_id: str, *, body: FileUploadPayload):
         return FileResponse.model_validate(upload(body.file, ctx.caller), from_attributes=True)

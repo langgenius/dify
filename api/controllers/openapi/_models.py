@@ -383,7 +383,7 @@ class CompletionRunPayload(RunPayloadBase):
     query: str = Field(default="", description="Prompt text; most completion apps take their input through `inputs`")
 
 
-class FileUploadRequest(BaseModel):
+class FileUploadPayload(BaseModel):
     file: UploadPart = Field(
         description="The file to upload; its id can then be used in an app run's file variables",
     )
