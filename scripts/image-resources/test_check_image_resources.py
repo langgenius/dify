@@ -157,6 +157,48 @@ class ImageOptimizationTests(unittest.TestCase):
         self.assertIn(b"https://example.invalid/image.png", result)
         self.assertNotIn(b"data:image", result)
 
+    def test_svg2_references_are_preserved_by_fix_while_xlink_remains_supported(self):
+        self.run_git("init", "-q")
+        originals = {}
+        for tag in ["use", "image", "linearGradient"]:
+            source = (
+                b'<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">'
+                b'<defs><rect id="tile" width="80" height="80"/></defs>'
+                + b"\n    " * 80
+                + f'<{tag} href="#tile"/></svg>'.encode()
+            )
+            originals[self.write(f"images/{tag}.svg", source)] = source
+            candidate, method = checker.compress_svg(source)
+            self.assertEqual(candidate, source)
+            self.assertIn("skipped: SVG 2 href reference", method)
+        xlink = (
+            b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+            b'<defs><rect id="tile" width="80" height="80"/></defs>'
+            + b"\n    " * 80
+            + b'<use xlink:href="#tile"/></svg>'
+        )
+        self.write("images/xlink.svg", xlink)
+        self.run_git("add", ".")
+        scripts = self.root / "scripts/image-resources"
+        scripts.mkdir(parents=True)
+        shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        (scripts / "ignore.json").write_text("[]")
+        result = subprocess.run(
+            [sys.executable, str(scripts / "check_image_resources.py"), "--all", "--fix"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("3 skipped", result.stdout)
+        self.assertIn("1 fixed", result.stdout)
+        for path, source in originals.items():
+            self.assertEqual(path.read_bytes(), source)
+        root = ET.fromstring((self.root / "images/xlink.svg").read_bytes())
+        self.assertIsNotNone(root.find(".//*[@id='tile']"))
+        use = root.find("{http://www.w3.org/2000/svg}use")
+        self.assertEqual(use.get("{http://www.w3.org/1999/xlink}href"), "#tile")
+
     def test_css_svgs_are_skipped_without_changing_any_bytes(self):
         cases = [
             b'<style>g {opacity:0.5}</style><g><rect width="100" height="100"/></g>',

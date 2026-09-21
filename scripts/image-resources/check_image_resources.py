@@ -111,6 +111,14 @@ def compress_svg(data: bytes) -> tuple[bytes, str]:
     )
     if has_css:
         return data, "skipped: SVG contains CSS; preserve style semantics"
+    # Scour does not track SVG 2 href references when pruning definitions.
+    # Keep raster data URLs supported, but never rewrite potentially dangling references.
+    if any(
+        element.hasAttribute("href")
+        and (element.localName != "image" or element.getAttribute("href").strip().startswith("#"))
+        for element in elements
+    ):
+        return data, "skipped: SVG 2 href reference; preserve referenced definitions"
     methods = ["Scour SVG optimization"]
     for element in root.getElementsByTagName("*"):
         if element.localName != "image":
