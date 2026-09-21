@@ -22,6 +22,8 @@ Don't forget to link an existing issue or open a new issue in the PR's descripti
 
 ### Bug reports
 
+For security vulnerabilities, follow our [security policy](./SECURITY.md) and report privately instead of opening a public issue.
+
 > [!IMPORTANT]
 > Please make sure to include the following information when submitting a bug report:
 
@@ -36,7 +38,7 @@ How we prioritize:
 
 | Issue Type | Priority |
 | ------------------------------------------------------------ | --------------- |
-| Bugs in core functions (cloud service, cannot login, applications not working, security loopholes) | Critical |
+| Bugs in core functions (cloud service, cannot login, applications not working) | Critical |
 | Non-critical bugs, performance boosts | Medium Priority |
 | Minor fixes (typos, confusing but working UI) | Low Priority |
 
@@ -70,6 +72,10 @@ How we prioritize:
 1. Ensure your code passes the existing tests
 1. Please link the issue in the PR description, `fixes #<issue_number>`
 1. Get merged!
+
+### AI-assisted contributions
+
+AI tools are welcome, but you are responsible for understanding and verifying every change you submit. Describe the problem, your solution, and actual test results in your own words. Unreviewed or repetitive low-quality submissions may be closed.
 
 ### Setup the project
 

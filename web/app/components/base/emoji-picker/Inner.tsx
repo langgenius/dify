@@ -1,11 +1,11 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
 import { InputGroup, InputGroupAddon } from '@langgenius/dify-ui/input-group'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { EmojiPicker } from 'frimousse'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { resolveEmoji } from '@/utils/emoji'
 import { basePath } from '@/utils/var'
 import { backgroundColors, defaultEmojiBackground } from './constants'
@@ -85,7 +85,7 @@ function EmojiPickerInner({ emoji, background, onSelect, className }: IEmojiPick
             </InputGroupAddon>
           </InputGroup>
         </div>
-        <Divider className="my-3" />
+        <Separator decorative className="my-3 h-[0.5px]" />
         <EmojiPicker.Viewport className="relative h-50 min-h-0 w-full overflow-x-hidden overflow-y-auto">
           <EmojiPicker.Loading className="block p-3 text-text-tertiary">
             {t(($) => $.loading, { ns: 'common' })}

@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "PERISTIWA PEMICU",
   "upgrade.addChunks.description": "Anda telah mencapai batas penambahan potongan untuk paket ini.",
   "upgrade.addChunks.title": "Tingkatkan untuk terus menambahkan potongan",
+  "upgrade.agentRestore.description": "Pemulihan versi aplikasi agen tidak tersedia di paket Anda saat ini.",
+  "upgrade.agentRestore.title": "Tingkatkan untuk memulihkan versi aplikasi agen",
   "upgrade.uploadMultipleFiles.description": "Upload beberapa dokumen sekaligus dan tingkatkan ukuran maksimum per file menjadi 50 MB.",
   "upgrade.uploadMultipleFiles.title": "Upgrade untuk membuka upload batch dan file berukuran lebih besar",
   "upgrade.uploadMultiplePages.description": "Anda telah mencapai batas unggah — hanya satu dokumen yang dapat dipilih dan diunggah sekaligus dengan paket Anda saat ini.",

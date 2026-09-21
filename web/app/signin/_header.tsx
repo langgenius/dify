@@ -1,7 +1,7 @@
 'use client'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useLocale } from '#i18n'
-import Divider from '@/app/components/base/divider'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { setLocaleOnClient } from '@/i18n/client'
@@ -37,7 +37,7 @@ const Header = () => {
             setLocaleOnClient(value, false)
           }}
         />
-        <Divider type="vertical" className="mx-0 ml-2 h-4" />
+        <Separator decorative orientation="vertical" className="mx-0 ml-2 h-4" />
         <ThemeSelector />
       </div>
     </header>

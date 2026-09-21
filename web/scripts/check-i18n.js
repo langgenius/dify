@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import data from '../i18n/languages'
+import { findValueIssues, formatValueIssue } from './check-i18n-values'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -196,6 +197,28 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
   }
 }
 
+function readLocaleFile(language, fileName) {
+  const filePath = path.resolve(__dirname, '../i18n/locales', language, `${fileName}.json`)
+
+  if (!fs.existsSync(filePath)) return null
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch (error) {
+    console.error(`Error processing file ${filePath}:`, error.message)
+    return null
+  }
+}
+
+function listSourceFileNames() {
+  const folderPath = path.resolve(__dirname, '../i18n/locales', targetLanguage)
+  return fs
+    .readdirSync(folderPath)
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => file.replace(/\.json$/, ''))
+}
+
 // Add command line argument support
 const args = parseArgs(process.argv)
 const targetFiles = Array.from(new Set(args.files))
@@ -283,6 +306,35 @@ async function main() {
     return hasDiff
   }
 
+  const compareValues = () => {
+    let hasDiff = false
+    const fileNames = targetFiles.length ? targetFiles : listSourceFileNames()
+    const languagesToProcess = (targetLangs.length ? targetLangs : languages).filter(
+      (language) => language !== targetLanguage,
+    )
+
+    for (const language of languagesToProcess) {
+      const issueLines = []
+
+      for (const fileName of fileNames) {
+        const source = readLocaleFile(targetLanguage, fileName)
+        const translation = readLocaleFile(language, fileName)
+        if (!source || !translation) continue
+
+        for (const issue of findValueIssues(source, translation))
+          issueLines.push(formatValueIssue(fileName, issue))
+      }
+
+      if (issueLines.length) {
+        hasDiff = true
+        console.log(`Placeholder and tag mismatches in ${language}:`)
+        issueLines.forEach((line) => console.log(`  ${line}`))
+      }
+    }
+
+    return hasDiff
+  }
+
   console.log('🚀 Starting i18n:check script...')
   if (targetFiles.length) console.log(`📁 Checking files: ${targetFiles.join(', ')}`)
 
@@ -290,9 +342,10 @@ async function main() {
 
   if (autoRemove) console.log('🤖 Auto-remove mode: ENABLED')
 
-  const hasDiff = await compareKeysCount()
-  if (hasDiff) {
-    console.error('\n❌ i18n keys are not aligned. Fix issues above.')
+  const hasKeyDiff = await compareKeysCount()
+  const hasValueDiff = compareValues()
+  if (hasKeyDiff || hasValueDiff) {
+    console.error('\n❌ i18n files are not aligned. Fix issues above.')
     process.exitCode = 1
   } else {
     console.log('\n✅ All i18n files are in sync')

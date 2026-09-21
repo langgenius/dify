@@ -5,6 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -13,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getInputKeys } from '@/app/components/base/block-input'
-import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -161,7 +161,7 @@ const OpeningSettingModal = ({
             {tempSuggestedQuestions.length}/{MAX_QUESTION_NUM}
           </div>
         </div>
-        <Divider bgStyle="gradient" className="mb-3 h-px" />
+        <Separator decorative variant="gradient" className="my-2 mb-3" />
         {announcement}
         <ReactSortable
           className="space-y-1"

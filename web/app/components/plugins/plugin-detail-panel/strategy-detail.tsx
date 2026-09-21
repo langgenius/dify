@@ -14,11 +14,11 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
 import { API_PREFIX } from '@/config'
@@ -157,7 +157,7 @@ const StrategyDetail: FC<Props> = ({ provider, detail, onHide }) => {
                   {detail.output_schema && (
                     <>
                       <div className="px-4">
-                        <Divider className="mt-2!" />
+                        <Separator className="my-2 h-[0.5px]" />
                       </div>
                       <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">
                         OUTPUT

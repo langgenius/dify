@@ -20,6 +20,7 @@ import { useDefaultModel } from '@/app/components/header/account-setting/model-p
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { toast } from '@/app/notifications'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
 import { sendSkillAssistMessage, uploadSkillFile } from '../client'
 import { SkillBuilderGridTexture } from './builder-grid-texture'
@@ -325,7 +326,7 @@ export function SkillBuilderPanel({
   )
   const [messages, setMessages] = useState<BuilderChatMessage[]>(initialMessages)
   const messagesRef = useRef<BuilderChatMessage[]>(initialMessages)
-  const rawAssistantMessagesRef = useRef(new Map<string, string>())
+  const rawAssistantMessagesRef = useRefWithInit(() => new Map<string, string>())
   const [attachments, setAttachments] = useState<SkillBuilderAttachment[]>([])
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
   const attachmentInputRef = useRef<HTMLInputElement>(null)
@@ -419,7 +420,7 @@ export function SkillBuilderPanel({
     messagesRef.current = initialMessages
     rawAssistantMessagesRef.current.clear()
     setMessages(initialMessages)
-  }, [initialMessages])
+  }, [initialMessages, rawAssistantMessagesRef])
 
   useEffect(() => {
     messagesRef.current = messages

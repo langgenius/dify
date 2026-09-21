@@ -277,6 +277,10 @@ describe('SnippetList', () => {
 
     expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
+    const path = within(screen.getByRole('navigation', { name: 'workflow.tabs.snippets' }))
+    expect(path.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
+    expect(path.getAllByRole('listitem')).toHaveLength(2)
+    expect(path.getByText('workflow.tabs.snippets')).toHaveAttribute('aria-current', 'page')
     expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),

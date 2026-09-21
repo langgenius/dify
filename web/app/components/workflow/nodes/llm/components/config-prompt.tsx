@@ -56,7 +56,10 @@ const ConfigPrompt: FC<Props> = ({
   const workflowStore = useWorkflowStore()
   const { setControlPromptEditorRerenderKey } = workflowStore.getState()
   const prompts = useMemo(
-    () => (isChatModel && Array.isArray(payload) ? payload : []),
+    () =>
+      isChatModel && Array.isArray(payload)
+        ? payload.map((item) => ({ ...item, id: item.id || uuid4() }))
+        : [],
     [isChatModel, payload],
   )
   const keyboardSort = useKeyboardSortable({
@@ -67,11 +70,7 @@ const ConfigPrompt: FC<Props> = ({
     getItemLabel: (item) => item.role || '',
   })
   const payloadWithIds = useMemo(
-    () =>
-      keyboardSort.items.map((item) => {
-        const id = item.id || uuid4()
-        return { id, p: { ...item, id } }
-      }),
+    () => keyboardSort.items.map((item) => ({ id: item.id, p: item })),
     [keyboardSort.items],
   )
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
@@ -82,7 +81,7 @@ const ConfigPrompt: FC<Props> = ({
   const handleChatModePromptChange = useCallback(
     (index: number) => {
       return (prompt: string) => {
-        const newPrompt = produce(payload as PromptItem[], (draft) => {
+        const newPrompt = produce(prompts, (draft) => {
           draft[index]![
             draft[index]!.edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'
           ] = prompt
@@ -90,35 +89,35 @@ const ConfigPrompt: FC<Props> = ({
         onChange(newPrompt)
       }
     },
-    [onChange, payload],
+    [onChange, prompts],
   )
 
   const handleChatModeEditionTypeChange = useCallback(
     (index: number) => {
       return (editionType: EditionType) => {
-        const newPrompt = produce(payload as PromptItem[], (draft) => {
+        const newPrompt = produce(prompts, (draft) => {
           draft[index]!.edition_type = editionType
         })
         onChange(newPrompt)
       }
     },
-    [onChange, payload],
+    [onChange, prompts],
   )
 
   const handleChatModeMessageRoleChange = useCallback(
     (index: number) => {
       return (role: PromptRole) => {
-        const newPrompt = produce(payload as PromptItem[], (draft) => {
+        const newPrompt = produce(prompts, (draft) => {
           draft[index]!.role = role
         })
         onChange(newPrompt)
       }
     },
-    [onChange, payload],
+    [onChange, prompts],
   )
 
   const handleAddPrompt = useCallback(() => {
-    const newPrompt = produce(payload as PromptItem[], (draft) => {
+    const newPrompt = produce(prompts, (draft) => {
       if (draft.length === 0) {
         draft.push({ role: PromptRole.system, text: '', id: uuid4() })
 
@@ -132,18 +131,18 @@ const ConfigPrompt: FC<Props> = ({
       })
     })
     onChange(newPrompt)
-  }, [onChange, payload])
+  }, [onChange, prompts])
 
   const handleRemove = useCallback(
     (index: number) => {
       return () => {
-        const newPrompt = produce(payload as PromptItem[], (draft) => {
+        const newPrompt = produce(prompts, (draft) => {
           draft.splice(index, 1)
         })
         onChange(newPrompt)
       }
     },
-    [onChange, payload],
+    [onChange, prompts],
   )
 
   const handleCompletionPromptChange = useCallback(
@@ -193,7 +192,7 @@ const ConfigPrompt: FC<Props> = ({
               setList={(list) => {
                 if (
                   keyboardSort.isSorting ||
-                  (prompts.every((item) => !!item.id) &&
+                  (list.length === payloadWithIds.length &&
                     list.every((item, index) => item.id === payloadWithIds[index]?.id))
                 )
                   return

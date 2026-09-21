@@ -15,11 +15,12 @@ from typing import Any, cast
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -38,7 +39,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
-from models.model import App, AppModelConfig
+from models.model import App, AppModelConfig, UploadFile
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot, Skill
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -53,6 +54,7 @@ from services.agent.dsl_entities import (
     portable_ref,
 )
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
+from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_service import AgentRosterService
 from services.entities.dsl_entities import DslImportWarning
 
@@ -129,9 +131,13 @@ class AgentDslService:
         return package_ref, {package_ref: make_portable_agent_package(agent, soul, workspace_skills=workspace_skills)}
 
     def export_workflow_packages(
-        self, *, workflow: Workflow, graph: Mapping[str, Any]
+        self,
+        *,
+        workflow: Workflow,
+        graph: Mapping[str, Any],
+        resource_exporter: AgentPackageResourceExporter | None = None,
     ) -> tuple[dict[str, Any], dict[str, AgentPackage]]:
-        """Replace persisted Agent binding ids with portable package references."""
+        """Replace persisted bindings with portable packages, optionally collecting their assets."""
 
         portable_graph = copy.deepcopy(dict(graph))
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(portable_graph))
@@ -141,6 +147,7 @@ class AgentDslService:
         bindings = self.session.scalars(
             select(WorkflowAgentNodeBinding).where(
                 WorkflowAgentNodeBinding.tenant_id == workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == workflow.app_id,
                 WorkflowAgentNodeBinding.workflow_id == workflow.id,
                 WorkflowAgentNodeBinding.workflow_version == workflow.version,
                 WorkflowAgentNodeBinding.node_id.in_(list(agent_nodes)),
@@ -166,16 +173,25 @@ class AgentDslService:
             if package_ref is None:
                 package_ref = f"agent_{len(packages) + 1}"
                 package_refs_by_source[source_key] = package_ref
-                packages[package_ref] = make_portable_agent_package(
-                    agent,
-                    AgentSoulConfig.model_validate(snapshot.config_snapshot_dict),
-                    workspace_skills=self._workspace_skills_for_export(
-                        tenant_id=workflow.tenant_id,
-                        agent_id=agent.id,
+                if resource_exporter is not None:
+                    packages[package_ref] = resource_exporter.collect_package(
+                        session=self.session,
+                        agent=agent,
+                        soul=AgentSoulConfig.model_validate(snapshot.config_snapshot_dict),
                         snapshot_id=snapshot.id,
-                        include_draft=False,
-                    ),
-                )
+                        package_ref=package_ref,
+                    )
+                else:
+                    packages[package_ref] = make_portable_agent_package(
+                        agent,
+                        AgentSoulConfig.model_validate(snapshot.config_snapshot_dict),
+                        workspace_skills=self._workspace_skills_for_export(
+                            tenant_id=workflow.tenant_id,
+                            agent_id=agent.id,
+                            snapshot_id=snapshot.id,
+                            include_draft=False,
+                        ),
+                    )
             node_data["agent_binding"] = {
                 "binding_type": binding.binding_type.value,
                 AGENT_PACKAGE_REF_KEY: package_ref,
@@ -515,6 +531,15 @@ class AgentDslService:
             warnings=warnings,
             account_id=account.id,
         )
+        upload_file_ids = [
+            item.file_id for item in soul.config_files if item.file_kind == "upload_file" and not item.is_missing
+        ]
+        if upload_file_ids:
+            self.session.execute(
+                update(UploadFile)
+                .where(UploadFile.tenant_id == workflow.tenant_id, UploadFile.id.in_(upload_file_ids))
+                .values(used=True, used_by=account.id, used_at=naive_utc_now())
+            )
         return AgentPackageImportResult(agent=agent, snapshot=snapshot, warnings=warnings)
 
     def _create_workflow_only_agent(
