@@ -622,6 +622,30 @@ describe('i18n build check', () => {
       "function load(...ns: string[]) { return useTranslation(ns) }; export const page = load('app', 'login')",
     ],
     [
+      'fixed-hop',
+      "function load(ns: string) { return useTranslation(['login', ns]) }; function forward(ns: string) { return load(ns) }; export const page = forward('app')",
+    ],
+    [
+      'dynamic-spread',
+      "function load(ns = 'login') { return useTranslation(ns) }; const args = (globalThis as any).namespaces as string[]; export const page = load(...args)",
+    ],
+    [
+      'fixed',
+      "function load(ns: string) { return useTranslation(['login', ns]) }; export const page = load('app')",
+    ],
+    [
+      'empty-spread',
+      "function load(ns = 'login') { return useTranslation(ns) }; export const page = load(...[] as [])",
+    ],
+    [
+      'object-escape',
+      "function load(ns: string) { return useTranslation(ns) }; const handlers = { callback: load }; function register(value: unknown) { (globalThis as any).handlers = value }; register(handlers); export const page = load('app')",
+    ],
+    [
+      'array-escape',
+      "function load(ns: string) { return useTranslation(ns) }; const handlers = [load]; function register(value: unknown) { (globalThis as any).handlers = value }; register(handlers); export const page = load('app')",
+    ],
+    [
       'mutation',
       "function mutate(ns: string[]) { ns.push('login') }; function load(ns: string[]) { mutate(ns); return useTranslation(ns) }; export const page = load(['app'])",
     ],
@@ -653,9 +677,13 @@ describe('i18n build check', () => {
         build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
       }),
     ).rejects.toThrow(
-      mode === 'rest' ? /Undeclared namespace.*login/s : /Cannot verify namespace usage/,
+      ['rest', 'fixed', 'fixed-hop', 'empty-spread'].includes(mode)
+        ? /Undeclared namespace.*login/s
+        : /Cannot verify namespace usage/,
     )
-    if (mode === 'rest') expect(reports[0]!.routes[0]!.namespaces).toEqual(['app', 'login'])
+    if (mode === 'empty-spread') expect(reports[0]!.routes[0]!.namespaces).toEqual(['login'])
+    else if (mode === 'rest' || mode === 'fixed' || mode === 'fixed-hop')
+      expect(reports[0]!.routes[0]!.namespaces).toEqual(['app', 'login'])
     else expect(reports[0]!.evidence.some((item) => item.kind === 'unknown-namespace')).toBe(true)
   })
 
@@ -707,7 +735,7 @@ describe('i18n build check', () => {
     },
   )
 
-  it.each(['current', 'arbitrary', 'spread'] as const)(
+  it.each(['current', 'arbitrary', 'spread', 'alias-mutation', 'call-mutation'] as const)(
     'applies route namespace policy only to proven %s props',
     async (mode) => {
       writeFileSync(localeFile, '{}')
@@ -732,6 +760,7 @@ describe('i18n build check', () => {
       function Loader({ required }: { required: string[] }) { useTranslation([...required]); return null }
       export function Provider() {
         const required = getRouteNamespaces(${mode === 'arbitrary' ? "'/other'" : 'usePathname()'})
+        ${mode === 'alias-mutation' ? "const alias = required; alias.push('workflow')" : mode === 'call-mutation' ? "function mutate(ns: string[]) { ns.push('workflow') }; mutate(required)" : ''}
         return <Loader ${mode === 'spread' ? '{...{ required }}' : 'required={required}'} />
       }
     `,

@@ -542,7 +542,10 @@ export function checkTranslationGraph(
 
   // Summarize direct namespace forwarding before scanning usage. Attribute the
   // forwarded load to callers, not every route importing a shared wrapper.
-  const forwarding = new Map<ts.FunctionDeclaration, Set<number>>()
+  const forwarding = new Map<
+    ts.FunctionDeclaration,
+    { parameters: Set<number>; namespaces: Set<string> }
+  >()
   const calls: { node: ts.CallExpression; owner?: ts.FunctionDeclaration }[] = []
   function enclosingFunction(node: ts.Node): ts.FunctionDeclaration | undefined {
     for (let parent = node.parent; parent; parent = parent.parent) {
@@ -616,7 +619,8 @@ export function checkTranslationGraph(
         markWrites(node.operand)
       if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression))
         markWrites(node.expression.expression)
-      if (ts.isFunctionDeclaration(node) && node.body) forwarding.set(node, new Set())
+      if (ts.isFunctionDeclaration(node) && node.body)
+        forwarding.set(node, { parameters: new Set(), namespaces: new Set() })
       if (ts.isCallExpression(node)) calls.push({ node, owner: enclosingFunction(node) })
       ts.forEachChild(node, collect)
     }
@@ -682,16 +686,37 @@ export function checkTranslationGraph(
   const mutationMs = performance.now() - mutationStarted
   const forwardingStarted = performance.now()
   let forwardingVisits = 0
+  function expandArguments(args: readonly ts.Expression[]): ts.Expression[] | undefined {
+    const result: ts.Expression[] = []
+    for (const argument of args) {
+      if (!ts.isSpreadElement(argument)) {
+        result.push(argument)
+        continue
+      }
+      const value = unwrap(argument.expression)
+      if (!ts.isArrayLiteralExpression(value)) return undefined
+      const expanded = expandArguments(value.elements)
+      if (!expanded) return undefined
+      result.push(...expanded)
+    }
+    return result
+  }
+  function fixedNamespaces(expression: ts.Expression): string[] {
+    const node = unwrap(expression)
+    if (ts.isStringLiteralLike(node)) return [node.text]
+    if (ts.isSpreadElement(node)) return fixedNamespaces(node.expression)
+    if (ts.isArrayLiteralExpression(node)) return node.elements.flatMap(fixedNamespaces)
+    return []
+  }
   function forwardedArguments(
     node: ts.CallExpression,
     target: ts.FunctionDeclaration,
     index: number,
   ) {
-    // A spread before a positional parameter makes its source ambiguous.
-    const spread = node.arguments.slice(0, index).find(ts.isSpreadElement)
-    if (spread) return undefined
-    if (target.parameters[index]?.dotDotDotToken) return node.arguments.slice(index)
-    const supplied = node.arguments[index]
+    const args = expandArguments(node.arguments)
+    if (!args) return undefined
+    if (target.parameters[index]?.dotDotDotToken) return args.slice(index)
+    const supplied = args[index]
     const undefinedValue =
       supplied && checker.getTypeAtLocation(supplied).flags & ts.TypeFlags.Undefined
     const argument = !supplied || undefinedValue ? target.parameters[index]?.initializer : supplied
@@ -726,15 +751,23 @@ export function checkTranslationGraph(
         : api === 'getTranslation'
           ? node.arguments.slice(1, 2)
           : forwardingTargets(node.expression).flatMap((target) =>
-              [...forwarding.get(target)!].flatMap(
+              [...forwarding.get(target)!.parameters].flatMap(
                 (index) => forwardedArguments(node, target, index) ?? [],
               ),
             )
     const summary = forwarding.get(owner!)!
-    const previousSize = summary.size
-    for (const argument of args)
-      for (const parameter of forwardedParameters(argument, owner!) ?? []) summary.add(parameter)
-    if (summary.size !== previousSize)
+    const previousSize = summary.parameters.size + summary.namespaces.size
+    for (const argument of args) {
+      const parameters = forwardedParameters(argument, owner!)
+      if (!parameters) continue
+      for (const parameter of parameters) summary.parameters.add(parameter)
+      for (const namespace of fixedNamespaces(argument)) summary.namespaces.add(namespace)
+    }
+    if (api !== 'useTranslation' && api !== 'getTranslation')
+      for (const target of forwardingTargets(node.expression))
+        for (const namespace of forwarding.get(target)!.namespaces)
+          summary.namespaces.add(namespace)
+    if (summary.parameters.size + summary.namespaces.size !== previousSize)
       for (const dependent of dependents.get(owner!) ?? []) pending.add(dependent)
   }
   const recursive = new Set<ts.FunctionDeclaration>()
@@ -761,19 +794,30 @@ export function checkTranslationGraph(
     finished.add(node)
   }
   for (const target of forwarding.keys()) findCycles(target, [])
-  function escapedForwarders(expression: ts.Expression): boolean {
-    if (forwardingTargets(expression).some((target) => forwarding.get(target)!.size)) return true
+  function escapedForwarders(expression: ts.Expression, seen = new Set<ts.Node>()): boolean {
+    if (seen.has(expression)) return false
+    const next = new Set(seen).add(expression)
+    if (forwardingTargets(expression).some((target) => forwarding.get(target)!.parameters.size))
+      return true
     const node = unwrap(expression)
     if (ts.isObjectLiteralExpression(node))
       return node.properties.some((member) =>
         ts.isSpreadAssignment(member)
-          ? escapedForwarders(member.expression)
+          ? escapedForwarders(member.expression, next)
           : ts.isPropertyAssignment(member)
-            ? escapedForwarders(member.initializer)
-            : ts.isShorthandPropertyAssignment(member) && escapedForwarders(member.name),
+            ? escapedForwarders(member.initializer, next)
+            : ts.isShorthandPropertyAssignment(member) && escapedForwarders(member.name, next),
       )
-    if (ts.isArrayLiteralExpression(node)) return node.elements.some(escapedForwarders)
-    if (ts.isSpreadElement(node)) return escapedForwarders(node.expression)
+    if (ts.isArrayLiteralExpression(node))
+      return node.elements.some((element) => escapedForwarders(element, next))
+    if (ts.isSpreadElement(node)) return escapedForwarders(node.expression, next)
+    if (ts.isIdentifier(node))
+      return declarations(node).some(
+        (declaration) =>
+          ts.isVariableDeclaration(declaration) &&
+          !!declaration.initializer &&
+          escapedForwarders(declaration.initializer, next),
+      )
     return false
   }
   function isForwarded(expression: ts.Expression) {
@@ -785,7 +829,10 @@ export function checkTranslationGraph(
     )
       return false
     const parameters = forwardedParameters(expression, owner)
-    return !!parameters?.size && [...parameters].every((index) => forwarding.get(owner)?.has(index))
+    return (
+      !!parameters?.size &&
+      [...parameters].every((index) => forwarding.get(owner)?.parameters.has(index))
+    )
   }
 
   const forwardingMs = performance.now() - forwardingStarted
@@ -828,7 +875,11 @@ export function checkTranslationGraph(
       }
       if (api !== 'useTranslation' && api !== 'getTranslation') {
         for (const target of forwardingTargets(node.expression)) {
-          for (const index of forwarding.get(target)!) {
+          for (const namespace of forwarding.get(target)!.namespaces) {
+            currentNamespaces.add(namespace)
+            explain('usage', [namespace], 'Fixed namespace loaded by a forwarding function.')
+          }
+          for (const index of forwarding.get(target)!.parameters) {
             const argumentsToCheck = forwardedArguments(node, target, index)
             if (!argumentsToCheck) {
               explain(

@@ -99,19 +99,24 @@ An empty list means no unknown expression was detected, not proof that all APIs 
 dependencies were understood.
 Direct function declarations forwarding namespace parameters are summarized and
 checked at their concrete call sites, including aliases and multi-hop forwarding.
-Rest parameters collect all remaining arguments, including static spreads.
+Summaries retain both fixed namespaces and parameter dependencies.
+Static array spreads are expanded before matching positional/rest arguments and
+defaults, including empty spreads. Unexpandable spreads retain unknown diagnostics.
+Rest parameters collect all remaining arguments.
 Parameter assignments, method calls, and passing mutable parameters (including local
 aliases) to other functions prevent passthrough summaries. Such calls remain unknown
 even when the parameter has a default; arbitrary callees are not assumed pure.
 Defaults are evaluated at the call site, including explicit `undefined`. Recursive
 forwarding, captured parameters in closures, and callbacks escaping through objects
-or arrays retain unknown diagnostics. Uncalled entry functions remain unknown; passing a forwarding function as a call
+or arrays (including variables holding these containers) retain unknown diagnostics. Uncalled entry functions remain unknown; passing a forwarding function as a call
 argument reports an escape instead of assuming its future arguments. Runtime
 route-dependent provider props require an explicit `routeNamespacePolicy` contract
 with `module`, `exportedName`, and `getNamespaces(route)`. The analyzer recognizes
 the configured function called with `usePathname()` and follows immutable local
 variables and direct props into a local, unexported JSX component. Spread props,
 arbitrary pathname expressions, writes, and escaping components remain unknown.
+Policy values modified through local aliases or passed to arbitrary functions lose
+their trusted status and retain unknown diagnostics.
 The callback supplies reviewed route values; the analyzer verifies this restricted
 dataflow, not the arbitrary implementation of the configured policy or router.
 An undefined callback result leaves that route unknown. `routePolicySources` records

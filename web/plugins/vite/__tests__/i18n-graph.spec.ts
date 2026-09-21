@@ -87,7 +87,7 @@ describe('translation graph analysis', () => {
       expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toEqual([])
     })
 
-    it('keeps shifted parameters unknown when an earlier spread can omit their default', () => {
+    it('resolves defaults after expanding an earlier static spread', () => {
       writeJson('i18n/locales/en-US/app.json', {})
       writeSource(
         'page.ts',
@@ -96,11 +96,9 @@ describe('translation graph analysis', () => {
         load(...['prefix'])
       `,
       )
-      expect(
-        checkTranslationGraph(webRoot, modules).evidence.some(
-          (item) => item.kind === 'unknown-namespace',
-        ),
-      ).toBe(true)
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.moduleNamespaces.get(path.join(webRoot, 'page.ts'))).toEqual(new Set(['login']))
+      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toEqual([])
     })
 
     it('preserves primitive generic namespace parameters passed inside options', () => {

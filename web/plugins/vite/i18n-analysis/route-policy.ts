@@ -1,5 +1,6 @@
 import path from 'node:path'
 import * as ts from 'typescript'
+import { createTranslationApiResolver } from './api'
 
 export type RouteNamespacePolicy = { module: string; exportedName: string }
 
@@ -16,6 +17,8 @@ export function createRoutePolicyMatcher(
   const jsx = new Map<ts.FunctionDeclaration, (ts.JsxOpeningElement | ts.JsxSelfClosingElement)[]>()
   const references = new Map<ts.FunctionDeclaration, ts.Identifier[]>()
   const written = new Set<ts.Symbol>()
+  const translationApi = createTranslationApiResolver(root, checker)
+  const checkedWrites = new Set<ts.Node>()
   function declarations(node: ts.Node) {
     const symbol = checker.getSymbolAtLocation(node)
     return symbol?.flags && symbol.flags & ts.SymbolFlags.Alias
@@ -23,9 +26,15 @@ export function createRoutePolicyMatcher(
       : (symbol?.declarations ?? [])
   }
   function markWritten(node: ts.Node) {
+    if (checkedWrites.has(node)) return
+    checkedWrites.add(node)
+    if (ts.isCallExpression(node) || ts.isFunctionLike(node)) return
     if (ts.isIdentifier(node)) {
       const symbol = checker.getSymbolAtLocation(node)
       if (symbol) written.add(symbol)
+      for (const declaration of declarations(node))
+        if (ts.isVariableDeclaration(declaration) && declaration.initializer)
+          markWritten(declaration.initializer)
     }
     ts.forEachChild(node, markWritten)
   }
@@ -48,6 +57,11 @@ export function createRoutePolicyMatcher(
         )
       )
         markWritten(node.expression.expression)
+      if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+        const api = translationApi(node.expression)
+        if (api !== 'useTranslation' && api !== 'getTranslation')
+          for (const argument of node.arguments ?? []) markWritten(argument)
+      }
       if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
         for (const declaration of declarations(node.tagName)) {
           if (!ts.isFunctionDeclaration(declaration)) continue
