@@ -5,10 +5,13 @@ import { inputSchema } from '@/plugins/argv/parse'
 import { BINARY } from '@/version/info'
 import { collectCommands } from './registry'
 
-export type CommandRow = {
+export type HelpRow = {
   id: string
-  usage: string
   summary: string
+}
+
+export type CommandRow = HelpRow & {
+  usage: string
   effect: CommandEffect
   input: JsonSchema
   positional: readonly string[]
@@ -33,4 +36,8 @@ export function commandRow(ctor: CommandConstructor, path: readonly string[]): C
 
 export function treeRows(tree: CommandTree): CommandRow[] {
   return collectCommands(tree).map(({ command, path }) => commandRow(command, path))
+}
+
+export function briefRows(rows: readonly HelpRow[]): HelpRow[] {
+  return rows.map(({ id, summary }) => ({ id, summary }))
 }

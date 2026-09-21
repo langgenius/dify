@@ -66,7 +66,7 @@ difyctl has no built-in business commands: `ops` and `call` are the whole surfac
 `--verbose` is global: it may appear on any command, and it keeps the raw server
 response in the error envelope instead of dropping it.
 
-Run `difyctl <cmd> --help` for a command's JSON descriptor, or `difyctl call <op-id> --help` (same as `ops describe <op-id>`) for an operation's. Run `difyctl --help` with no other arguments for the full command list, plus — once logged in — the operation list.
+Run `difyctl <cmd> --help` for a command's JSON descriptor, or `difyctl call <op-id> --help` (same as `ops describe <op-id>`) for an operation's. Run `difyctl --help` with no other arguments for every command id and summary, plus — once logged in — every operation id and summary. Add `--full` to get each row's descriptor instead.
 
 ## Agent skills
 

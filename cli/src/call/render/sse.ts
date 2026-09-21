@@ -41,6 +41,6 @@ export const sseRenderer: Renderer = async (res, io, options) => {
     }
   }
 
-  if (!stream) await io.line(finishFold(result))
+  if (!stream) await io.document(finishFold(result))
   return exitCodeFor(result)
 }

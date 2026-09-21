@@ -18,8 +18,7 @@ it('deletes the cached catalog file', async () => {
   const w2 = await testContext({ login: true, argv: ['cache', 'clear'], reuseDirOf: w })
   worlds.push(w2)
   expect(await (await w2.ctx.get(commands)).run()).toBe(0)
-  const lines = w2.io.outBuf().trim().split('\n')
-  expect(JSON.parse(lines[lines.length - 1]!)).toEqual({ cleared: true })
+  expect(JSON.parse(w2.io.outBuf())).toEqual({ cleared: true })
   expect((await w2.ctx.get(catalog)).loaded).toBe(false)
 })
 

@@ -16,14 +16,39 @@ afterEach(async () => {
   for (const w of worlds.splice(0)) await w.stop()
 })
 
-it('root help lists the command rows as pretty JSON and fetches the catalog for the ops rows', async () => {
+it('root help lists ids and summaries as pretty JSON and fetches the catalog for the ops rows', async () => {
   const w = await world(true, [])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   const out = JSON.parse(w.io.outBuf())
   expect(out.commands.map((c: { id: string }) => c.id)).toContain('version')
   expect(out.ops.map((o: { id: string }) => o.id)).toContain('console_app.workflow.run')
+  for (const row of [...out.commands, ...out.ops])
+    expect(Object.keys(row)).toEqual(['id', 'summary'])
   expect(w.io.outBuf()).toMatch(/\n {2}"commands"/)
   expect(w.mock.requestCount).toBe(1) // the catalog fetch, nothing else
+})
+
+it('help --full adds every row its descriptor, for the root and for a namespace', async () => {
+  const a = await world(true, ['help', '--full'])
+  expect(await (await a.ctx.get(commands)).run()).toBe(0)
+  const full = JSON.parse(a.io.outBuf())
+  expect(full.commands.find((c: { id: string }) => c.id === 'version')).toMatchObject({
+    usage: 'difyctl version [options]',
+    input: expect.objectContaining({ type: 'object' }),
+  })
+  expect(full.ops.find((o: { id: string }) => o.id === 'console_app.list')).toMatchObject({
+    kind: 'list',
+    tags: ['console_app'],
+  })
+  const b = await world(false, ['help', 'cache'])
+  expect(await (await b.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(b.io.outBuf()).commands).toEqual([
+    { id: 'cache clear', summary: expect.any(String) },
+    { id: 'cache refresh', summary: expect.any(String) },
+  ])
+  const c = await world(false, ['cache', '--help', '--full'])
+  expect(await (await c.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(c.io.outBuf()).commands[0]).toHaveProperty('usage')
 })
 
 it('root help with no server known prints the static rows and says so on stderr', async () => {
@@ -85,10 +110,10 @@ class Fake extends Command<typeof FAKE_INPUT> {
 
 const fakeTree: CommandTree = { fake: { command: Fake, subcommands: {} } }
 
-it('applies the schema defaults before run', async () => {
+it('applies the schema defaults before run and prints the result indented', async () => {
   const w = await world(false, ['fake'])
   expect(await runPipeline(fakeTree, w.ctx)).toBe(0)
-  expect(JSON.parse(w.io.outBuf())).toEqual({ dry_run: false })
+  expect(w.io.outBuf()).toBe('{\n  "dry_run": false\n}\n')
 })
 
 it('takes --verbose anywhere and keeps it out of the command input', async () => {

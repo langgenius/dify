@@ -2,7 +2,7 @@ import type { Renderer } from './index'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { unknownError } from '@/errors/base'
-import { renderJsonLine } from './object'
+import { renderJson } from './object'
 
 const CONTENT_DISPOSITION_HEADER = 'content-disposition'
 const CONTENT_TYPE_HEADER = 'content-type'
@@ -49,5 +49,5 @@ export const fileRenderer: Renderer = async (res, io, options, opId) => {
   // A content type the server never sent is absent, not empty.
   const receipt: Record<string, unknown> = { path, size: bytes.byteLength }
   if (contentType !== null) receipt.content_type = contentType
-  return renderJsonLine(io, receipt)
+  return renderJson(io, receipt)
 }

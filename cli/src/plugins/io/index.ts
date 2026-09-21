@@ -8,7 +8,6 @@ type JsonPrimitive = string | number | boolean | null
 export type Printable = JsonPrimitive | readonly unknown[] | Record<string, unknown>
 
 export type IOService = Readonly<{
-  line: (value: Printable) => Promise<void>
   document: (value: Printable) => Promise<void>
   notice: (text: string) => void
   raw: (chunk: string | Buffer) => Promise<void>
@@ -28,7 +27,6 @@ function writeChunk(stream: NodeJS.WritableStream, chunk: string | Buffer): Prom
 
 export function ioService(streams: IOStreams): IOService {
   return Object.freeze({
-    line: (value) => writeChunk(streams.out, `${JSON.stringify(value)}${NEWLINE}`),
     document: (value) =>
       writeChunk(streams.out, `${JSON.stringify(value, null, JSON_INDENT)}${NEWLINE}`),
     notice: (text) => {

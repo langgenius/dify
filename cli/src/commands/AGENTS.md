@@ -38,7 +38,7 @@ export default class MyCmd extends Command<typeof INPUT> {
 
   async run(input: z.infer<typeof INPUT>, ctx: CommandContext) {
     // read plugin services with ctx.get(...); the return value is printed as
-    // one JSON line. Return an Outcome for a non-zero exit or output already
+    // indented JSON. Return an Outcome for a non-zero exit or output already
     // written through ctx.get(io); notices go to ctx.get(io).notice(...).
   }
 }
