@@ -48,10 +48,10 @@ from core.dify_builder.handlers_fix import (
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
-    needs_upload_inputs,
     perform_revert,
     start_schema,
     testdata_form_fields,
+    without_upload_values,
 )
 from core.dify_builder.models import (
     ConversationItem,
@@ -574,31 +574,32 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
         if fc.test_input_ref == "":
             graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
             schema = start_schema(graph)
-            if needs_upload_inputs(schema):
-                form_items = append_card(
-                    fc,
-                    FormCard(
-                        variant="testdata",
-                        fields=testdata_form_fields(schema),
-                        values={},
-                        frozen=False,
-                    ),
-                )
-                turn_items = append_card(
-                    fc,
-                    AssistantTurnItem(
-                        turn_id=str(uuid.uuid4()),
-                        stage_id=str(s.current_state),
-                        execution=ExecutionProgress(status="completed"),
-                        reply_text="Provide test inputs (or use mock data) to run the test.",
-                        cards=["form"],
-                    ),
-                )
-                return StepResult(next=PcState.BUILD_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
-            inputs = env.agent.generate_mock_inputs(schema, {})
-            ti = TestInput(session_id=s.id, source="mock", inputs=inputs)
-            env.repo.save_test_input(ti)
-            fc.test_input_ref = ti.id
+            # Pre-fill the form with mock values instead of asking the user to
+            # invent them: the cost is one click, not N fields. Still SHOW
+            # them -- a green check produced by inputs nobody ever saw is weak
+            # evidence about the workflow. Upload fields stay empty because
+            # nothing can mock a file, so the form asks for those alone.
+            prefill = without_upload_values(schema, env.agent.generate_mock_inputs(schema, {}))
+            form_items = append_card(
+                fc,
+                FormCard(
+                    variant="testdata",
+                    fields=testdata_form_fields(schema),
+                    values=prefill,
+                    frozen=False,
+                ),
+            )
+            turn_items = append_card(
+                fc,
+                AssistantTurnItem(
+                    turn_id=str(uuid.uuid4()),
+                    stage_id=str(s.current_state),
+                    execution=ExecutionProgress(status="completed"),
+                    reply_text="I filled in test inputs -- edit them if you like, then run the test.",
+                    cards=["form"],
+                ),
+            )
+            return StepResult(next=PcState.BUILD_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
         emit_canvas(env, "start_test_run")
         items = append_card(fc, DecisionItem(text="Run tests"))
         return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc, items=items)
