@@ -8,15 +8,15 @@ compose with.
 
 ``endpoint()`` also builds the route's ``EndpointSpec`` (``auth/spec.py``), which
 carries the catalog fields ``op``, ``kind``, ``summary``, ``internal`` and
-``deprecated`` that ``_catalog.py`` reads to describe ``/openapi/v1``. Passing
-``op=`` to ``accepts`` fills the next-page hint on a bare ``PaginationEnvelope``
-result.
+``deprecated`` that ``_catalog.py`` reads to describe ``/openapi/v1``. A ``list``
+op gets ``paginated`` as well, which fills the next-page hint on a bare
+``PaginationEnvelope`` result.
 """
 
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from functools import wraps
 from typing import Any, Final, cast
 
@@ -35,29 +35,36 @@ from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import EndpointSpec, Kind
 from enums import DeploymentEdition
 
-__all__ = ["Kind", "accepts", "endpoint", "op_of", "returns"]
+__all__ = ["Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
 
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
 
 
-def _with_next_page_hint(result: Any, *, op: str, path_args: Mapping[str, Any], query: BaseModel | None) -> Any:
-    if not isinstance(result, PaginationEnvelope) or result.hints:
-        return result
-    hint = next_page_hint(op=op, path_args=path_args, query=query, envelope=result)
-    if hint is not None:
-        result.hints = [hint]
-    return result
-
-
-def accepts(
-    *, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None, op: str | None = None
-) -> Callable:
-    """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs.
-
-    When ``op`` is given, a result that comes back as a bare ``PaginationEnvelope`` (no hints
-    of its own) gets a ``Next page`` hint filled in — only this layer knows both the op id and
-    the raw request kwargs the hint needs to echo.
+def paginated(op: str) -> Callable:
+    """Fill the ``Next page`` hint on a bare ``PaginationEnvelope`` result (one with no hints
+    of its own). Sits inside ``accepts`` so it sees the validated ``query`` and the path
+    kwargs the hint echoes; only this layer knows both those and the op id.
     """
+
+    def decorator(view: Callable) -> Callable:
+        @wraps(view)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            result = view(*args, **kwargs)
+            if not isinstance(result, PaginationEnvelope) or result.hints:
+                return result
+            path_args = {name: value for name, value in kwargs.items() if name not in _INJECTED_KWARGS}
+            hint = next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), envelope=result)
+            if hint is not None:
+                result.hints = [hint]
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
+    """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs."""
 
     def decorator(view: Callable) -> Callable:
         body_file_fields = file_fields(body) if body is not None else frozenset()
@@ -76,11 +83,7 @@ def accepts(
                     message="Request validation failed",
                     errors=exc.errors(include_url=False, include_input=False, include_context=False),
                 )
-            result = view(*args, **kwargs)
-            if op is None:
-                return result
-            path_args = {name: value for name, value in kwargs.items() if name not in _INJECTED_KWARGS}
-            return _with_next_page_hint(result, op=op, path_args=path_args, query=kwargs.get("query"))
+            return view(*args, **kwargs)
 
         if query is not None:
             openapi_ns.doc(params=query_params_from_model(query))(wrapper)
@@ -191,8 +194,10 @@ def endpoint(
             raise TypeError(f"{view.__qualname__} must declare a 'ctx' parameter")
 
         decorated = view
+        if kind is Kind.LIST:
+            decorated = paginated(op)(decorated)
         if query is not None or body is not None:
-            decorated = accepts(query=query, body=body, op=op)(decorated)
+            decorated = accepts(query=query, body=body)(decorated)
         for return_spec in reversed(return_specs):
             decorated = _apply_returns(*return_spec)(decorated)
         decorated = subject_router.guard(spec)(decorated)
