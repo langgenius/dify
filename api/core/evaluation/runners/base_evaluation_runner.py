@@ -44,6 +44,7 @@ class BaseEvaluationRunner(ABC):
         tenant_id: str,
         dataset_items: list[EvaluationDatasetInput] | None = None,
         node_info: NodeInfo | None = None,
+        context_list: list[list[str] | None] | None = None,
     ) -> list[EvaluationItemResult]:
         """Compute evaluation metrics on the collected results.
 

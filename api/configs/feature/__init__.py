@@ -1424,6 +1424,10 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_EVALUATION_RUN_RECONCILER: bool = Field(
+        description="Enable periodic recovery of running evaluations that exceed the execution timeout",
+        default=True,
+    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,

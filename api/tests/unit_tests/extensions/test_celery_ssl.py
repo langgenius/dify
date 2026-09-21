@@ -212,6 +212,7 @@ class TestCelerySSLConfiguration:
         mock_config.CELERY_TASK_ANNOTATIONS = {}
 
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.ENABLE_EVALUATION_RUN_RECONCILER = True
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -248,4 +249,7 @@ class TestCelerySSLConfiguration:
         assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
             "tasks.delete_conversation_task.sweep_deleted_conversations"
+        )
+        assert celery_app.conf["beat_schedule"]["evaluation-run-reconciler"]["task"] == (
+            "tasks.evaluation_task.reconcile_stale_evaluation_runs"
         )

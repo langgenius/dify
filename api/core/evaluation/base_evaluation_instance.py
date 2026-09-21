@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from core.evaluation.entities.evaluation_entity import (
@@ -53,6 +53,8 @@ class BaseEvaluationInstance(ABC):
         node_run_result_mapping_list: list[dict[str, NodeRunResult]],
         customized_metrics: CustomizedMetrics,
         tenant_id: str,
+        cancellation_check: Callable[[], None] | None = None,
+        task_id_factory: Callable[[int], str] | None = None,
     ) -> list[EvaluationItemResult]:
         """Evaluate using a published workflow as the evaluator.
 
@@ -103,6 +105,8 @@ class BaseEvaluationInstance(ABC):
 
         eval_results: list[EvaluationItemResult] = []
         for idx, node_run_result_mapping in enumerate(node_run_result_mapping_list):
+            if cancellation_check is not None:
+                cancellation_check()
             try:
                 workflow_inputs = self._build_workflow_inputs(
                     customized_metrics.input_fields,
@@ -118,6 +122,7 @@ class BaseEvaluationInstance(ABC):
                     invoke_from=InvokeFrom.SERVICE_API,
                     streaming=False,
                     call_depth=0,
+                    task_id=task_id_factory(idx) if task_id_factory is not None else None,
                 )
 
                 metrics = self._extract_workflow_metrics(
@@ -145,6 +150,8 @@ class BaseEvaluationInstance(ABC):
                         error=f"Customized evaluation failed: {exc}",
                     )
                 )
+            if cancellation_check is not None:
+                cancellation_check()
 
         return eval_results
 
@@ -239,23 +246,14 @@ def resolve_variable_selector(
     parts = cleaned.split(".")
 
     if len(parts) < 2:
-        logger.warning(
-            "Selector '%s' must have at least node_id.output_key",
-            selector_raw,
-        )
-        return ""
+        raise ValueError(f"Selector '{selector_raw}' must have at least node_id.output_key")
 
     node_id = parts[0]
     output_path = parts[1:]
 
     node_result = node_run_result_mapping.get(node_id)
     if not node_result or not node_result.outputs:
-        logger.warning(
-            "Selector '%s': node '%s' not found or has no outputs",
-            selector_raw,
-            node_id,
-        )
-        return ""
+        raise ValueError(f"Selector '{selector_raw}': node '{node_id}' not found or has no outputs")
 
     # Traverse the output path to support nested keys.
     current: object = node_result.outputs
@@ -263,20 +261,9 @@ def resolve_variable_selector(
         if isinstance(current, Mapping):
             next_val = current.get(key)
             if next_val is None:
-                logger.warning(
-                    "Selector '%s': key '%s' not found in node '%s' outputs",
-                    selector_raw,
-                    key,
-                    node_id,
-                )
-                return ""
+                raise ValueError(f"Selector '{selector_raw}': key '{key}' not found in node '{node_id}' outputs")
             current = next_val
         else:
-            logger.warning(
-                "Selector '%s': cannot traverse into non-dict value at key '%s'",
-                selector_raw,
-                key,
-            )
-            return ""
+            raise ValueError(f"Selector '{selector_raw}': cannot traverse into non-dict value at key '{key}'")
 
     return current if current is not None else ""

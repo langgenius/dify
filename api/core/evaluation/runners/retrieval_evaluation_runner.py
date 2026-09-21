@@ -31,6 +31,7 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
         tenant_id: str,
         dataset_items: list[EvaluationDatasetInput] | None = None,
         node_info: NodeInfo | None = None,
+        context_list: list[list[str] | None] | None = None,
     ) -> list[EvaluationItemResult]:
         """Compute retrieval evaluation metrics."""
         if not node_run_result_list:

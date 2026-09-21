@@ -97,6 +97,7 @@ class EvaluationRun(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     target_type: Mapped[EvaluationTargetType] = mapped_column(EnumText(EvaluationTargetType, length=32), nullable=False)
     target_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    target_workflow_version_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     evaluation_config_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     config_snapshot: Mapped[str] = mapped_column(LongText, nullable=False)
 
@@ -109,6 +110,7 @@ class EvaluationRun(Base):
     total_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     completed_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failed_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    progress_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     metrics_summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -126,9 +128,7 @@ class EvaluationRun(Base):
 
     @property
     def progress(self) -> float:
-        if self.total_items == 0:
-            return 0.0
-        return (self.completed_items + self.failed_items) / self.total_items
+        return self.progress_rate
 
     @property
     def metrics_summary_dict(self) -> dict[str, Any]:
