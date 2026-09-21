@@ -13,6 +13,7 @@ from typing import Never
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from werkzeug.exceptions import NotFound
 
 from controllers.console.workspace.human_input import (
     BatchGetContactOptionsAPI,
@@ -60,7 +61,8 @@ from core.human_input_v2.shared import (
     WorkspaceScope,
 )
 from repositories.human_input_v2.contact import Contact, ContactQuery, ContactType, IMBinding, Page
-from services.human_input_v2.contact_service import ContactWithIMBindings
+from repositories.human_input_v2.im_identity_repository import IMIdentity
+from services.human_input_v2.contact_service import ContactDetails, ContactWithIMBindings, IMBindingDetail
 from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
 from services.human_input_v2.im_contact_sync.service import (
     IMChannelNotConfiguredError,
@@ -629,6 +631,22 @@ class _ContactService:
         assert tenant_id == TenantId("workspace-1")
         return self.view if contact_id == self.view.contact.id else None
 
+    def get_contact_details(self, tenant_id: TenantId, contact_id: ContactId) -> ContactDetails | None:
+        view = self.get_contact(tenant_id, contact_id)
+        if view is None:
+            return None
+        identity = IMIdentity(
+            id=IMIdentityId("identity-1"),
+            provider_user_id="provider-user-1",
+            display_name="Reviewer",
+            email="reviewer@example.com",
+            last_seen_sync_run_id=IMSyncRunId("run-1"),
+            last_seen_at=_NOW,
+            created_at=_NOW,
+            updated_at=_NOW,
+        )
+        return ContactDetails(view, tuple(IMBindingDetail(binding, identity) for binding in view.im_bindings))
+
     def list_contact_options(
         self,
         tenant_id: TenantId,
@@ -670,11 +688,54 @@ def test_contact_read_handlers_preserve_current_and_editor_safe_projections(
 
     assert listed["data"][0]["id"] == contact_id
     assert detail["contact"]["id"] == contact_id
+    assert detail["im_binding_details"] == [
+        {
+            "id": "binding-organization",
+            "provider": "feishu",
+            "scope": "organization",
+            "identity": {
+                "id": "identity-1",
+                "provider_user_id": "provider-user-1",
+                "display_name": "Reviewer",
+                "email": "reviewer@example.com",
+            },
+        }
+    ]
+    assert detail["contact"] == listed["data"][0]
+    assert "im_binding_details" not in listed["data"][0]
     assert options["data"][0]["id"] == contact_id
     assert batch["data"][0]["id"] == contact_id
     assert batch_options["data"][0]["id"] == contact_id
     assert "im_bindings" not in options["data"][0]
     assert "email" not in batch["data"][0]
+
+
+@pytest.mark.parametrize("scope", [IMBindingScope.WORKSPACE, None])
+def test_contact_detail_returns_workspace_binding_or_empty_details(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, scope: IMBindingScope | None
+) -> None:
+    service = _ContactService()
+    bindings = _contact_view(scope).im_bindings if scope is not None else ()
+    service.view = ContactWithIMBindings(service.view.contact, bindings)
+    monkeypatch.setattr(_CONTROLLER_MODULE, "_contact_service", lambda _session, _tenant_id: service)
+    with app.test_request_context(method="GET"):
+        response = unwrap(WorkspaceContactApi.get)(
+            WorkspaceContactApi(), object(), "workspace-1", str(service.view.contact.id)
+        )
+    if scope is None:
+        assert response["im_binding_details"] == []
+    else:
+        assert response["im_binding_details"][0]["scope"] == "workspace"
+        assert response["im_binding_details"][0]["identity"]["id"] == "identity-1"
+
+
+def test_contact_detail_preserves_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _ContactService()
+    monkeypatch.setattr(_CONTROLLER_MODULE, "_contact_service", lambda _session, _tenant_id: service)
+    with app.test_request_context(method="GET"), pytest.raises(NotFound):
+        unwrap(WorkspaceContactApi.get)(
+            WorkspaceContactApi(), object(), "workspace-1", "00000000-0000-0000-0000-000000000099"
+        )
 
 
 @pytest.mark.parametrize(

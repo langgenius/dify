@@ -529,6 +529,7 @@ class SQLAlchemyContactRepository:
 
 class SQLAlchemyContactIMBindingRepository:
     """Contact projection over one already-resolved current IM Channel."""
+
     # TODO(QuantumGhost): channel should not be None here.
     def __init__(self, session: Session, channel: IMChannel | None) -> None:
         self._session = session

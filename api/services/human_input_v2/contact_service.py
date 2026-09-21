@@ -18,12 +18,25 @@ from repositories.human_input_v2.contact import (
     IMBinding,
     Page,
 )
+from repositories.human_input_v2.im_identity_repository import IMIdentity, IMIdentityRepository
 
 
 @dataclass(frozen=True, slots=True)
 class ContactWithIMBindings:
     contact: Contact
     im_bindings: tuple[IMBinding, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class IMBindingDetail:
+    binding: IMBinding
+    identity: IMIdentity
+
+
+@dataclass(frozen=True, slots=True)
+class ContactDetails:
+    contact: ContactWithIMBindings
+    im_binding_details: tuple[IMBindingDetail, ...]
 
 
 class ContactManagementService:
@@ -33,9 +46,11 @@ class ContactManagementService:
         self,
         contact_repository: ContactRepository,
         binding_repository: ContactIMBindingRepository,
+        identity_repository: IMIdentityRepository | None,
     ) -> None:
         self._contacts = contact_repository
         self._bindings = binding_repository
+        self._identities = identity_repository
 
     def list_contacts(
         self,
@@ -63,6 +78,26 @@ class ContactManagementService:
         contact_ids: Sequence[ContactId],
     ) -> tuple[ContactWithIMBindings, ...]:
         return self._with_bindings(tenant_id, self._contacts.get_contacts_by_ids(tenant_id, contact_ids))
+
+    def get_contact_details(self, tenant_id: TenantId, contact_id: ContactId) -> ContactDetails | None:
+        contact = self.get_contact(tenant_id, contact_id)
+        if contact is None:
+            return None
+        if not contact.im_bindings:
+            return ContactDetails(contact, ())
+        if self._identities is None:
+            raise ValueError("An identity repository is required to resolve effective IM bindings")
+        identities = self._identities.get_many(tuple(binding.identity_id for binding in contact.im_bindings))
+        identities_by_id = {identity.id: identity for identity in identities}
+        details: list[IMBindingDetail] = []
+        for binding in contact.im_bindings:
+            identity = identities_by_id.get(binding.identity_id)
+            if identity is None:
+                raise ValueError(
+                    f"Effective IM binding {binding.id} references a missing identity {binding.identity_id}"
+                )
+            details.append(IMBindingDetail(binding, identity))
+        return ContactDetails(contact, tuple(details))
 
     def list_contact_options(
         self,

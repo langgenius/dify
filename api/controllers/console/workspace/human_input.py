@@ -106,6 +106,7 @@ from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
     DeploymentIMChannelReader,
     WorkspaceIMChannelReader,
 )
+from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.enterprise.human_input_contact_composition import build_enterprise_contact_management_service
 from services.human_input_v2.composition import build_human_input_node_data_migration_service
 from services.human_input_v2.contact_service import ContactManagementService, ContactWithIMBindings
@@ -370,6 +371,7 @@ def _contact_service(session: Session, tenant_id: TenantId) -> ContactManagement
     return ContactManagementService(
         repository,
         SQLAlchemyContactIMBindingRepository(session, channel),
+        SQLAlchemyIMIdentityRepository(session, channel.id) if channel is not None else None,
     )
 
 
@@ -429,11 +431,26 @@ class WorkspaceContactApi(Resource):
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, contact_id: str):
-        contact = _contact_service(session, TenantId(tenant_id)).get_contact(TenantId(tenant_id), ContactId(contact_id))
-        if contact is None:
+        details = _contact_service(session, TenantId(tenant_id)).get_contact_details(
+            TenantId(tenant_id), ContactId(contact_id)
+        )
+        if details is None:
             abort(HTTPStatus.NOT_FOUND, "Contact not found")
-        assert contact is not None
-        return dump_response(GetContactResponse, {"contact": _contact_payload(contact)})
+        return dump_response(
+            GetContactResponse,
+            {
+                "contact": _contact_payload(details.contact),
+                "im_binding_details": [
+                    {
+                        "id": detail.binding.id,
+                        "provider": detail.binding.provider,
+                        "scope": detail.binding.scope,
+                        "identity": detail.identity,
+                    }
+                    for detail in details.im_binding_details
+                ],
+            },
+        )
 
 
 @console_ns.route("/workspaces/current/human-input/contact-options")

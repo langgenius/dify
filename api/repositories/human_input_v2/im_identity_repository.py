@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -73,6 +74,10 @@ class IMIdentityRepository(Protocol):
 
     def get(self, identity_id: IMIdentityId) -> IMIdentity | None:
         """Return an Identity current in the bound Channel, if present."""
+        ...
+
+    def get_many(self, identity_ids: Sequence[IMIdentityId]) -> tuple[IMIdentity, ...]:
+        """Read requested current Identities in one batch, omitting missing or foreign-Channel IDs."""
         ...
 
     def get_by_provider_user_id(self, provider_user_id: str) -> IMIdentity | None:

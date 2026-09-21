@@ -169,7 +169,7 @@ def test_tenant_scoped_core_service_needs_only_contact_and_binding_read_ports() 
     contact = _platform_contact()
     contact_port = _TenantContactPort((contact,))
     binding_port = _BindingReadPort()
-    service = ContactManagementService(contact_port, binding_port)
+    service = ContactManagementService(contact_port, binding_port, None)
 
     contact_page, contacts_with_bindings = service.list_contacts(
         _TENANT_ID,
@@ -200,7 +200,7 @@ def test_candidate_id_round_trips_unchanged_through_the_enterprise_service_port(
     )
     tenant_port = _TenantContactPort((_platform_contact(),))
     enterprise_port = _EnterpriseContactPort(candidate)
-    query_service = ContactManagementService(tenant_port, _BindingReadPort())
+    query_service = ContactManagementService(tenant_port, _BindingReadPort(), None)
     service = EnterpriseContactManagementService(tenant_port, enterprise_port, query_service)
 
     listed = service.list_organization_candidates(page=1, limit=10, keyword="reviewer")

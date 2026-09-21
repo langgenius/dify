@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import override
 
 import sqlalchemy as sa
@@ -110,6 +111,20 @@ class SQLAlchemyIMIdentityRepository(IMIdentityRepository):
             .execution_options(autoflush=False)
         )
         return _identity_from_record(record) if record is not None else None
+
+    @override
+    def get_many(self, identity_ids: Sequence[IMIdentityId]) -> tuple[IMIdentity, ...]:
+        if not identity_ids:
+            return ()
+        records = self._session.scalars(
+            sa.select(HumanInputIMIdentity)
+            .where(
+                HumanInputIMIdentity.channel_id == str(self._channel_id),
+                HumanInputIMIdentity.id.in_(tuple(dict.fromkeys(identity_ids))),
+            )
+            .execution_options(autoflush=False)
+        ).all()
+        return tuple(_identity_from_record(record) for record in records)
 
     @override
     def get_by_provider_user_id(self, provider_user_id: str) -> IMIdentity | None:

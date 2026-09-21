@@ -140,6 +140,25 @@ def test_blank_optional_profile_facts_are_persisted_as_null_pairs(sqlite_engine:
         assert (record.email, record.normalized_email) == (None, None)
 
 
+def test_get_many_returns_only_requested_current_channel_identities(sqlite_engine: Engine) -> None:
+    first = _create_committed_identity(sqlite_engine, _CHANNEL_ONE, _IDENTITY_ONE, "user-1")
+    second = _create_committed_identity(sqlite_engine, _CHANNEL_ONE, _IDENTITY_TWO, "user-2")
+    foreign_id = IMIdentityId("00000000-0000-0000-0000-000000000203")
+    unrequested_id = IMIdentityId("00000000-0000-0000-0000-000000000204")
+    missing_id = IMIdentityId("00000000-0000-0000-0000-000000000299")
+    _create_committed_identity(sqlite_engine, _CHANNEL_TWO, foreign_id, "foreign-user")
+    _create_committed_identity(sqlite_engine, _CHANNEL_ONE, unrequested_id, "unrequested-user")
+
+    with Session(sqlite_engine) as session:
+        repository = SQLAlchemyIMIdentityRepository(session, _CHANNEL_ONE)
+        assert repository.get_many(()) == ()
+        assert repository.get_many((missing_id, foreign_id)) == ()
+        identities = repository.get_many((_IDENTITY_TWO, foreign_id, _IDENTITY_ONE, _IDENTITY_ONE, missing_id))
+
+    assert len(identities) == 2
+    assert {identity.id: identity for identity in identities} == {_IDENTITY_ONE: first, _IDENTITY_TWO: second}
+
+
 def test_reads_search_and_update_are_channel_scoped(sqlite_engine: Engine) -> None:
     _create_committed_identity(sqlite_engine, _CHANNEL_ONE, _IDENTITY_ONE, "shared-user")
     _create_committed_identity(sqlite_engine, _CHANNEL_TWO, _IDENTITY_TWO, "shared-user")

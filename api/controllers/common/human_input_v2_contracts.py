@@ -197,10 +197,29 @@ class ListContactOptionsResponse(PaginationResultMixin, ResponseModel):
     data: list[ContactOption] = Field(description="Selectable contacts returned for the current page.")
 
 
+class ContactIMIdentityDetail(BaseModel):
+    """Display fields for the identity selected by an effective contact binding."""
+
+    id: IMIdentityId
+    provider_user_id: str
+    display_name: str | None
+    email: str | None
+
+
+class ContactIMBindingDetail(BaseModel):
+    id: IMBindingId
+    provider: IMProvider
+    scope: IMBindingScope
+    identity: ContactIMIdentityDetail
+
+
 class GetContactResponse(ResponseModel):
     """Response body for one contact resolved in the current workspace scope."""
 
     contact: HumanInputContact = Field(description="Contact resolved as workspace, platform, or external.")
+    im_binding_details: list[ContactIMBindingDetail] = Field(
+        description="Effective IM bindings and their identities in the current workspace, for the contact detail view."
+    )
 
 
 class ListOrganizationCandidatesResponse(PaginationResultMixin, ResponseModel):

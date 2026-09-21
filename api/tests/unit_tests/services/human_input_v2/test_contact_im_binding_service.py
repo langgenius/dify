@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
 from datetime import datetime
 from importlib import import_module
 from inspect import unwrap
@@ -13,6 +14,7 @@ import pytest
 import sqlalchemy as sa
 from flask import Flask
 from flask.typing import ResponseReturnValue
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -40,6 +42,7 @@ from models.human_input_v2 import (
     HumanInputPlatformContactWorkspaceEntry,
     IMEncryptedCredentials,
 )
+from repositories.human_input_v2.contact import ExternalContact, IMBinding
 from repositories.human_input_v2.im_binding_repository import IMBindingAssignment
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
@@ -48,8 +51,13 @@ from repositories.human_input_v2.im_channel_repository import (
     WebhookId,
 )
 from repositories.human_input_v2.im_identity_repository import IMIdentityObservation, OpaqueProviderPayload
+from repositories.human_input_v2.sqlalchemy_contact_repository import (
+    SQLAlchemyContactIMBindingRepository,
+    SQLAlchemyContactRepository,
+)
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
+from services.human_input_v2.contact_service import ContactManagementService
 from services.human_input_v2.im_contact_sync.binding_service import ContactIMBindingService
 
 _NOW = datetime(2026, 8, 11, 8)
@@ -170,6 +178,176 @@ def test_default_create_and_delete_preserve_contact_projection_and_actor_metadat
     )
     with binding_context.sessions() as session:
         assert session.scalar(sa.select(sa.func.count(HumanInputIMBinding.id))) == 0
+
+
+def test_contact_details_follow_effective_binding_and_reset(binding_context: _BindingContext) -> None:
+    binding_context.service.set_organization_binding(
+        organization_scope=_OWNER_SCOPE,
+        tenant_id=_TENANT_ID,
+        contact_id=_CONTACT_ID,
+        identity_id=_IDENTITY_ID,
+        bound_by_account_id=_ACCOUNT_ID,
+    )
+    override = binding_context.service.set_workspace_override(
+        organization_scope=_OWNER_SCOPE,
+        tenant_id=_TENANT_ID,
+        contact_id=_CONTACT_ID,
+        identity_id=_OTHER_IDENTITY_ID,
+        bound_by_account_id=_ACCOUNT_ID,
+    )
+    with binding_context.sessions.begin() as session:
+        SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID).update(
+            _OTHER_IDENTITY_ID,
+            replace(_observation("provider-user-2"), display_name="Workspace Reviewer", email="override@example.com"),
+        )
+
+    with binding_context.sessions() as session:
+        service = ContactManagementService(
+            SQLAlchemyContactRepository(session),
+            SQLAlchemyContactIMBindingRepository(session, _channel()),
+            SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID),
+        )
+        details = service.get_contact_details(_TENANT_ID, _CONTACT_ID)
+        assert details is not None
+        assert details.contact.contact.email == "reviewer@example.com"
+        assert len(details.im_binding_details) == 1
+        binding = details.im_binding_details[0]
+        assert binding.binding.id == override.im_bindings[0].id
+        assert binding.binding.scope is IMBindingScope.WORKSPACE
+        assert binding.identity.id == _OTHER_IDENTITY_ID
+        assert binding.identity.provider_user_id == "provider-user-2"
+        assert binding.identity.display_name == "Workspace Reviewer"
+        assert binding.identity.email == "override@example.com"
+        assert details.contact.im_bindings == (binding.binding,)
+
+    binding_context.service.reset_workspace_override(
+        organization_scope=_OWNER_SCOPE, tenant_id=_TENANT_ID, contact_id=_CONTACT_ID
+    )
+    with binding_context.sessions() as session:
+        service = ContactManagementService(
+            SQLAlchemyContactRepository(session),
+            SQLAlchemyContactIMBindingRepository(session, _channel()),
+            SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID),
+        )
+        details = service.get_contact_details(_TENANT_ID, _CONTACT_ID)
+        assert details is not None
+        binding = details.im_binding_details[0]
+        assert binding.binding.scope is IMBindingScope.ORGANIZATION
+        assert binding.identity.id == _IDENTITY_ID
+        assert binding.identity.email == "reviewer@example.com"
+
+
+def test_contact_details_read_identities_in_one_batch(
+    binding_context: _BindingContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bindings = (
+        IMBinding(IMBindingId("binding-1"), IMBindingScope.ORGANIZATION, _CONTACT_ID, _IDENTITY_ID, IMProvider.FEISHU),
+        IMBinding(
+            IMBindingId("binding-2"), IMBindingScope.WORKSPACE, _CONTACT_ID, _OTHER_IDENTITY_ID, IMProvider.FEISHU
+        ),
+    )
+
+    def read_bindings(tenant_id: TenantId, contact_ids: Sequence[ContactId]) -> Sequence[IMBinding]:
+        return bindings if tenant_id == _TENANT_ID and _CONTACT_ID in contact_ids else ()
+
+    statements: list[str] = []
+
+    def capture_statement(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        statements.append(statement)
+
+    with binding_context.sessions() as session:
+        binding_repository = SQLAlchemyContactIMBindingRepository(session, _channel())
+        monkeypatch.setattr(binding_repository, "get_im_bindings", read_bindings)
+        service = ContactManagementService(
+            SQLAlchemyContactRepository(session),
+            binding_repository,
+            SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID),
+        )
+        connection = session.connection()
+        event.listen(connection, "before_cursor_execute", capture_statement)
+        try:
+            details = service.get_contact_details(_TENANT_ID, _CONTACT_ID)
+        finally:
+            event.remove(connection, "before_cursor_execute", capture_statement)
+
+    assert details is not None
+    assert tuple(detail.identity.id for detail in details.im_binding_details) == (_IDENTITY_ID, _OTHER_IDENTITY_ID)
+    # One contact query and one identity query, regardless of the number of bindings.
+    assert len(statements) == 2
+
+
+def test_contact_details_are_workspace_and_channel_scoped(binding_context: _BindingContext) -> None:
+    binding_context.service.set_organization_binding(
+        organization_scope=_OWNER_SCOPE,
+        tenant_id=_TENANT_ID,
+        contact_id=_CONTACT_ID,
+        identity_id=_IDENTITY_ID,
+        bound_by_account_id=_ACCOUNT_ID,
+    )
+    with binding_context.sessions() as session:
+        service = ContactManagementService(
+            SQLAlchemyContactRepository(session),
+            SQLAlchemyContactIMBindingRepository(session, _channel()),
+            SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID),
+        )
+        assert service.get_contact_details(TenantId("00000000-0000-0000-0000-000000000999"), _CONTACT_ID) is None
+        assert service.get_contact_details(_TENANT_ID, _OTHER_CONTACT_ID) is None
+        for channel in (None, _channel(_OTHER_CHANNEL_ID)):
+            service = ContactManagementService(
+                SQLAlchemyContactRepository(session),
+                SQLAlchemyContactIMBindingRepository(session, channel),
+                SQLAlchemyIMIdentityRepository(session, channel.id) if channel is not None else None,
+            )
+            details = service.get_contact_details(_TENANT_ID, _CONTACT_ID)
+            assert details is not None
+            assert details.im_binding_details == ()
+            assert details.contact.im_bindings == ()
+
+
+def test_contact_details_allow_missing_identity_profile_and_unbound_contacts(binding_context: _BindingContext) -> None:
+    with binding_context.sessions.begin() as session:
+        contacts = SQLAlchemyContactRepository(session)
+        contacts.save_external_contact(
+            _TENANT_ID, ExternalContact(_OTHER_CONTACT_ID, "External", "external@example.com", None, _NOW)
+        )
+        service = ContactManagementService(
+            contacts,
+            SQLAlchemyContactIMBindingRepository(session, _channel()),
+            SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID),
+        )
+        for contact_id in (_CONTACT_ID, _OTHER_CONTACT_ID):
+            details = service.get_contact_details(_TENANT_ID, contact_id)
+            assert details is not None
+            assert details.im_binding_details == ()
+        SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID).update(
+            _IDENTITY_ID, replace(_observation("provider-user-1"), display_name=None, email=None)
+        )
+    binding_context.service.set_organization_binding(
+        organization_scope=_OWNER_SCOPE,
+        tenant_id=_TENANT_ID,
+        contact_id=_CONTACT_ID,
+        identity_id=_IDENTITY_ID,
+        bound_by_account_id=_ACCOUNT_ID,
+    )
+    with binding_context.sessions() as session:
+        service = ContactManagementService(
+            SQLAlchemyContactRepository(session),
+            SQLAlchemyContactIMBindingRepository(session, _channel()),
+            SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID),
+        )
+        details = service.get_contact_details(_TENANT_ID, _CONTACT_ID)
+        assert details is not None
+        identity = details.im_binding_details[0].identity
+        assert identity.provider_user_id == "provider-user-1"
+        assert identity.display_name is None
+        assert identity.email is None
 
 
 def test_workspace_override_reuses_one_service_across_mutations_and_reset_falls_back_to_default(
