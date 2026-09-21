@@ -116,7 +116,9 @@ the configured function called with `usePathname()` and follows immutable local
 variables and direct props into a local, unexported JSX component. Spread props,
 arbitrary pathname expressions, writes, and escaping components remain unknown.
 Policy values modified through local aliases or passed to arbitrary functions lose
-their trusted status and retain unknown diagnostics.
+their trusted status and retain unknown diagnostics. Named effect hooks imported
+from React may receive these values in their dependency lists, which React reads
+for comparison; mutations inside effect callbacks are still checked.
 The callback supplies reviewed route values; the analyzer verifies this restricted
 dataflow, not the arbitrary implementation of the configured policy or router.
 An undefined callback result leaves that route unknown. `routePolicySources` records

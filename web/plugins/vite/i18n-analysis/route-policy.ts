@@ -38,6 +38,22 @@ export function createRoutePolicyMatcher(
     }
     ts.forEachChild(node, markWritten)
   }
+  function isReactEffect(expression: ts.Expression) {
+    const symbol = checker.getSymbolAtLocation(expression)
+    return (
+      symbol?.declarations?.some((declaration) => {
+        if (
+          !ts.isImportSpecifier(declaration) ||
+          !['useEffect', 'useLayoutEffect', 'useInsertionEffect'].includes(
+            (declaration.propertyName ?? declaration.name).text,
+          )
+        )
+          return false
+        const module = declaration.parent.parent.parent.moduleSpecifier
+        return ts.isStringLiteral(module) && module.text === 'react'
+      }) ?? false
+    )
+  }
   const indexed = new Set<ts.SourceFile>()
   function indexSource(source: ts.SourceFile) {
     if (indexed.has(source)) return
@@ -60,7 +76,11 @@ export function createRoutePolicyMatcher(
       if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
         const api = translationApi(node.expression)
         if (api !== 'useTranslation' && api !== 'getTranslation')
-          for (const argument of node.arguments ?? []) markWritten(argument)
+          for (const [index, argument] of (node.arguments ?? []).entries()) {
+            // React reads effect dependencies for comparison; it does not mutate their values.
+            if (index === 1 && ts.isCallExpression(node) && isReactEffect(node.expression)) continue
+            markWritten(argument)
+          }
       }
       if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
         for (const declaration of declarations(node.tagName)) {
