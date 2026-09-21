@@ -6,7 +6,7 @@ from flask_restx import Resource
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
-from controllers.openapi._files import upload
+from controllers.openapi._files import end_read_transaction, upload
 from controllers.openapi._models import FileUploadPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -49,4 +49,5 @@ class AppFileUploadApi(Resource):
         returns=(201, FileResponse, "File uploaded"),
     )
     def post(self, ctx: Context, app_id: str, *, body: FileUploadPayload):
+        end_read_transaction(ctx.session)
         return FileResponse.model_validate(upload(body.file, ctx.caller), from_attributes=True)

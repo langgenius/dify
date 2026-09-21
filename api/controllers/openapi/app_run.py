@@ -25,7 +25,7 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Kind, endpoint
-from controllers.openapi._files import materialize, merge_files
+from controllers.openapi._files import end_read_transaction, materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
@@ -154,11 +154,13 @@ def _generate(app: App, caller: Any, args: dict[str, Any], session: Session):
     )
 
 
-def _generate_args(caller: Any, payload: RunPayloadBase, *, exclude: Collection[str] = ()) -> dict[str, Any]:
+def _generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection[str] = ()) -> dict[str, Any]:
     args = payload.model_dump(exclude={"files", "attachments", *exclude}, exclude_none=True)
-    args["inputs"] = merge_files(payload.inputs, payload.files, caller)
+    if payload.files or payload.attachments:
+        end_read_transaction(ctx.session)
+    args["inputs"] = merge_files(payload.inputs, payload.files, ctx.caller)
     if payload.attachments:
-        args["files"] = materialize(payload.attachments, caller)
+        args["files"] = materialize(payload.attachments, ctx.caller)
     return args
 
 
@@ -280,7 +282,7 @@ def _run_api(route: _RunRoute) -> type[Resource]:
     )
     def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
         _require_mode(ctx.app, *route.modes)
-        stream = _stream(ctx, _generate_args(ctx.caller, body))
+        stream = _stream(ctx, _generate_args(ctx, body))
         for layer in route.hints:
             stream = layer(stream, route.op, ctx.app.id)
         return _respond(ctx, stream)

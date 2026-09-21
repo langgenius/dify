@@ -121,20 +121,21 @@ def _generate_stub(monkeypatch: pytest.MonkeyPatch, chunks: list[str]) -> Mock:
     return generate_mock
 
 
-def _ctx(mode: AppMode) -> _SealableContext:
+def _ctx(mode: AppMode, session: Mock | None = None) -> _SealableContext:
     app_model = _make_app()
     app_model.mode = mode
     return _SealableContext(
         app=app_model,
         caller=_make_account(),
-        session=Mock(),
+        session=session or Mock(),
         subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT),
     )
 
 
 def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monkeypatch: pytest.MonkeyPatch):
     generate_mock = _generate_stub(monkeypatch, ["event: a\n\n", "event: b\n\n"])
-    ctx = _ctx(AppMode.ADVANCED_CHAT)
+    session = Mock()
+    ctx = _ctx(AppMode.ADVANCED_CHAT, session)
     api = AdvancedChatRunApi()
     body = AdvancedChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/advanced-chat:run", method="POST"):
@@ -144,6 +145,7 @@ def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monke
 
     assert body == "event: a\n\nevent: b\n\n"
     assert generate_mock.call_args.kwargs["streaming"] is True
+    session.commit.assert_not_called()
 
 
 def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -170,11 +172,17 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(app: F
         files={"doc": FileStorage(stream=BytesIO(b"pdf"), filename="r.pdf", content_type="application/pdf")},
         attachments=[FileStorage(stream=BytesIO(b"jpg"), filename="p.jpg", content_type="image/jpeg")],
     )
+    order = Mock()
+    session = Mock()
+    order.attach_mock(session, "session")
+    order.attach_mock(upload_service, "uploads")
 
     api = CompletionRunApi()
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/completion:run", method="POST"):
-        api.post.__handler__(api, _ctx(AppMode.COMPLETION), app_id=_TEST_APP_ID, body=body)
+        api.post.__handler__(api, _ctx(AppMode.COMPLETION, session), app_id=_TEST_APP_ID, body=body)
 
+    # The read transaction ends before the first object-storage write (api/AGENTS.md).
+    assert [call[0] for call in order.mock_calls][:2] == ["session.commit", "uploads.upload_file"]
     args = generate_mock.call_args.kwargs["args"]
     assert args["inputs"]["doc"] == {
         "transfer_method": "local_file",

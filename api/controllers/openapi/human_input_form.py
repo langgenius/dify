@@ -15,7 +15,7 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint, op_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
-from controllers.openapi._files import merge_files
+from controllers.openapi._files import end_read_transaction, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
     FormSubmitResponse,
@@ -154,6 +154,8 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             logger.warning("Recipient type is None for form, form_token=%s", form_token)
             raise BadRequest("Form recipient type is invalid")
 
+        if body.files:
+            end_read_transaction(ctx.session)
         inputs = merge_files(body.inputs, body.files, ctx.caller)
 
         try:

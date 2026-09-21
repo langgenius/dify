@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest
 
@@ -28,6 +29,16 @@ from graphon.file import FileTransferMethod, standardize_file_type
 from models.model import UploadFile
 
 FileMapping = dict[str, Any]
+
+
+def end_read_transaction(session: Session) -> None:
+    """Close the transaction the router's loaders opened before a handler writes to object storage.
+
+    `api/AGENTS.md` keeps external I/O out of open transactions. The router's sessions do
+    not expire on commit, so the rows the requirements loaded stay readable afterwards,
+    and the service that runs next begins its own transaction on the same session.
+    """
+    session.commit()
 
 
 def upload(part: FileStorage, caller: Any) -> UploadFile:
