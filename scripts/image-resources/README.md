@@ -11,10 +11,12 @@ The checker and tests are maintained in this directory. Pillow and Scour are pin
 | Static PNG (up to 8-bit samples) | Pillow lossless re-encoding, preserving dimensions and pixel values |
 | Static JPEG | Pillow quality 90, optimized progressive encoding |
 | Static WebP | Pillow quality 90, method 6 |
-| SVG | Scour markup optimization with group collapsing and inline-style-to-attribute conversion disabled, and recompression of supported embedded rasters |
-| 16-bit PNG, animated/multi-frame images and other raster formats | Explicitly reported as skipped |
+| SVG without CSS | Scour markup optimization with group collapsing and inline-style-to-attribute conversion disabled, and recompression of supported embedded rasters |
+| SVG with CSS, 16-bit PNG, animated/multi-frame images and other raster formats | Explicitly reported as skipped |
 
 JPEG/WebP trials are **lossy**: savings are evidence of an optimization opportunity, not proof of identical quality. Review candidates before using them. Check mode never overwrites source images. Explicit `--fix` mode applies candidates exceeding the same 25% threshold. Neither mode resizes images or fetches/inlines external SVG images. It cannot detect excessive pixel dimensions relative to CSS display size, so oversized rasters displayed in small UI elements still require visual/contextual review.
+
+SVGs containing `<style>`, inline `style` attributes (including on the root), stylesheet links, or `xml-stylesheet` processing instructions are skipped entirely. Their original bytes and embedded images remain unchanged: Scour can otherwise alter CSS semantics even with style conversion and group collapsing disabled.
 
 For SVGs, the percentage compares the complete original and optimized file sizes, including embedded data. It is not a production transfer estimate. Already-compressed images can pass regardless of their absolute size. An exactly 25% reduction passes; a greater reduction fails. Failed trials do not silently pass as optimized resources.
 

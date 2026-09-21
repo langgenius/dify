@@ -157,31 +157,37 @@ class ImageOptimizationTests(unittest.TestCase):
         self.assertIn(b"https://example.invalid/image.png", result)
         self.assertNotIn(b"data:image", result)
 
-    def test_svg_group_css_is_preserved_in_optimization_candidate(self):
-        source = (
-            b'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">'
-            b"<style>g {opacity:0.5}</style>" + b"\n    " * 80 + b'<g><rect width="100" height="100"/></g></svg>'
-        )
-        self.write("web/public/group.svg", source)
-        status, _, candidate = checker.inspect_image("web/public/group.svg", self.root)
-        self.assertEqual(status, "error")
-        self.assertTrue(checker.exceeds_threshold(len(source), len(candidate)))
-        root = ET.fromstring(candidate)
-        ns = {"svg": "http://www.w3.org/2000/svg"}
-        self.assertEqual(root.find("svg:style", ns).text, "g {opacity:0.5}")
-        self.assertIsNotNone(root.find("svg:g/svg:rect", ns))
-        self.write("web/public/group.svg", candidate)
-        self.assertEqual(checker.inspect_image("web/public/group.svg", self.root)[0], "passed")
+    def test_css_svgs_are_skipped_without_changing_any_bytes(self):
+        cases = [
+            b'<style>g {opacity:0.5}</style><g><rect width="100" height="100"/></g>',
+            b'<rect style="fill:black" width="80" height="80"/>',
+            b'<link rel="stylesheet" href="style.css"/><rect width="80" height="80"/>',
+        ]
+        sources = [b'<svg xmlns="http://www.w3.org/2000/svg">' + body + b"\n    " * 80 + b"</svg>" for body in cases]
+        sources += [
+            b'<svg xmlns="http://www.w3.org/2000/svg" style="fill:black"><rect width="80" height="80"/></svg>',
+            b'<?xml-stylesheet href="style.css" type="text/css"?><svg xmlns="http://www.w3.org/2000/svg"/>',
+            svg(png()).replace(b"<image", b"<style>image {opacity:0.5}</style><image"),
+        ]
+        for source in sources:
+            with self.subTest(source=source[:100]):
+                candidate, method = checker.compress_svg(source)
+                self.assertEqual(candidate, source)
+                self.assertIn("skipped: SVG contains CSS", method)
+                self.write("images/styled.svg", source)
+                self.assertEqual(checker.inspect_image("images/styled.svg", self.root)[0], "skipped")
 
     def test_fix_preserves_inline_style_precedence_over_stylesheet(self):
         self.run_git("init", "-q")
-        source = (
-            b'<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">'
-            b"<style>rect {fill:red}</style>"
-            + b"\n    " * 80
-            + b'<rect style="fill:blue" width="80" height="80"/></svg>'
-        )
-        path = self.write("images/precedence.svg", source)
+        originals = {}
+        for color in ["blue", "black"]:
+            source = (
+                b'<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">'
+                b"<style>rect {fill:red}</style>"
+                + b"\n    " * 80
+                + f'<rect style="fill:{color}" width="80" height="80"/></svg>'.encode()
+            )
+            originals[self.write(f"images/{color}.svg", source)] = source
         self.run_git("add", ".")
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
@@ -194,15 +200,10 @@ class ImageOptimizationTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("1 fixed", result.stdout)
-        self.assertTrue(checker.exceeds_threshold(len(source), path.stat().st_size))
-        root = ET.fromstring(path.read_bytes())
-        ns = {"svg": "http://www.w3.org/2000/svg"}
-        self.assertEqual(root.find("svg:style", ns).text, "rect {fill:red}")
-        rect = root.find("svg:rect", ns)
-        self.assertIn("fill:blue", rect.get("style", "").replace(" ", ""))
-        self.assertNotIn("fill", rect.attrib)
-        self.assertEqual(checker.inspect_image("images/precedence.svg", self.root)[0], "passed")
+        self.assertIn("2 skipped", result.stdout)
+        self.assertIn("0 fixed", result.stdout)
+        for path, source in originals.items():
+            self.assertEqual(path.read_bytes(), source)
 
     def test_svg_markup_is_optimized(self):
         data = (

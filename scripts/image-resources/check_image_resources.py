@@ -97,6 +97,20 @@ def compress_svg(data: bytes) -> tuple[bytes, str]:
     root = document.documentElement
     if root.localName != "svg":
         raise ValueError("Expected an SVG root element")
+    # Scour's default-value removal can change the CSS cascade even when
+    # style-to-attribute conversion and group collapsing are disabled.
+    elements = [root, *root.getElementsByTagName("*")]
+    has_css = any(
+        element.localName == "style"
+        or element.hasAttribute("style")
+        or (element.localName == "link" and "stylesheet" in element.getAttribute("rel").lower().split())
+        for element in elements
+    ) or any(
+        node.nodeType == node.PROCESSING_INSTRUCTION_NODE and node.target == "xml-stylesheet"
+        for node in document.childNodes
+    )
+    if has_css:
+        return data, "skipped: SVG contains CSS; preserve style semantics"
     methods = ["Scour SVG optimization"]
     for element in root.getElementsByTagName("*"):
         if element.localName != "image":
