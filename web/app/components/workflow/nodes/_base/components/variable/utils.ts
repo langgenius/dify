@@ -3,7 +3,7 @@ import type { AnswerNodeType } from '../../../answer/types'
 import type { CodeNodeType } from '../../../code/types'
 import type { DocExtractorNodeType } from '../../../document-extractor/types'
 import type { EndNodeType } from '../../../end/types'
-import type { HttpNodeType } from '../../../http/types'
+import type { BodyPayload, HttpNodeType } from '../../../http/types'
 import type { IfElseNodeType } from '../../../if-else/types'
 import type { IterationNodeType } from '../../../iteration/types'
 import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/types'
@@ -1203,6 +1203,18 @@ const matchNotSystemVars = (prompts: string[]) => {
   return uniqVars
 }
 
+const getHttpBodyUsedVars = (payload: HttpNodeType): ValueSelector[] => {
+  const bodyData = payload.body?.data
+  if (typeof bodyData === 'string') return matchNotSystemVars([bodyData])
+  if (!Array.isArray(bodyData)) return []
+
+  const bodyTextVars = matchNotSystemVars(bodyData.map((item) => item.value || ''))
+  const bodyFileVars = bodyData.flatMap((item) =>
+    Array.isArray(item.file) && item.file.length > 0 ? [item.file] : [],
+  )
+  return [...bodyTextVars, ...bodyFileVars]
+}
+
 const replaceOldVarInText = (text: string, oldVar: ValueSelector, newVar: ValueSelector) => {
   if (!text || typeof text !== 'string') return text
 
@@ -1315,14 +1327,8 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
     case BlockEnum.HttpRequest: {
       const payload = data as HttpNodeType
-      res = matchNotSystemVars([
-        payload.url,
-        payload.headers,
-        payload.params,
-        typeof payload.body.data === 'string'
-          ? payload.body.data
-          : payload.body.data.map((d) => d.value).join(''),
-      ])
+      res = matchNotSystemVars([payload.url, payload.headers, payload.params])
+      res.push(...getHttpBodyUsedVars(payload))
       break
     }
     case BlockEnum.Tool: {
@@ -1396,7 +1402,8 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
 
     case BlockEnum.Iteration: {
-      res = [(data as IterationNodeType).iterator_selector]
+      const selector = (data as IterationNodeType).iterator_selector
+      res = Array.isArray(selector) && selector.length > 0 ? [selector] : []
       break
     }
 
@@ -1432,7 +1439,9 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
   }
-  return res || []
+  return (res || []).filter(
+    (selector): selector is ValueSelector => Array.isArray(selector) && selector.length > 0,
+  )
 }
 
 // can be used in iteration node
@@ -1682,13 +1691,18 @@ export const updateNodeVars = (
         payload.url = replaceOldVarInText(payload.url, oldVarSelector, newVarSelector)
         payload.headers = replaceOldVarInText(payload.headers, oldVarSelector, newVarSelector)
         payload.params = replaceOldVarInText(payload.params, oldVarSelector, newVarSelector)
+        if (!payload.body) break
         if (typeof payload.body.data === 'string') {
           payload.body.data = replaceOldVarInText(payload.body.data, oldVarSelector, newVarSelector)
-        } else {
-          payload.body.data = payload.body.data.map((d) => {
+        } else if (Array.isArray(payload.body.data)) {
+          payload.body.data = (payload.body.data as BodyPayload).map((d) => {
             return {
               ...d,
               value: replaceOldVarInText(d.value || '', oldVarSelector, newVarSelector),
+              file:
+                Array.isArray(d.file) && d.file.join('.') === oldVarSelector.join('.')
+                  ? newVarSelector
+                  : d.file,
             }
           })
         }
