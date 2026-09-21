@@ -2,7 +2,7 @@
 
 The `Image optimization` workflow trial-compresses added or modified images in pull requests. It fails when the candidate is **more than 25% smaller** than the original, or an image cannot be inspected. There are no fixed file-size limits or gzip budgets. Explicit ignore rules require a reason.
 
-The checker and tests are maintained in this directory. Pillow and Scour are pinned in `requirements.txt`; CI needs no external image service or repository write permission.
+The checker and tests are maintained in this directory. Pillow is pinned in `requirements.txt`; SVGO and its transitive dependencies are pinned in the standalone `package.json`/`package-lock.json` here; CI needs no external image service or repository write permission.
 
 ## Compression policy
 
@@ -11,16 +11,12 @@ The checker and tests are maintained in this directory. Pillow and Scour are pin
 | Static PNG (up to 8-bit samples) | Pillow lossless re-encoding, preserving dimensions and pixel values |
 | Static JPEG | Pillow quality 90, optimized progressive encoding |
 | Static WebP | Pillow quality 90, method 6 |
-| SVG without CSS or SVG 2 definition references | Scour markup optimization with group collapsing and inline-style-to-attribute conversion disabled, and recompression of supported embedded rasters |
-| SVG with CSS or SVG 2 definition references, 16-bit PNG, animated/multi-frame images and other raster formats | Explicitly reported as skipped |
+| SVG | SVGO with an explicit plugin allowlist, plus recompression of supported embedded rasters |
+| 16-bit PNG, animated/multi-frame images and other raster formats | Explicitly reported as skipped |
 
 JPEG/WebP trials are **lossy**: savings are evidence of an optimization opportunity, not proof of identical quality. Review candidates before using them. Check mode never overwrites source images. Explicit `--fix` mode applies candidates exceeding the same 25% threshold. Neither mode resizes images or fetches/inlines external SVG images. It cannot detect excessive pixel dimensions relative to CSS display size, so oversized rasters displayed in small UI elements still require visual/contextual review.
 
-SVGs containing `<style>`, inline `style` attributes (including on the root), stylesheet links, or `xml-stylesheet` processing instructions are skipped entirely. Their original bytes and embedded images remain unchanged: Scour can otherwise alter CSS semantics even with style conversion and group collapsing disabled.
-
-SVGs using unqualified `href` on elements other than `<image>`, or fragment references such as `<image href="#tile">`, are also skipped entirely: Scour may remove definitions referenced with SVG 2 `href`. Legacy `xlink:href` references and embedded raster data URLs remain supported.
-
-Unreferenced `<defs>` entries are retained with `--keep-unreferenced-defs`: sprite symbols and other definitions may be referenced from external files, so local reference counts cannot establish that they are unused.
+`optimize_svg.mjs` uses only SVGO's `removeComments` (preserving protected `<!--! ... -->` comments) and `sortAttrs` plugins, with compact XML serialization. It does **not** enable `preset-default`. Groups, styles, IDs, definitions, geometry, namespaces, and references are retained; CSS-bearing SVGs, SVG 2 `href`, legacy `xlink:href`, and externally referenced sprites are supported. This deliberately trades compression opportunities from structural rewrites for a smaller set of transformations. Keep the CSS/reference regression tests when changing this policy.
 
 For SVGs, the percentage compares the complete original and optimized file sizes, including embedded data. It is not a production transfer estimate. Already-compressed images can pass regardless of their absolute size. An exactly 25% reduction passes; a greater reduction fails. Failed trials do not silently pass as optimized resources.
 
@@ -47,7 +43,13 @@ Check mode, `--fix`, and `--output-dir` all honor the same rules. Ignored images
 
 ## Local use
 
-Run from the repository root with uv:
+Use Node.js 24 and uv. Install the isolated SVG optimizer dependencies once from the repository root (also after lockfile changes):
+
+```sh
+npm ci --prefix scripts/image-resources --ignore-scripts --no-audit --no-fund
+```
+
+This does not install the application's frontend dependencies. The checker calls the local Node.js helper; it does not download tools at runtime. Missing dependencies or optimizer failures fail the check. Then run:
 
 ```sh
 uv run --with-requirements scripts/image-resources/requirements.txt python scripts/image-resources/check_image_resources.py --base origin/main

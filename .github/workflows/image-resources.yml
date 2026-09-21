@@ -24,6 +24,14 @@ jobs:
           enable-cache: false
           python-version: '3.12'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Install SVG optimizer
+        run: npm ci --prefix scripts/image-resources --ignore-scripts --no-audit --no-fund
+
       - name: Test image checker
         run: uv run --with-requirements scripts/image-resources/requirements.txt python -m unittest discover -s scripts/image-resources -p 'test_check_image_resources.py'
 

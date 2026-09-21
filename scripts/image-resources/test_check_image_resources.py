@@ -157,7 +157,7 @@ class ImageOptimizationTests(unittest.TestCase):
         self.assertIn(b"https://example.invalid/image.png", result)
         self.assertNotIn(b"data:image", result)
 
-    def test_svg2_references_are_preserved_by_fix_while_xlink_remains_supported(self):
+    def test_svg2_and_xlink_references_are_preserved_by_fix(self):
         self.run_git("init", "-q")
         originals = {}
         for tag in ["use", "image", "linearGradient"]:
@@ -169,8 +169,10 @@ class ImageOptimizationTests(unittest.TestCase):
             )
             originals[self.write(f"images/{tag}.svg", source)] = source
             candidate, method = checker.compress_svg(source)
-            self.assertEqual(candidate, source)
-            self.assertIn("skipped: SVG 2 href reference", method)
+            self.assertIn("SVGO", method)
+            optimized = ET.fromstring(candidate)
+            self.assertIsNotNone(optimized.find(".//*[@id='tile']"))
+            self.assertEqual(optimized.find(f"{{http://www.w3.org/2000/svg}}{tag}").get("href"), "#tile")
         xlink = (
             b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
             b'<defs><rect id="tile" width="80" height="80"/></defs>'
@@ -182,6 +184,10 @@ class ImageOptimizationTests(unittest.TestCase):
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        shutil.copy(Path(checker.__file__).with_name("optimize_svg.mjs"), scripts / "optimize_svg.mjs")
+        (scripts / "node_modules").symlink_to(
+            Path(checker.__file__).with_name("node_modules"), target_is_directory=True
+        )
         (scripts / "ignore.json").write_text("[]")
         result = subprocess.run(
             [sys.executable, str(scripts / "check_image_resources.py"), "--all", "--fix"],
@@ -190,16 +196,18 @@ class ImageOptimizationTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("3 skipped", result.stdout)
-        self.assertIn("1 fixed", result.stdout)
-        for path, source in originals.items():
-            self.assertEqual(path.read_bytes(), source)
+        self.assertIn("0 skipped", result.stdout)
+        self.assertIn("4 fixed", result.stdout)
+        for path in originals:
+            optimized = ET.fromstring(path.read_bytes())
+            self.assertIsNotNone(optimized.find(".//*[@id='tile']"))
+            self.assertIsNotNone(optimized.find(".//*[@href='#tile']"))
         root = ET.fromstring((self.root / "images/xlink.svg").read_bytes())
         self.assertIsNotNone(root.find(".//*[@id='tile']"))
         use = root.find("{http://www.w3.org/2000/svg}use")
         self.assertEqual(use.get("{http://www.w3.org/1999/xlink}href"), "#tile")
 
-    def test_css_svgs_are_skipped_without_changing_any_bytes(self):
+    def test_css_svg_structure_and_styles_are_preserved(self):
         cases = [
             b'<style>g {opacity:0.5}</style><g><rect width="100" height="100"/></g>',
             b'<rect style="fill:black" width="80" height="80"/>',
@@ -214,10 +222,18 @@ class ImageOptimizationTests(unittest.TestCase):
         for source in sources:
             with self.subTest(source=source[:100]):
                 candidate, method = checker.compress_svg(source)
-                self.assertEqual(candidate, source)
-                self.assertIn("skipped: SVG contains CSS", method)
-                self.write("images/styled.svg", source)
-                self.assertEqual(checker.inspect_image("images/styled.svg", self.root)[0], "skipped")
+                self.assertIn("SVGO", method)
+                before, after = ET.fromstring(source), ET.fromstring(candidate)
+                self.assertEqual([node.tag for node in before.iter()], [node.tag for node in after.iter()])
+                for old, new in zip(before.iter(), after.iter(), strict=True):
+                    old_attrs, new_attrs = dict(old.attrib), dict(new.attrib)
+                    if old.tag.endswith("}image"):
+                        old_attrs.pop("{http://www.w3.org/1999/xlink}href", None)
+                        new_attrs.pop("{http://www.w3.org/1999/xlink}href", None)
+                    self.assertEqual(old_attrs, new_attrs)
+                    self.assertEqual((old.text or "").strip(), (new.text or "").strip())
+                if b"<?xml-stylesheet" in source:
+                    self.assertIn(b'<?xml-stylesheet href="style.css" type="text/css"?>', candidate)
 
     def test_fix_preserves_inline_style_precedence_over_stylesheet(self):
         self.run_git("init", "-q")
@@ -234,6 +250,10 @@ class ImageOptimizationTests(unittest.TestCase):
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        shutil.copy(Path(checker.__file__).with_name("optimize_svg.mjs"), scripts / "optimize_svg.mjs")
+        (scripts / "node_modules").symlink_to(
+            Path(checker.__file__).with_name("node_modules"), target_is_directory=True
+        )
         (scripts / "ignore.json").write_text("[]")
         result = subprocess.run(
             [sys.executable, str(scripts / "check_image_resources.py"), "--all", "--fix"],
@@ -242,10 +262,15 @@ class ImageOptimizationTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("2 skipped", result.stdout)
-        self.assertIn("0 fixed", result.stdout)
-        for path, source in originals.items():
-            self.assertEqual(path.read_bytes(), source)
+        self.assertIn("0 skipped", result.stdout)
+        self.assertIn("2 fixed", result.stdout)
+        for path in originals:
+            root = ET.fromstring(path.read_bytes())
+            ns = {"svg": "http://www.w3.org/2000/svg"}
+            self.assertEqual(root.find("svg:style", ns).text, "rect {fill:red}")
+            rect = root.find("svg:rect", ns)
+            self.assertEqual(rect.get("style"), f"fill:{path.stem}")
+            self.assertNotIn("fill", rect.attrib)
 
     def test_fix_preserves_sprite_definitions_referenced_from_another_file(self):
         self.run_git("init", "-q")
@@ -262,6 +287,10 @@ class ImageOptimizationTests(unittest.TestCase):
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        shutil.copy(Path(checker.__file__).with_name("optimize_svg.mjs"), scripts / "optimize_svg.mjs")
+        (scripts / "node_modules").symlink_to(
+            Path(checker.__file__).with_name("node_modules"), target_is_directory=True
+        )
         (scripts / "ignore.json").write_text("[]")
         result = subprocess.run(
             [sys.executable, str(scripts / "check_image_resources.py"), "--all", "--fix"],
@@ -280,6 +309,23 @@ class ImageOptimizationTests(unittest.TestCase):
         self.assertIsNotNone(root.find("svg:defs/svg:rect[@id='tile']", ns))
         self.assertEqual((self.root / "page.html").read_bytes(), consumer)
         self.assertEqual(checker.inspect_image("images/sprite.svg", self.root)[0], "passed")
+
+    def test_svgo_allowlist_preserves_geometry_metadata_and_protected_comments(self):
+        source = (
+            b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">'
+            b"<!--! License notice --><!-- editor comment -->"
+            b'<title id="title">Accessible icon</title><desc>Icon description</desc><metadata>Author data</metadata>'
+            b'<g id="group" transform="translate(0.123456789 0.987654321)">'
+            b'<path id="shape" fill="black" d="M0.123456789 1 L2.987654321 3"/></g></svg>'
+        )
+        candidate, method = checker.compress_svg(source)
+        self.assertIn("SVGO", method)
+        self.assertIn(b"<!--! License notice", candidate)
+        self.assertNotIn(b"editor comment", candidate)
+        before, after = ET.fromstring(source), ET.fromstring(candidate)
+        self.assertEqual(len(list(before.iter())), len(list(after.iter())))
+        for old, new in zip(before.iter(), after.iter(), strict=True):
+            self.assertEqual((old.tag, old.attrib, old.text), (new.tag, new.attrib, new.text))
 
     def test_svg_markup_is_optimized(self):
         data = (
@@ -366,6 +412,10 @@ class ImageOptimizationTests(unittest.TestCase):
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        shutil.copy(Path(checker.__file__).with_name("optimize_svg.mjs"), scripts / "optimize_svg.mjs")
+        (scripts / "node_modules").symlink_to(
+            Path(checker.__file__).with_name("node_modules"), target_is_directory=True
+        )
         config = scripts / "ignore.json"
         config.write_text(json.dumps([{"pattern": "fixtures/*.png", "reason": "Preserve encoding fixture"}]))
         command = [sys.executable, str(scripts / "check_image_resources.py"), "--all"]
@@ -405,6 +455,10 @@ class ImageOptimizationTests(unittest.TestCase):
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        shutil.copy(Path(checker.__file__).with_name("optimize_svg.mjs"), scripts / "optimize_svg.mjs")
+        (scripts / "node_modules").symlink_to(
+            Path(checker.__file__).with_name("node_modules"), target_is_directory=True
+        )
         (scripts / "ignore.json").write_text("[]")
         command = [sys.executable, str(scripts / "check_image_resources.py"), "--all"]
         result = subprocess.run(command + ["--fix"], capture_output=True, text=True, check=False)
@@ -456,6 +510,10 @@ class ImageOptimizationTests(unittest.TestCase):
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        shutil.copy(Path(checker.__file__).with_name("optimize_svg.mjs"), scripts / "optimize_svg.mjs")
+        (scripts / "node_modules").symlink_to(
+            Path(checker.__file__).with_name("node_modules"), target_is_directory=True
+        )
         (scripts / "ignore.json").write_text("[]")
         command = [sys.executable, str(scripts / "check_image_resources.py"), "--base", base]
         with tempfile.TemporaryDirectory() as output:

@@ -17,7 +17,6 @@ from xml.parsers.expat import ExpatError
 
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
-from scour import scour
 
 ROOT = Path(__file__).resolve().parents[2]
 IMAGE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif", ".ico", ".bmp", ".tif", ".tiff"}
@@ -97,29 +96,7 @@ def compress_svg(data: bytes) -> tuple[bytes, str]:
     root = document.documentElement
     if root.localName != "svg":
         raise ValueError("Expected an SVG root element")
-    # Scour's default-value removal can change the CSS cascade even when
-    # style-to-attribute conversion and group collapsing are disabled.
-    elements = [root, *root.getElementsByTagName("*")]
-    has_css = any(
-        element.localName == "style"
-        or element.hasAttribute("style")
-        or (element.localName == "link" and "stylesheet" in element.getAttribute("rel").lower().split())
-        for element in elements
-    ) or any(
-        node.nodeType == node.PROCESSING_INSTRUCTION_NODE and node.target == "xml-stylesheet"
-        for node in document.childNodes
-    )
-    if has_css:
-        return data, "skipped: SVG contains CSS; preserve style semantics"
-    # Scour does not track SVG 2 href references when pruning definitions.
-    # Keep raster data URLs supported, but never rewrite potentially dangling references.
-    if any(
-        element.hasAttribute("href")
-        and (element.localName != "image" or element.getAttribute("href").strip().startswith("#"))
-        for element in elements
-    ):
-        return data, "skipped: SVG 2 href reference; preserve referenced definitions"
-    methods = ["Scour SVG optimization"]
+    methods = ["SVGO conservative optimization"]
     for element in root.getElementsByTagName("*"):
         if element.localName != "image":
             continue
@@ -145,21 +122,15 @@ def compress_svg(data: bytes) -> tuple[bytes, str]:
             # DOM serialization retains namespace prefixes used by SVG/CSS references.
             attribute.value = header.split(";", 1)[0] + ";base64," + base64.b64encode(candidate).decode()
             methods.append(f"embedded {method}")
-    # Retain groups that may be targeted by CSS selectors such as `g` or `g > rect`.
-    options = scour.parse_args(
-        [
-            "--disable-group-collapsing",
-            # Inline styles outrank stylesheets; presentation attributes do not.
-            "--disable-style-to-xml",
-            "--disable-embed-rasters",
-            # Sprite definitions may be referenced by fragments in other files.
-            "--keep-unreferenced-defs",
-            "--strip-xml-prolog",
-            "--indent=none",
-            "--no-line-breaks",
-        ]
+    result = subprocess.run(
+        ["node", str(Path(__file__).with_name("optimize_svg.mjs"))],
+        input=document.toxml().encode(),
+        capture_output=True,
+        check=False,
     )
-    return scour.scourString(document.toxml(), options).encode(), "; ".join(dict.fromkeys(methods))
+    if result.returncode:
+        raise ValueError(result.stderr.decode(errors="replace").strip())
+    return result.stdout, "; ".join(dict.fromkeys(methods))
 
 
 def exceeds_threshold(before: int, after: int) -> bool:

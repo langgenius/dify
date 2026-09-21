@@ -1,0 +1,8 @@
+{
+  "name": "dify-image-resources",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "svgo": "4.1.0"
+  }
+}
