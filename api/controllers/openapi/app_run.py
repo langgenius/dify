@@ -118,6 +118,8 @@ def _translate_service_errors() -> Generator[None, None, None]:
         raise InvokeRateLimitHttpError(ex.description)
     except InvokeError as e:
         raise CompletionRequestError(e.description)
+    except ValueError as ex:
+        raise BadRequest(str(ex))
     except HTTPException:
         raise
     except Exception:

@@ -16,7 +16,7 @@ from models.model import AppMode
 from services.app_dsl_service import Import
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
-MAX_PAGE_LIMIT = 200
+MAX_PAGE_LIMIT = 100
 
 
 class SupportedAppType(StrEnum):
