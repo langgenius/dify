@@ -47,7 +47,7 @@ def batch_clean_document_task(
     segment_ids: list[str] = []
     total_image_upload_file_ids: list[str] = []
     attachment_ids: list[str] = []
-    attachment_keys_by_id: dict[str, str] = {}
+    orphan_attachment_ids: list[str] = []
     dataset_tenant_id: str | None = None
 
     try:
@@ -83,11 +83,29 @@ def batch_clean_document_task(
                     )
                 )
                 if attachment_ids:
-                    attachment_keys_by_id = {
-                        f.id: f.key
-                        for f in session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
-                        if f and f.key
-                    }
+                    # Only attachments no document outside this batch still binds may be removed.
+                    shared_attachment_ids = set(
+                        session.scalars(
+                            select(SegmentAttachmentBinding.attachment_id).where(
+                                SegmentAttachmentBinding.attachment_id.in_(attachment_ids),
+                                SegmentAttachmentBinding.document_id.not_in(document_ids),
+                            )
+                        ).all()
+                    )
+                    orphan_attachment_ids = [
+                        attachment_id for attachment_id in attachment_ids if attachment_id not in shared_attachment_ids
+                    ]
+                    if orphan_attachment_ids:
+                        storage_keys_to_delete.extend(
+                            f.key
+                            for f in session.scalars(
+                                select(UploadFile).where(UploadFile.id.in_(orphan_attachment_ids))
+                            ).all()
+                            if f and f.key
+                        )
+                        # Attachment vectors live under doc_id == UploadFile.id, so they are not
+                        # covered by the segment index_node_ids cleaned in Step 2.
+                        index_node_ids.extend(orphan_attachment_ids)
 
             # Query storage keys for image files
             if total_image_upload_file_ids:
@@ -150,10 +168,10 @@ def batch_clean_document_task(
                 document_ids,
             )
 
-        # ============ Step 3.5: Release multimodal attachments (bindings first, then orphans) ======
-        # Bindings have to go before the attachments so the orphan set can be computed, and the
-        # attachment vectors are written under doc_id == UploadFile.id, so they are not covered by
-        # the segment index_node_ids cleaned in Step 2. Mirrors delete_segment_from_index_task.
+        # ============ Step 3.5: Release segment attachment bindings and orphan rows ============
+        # Bindings must go before the attachment rows, and only the attachments computed as
+        # orphans in Step 1 may be deleted. Their vectors were cleaned together with the segment
+        # node ids in Step 2.
         if segment_ids:
             try:
                 with session_factory.create_session() as session, session.begin():
@@ -164,39 +182,8 @@ def batch_clean_document_task(
                             SegmentAttachmentBinding.segment_id.in_(segment_ids),
                         )
                     )
-                    session.flush()
-
-                    if attachment_ids:
-                        remaining_attachment_ids = set(
-                            session.scalars(
-                                select(SegmentAttachmentBinding.attachment_id).where(
-                                    SegmentAttachmentBinding.attachment_id.in_(attachment_ids)
-                                )
-                            ).all()
-                        )
-                        orphan_attachment_ids = [
-                            attachment_id
-                            for attachment_id in attachment_ids
-                            if attachment_id not in remaining_attachment_ids
-                        ]
-
-                        if orphan_attachment_ids:
-                            storage_keys_to_delete.extend(
-                                key
-                                for key in (attachment_keys_by_id.get(a_id) for a_id in orphan_attachment_ids)
-                                if key
-                            )
-                            attachment_dataset = session.scalar(
-                                select(Dataset).where(Dataset.id == dataset_id).limit(1)
-                            )
-                            if attachment_dataset:
-                                IndexProcessorFactory(doc_form).init_index_processor().clean(
-                                    attachment_dataset,
-                                    orphan_attachment_ids,
-                                    with_keywords=False,
-                                    session=session,
-                                )
-                            session.execute(delete(UploadFile).where(UploadFile.id.in_(orphan_attachment_ids)))
+                    if orphan_attachment_ids:
+                        session.execute(delete(UploadFile).where(UploadFile.id.in_(orphan_attachment_ids)))
             except Exception:
                 logger.exception(
                     "Failed to release segment attachments for dataset_id: %s, document_ids: %s",
