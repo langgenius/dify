@@ -211,3 +211,36 @@ def test_to_intents_skips_edges_to_from_synthetic_nodes():
     assert len(connects) == 1
     assert connects[0].args["from_node"] == "llm1"
     assert connects[0].args["to_node"] == "llm2"
+
+
+def test_to_intents_preserves_nesting_and_layout():
+    """Un-nested children make an iteration non-functional, and a discarded
+    position throws away the generator's computed layout."""
+    from services.dify_builder.agent.graph_translate import to_intents
+
+    graph = {
+        "nodes": [
+            {
+                "id": "iter1",
+                "data": {"type": "iteration", "title": "Loop"},
+                "position": {"x": 100, "y": 200},
+            },
+            {
+                "id": "child1",
+                "parentId": "iter1",
+                "extent": "parent",
+                "zIndex": 1002,
+                "data": {"type": "llm", "title": "Summarize", "isInIteration": True, "iteration_id": "iter1"},
+                "position": {"x": 300, "y": 220},
+            },
+        ],
+        "edges": [],
+    }
+    by_id = {i.args["node_id"]: i for i in to_intents(graph) if i.op == "create_node"}
+
+    assert by_id["child1"].args["parent_id"] == "iter1"
+    assert by_id["child1"].args["position"] == {"x": 300, "y": 220}
+    assert by_id["iter1"].args["position"] == {"x": 100, "y": 200}
+    assert "parent_id" not in by_id["iter1"].args
+    # data-level markers already survived via config -- confirm we didn't lose them
+    assert by_id["child1"].args["config"]["iteration_id"] == "iter1"

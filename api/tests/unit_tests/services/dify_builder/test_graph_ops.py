@@ -194,6 +194,33 @@ def test_apply_create_node_explicit_empty_position_is_kept_not_defaulted():
     assert new_graph["nodes"][0]["position"] == {}
 
 
+def test_create_node_nests_a_child_under_its_parent():
+    graph = {"nodes": [{"id": "iter1", "type": "custom", "data": {"type": "iteration"}}], "edges": []}
+    out, changed = apply_create_node(
+        graph,
+        "llm",
+        {"title": "Summarize"},
+        position={"x": 300, "y": 220},
+        node_id="child1",
+        parent_id="iter1",
+    )
+    assert changed == ["child1"]
+    child = next(n for n in out["nodes"] if n["id"] == "child1")
+    assert child["parentId"] == "iter1"
+    assert child["extent"] == "parent"
+    assert child["zIndex"] == 1002
+    assert child["position"] == {"x": 300, "y": 220}
+
+
+def test_create_node_without_a_parent_carries_no_wrapper_keys():
+    graph = {"nodes": [], "edges": []}
+    out, _changed = apply_create_node(graph, "llm", {"title": "Top level"}, node_id="n1")
+    node = out["nodes"][0]
+    assert "parentId" not in node
+    assert "extent" not in node
+    assert "zIndex" not in node
+
+
 # ---- apply_delete_node ------------------------------------------------------
 
 
