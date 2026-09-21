@@ -75,7 +75,6 @@ class RerankModelRunner(BaseRerankRunner):
         model_schema = self.rerank_model_instance.get_model_schema()
         return ModelFeature.VISION in (model_schema.features or [])
 
-    @trace_span()
     def fetch_text_rerank(
         self,
         query: str,
@@ -114,7 +113,6 @@ class RerankModelRunner(BaseRerankRunner):
         )
         return rerank_result, unique_documents
 
-    @trace_span()
     def fetch_multimodal_rerank(
         self,
         query: str,

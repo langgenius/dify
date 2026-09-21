@@ -61,7 +61,6 @@ class _LazyEmbeddings(Embeddings):
         self._dataset = dataset
         self._real: Embeddings | None = None
 
-    @trace_span()
     def _ensure(self) -> Embeddings:
         if self._real is None:
             model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
@@ -155,19 +154,14 @@ class Vector:
 
         return vector_type
 
-    @trace_span()
     def _init_vector(self, *, session: Session) -> BaseVector:
         vector_type = self.resolve_vector_type(self._dataset, session=session)
         vector_factory_cls = self.get_vector_factory(vector_type)
-        return self._create_vector_processor(vector_factory_cls)
+        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
 
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
         return get_vector_factory_class(vector_type)
-
-    @trace_span()
-    def _create_vector_processor(self, vector_factory_cls: type[AbstractVectorFactory]) -> BaseVector:
-        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
 
     @staticmethod
     def _filter_empty_text_documents(documents: list[Document]) -> list[Document]:
@@ -285,7 +279,6 @@ class Vector:
         )
         return self._search_by_vector_traced(multimodal_vector, **kwargs)
 
-    @trace_span()
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)
 
