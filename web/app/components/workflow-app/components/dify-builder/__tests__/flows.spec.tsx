@@ -247,6 +247,182 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     window.sessionStorage.clear()
   })
 
+  it('goes from requirements to resources and shows Plan v1 only after confirmation', async () => {
+    const form: ConversationItem = {
+      kind: 'form',
+      seq: 0,
+      at_version: 2,
+      payload: {
+        variant: 'build_requirements',
+        fields: [{ key: 'audience', label: 'Audience', type: 'text' }],
+        values: { audience: 'Managers' },
+      },
+    }
+    const resources: ConversationItem = {
+      kind: 'resource_select',
+      seq: 1,
+      at_version: 3,
+      payload: {
+        recommended: [
+          { id: 'dataset-1', label: 'Knowledge', kind: 'dataset', readiness: 'ready', meta: '' },
+        ],
+      },
+    }
+    const plan: ConversationItem = {
+      kind: 'plan',
+      seq: 2,
+      at_version: 4,
+      payload: {
+        title: 'Support workflow',
+        subtitle: 'Plan v1 ready for approval.',
+        version_tag: 'v1',
+        items: ['Find an answer'],
+      },
+    }
+    const goalView = createSessionView({
+      version: 2,
+      state: 'build.goal_analysis',
+      conversation_last_seq: 0,
+      active_interaction: { action_id: 'submit_requirements', card: form, valid_at_version: 2 },
+      actions: [{ id: 'submit_requirements', kind: 'primary', label: 'Submit requirements' }],
+    })
+    const resourceView = createSessionView({
+      version: 3,
+      state: 'build.resource_recommendation',
+      conversation_last_seq: 1,
+      active_interaction: { action_id: 'confirm_resources', card: resources, valid_at_version: 3 },
+      actions: [{ id: 'confirm_resources', kind: 'primary', label: 'Confirm resources' }],
+    })
+    const planView = createSessionView({
+      version: 4,
+      state: 'build.plan_approval',
+      conversation_last_seq: 2,
+      actions: [{ id: 'approve_plan', kind: 'primary', label: 'Approve plan' }],
+    })
+    mocks.create.mockResolvedValue(
+      streamOf(commandStartedEvent(createSessionView()), stateEvent(goalView)),
+    )
+    mocks.action
+      .mockResolvedValueOnce(streamOf(commandStartedEvent(goalView), stateEvent(resourceView)))
+      .mockResolvedValueOnce(streamOf(commandStartedEvent(resourceView), stateEvent(planView)))
+    mocks.conversation.mockResolvedValue(conversationPage([form, resources, plan]))
+    const user = userEvent.setup()
+    renderFlow()
+    await user.type(getComposer(), 'Build a support workflow')
+    await user.click(getSendButton())
+    const submit = await screen.findByRole('button', { name: 'Submit requirements' })
+    await waitFor(() => expect(submit).toBeEnabled())
+    await user.click(submit)
+    const confirm = await screen.findByRole('button', { name: 'Confirm resources' })
+    await waitFor(() => expect(confirm).toBeEnabled())
+    expect(screen.queryByRole('heading', { name: 'Support workflow' })).not.toBeInTheDocument()
+    await user.click(confirm)
+    expect(await screen.findByText('Plan v1 ready for approval.')).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { name: 'Support workflow' })).toHaveLength(1)
+    expect(mocks.action.mock.calls.map(([request]) => request.body.action_id)).toEqual([
+      'submit_requirements',
+      'confirm_resources',
+    ])
+    expect(mocks.action.mock.calls[1]?.[0].body.payload).toEqual({ resource_ids: ['dataset-1'] })
+  })
+
+  it('submits prefilled test inputs only after the user confirms them', async () => {
+    const form: ConversationItem = {
+      kind: 'form',
+      seq: 0,
+      at_version: 7,
+      payload: {
+        variant: 'testdata',
+        frozen: false,
+        fields: [
+          { key: 'query', label: 'Question', type: 'text', required: true },
+          { key: 'count', label: 'Count', type: 'number' },
+          { key: 'enabled', label: 'Enabled', type: 'checkbox' },
+        ],
+        values: { query: 'Sample question', count: 0, enabled: false },
+      },
+    }
+    const waiting = createSessionView({
+      version: 7,
+      state: 'build.await_testdata',
+      conversation_last_seq: 0,
+      active_interaction: { action_id: 'provide_testdata', card: form, valid_at_version: 7 },
+      actions: [{ id: 'provide_testdata', label: 'Run test', kind: 'primary' }],
+    })
+    mocks.get.mockResolvedValue(waiting)
+    mocks.conversation.mockResolvedValue(conversationPage([form]))
+    mocks.action.mockResolvedValue(
+      streamOf(
+        commandStartedEvent(waiting),
+        stateEvent({ ...waiting, version: 8, actions: [], active_interaction: null }),
+      ),
+    )
+    window.sessionStorage.setItem(
+      'dify-builder:v1:workspace-1:user-1:app-1:active-session-id',
+      'session-1',
+    )
+    const user = userEvent.setup()
+    renderFlow()
+    const input = await screen.findByRole('textbox', { name: /Question/ })
+    await waitFor(() => expect(input).toBeEnabled())
+    expect(input).toHaveValue('Sample question')
+    expect(mocks.action).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Run test' }))
+    await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
+    expect(mocks.action.mock.calls[0]?.[0].body).toMatchObject({
+      action_id: 'provide_testdata',
+      payload: {
+        mode: 'provide',
+        inputs: { query: 'Sample question', count: 0, enabled: false },
+      },
+    })
+  })
+
+  it('retries a historical interrupted initial-plan state without losing its conversation', async () => {
+    const notice: ConversationItem = {
+      kind: 'notice',
+      seq: 0,
+      at_version: 2,
+      payload: { text: 'Keep my original goal.' },
+    }
+    const interrupted = createSessionView({
+      version: 3,
+      state: 'build.initial_plan',
+      run_status: 'processing',
+      interrupted: true,
+      conversation_last_seq: 0,
+      actions: [{ id: 'recovery_continue', kind: 'primary', label: 'Retry' }],
+    })
+    mocks.get.mockResolvedValue(interrupted)
+    mocks.conversation.mockResolvedValue(conversationPage([notice]))
+    mocks.action.mockResolvedValue(
+      streamOf(
+        commandStartedEvent(interrupted),
+        stateEvent(
+          createSessionView({
+            version: 4,
+            state: 'build.resource_recommendation',
+            conversation_last_seq: 0,
+            actions: [{ id: 'confirm_resources', kind: 'primary', label: 'Confirm resources' }],
+          }),
+        ),
+      ),
+    )
+    window.sessionStorage.setItem(
+      'dify-builder:v1:workspace-1:user-1:app-1:active-session-id',
+      'session-1',
+    )
+    const user = userEvent.setup()
+    renderFlow()
+    const retry = await screen.findByRole('button', { name: 'Retry' })
+    await waitFor(() => expect(retry).toBeEnabled())
+    await user.click(retry)
+    expect(await screen.findByRole('button', { name: 'Confirm resources' })).toBeInTheDocument()
+    expect(screen.getByText('Keep my original goal.')).toBeInTheDocument()
+    expect(mocks.action.mock.calls[0]?.[0].body.action_id).toBe('recovery_continue')
+    expect(mocks.create).not.toHaveBeenCalled()
+  })
+
   it.each([false, true])(
     'restores waiting Build actions after refresh with StrictMode=%s',
     async (reactStrictMode) => {
