@@ -2,7 +2,7 @@ import type { TranslationAdapter } from './api'
 import type { ModuleResolutions } from './compiler'
 import path from 'node:path'
 import * as ts from 'typescript'
-import { createTranslationApiResolver, isTranslationAdapter } from './api'
+import { createTranslationApiResolver } from './api'
 import { camelCase, readTranslationCatalog } from './catalog'
 import { createTranslationProgram, readCompilerOptions } from './compiler'
 
@@ -95,7 +95,11 @@ export function checkTranslationGraph(
   const checker = program.getTypeChecker()
   const programMs = performance.now() - programStarted
   const analysisStarted = performance.now()
-  const translationApi = createTranslationApiResolver(root, checker, context.adapters)
+  const { resolve: translationApi, isAdapter } = createTranslationApiResolver(
+    root,
+    program,
+    context.adapters,
+  )
   const evidence = new Map<string, AnalysisEvidence>()
   let currentModule = ''
   let currentSite: ts.Node | undefined
@@ -521,7 +525,7 @@ export function checkTranslationGraph(
   }
 
   function visit(node: ts.Node) {
-    if (isTranslationAdapter(root, node, context.adapters)) return
+    if (isAdapter(node)) return
     currentSite = node
     if (ts.isStringLiteralLike(node) && (node.text.includes('.') || node.text.includes(':'))) {
       const contextual = checker.getContextualType(node)

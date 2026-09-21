@@ -721,7 +721,7 @@ describe('i18n build check', () => {
   )
 
   it.each(['static', 'dynamic', 'undeclared'] as const)(
-    'validates %s metadata adapter calls through re-exports',
+    'validates %s metadata adapter calls through aliased exports and re-exports',
     async (mode) => {
       writeFileSync(localeFile, '{}')
       writeFileSync(
@@ -741,10 +741,11 @@ describe('i18n build check', () => {
         path.join(root, 'app/route-metadata.ts'),
         `
       import { getTranslation } from '../i18n/server'
-      export async function getRouteMetadata(namespace: string, selector: (source: Record<string, string>) => string) {
+      async function internalMetadata(namespace: string, selector: (source: Record<string, string>) => string) {
         const { t } = getTranslation('en-US', namespace)
         return { title: t(selector, { ns: namespace }) }
       }
+      export { internalMetadata as getRouteMetadata }
     `,
       )
       writeFileSync(

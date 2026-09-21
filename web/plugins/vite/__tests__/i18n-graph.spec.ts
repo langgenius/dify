@@ -106,54 +106,59 @@ describe('translation graph analysis', () => {
       },
     )
 
-    it('supports opt-in custom names and argument positions without built-in module rules', () => {
-      writeJson('i18n/locales/en-US/common.json', {
-        used: 'Used',
-        other: 'Other',
-        unused: 'Unused',
-      })
-      writeSource(
-        'custom/labels.ts',
-        `
+    it.each(['direct', 'alias', 'barrel'] as const)(
+      'supports custom adapters exported through %s exports',
+      (kind) => {
+        writeJson('i18n/locales/en-US/common.json', {
+          used: 'Used',
+          other: 'Other',
+          unused: 'Unused',
+        })
+        writeSource(
+          'custom/labels.ts',
+          `
         import { useTranslation } from 'react-i18next'
-        export const label = (selector: (source: Record<string, string>) => string, ns: string) => {
+        ${kind === 'direct' ? 'export const label' : 'const internal'} = (selector: (source: Record<string, string>) => string, ns: string) => {
           const { t } = useTranslation(ns)
           return t(selector)
         }
+        ${kind === 'direct' ? '' : 'export { internal as label }'}
       `,
-      )
-      writeSource(
-        'entry.ts',
-        `
+        )
+        writeSource('custom/barrel.ts', `export { label as caption } from './labels'`)
+        writeSource(
+          'entry.ts',
+          `
         import { label as caption } from './custom/labels'
         import * as labels from './custom/labels'
         caption($ => $.used, 'common')
         labels.label($ => $.other, 'common')
       `,
-      )
-      const unconfigured = analyzeTranslationGraph(webRoot, modules)
-      expect(
-        unconfigured.evidence.some(
-          (item) => item.kind === 'unknown-namespace' && item.file === 'custom/labels.ts',
-        ),
-      ).toBe(true)
-      const configured = analyzeTranslationGraph(
-        webRoot,
-        modules,
-        undefined,
-        createAnalysisContext(webRoot, [
-          {
-            module: 'custom/labels.ts',
-            exportName: 'label',
-            namespaceArgument: 1,
-            selectorArgument: 0,
-          },
-        ]),
-      )
-      expect(configured.evidence.some((item) => item.kind === 'unknown-namespace')).toBe(false)
-      expect(configured.unused).toEqual({ common: ['unused'] })
-      expect(configured.protectedNamespaces).toEqual([])
-    })
+        )
+        const unconfigured = analyzeTranslationGraph(webRoot, modules)
+        expect(
+          unconfigured.evidence.some(
+            (item) => item.kind === 'unknown-namespace' && item.file === 'custom/labels.ts',
+          ),
+        ).toBe(true)
+        const configured = analyzeTranslationGraph(
+          webRoot,
+          modules,
+          undefined,
+          createAnalysisContext(webRoot, [
+            {
+              module: kind === 'barrel' ? 'custom/barrel.ts' : 'custom/labels.ts',
+              exportName: kind === 'barrel' ? 'caption' : 'label',
+              namespaceArgument: 1,
+              selectorArgument: 0,
+            },
+          ]),
+        )
+        expect(configured.evidence.some((item) => item.kind === 'unknown-namespace')).toBe(false)
+        expect(configured.unused).toEqual({ common: ['unused'] })
+        expect(configured.protectedNamespaces).toEqual([])
+      },
+    )
 
     it('does not exempt unrelated functions or all code in an adapter module', () => {
       writeJson('i18n/locales/en-US/common.json', { unused: 'Unused' })

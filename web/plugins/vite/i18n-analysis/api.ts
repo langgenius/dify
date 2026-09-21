@@ -29,28 +29,36 @@ function declarationIdentity(root: string, node: ts.Node) {
   }
 }
 
-export function isTranslationAdapter(
-  root: string,
-  node: ts.Node,
-  adapters: readonly TranslationAdapter[],
-) {
-  const identity = declarationIdentity(root, node)
-  return (
-    identity &&
-    adapters.some(
-      (adapter) =>
-        adapter.module === identity.module &&
-        (adapter.exportName === identity.name ||
-          adapter.implementationFunctions?.includes(identity.name)),
-    )
-  )
-}
-
 export function createTranslationApiResolver(
   root: string,
-  checker: ts.TypeChecker,
+  program: ts.Program,
   adapters: readonly TranslationAdapter[],
 ) {
+  const checker = program.getTypeChecker()
+  const exportedAdapters = new Map<ts.Node, TranslationAdapter>()
+  for (const adapter of adapters) {
+    const source = program.getSourceFile(path.resolve(root, adapter.module))
+    const module = source && checker.getSymbolAtLocation(source)
+    const exported =
+      module &&
+      checker.getExportsOfModule(module).find((symbol) => symbol.name === adapter.exportName)
+    if (!exported) continue
+    const target =
+      exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported
+    for (const declaration of target.declarations ?? []) exportedAdapters.set(declaration, adapter)
+  }
+  function isAdapter(node: ts.Node) {
+    if (exportedAdapters.has(node)) return true
+    const identity = declarationIdentity(root, node)
+    return (
+      !!identity &&
+      adapters.some(
+        (adapter) =>
+          adapter.module === identity.module &&
+          adapter.implementationFunctions?.includes(identity.name),
+      )
+    )
+  }
   const known = (name: string, module: string): TranslationApi | undefined => {
     if (module !== 'react-i18next') return
     if (name === 'useTranslation') return { kind: 'translation', namespaceArgument: 0 }
@@ -107,11 +115,7 @@ export function createTranslationApiResolver(
   function resolveDeclaration(declaration: ts.Declaration): TranslationApi | undefined {
     const file = declaration.getSourceFile().fileName.replaceAll('\\', '/')
     const identity = declarationIdentity(root, declaration)
-    const adapter =
-      identity &&
-      adapters.find(
-        (adapter) => adapter.module === identity.module && adapter.exportName === identity.name,
-      )
+    const adapter = exportedAdapters.get(declaration)
     if (adapter)
       return {
         kind: 'translation',
@@ -122,8 +126,11 @@ export function createTranslationApiResolver(
       return known(identity.name, 'react-i18next')
   }
 
-  return (node: ts.Node) => {
-    if (!cache.has(node)) cache.set(node, resolve(node))
-    return cache.get(node)
+  return {
+    isAdapter,
+    resolve(node: ts.Node) {
+      if (!cache.has(node)) cache.set(node, resolve(node))
+      return cache.get(node)
+    },
   }
 }
