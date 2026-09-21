@@ -142,6 +142,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                         "title": ne.title,
                         "status": ne.status,
                         "error": ne.error,
+                        "run_id": ne.run_id,
                     },
                 )
             except Exception:
