@@ -248,7 +248,7 @@ const Description = ({
           usedInMarketplace={false}
         />
         <div className="flex h-full shrink-0 items-center justify-end gap-4 pr-3.5 pl-4">
-          <Separator decorative orientation="vertical" className="mx-0 h-4 bg-divider-regular" />
+          <Separator decorative orientation="vertical" className="mx-0 h-4" />
           <SubmitRequestDropdown dividerAfterFirst />
         </div>
       </div>

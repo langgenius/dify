@@ -86,7 +86,7 @@ const CategoryMarketplacePanel = ({
       className="flex scroll-mt-4 flex-col gap-2 pb-2"
       id={getCategoryMarketplaceId(category)}
     >
-      <Separator className="my-2 my-2! h-px" />
+      <Separator className="my-2" />
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"

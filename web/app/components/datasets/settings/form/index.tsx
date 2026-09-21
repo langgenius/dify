@@ -117,7 +117,7 @@ const Form = () => {
         />
       )}
 
-      <Separator decorative orientation="horizontal" className="my-1 h-px bg-divider-subtle" />
+      <Separator decorative orientation="horizontal" className="my-1 bg-divider-subtle" />
 
       {/* Save Button */}
       <div className="flex gap-x-1">

@@ -25,7 +25,7 @@ export function ToolAuthorizationSection({
 
   return (
     <>
-      <Separator className="my-1 h-[0.5px] w-full" />
+      <Separator className="my-1 h-[0.5px]" />
       <div className="px-4 py-2">
         <PluginAuthInAgent
           pluginPayload={{

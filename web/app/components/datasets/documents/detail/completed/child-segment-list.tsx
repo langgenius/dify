@@ -170,9 +170,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         isFullDocMode && isLoading && 'overflow-y-hidden',
       )}
     >
-      {isFullDocMode && (
-        <Separator orientation="horizontal" className="my-1 h-px bg-divider-subtle" />
-      )}
+      {isFullDocMode && <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />}
       <div
         className={cn(
           'flex items-center justify-between',

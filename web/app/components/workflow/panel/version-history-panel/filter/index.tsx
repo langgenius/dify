@@ -71,7 +71,7 @@ const Filter: FC<FilterProps> = ({
               )
             })}
           </div>
-          <Separator orientation="horizontal" className="my-0 h-px bg-divider-subtle" />
+          <Separator orientation="horizontal" className="my-0 bg-divider-subtle" />
           <FilterSwitch enabled={isOnlyShowNamedVersions} handleSwitch={handleSwitch} />
         </div>
       </PopoverContent>

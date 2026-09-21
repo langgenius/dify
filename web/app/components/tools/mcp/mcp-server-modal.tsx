@@ -144,7 +144,7 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
                   <Separator
                     decorative
                     orientation="horizontal"
-                    className="m-0! my-2 h-[0.5px] h-px! grow bg-divider-subtle"
+                    className="m-0 grow bg-divider-subtle"
                   />
                 </div>
                 <div className="mb-2 body-xs-regular text-text-tertiary">

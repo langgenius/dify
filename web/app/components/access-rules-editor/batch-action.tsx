@@ -61,12 +61,12 @@ export default function AccessRulesBatchAction({
             {t(($) => $['accessRule.selected'], { ns: 'permission' })}
           </span>
         </div>
-        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" tone="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
           <span className="i-ri-delete-bin-line size-4" aria-hidden />
           <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         </Button>
-        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" onClick={onCancel}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>

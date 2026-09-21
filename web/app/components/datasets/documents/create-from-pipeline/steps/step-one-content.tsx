@@ -107,7 +107,7 @@ const StepOneContent = ({
       />
       {showUpgradeCard && (
         <>
-          <Separator orientation="horizontal" className="my-4 h-px bg-divider-subtle" />
+          <Separator orientation="horizontal" className="my-4 bg-divider-subtle" />
           <UpgradeCard />
         </>
       )}

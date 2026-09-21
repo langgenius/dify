@@ -244,7 +244,7 @@ const Completed: FC<ICompletedProps> = ({
       <Separator
         decorative
         orientation="horizontal"
-        className="mx-6 my-0 h-px w-auto bg-divider-subtle"
+        className="mx-6 my-0 w-auto bg-divider-subtle"
       />
       <Pagination
         page={currentPage}

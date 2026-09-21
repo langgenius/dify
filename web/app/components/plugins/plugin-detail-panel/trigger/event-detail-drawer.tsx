@@ -162,7 +162,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
                     {t(($) => $['events.item.noParameters'], { ns: 'pluginTrigger' })}
                   </div>
                 )}
-                <Separator className="my-2 mt-1 mb-2 h-px" />
+                <Separator className="my-2 mt-1 mb-2" />
                 <div className="flex flex-col gap-2">
                   <div className="system-sm-semibold-uppercase text-text-secondary">
                     {t(($) => $['events.output'], { ns: 'pluginTrigger' })}

@@ -85,7 +85,7 @@ const BatchAction: FC<IBatchActionProps> = ({
             {t(($) => $[`${i18nPrefix}.selected`], { ns: 'dataset' })}
           </span>
         </div>
-        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         {onBatchEnable && (
           <Button variant="ghost" disabled={disabled} onClick={onBatchEnable}>
             <RiCheckboxCircleLine className="size-4" />
@@ -140,7 +140,7 @@ const BatchAction: FC<IBatchActionProps> = ({
           </Button>
         )}
 
-        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" onClick={onCancel}>
           <span>{t(($) => $[`${i18nPrefix}.cancel`], { ns: 'dataset' })}</span>
         </Button>

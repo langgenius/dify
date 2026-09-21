@@ -80,7 +80,7 @@ const InstallFromMarketplace = ({
       id="model-provider-marketplace"
       className="flex scroll-mt-4 flex-col gap-2"
     >
-      <Separator className="my-2 my-2! h-px" />
+      <Separator className="my-2" />
       <div className="relative flex flex-col gap-2">
         <div
           aria-hidden

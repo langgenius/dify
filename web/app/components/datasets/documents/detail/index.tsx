@@ -304,11 +304,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                     showBatchModal={showBatchModal}
                     embedding={embedding}
                   />
-                  <Separator
-                    decorative
-                    orientation="vertical"
-                    className="mx-2 mx-3! h-3.5! bg-divider-regular!"
-                  />
+                  <Separator decorative orientation="vertical" className="mx-3 h-3.5" />
                 </>
               )}
             {documentDetail && (

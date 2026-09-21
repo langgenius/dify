@@ -33,7 +33,7 @@ const ExternalKnowledgeSection = ({
 
   return (
     <>
-      <Separator orientation="horizontal" className="my-1 h-px bg-divider-subtle" />
+      <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
 
       {/* Retrieval Settings */}
       <div className={rowClass}>
@@ -52,7 +52,7 @@ const ExternalKnowledgeSection = ({
         />
       </div>
 
-      <Separator orientation="horizontal" className="my-1 h-px bg-divider-subtle" />
+      <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
 
       {/* External Knowledge API */}
       <div className={rowClass}>

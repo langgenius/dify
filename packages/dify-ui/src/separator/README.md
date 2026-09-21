@@ -24,7 +24,10 @@ components must forward the received props and ref. Explicit DOM props and rende
 change the default semantics; callers are responsible for keeping those overrides consistent
 with the intended role and `decorative` setting.
 
-Lines are 1px thick with no built-in margins. Callers own spacing and length. `variant` accepts
-`solid` (the default) or `gradient` (a left-to-right fade).
+Lines are 1px thick with no built-in margins. `variant` accepts `solid` (the default) or
+`gradient` (a left-to-right fade). Callers control spacing, length, and placement through layout
+and `className`: width sets a horizontal line's length; height sets a vertical line's length.
+Use `variant` for the gradient rather than repeating its styles. To customize color, use a
+background token for solid lines or a gradient-start token for gradient lines.
 
 [Base UI Separator]: https://base-ui.com/react/components/separator

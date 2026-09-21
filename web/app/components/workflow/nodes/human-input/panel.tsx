@@ -97,7 +97,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         readonly={readOnly}
       />
       <div className="px-4 py-2">
-        <Separator className="my-0! my-2 h-[0.5px] h-px! bg-divider-subtle!" />
+        <Separator className="my-0 bg-divider-subtle" />
       </div>
       {/* form content */}
       <div
@@ -230,7 +230,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         )}
       </div>
       <div className="px-4 py-2">
-        <Separator className="my-0! my-2 h-[0.5px] h-px! bg-divider-subtle!" />
+        <Separator className="my-0 bg-divider-subtle" />
       </div>
       {/* timeout */}
       <div className="flex items-center justify-between px-4 py-2">

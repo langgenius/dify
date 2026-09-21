@@ -21,7 +21,7 @@ const Header = ({ docTitle, docLink, onClickConfiguration, pluginName, ...rest }
     <div className="flex items-center justify-between gap-x-2">
       <div className="flex items-center gap-x-1 overflow-hidden">
         <CredentialSelector {...rest} />
-        <Separator decorative orientation="vertical" className="mx-1 h-3.5 shrink-0" />
+        <Separator decorative orientation="vertical" className="mx-1 h-3.5" />
         <Tooltip>
           <TooltipTrigger
             render={

@@ -101,8 +101,8 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
       </div>
       {collapsed && (
         <div className="flex w-full max-w-180 items-center py-4">
-          <Separator decorative variant="gradient" className="my-2 h-px basis-1/2 rotate-180" />
-          <Separator decorative variant="gradient" className="my-2 h-px basis-1/2" />
+          <Separator decorative variant="gradient" className="my-2 basis-1/2 rotate-180" />
+          <Separator decorative variant="gradient" className="my-2 basis-1/2" />
         </div>
       )}
     </div>

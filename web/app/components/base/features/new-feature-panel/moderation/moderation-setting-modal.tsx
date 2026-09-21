@@ -45,7 +45,7 @@ function LabeledDivider({ children }: { children: ReactNode }) {
   return (
     <div className="flex w-full items-center gap-2">
       <span className="shrink-0 system-xs-medium-uppercase text-text-tertiary">{children}</span>
-      <Separator decorative variant="gradient" className="my-0 h-px flex-1" />
+      <Separator decorative variant="gradient" className="my-0 flex-1" />
     </div>
   )
 }

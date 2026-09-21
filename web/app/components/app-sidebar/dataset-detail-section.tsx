@@ -145,7 +145,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
               decorative
               orientation="horizontal"
               variant="solid"
-              className="my-0 h-px w-6.75 bg-divider-subtle"
+              className="my-0 w-6.75 bg-divider-subtle"
             />
           </div>
         )}

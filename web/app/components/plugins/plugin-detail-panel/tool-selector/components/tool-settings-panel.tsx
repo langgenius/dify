@@ -99,7 +99,7 @@ export function ToolSettingsPanel({
 
   return (
     <>
-      <Separator className="my-1 h-[0.5px] w-full" />
+      <Separator className="my-1 h-[0.5px]" />
       {nodeId && showTabSlider ? (
         <Tabs
           value={currType}

@@ -476,7 +476,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {t(($) => $[`${prefixSettings}.webDescTip`], { ns: 'appOverview' })}
                     </FieldDescription>
                   </Field>
-                  <Separator className="my-0 h-px" />
+                  <Separator className="my-0" />
                   {/* answer icon */}
                   {isChat && (
                     <Field name="use_icon_as_answer_icon" className="w-full">
@@ -587,7 +587,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {t(($) => $[`${prefixSettings}.workflow.showDesc`], { ns: 'appOverview' })}
                     </FieldDescription>
                   </Field>
-                  <Separator className="my-0 h-px" />
+                  <Separator className="my-0" />
                   <div className="space-y-5">
                     {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
                       <div className="w-full">

@@ -312,11 +312,7 @@ export function AgentOutputVariables({
             )
           })}
           <div className="py-1">
-            <Separator
-              decorative
-              orientation="horizontal"
-              className="my-2 h-px bg-divider-subtle"
-            />
+            <Separator decorative orientation="horizontal" className="my-2 bg-divider-subtle" />
           </div>
           {editingState && editingState.outputIndex == null ? (
             <OutputEditCard

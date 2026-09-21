@@ -26,7 +26,7 @@ const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
         {!isFinal && (
           <div className="mr-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary">{`${t(($) => $['agentLogDetail.iteration'], { ns: 'appLog' }).toUpperCase()} ${index}`}</div>
         )}
-        <Separator decorative variant="gradient" className="mx-0 my-2 h-px grow" />
+        <Separator decorative variant="gradient" className="mx-0 my-2 grow" />
       </div>
       <ToolCall
         isLLM

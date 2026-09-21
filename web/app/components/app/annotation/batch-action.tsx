@@ -51,13 +51,13 @@ const BatchAction: FC<IBatchActionProps> = ({
             {t(($) => $[`${i18nPrefix}.selected`], { ns: 'appAnnotation' })}
           </span>
         </div>
-        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" tone="destructive" onClick={showDeleteConfirm}>
           <span aria-hidden className="i-ri-delete-bin-line size-4" />
           <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         </Button>
 
-        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" onClick={() => onSelectedIdsChange([])}>
           <span>{t(($) => $['operation.cancel'], { ns: 'common' })}</span>
         </Button>

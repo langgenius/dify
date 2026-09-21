@@ -209,7 +209,7 @@ const ConfigContent: FC<Props> = ({
             <div className="mr-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
               {t(($) => $.rerankSettings, { ns: 'dataset' })}
             </div>
-            <Separator decorative variant="gradient" className="m-0 h-[0.5px] h-px!" />
+            <Separator decorative variant="gradient" className="m-0" />
           </div>
           {selectedDatasetsMode.inconsistentEmbeddingModel && (
             <div className="mt-4 system-xs-medium text-text-warning">

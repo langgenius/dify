@@ -63,12 +63,7 @@ const renderNavDivider = (key: string, expand: boolean) => (
     <Separator
       orientation="horizontal"
       variant={expand ? 'gradient' : 'solid'}
-      className={cn(
-        'my-0 h-px',
-        expand
-          ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
-          : 'bg-divider-subtle',
-      )}
+      className={cn('my-0', expand ? 'from-divider-subtle' : 'bg-divider-subtle')}
     />
   </div>
 )
@@ -195,7 +190,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             decorative
             orientation="horizontal"
             variant="solid"
-            className="my-0 h-px w-6.75 bg-divider-subtle"
+            className="my-0 w-6.75 bg-divider-subtle"
           />
         </div>
       )}

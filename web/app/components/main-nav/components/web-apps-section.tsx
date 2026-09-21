@@ -325,7 +325,7 @@ const WebAppsSectionContent = () => {
                       >
                         {row.kind === 'separator' ? (
                           <div className="flex h-3 items-center px-1">
-                            <Separator decorative className="m-0 h-px bg-divider-subtle" />
+                            <Separator decorative className="m-0 bg-divider-subtle" />
                           </div>
                         ) : (
                           <AppNavItem

@@ -161,7 +161,7 @@ const OpeningSettingModal = ({
             {tempSuggestedQuestions.length}/{MAX_QUESTION_NUM}
           </div>
         </div>
-        <Separator decorative variant="gradient" className="my-2 mb-3 h-px" />
+        <Separator decorative variant="gradient" className="my-2 mb-3" />
         {announcement}
         <ReactSortable
           className="space-y-1"

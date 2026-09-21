@@ -43,11 +43,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({ onChange, options }) => {
             {t(($) => $['nodes.llm.jsonSchema.stringValidations'], { ns: 'workflow' })}
           </span>
           <div className="grow">
-            <Separator
-              decorative
-              orientation="horizontal"
-              className="my-0 h-px bg-line-divider-bg"
-            />
+            <Separator decorative orientation="horizontal" className="my-0 bg-line-divider-bg" />
           </div>
         </div>
         <div className="flex flex-col">

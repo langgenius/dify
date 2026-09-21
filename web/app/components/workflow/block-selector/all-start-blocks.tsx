@@ -31,13 +31,13 @@ const DEFAULT_TAGS: string[] = []
 
 const SectionDivider = () => (
   <div className="px-4 py-1" aria-hidden>
-    <Separator decorative orientation="horizontal" className="my-0 h-px bg-divider-subtle" />
+    <Separator decorative orientation="horizontal" className="my-0 bg-divider-subtle" />
   </div>
 )
 
 const MarketplaceFooterDivider = () => (
   <div className="flex h-2 w-8 items-center" aria-hidden>
-    <Separator decorative orientation="horizontal" className="my-0 h-px w-8 bg-divider-subtle" />
+    <Separator decorative orientation="horizontal" className="my-0 w-8 bg-divider-subtle" />
   </div>
 )
 

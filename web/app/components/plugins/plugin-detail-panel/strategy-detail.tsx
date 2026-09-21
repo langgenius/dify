@@ -157,7 +157,7 @@ const StrategyDetail: FC<Props> = ({ provider, detail, onHide }) => {
                   {detail.output_schema && (
                     <>
                       <div className="px-4">
-                        <Separator className="my-2 mt-2! h-[0.5px]" />
+                        <Separator className="my-2 mt-2 h-[0.5px]" />
                       </div>
                       <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">
                         OUTPUT

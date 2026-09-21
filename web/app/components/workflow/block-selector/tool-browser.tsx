@@ -330,7 +330,7 @@ function ToolBrowser({
                   }}
                 />
                 <div className="px-3">
-                  <Separator className="my-2 h-[0.5px] h-px!" />
+                  <Separator className="my-2" />
                 </div>
               </>
             )}

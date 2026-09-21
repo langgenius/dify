@@ -149,7 +149,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
         <Separator
           decorative
           orientation="vertical"
-          className={cn('mx-2', cn('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle'))}
+          className={cn('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}
         />
       </div>
 

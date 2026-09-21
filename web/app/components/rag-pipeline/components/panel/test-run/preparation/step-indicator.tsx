@@ -34,7 +34,7 @@ const StepIndicator = ({ currentStep, steps }: StepIndicatorProps) => {
                 <Separator
                   decorative
                   orientation="horizontal"
-                  className="my-2 h-px w-3 bg-divider-deep"
+                  className="my-2 w-3 bg-divider-deep"
                 />
               </div>
             )}

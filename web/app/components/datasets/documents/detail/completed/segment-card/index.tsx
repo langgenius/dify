@@ -231,11 +231,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                           {t(($) => $['operation.delete'], { ns: 'common' })}
                         </TooltipContent>
                       </Tooltip>
-                      <Separator
-                        decorative
-                        orientation="vertical"
-                        className="mx-2 h-3.5 bg-divider-regular"
-                      />
+                      <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
                     </>
                   )}
                   <div

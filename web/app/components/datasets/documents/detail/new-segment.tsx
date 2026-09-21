@@ -165,10 +165,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
                 loading={loading}
                 actionType="add"
               />
-              <Separator
-                orientation="vertical"
-                className="mx-2 mr-2 ml-4 h-3.5 bg-divider-regular"
-              />
+              <Separator orientation="vertical" className="mx-2 mr-2 ml-4 h-3.5" />
             </>
           )}
           <button

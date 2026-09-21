@@ -69,7 +69,7 @@ const StatusAction: FC<Props> = ({
         <div className="text-[13px] font-normal text-text-secondary">{description}</div>
         {onAction && actionText && (
           <>
-            <Separator decorative orientation="vertical" className="mx-2 h-4!" />
+            <Separator decorative orientation="vertical" className="mx-2 h-4" />
             <button
               type="button"
               disabled={disabled}
