@@ -22,6 +22,11 @@ MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
     "insert_between": ("edge", "node_type", "config"),
 }
 
+# ReactFlow containment, matching what the generator computes for a child of
+# an iteration/loop container (core/workflow/generator/runner.py:1441-1442).
+_CHILD_EXTENT = "parent"
+_CHILD_Z_INDEX = 1002
+
 # Args that name a node. An LLM occasionally emits these as ints or empty
 # strings; unchecked they reach diff_graphs, which drops falsy/non-str ids
 # from its node maps, and then crash build_change_set's join (ESQ1-271).
@@ -177,6 +182,7 @@ def _build_node(
     config: dict[str, Any],
     position: dict[str, float] | None,
     node_id: str | None,
+    parent_id: str | None = None,
 ) -> dict[str, Any]:
     """Construct one ``GraphNodeDict``-shaped node, generating an id/position
     when omitted (mirrors the generator's ``_fill_node_defaults``,
@@ -197,12 +203,21 @@ def _build_node(
     data.setdefault("desc", "")
     data.setdefault("selected", False)
 
-    return {
+    node: dict[str, Any] = {
         "id": new_id,
         "type": "custom",
         "position": position if position is not None else _default_position(graph),
         "data": data,
     }
+    if parent_id:
+        # Containment lives at node level, NOT inside data. Without these the
+        # child renders outside its container and the container does not run
+        # it -- the data-level isInIteration/iteration_id markers are not
+        # enough on their own.
+        node["parentId"] = parent_id
+        node["extent"] = _CHILD_EXTENT
+        node["zIndex"] = _CHILD_Z_INDEX
+    return node
 
 
 def apply_create_node(
@@ -211,16 +226,19 @@ def apply_create_node(
     config: dict[str, Any],
     position: dict[str, float] | None = None,
     node_id: str | None = None,
+    parent_id: str | None = None,
 ) -> tuple[Graph, list[str]]:
     """Append a new ``GraphNodeDict``-shaped node to the graph.
 
     ``node_id`` is optional (not part of spec Sec 9's terse args list) --
     when omitted a short id is generated from ``node_type``; when supplied,
     a collision with an existing node id raises ``ValueError`` (the Slice 1
-    duplicate-id validation). Returns ``(new_graph, [new_node_id])``.
+    duplicate-id validation). ``parent_id``, when truthy, nests the new node
+    inside an existing iteration/loop container and adds the matching
+    ``extent``/``zIndex`` wrapper keys. Returns ``(new_graph, [new_node_id])``.
     """
     new_graph = copy.deepcopy(graph)
-    node = _build_node(new_graph, node_type, config, position, node_id)
+    node = _build_node(new_graph, node_type, config, position, node_id, parent_id)
     new_graph.setdefault("nodes", []).append(node)
     return new_graph, [node["id"]]
 
