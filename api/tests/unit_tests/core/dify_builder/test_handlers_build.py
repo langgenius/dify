@@ -1985,3 +1985,47 @@ def test_the_test_result_card_names_the_dify_run_so_the_canvas_is_reachable_late
     assert card.payload["dify_run_id"] == "dify-run-1"
     # and it is NOT the Builder run id the card already carried
     assert card.payload["dify_run_id"] not in card.payload["run_ids"]
+
+
+def test_await_repair_refuses_to_apply_an_empty_staged_repair():
+    """ESQ1-291: approving a zero-intent repair re-tested and re-offered
+    forever. With nothing staged there is nothing to approve."""
+    from core.dify_builder.handlers_build import handle_await_repair
+
+    env, repo = _new_env()
+    s = _seed_build_session(repo, PcState.BUILD_AWAIT_REPAIR)
+    fc = DifyBuilderContext()
+    fc.staged_repair = []
+
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+    out = handle_await_repair(env, turn, s, fc)
+
+    assert out.next == PcState.BUILD_AWAIT_REPAIR
+    assert out.context.repair_attempts == 0
+    assert "notice" in [item.kind for item in out.items]
+
+
+def test_await_repair_counts_attempts_and_stops_repeating_the_same_error():
+    from core.dify_builder.handlers_build import _repair_is_repeating
+
+    fc = DifyBuilderContext()
+    fc.last_repair_error = "Invalid actual value type: number"
+    fc.repair_attempts = 3
+    assert _repair_is_repeating(fc, "Invalid actual value type: number") is True
+    assert _repair_is_repeating(fc, "Variable ['node2','result'] not found") is False
+
+    fc.repair_attempts = 1
+    assert _repair_is_repeating(fc, "Invalid actual value type: number") is False
+
+
+def test_repeated_failure_stops_offering_a_repair():
+    """The guard must be REACHED, not merely defined: a third identical
+    failure clears the staged repair instead of proposing a fourth."""
+    from core.dify_builder.handlers_build import _MAX_REPEATED_REPAIRS, _repair_is_repeating
+
+    fc = DifyBuilderContext()
+    fc.last_repair_error = "Invalid actual value type: number"
+    fc.repair_attempts = _MAX_REPEATED_REPAIRS
+    assert _repair_is_repeating(fc, "Invalid actual value type: number") is True
+    # a NEW error means progress -- keep repairing
+    assert _repair_is_repeating(fc, "Variable not found") is False
