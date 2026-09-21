@@ -165,11 +165,11 @@ class MCPClientManager:
     ) -> _PooledClient:
         """Return a live pooled entry, connecting (with auth retry) if needed."""
         with self._lock:
-            victims = self._evict_expired()
+            expired = self._evict_expired()
             entry = self._clients.get(key)
             if entry is not None:
                 entry.last_used = time.monotonic()
-        for victim in victims:
+        for victim in expired:
             self._close_entry(victim)
         if entry is not None:
             return entry
@@ -198,12 +198,13 @@ class MCPClientManager:
                 logger.warning("Failed to clean up an MCP client whose initialization failed", exc_info=True)
             raise
         candidate = _PooledClient(client, key)
+        overflow: list[_PooledClient] = []
         with self._lock:
             existing = self._clients.get(key)
             if existing is None:
                 self._clients[key] = candidate
-                victims = self._evict_to_capacity()
-        for victim in victims:
+                overflow = self._evict_to_capacity()
+        for victim in overflow:
             self._close_entry(victim)
         if existing is not None:
             # Lost a race creating the same connection: use the winner.
@@ -299,16 +300,6 @@ def close_all_mcp_clients() -> None:
     """Close every pooled client, so stateful servers do not outlive the process."""
     with _manager_lock:
         manager = _manager
-    if manager is not None:
-        manager.close_all()
-
-
-def reset_mcp_client_manager() -> None:
-    """Drop the process-wide manager (tests only)."""
-    global _manager
-    with _manager_lock:
-        manager = _manager
-        _manager = None
     if manager is not None:
         manager.close_all()
 
