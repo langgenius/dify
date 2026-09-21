@@ -14,12 +14,12 @@ import {
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
-import Divider from '@/app/components/base/divider'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
@@ -205,9 +205,10 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
       {!expand && (
         <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-0.75">
-          <Divider
-            type="horizontal"
-            bgStyle="solid"
+          <Separator
+            decorative
+            orientation="horizontal"
+            variant="solid"
             className="my-0 h-px w-6.75 bg-divider-subtle"
           />
         </div>
@@ -252,9 +253,10 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
         </div>
       </div>
       <div className={cn(expand ? 'px-3 py-0.5' : 'px-1 py-0.5')}>
-        <Divider
-          type="horizontal"
-          bgStyle={expand ? 'gradient' : 'solid'}
+        <Separator
+          decorative
+          orientation="horizontal"
+          variant={expand ? 'gradient' : 'solid'}
           className={cn(
             'my-0 h-px',
             expand
