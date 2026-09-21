@@ -1,9 +1,18 @@
 import type { CreateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowInstructionImprovePayload } from '@dify/contracts/api/console/workflow-generate/types.gen'
+import type { consoleClient } from '@/service/console'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery, seedFeatures } from '@/test/console/query-data'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { CreateAppEntry } from '../create-app-entry'
+import {
+  mockPromptModelQueries,
+  promptDefaultModel,
+  promptModelProviders,
+} from './prompt-model-fixtures'
 
 const mocks = vi.hoisted(() => ({
   createApp: vi.fn(async ({ body }: { body: CreateAppPayload }) => ({
@@ -11,10 +20,16 @@ const mocks = vi.hoisted(() => ({
     mode: body.mode,
     maintainer: 'creator',
   })),
+  improve: vi.fn(async ({ body }: { body: WorkflowInstructionImprovePayload }) => ({
+    instruction: `Improved: ${body.instruction}`,
+    changed: true,
+  })),
   push: vi.fn(),
   template: vi.fn(),
   importDSL: vi.fn(),
   trackCreateApp: vi.fn<() => Promise<void> | undefined>(),
+  defaultModel: vi.fn<typeof consoleClient.workspaces.current.defaultModel.get>(),
+  models: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),
 }))
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }))
@@ -30,6 +45,17 @@ vi.mock('@/service/console', async (importOriginal) => {
       systemFeatures: actual.consoleQuery.systemFeatures,
       workspaces: actual.consoleQuery.workspaces,
       trialModels: actual.consoleQuery.trialModels,
+      workflowGenerate: {
+        improve: {
+          post: {
+            mutationOptions: (
+              options: Parameters<
+                typeof actual.consoleQuery.workflowGenerate.improve.post.mutationOptions
+              >[0],
+            ) => ({ ...options, mutationFn: mocks.improve }),
+          },
+        },
+      },
       apps: {
         ...actual.consoleQuery.apps,
         post: { mutationOptions: () => ({ mutationFn: mocks.createApp }) },
@@ -39,8 +65,11 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 function renderEntry(options: ConsoleQueryTestOptions = {}) {
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
   return renderWithConsoleQuery(
-    <CreateAppEntry onCreateTemplate={mocks.template} onImportDSL={mocks.importDSL} />,
+    <NuqsWrapper>
+      <CreateAppEntry onCreateTemplate={mocks.template} onImportDSL={mocks.importDSL} />
+    </NuqsWrapper>,
     {
       accountProfile: { id: 'creator' },
       workspacePermissionKeys: ['app.create_and_management'],
@@ -55,7 +84,14 @@ async function openMenu(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('Create app entry', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.defaultModel.mockReset().mockResolvedValue({ data: promptDefaultModel })
+    mocks.models.mockReset().mockResolvedValue({ data: promptModelProviders })
+    mockPromptModelQueries(mocks)
+  })
+
+  afterEach(() => vi.restoreAllMocks())
 
   it('collapses additional types and exposes the matching descriptions on hover and keyboard focus', async () => {
     const user = userEvent.setup()
@@ -157,6 +193,68 @@ describe('Create app entry', () => {
       )
     },
   )
+
+  it.each([
+    ['workflow', 'app.types.workflow', 'app.newApp.starter.workflowTitle'],
+    ['advanced-chat', 'app.types.advanced', 'app.newApp.starter.chatflowTitle'],
+  ])('optimizes a %s prompt before explicit creation', async (mode, label, title) => {
+    const user = userEvent.setup()
+    renderEntry({ features: { dify_builder_enabled: true } })
+    await openMenu(user)
+    await user.click(screen.getByRole('menuitem', { name: label }))
+    const input = await screen.findByRole('textbox', { name: title })
+    const optimize = screen.getByRole('button', { name: 'app.newApp.optimizeWithAI' })
+    await waitFor(() => expect(optimize).toBeDisabled())
+    await user.type(input, 'Summarize support tickets')
+    await user.click(optimize)
+    await waitFor(() => expect(input).toHaveValue('Improved: Summarize support tickets'))
+    expect(mocks.improve).toHaveBeenCalledWith(
+      { body: expect.objectContaining({ instruction: 'Summarize support tickets', mode }) },
+      expect.anything(),
+    )
+    expect(mocks.createApp).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
+    expect(mocks.createApp.mock.calls[0]?.[0].body).toMatchObject({
+      mode,
+      prompt: 'Improved: Summarize support tickets',
+    })
+  })
+
+  it('disables optimization without a default model, offers guidance on hover, and enables after configuration', async () => {
+    mocks.defaultModel.mockResolvedValue({ data: null })
+    const user = userEvent.setup()
+    const { queryClient } = renderEntry({
+      features: { dify_builder_enabled: true },
+      workspacePermissionKeys: ['app.create_and_management', 'plugin.model_config'],
+    })
+    await openMenu(user)
+    await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
+    const input = await screen.findByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
+    await user.type(input, 'Original goal')
+    const optimize = screen.getByRole('button', { name: 'app.newApp.optimizeWithAI' })
+    expect(optimize).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    await user.hover(optimize)
+    expect(await screen.findByRole('status')).toHaveTextContent('app.newApp.optimizeModelRequired')
+    await user.click(optimize)
+    expect(screen.getByRole('button', { name: 'workflow.errorMsg.configureModel' })).toBeEnabled()
+    expect(input).toHaveValue('Original goal')
+    expect(mocks.improve).not.toHaveBeenCalled()
+    expect(mocks.createApp).not.toHaveBeenCalled()
+
+    mocks.defaultModel.mockResolvedValue({ data: promptDefaultModel })
+    await act(() =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.defaultModel.get.key(),
+      }),
+    )
+    await waitFor(() => expect(optimize).not.toHaveAttribute('aria-disabled', 'true'))
+    await user.click(optimize)
+    await waitFor(() => expect(input).toHaveValue('Improved: Original goal'))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(mocks.defaultModel).toHaveBeenCalledTimes(2)
+  })
 
   it('keeps non-canvas app creation direct with Builder enabled', async () => {
     const user = userEvent.setup()
