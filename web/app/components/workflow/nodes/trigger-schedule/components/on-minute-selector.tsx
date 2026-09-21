@@ -19,14 +19,14 @@ const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
 
   return (
     <Slider
-      className="flex flex-col gap-2"
+      className="flex flex-col"
       value={value}
       min={0}
       max={59}
       step={1}
       onValueChange={onChange}
     >
-      <SliderLabel className="py-0 text-xs">
+      <SliderLabel className="text-xs">
         {t(($) => $['nodes.triggerSchedule.onMinute'], { ns: 'workflow' })}
       </SliderLabel>
       <div className="relative flex h-8 items-center rounded-lg bg-components-input-bg-normal">

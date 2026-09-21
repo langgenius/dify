@@ -424,8 +424,8 @@ function VersionRow({
             </DialogDescription>
           </div>
           <div className="flex flex-col gap-y-4 px-6 py-3">
-            <Field name="versionTitle" className="gap-y-1">
-              <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
+            <Field name="versionTitle">
+              <FieldLabel className="system-sm-semibold">
                 {t(($) => $['skillManagement.detail.versionTitle'])}
               </FieldLabel>
               <Input
@@ -434,8 +434,8 @@ function VersionRow({
                 onValueChange={setVersionName}
               />
             </Field>
-            <Field name="publishNote" className="gap-y-1">
-              <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
+            <Field name="publishNote">
+              <FieldLabel className="system-sm-semibold">
                 {t(($) => $['skillManagement.detail.versionPublishNote'])}
               </FieldLabel>
               <Textarea
