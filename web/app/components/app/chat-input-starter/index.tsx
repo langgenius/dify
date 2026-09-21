@@ -8,7 +8,9 @@ import { memo, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { AgentBuildGridTexture } from '@/features/agent-v2/agent-detail/configure/components/build-grid-texture'
+import { BuilderPromptModelGuide } from '../builder-prompt-model-guide'
 import { CreateAppDialogShell } from '../create-app-dialog-shell'
+import { useImproveBuilderPrompt } from '../use-improve-builder-prompt'
 import { StarterTemplateEntry } from './template-entry'
 
 const StarterGridTexture = memo(AgentBuildGridTexture)
@@ -37,6 +39,7 @@ function StarterContent({
 }: Omit<ChatInputStarterProps, 'show' | 'onClose' | 'onCreateTemplate'>) {
   const { t } = useTranslation()
   const [prompt, setPrompt] = useState('')
+  const { improve, isPending, ...modelState } = useImproveBuilderPrompt(mode, setPrompt)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const titleId = useId()
   const errorId = useId()
@@ -87,12 +90,25 @@ function StarterContent({
               />
               <div className="flex items-center justify-between pl-1">
                 {/* The Chat Input design uses 6px padding around the icon and 3px around the label. */}
-                <Button size="small" variant="ghost" className="gap-px px-1.5 leading-4" disabled>
-                  <span aria-hidden className="i-ri-sparkling-fill size-3.5" />
-                  <span className="px-0.75">
-                    {t(($) => $['newApp.optimizeWithAI'], { ns: 'app' })}
-                  </span>
-                </Button>
+                <BuilderPromptModelGuide {...modelState}>
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="ghost"
+                    className="gap-px px-1.5 leading-4"
+                    disabled={
+                      disabled || isCreating || !prompt.trim() || modelState.modelStatus !== 'ready'
+                    }
+                    focusableWhenDisabled={modelState.modelStatus !== 'ready' || isPending}
+                    loading={isPending}
+                    onClick={() => improve(prompt)}
+                  >
+                    <span aria-hidden className="i-ri-sparkling-fill size-3.5" />
+                    <span className="px-0.75">
+                      {t(($) => $['newApp.optimizeWithAI'], { ns: 'app' })}
+                    </span>
+                  </Button>
+                </BuilderPromptModelGuide>
                 <IconButton
                   type="submit"
                   variant="primary"
@@ -173,7 +189,7 @@ export default function ChatInputStarter({
         className="pointer-events-none absolute top-0 right-0 select-none"
       />
       <div className="relative flex h-full flex-col overflow-x-hidden overflow-y-auto">
-        <StarterContent {...props} />
+        <StarterContent key={props.mode} {...props} />
         {onCreateTemplate && (
           <StarterTemplateEntry disabled={props.isCreating} onClick={onCreateTemplate} />
         )}

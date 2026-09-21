@@ -1,11 +1,16 @@
+import type { WorkflowInstructionImprovePayload } from '@dify/contracts/api/console/workflow-generate/types.gen'
+import type { Dispatch, SetStateAction } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
+import { BuilderPromptModelGuide } from '../builder-prompt-model-guide'
+import { useImproveBuilderPrompt } from '../use-improve-builder-prompt'
 
 type AppBuilderInputProps = {
   titleId: string
   prompt: string
-  onPromptChange: (prompt: string) => void
+  onPromptChange: Dispatch<SetStateAction<string>>
+  mode: WorkflowInstructionImprovePayload['mode']
   isCreating: boolean
   createDisabled: boolean
 }
@@ -14,10 +19,12 @@ export function AppBuilderInput({
   titleId,
   prompt,
   onPromptChange,
+  mode,
   isCreating,
   createDisabled,
 }: AppBuilderInputProps) {
   const { t } = useTranslation()
+  const { improve, isPending, ...modelState } = useImproveBuilderPrompt(mode, onPromptChange)
 
   return (
     <div className="flex h-40 flex-col rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-2.5 shadow-md focus-within:border-components-input-border-active-prompt-1">
@@ -30,10 +37,20 @@ export function AppBuilderInput({
         className="min-h-15 w-full grow resize-none rounded-md bg-transparent px-2 py-1 body-md-regular text-text-primary outline-none placeholder:text-text-placeholder"
       />
       <div className="flex shrink-0 items-center justify-between">
-        <Button variant="ghost-accent" size="small" disabled>
-          <span aria-hidden className="i-ri-sparkling-fill size-3.5" />
-          {t(($) => $['newApp.optimizeWithAI'], { ns: 'app' })}
-        </Button>
+        <BuilderPromptModelGuide {...modelState}>
+          <Button
+            type="button"
+            variant="ghost-accent"
+            size="small"
+            disabled={isCreating || !prompt.trim() || modelState.modelStatus !== 'ready'}
+            focusableWhenDisabled={modelState.modelStatus !== 'ready' || isPending}
+            loading={isPending}
+            onClick={() => improve(prompt)}
+          >
+            <span aria-hidden className="i-ri-sparkling-fill size-3.5" />
+            {t(($) => $['newApp.optimizeWithAI'], { ns: 'app' })}
+          </Button>
+        </BuilderPromptModelGuide>
         <IconButton
           type="submit"
           variant="primary"
