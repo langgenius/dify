@@ -1,9 +1,11 @@
 import io
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
+from contextlib import contextmanager
 from datetime import timedelta
 from numbers import Real
+from threading import Event, Thread
 from typing import Any, cast
 
 from celery import shared_task
@@ -48,6 +50,7 @@ from services.evaluation_service import EvaluationService
 logger = logging.getLogger(__name__)
 
 _PERSIST_BATCH_SIZE = 10
+_HEARTBEAT_JOIN_TIMEOUT_SECONDS = 5
 
 
 class EvaluationRunCancelledError(Exception):
@@ -72,14 +75,61 @@ def run_evaluation(run_data_dict: dict[str, Any]) -> None:
             _mark_run_failed(session, run_data.evaluation_run_id, str(exc))
 
 
+def _renew_evaluation_run_heartbeat(evaluation_run_id: str) -> bool:
+    """Renew the lease only while the evaluation remains executable."""
+    with session_factory.create_session() as session:
+        result = cast(
+            CursorResult[Any],
+            session.execute(
+                update(EvaluationRun)
+                .where(
+                    EvaluationRun.id == evaluation_run_id,
+                    EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                )
+                .values(heartbeat_at=naive_utc_now())
+            ),
+        )
+        session.commit()
+        return result.rowcount == 1
+
+
+def _renew_evaluation_run_heartbeat_while_running(evaluation_run_id: str, stop_event: Event) -> None:
+    interval = dify_config.EVALUATION_RUN_HEARTBEAT_INTERVAL
+    while not stop_event.wait(interval):
+        try:
+            if not _renew_evaluation_run_heartbeat(evaluation_run_id):
+                return
+        except Exception:
+            logger.exception("Failed to renew heartbeat for evaluation run %s", evaluation_run_id)
+
+
+@contextmanager
+def _maintain_evaluation_run_heartbeat(evaluation_run_id: str) -> Generator[None, None, None]:
+    stop_event = Event()
+    heartbeat_thread = Thread(
+        target=_renew_evaluation_run_heartbeat_while_running,
+        args=(evaluation_run_id, stop_event),
+        daemon=True,
+        name=f"EvaluationRunHeartbeat({evaluation_run_id})",
+    )
+    heartbeat_thread.start()
+    try:
+        yield
+    finally:
+        stop_event.set()
+        heartbeat_thread.join(timeout=_HEARTBEAT_JOIN_TIMEOUT_SECONDS)
+        if heartbeat_thread.is_alive():
+            logger.warning("Evaluation run %s heartbeat thread did not stop", evaluation_run_id)
+
+
 @shared_task(queue="evaluation")
 def reconcile_stale_evaluation_runs() -> int:
-    """Fail running evaluations that outlive the Celery hard limit.
+    """Fail running evaluations whose heartbeat lease has expired.
 
     The compare-and-set update makes the sweep idempotent and lets a normal
-    completion or cancellation win if it races with the reconciler.
+    heartbeat, completion, or cancellation win if it races with the reconciler.
     """
-    cutoff = naive_utc_now() - timedelta(seconds=max(dify_config.EVALUATION_TASK_TIMEOUT, 1) + 60)
+    cutoff = naive_utc_now() - timedelta(seconds=dify_config.EVALUATION_RUN_LEASE_TIMEOUT)
     stale_runs: list[tuple[str, str | None, str, int]] = []
     with session_factory.create_session() as session:
         candidates = list(
@@ -87,8 +137,8 @@ def reconcile_stale_evaluation_runs() -> int:
                 select(EvaluationRun)
                 .where(
                     EvaluationRun.status == EvaluationRunStatus.RUNNING,
-                    EvaluationRun.started_at.is_not(None),
-                    EvaluationRun.started_at < cutoff,
+                    EvaluationRun.heartbeat_at.is_not(None),
+                    EvaluationRun.heartbeat_at < cutoff,
                 )
                 .limit(100)
             ).all()
@@ -101,13 +151,13 @@ def reconcile_stale_evaluation_runs() -> int:
                     .where(
                         EvaluationRun.id == run.id,
                         EvaluationRun.status == EvaluationRunStatus.RUNNING,
-                        EvaluationRun.started_at.is_not(None),
-                        EvaluationRun.started_at < cutoff,
+                        EvaluationRun.heartbeat_at.is_not(None),
+                        EvaluationRun.heartbeat_at < cutoff,
                     )
                     .values(
                         status=EvaluationRunStatus.FAILED,
                         completed_at=naive_utc_now(),
-                        error="Evaluation run exceeded the configured task timeout.",
+                        error="Evaluation run heartbeat lease expired.",
                     )
                 ),
             )
@@ -164,8 +214,10 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
 
     # Redelivery is idempotent at the result boundary: discard a partial prior attempt.
     session.query(EvaluationRunItem).filter_by(evaluation_run_id=evaluation_run.id).delete()
+    now = naive_utc_now()
     evaluation_run.status = EvaluationRunStatus.RUNNING
-    evaluation_run.started_at = evaluation_run.started_at or naive_utc_now()
+    evaluation_run.started_at = evaluation_run.started_at or now
+    evaluation_run.heartbeat_at = now
     evaluation_run.completed_at = None
     evaluation_run.completed_items = 0
     evaluation_run.failed_items = 0
@@ -173,6 +225,16 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
     evaluation_run.error = None
     session.commit()
 
+    with _maintain_evaluation_run_heartbeat(run_data.evaluation_run_id):
+        _execute_running_evaluation(session, run_data, evaluation_instance, run_created_by)
+
+
+def _execute_running_evaluation(
+    session: Session,
+    run_data: EvaluationRunData,
+    evaluation_instance: BaseEvaluationInstance,
+    run_created_by: str,
+) -> None:
     if run_data.target_type == EvaluationTargetType.KNOWLEDGE_BASE.value:
         results = _execute_retrieval_test(
             session=session,

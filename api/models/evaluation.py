@@ -91,6 +91,7 @@ class EvaluationRun(Base):
         sa.PrimaryKeyConstraint("id", name="evaluation_run_pkey"),
         sa.Index("evaluation_run_target_created_idx", "tenant_id", "target_type", "target_id", "created_at"),
         sa.Index("evaluation_run_tenant_status_idx", "tenant_id", "status"),
+        sa.Index("evaluation_run_status_heartbeat_idx", "status", "heartbeat_at"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
@@ -117,6 +118,7 @@ class EvaluationRun(Base):
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
