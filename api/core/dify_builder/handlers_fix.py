@@ -25,6 +25,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
   passthrough).
 """
 
+import logging
 import uuid
 from typing import Any
 
@@ -33,6 +34,7 @@ from core.dify_builder.contract import (
     AssistantTurnItem,
     ChangeSetCard,
     DecisionItem,
+    ErrorCard,
     ExecutionProgress,
     FormCard,
     FormField,
@@ -61,6 +63,8 @@ from core.dify_builder.models import (
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "UNKNOWN_TEST_OUTCOME_NOTICE",
@@ -542,6 +546,16 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
     branches on ``fc.source``: the run-fix path always lands at
     ``fix.await_verify``; the checklist-fix path lands at
     ``checklist.await_recheck``. Port of ``handlers_fix.go:146``."""
+    if not fc.staged_repair:
+        # Nothing staged: applying would change nothing and the verify run
+        # would fail identically. Don't spend a run on it (ESQ1-291) --
+        # hand the decision back instead. handle_propose reaches here with
+        # an empty staged_repair whenever the agent found no safe fix.
+        items = append_card(
+            fc,
+            NoticeItem(text="No fix is staged for this failure -- keep the draft or revert."),
+        )
+        return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,
@@ -553,9 +567,26 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
         ],
     )
     progress.activate("fix-apply-repair")
-    result = env.dify.apply_repair(
-        s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
-    )
+    try:
+        result = env.dify.apply_repair(
+            s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
+        )
+    except ValueError as exc:
+        # Same stale-intent window as Build's/Edit's gate: apply_repair
+        # re-validates against the draft as it is NOW, and a bad intent must
+        # not kill the session (ESQ1-271).
+        logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
+        fc.staged_repair = []
+        progress.finish()
+        items = append_card(
+            fc,
+            ErrorCard(
+                title="Couldn't apply the fix",
+                body=f"The proposed fix no longer applies to the current draft: {exc}",
+                tone="danger",
+            ),
+        )
+        return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
     progress.activate("fix-summarize-changes")
