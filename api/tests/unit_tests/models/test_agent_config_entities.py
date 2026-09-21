@@ -252,7 +252,7 @@ def test_effective_declared_outputs_prepends_optional_system_text() -> None:
     ("enabled", "count", "expected"),
     [(False, 0, ["text"]), (False, 1, ["text"]), (False, 2, ["text"]), (True, 2, ["text", "switch"])],
 )
-def test_effective_outputs_follow_route_selection_contract(enabled, count, expected):
+def test_effective_outputs_follow_route_selection_contract(enabled: bool, count: int, expected: list[str]) -> None:
     job = WorkflowNodeJobConfig.model_validate(
         {
             "output_routes": {
@@ -265,7 +265,7 @@ def test_effective_outputs_follow_route_selection_contract(enabled, count, expec
 
 
 @pytest.mark.parametrize("count", [0, 1])
-def test_enabled_output_routes_require_at_least_two_routes(count):
+def test_enabled_output_routes_require_at_least_two_routes(count: int) -> None:
     with pytest.raises(ValueError, match="at least two routes"):
         WorkflowNodeJobConfig.model_validate(
             {"output_routes": {"enabled": True, "routes": [{"id": str(index)} for index in range(count)]}}
@@ -273,6 +273,6 @@ def test_enabled_output_routes_require_at_least_two_routes(count):
 
 
 @pytest.mark.parametrize("ids", [[""], ["source"], ["fail-branch"], ["target"], ["same", "same"]])
-def test_output_routes_reject_invalid_handle_identities(ids):
+def test_output_routes_reject_invalid_handle_identities(ids: list[str]) -> None:
     with pytest.raises(ValueError):
         WorkflowNodeJobConfig.model_validate({"output_routes": {"routes": [{"id": id, "name": ""} for id in ids]}})

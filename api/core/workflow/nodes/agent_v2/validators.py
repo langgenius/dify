@@ -7,6 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
+from core.agent.workflow_references import (
+    extract_workflow_node_output_selectors,
+    workflow_previous_node_output_refs_from_selectors,
+)
 from core.workflow.graph_topology import WorkflowGraphTopology
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 from models.agent import (
@@ -27,10 +31,6 @@ from models.agent_config_entities import (
 from models.model import UploadFile
 from models.workflow import Workflow
 from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
-from services.agent.prompt_mentions import (
-    extract_workflow_node_output_selectors,
-    workflow_previous_node_output_refs_from_selectors,
-)
 
 from .discriminator import is_dify_agent_node_data
 from .entities import DifyAgentNodeData
