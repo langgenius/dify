@@ -41,36 +41,30 @@ export function AgentPublishSuccess({
 
   return (
     <div className="p-4">
-      <div className="flex items-start gap-2">
-        <span
-          aria-hidden
-          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-state-success-hover text-text-success"
-        >
-          <span className="i-ri-check-line size-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="system-sm-semibold text-text-primary">
-            {kind === 'first'
-              ? t(($) => $['agentDetail.configure.publishSuccess.firstTitle'])
-              : t(($) => $['agentDetail.configure.publishSuccess.updateTitle'])}
-          </p>
-          <p className="mt-0.5 system-xs-regular text-text-secondary">
-            {!webAppUrl
-              ? t(($) => $['agentDetail.configure.publishSuccess.accessDescription'])
-              : kind === 'first'
-                ? t(($) => $['agentDetail.configure.publishSuccess.firstDescription'])
-                : t(($) => $['agentDetail.configure.publishSuccess.updateDescription'])}
-          </p>
-        </div>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
+        <span aria-hidden className="i-ri-checkbox-circle-fill size-5 shrink-0 text-text-success" />
+        <p className="min-w-0 system-sm-semibold text-text-primary">
+          {kind === 'first'
+            ? t(($) => $['agentDetail.configure.publishSuccess.firstTitle'])
+            : t(($) => $['agentDetail.configure.publishSuccess.updateTitle'])}
+        </p>
         <IconButton
-          size="lg"
+          size="md"
+          className="shrink-0"
           aria-label={t(($) => $['agentDetail.configure.publishSuccess.dismiss'])}
           onClick={onDismiss}
         >
           <span aria-hidden className="i-ri-close-line size-4" />
         </IconButton>
+        <p className="col-span-2 col-start-2 system-xs-regular text-text-secondary">
+          {!webAppUrl
+            ? t(($) => $['agentDetail.configure.publishSuccess.accessDescription'])
+            : kind === 'first'
+              ? t(($) => $['agentDetail.configure.publishSuccess.firstDescription'])
+              : t(($) => $['agentDetail.configure.publishSuccess.updateDescription'])}
+        </p>
       </div>
-      <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
         <Link
           href={getAgentDetailPath(agentId, 'access')}
           onClick={onAccessMethods}
