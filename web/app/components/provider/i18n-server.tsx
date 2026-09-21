@@ -1,4 +1,4 @@
-import { getDeclaredRouteNamespaces, getRouteNamespaces } from '@/i18n/route-namespaces'
+import { getRouteNamespaces } from '@/i18n/route-namespaces'
 import { getLocaleOnServer, getResources } from '@/i18n/server'
 import { headers } from '@/next/headers'
 import { basePath } from '@/utils/var'
@@ -8,11 +8,7 @@ export async function I18nServerProvider({ children }: { children: React.ReactNo
   const locale = await getLocaleOnServer()
   const pathname = (await headers()).get('x-dify-pathname')
   const requiredNamespaces = getRouteNamespaces(pathname, basePath)
-  const resource = await getResources(
-    locale,
-    requiredNamespaces,
-    getDeclaredRouteNamespaces(pathname, basePath) !== undefined,
-  )
+  const resource = await getResources(locale, requiredNamespaces, true)
 
   return (
     <I18nClientProvider locale={locale} resource={resource}>
