@@ -12,14 +12,14 @@ it('lists catalog ops sorted by id, internal hidden unless --all', async () => {
   const a = await testContext({ login: true, argv: ['ops'] })
   worlds.push(a)
   expect(await (await a.ctx.get(commands)).run()).toBe(0)
-  const rows = JSON.parse(a.io.outBuf()).ops as { id: string; kind: string; tags: string[] }[]
+  const rows = JSON.parse(a.io.outBuf()).ops as { id: string; kind: string }[]
   const ids = rows.map((r) => r.id)
   expect(ids).toEqual([...ids].sort())
   expect(ids).toContain('console_app.workflow.run')
   expect(ids).not.toContain('workspace.switch')
   expect(rows.find((r) => r.id === 'console_app.list')).toMatchObject({
     kind: 'list',
-    tags: ['console_app'],
+    deprecated: false,
   })
   const b = await testContext({ login: true, argv: ['ops', '--all'] })
   worlds.push(b)

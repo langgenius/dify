@@ -8,8 +8,7 @@
       "kind": "object",
       "method": "GET",
       "path": "/openapi/v1/account",
-      "summary": "Current account",
-      "tags": ["account"]
+      "summary": "Current account"
     },
     "account.sessions.list": {
       "bind": { "limit": "query", "page": "query" },
@@ -32,8 +31,7 @@
       "kind": "list",
       "method": "GET",
       "path": "/openapi/v1/account/sessions",
-      "summary": "List login sessions of the current account",
-      "tags": ["account"]
+      "summary": "List login sessions of the current account"
     },
     "account.sessions.revoke": {
       "bind": { "session_id": "path" },
@@ -47,8 +45,7 @@
       "kind": "object",
       "method": "DELETE",
       "path": "/openapi/v1/account/sessions/{session_id}",
-      "summary": "Revoke one login session by id",
-      "tags": ["account"]
+      "summary": "Revoke one login session by id"
     },
     "account.sessions.revoke_current": {
       "bind": {},
@@ -58,8 +55,7 @@
       "kind": "object",
       "method": "DELETE",
       "path": "/openapi/v1/account/sessions/self",
-      "summary": "Revoke the session behind this token",
-      "tags": ["account"]
+      "summary": "Revoke the session behind this token"
     },
     "console_app.advanced_chat.run": {
       "bind": {
@@ -142,8 +138,7 @@
       "kind": "sse",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/advanced-chat:run",
-      "summary": "Run an advanced-chat (chatflow) app; streams message and workflow events",
-      "tags": ["console_app"]
+      "summary": "Run an advanced-chat (chatflow) app; streams message and workflow events"
     },
     "console_app.chat.run": {
       "bind": {
@@ -219,8 +214,7 @@
       "kind": "sse",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/chat:run",
-      "summary": "Run a chat or agent app; streams message events",
-      "tags": ["console_app"]
+      "summary": "Run a chat or agent app; streams message events"
     },
     "console_app.completion.run": {
       "bind": {
@@ -287,8 +281,7 @@
       "kind": "sse",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/completion:run",
-      "summary": "Run a completion app; streams message events",
-      "tags": ["console_app"]
+      "summary": "Run a completion app; streams message events"
     },
     "console_app.dependencies.check": {
       "bind": { "app_id": "path" },
@@ -302,8 +295,7 @@
       "kind": "object",
       "method": "GET",
       "path": "/openapi/v1/apps/{app_id}/dependencies:check",
-      "summary": "Check plugin dependencies of an app",
-      "tags": ["console_app"]
+      "summary": "Check plugin dependencies of an app"
     },
     "console_app.describe": {
       "bind": { "app_id": "path", "fields": "query" },
@@ -320,8 +312,7 @@
       "kind": "object",
       "method": "GET",
       "path": "/openapi/v1/apps/{app_id}",
-      "summary": "App detail, parameters and runtime input_schema",
-      "tags": ["console_app"]
+      "summary": "App detail, parameters and runtime input_schema"
     },
     "console_app.dsl.export": {
       "bind": { "app_id": "path", "include_secret": "query", "workflow_id": "query" },
@@ -349,8 +340,7 @@
       "kind": "object",
       "method": "GET",
       "path": "/openapi/v1/apps/{app_id}/dsl",
-      "summary": "Export app DSL as YAML text inside a JSON object",
-      "tags": ["console_app"]
+      "summary": "Export app DSL as YAML text inside a JSON object"
     },
     "console_app.dsl.import": {
       "bind": {
@@ -428,8 +418,7 @@
       "kind": "object",
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}/apps/imports",
-      "summary": "Import an app from DSL text or URL",
-      "tags": ["console_app"]
+      "summary": "Import an app from DSL text or URL"
     },
     "console_app.dsl.import_confirm": {
       "bind": { "import_id": "path", "workspace_id": "path" },
@@ -443,8 +432,7 @@
       "kind": "object",
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}/apps/imports/{import_id}:confirm",
-      "summary": "Confirm a pending DSL import",
-      "tags": ["console_app"]
+      "summary": "Confirm a pending DSL import"
     },
     "console_app.file.upload": {
       "bind": { "app_id": "path", "file": "file" },
@@ -466,8 +454,7 @@
       "kind": "object",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/files",
-      "summary": "Upload a file and get a file id for later runs",
-      "tags": ["console_app"]
+      "summary": "Upload a file and get a file id for later runs"
     },
     "console_app.list": {
       "bind": {
@@ -514,8 +501,7 @@
       "kind": "list",
       "method": "GET",
       "path": "/openapi/v1/apps",
-      "summary": "List apps in a workspace",
-      "tags": ["console_app"]
+      "summary": "List apps in a workspace"
     },
     "console_app.legacy_run": {
       "bind": {
@@ -603,8 +589,7 @@
       "kind": "sse",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}:legacy_run",
-      "summary": "Deprecated: use console_app.<mode>.run for the app's mode",
-      "tags": ["console_app"]
+      "summary": "Deprecated: use console_app.<mode>.run for the app's mode"
     },
     "console_app.workflow.run": {
       "bind": {
@@ -671,8 +656,7 @@
       "kind": "sse",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/workflow:run",
-      "summary": "Run a workflow app; streams workflow events",
-      "tags": ["console_app"]
+      "summary": "Run a workflow app; streams workflow events"
     },
     "run.events": {
       "bind": {
@@ -706,8 +690,7 @@
       "kind": "sse",
       "method": "GET",
       "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}/events",
-      "summary": "Stream the events of a workflow run",
-      "tags": ["run"]
+      "summary": "Stream the events of a workflow run"
     },
     "run.form.get": {
       "bind": { "app_id": "path", "form_token": "path" },
@@ -721,8 +704,7 @@
       "kind": "object",
       "method": "GET",
       "path": "/openapi/v1/apps/{app_id}/human-input-forms/{form_token}",
-      "summary": "Read a human-input form",
-      "tags": ["run"]
+      "summary": "Read a human-input form"
     },
     "run.form.submit": {
       "bind": {
@@ -795,8 +777,7 @@
       "kind": "object",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/human-input-forms/{form_token}:submit",
-      "summary": "Submit a human-input form",
-      "tags": ["run"]
+      "summary": "Submit a human-input form"
     },
     "run.stop": {
       "bind": { "app_id": "path", "task_id": "path" },
@@ -810,8 +791,7 @@
       "kind": "object",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}:stop",
-      "summary": "Stop a running task",
-      "tags": ["run"]
+      "summary": "Stop a running task"
     },
     "workspace.get": {
       "bind": { "workspace_id": "path" },
@@ -825,8 +805,7 @@
       "kind": "object",
       "method": "GET",
       "path": "/openapi/v1/workspaces/{workspace_id}",
-      "summary": "Workspace detail",
-      "tags": ["workspace"]
+      "summary": "Workspace detail"
     },
     "workspace.list": {
       "bind": { "limit": "query", "page": "query" },
@@ -849,8 +828,7 @@
       "kind": "list",
       "method": "GET",
       "path": "/openapi/v1/workspaces",
-      "summary": "List workspaces of the current account",
-      "tags": ["workspace"]
+      "summary": "List workspaces of the current account"
     },
     "workspace.members.invite": {
       "bind": { "email": "body", "role": "body", "workspace_id": "path" },
@@ -868,8 +846,7 @@
       "kind": "object",
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}/members",
-      "summary": "Invite a member by email",
-      "tags": ["workspace"]
+      "summary": "Invite a member by email"
     },
     "workspace.members.list": {
       "bind": { "limit": "query", "page": "query", "workspace_id": "path" },
@@ -893,8 +870,7 @@
       "kind": "list",
       "method": "GET",
       "path": "/openapi/v1/workspaces/{workspace_id}/members",
-      "summary": "List workspace members",
-      "tags": ["workspace"]
+      "summary": "List workspace members"
     },
     "workspace.members.remove": {
       "bind": { "member_id": "path", "workspace_id": "path" },
@@ -908,8 +884,7 @@
       "kind": "object",
       "method": "DELETE",
       "path": "/openapi/v1/workspaces/{workspace_id}/members/{member_id}",
-      "summary": "Remove a member",
-      "tags": ["workspace"]
+      "summary": "Remove a member"
     },
     "workspace.members.set_role": {
       "bind": { "member_id": "path", "role": "body", "workspace_id": "path" },
@@ -927,8 +902,7 @@
       "kind": "object",
       "method": "PATCH",
       "path": "/openapi/v1/workspaces/{workspace_id}/members/{member_id}",
-      "summary": "Change a member's role",
-      "tags": ["workspace"]
+      "summary": "Change a member's role"
     },
     "workspace.switch": {
       "bind": { "workspace_id": "path" },
@@ -942,8 +916,7 @@
       "kind": "object",
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}:switch",
-      "summary": "Server-side current workspace switch (shared with the web console)",
-      "tags": ["workspace"]
+      "summary": "Server-side current workspace switch (shared with the web console)"
     }
   }
 }

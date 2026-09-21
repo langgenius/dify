@@ -9,7 +9,7 @@ difyctl talks to a Dify server. Business commands are not built in: the server p
 
 ## The three steps
 
-1. `difyctl ops` lists every operation id with a one-line summary, kind and tags.
+1. `difyctl ops` lists every operation id with a one-line summary and kind.
 2. `difyctl ops describe <op-id>` prints the operation: `input` (a JSON Schema), `bind`, `kind`, `examples`, and `pins` (values difyctl fills in for you, currently `workspace_id`). `difyctl call <op-id> --help` prints the same thing.
 3. `difyctl call <op-id> --input '<json>'` runs it. Output is one JSON object on stdout.
 

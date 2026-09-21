@@ -14,7 +14,6 @@ export type CatalogOp = Readonly<{
   kind: string
   input: JsonSchema
   bind: Readonly<Record<string, string>>
-  tags: readonly string[]
   internal: boolean
   deprecated: boolean
   examples: readonly Example[]
@@ -33,7 +32,6 @@ const CATALOG_OP_SCHEMA = z
     kind: z.string(),
     input: z.record(z.string(), z.unknown()),
     bind: z.record(z.string(), z.string()),
-    tags: z.array(z.string()),
     internal: z.boolean(),
     deprecated: z.boolean(),
     examples: z.array(EXAMPLE_SCHEMA).default([]),

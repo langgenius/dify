@@ -23,7 +23,6 @@ it('prints the catalog fields with a call usage line and the pinned workspace', 
     kind: 'list',
     method: 'GET',
     path: '/openapi/v1/apps',
-    tags: ['console_app'],
     deprecated: false,
     pins: { workspace_id: 'ws-1' },
   })

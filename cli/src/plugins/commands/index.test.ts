@@ -38,7 +38,7 @@ it('help --full adds every row its descriptor, for the root and for a namespace'
   })
   expect(full.ops.find((o: { id: string }) => o.id === 'console_app.list')).toMatchObject({
     kind: 'list',
-    tags: ['console_app'],
+    deprecated: false,
   })
   const b = await world(false, ['help', 'cache'])
   expect(await (await b.ctx.get(commands)).run()).toBe(0)

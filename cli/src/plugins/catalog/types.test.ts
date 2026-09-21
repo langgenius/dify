@@ -25,7 +25,6 @@ it('accepts kinds and binds it has never heard of', () => {
           kind: 'hologram',
           input: { type: 'object' },
           bind: { a: 'header' },
-          tags: [],
           internal: false,
           deprecated: false,
         },

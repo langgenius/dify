@@ -11,7 +11,6 @@ export type OpListRow = {
   id: string
   summary: string
   kind: string
-  tags: readonly string[]
   deprecated: boolean
 }
 
@@ -46,7 +45,6 @@ function listRows(ops: Readonly<Record<string, CatalogOp>>, opts: ListOptions): 
       id,
       summary: op.summary,
       kind: op.kind,
-      tags: op.tags,
       deprecated: op.deprecated,
     }))
 }
