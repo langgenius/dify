@@ -67,6 +67,7 @@ PLAIN: frozenset[str] = frozenset(
         "Edit published",
         "High-impact rules",
         "Model not configured",
+        "Nothing was applied to the canvas",
         "Couldn't apply the fix",
         "Proceeding with sensible defaults",
         "Repeated failure",
