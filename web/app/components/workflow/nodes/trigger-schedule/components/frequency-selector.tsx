@@ -58,8 +58,8 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
       value={frequency}
       onValueChange={handleFrequencyChange}
     >
-      <div className="flex flex-col gap-2">
-        <SelectLabel className="py-0 text-xs">{fieldLabel}</SelectLabel>
+      <div className="flex flex-col">
+        <SelectLabel className="text-xs">{fieldLabel}</SelectLabel>
         <SelectTrigger className="w-full py-2">
           {selectedFrequency?.name ??
             t(($) => $['nodes.triggerSchedule.selectFrequency'], { ns: 'workflow' })}

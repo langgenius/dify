@@ -53,13 +53,10 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
                         onChange={handleOnMinuteChange}
                       />
                     ) : (
-                      <>
-                        <label
-                          htmlFor={timeInputId}
-                          className="mb-2 block text-xs font-medium text-text-secondary"
-                        >
+                      <Field className="gap-0">
+                        <FieldLabel htmlFor={timeInputId} className="text-xs">
                           {t(($) => $['nodes.triggerSchedule.time'], { ns: 'workflow' })}
-                        </label>
+                        </FieldLabel>
                         <TimePicker
                           id={timeInputId}
                           notClearable={true}
@@ -80,7 +77,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
                           })}
                           showTimezone={true}
                         />
-                      </>
+                      </Field>
                     )}
                   </div>
                 </div>
@@ -111,8 +108,8 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
             )}
 
             {inputs.mode === 'cron' && (
-              <Field className="gap-2">
-                <FieldLabel className="py-0 text-xs">
+              <Field className="gap-0">
+                <FieldLabel className="text-xs">
                   {t(($) => $['nodes.triggerSchedule.cronExpression'], { ns: 'workflow' })}
                 </FieldLabel>
                 <Input
