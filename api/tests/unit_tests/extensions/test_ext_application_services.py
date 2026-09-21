@@ -19,7 +19,8 @@ from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account
-from models.model import AccountTrialAppRecord, App, DifySetup, TrialApp
+from models.enums import CustomizeTokenStrategy
+from models.model import AccountTrialAppRecord, App, DifySetup, Site, TrialApp
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -763,6 +764,43 @@ def test_app_previews_use_the_configured_catalog_and_app_owner(
         assert services.app_previews.get_access(app_id=app_id) == AppPreviewRef(app_id=app_id, tenant_id=tenant_id)
         with pytest.raises(AppPreviewUnavailableError, match=other_id):
             services.app_previews.get_access(app_id=other_id)
+
+
+def test_app_preview_details_use_the_configured_database_without_request_globals(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, owner_id, viewer_workspace_id = str(uuid4()), str(uuid4()), str(uuid4())
+    account = Account(name="Preview viewer", email="preview@example.com")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                account,
+                App(id=app_id, tenant_id=owner_id, name="Preview", mode="chat", enable_site=True, enable_api=False),
+                Site(
+                    app_id=app_id,
+                    title="Preview site",
+                    default_language="en-US",
+                    customize_token_strategy=CustomizeTokenStrategy.UUID,
+                ),
+            ]
+        )
+
+    detail = services.app_preview_details.get_detail(
+        app=AppPreviewRef(app_id=app_id, tenant_id=owner_id),
+        account_id=account.id,
+        active_workspace_id=viewer_workspace_id,
+    )
+
+    assert detail.id == app_id
+    assert detail.name == "Preview"
+    assert detail.site.title == "Preview site"
+    assert detail.model_config is None
 
 
 def test_build_application_services_adapts_enterprise_webapp_access_mode(

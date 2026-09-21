@@ -1,5 +1,6 @@
 import logging
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
@@ -7,10 +8,10 @@ from uuid import UUID
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound, Unauthorized
 
 import services
+from configs import dify_config
 from controllers.common.fields import (
     AudioBinaryResponse,
     AudioTranscriptResponse,
@@ -41,7 +42,6 @@ from controllers.console.app.error import (
     UnsupportedAudioTypeError,
 )
 from controllers.console.app.preview_admission import get_preview_app
-from controllers.console.app.wraps import get_previewable_app_model, with_session
 from controllers.console.explore.error import (
     AppPreviewOwnerUnavailableError as AppPreviewOwnerUnavailableHttpError,
 )
@@ -79,10 +79,10 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
+from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from models import Account
 from models.enums import CreatorUserRole
-from models.workflow import Workflow
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import (
@@ -92,7 +92,6 @@ from services.app_preview_query_service import (
     AppPreviewUnavailableError,
 )
 from services.app_ref_service import AppRefService
-from services.app_service import AppResponseView, AppService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -414,7 +413,12 @@ class TrialWorkflowResponse(ResponseModel):
 
         result: list[Any] = []
         for item in value:
-            if isinstance(item, SecretVariable):
+            if isinstance(item, Mapping):
+                serialized = dict(item)
+                if serialized.get("value_type") == "secret":
+                    serialized["value"] = encrypter.full_mask_token()
+                result.append(serialized)
+            elif isinstance(item, SecretVariable):
                 serialized = item.model_dump(mode="json")
                 serialized["value"] = encrypter.full_mask_token()
                 result.append(serialized)
@@ -425,27 +429,6 @@ class TrialWorkflowResponse(ResponseModel):
             else:
                 result.append(item)
         return result
-
-
-@dataclass(frozen=True)
-class TrialWorkflowResponseSource:
-    workflow: Workflow
-    session: Session
-
-    @property
-    def created_by_account(self) -> Account | None:
-        return self.workflow.get_created_by_account(session=self.session)
-
-    @property
-    def updated_by_account(self) -> Account | None:
-        return self.workflow.get_updated_by_account(session=self.session)
-
-    @property
-    def tool_published(self) -> bool:
-        return self.workflow.get_tool_published(session=self.session)
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.workflow, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 register_schema_models(
@@ -849,37 +832,46 @@ class TrialAppParameterApi(Resource):
 
 class AppApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
-    @with_session(write=False)
-    @get_previewable_app_model(None)
-    def get(self, session: Session, app_model):
-        """Get app detail"""
+    @console_account_admission()
+    @get_preview_app
+    def get(self, app: AppPreviewRef, request_context: RequestContext) -> dict[str, object]:
+        """Get app detail using the viewer's workspace for tool configuration."""
+        try:
+            detail = application_services().app_preview_details.get_detail(
+                app=app,
+                account_id=request_context.account_id,
+                active_workspace_id=request_context.active_workspace_id,
+            )
+        except AppPreviewUnavailableError as error:
+            raise AppNotFoundError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
+        except AppPreviewSiteUnavailableError as error:
+            raise AppPreviewSiteUnavailableHttpError(str(error)) from error
 
-        app_service = AppService()
-        app_model = app_service.get_app(app_model, session=session)
-
-        return TrialAppDetailResponse.model_validate(
-            AppResponseView(app_model, session=session),
-            from_attributes=True,
-        ).model_dump(mode="json")
+        source = asdict(detail)
+        source["api_base_url"] = normalize_api_base_url(dify_config.SERVICE_API_URL or request.host_url.rstrip("/"))
+        source["site"] = {
+            **asdict(detail.site),
+            "app_base_url": dify_config.APP_WEB_URL or request.url_root.rstrip("/"),
+        }
+        return dump_response(TrialAppDetailResponse, source)
 
 
 class AppWorkflowApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
-    @with_session(write=False)
-    @get_previewable_app_model(None)
-    def get(self, session: Session, app_model):
-        """Get workflow detail"""
-        if not app_model.workflow_id:
-            raise AppUnavailableError()
-
-        workflow = app_model.workflow_with_session(session=session)
-        if workflow is None:
-            raise AppUnavailableError()
-
-        return TrialWorkflowResponse.model_validate(
-            TrialWorkflowResponseSource(workflow=workflow, session=session),
-            from_attributes=True,
-        ).model_dump(mode="json")
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
+        """Get a detached workflow definition after catalog preview admission."""
+        try:
+            workflow = application_services().app_preview_details.get_workflow(app=app)
+        except AppPreviewUnavailableError as error:
+            raise AppNotFoundError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        return dump_response(TrialWorkflowResponse, workflow)
 
 
 class DatasetListApi(Resource):
