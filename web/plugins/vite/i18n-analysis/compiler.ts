@@ -65,7 +65,25 @@ function importBindings(code: string): ImportBinding[] {
     ) {
       result.push({
         specifier: statement.moduleSpecifier.text,
-        signature: JSON.stringify(['export', statement.exportClause?.getText(source)]),
+        signature: JSON.stringify([
+          'export',
+          !statement.exportClause
+            ? ['all']
+            : ts.isNamespaceExport(statement.exportClause)
+              ? ['namespace', statement.exportClause.name.text]
+              : [
+                  'named',
+                  statement.exportClause.elements
+                    .filter((element) => !element.isTypeOnly)
+                    .map((element) =>
+                      JSON.stringify([
+                        (element.propertyName ?? element.name).text,
+                        element.name.text,
+                      ]),
+                    )
+                    .sort(),
+                ],
+        ]),
         locals: [],
         typeOnly:
           statement.isTypeOnly ||

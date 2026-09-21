@@ -386,6 +386,50 @@ describe('i18n build check', () => {
     await expect(run(['old'])).rejects.toThrow('Undeclared namespace: actual')
   })
 
+  it.each([
+    "export {ns} from './ns'",
+    "export {\n ns,\n} from './ns'",
+    "export { ns, type Key } from './ns'",
+    "export { value as ns } from './ns'",
+  ])('preserves runtime re-export bindings: %s', async (declaration) => {
+    writeFileSync(localeFile, '{}')
+    mkdirSync(path.join(root, 'app'), { recursive: true })
+    writeFileSync(
+      path.join(root, 'i18n/lib.client.ts'),
+      `export function useTranslation(namespace: string) { return namespace }`,
+    )
+    writeFileSync(
+      path.join(root, 'app/ns.ts'),
+      `export const ns = 'actual'; export const value = 'actual'; export type Key = 'used'`,
+    )
+    writeFileSync(path.join(root, 'app/barrel.ts'), declaration)
+    writeFileSync(
+      path.join(root, 'app/page.ts'),
+      `
+      import { ns } from './barrel'
+      import { useTranslation } from '../i18n/lib.client'
+      export const page = useTranslation(ns)
+    `,
+    )
+    const reports: AnalysisReport[] = []
+    await expect(
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          i18nAnalysisPlugin({
+            onAnalysis: (report) => reports.push(report),
+            getDeclaredNamespaces: () => ['old'],
+          }),
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+      }),
+    ).rejects.toThrow('Undeclared namespace: actual')
+    expect(reports[0]!.routes[0]!.namespaces).toEqual(['actual'])
+    expect(reports[0]!.evidence.some((item) => item.kind === 'unresolved-import')).toBe(false)
+  })
+
   it('preserves query variants and resolves their imported selectors independently', async () => {
     writeFileSync(localeFile, JSON.stringify({ a: 'A', b: 'B' }))
     mkdirSync(path.join(root, 'app'), { recursive: true })
