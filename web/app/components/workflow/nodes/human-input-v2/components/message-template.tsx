@@ -27,7 +27,6 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
 import { isENV } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
@@ -254,13 +253,6 @@ const MessageTemplate = ({
       pendingRef.current = false
     }
   }
-  const insertSubjectVariable = (selector: ValueSelector) => {
-    resetTestResult()
-    setDraft((current) => ({
-      ...current,
-      subject: `${current.subject}{{#${selector.join('.')}#}}`,
-    }))
-  }
 
   return (
     <section className="px-4">
@@ -335,33 +327,12 @@ const MessageTemplate = ({
             </header>
             <div className="max-h-[60vh] min-h-[260px] space-y-5 overflow-y-auto px-6 py-3">
               <div>
-                <div className="mb-1 flex h-6 items-center justify-between">
-                  <label
-                    htmlFor={`${nodeId}-message-subject`}
-                    className="system-sm-medium text-text-secondary"
-                  >
-                    {t(($) => $['nodes.humanInputV2.template.subject'], { ns: 'workflow' })}
-                  </label>
-                  {!readonly && (
-                    <VarReferencePicker
-                      nodeId={nodeId}
-                      readonly={readonly || pending}
-                      value={[]}
-                      availableVars={availableVars}
-                      availableNodes={availableNodes}
-                      trigger={
-                        <Button variant="ghost" size="small" disabled={pending}>
-                          {t(($) => $['nodes.humanInputV2.template.insertVariable'], {
-                            ns: 'workflow',
-                          })}
-                        </Button>
-                      }
-                      onChange={(selector) => {
-                        if (Array.isArray(selector)) insertSubjectVariable(selector)
-                      }}
-                    />
-                  )}
-                </div>
+                <label
+                  htmlFor={`${nodeId}-message-subject`}
+                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+                >
+                  {t(($) => $['nodes.humanInputV2.template.subject'], { ns: 'workflow' })}
+                </label>
                 <Input
                   id={`${nodeId}-message-subject`}
                   value={draft.subject}
