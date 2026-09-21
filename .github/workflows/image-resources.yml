@@ -36,12 +36,4 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          pnpm --filter @dify/image-resources check:images --base "$BASE_SHA" --output-dir "$RUNNER_TEMP/image-optimization-candidates"
-
-      - name: Upload optimization candidates
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: image-optimization-candidates
-          path: ${{ runner.temp }}/image-optimization-candidates
-          if-no-files-found: ignore
+          pnpm --filter @dify/image-resources check:images --base "$BASE_SHA"
