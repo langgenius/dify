@@ -22,6 +22,8 @@ JPEG/WebP trials are **lossy**: savings are evidence of an optimization opportun
 
 SVGs containing `text`, `tspan`, `textPath`, `foreignObject`, or any `xml:space="preserve"` attribute are skipped entirely, including namespace-prefixed elements and root-level attributes. SVGO can trim meaningful whitespace during parsing even without structural plugins. These files and their embedded images remain byte-for-byte unchanged in check and fix modes.
 
+SVG reports also include the root's declared `width`, `height`, and `viewBox`, followed by each embedded raster's format, pixel dimensions, and original binary size after decoding the data URL (not Base64 text size or decoded pixel memory). Entries are numbered by `<image>` order. Declared units are retained and absent attributes appear as `null`; these values are not treated as CSS-rendered dimensions. Details appear in local logs and CI summaries even when compression passes or a whitespace-sensitive SVG is skipped. Unavailable metadata is reported without introducing a new failure condition. This information does not trigger resizing or change the 25% threshold.
+
 For SVGs, the percentage compares the complete original and optimized file sizes, including embedded data. It is not a production transfer estimate. Already-compressed images can pass regardless of their absolute size. An exactly 25% reduction passes; a greater reduction fails. Failed trials do not silently pass as optimized resources.
 
 ## Scope

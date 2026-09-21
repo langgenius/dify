@@ -119,10 +119,11 @@ export async function inspectImage(name: string, root = ROOT): Promise<Inspectio
     const trial = await (path.extname(name).toLowerCase() === '.svg'
       ? compressSvg(data)
       : compressRaster(data))
-    if (trial.skipped) return { status: 'skipped', message: trial.method }
+    const description = [trial.method, ...(trial.details ?? [])].join('; ')
+    if (trial.skipped) return { status: 'skipped', message: description }
     const after = Math.min(data.length, trial.data.length)
     const savings = (100 * (data.length - after)) / data.length
-    const message = `${data.length.toLocaleString('en-US')} B → ${after.toLocaleString('en-US')} B (${savings.toFixed(1)}% smaller); ${trial.method}`
+    const message = `${data.length.toLocaleString('en-US')} B → ${after.toLocaleString('en-US')} B (${savings.toFixed(1)}% smaller); ${description}`
     if (exceedsThreshold(data.length, after))
       return {
         status: 'error',

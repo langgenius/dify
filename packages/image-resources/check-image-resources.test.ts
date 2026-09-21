@@ -252,6 +252,57 @@ it('embedded Base64 handles both href forms, whitespace and XML entities', async
   }
 })
 
+it('reports SVG declarations and each embedded raster in check, fix and CI summaries', async (t) => {
+  const { root, cli } = repository(t)
+  const raster = await png()
+  const svg = wrap(
+    `<image href="data:image/png;base64,${raster.toString('base64')}"/><image xlink:href="data:image/png;base64,${raster.toString('base64')}"/>`,
+  )
+  write(root, 'image.svg', svg)
+  git(['add', 'image.svg'], root)
+  const env = { GITHUB_ACTIONS: 'true', GITHUB_STEP_SUMMARY: path.join(root, 'summary.md') }
+  const checked = cli(['--all'], env)
+  assert.equal(checked.status, 1, checked.stderr)
+  assert.match(checked.stdout, /SVG declared width=/)
+  assert.match(checked.stdout, /not rendered dimensions/)
+  for (const index of [1, 2]) {
+    const detail = `embedded image #${index}: PNG 80 × 80 px, ${raster.length.toLocaleString('en-US')} B (source bytes)`
+    assert.ok(checked.stdout.includes(detail))
+    assert.ok(fs.readFileSync(env.GITHUB_STEP_SUMMARY, 'utf8').includes(detail))
+  }
+  const fixed = cli(['--all', '--fix'])
+  assert.equal(fixed.status, 0, fixed.stderr)
+  assert.match(fixed.stdout, /embedded image #2: PNG 80 × 80 px/)
+  const repeated = cli(['--all'])
+  assert.equal(repeated.status, 0, repeated.stderr)
+  assert.match(repeated.stdout, /embedded image #1: PNG 80 × 80 px/)
+})
+
+it('keeps declared SVG units and missing dimensions distinct from raster pixels', async () => {
+  for (const attrs of ['', 'width="100%" height="2em" viewBox="0 0 360 128"']) {
+    const trial = await compressSvg(Buffer.from(`<svg xmlns="${namespace}" ${attrs}/>`))
+    assert.equal(trial.details?.length, 1)
+    if (attrs) {
+      assert.match(trial.details[0]!, /width="100%", height="2em", viewBox="0 0 360 128"/)
+    } else {
+      assert.match(trial.details[0]!, /width=null, height=null, viewBox=null/)
+    }
+  }
+})
+
+it('reports metadata on whitespace-sensitive SVGs without changing their skipped behavior', async () => {
+  const raster = png16(6)
+  const source = wrap(
+    `<text>Keep spaces</text><image href="data:image/png;base64,${raster.toString('base64')}"/><image href="data:image/bmp;base64,Qk0="/><image href="data:image/png;base64,%%%"/>`,
+  )
+  const trial = await compressSvg(source)
+  assert.equal(trial.skipped, true)
+  assert.deepEqual(trial.data, source)
+  assert.match(trial.details![1]!, /PNG 80 × 80 px/)
+  assert.match(trial.details![2]!, /dimensions unavailable, 2 B/)
+  assert.match(trial.details![3]!, /metadata unavailable/)
+})
+
 it('unpadded embedded Base64 preserves pixels and works through CLI check and fix', async (t) => {
   const { root, cli } = repository(t)
   const source = await png()

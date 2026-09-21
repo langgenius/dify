@@ -5,7 +5,7 @@ import { DOMParser, XMLSerializer } from '@xmldom/xmldom'
 import sharp from 'sharp'
 import { optimize } from 'svgo'
 
-type Optimization = { data: Buffer; method: string; skipped: boolean }
+type Optimization = { data: Buffer; method: string; skipped: boolean; details?: string[] }
 const skipped = (data: Buffer, reason: string): Optimization => ({
   data,
   method: `skipped: ${reason}`,
@@ -145,22 +145,35 @@ function decodePayload(header: string, payload: string) {
   return Buffer.from(text, 'base64')
 }
 
+// Informational metadata must not turn a previously skipped image into a failure.
+async function describeRaster(data: Buffer, index: number) {
+  const size = `${data.length.toLocaleString('en-US')} B (source bytes)`
+  try {
+    const metadata = await sharp(data).metadata()
+    return `embedded image #${index}: ${metadata.format.toUpperCase()} ${metadata.width} × ${metadata.height} px, ${size}`
+  } catch {
+    return `embedded image #${index}: dimensions unavailable, ${size}`
+  }
+}
+
 export async function compressSvg(data: Buffer): Promise<Optimization> {
   const document = parseSvg(data)
   const elements = Array.from(document.getElementsByTagName('*'))
+  const root = document.documentElement!
+  const details = [
+    `SVG declared width=${JSON.stringify(root.getAttribute('width'))}, height=${JSON.stringify(root.getAttribute('height'))}, viewBox=${JSON.stringify(root.getAttribute('viewBox'))} (not rendered dimensions)`,
+  ]
   // Guard before SVGO parsing: its whitespace trimming is not plugin-controlled.
-  if (
-    elements.some(
-      (element) =>
-        ['text', 'tspan', 'textPath', 'foreignObject'].includes(element.localName ?? '') ||
-        element.getAttributeNS(xmlNamespace, 'space') === 'preserve',
-    )
-  ) {
-    return skipped(data, 'SVG contains whitespace-sensitive content; preserve original bytes')
-  }
+  const preserveWhitespace = elements.some(
+    (element) =>
+      ['text', 'tspan', 'textPath', 'foreignObject'].includes(element.localName ?? '') ||
+      element.getAttributeNS(xmlNamespace, 'space') === 'preserve',
+  )
   const methods = ['SVGO conservative optimization']
+  let imageIndex = 0
   for (const element of elements) {
     if (element.localName !== 'image') continue
+    imageIndex++
     const attribute =
       element.getAttributeNode('href') ?? element.getAttributeNodeNS(xlinkNamespace, 'href')
     if (!attribute) continue
@@ -172,7 +185,16 @@ export async function compressSvg(data: Buffer): Promise<Optimization> {
       header.toLowerCase().split(';')[0] === 'data:image/svg+xml'
     )
       continue
-    const original = decodePayload(header, attribute.value.slice(comma + 1))
+    let original: Buffer
+    try {
+      original = decodePayload(header, attribute.value.slice(comma + 1))
+    } catch (error) {
+      if (!preserveWhitespace) throw error
+      details.push(`embedded image #${imageIndex}: metadata unavailable (invalid data URL)`)
+      continue
+    }
+    details.push(await describeRaster(original, imageIndex))
+    if (preserveWhitespace) continue
     const candidate = await compressRaster(original)
     if (candidate.skipped) methods.push(`embedded ${candidate.method}`)
     if (candidate.data.length < original.length) {
@@ -181,10 +203,16 @@ export async function compressSvg(data: Buffer): Promise<Optimization> {
       methods.push(`embedded ${candidate.method}`)
     }
   }
+  if (preserveWhitespace)
+    return {
+      ...skipped(data, 'SVG contains whitespace-sensitive content; preserve original bytes'),
+      details,
+    }
   const serialized = new XMLSerializer().serializeToString(document)
   return {
     data: Buffer.from(optimize(serialized, svgConfig).data),
     method: [...new Set(methods)].join('; '),
     skipped: false,
+    details,
   }
 }
