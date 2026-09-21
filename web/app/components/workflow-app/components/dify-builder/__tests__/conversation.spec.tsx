@@ -565,53 +565,59 @@ describe('DifyBuilderConversation test data form', () => {
     expect(screen.getByRole('status')).toHaveTextContent('workflow.common.running')
   })
 
-  it('lets the visible resource label toggle its checkbox and describes it with metadata', async () => {
-    const user = userEvent.setup()
-    const onActionPayloadChange = vi.fn()
-    const resourceCard: Extract<ConversationItem, { kind: 'resource_select' }> = {
-      seq: 0,
-      at_version: 1,
-      kind: 'resource_select',
-      payload: {
-        recommended: [
-          {
-            id: 'knowledge-base-1',
-            kind: 'dataset',
-            label: 'Support knowledge base',
-            meta: '12 documents',
-            readiness: 'ready',
-          },
-        ],
-      },
-    }
+  it.each([
+    ['ready', 'workflow.difyBuilder.resourceReady'],
+    ['missing_config', 'workflow.difyBuilder.resourceNeedsAuthorization'],
+  ] as const)(
+    'shows %s readiness and submits resource IDs without a conflict policy',
+    async (readiness, readinessLabel) => {
+      const user = userEvent.setup()
+      const onActionPayloadChange = vi.fn()
+      const resourceCard: Extract<ConversationItem, { kind: 'resource_select' }> = {
+        seq: 0,
+        at_version: 1,
+        kind: 'resource_select',
+        payload: {
+          recommended: [
+            {
+              id: 'knowledge-base-1',
+              kind: 'dataset',
+              label: 'Support knowledge base',
+              meta: '12 documents',
+              readiness,
+            },
+          ],
+        },
+      }
 
-    render(
-      <DifyBuilderConversation
-        viewVersion={1}
-        busy={false}
-        activeInteraction={{
-          action_id: 'confirm_resources',
-          card: resourceCard,
-          valid_at_version: 1,
-        }}
-        interrupted={false}
-        items={[resourceCard]}
-        onActionPayloadChange={onActionPayloadChange}
-      />,
-    )
+      render(
+        <DifyBuilderConversation
+          viewVersion={1}
+          busy={false}
+          activeInteraction={{
+            action_id: 'confirm_resources',
+            card: resourceCard,
+            valid_at_version: 1,
+          }}
+          interrupted={false}
+          items={[resourceCard]}
+          onActionPayloadChange={onActionPayloadChange}
+        />,
+      )
 
-    const checkbox = screen.getByRole('checkbox', { name: 'Support knowledge base' })
-    expect(checkbox).toBeChecked()
-    expect(checkbox).toHaveAccessibleDescription('12 documents')
+      const checkbox = screen.getByRole('checkbox', { name: 'Support knowledge base' })
+      expect(checkbox).toBeChecked()
+      expect(checkbox).toHaveAccessibleDescription(`12 documents · ${readinessLabel}`)
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
 
-    await user.click(screen.getByText('Support knowledge base'))
+      await user.click(screen.getByText('Support knowledge base'))
 
-    expect(checkbox).not.toBeChecked()
-    expect(onActionPayloadChange).toHaveBeenLastCalledWith('confirm_resources', {
-      resource_ids: [],
-      conflict_policy: 'ask',
-    })
-  })
+      expect(checkbox).not.toBeChecked()
+      expect(onActionPayloadChange).toHaveBeenLastCalledWith('confirm_resources', {
+        resource_ids: [],
+      })
+    },
+  )
 
   it('restores the current interaction separately and freezes historical forms', async () => {
     const user = userEvent.setup()
@@ -991,7 +997,7 @@ describe('DifyBuilderConversation test data form', () => {
             payload: {
               title: 'Build a support workflow',
               subtitle: 'Three steps',
-              version_tag: 'v2',
+              version_tag: 'v1',
               items: ['Collect the question', 'Generate an answer'],
             },
           },
@@ -1004,7 +1010,7 @@ describe('DifyBuilderConversation test data form', () => {
     const card = heading.closest('article')
     expect(card).toHaveTextContent('workflow.difyBuilder.cardCategory.plan')
     expect(card).toHaveTextContent('Three steps')
-    expect(card).toHaveTextContent('v2')
+    expect(card).toHaveTextContent('v1')
     expect(card).toHaveTextContent('Collect the question')
     expect(card?.querySelector('[data-card-status]')).not.toBeInTheDocument()
   })
@@ -1039,4 +1045,38 @@ describe('DifyBuilderConversation test data form', () => {
     expect(card).toHaveTextContent('common.api.actionFailed')
     expect(card?.querySelector('[data-card-status="failed"]')).toBeInTheDocument()
   })
+
+  it.each(['', '{"result":"<script>42</script>"\n… (truncated)'])(
+    'shows nonempty test output as collapsible plain text: %j',
+    async (output) => {
+      const user = userEvent.setup()
+      render(
+        <DifyBuilderConversation
+          viewVersion={2}
+          busy={false}
+          activeInteraction={null}
+          interrupted={false}
+          items={[
+            {
+              kind: 'test_result',
+              seq: 0,
+              at_version: 2,
+              payload: { tone: 'success', title: 'Test passed', subtitle: '', output },
+            },
+          ]}
+          onActionPayloadChange={vi.fn()}
+        />,
+      )
+      if (!output) {
+        expect(screen.queryByText('workflow.common.output')).not.toBeInTheDocument()
+        return
+      }
+      const details = screen.getByRole('group', { name: 'workflow.common.output' })
+      expect(details).not.toHaveAttribute('open')
+      await user.click(screen.getByText('workflow.common.output'))
+      expect(details).toHaveAttribute('open')
+      expect(screen.getByText(output, { normalizer: (value) => value })).toBeVisible()
+      expect(mocks.markdown).not.toHaveBeenCalled()
+    },
+  )
 })

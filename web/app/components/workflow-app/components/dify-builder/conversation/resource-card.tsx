@@ -19,18 +19,13 @@ export const ResourceCard = memo(
   }) => {
     const { t } = useTranslation()
     const resources = item.payload.recommended ?? []
-    const policies = item.payload.conflict_policy_options ?? []
     const resourceListId = useId()
     const [selected, setSelected] = useState(() => resources.map((resource) => resource.id))
-    const [policy, setPolicy] = useState(
-      () => policies.find((option) => option.recommended)?.id ?? 'ask',
-    )
     const frozen = busy || !interactive || invalidated
 
-    const emitPayload = (resourceIds: string[], conflictPolicy: string) => {
+    const emitPayload = (resourceIds: string[]) => {
       onActionPayloadChange('confirm_resources', {
         resource_ids: resourceIds,
-        conflict_policy: conflictPolicy,
       })
     }
 
@@ -51,7 +46,7 @@ export const ResourceCard = memo(
                 <input
                   type="checkbox"
                   aria-labelledby={labelId}
-                  aria-describedby={resource.meta ? descriptionId : undefined}
+                  aria-describedby={descriptionId}
                   checked={selected.includes(resource.id)}
                   disabled={frozen}
                   onChange={(event) => {
@@ -59,7 +54,7 @@ export const ResourceCard = memo(
                       ? [...selected, resource.id]
                       : selected.filter((id) => id !== resource.id)
                     setSelected(next)
-                    emitPayload(next, policy)
+                    emitPayload(next)
                   }}
                 />
                 <span className="min-w-0">
@@ -68,34 +63,18 @@ export const ResourceCard = memo(
                   </span>
                   <span
                     id={descriptionId}
-                    className="block truncate system-2xs-regular text-text-tertiary"
+                    className="block system-2xs-regular wrap-break-word text-text-tertiary"
                   >
                     {resource.meta}
+                    {resource.meta && ' · '}
+                    {resource.readiness === 'missing_config'
+                      ? t(($) => $['difyBuilder.resourceNeedsAuthorization'], { ns: 'workflow' })
+                      : t(($) => $['difyBuilder.resourceReady'], { ns: 'workflow' })}
                   </span>
                 </span>
               </label>
             )
           })}
-          {resources.length > 0 && policies.length > 0 && (
-            <label className="flex flex-col gap-1 system-xs-medium text-text-secondary">
-              <span>{t(($) => $['difyBuilder.conflictPolicy'], { ns: 'workflow' })}</span>
-              <select
-                value={policy}
-                disabled={frozen}
-                className="h-8 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2 system-xs-regular text-text-primary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
-                onChange={(event) => {
-                  setPolicy(event.target.value)
-                  emitPayload(selected, event.target.value)
-                }}
-              >
-                {policies.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
         </div>
       </DifyBuilderCard>
     )
