@@ -384,7 +384,7 @@ function createSettingsAppInfo(agent: AgentAppDetailWithSite): SettingsAppInfo |
     mode: AppModeEnum.CHAT,
     site: {
       title: site.title ?? agent.name,
-      description: site.description ?? agent.description ?? '',
+      description: site.description ?? '',
       default_language: (site.default_language ??
         'en-US') as SettingsAppInfo['site']['default_language'],
       chat_color_theme: site.chat_color_theme ?? '',
