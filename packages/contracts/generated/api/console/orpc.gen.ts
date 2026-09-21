@@ -48,6 +48,8 @@ export const contractLoaders = {
   notion: () => import('./notion/orpc.gen').then(({ notion }) => ({ notion })),
   oauth: () => import('./oauth/orpc.gen').then(({ oauth }) => ({ oauth })),
   onboarding: () => import('./onboarding/orpc.gen').then(({ onboarding }) => ({ onboarding })),
+  pageGenerate: () =>
+    import('./page-generate/orpc.gen').then(({ pageGenerate }) => ({ pageGenerate })),
   ping: () => import('./ping/orpc.gen').then(({ ping }) => ({ ping })),
   rag: () => import('./rag/orpc.gen').then(({ rag }) => ({ rag })),
   refreshToken: () =>
@@ -75,6 +77,8 @@ export const contractLoaders = {
   version: () => import('./version/orpc.gen').then(({ version }) => ({ version })),
   website: () => import('./website/orpc.gen').then(({ website }) => ({ website })),
   workflow: () => import('./workflow/orpc.gen').then(({ workflow }) => ({ workflow })),
+  workflowCopilot: () =>
+    import('./workflow-copilot/orpc.gen').then(({ workflowCopilot }) => ({ workflowCopilot })),
   workflowGenerate: () =>
     import('./workflow-generate/orpc.gen').then(({ workflowGenerate }) => ({ workflowGenerate })),
   workflowRunArchives: () =>
