@@ -109,7 +109,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
         {canReleaseAndVersion && <VersionHistoryButton onClick={onStartRestoring} />}
         {showDifyBuilderButton && (
           <>
-            <Divider type="vertical" className="mx-0 h-4" />
+            <Separator decorative orientation="vertical" className="mx-0 h-4" />
             <DifyBuilderButton disabled={difyBuilderButtonDisabled} />
           </>
         )}
