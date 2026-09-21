@@ -1161,7 +1161,8 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
     reverted's retry_after_revert) must clear fc.test_input_ref and
     fc.verify_run_id -- otherwise the retest after a rebuild reuses the
     FIRST build's stale mock inputs instead of regenerating fresh
-    schema-shaped ones."""
+    schema-shaped ones. The repair-loop counters go with them: a re-planned
+    build must not inherit the previous one's repeat count."""
     from core.dify_builder.handlers_build import handle_reverted, handle_review
 
     env, repo = _new_env()
@@ -1172,11 +1173,15 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
         built_node_ids=["start"],
         test_input_ref="ti-old",
         verify_run_id="run-old",
+        repair_attempts=4,
+        last_repair_error="boom",
     )
     turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res = handle_review(env, turn, *repo.get_session(s.id))
     assert res.context.test_input_ref == ""
     assert res.context.verify_run_id == ""
+    assert res.context.repair_attempts == 0
+    assert res.context.last_repair_error == ""
 
     env2, repo2 = _new_env()
     s2 = _seed_build_session(
@@ -1185,11 +1190,15 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
         requirements={"currency": "USD"},
         test_input_ref="ti-old",
         verify_run_id="run-old",
+        repair_attempts=4,
+        last_repair_error="boom",
     )
     turn2 = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res2 = handle_reverted(env2, turn2, *repo2.get_session(s2.id))
     assert res2.context.test_input_ref == ""
     assert res2.context.verify_run_id == ""
+    assert res2.context.repair_attempts == 0
+    assert res2.context.last_repair_error == ""
 
 
 def test_build_registry_covers_all_non_terminal_build_states():
@@ -2005,30 +2014,77 @@ def test_await_repair_refuses_to_apply_an_empty_staged_repair():
     assert "notice" in [item.kind for item in out.items]
 
 
-def test_await_repair_counts_attempts_and_stops_repeating_the_same_error():
-    from core.dify_builder.handlers_build import _repair_is_repeating
+def test_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session():
+    """ESQ1-271: apply_repair re-validates against the draft as it is NOW, so
+    a path that was applicable at propose time can raise at approve time. An
+    uncaught ValueError reaches the runner and drives the session to FAILED."""
+    from core.dify_builder.handlers_build import handle_await_repair
+    from core.dify_builder.models import MutationIntent
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    class _StaleDifyPort(FakeBuildDifyPort):
+        def apply_repair(self, *_args, **_kwargs):
+            raise ValueError("path 'memory.window.size': no key 'memory' at memory")
+
+    env, repo = _new_env()
+    env.dify = _StaleDifyPort()
+    s = _seed_build_session(repo, PcState.BUILD_AWAIT_REPAIR)
+    fc = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "m.w", "value": 1})]
+    )
+
+    out = handle_await_repair(env, Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor()), s, fc)
+
+    assert out.next == PcState.BUILD_AWAIT_REPAIR  # not a dead session
+    error = next(i for i in out.items if i.kind == "error")
+    assert error.payload["title"] == "Couldn't apply the fix"
+    assert "no key 'memory'" in error.payload["body"]
+    assert out.context.staged_repair == []  # engages the empty-repair guard
+
+
+def test_repair_counter_tracks_consecutive_repeats_of_the_same_error():
+    """The counter is per-error, not a global budget: an interleaved
+    A -> B -> B must NOT trip the guard, because B has survived one repair."""
+    from core.dify_builder.handlers_build import _note_repair_error, _repair_is_repeating
 
     fc = DifyBuilderContext()
-    fc.last_repair_error = "Invalid actual value type: number"
-    fc.repair_attempts = 3
-    assert _repair_is_repeating(fc, "Invalid actual value type: number") is True
-    assert _repair_is_repeating(fc, "Variable ['node2','result'] not found") is False
+    _note_repair_error(fc, "Invalid actual value type: number")
+    assert fc.repair_attempts == 0
+    assert _repair_is_repeating(fc) is False
 
-    fc.repair_attempts = 1
-    assert _repair_is_repeating(fc, "Invalid actual value type: number") is False
+    _note_repair_error(fc, "Variable ['node2','result'] not found")  # progress -> restart
+    assert fc.repair_attempts == 0
+    _note_repair_error(fc, "Variable ['node2','result'] not found")
+    assert fc.repair_attempts == 1
+    assert _repair_is_repeating(fc) is False  # survived ONE repair, not two
 
 
 def test_repeated_failure_stops_offering_a_repair():
     """The guard must be REACHED, not merely defined: a third identical
     failure clears the staged repair instead of proposing a fourth."""
-    from core.dify_builder.handlers_build import _MAX_REPEATED_REPAIRS, _repair_is_repeating
+    from core.dify_builder.handlers_build import _MAX_REPEATED_REPAIRS, _note_repair_error, _repair_is_repeating
 
     fc = DifyBuilderContext()
-    fc.last_repair_error = "Invalid actual value type: number"
-    fc.repair_attempts = _MAX_REPEATED_REPAIRS
-    assert _repair_is_repeating(fc, "Invalid actual value type: number") is True
+    error = "Invalid actual value type: number"
+    for _ in range(_MAX_REPEATED_REPAIRS + 1):
+        _note_repair_error(fc, error)
+    assert fc.repair_attempts == _MAX_REPEATED_REPAIRS
+    assert _repair_is_repeating(fc) is True
+
     # a NEW error means progress -- keep repairing
-    assert _repair_is_repeating(fc, "Variable not found") is False
+    _note_repair_error(fc, "Variable not found")
+    assert _repair_is_repeating(fc) is False
+
+
+def test_repair_counter_is_cleared_on_recovery_reentry():
+    """A fresh build that inherited repair_attempts >= the ceiling would
+    decline a repair on its first failure, one nobody ever approved."""
+    from core.dify_builder.recovery import _reset_working_fields
+
+    fc = DifyBuilderContext(repair_attempts=5, last_repair_error="boom")
+    _reset_working_fields(fc)
+    assert fc.repair_attempts == 0
+    assert fc.last_repair_error == ""
 
 
 def test_test_and_repair_stops_offering_a_repair_through_the_handler():
@@ -2059,3 +2115,8 @@ def test_test_and_repair_stops_offering_a_repair_through_the_handler():
     assert result.context.staged_repair == []  # cleared -- no repair offered on the 3rd identical failure
     error = next(i for i in result.items if i.kind == "error")
     assert error.payload["title"] == "Repeated failure"
+    # the run still has to be persisted: every sibling exit returns it, and
+    # fc.verify_run_id already points at it (a dangling pointer otherwise).
+    assert result.run is not None
+    assert result.run_id_sink == [result.run.id]
+    assert result.context.verify_run_id == result.run.id

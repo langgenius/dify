@@ -607,6 +607,47 @@ def test_edit_await_repair_approve_applies_and_retests():
     assert result.context.staged_repair == []
 
 
+def test_edit_await_repair_refuses_to_apply_an_empty_staged_repair():
+    """ESQ1-291 in Edit: the model-config branch stages NO repair and still
+    routes here, so approving would apply nothing, retest, and re-offer the
+    identical failure forever."""
+    from core.dify_builder.handlers_edit import handle_await_repair
+
+    env, _ = _new_env()
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
+    fc = DifyBuilderContext(staged_repair=[], test_input_ref="ti-1")
+
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert "notice" in [item.kind for item in result.items]
+
+
+def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session():
+    """ESQ1-271: a staged intent that went stale between propose and approve
+    must degrade to an error card, not an uncaught ValueError."""
+    from core.dify_builder.handlers_edit import handle_await_repair
+
+    env, _ = _new_env()
+
+    def _stale(*_args, **_kwargs):
+        raise ValueError("node not found: llm")
+
+    env.dify.apply_repair = _stale  # type: ignore[method-assign]
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
+    fc = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "code", "value": ""})],
+        test_input_ref="ti-1",
+    )
+
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    error = next(i for i in result.items if i.kind == "error")
+    assert error.payload["title"] == "Couldn't apply the fix"
+    assert result.context.staged_repair == []
+
+
 def test_edit_await_repair_keep_draft_goes_to_review():
     from core.dify_builder.handlers_edit import handle_await_repair
 
