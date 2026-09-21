@@ -23,14 +23,14 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import { toast } from '@/app/notifications'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import { docURL } from './config'
 import Field from './field'
@@ -796,7 +796,7 @@ const ProviderConfigModal: FC<Props> = ({
                               {t(($) => $['operation.remove'], { ns: 'common' })}
                             </span>
                           </Button>
-                          <Divider type="vertical" className="mx-3 h-4.5" />
+                          <Separator orientation="vertical" className="mx-3 h-4.5" />
                         </>
                       )}
                       <Button

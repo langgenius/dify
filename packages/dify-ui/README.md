@@ -39,11 +39,11 @@ Import `styles.css` once from the consumer's root stylesheet or entrypoint.
 | Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                                              |
 | Controls         | `./segmented-control`                                                                                                                                                                |
 | Display          | `./collapsible`, `./kbd`                                                                                                                                                             |
-| Feedback         | `./meter`, `./progress`, `./status-dot`, `./toast`                                                                                                                                   |
+| Feedback         | `./meter`, `./progress`, `./spinner`, `./status-dot`, `./toast`                                                                                                                      |
 | Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` |
-| Layout           | `./scroll-area`                                                                                                                                                                      |
+| Layout           | `./scroll-area`, `./separator`                                                                                                                                                       |
 | Media            | `./avatar`                                                                                                                                                                           |
-| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                                              |
+| Navigation       | `./breadcrumb`, `./file-tree`, `./pagination`, `./tabs`                                                                                                                              |
 | Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                            |
 | Search and pick  | `./autocomplete`, `./combobox`, `./select`                                                                                                                                           |
 
@@ -68,15 +68,15 @@ Upstream behavior remains owned by the [Base UI documentation].
 
 ### Cross-component guides
 
-| Guide                               | Scope                                                                          |
-| ----------------------------------- | ------------------------------------------------------------------------------ |
-| [Accessible names and descriptions] | Naming sources, descriptions, overrides, and safe label removal.               |
-| [Forms]                             | Native submit boundaries, value ownership, fields, labels, and errors.         |
-| [Selection]                         | Typed values and choosing among segmented controls, pickers, and radio groups. |
-| [Overlays]                          | Portals, presence lifecycles, layering, trigger composition, and semantics.    |
-| [Styling]                           | Tailwind CSS integration and the Figma radius mapping.                         |
-| [Public API authoring]              | Subpath exports, naming, public types, generics, and private helpers.          |
-| [Testing and development]           | Package commands, test ownership, accessibility, and animation setup.          |
+| Guide                               | Scope                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------- |
+| [Accessible names and descriptions] | Naming sources, descriptions, overrides, and safe label removal.                |
+| [Forms]                             | Native submit boundaries, value ownership, fields, labels, and errors.          |
+| [Selection]                         | Typed values and choosing among segmented controls, pickers, and radio groups.  |
+| [Overlays]                          | Portals, presence lifecycles, layering, trigger composition, and semantics.     |
+| [Styling]                           | State styling, callbacks, composition, Tailwind integration, and border radius. |
+| [Public API authoring]              | Subpath exports, naming, public types, generics, and private helpers.           |
+| [Testing and development]           | Package commands, test ownership, accessibility, and animation setup.           |
 
 ## Contributing
 

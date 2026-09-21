@@ -1261,6 +1261,48 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | ---- | ----------- | ------ |
 | 200 | Agent monitoring summary and chart data | **application/json**: [AgentStatisticSummaryEnvelopeResponse](#agentstatisticsummaryenveloperesponse)<br> |
 
+### [POST] /agent/{agent_id}/text-to-audio
+Preview an Agent TTS voice or read an Agent chat message
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TextToSpeechPayload](#texttospeechpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Generated audio bytes in the provider audio format | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
+| 400 | Invalid text or voice |  |
+| 403 | Insufficient permissions |  |
+| 404 | Agent not found |  |
+
+### [GET] /agent/{agent_id}/text-to-audio/voices
+Get available TTS voices for an Agent and language
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| language | query | Language code | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
+| 400 | Invalid language parameter |  |
+| 404 | Agent not found |  |
+
 ### [GET] /agent/{agent_id}/versions
 #### Parameters
 
@@ -1502,7 +1544,7 @@ Create a new application
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [AppImportPayload](#appimportpayload)<br> |
+|  Yes | **application/json**: [AppImportPayload](#appimportpayload)<br>**multipart/form-data**: { **"app_id"**: string, **"description"**: string, **"file"**: binary, **"icon"**: string, **"icon_background"**: string, **"icon_type"**: string, **"name"**: string }<br> | **application/json**: [AppImportPayload](#appimportpayload)<br>**multipart/form-data**: { **"app_id"**: string, **"description"**: string, **"file"**: binary, **"icon"**: string, **"icon_background"**: string, **"icon_type"**: string, **"name"**: string }<br> |
 
 #### Responses
 
@@ -1511,6 +1553,9 @@ Create a new application
 | 200 | Import completed | **application/json**: [Import](#import)<br> |
 | 202 | Import pending confirmation | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
+| 403 | Insufficient import or plugin installation permissions |  |
+| 409 | Agent name conflict or missing plugins | **application/json**: [RosterAgentPackageConflictResponse](#rosteragentpackageconflictresponse)<br> |
+| 413 | Roster Agent package exceeds the size limit |  |
 
 ### [GET] /apps/imports/{app_id}/check-dependencies
 #### Parameters
@@ -2670,14 +2715,16 @@ Export application configuration as DSL
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID to export | Yes | string (uuid) |
+| format | query | Export format; defaults to ifpkg for all Apps | No | string, <br>**Available values:** "ifpkg", "yaml" |
 | include_secret | query | Include secrets in export | No | boolean |
+| version_id | query | Published Agent version ID to export; requires a paid plan on Cloud. If omitted, exports the shared draft, falling back to the active snapshot when no draft exists. | No | string (uuid) |
 | workflow_id | query | Specific workflow ID to export | No | string |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | App exported successfully | **application/json**: [AppExportResponse](#appexportresponse)<br> |
+| 200 | App exported successfully | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
 | 403 | Insufficient permissions |  |
 
 ### [POST] /apps/{app_id}/feedbacks
@@ -10438,13 +10485,9 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| model | query |  | Yes | string |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
 | provider | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ParserDeleteModels](#parserdeletemodels)<br> |
 
 #### Responses
 
@@ -10489,13 +10532,10 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | query |  | Yes | string |
+| model | query |  | Yes | string |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
 | provider | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ParserDeleteCredential](#parserdeletecredential)<br> |
 
 #### Responses
 
@@ -12130,7 +12170,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Published Skill zip archive |
+| 200 | Draft Skill zip archive |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}/files
 #### Parameters
@@ -15781,7 +15821,9 @@ This class is used to store the schema information of an api based tool.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| format | string, <br>**Available values:** "ifpkg", "yaml" | Export format; defaults to ifpkg for all Apps | No |
 | include_secret | boolean | Include secrets in export | No |
+| version_id | string | Published Agent version ID to export; requires a paid plan on Cloud. If omitted, exports the shared draft, falling back to the active snapshot when no draft exists. | No |
 | workflow_id | string | Specific workflow ID to export | No |
 
 #### AppExportResponse
@@ -21730,6 +21772,15 @@ Resource types understood by access policies.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicyRoleBinding](#accesspolicyrolebinding) ] |  | No |
+
+#### RosterAgentPackageConflictResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | No |
+| message | string |  | Yes |
+| status | integer, <br>**Default:** 409 |  | No |
 
 #### RosterListQuery
 

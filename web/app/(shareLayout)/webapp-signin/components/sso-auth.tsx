@@ -2,11 +2,11 @@
 import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import { toast } from '@/app/notifications'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import {
   fetchMembersOAuth2SSOUrl,

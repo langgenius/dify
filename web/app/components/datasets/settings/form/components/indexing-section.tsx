@@ -3,9 +3,9 @@ import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/wor
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import {
   MultimodalRetrievalGuidance,
@@ -87,7 +87,7 @@ const IndexingSection = ({
       {/* Chunk Structure */}
       {!!currentDataset?.doc_form && (
         <>
-          <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+          <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
           <div className={rowClass}>
             <div className="flex w-45 shrink-0 flex-col">
               <div className="flex h-8 items-center system-sm-semibold text-text-secondary">
@@ -113,7 +113,7 @@ const IndexingSection = ({
       )}
 
       {!!(isShowIndexMethod || indexMethod === 'high_quality') && (
-        <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+        <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
       )}
 
       {/* Index Method */}
@@ -177,7 +177,7 @@ const IndexingSection = ({
       {/* Summary Index Setting */}
       {showSummaryIndexSetting && (
         <>
-          <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+          <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
           <SummaryIndexSetting
             entry="dataset-settings"
             summaryIndexSetting={summaryIndexSetting}
@@ -190,7 +190,7 @@ const IndexingSection = ({
       {/* Retrieval Method Config */}
       {indexMethod && currentDataset?.provider !== 'external' && (
         <>
-          <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+          <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
           <div className={rowClass}>
             <div className={labelClass}>
               <div className="flex w-45 shrink-0 flex-col">

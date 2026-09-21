@@ -4,8 +4,8 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine } from '@remixicon/react'
-import Divider from '@/app/components/base/divider'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
@@ -48,7 +48,7 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
 }) => (
   <>
     <div className={rowClass}>
-      <Divider />
+      <Separator className="my-2 h-[0.5px]" />
     </div>
     <div className={rowClass}>
       <div className={labelClass}>
@@ -65,7 +65,7 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
       />
     </div>
     <div className={rowClass}>
-      <Divider />
+      <Separator className="my-2 h-[0.5px]" />
     </div>
     <div className={rowClass}>
       <div className={labelClass}>
@@ -101,7 +101,7 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
       </div>
     </div>
     <div className={rowClass}>
-      <Divider />
+      <Separator decorative className="my-2 h-[0.5px]" />
     </div>
   </>
 )

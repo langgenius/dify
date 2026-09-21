@@ -8,13 +8,13 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import Collapse from '@/app/components/header/account-setting/collapse'
+import { toast } from '@/app/notifications'
 import { validPassword } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -303,11 +303,11 @@ export default function AccountPage() {
               : t(($) => $['account.setPassword'], { ns: 'common' })}
           </div>
           {userProfile.is_password_set && (
-            <Field name="current-password" className="gap-0">
-              <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+            <Field name="current-password">
+              <FieldLabel className="system-sm-semibold">
                 {t(($) => $['account.currentPassword'], { ns: 'common' })}
               </FieldLabel>
-              <InputGroup className="mt-2">
+              <InputGroup>
                 <InputGroupInput
                   type={showCurrentPassword ? 'text' : 'password'}
                   value={currentPassword}
@@ -329,13 +329,13 @@ export default function AccountPage() {
               </InputGroup>
             </Field>
           )}
-          <Field name="new-password" className="mt-8 gap-0">
-            <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+          <Field name="new-password" className="mt-8">
+            <FieldLabel className="system-sm-semibold">
               {userProfile.is_password_set
                 ? t(($) => $['account.newPassword'], { ns: 'common' })
                 : t(($) => $['account.password'], { ns: 'common' })}
             </FieldLabel>
-            <InputGroup className="mt-2">
+            <InputGroup>
               <InputGroupInput
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -356,11 +356,11 @@ export default function AccountPage() {
               </InputGroupAddon>
             </InputGroup>
           </Field>
-          <Field name="confirm-password" className="mt-8 gap-0">
-            <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+          <Field name="confirm-password" className="mt-8">
+            <FieldLabel className="system-sm-semibold">
               {t(($) => $['account.confirmPassword'], { ns: 'common' })}
             </FieldLabel>
-            <InputGroup className="mt-2">
+            <InputGroup>
               <InputGroupInput
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}

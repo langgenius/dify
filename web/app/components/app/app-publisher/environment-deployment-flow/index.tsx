@@ -6,7 +6,7 @@ import type { DeploymentVersion } from '@/app/components/app/deploy/utils/versio
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentDeploymentFlow } from '@/app/components/app/deploy/shared/environment-deployment-flow'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   publisherEnvironmentDeploymentPollingAtom,
   startPublisherEnvironmentDeploymentPollingAtom,
@@ -52,7 +52,7 @@ export function PublisherEnvironmentFlow({
       <div aria-busy={isDeploymentLoading} className="flex min-h-40 flex-col gap-3 p-4">
         {environmentTabs}
         {isDeploymentLoading ? (
-          <Loading className="flex-1" />
+          <LoadingPlaceholder className="flex-1" />
         ) : (
           <div
             role="alert"

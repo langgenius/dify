@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from inspect import unwrap
 
 import pytest
 from flask import Flask
@@ -11,7 +10,7 @@ from werkzeug.exceptions import NotFound
 from controllers.openapi.workspaces import WorkspaceByIdApi, WorkspacesApi, WorkspaceSwitchApi
 from models import Account
 from models.account import TenantAccountRole
-from tests.test_containers_integration_tests.controllers.openapi.conftest import add_tenant_for_account, auth_for
+from tests.test_containers_integration_tests.controllers.openapi.conftest import add_tenant_for_account, context_for
 
 
 class TestWorkspacesList:
@@ -24,7 +23,7 @@ class TestWorkspacesList:
 
         api = WorkspacesApi()
         with app.test_request_context("/openapi/v1/workspaces"):
-            result = unwrap(api.get)(api, db_session_with_containers, auth_data=auth_for(account))
+            result = api.get.__handler__(api, context_for(account, session=db_session_with_containers))
 
         ids = {w.id for w in result.workspaces}
         assert ids == {owner_tenant.id}
@@ -45,7 +44,7 @@ class TestWorkspacesList:
 
         api = WorkspacesApi()
         with app.test_request_context("/openapi/v1/workspaces"):
-            result = unwrap(api.get)(api, db_session_with_containers, auth_data=auth_for(account))
+            result = api.get.__handler__(api, context_for(account, session=db_session_with_containers))
 
         assert {w.id for w in result.workspaces} == {owner_tenant.id, second.id}
 
@@ -60,8 +59,10 @@ class TestWorkspaceDetail:
 
         api = WorkspaceByIdApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}"):
-            detail = unwrap(api.get)(
-                api, db_session_with_containers, workspace_id=tenant.id, auth_data=auth_for(account)
+            detail = api.get.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, view_args={"workspace_id": tenant.id}),
+                tenant.id,
             )
 
         assert detail.id == tenant.id
@@ -82,8 +83,14 @@ class TestWorkspaceDetail:
         api = WorkspaceByIdApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{someone_elses_ws.id}"):
             with pytest.raises(NotFound):
-                unwrap(api.get)(
-                    api, db_session_with_containers, workspace_id=someone_elses_ws.id, auth_data=auth_for(outsider)
+                api.get.__handler__(
+                    api,
+                    context_for(
+                        outsider,
+                        session=db_session_with_containers,
+                        view_args={"workspace_id": someone_elses_ws.id},
+                    ),
+                    someone_elses_ws.id,
                 )
 
 
@@ -100,8 +107,10 @@ class TestWorkspaceSwitch:
 
         api = WorkspaceSwitchApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{target.id}/switch", method="POST"):
-            detail = unwrap(api.post)(
-                api, db_session_with_containers, workspace_id=target.id, auth_data=auth_for(account)
+            detail = api.post.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, view_args={"workspace_id": target.id}),
+                target.id,
             )
 
         # Response reflects the post-switch state.
@@ -110,10 +119,9 @@ class TestWorkspaceSwitch:
 
         # And the switch persisted: the previously-current owner workspace is no
         # longer current (verified through the real read path).
+        listing_api = WorkspacesApi()
         with app.test_request_context("/openapi/v1/workspaces"):
-            listing = unwrap(WorkspacesApi().get)(
-                WorkspacesApi(), db_session_with_containers, auth_data=auth_for(account)
-            )
+            listing = listing_api.get.__handler__(listing_api, context_for(account, session=db_session_with_containers))
         by_id = {w.id: w for w in listing.workspaces}
         assert by_id[target.id].current is True
         assert by_id[owner_tenant.id].current is False
@@ -128,6 +136,10 @@ class TestWorkspaceSwitch:
         api = WorkspaceSwitchApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{outsider_ws.id}:switch", method="POST"):
             with pytest.raises(NotFound):
-                unwrap(api.post)(
-                    api, db_session_with_containers, workspace_id=outsider_ws.id, auth_data=auth_for(account)
+                api.post.__handler__(
+                    api,
+                    context_for(
+                        account, session=db_session_with_containers, view_args={"workspace_id": outsider_ws.id}
+                    ),
+                    outsider_ws.id,
                 )

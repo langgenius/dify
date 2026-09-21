@@ -4,13 +4,13 @@ import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { PermissionLevel } from '@/models/permission'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
@@ -180,7 +180,7 @@ const ApiKeyModal = ({
             )}
             {isLoading && (
               <div className="flex h-40 items-center justify-center">
-                <Loading />
+                <LoadingPlaceholder />
               </div>
             )}
             {!isLoading && !!mergedData.length && (

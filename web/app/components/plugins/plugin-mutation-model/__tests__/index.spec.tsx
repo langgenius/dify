@@ -18,14 +18,12 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
   renderI18nObject: (obj: Record<string, string>, locale: string) => {
     return obj?.[locale] || obj?.['en-US'] || ''
   },
-}))
-
-vi.mock('@/i18n-config/language', () => ({
-  getLanguage: (locale: string) => locale || 'en-US',
+  getPluginLanguage: (locale: string) => locale || 'en-US',
 }))
 
 const mockCategoriesMap: Record<string, { label: string }> = {

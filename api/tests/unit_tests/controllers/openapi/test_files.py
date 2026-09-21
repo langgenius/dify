@@ -1,4 +1,3 @@
-from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -12,25 +11,12 @@ from controllers.common.errors import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
-from controllers.openapi.auth.data import AuthData, CallerKind
 from controllers.openapi.files import AppFileUploadApi
 from libs.exception import BaseHTTPException
-from libs.oauth_bearer import Scope, TokenType
 from models import Account
 from services.errors.file import BlockedFileExtensionError as ServiceBlockedFileExtensionError
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
-
-
-def _auth_data(caller: Account) -> AuthData:
-    return AuthData.model_construct(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="test-token",
-        scopes=frozenset({Scope.APPS_RUN}),
-        app=object(),
-        caller=caller,
-        caller_kind=CallerKind.ACCOUNT,
-    )
 
 
 def _caller() -> Account:
@@ -68,11 +54,8 @@ def test_upload_uses_injected_file_service(app: Flask, monkeypatch: pytest.Monke
         data={"file": (BytesIO(b"hello"), "note.txt", "text/plain")},
         content_type="multipart/form-data",
     ):
-        result = unwrap(AppFileUploadApi.post)(
-            AppFileUploadApi(),
-            app_id="app-1",
-            auth_data=_auth_data(caller),
-        )
+        api = AppFileUploadApi()
+        result = api.post.__handler__(api, SimpleNamespace(caller=caller), app_id="app-1")
 
     assert result.id == "00000000-0000-0000-0000-000000000001"
     service.upload_file.assert_called_once_with(
@@ -121,12 +104,9 @@ def test_upload_preserves_specific_file_errors(
         data={"file": (BytesIO(b"hello"), "note.txt", "text/plain")},
         content_type="multipart/form-data",
     ):
+        api = AppFileUploadApi()
         with pytest.raises(controller_error) as error_info:
-            unwrap(AppFileUploadApi.post)(
-                AppFileUploadApi(),
-                app_id="app-1",
-                auth_data=_auth_data(_caller()),
-            )
+            api.post.__handler__(api, SimpleNamespace(caller=_caller()), app_id="app-1")
 
     assert error_info.value.code == status
     assert error_info.value.error_code == error_code
@@ -145,12 +125,9 @@ def test_upload_maps_other_value_errors_to_bad_request(app: Flask, monkeypatch: 
         data={"file": (BytesIO(b"hello"), "../note.txt", "text/plain")},
         content_type="multipart/form-data",
     ):
+        api = AppFileUploadApi()
         with pytest.raises(BadRequest) as error_info:
-            unwrap(AppFileUploadApi.post)(
-                AppFileUploadApi(),
-                app_id="app-1",
-                auth_data=_auth_data(_caller()),
-            )
+            api.post.__handler__(api, SimpleNamespace(caller=_caller()), app_id="app-1")
 
     assert error_info.value.description == str(service_error)
     assert error_info.value.__cause__ is service_error

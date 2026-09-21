@@ -1,6 +1,7 @@
-import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
 import NewChildSegmentModal from '../new-child-segment'
 
 vi.mock('@/next/navigation', () => ({
@@ -385,7 +386,7 @@ describe('NewChildSegmentModal', () => {
 
       render(
         <>
-          <ToastHost timeout={0} />
+          <AppToastHost timeout={0} />
           <NewChildSegmentModal
             {...defaultProps}
             viewNewlyAddedChildChunk={mockViewNewlyAddedChildChunk}

@@ -19,6 +19,9 @@ type CheckboxListOption = {
 
 type CheckboxListProps = {
   name?: string
+  'aria-labelledby'?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   title?: string
   label?: string
   description?: string
@@ -35,6 +38,9 @@ type CheckboxListProps = {
 
 export const CheckboxList = ({
   name,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   title = '',
   label,
   description,
@@ -73,7 +79,10 @@ export const CheckboxList = ({
       <Fieldset
         render={
           <CheckboxGroup
-            aria-label={!label && title ? title : undefined}
+            {...(ariaLabelledBy ? { 'aria-labelledby': ariaLabelledBy } : {})}
+            {...(ariaDescribedBy ? { 'aria-describedby': ariaDescribedBy } : {})}
+            {...(ariaInvalid !== undefined ? { 'aria-invalid': ariaInvalid } : {})}
+            aria-label={!ariaLabelledBy && !label && title ? title : undefined}
             value={value}
             onValueChange={(nextValue) => onChange?.(nextValue)}
             allValues={selectableOptionValues}

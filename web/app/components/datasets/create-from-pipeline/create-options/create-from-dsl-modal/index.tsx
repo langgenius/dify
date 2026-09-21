@@ -95,8 +95,8 @@ const CreateFromDSLModal = ({
                 <Uploader className="mt-0" file={currentFile} updateFile={handleFile} />
               </TabsPanel>
               <TabsPanel value={CreateFromDSLModalTab.FROM_URL} tabIndex={-1} className="px-6 py-4">
-                <Field name="dslUrl">
-                  <FieldLabel className="w-full py-0 text-sm leading-5 font-semibold">
+                <Field name="dslUrl" className="gap-0">
+                  <FieldLabel className="w-full text-sm leading-5 font-semibold">
                     DSL URL
                   </FieldLabel>
                   <Input

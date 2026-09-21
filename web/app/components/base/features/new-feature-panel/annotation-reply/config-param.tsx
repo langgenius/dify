@@ -12,10 +12,7 @@ export const Item: FC<{ title: string; tooltip: string; children: React.JSX.Elem
     <div>
       <div className="mb-1 flex items-center space-x-1">
         <div className="py-1 system-sm-semibold text-text-secondary">{title}</div>
-        <Infotip
-          aria-label={tooltip}
-          popupClassName="max-w-[200px] system-sm-regular text-text-secondary"
-        >
+        <Infotip aria-label={tooltip} popupClassName="max-w-[200px] system-sm-regular">
           {tooltip}
         </Infotip>
       </div>

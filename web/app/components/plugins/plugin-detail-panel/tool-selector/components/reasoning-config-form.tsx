@@ -208,7 +208,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                     </button>
                   }
                 />
-                <TooltipContent className="system-xs-medium text-text-secondary">
+                <TooltipContent>
                   {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>

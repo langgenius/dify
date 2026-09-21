@@ -5,7 +5,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 // import { Resolution } from '@/types/app'
@@ -21,6 +21,7 @@ import ParamConfig from './param-config'
 
 const ConfigVision: FC = () => {
   const { t } = useTranslation()
+  const titleId = useId()
   const { isShowVisionConfig, isAllowVideoUpload, readonly } = useContext(ConfigContext)
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
@@ -71,9 +72,9 @@ const ConfigVision: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">
+        <h2 id={titleId} className="mr-1 system-sm-semibold text-text-secondary">
           {t(($) => $['vision.name'], { ns: 'appDebug' })}
-        </div>
+        </h2>
         <Infotip
           aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })}
           popupClassName="w-[180px]"
@@ -128,7 +129,12 @@ const ConfigVision: FC = () => {
           <>
             <ParamConfig />
             <div className="mr-3 ml-1 h-3.5 w-px bg-divider-regular"></div>
-            <Switch checked={isImageEnabled} onCheckedChange={handleChange} size="md" />
+            <Switch
+              aria-labelledby={titleId}
+              checked={isImageEnabled}
+              onCheckedChange={handleChange}
+              size="md"
+            />
           </>
         )}
       </div>

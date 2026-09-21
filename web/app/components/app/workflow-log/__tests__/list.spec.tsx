@@ -11,7 +11,7 @@
 
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -186,7 +186,7 @@ describe('WorkflowAppLogList', () => {
         />,
       )
 
-      expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('should render loading state when appDetail is undefined', () => {
@@ -196,7 +196,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={undefined} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('should render table when data is available', () => {
@@ -408,14 +408,16 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      // Click on the start time header to toggle sort
-      const startTimeHeader = screen.getByText('appLog.table.header.startTime')
-      await user.click(startTimeHeader)
-
-      // Arrow should rotate (indicated by class change)
-      // The sort icon should have rotate-180 class for ascending
-      const sortIcon = startTimeHeader.closest('div')?.querySelector('svg')
-      expect(sortIcon)!.toBeInTheDocument()
+      const startTimeHeader = screen.getByRole('columnheader', {
+        name: 'appLog.table.header.startTime',
+      })
+      const sortButton = screen.getByRole('button', { name: 'appLog.table.header.startTime' })
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'descending')
+      sortButton.focus()
+      await user.keyboard('{Enter}')
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'ascending')
+      await user.keyboard(' ')
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'descending')
     })
 
     it('should render sort arrow icon', () => {

@@ -11,7 +11,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +20,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
@@ -44,7 +44,6 @@ type EnvironmentWebAppCardProps = {
   appId: string
   environmentId: string
   canManageAccessPoint: boolean
-  canReleaseAndVersion: boolean
   highlighted?: boolean
 }
 
@@ -52,7 +51,6 @@ export function EnvironmentWebAppCard({
   appId,
   environmentId,
   canManageAccessPoint,
-  canReleaseAndVersion,
   highlighted,
 }: EnvironmentWebAppCardProps) {
   const { t } = useTranslation()
@@ -89,7 +87,7 @@ export function EnvironmentWebAppCard({
     ...subjectsQueryOptions,
     enabled:
       siteQuery.isSuccess &&
-      canReleaseAndVersion &&
+      canManageAccessPoint &&
       (showAccess || accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS),
   })
   const accessConfigured =
@@ -235,7 +233,7 @@ export function EnvironmentWebAppCard({
               accessConfigured={accessConfigured}
               accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
               accessLabel={accessLabel}
-              disabled={!canReleaseAndVersion}
+              disabled={!canManageAccessPoint}
               onClick={() => setShowAccess(true)}
             />
           ) : (
@@ -265,7 +263,7 @@ export function EnvironmentWebAppCard({
           appId={appId}
           environmentId={environmentId}
           accessMode={accessMode}
-          canManage={canReleaseAndVersion}
+          canManage={canManageAccessPoint}
           onClose={() => setShowAccess(false)}
           onConfirm={() => setShowAccess(false)}
         />

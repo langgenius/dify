@@ -2,6 +2,7 @@ import type { CSSProperties, FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
@@ -573,10 +574,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         ref={containerRef}
         value={tabType}
         onValueChange={(selectedValue) => setTabType(selectedValue)}
-        className={cn(
-          'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear',
-          isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto',
-        )}
+        className="flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear"
         style={
           {
             width: `${nodePanelWidth}px`,
@@ -584,7 +582,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
           } as CSSProperties
         }
       >
-        <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
+        <div className="shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
             {!isStartPlaceholderPanel && (
               <BlockIcon className="mr-1 shrink-0" type={data.type} toolIcon={toolIcon} size="md" />
@@ -604,37 +602,34 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                 <Tooltip disabled={isSingleRunning}>
                   <TooltipTrigger
                     render={
-                      <button
-                        type="button"
+                      <IconButton
                         aria-label={singleRunActionLabel}
-                        className="mr-1 flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+                        className="mr-1"
                         onClick={() => {
                           if (isSingleRunning) handleStop()
                           else handleSingleRun()
                         }}
                       >
                         {isSingleRunning ? (
-                          <Stop aria-hidden className="size-4 text-text-tertiary" />
+                          <Stop aria-hidden className="size-4" />
                         ) : (
-                          <RiPlayLargeLine aria-hidden className="size-4 text-text-tertiary" />
+                          <RiPlayLargeLine aria-hidden className="size-4" />
                         )}
-                      </button>
+                      </IconButton>
                     }
                   />
-                  <TooltipContent className="mr-1">{runThisStepLabel}</TooltipContent>
+                  <TooltipContent>{runThisStepLabel}</TooltipContent>
                 </Tooltip>
               )}
               <HelpLink nodeType={nodeMetaType} />
               <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
-              <button
-                type="button"
+              <IconButton
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <RiCloseLine aria-hidden className="size-4 text-text-tertiary" />
-              </button>
+                <RiCloseLine aria-hidden className="size-4" />
+              </IconButton>
             </div>
           </div>
           {isStartPlaceholderPanel ? (
@@ -727,7 +722,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         )}
 
         {!isStartPlaceholderPanel && (
-          <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col">
+          <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col overflow-y-auto">
             <LastRun
               appId={appDetail?.id || ''}
               nodeId={id}
