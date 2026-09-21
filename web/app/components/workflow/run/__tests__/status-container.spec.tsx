@@ -19,6 +19,9 @@ vi.mock('@/hooks/use-theme', () => ({
 
 const mockUseTheme = vi.mocked(useTheme)
 
+const highlightOverlay = (container: HTMLElement) =>
+  container.querySelector<HTMLElement>('[class*="pointer-events-none"][class*="bg-no-repeat"]')
+
 describe('StatusContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -37,11 +40,39 @@ describe('StatusContainer', () => {
       expect(screen.getByText('Finished')).toBeInTheDocument()
       expect(container.firstElementChild).toHaveClass('bg-workflow-display-success-bg')
       expect(container.firstElementChild).toHaveClass('text-text-success')
-      expect(
-        container.querySelector(
-          '.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight\\.svg\\)\\]',
-        ),
-      ).toBeInTheDocument()
+      expect(container.firstElementChild).toHaveStyle({
+        backgroundImage: 'url(/__static__/app/components/workflow/run/assets/bg-line-success.svg)',
+      })
+      expect(highlightOverlay(container)).toHaveStyle({
+        backgroundImage: 'url(/__static__/app/components/workflow/run/assets/highlight.svg)',
+      })
+    })
+
+    it('should render the dark-theme highlight overlay', () => {
+      mockUseTheme.mockReturnValue({ theme: Theme.dark } as ReturnType<typeof useTheme>)
+
+      const { container } = render(<StatusContainer status="running">Running</StatusContainer>)
+
+      expect(container.firstElementChild).toHaveStyle({
+        backgroundImage: 'url(/__static__/app/components/workflow/run/assets/bg-line-running.svg)',
+      })
+      expect(highlightOverlay(container)).toHaveStyle({
+        backgroundImage: 'url(/__static__/app/components/workflow/run/assets/highlight-dark.svg)',
+      })
+    })
+
+    // The alias form `~@/...` is not resolved by the production bundler, so the
+    // emitted CSS must never contain it. See #42434.
+    it('should not emit unresolved tilde-alias asset URLs', () => {
+      const { container } = render(<StatusContainer status="failed">Failed</StatusContainer>)
+
+      expect(container.innerHTML).not.toContain('~@/')
+    })
+
+    it('should not set a background image for an unknown status', () => {
+      const { container } = render(<StatusContainer status="unknown">Unknown</StatusContainer>)
+
+      expect((container.firstElementChild as HTMLElement).style.backgroundImage).toBe('')
     })
   })
 
