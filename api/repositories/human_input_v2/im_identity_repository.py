@@ -29,6 +29,7 @@ class IMIdentity:
     last_seen_at: NaiveDatetime
     created_at: NaiveDatetime
     updated_at: NaiveDatetime
+    avatar_file_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +42,7 @@ class IMIdentityObservation:
     raw_payload: OpaqueProviderPayload
     sync_run_id: IMSyncRunId
     observed_at: NaiveDatetime
+    avatar_file_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

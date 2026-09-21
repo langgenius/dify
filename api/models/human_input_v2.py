@@ -703,6 +703,12 @@ class HumanInputIMIdentity(DefaultFieldsDCMixin, TypeBase):
         default=None,
         comment="Canonical email used by matching and persistence queries.",
     )
+    avatar_file_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        default=None,
+        comment="Logical upload_files.id reference for the current IM avatar.",
+    )
 
 
 class HumanInputIMBinding(DefaultFieldsDCMixin, TypeBase):

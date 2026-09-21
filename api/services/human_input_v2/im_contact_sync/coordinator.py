@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import mimetypes
 from collections.abc import Callable, Sequence
 from itertools import batched
 from typing import Protocol
@@ -12,6 +14,7 @@ from pydantic import NaiveDatetime
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.human_input_v2.entities import IMProvider, IMSyncRemovalReason, IMSyncResultType, IMSyncRunStatus
 from core.human_input_v2.im_integration import (
     BlockedReconciliation,
@@ -35,8 +38,9 @@ from core.human_input_v2.im_integration import (
     SyncResultFact,
 )
 from core.human_input_v2.im_integration.adapters import IMProviderAdapter
-from core.human_input_v2.im_integration.adapters.entities import DirectoryReadFailure, ProviderUserId
+from core.human_input_v2.im_integration.adapters.entities import DirectoryEntry, DirectoryReadFailure, ProviderUserId
 from core.human_input_v2.shared import (
+    AccountId,
     ContactId,
     IMBindingId,
     IMIdentityId,
@@ -45,10 +49,16 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
+    TenantId,
 )
+from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
+from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.enums import CreatorUserRole
 from models.human_input_v2 import HumanInputIMBinding, HumanInputIMChannel, HumanInputIMSyncRun
+from models.model import UploadFile
 from repositories.human_input_v2.contact import Contact, ContactType
 from repositories.human_input_v2.im_channel_repository import IMChannel
 from repositories.human_input_v2.im_identity_repository import IMIdentity, IMIdentityObservation, OpaqueProviderPayload
@@ -110,6 +120,7 @@ class IMChannelReconciliationService:
         adapter_factory: IMChannelAdapterFactory,
         contact_reader_factory: BoundContactReaderFactory,
         *,
+        tenant_id: TenantId | None = None,
         clock: Callable[[], NaiveDatetime] = naive_utc_now,
     ) -> None:
         self._session_factory = session_factory
@@ -117,6 +128,7 @@ class IMChannelReconciliationService:
         self._adapter_factory = adapter_factory
         self._contact_reader_factory = contact_reader_factory
         self._clock = clock
+        self._tenant_id = tenant_id
 
     def reconcile(self, sync_run_id: IMSyncRunId) -> IMSyncRun:
         adapter: IMProviderAdapter | None = None
@@ -152,6 +164,7 @@ class IMChannelReconciliationService:
                     "Provider directory could not be read.",
                 )
             try:
+                avatar_files = self._prepare_avatar_files(run, directory.entries)
                 with self._session_factory() as session, session.begin():
                     run_record = self._require_active_run_record(session, sync_run_id)
                     identities = SQLAlchemyIMIdentityRepository(session, self._channel.id)
@@ -174,7 +187,7 @@ class IMChannelReconciliationService:
                             self._clock(),
                         )
                     else:
-                        self._apply_plan(session, run_record, plan_or_block, contacts, identities)
+                        self._apply_plan(session, run_record, plan_or_block, contacts, identities, avatar_files)
             except _ReconciliationAlreadyTerminalError as terminal:
                 return terminal.run
             except _StaleChannelRevisionError:
@@ -206,6 +219,56 @@ class IMChannelReconciliationService:
                 except Exception:
                     logger.exception("IM Provider adapter close failed, sync_run_id=%s", sync_run_id)
 
+    def _prepare_avatar_files(
+        self, run: IMSyncRun, entries: tuple[DirectoryEntry, ...]
+    ) -> dict[ProviderUserId, UploadFile]:
+        # Deployment file ownership is not supported yet. Composition supplies a
+        # tenant only for Workspace Channels.
+        if self._tenant_id is None or not any(entry.avatar is not None for entry in entries):
+            return {}
+        created_by = run.started_by_account_id
+        if created_by is None:
+            with self._session_factory() as session:
+                owner_id = session.scalar(
+                    sa.select(Account.id)
+                    .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                    .where(
+                        TenantAccountJoin.tenant_id == str(self._tenant_id),
+                        TenantAccountJoin.role == TenantAccountRole.OWNER,
+                    )
+                )
+            if owner_id is None:
+                raise ValueError("Workspace owner is unavailable for IM avatar storage")
+            created_by = AccountId(owner_id)
+        now = self._clock()
+        avatar_files: dict[ProviderUserId, UploadFile] = {}
+        for entry in entries:
+            if entry.avatar is None:
+                continue
+            avatar = entry.avatar
+            suffix = mimetypes.guess_extension(avatar.mime_type) or ""
+            file_key = f"upload_files/{self._tenant_id}/{uuidv7()}{suffix}"
+            storage.save(file_key, avatar.data)
+            # Persist metadata with the Identity update, after storage I/O has
+            # completed. Orphaned objects from a failed apply need future GC.
+            avatar_files[entry.provider_user_id] = UploadFile(
+                tenant_id=str(self._tenant_id),
+                storage_type=StorageType(dify_config.STORAGE_TYPE),
+                key=file_key,
+                name=f"avatar{suffix}",
+                size=len(avatar.data),
+                extension=suffix.lstrip("."),
+                mime_type=avatar.mime_type,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=str(created_by),
+                created_at=now,
+                used=True,
+                used_by=str(created_by),
+                used_at=now,
+                hash=hashlib.sha3_256(avatar.data).hexdigest(),
+            )
+        return avatar_files
+
     def _apply_plan(
         self,
         session: Session,
@@ -213,6 +276,7 @@ class IMChannelReconciliationService:
         plan: ReconciliationPlan,
         contacts: tuple[Contact, ...],
         identities: SQLAlchemyIMIdentityRepository,
+        avatar_files: dict[ProviderUserId, UploadFile],
     ) -> None:
         now = self._clock()
         initial_identities = {identity.id: identity for identity in identities.list_all()}
@@ -220,6 +284,9 @@ class IMChannelReconciliationService:
         binding_ids: dict[tuple[IMIdentityId, ContactId], IMBindingId] = {}
         changes: list[IMReconciliationChange] = []
         for upsert in plan.identity_upserts:
+            avatar_file = avatar_files.get(upsert.entry.provider_user_id)
+            if avatar_file is not None:
+                session.add(avatar_file)
             observation = IMIdentityObservation(
                 provider_user_id=str(upsert.entry.provider_user_id),
                 display_name=upsert.entry.display_name,
@@ -227,6 +294,7 @@ class IMChannelReconciliationService:
                 raw_payload=OpaqueProviderPayload({}),
                 sync_run_id=plan.run.sync_run_id,
                 observed_at=now,
+                avatar_file_id=avatar_file.id if avatar_file is not None else None,
             )
             if isinstance(upsert.identity_ref, NewIMIdentityRef):
                 identity_id = IMIdentityId(str(uuidv7()))

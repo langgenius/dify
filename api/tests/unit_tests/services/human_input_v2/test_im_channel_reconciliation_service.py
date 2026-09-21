@@ -8,6 +8,7 @@ from uuid import UUID
 
 import pytest
 import sqlalchemy as sa
+from pytest_mock import MockerFixture
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -26,7 +27,11 @@ from core.human_input_v2.im_integration.adapters import (
     IMWebhookHandler,
     ProviderUserId,
 )
+from core.human_input_v2.im_integration.adapters.entities import Avatar
 from core.human_input_v2.shared import AccountId, ContactId, IMSyncRunId, TenantId
+from extensions.ext_storage import storage
+from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.enums import CreatorUserRole
 from models.human_input_v2 import (
     HumanInputIMBinding,
     HumanInputIMChannel,
@@ -37,6 +42,7 @@ from models.human_input_v2 import (
     IMBindingReconciliationSnapshot,
     IMEncryptedCredentials,
 )
+from models.model import UploadFile
 from repositories.human_input_v2.contact import Contact, ContactType
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
@@ -168,6 +174,7 @@ class _ReconciliationContext:
             self.channel,
             lambda _channel: adapter,
             lambda _session: _ContactReader(),
+            tenant_id=_TENANT_ID,
             clock=lambda: _NOW,
         )
 
@@ -211,6 +218,107 @@ def _create_active_run(
             now=_NOW,
         )
         assert decision.run is not None
+
+
+@pytest.mark.parametrize("has_initiator", [True, False])
+def test_workspace_sync_stores_avatar_with_initiator_or_owner(
+    reconciliation_context: _ReconciliationContext,
+    mocker: MockerFixture,
+    has_initiator: bool,
+) -> None:
+    save = mocker.patch.object(storage, "save")
+    with reconciliation_context.sessions.begin() as session:
+        owner = Account(name="Owner", email="owner@example.com")
+        other_owner = Account(name="Other owner", email="other-owner@example.com")
+        session.add_all([owner, other_owner])
+        session.add_all(
+            [
+                TenantAccountJoin(tenant_id=str(_TENANT_ID), account_id=owner.id, role=TenantAccountRole.OWNER),
+                TenantAccountJoin(
+                    tenant_id="00000000-0000-0000-0000-000000000999",
+                    account_id=other_owner.id,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+        if not has_initiator:
+            session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).started_by_account_id = None
+        expected_creator = str(_ACCOUNT_ID) if has_initiator else owner.id
+    entry = replace(_successful_directory().entries[0], avatar=Avatar(mime_type="image/png", data=b"first avatar"))
+    service = reconciliation_context.service(_Adapter(Directory((entry,))))
+
+    assert service.reconcile(_RUN_ID).status is IMSyncRunStatus.SUCCEEDED
+
+    with reconciliation_context.sessions() as session:
+        identity = session.scalars(sa.select(HumanInputIMIdentity)).one()
+        assert identity.avatar_file_id is not None
+        first_avatar_id = identity.avatar_file_id
+        uploaded = session.get_one(UploadFile, first_avatar_id)
+        assert uploaded.tenant_id == str(_TENANT_ID)
+        assert uploaded.created_by == expected_creator
+        assert uploaded.created_by_role is CreatorUserRole.ACCOUNT
+        assert uploaded.mime_type == "image/png"
+        assert uploaded.size == len(b"first avatar")
+        assert uploaded.used is True
+        assert uploaded.used_by == expected_creator
+        save.assert_called_once_with(uploaded.key, b"first avatar")
+
+    assert service.reconcile(_RUN_ID).status is IMSyncRunStatus.SUCCEEDED
+    assert save.call_count == 1
+
+    _create_active_run(reconciliation_context.sessions, reconciliation_context.channel, _SECOND_RUN_ID)
+    replacement = replace(entry, avatar=Avatar(mime_type="image/jpeg", data=b"new avatar"))
+    assert (
+        reconciliation_context.service(_Adapter(Directory((replacement,)))).reconcile(_SECOND_RUN_ID).status
+        is IMSyncRunStatus.SUCCEEDED
+    )
+    with reconciliation_context.sessions() as session:
+        identity = session.scalars(sa.select(HumanInputIMIdentity)).one()
+        assert identity.avatar_file_id is not None
+        assert identity.avatar_file_id != first_avatar_id
+        assert session.get_one(UploadFile, identity.avatar_file_id).mime_type == "image/jpeg"
+
+    third_run_id = IMSyncRunId("00000000-0000-0000-0000-000000000403")
+    _create_active_run(reconciliation_context.sessions, reconciliation_context.channel, third_run_id)
+    assert (
+        reconciliation_context.service(_Adapter(_successful_directory())).reconcile(third_run_id).status
+        is IMSyncRunStatus.SUCCEEDED
+    )
+    with reconciliation_context.sessions() as session:
+        assert session.scalars(sa.select(HumanInputIMIdentity)).one().avatar_file_id is None
+        assert session.scalar(sa.select(sa.func.count(UploadFile.id))) == 2
+
+
+def test_missing_workspace_owner_fails_before_storing_avatars(
+    reconciliation_context: _ReconciliationContext,
+    mocker: MockerFixture,
+) -> None:
+    save = mocker.patch.object(storage, "save")
+    with reconciliation_context.sessions.begin() as session:
+        session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).started_by_account_id = None
+    entry = replace(_successful_directory().entries[0], avatar=Avatar(mime_type="image/png", data=b"avatar"))
+
+    run = reconciliation_context.service(_Adapter(Directory((entry,)))).reconcile(_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.FAILED
+    save.assert_not_called()
+    with reconciliation_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
+
+
+def test_avatar_storage_failure_does_not_write_identity_or_file_metadata(
+    reconciliation_context: _ReconciliationContext,
+    mocker: MockerFixture,
+) -> None:
+    mocker.patch.object(storage, "save", side_effect=OSError("Storage unavailable"))
+    entry = replace(_successful_directory().entries[0], avatar=Avatar(mime_type="image/png", data=b"avatar"))
+
+    run = reconciliation_context.service(_Adapter(Directory((entry,)))).reconcile(_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.FAILED
+    with reconciliation_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
+        assert session.scalar(sa.select(sa.func.count(UploadFile.id))) == 0
 
 
 def test_success_atomically_persists_current_state_history_results_and_terminal_run(
@@ -265,11 +373,18 @@ def test_directory_failure_persists_safe_terminal_diagnostic_and_always_closes_a
         assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
 
 
+@pytest.mark.parametrize("with_avatar", [False, True])
 def test_apply_failure_rolls_back_current_mutations_before_persisting_failure(
     reconciliation_context: _ReconciliationContext,
     monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    with_avatar: bool,
 ) -> None:
-    adapter = _Adapter(_successful_directory())
+    mocker.patch.object(storage, "save")
+    entry = _successful_directory().entries[0]
+    if with_avatar:
+        entry = replace(entry, avatar=Avatar(mime_type="image/png", data=b"avatar"))
+    adapter = _Adapter(Directory((entry,)))
 
     def fail_change_mapping(_change: object) -> None:
         raise RuntimeError("change storage unavailable")
@@ -282,6 +397,7 @@ def test_apply_failure_rolls_back_current_mutations_before_persisting_failure(
     with reconciliation_context.sessions() as session:
         assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
         assert session.scalar(sa.select(sa.func.count(HumanInputIMBinding.id))) == 0
+        assert session.scalar(sa.select(sa.func.count(UploadFile.id))) == 0
         assert session.scalar(sa.select(sa.func.count(HumanInputIMReconciliationChange.id))) == 0
         diagnostic = session.scalar(sa.select(HumanInputIMSyncResult))
         assert diagnostic is not None

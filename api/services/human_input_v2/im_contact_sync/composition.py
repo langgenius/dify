@@ -179,6 +179,7 @@ def _reconciliation_factory(
             channel,
             adapter_factory,
             contact_reader_factory,
+            tenant_id=owner_scope.id if isinstance(owner_scope, WorkspaceScope) else None,
         )
 
     return create

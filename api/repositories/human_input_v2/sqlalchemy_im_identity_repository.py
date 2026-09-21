@@ -45,6 +45,7 @@ def _identity_from_record(record: HumanInputIMIdentity) -> IMIdentity:
         last_seen_at=ensure_naive_utc(record.last_seen_at),
         created_at=ensure_naive_utc(record.created_at),
         updated_at=ensure_naive_utc(record.updated_at),
+        avatar_file_id=record.avatar_file_id,
     )
 
 
@@ -73,6 +74,7 @@ def _apply_observation(record: HumanInputIMIdentity, observation: IMIdentityObse
     record.last_seen_sync_run_id = str(observation.sync_run_id)
     record.last_seen_at = observation.observed_at
     record.updated_at = observation.observed_at
+    record.avatar_file_id = observation.avatar_file_id
 
 
 def _lock_current_identity(session: Session, channel_id: IMChannelId, identity_id: IMIdentityId) -> bool:
