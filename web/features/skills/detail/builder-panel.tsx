@@ -371,7 +371,18 @@ export function SkillBuilderPanel({
       }
     : undefined
   const [selectedModel, setSelectedModel] = useState<SkillBuilderModel | undefined>()
-  const activeSelectedModel = selectedModel ?? defaultBuilderModel ?? fallbackModel
+  const activeSelectedModel = [selectedModel, defaultBuilderModel, fallbackModel].find(
+    (candidate) =>
+      candidate &&
+      textGenerationModelList.some(
+        (provider) =>
+          provider.provider === candidate.provider &&
+          provider.status === ModelStatusEnum.active &&
+          provider.models.some(
+            (model) => model.model === candidate.model && model.status === ModelStatusEnum.active,
+          ),
+      ),
+  )
   const canSendBuilderMessage = !!activeSelectedModel?.provider && !!activeSelectedModel?.model
   const suggestions = [
     t(($) => $['skillManagement.detail.builder.exampleIssueTriage']),
