@@ -13,7 +13,7 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.app.entities.workflow_pause_state import PauseStateConfig
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.enums import WorkflowExecutionStatus
@@ -306,7 +306,7 @@ def test_resume_delegates_to_generate(
     workflow_execution_repository, workflow_node_execution_repository = _repositories(
         sqlite_session_factory, app, end_user
     )
-    pause_config = PauseStateLayerConfig(
+    pause_config = PauseStateConfig(
         session_factory=sqlite_session_factory,
         state_owner_user_id="owner",
     )
@@ -408,7 +408,7 @@ def test_generate_appends_pause_layer_and_forwards_state(
             streaming=True,
             graph_engine_layers=("base-layer",),
             graph_runtime_state=graph_runtime_state,
-            pause_state_config=PauseStateLayerConfig(
+            pause_state_config=PauseStateConfig(
                 session_factory=sqlite_session_factory,
                 state_owner_user_id="owner",
             ),
@@ -417,7 +417,8 @@ def test_generate_appends_pause_layer_and_forwards_state(
     assert result == "converted"
     graph_engine_layers = worker_kwargs["kwargs"]["graph_engine_layers"]
     assert graph_engine_layers[0] == "base-layer"
-    assert isinstance(graph_engine_layers[1], PauseStatePersistenceLayer)
+    assert len(graph_engine_layers) == 1
+    assert isinstance(worker_kwargs["kwargs"]["pause_state_config"], PauseStateConfig)
     assert worker_kwargs["kwargs"]["graph_runtime_state"] is graph_runtime_state
     assert worker_kwargs["joined"] is True
     assert worker_kwargs["join_timeout"] == 300
@@ -496,7 +497,7 @@ def test_resume_path_runs_worker_with_runtime_state(
 
     monkeypatch.setattr("core.app.apps.workflow.app_generator.threading.Thread", ImmediateThread)
 
-    pause_config = PauseStateLayerConfig(
+    pause_config = PauseStateConfig(
         session_factory=sqlite_session_factory,
         state_owner_user_id="owner",
     )

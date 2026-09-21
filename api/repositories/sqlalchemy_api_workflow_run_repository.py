@@ -52,6 +52,7 @@ from graphon.entities.pause_reason import (
     PauseReason as GraphonPauseReason,
 )
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -1003,24 +1004,37 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         }
 
     @override
-    def create_workflow_pause(
+    def pause_workflow_run(
         self,
         workflow_run_id: str,
         state_owner_user_id: str,
         state: str,
         pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
+        *,
+        outputs: Mapping[str, Any] | None,
+        total_tokens: int,
+        total_steps: int,
+        exceptions_count: int,
     ) -> WorkflowPauseEntity:
-        """
-        Create a new workflow pause state.
+        """Persist a workflow pause as one atomic transition.
 
-        Creates a pause state for a workflow run, storing the current execution
-        state and marking the workflow as paused. This is used when a workflow
-        needs to be suspended and later resumed.
+        The workflow run row (``PAUSED`` status, outputs, and execution
+        statistics), the pause record, and its reasons are committed in a
+        single transaction, so a run is observably paused only when a readable
+        resumption state exists. The snapshot object is written to storage
+        before its database reference is committed, and the superseded
+        snapshot object is cleaned up on a best-effort basis inside
+        ``_delete_pause_model``.
 
         Args:
             workflow_run_id: Identifier of the workflow run to pause
             state_owner_user_id: User ID who owns the pause state for file storage
             state: Serialized workflow execution state (JSON string)
+            pause_reasons: Reasons why the workflow is pausing
+            outputs: Workflow run outputs to persist with the paused status
+            total_tokens: Accumulated token usage at pause time
+            total_steps: Accumulated node steps at pause time
+            exceptions_count: Accumulated exceptions at pause time
 
         Returns:
             RepositoryWorkflowPauseEntity representing the created pause state
@@ -1037,8 +1051,6 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 raise ValueError(f"WorkflowRun not found: {workflow_run_id}")
 
             # Check if workflow is in RUNNING status
-            # TODO(QuantumGhost): It seems that the persistence of `WorkflowRun.status`
-            # happens before the execution of GraphLayer
             if workflow_run.status not in {WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED}:
                 raise _WorkflowRunError(
                     f"Only WorkflowRun with RUNNING or PAUSED status can be paused, "
@@ -1091,8 +1103,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
                 pause_reason_models.append(pause_reason_model)
 
-            # Update workflow run status
+            # Update workflow run status and the execution snapshot that must
+            # become durable together with the pause records (single owner of
+            # the pause transition).
             workflow_run.status = WorkflowExecutionStatus.PAUSED
+            workflow_run.outputs = (
+                json.dumps(WorkflowRuntimeTypeConverter().to_json_encodable(outputs)) if outputs else None
+            )
+            workflow_run.total_tokens = total_tokens
+            workflow_run.total_steps = total_steps
+            workflow_run.exceptions_count = exceptions_count
 
             # Save everything in a transaction
             session.add(pause_model)

@@ -325,11 +325,15 @@ class TestWorkflowPauseIntegration:
         repository = self._get_workflow_run_repository()
 
         # Act - Create pause state
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         # Assert - Pause state created
@@ -396,11 +400,15 @@ class TestWorkflowPauseIntegration:
         test_state = self._create_test_state()
         repository = self._get_workflow_run_repository()
 
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         assert pause_entity is not None
@@ -427,11 +435,15 @@ class TestWorkflowPauseIntegration:
         repository = self._get_workflow_run_repository()
 
         with pytest.raises(_WorkflowRunError):
-            repository.create_workflow_pause(
+            repository.pause_workflow_run(
                 workflow_run_id=workflow_run.id,
                 state_owner_user_id=self.test_user_id,
                 state=test_state,
                 pause_reasons=[],
+                outputs=None,
+                total_tokens=0,
+                total_steps=0,
+                exceptions_count=0,
             )
 
     @pytest.mark.parametrize("test_case", resume_workflow_success_cases(), ids=lambda tc: tc.name)
@@ -445,11 +457,15 @@ class TestWorkflowPauseIntegration:
             workflow_run.status = WorkflowExecutionStatus.RUNNING
             self.session.commit()
 
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         self.session.refresh(workflow_run)
@@ -477,11 +493,15 @@ class TestWorkflowPauseIntegration:
         test_state = self._create_test_state()
         repository = self._get_workflow_run_repository()
 
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         self.session.refresh(workflow_run)
@@ -501,11 +521,15 @@ class TestWorkflowPauseIntegration:
         test_state = self._create_test_state()
         repository = self._get_workflow_run_repository()
 
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
         pause_model = self.session.get(WorkflowPauseModel, pause_entity.id)
         pause_model.resumed_at = naive_utc_now()
@@ -529,11 +553,15 @@ class TestWorkflowPauseIntegration:
 
         # Act & Assert
         with pytest.raises(ValueError, match="WorkflowRun not found"):
-            repository.create_workflow_pause(
+            repository.pause_workflow_run(
                 workflow_run_id=nonexistent_id,
                 state_owner_user_id=self.test_user_id,
                 state=test_state,
                 pause_reasons=[],
+                outputs=None,
+                total_tokens=0,
+                total_steps=0,
+                exceptions_count=0,
             )
 
     def test_resume_nonexistent_workflow_run(self):
@@ -543,11 +571,15 @@ class TestWorkflowPauseIntegration:
         test_state = self._create_test_state()
         repository = self._get_workflow_run_repository()
 
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         nonexistent_id = str(uuid.uuid4())
@@ -571,11 +603,15 @@ class TestWorkflowPauseIntegration:
         test_state = self._create_test_state()
         repository = self._get_workflow_run_repository()
 
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         # Manually adjust timestamps for testing
@@ -650,11 +686,15 @@ class TestWorkflowPauseIntegration:
             workflow_run = self._create_test_workflow_run()
             test_state = self._create_test_state()
 
-            pause_entity = repository.create_workflow_pause(
+            pause_entity = repository.pause_workflow_run(
                 workflow_run_id=workflow_run.id,
                 state_owner_user_id=self.test_user_id,
                 state=test_state,
                 pause_reasons=[],
+                outputs=None,
+                total_tokens=0,
+                total_steps=0,
+                exceptions_count=0,
             )
             pause_entities.append(pause_entity)
 
@@ -756,11 +796,15 @@ class TestWorkflowPauseIntegration:
         repository = self._get_workflow_run_repository()
 
         # Act - Create pause for tenant 1
-        pause_entity1 = repository.create_workflow_pause(
+        pause_entity1 = repository.pause_workflow_run(
             workflow_run_id=workflow_run1.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         # Try to access pause from tenant 2 using tenant 1's repository
@@ -769,11 +813,15 @@ class TestWorkflowPauseIntegration:
         assert pause_entity2 is None  # No pause for tenant 2 yet
 
         # Create pause for tenant 2
-        pause_entity2 = repository.create_workflow_pause(
+        pause_entity2 = repository.pause_workflow_run(
             workflow_run_id=workflow_run2.id,
             state_owner_user_id=account2.id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         # Assert - Both pauses should exist and be separate
@@ -790,11 +838,15 @@ class TestWorkflowPauseIntegration:
         test_state = self._create_test_state()
         repository = self._get_workflow_run_repository()
 
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         # Verify pause is properly scoped
@@ -811,11 +863,15 @@ class TestWorkflowPauseIntegration:
         repository = self._get_workflow_run_repository()
 
         # Act - Create pause state
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         # Assert - Verify file was uploaded to storage
@@ -841,8 +897,15 @@ class TestWorkflowPauseIntegration:
         test_state = self._create_test_state()
         repository = self._get_workflow_run_repository()
 
-        pause_entity = repository.create_workflow_pause(
-            workflow_run_id=workflow_run.id, state_owner_user_id=self.test_user_id, state=test_state, pause_reasons=[]
+        pause_entity = repository.pause_workflow_run(
+            workflow_run_id=workflow_run.id,
+            state_owner_user_id=self.test_user_id,
+            state=test_state,
+            pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         # Get file info before deletion
@@ -876,11 +939,15 @@ class TestWorkflowPauseIntegration:
         repository = self._get_workflow_run_repository()
 
         # Act
-        pause_entity = repository.create_workflow_pause(
+        pause_entity = repository.pause_workflow_run(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=large_state_json,
             pause_reasons=[],
+            outputs=None,
+            total_tokens=0,
+            total_steps=0,
+            exceptions_count=0,
         )
 
         # Assert
@@ -914,8 +981,15 @@ class TestWorkflowPauseIntegration:
                 self.session.refresh(workflow_run)  # Refresh again after commit
 
             # Pause
-            pause_entity = repository.create_workflow_pause(
-                workflow_run_id=workflow_run.id, state_owner_user_id=self.test_user_id, state=state, pause_reasons=[]
+            pause_entity = repository.pause_workflow_run(
+                workflow_run_id=workflow_run.id,
+                state_owner_user_id=self.test_user_id,
+                state=state,
+                pause_reasons=[],
+                outputs=None,
+                total_tokens=0,
+                total_steps=0,
+                exceptions_count=0,
             )
             assert pause_entity is not None
 

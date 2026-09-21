@@ -511,10 +511,6 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: SimpleNamespace(**kwargs),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.PauseStatePersistenceLayer",
-            lambda **kwargs: "pause-layer",
-        )
-        monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.current_app",
             SimpleNamespace(_get_current_object=lambda: SimpleNamespace(name="flask")),
         )
@@ -571,7 +567,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert thread_data["started"] is True
         assert thread_data["joined"] is True
         assert thread_data["join_timeout"] == 300
-        assert "pause-layer" in thread_data["kwargs"]["graph_engine_layers"]
+        assert thread_data["kwargs"]["pause_state_config"] is pause_state_config
         assert generator._dialogue_count == 3
         assert init_records.call_args.kwargs["session"] is sqlite_session
         get_thread_messages_length.assert_called_once_with(conversation.id, session=sqlite_session)

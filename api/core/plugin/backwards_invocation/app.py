@@ -12,7 +12,7 @@ from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
+from core.app.entities.workflow_pause_state import PauseStateConfig
 from core.db.session_factory import create_session
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from extensions.ext_database import db
@@ -123,7 +123,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 if not workflow:
                     raise ValueError("unexpected app type")
 
-                pause_config = PauseStateLayerConfig(
+                pause_config = PauseStateConfig(
                     session_factory=db.engine,
                     state_owner_user_id=workflow.created_by,
                 )
@@ -188,7 +188,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke workflow app
         """
-        pause_config = PauseStateLayerConfig(
+        pause_config = PauseStateConfig(
             session_factory=db.engine,
             state_owner_user_id=workflow.created_by,
         )

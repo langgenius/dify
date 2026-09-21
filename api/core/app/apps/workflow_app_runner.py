@@ -34,6 +34,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.app.workflow.layers.persistence import WorkflowPersistenceLayer
 from core.credit_usage import CreditUsageAppType
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
@@ -171,6 +172,9 @@ class WorkflowBasedAppRunner:
         self._variable_loader = variable_loader
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
+        # Set by runners whose workflow persistence layer owns the pause
+        # transaction; see `_persist_graph_pause`.
+        self._workflow_persistence_layer: WorkflowPersistenceLayer | None = None
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
@@ -464,6 +468,39 @@ class WorkflowBasedAppRunner:
             logger.warning("Invalid agent strategy payload for node %s", event.node_id, exc_info=True)
             return None
 
+    def _persist_graph_pause(self, workflow_entry: WorkflowEntry, event: GraphRunPausedEvent) -> bool:
+        """Commit the pause transition before it becomes observable.
+
+        Returns True when the paused outcome may be published. On persistence
+        failure the run converges to an explicit failure state, a failed
+        outcome is published instead of the paused one, and False is returned.
+        Runners without a pause-owning persistence layer keep the previous
+        publish-through behavior.
+        """
+        layer = self._workflow_persistence_layer
+        if layer is None:
+            return True
+        try:
+            layer.persist_pause(event)
+            return True
+        except Exception as exc:
+            error_message = f"Failed to persist workflow pause state: {exc}"
+            logger.exception(
+                "Workflow pause persistence failed, converging run to failure, app_id=%s",
+                self._app_id,
+            )
+            try:
+                layer.fail_after_pause_persistence_error(error_message)
+            except Exception:
+                logger.exception("Failed to persist explicit failure state after pause persistence error")
+            self._publish_event(
+                QueueWorkflowFailedEvent(
+                    error=error_message,
+                    exceptions_count=layer.graph_runtime_state.exceptions_count,
+                )
+            )
+            return False
+
     def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent):
         """
         Handle event
@@ -491,6 +528,8 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case GraphRunPausedEvent():
+                if not self._persist_graph_pause(workflow_entry, event):
+                    return
                 runtime_state = workflow_entry.graph_engine.graph_runtime_state
                 paused_nodes = list(
                     dict.fromkeys(reason.node_id for reason in event.reasons if isinstance(reason, HitlRequired))

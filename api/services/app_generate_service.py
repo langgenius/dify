@@ -17,9 +17,9 @@ from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.workflow_pause_state import PauseStateConfig
 from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from core.trigger.constants import is_trigger_node_type
 from enums import DeploymentEdition, QuotaType
@@ -279,7 +279,7 @@ class AppGenerateService:
 
                 # Blocking mode: run synchronously and return JSON instead of SSE
                 # Keep behaviour consistent with WORKFLOW blocking branch.
-                pause_config = PauseStateLayerConfig(
+                pause_config = PauseStateConfig(
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )
@@ -334,7 +334,7 @@ class AppGenerateService:
                         request_id,
                     )
 
-                pause_config = PauseStateLayerConfig(
+                pause_config = PauseStateConfig(
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )

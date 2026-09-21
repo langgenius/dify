@@ -9,18 +9,28 @@ allowing presentation layers to remain read-only observers of repository
 state.
 """
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Union, override
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.app.entities.workflow_pause_state import (
+    PauseStateConfig,
+    WorkflowResumptionContext,
+    _AdvancedChatAppGenerateEntityWrapper,
+    _GenerateEntityUnion,
+    _WorkflowGenerateEntityWrapper,
+)
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
+from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
@@ -32,6 +42,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
+from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
     GraphEngineEvent,
@@ -50,12 +61,15 @@ from graphon.graph_events import (
 )
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
+from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
 )
 from services.workflow.inspector_events import (
     publish_workflow_completed as _inspector_publish_workflow_completed,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -91,18 +105,39 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         trace_manager: TraceQueueManager | None = None,
+        pause_state_config: PauseStateConfig | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ) -> None:
+        """Create a WorkflowPersistenceLayer.
+
+        When both `pause_state_config` and `response_stream_filter` are
+        provided, this layer is the single transaction owner of the pause
+        transition: the event consumer must call `persist_pause` (fail-fast)
+        and the `GraphRunPausedEvent` observed through `on_event` is ignored.
+        Without them the layer keeps the legacy best-effort pause handling.
+        The `response_stream_filter` must be the exact same instance that
+        `WorkflowEntry` uses to stream this run's events; a different
+        instance would persist the wrong (empty) filter state.
+        """
         super().__init__()
         self._application_generate_entity = application_generate_entity
         self._workflow_info = workflow_info
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
         self._trace_manager = trace_manager
+        self._pause_state_config = pause_state_config
+        self._response_stream_filter = response_stream_filter
+        self._owns_pause_transaction = pause_state_config is not None and response_stream_filter is not None
 
         self._workflow_execution: WorkflowExecution | None = None
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
         self._node_snapshots: dict[str, _NodeRuntimeSnapshot] = {}
         self._node_sequence: int = 0
+
+    @property
+    def owns_pause_transaction(self) -> bool:
+        """True when `persist_pause` is the only writer of the pause transition."""
+        return self._owns_pause_transaction
 
     # ------------------------------------------------------------------
     # GraphEngineLayer lifecycle
@@ -128,7 +163,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             case GraphRunAbortedEvent():
                 self._handle_graph_run_aborted(event)
             case GraphRunPausedEvent():
-                self._handle_graph_run_paused(event)
+                # When this layer owns the pause transaction, the event consumer
+                # calls `persist_pause` fail-fast instead; the generic
+                # best-effort layer dispatcher must not commit this transition.
+                if not self._owns_pause_transaction:
+                    self._handle_graph_run_paused(event)
             case NodeRunRetryEvent():
                 self._handle_node_retry(event)
             case NodeRunStartedEvent():
@@ -218,6 +257,82 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         execution.outputs = event.outputs
         self._populate_completion_statistics(execution, update_finished=False)
 
+        self._workflow_execution_repository.save(execution)
+
+    def persist_pause(self, event: GraphRunPausedEvent) -> None:
+        """Persist the pause transition atomically.
+
+        Must be called by the event consumer — not through ``on_event`` — so
+        that a persistence failure propagates instead of being swallowed by
+        the best-effort layer dispatcher. On success, the workflow run is
+        ``PAUSED`` with a committed, readable resumption state; only then may
+        the paused outcome be published. Raises on any persistence failure,
+        leaving the run in its previous state.
+        """
+        if self._pause_state_config is None or self._response_stream_filter is None:
+            raise RuntimeError("pause state config and response stream filter are required")
+
+        execution = self._get_workflow_execution()
+        execution.status = WorkflowExecutionStatus.PAUSED
+        execution.outputs = event.outputs
+        self._populate_completion_statistics(execution, update_finished=False)
+
+        entity_wrapper: _GenerateEntityUnion
+        if isinstance(self._application_generate_entity, WorkflowAppGenerateEntity):
+            entity_wrapper = _WorkflowGenerateEntityWrapper(entity=self._application_generate_entity)
+        else:
+            entity_wrapper = _AdvancedChatAppGenerateEntityWrapper(entity=self._application_generate_entity)
+
+        resumption_context = WorkflowResumptionContext(
+            serialized_graph_runtime_state=self.graph_runtime_state.dumps(),
+            generate_entity=entity_wrapper,
+            serialized_response_stream_filter_state=self._response_stream_filter.dumps(),
+        )
+
+        workflow_run_id = self._get_execution_id()
+        # Dify owns the pause-reason semantics that cross the persistence
+        # boundary. Graphon-native session ids are translated back to form ids
+        # here so repository/model layers only handle Dify-owned pause reasons.
+        pause_reasons = enrich_graph_pause_reasons(
+            reasons=event.reasons,
+            form_repository=HumanInputFormSubmissionRepository(),
+            variable_pool=self.graph_runtime_state.variable_pool,
+        )
+
+        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._pause_state_config.session_maker)
+        repo.pause_workflow_run(
+            workflow_run_id,
+            state_owner_user_id=self._pause_state_config.state_owner_user_id,
+            state=resumption_context.dumps(),
+            pause_reasons=pause_reasons,
+            outputs=execution.outputs,
+            total_tokens=execution.total_tokens,
+            total_steps=execution.total_steps,
+            exceptions_count=execution.exceptions_count,
+        )
+
+        # The authoritative row is committed; mirror the transition to
+        # observational execution repositories (logstore/celery), best-effort.
+        try:
+            self._workflow_execution_repository.save(execution)
+        except Exception:
+            logger.exception(
+                "Failed to mirror paused workflow execution, workflow_run_id=%s",
+                workflow_run_id,
+            )
+
+    def fail_after_pause_persistence_error(self, error_message: str) -> None:
+        """Converge the run to an explicit failure after a failed pause.
+
+        The pause transaction rolled back, so the run row was never marked
+        ``PAUSED``; persist a terminal ``FAILED`` state instead.
+        """
+        execution = self._get_workflow_execution()
+        execution.status = WorkflowExecutionStatus.FAILED
+        execution.error_message = error_message
+        self._populate_completion_statistics(execution)
+
+        self._fail_running_node_executions(error_message=error_message)
         self._workflow_execution_repository.save(execution)
 
     # ------------------------------------------------------------------
