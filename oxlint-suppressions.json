@@ -3353,9 +3353,6 @@
   "web/app/components/workflow/hooks/use-checklist.ts": {
     "typescript/no-empty-object-type": {
       "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 4
     }
   },
   "web/app/components/workflow/hooks/use-dynamic-test-run-options.tsx": {

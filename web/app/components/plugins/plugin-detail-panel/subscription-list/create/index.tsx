@@ -95,6 +95,28 @@ export const CreateSubscriptionButton = ({
     }
   }, [t])
 
+  const methodDescriptionMap = {
+    [SupportedCreationMethods.OAUTH]: t(
+      ($) => $['subscription.addType.options.oauth.description'],
+      {
+        ns: 'pluginTrigger',
+      },
+    ),
+    [SupportedCreationMethods.APIKEY]: t(
+      ($) => $['subscription.addType.options.apikey.description'],
+      {
+        ns: 'pluginTrigger',
+      },
+    ),
+    [SupportedCreationMethods.MANUAL]: t(
+      ($) => $['subscription.addType.options.manual.description'],
+      {
+        ns: 'pluginTrigger',
+      },
+    ),
+    [DEFAULT_METHOD]: '',
+  }
+
   const onClickClientSettings = useCallback(
     (e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
       e.stopPropagation()
@@ -336,13 +358,7 @@ export const CreateSubscriptionButton = ({
               <TooltipContent>
                 {subscriptionCount >= MAX_COUNT
                   ? t(($) => $['subscription.maxCount'], { ns: 'pluginTrigger', num: MAX_COUNT })
-                  : t(
-                      ($) =>
-                        $[
-                          `subscription.addType.options.${methodType!.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`
-                        ],
-                      { ns: 'pluginTrigger' },
-                    )}
+                  : methodDescriptionMap[methodType!]}
               </TooltipContent>
             </Tooltip>
           )}
