@@ -1,7 +1,7 @@
 import type { DefaultModelResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SessionModel } from '../types'
 import type { consoleClient } from '@/service/console'
-import { act, screen } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -136,7 +136,7 @@ describe('DifyBuilderModelSelector', () => {
     await user.click(screen.getByRole('button', { name: 'gpt-4.1' }))
 
     expect(
-      screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: /gpt-4\.1/ }),
     ).toHaveTextContent('gpt-4.1')
   })
 
