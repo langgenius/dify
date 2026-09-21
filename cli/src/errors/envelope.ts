@@ -3,6 +3,7 @@ import type { IOStreams } from '@/sys/io/streams'
 import { redactBearer } from '@/errors/sanitize'
 import { BaseError } from './base'
 import { ErrorCode, ExitCode, exitFor } from './codes'
+import { errorMessage } from './message'
 
 const EPIPE = 'EPIPE'
 
@@ -16,7 +17,7 @@ function envelopeFor(err: unknown): ErrorEnvelope {
   return {
     error: {
       code: ErrorCode.Unknown,
-      message: err instanceof Error ? err.message : String(err),
+      message: errorMessage(err),
     },
   }
 }

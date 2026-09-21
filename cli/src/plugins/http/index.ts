@@ -1,7 +1,7 @@
 import type { ServerErrorBody } from '@/errors/base'
 import type { ErrorCodeValue } from '@/errors/codes'
 import type { CatalogService } from '@/plugins/catalog'
-import { BaseError, HttpClientError } from '@/errors/base'
+import { BaseError, HttpClientError, LOGIN_HINT, unknownError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
 import { definePlugin } from '@/kernel/plugin'
@@ -38,9 +38,7 @@ const HttpStatus = {
   PreconditionFailed: 412,
 } as const
 
-const RETRY_AFTER_HEADER = 'retry-after'
 const CATALOG_STALE_CODE = 'catalog_stale'
-const LOGIN_HINT = 'run difyctl login'
 const CATALOG_UNAVAILABLE_PREFIX = 'failed to fetch the catalog: '
 const CATALOG_UNAVAILABLE_HINT = 'check the server URL or run difyctl cache refresh'
 
@@ -52,34 +50,16 @@ function catalogFailure(cause: unknown): string {
   return errorMessage(cause)
 }
 
-type StatusMapping = Readonly<{ code: ErrorCodeValue; hint: (res: Response) => string | undefined }>
-
-// Retry-After is either a whole number of seconds or an HTTP-date; only the first
-// form can be turned into a wait, so anything else yields no hint at all.
-function retryAfterSeconds(res: Response): number | undefined {
-  const raw = res.headers.get(RETRY_AFTER_HEADER)
-  if (raw === null) return undefined
-  const seconds = Number(raw.trim())
-  return Number.isInteger(seconds) ? seconds : undefined
-}
+type StatusMapping = Readonly<{ code: ErrorCodeValue; hint?: string }>
 
 const STATUS_MAPPINGS: Readonly<Record<number, StatusMapping>> = {
-  [HttpStatus.Unauthorized]: { code: ErrorCode.AuthExpired, hint: () => LOGIN_HINT },
-  [HttpStatus.Forbidden]: { code: ErrorCode.AccessDenied, hint: () => LOGIN_HINT },
-  [HttpStatus.TooManyRequests]: {
-    code: ErrorCode.RateLimited,
-    hint: (res) => {
-      const seconds = retryAfterSeconds(res)
-      return seconds === undefined ? undefined : `retry after ${seconds} seconds`
-    },
-  },
+  [HttpStatus.Unauthorized]: { code: ErrorCode.AuthExpired, hint: LOGIN_HINT },
+  [HttpStatus.Forbidden]: { code: ErrorCode.AccessDenied, hint: LOGIN_HINT },
+  [HttpStatus.TooManyRequests]: { code: ErrorCode.RateLimited },
 }
 
-function classifyStatus(res: Response): { code: ErrorCodeValue; hint?: string } {
-  const mapping = STATUS_MAPPINGS[res.status]
-  return mapping === undefined
-    ? { code: ErrorCode.ServerError }
-    : { code: mapping.code, hint: mapping.hint(res) }
+function classifyStatus(res: Response): StatusMapping {
+  return STATUS_MAPPINGS[res.status] ?? { code: ErrorCode.ServerError }
 }
 
 function parseServerErrorBody(raw: string): ServerErrorBody | undefined {
@@ -229,7 +209,7 @@ export const http = definePlugin({
       try {
         const res = await send({ method: 'GET', path: CATALOG_PATH, auth: false })
         const bytes = new Uint8Array(await res.arrayBuffer())
-        if (bytes.length === 0) throw new Error('catalog response was empty')
+        if (bytes.length === 0) throw unknownError('catalog response was empty')
         return bytes
       } catch (cause) {
         throw new BaseError({

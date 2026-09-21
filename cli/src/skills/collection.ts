@@ -1,5 +1,5 @@
 import type { SkillFile, SkillSource } from './source'
-import { BaseError } from '@/errors/base'
+import { BaseError, unknownError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { SKILL_SOURCES } from './collection.generated'
 import { parseFrontmatter } from './frontmatter'
@@ -17,7 +17,7 @@ function toSkill(source: SkillSource): Skill {
   const skillFile = source.files.find((file) => file.path === SKILL_FILE)
   const meta = parseFrontmatter(skillFile?.text ?? '')
   if (typeof meta.description !== 'string')
-    throw new Error(`skill ${source.name}: frontmatter description missing`)
+    throw unknownError(`skill ${source.name}: frontmatter description missing`)
   return { name: source.name, description: meta.description, files: source.files }
 }
 

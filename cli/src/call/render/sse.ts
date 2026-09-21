@@ -32,9 +32,8 @@ export const sseRenderer: Renderer = async (res, io, options) => {
   if (res.body !== null) {
     try {
       for await (const ev of normalizeDifyStream(parseSSE(res.body))) {
-        const parsed = parseEventData(ev.data)
-        foldEvent(result, ev.name, parsed)
-        if (stream && matchesOnly(ev.name, options.only)) await io.line(parsed)
+        foldEvent(result, ev.name, parseEventData(ev.data))
+        if (stream && matchesOnly(ev.name, options.only)) await io.raw(`${dec.decode(ev.data)}\n`)
       }
     } catch (err) {
       if (isBrokenPipe(err)) throw err

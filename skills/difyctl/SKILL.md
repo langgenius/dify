@@ -33,7 +33,7 @@ This file covers every operation through `ops` and `call`. Scenario skills add g
 
 ## Errors and exit codes
 
-Errors are one JSON line on stderr: `{"error":{"code","message","hint"?,"details"?,"schema"?}}`. Exit 2 is bad input (the schema is included), 4 is not logged in or forbidden, 6 means the catalog could not be loaded or the op id is unknown (run `difyctl cache refresh` or upgrade difyctl), 7 is rate limited (wait the seconds in `hint`).
+Errors are one JSON line on stderr: `{"error":{"code","message","hint"?,"details"?,"schema"?}}`. Exit 2 is bad input (the schema is included), 4 is not logged in or forbidden, 6 means the catalog could not be loaded or the op id is unknown (run `difyctl cache refresh` or upgrade difyctl), 7 is rate limited.
 
 ## Login and environment
 

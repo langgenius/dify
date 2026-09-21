@@ -1,6 +1,6 @@
 import type { Login } from '@/plugins/session'
-import { BaseError } from '@/errors/base'
-import { ErrorCode } from '@/errors/codes'
+import type { StorageMode } from '@/store/store'
+import { notLoggedIn } from '@/errors/base'
 import { definePlugin } from '@/kernel/plugin'
 import { env } from '@/plugins/env'
 import { session } from '@/plugins/session'
@@ -11,7 +11,7 @@ export type TokenService = {
   readonly get: () => Promise<string>
   readonly write: (login: Login, bearer: string) => Promise<void>
   readonly remove: (login: Login) => Promise<void>
-  readonly detect: () => Promise<'keychain' | 'file'>
+  readonly detect: () => Promise<StorageMode>
 }
 
 export const token = definePlugin({
@@ -33,13 +33,7 @@ export const token = definePlugin({
       get: async () => {
         if (envToken !== undefined) return envToken
         if (cached === undefined) cached = await readFromStore()
-        if (cached === '') {
-          throw new BaseError({
-            code: ErrorCode.NotLoggedIn,
-            message: 'not logged in',
-            hint: 'run difyctl login',
-          })
-        }
+        if (cached === '') throw notLoggedIn()
         return cached
       },
       write: async (login: Login, bearer: string) => {

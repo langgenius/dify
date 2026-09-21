@@ -1,4 +1,5 @@
 import type { ErrorCodeValue, ExitCodeValue } from './codes'
+import { BINARY } from '@/version/info'
 import { ErrorCode, exitFor } from './codes'
 
 export type ServerErrorDetail = {
@@ -113,6 +114,12 @@ export function isHttpClientError(value: unknown): value is HttpClientError {
 
 export function unknownError(message: string, cause?: unknown): BaseError {
   return new BaseError({ code: ErrorCode.Unknown, message, cause })
+}
+
+export const LOGIN_HINT = `run ${BINARY} login`
+
+export function notLoggedIn(): BaseError {
+  return new BaseError({ code: ErrorCode.NotLoggedIn, message: 'not logged in', hint: LOGIN_HINT })
 }
 
 type HttpClientErrorOptions = BaseErrorOptions & {

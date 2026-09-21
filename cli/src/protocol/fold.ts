@@ -8,7 +8,7 @@ export type Hint = {
 }
 
 export type FoldResult = {
-  status: 'incomplete' | 'ended' | 'suspended' | 'failed'
+  status: FoldStatus
   text: { answer: string; by_source?: Record<string, string> }
   outputs?: Record<string, unknown>
   total_tokens?: number
@@ -27,7 +27,7 @@ export const FOLD_STATUS = {
   Failed: 'failed',
 } as const
 
-type FoldStatus = FoldResult['status']
+type FoldStatus = (typeof FOLD_STATUS)[keyof typeof FOLD_STATUS]
 
 // Highest precedence first: a handler only ever raises status toward this end.
 const STATUS_PRECEDENCE: readonly FoldStatus[] = [

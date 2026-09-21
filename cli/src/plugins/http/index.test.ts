@@ -95,15 +95,12 @@ describe('http plugin', () => {
     expect((await ctx.get(catalog)).fingerprint).not.toBe(before)
   })
 
-  it('maps 401 to exit 4 and 429 to exit 7 with a retry hint', async () => {
+  it('maps 401 to auth_expired and 429 to rate_limited', async () => {
     const h = await new Context().get(http)
     mock.setScenario('auth-expired')
     await expect(h.request(account)).rejects.toMatchObject({ code: 'auth_expired' })
     mock.setScenario('rate-limited')
-    await expect(h.request(account)).rejects.toMatchObject({
-      code: 'rate_limited',
-      hint: expect.stringContaining('1'),
-    })
+    await expect(h.request(account)).rejects.toMatchObject({ code: 'rate_limited' })
   })
 
   it('surfaces 5xx as server_error with the server body and details', async () => {

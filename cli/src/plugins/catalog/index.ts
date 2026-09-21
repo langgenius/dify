@@ -2,7 +2,7 @@ import type { CatalogDoc, CatalogOp } from './types'
 import { createHash } from 'node:crypto'
 import { promises as fsp } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { BaseError } from '@/errors/base'
+import { BaseError, notLoggedIn } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
 import { definePlugin } from '@/kernel/plugin'
@@ -42,14 +42,6 @@ export function fingerprintOf(bytes: Uint8Array): string {
 function cachePath(cacheDir: string, server: string): string {
   const key = bareHost(server).split(':').join(HOST_SEPARATOR_REPLACEMENT)
   return join(cacheDir, CATALOG_DIR_NAME, `${key}.json`)
-}
-
-function notLoggedIn(): BaseError {
-  return new BaseError({
-    code: ErrorCode.NotLoggedIn,
-    message: 'not logged in',
-    hint: 'run difyctl login',
-  })
 }
 
 function isMissingFile(err: unknown): boolean {

@@ -1,6 +1,7 @@
+import type { StorageMode } from '@/store/store'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { BaseError } from '@/errors/base'
+import { BaseError, notLoggedIn } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { definePlugin } from '@/kernel/plugin'
 import { env } from '@/plugins/env'
@@ -29,7 +30,7 @@ export type Login = Readonly<{
   email: string
   account: Readonly<{ id: string; email: string; name: string }> | null
   workspaceId: string | null
-  tokenStorage: 'keychain' | 'file'
+  tokenStorage: StorageMode
   insecure: boolean
 }>
 
@@ -105,13 +106,7 @@ export const session = definePlugin({
       current,
       require: async () => {
         const login = await current()
-        if (login === null) {
-          throw new BaseError({
-            code: ErrorCode.NotLoggedIn,
-            message: 'not logged in',
-            hint: 'run difyctl login',
-          })
-        }
+        if (login === null) throw notLoggedIn()
         return login
       },
       save: async (login: Login) => {
