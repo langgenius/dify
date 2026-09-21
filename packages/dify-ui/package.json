@@ -21,6 +21,10 @@
       "types": "./src/avatar/index.tsx",
       "import": "./src/avatar/index.tsx"
     },
+    "./breadcrumb": {
+      "types": "./src/breadcrumb/index.tsx",
+      "import": "./src/breadcrumb/index.tsx"
+    },
     "./button": {
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
@@ -164,6 +168,10 @@
     "./spinner": {
       "types": "./src/spinner/index.tsx",
       "import": "./src/spinner/index.tsx"
+    },
+    "./separator": {
+      "types": "./src/separator/index.tsx",
+      "import": "./src/separator/index.tsx"
     }
   },
   "scripts": {

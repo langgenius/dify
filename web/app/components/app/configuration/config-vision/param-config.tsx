@@ -3,16 +3,15 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiSettings2Line } from '@remixicon/react'
-import { memo, useState } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ParamConfigContent from './param-config-content'
 
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         render={
           <Button variant="ghost" size="small">

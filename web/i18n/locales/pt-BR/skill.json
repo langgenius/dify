@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "Este pacote não possui SKILL.md. Adicione o arquivo e importe-o novamente.",
   "skillManagement.errors.nameConflict": "Uma habilidade chamada \"{{name}}\" já existe. Renomeie-o para SKILL.md e importe novamente.",
   "skillManagement.errors.workspaceLimit": "Seu espaço de trabalho atingiu o limite de 500 habilidades. Exclua uma habilidade para adicionar uma nova.",
-  "skillManagement.exportDialog.description": "Isso exportará o rascunho salvo atual da sua habilidade. Se houver alterações não salvas no editor, salve-as antes de exportar.",
-  "skillManagement.exportDialog.title": "Exportar o rascunho salvo atual",
   "skillManagement.import": "Importar",
   "skillManagement.importFailed": "Falha ao importar habilidade.",
   "skillManagement.importSuccess": "Skill importado.",

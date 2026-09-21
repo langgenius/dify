@@ -1,7 +1,7 @@
 """Sandbox ownership and network boundaries exercised with real short-lived SQLite sessions."""
 
 import json
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -357,12 +357,22 @@ def test_sandbox_rejects_wrong_owner_or_inactive_binding(
     assert sandbox.file_requests.calls == []
 
 
-@pytest.mark.parametrize("operation", ["get_info", "list_files", "read_file", "download_file"])
-def test_sandbox_rejects_foreign_tenant_before_network(sandbox: Sandbox, operation: str) -> None:
+@pytest.mark.parametrize(
+    ("operation", "needs_path"),
+    [
+        (AgentAppSandboxService.get_info, False),
+        (AgentAppSandboxService.list_files, True),
+        (AgentAppSandboxService.read_file, True),
+        (AgentAppSandboxService.download_file, True),
+    ],
+)
+def test_sandbox_rejects_foreign_tenant_before_network(
+    sandbox: Sandbox, operation: Callable[..., object], needs_path: bool
+) -> None:
     context = CONTEXT._replace(active_workspace_id="foreign")
-    args = () if operation == "get_info" else (".",)
+    args = (".",) if needs_path else ()
     with pytest.raises((AgentAppNotFoundError, WorkflowSandboxAppNotFoundError)):
-        getattr(sandbox.service, operation)(context, sandbox.caller, *args)
+        operation(sandbox.service, context, sandbox.caller, *args)
     assert sandbox.client.calls == sandbox.client.downloads == []
 
 

@@ -3,13 +3,13 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -44,9 +44,9 @@ export const StarredAppCard = memo(
 
       const timeText = formatTime({
         date: timestamp * 1000,
-        dateFormat: `${t(($) => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
+        dateFormat: `${t(($) => $['dateFormats.compact'], { ns: 'time' })}`,
       })
-      return `${t(($) => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
+      return `${t(($) => $.editedAt, { ns: 'common' })} ${timeText}`
     }, [app.created_at, app.updated_at, t])
     const href = getRedirectionPath(app, {
       currentUserId,

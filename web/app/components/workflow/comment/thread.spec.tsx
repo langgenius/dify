@@ -57,10 +57,6 @@ vi.mock('@/app/components/workflow/collaboration/utils/user-color', () => ({
   getUserColor: () => '#22c55e',
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
-}))
-
 vi.mock('@/app/components/base/inline-delete-confirm', () => ({
   default: ({ onConfirm }: { onConfirm: () => void }) => (
     <button type="button" data-testid="confirm-delete-reply" onClick={onConfirm}>

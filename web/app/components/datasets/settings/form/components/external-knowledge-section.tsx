@@ -1,7 +1,7 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import RetrievalSettings from '../../../external-knowledge-base/create/RetrievalSettings'
 
@@ -33,7 +33,7 @@ const ExternalKnowledgeSection = ({
 
   return (
     <>
-      <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+      <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
 
       {/* Retrieval Settings */}
       <div className={rowClass}>
@@ -52,7 +52,7 @@ const ExternalKnowledgeSection = ({
         />
       </div>
 
-      <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+      <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
 
       {/* External Knowledge API */}
       <div className={rowClass}>

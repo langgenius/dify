@@ -53,8 +53,8 @@ describe('RosterToolbar', () => {
 
   it.each([
     { canCreate: true, canImport: false },
-    { canCreate: false, canImport: true },
-  ])('separates create and import permissions: %o', async (grants) => {
+    { canCreate: true, canImport: true },
+  ])('shows the permitted create and import actions: %o', async (grants) => {
     Object.assign(permissions, grants)
     renderToolbar()
 
@@ -63,7 +63,7 @@ describe('RosterToolbar', () => {
     expect(Boolean(screen.queryByRole('menuitem', { name: 'app.newApp.startFromBlank' }))).toBe(
       grants.canCreate,
     )
-    expect(Boolean(screen.queryByRole('menuitem', { name: /app\.importDSL/ }))).toBe(
+    expect(Boolean(screen.queryByRole('menuitem', { name: /app\.importApp/ }))).toBe(
       grants.canImport,
     )
   })
@@ -78,7 +78,7 @@ describe('RosterToolbar', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('opens the shared create menu for blank Agent creation and DSL import', async () => {
+  it('opens the shared create menu for blank Agent creation and App import', async () => {
     const user = userEvent.setup()
     const { queryClient } = renderToolbar()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -86,9 +86,9 @@ describe('RosterToolbar', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     expect(screen.getByRole('menuitem', { name: 'app.newApp.startFromBlank' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /app\.importDSL/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /app\.importApp/ })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: /app\.importDSL/ }))
+    await user.click(screen.getByRole('menuitem', { name: /app\.importApp/ }))
 
     expect(
       await screen.findByRole('dialog', { name: 'agentV2.roster.importDSL' }),

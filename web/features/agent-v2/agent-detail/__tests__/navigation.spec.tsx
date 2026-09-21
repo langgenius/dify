@@ -53,10 +53,6 @@ vi.mock('@/app/components/app-sidebar/nav-link', () => ({
   default: ({ href, name }: { href: string; name: string }) => <a href={href}>{name}</a>,
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
-}))
-
 vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
@@ -164,19 +160,20 @@ describe('AgentDetailSection', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'agentV2.roster.editInfo',
       'common.operation.duplicate',
-      'app.export',
+      'app.exportApp',
       'common.operation.delete',
     ])
   })
 
-  it('exports the Agent App DSL from the detail action menu', async () => {
+  it('exports the Agent App package from the detail action menu', async () => {
     const user = userEvent.setup()
     renderAgentDetailSection()
 
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
-    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
     expect(mocks.exportAppDsl).toHaveBeenCalledWith({
+      format: 'ifpkg',
       appId: 'app-1',
       appName: 'Research Agent',
     })

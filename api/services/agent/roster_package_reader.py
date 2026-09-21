@@ -9,7 +9,7 @@ import stat
 import tempfile
 import zipfile
 import zlib
-from collections.abc import Hashable
+from collections.abc import Hashable, Sequence
 from typing import Any, BinaryIO, cast, override
 
 import yaml
@@ -21,8 +21,11 @@ from services.agent.dsl_entities import AgentAppDsl
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES,
+    PackageIcon,
+    PreparedPackageArchive,
     PreparedRosterAgentPackage,
     RosterAgentPackageApp,
+    RosterAgentPackageFile,
     RosterAgentPackageManifest,
     RosterAgentPackageMember,
     RosterAgentPackageSkill,
@@ -61,7 +64,7 @@ class RosterAgentPackageReader:
             spool.close()
             raise
 
-    def read_member_bytes(self, package: PreparedRosterAgentPackage, path: str, *, max_bytes: int) -> bytes:
+    def read_member_bytes(self, package: PreparedPackageArchive, path: str, *, max_bytes: int) -> bytes:
         """Read one already-validated member while rechecking its size and digest."""
 
         member = package.members.get(path)
@@ -89,24 +92,7 @@ class RosterAgentPackageReader:
     ) -> tuple[RosterAgentPackageManifest, dict[str, AgentAppDsl], dict[str, RosterAgentPackageMember]]:
         try:
             with zipfile.ZipFile(archive_file) as archive:
-                infos = archive.infolist()
-                if not infos:
-                    raise InvalidRosterAgentPackageError("Roster Agent package is empty")
-                if len(infos) > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
-                    raise InvalidRosterAgentPackageError("Roster Agent package has too many members")
-
-                info_by_path: dict[str, zipfile.ZipInfo] = {}
-                casefold_paths: set[str] = set()
-                total_uncompressed = 0
-                for info in infos:
-                    path = self._validate_member_info(info)
-                    if path in info_by_path or path.casefold() in casefold_paths:
-                        raise InvalidRosterAgentPackageError("Roster Agent package contains duplicate member paths")
-                    info_by_path[path] = info
-                    casefold_paths.add(path.casefold())
-                    total_uncompressed += info.file_size
-                if total_uncompressed > dify_config.AGENT_PACKAGE_MAX_BYTES:
-                    raise RosterAgentPackageTooLargeError("Roster Agent package uncompressed size exceeds the limit")
+                info_by_path = self._index_archive(archive)
 
                 manifest_data, manifest_size = self._read_yaml_document(archive, info_by_path, "manifest.yaml")
                 try:
@@ -146,6 +132,7 @@ class RosterAgentPackageReader:
                     *(item.path for item in manifest.apps),
                     *(item.path for item in manifest.skills),
                     *(item.path for item in manifest.files),
+                    *(item.path for item in manifest.icons),
                 }
                 actual_paths = set(info_by_path)
                 if "signature.sig" in actual_paths:
@@ -155,7 +142,6 @@ class RosterAgentPackageReader:
                 if actual_paths != expected_paths:
                     raise InvalidRosterAgentPackageError("Roster Agent package members do not match the manifest")
 
-                nested_uncompressed_size = 0
                 signature_info = info_by_path.get("signature.sig")
                 if signature_info is not None:
                     _, _, signature_size = self._read_member(
@@ -169,66 +155,112 @@ class RosterAgentPackageReader:
                         expected_size=signature_info.file_size,
                     )
                     streamed_size += signature_size
-                for resource in [*manifest.skills, *manifest.files]:
-                    info = info_by_path[resource.path]
-                    payload = b""
-                    remaining_package_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - streamed_size
-                    if isinstance(resource, RosterAgentPackageSkill):
-                        max_skill_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
-                        if info.file_size > max_skill_bytes:
-                            raise RosterAgentPackageTooLargeError(
-                                f"Roster Agent package Skill {resource.name!r} exceeds the size limit"
-                            )
-                        try:
-                            payload, digest, actual_size = self._read_member(
-                                archive,
-                                info,
-                                collect=True,
-                                max_bytes=min(max_skill_bytes, remaining_package_bytes),
-                                expected_size=resource.size,
-                            )
-                        except (InvalidRosterAgentPackageError, zipfile.BadZipFile, EOFError, zlib.error):
-                            invalid_skills[resource.id] = "archive_integrity_failed"
-                            streamed_size += info.file_size
-                            continue
-                    else:
-                        _, digest, actual_size = self._read_member(
-                            archive,
-                            info,
-                            collect=False,
-                            max_bytes=remaining_package_bytes,
-                            expected_size=resource.size,
-                        )
-                    streamed_size += actual_size
-                    if digest != resource.sha256:
-                        if isinstance(resource, RosterAgentPackageSkill):
-                            invalid_skills[resource.id] = "checksum_mismatch"
-                            continue
-                        raise InvalidRosterAgentPackageError(
-                            f"Roster Agent package resource {resource.path!r} failed integrity checks",
-                        )
-                    members[resource.path] = RosterAgentPackageMember(
-                        size=resource.size,
-                        sha256=digest,
-                    )
-                    if isinstance(resource, RosterAgentPackageSkill):
-                        try:
-                            inspection = self._skill_packages.inspect(content=payload, filename=resource.path)
-                        except SkillPackageError as exc:
-                            invalid_skills[resource.id] = exc.code
-                            continue
-                        nested_uncompressed_size += inspection.uncompressed_size
-                        if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
-                            raise RosterAgentPackageTooLargeError(
-                                "Roster Agent package nested Skill contents exceed the size limit"
-                            )
-                        if inspection.name != resource.name:
-                            invalid_skills[resource.id] = "skill_name_mismatch"
+                self._validate_resource_members(
+                    archive,
+                    info_by_path,
+                    [*manifest.skills, *manifest.files, *manifest.icons],
+                    members=members,
+                    invalid_skills=invalid_skills,
+                    streamed_size=streamed_size,
+                )
                 return manifest, apps, members
         except (InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError):
             raise
         except (OSError, zipfile.BadZipFile, EOFError, RuntimeError, ValueError, zlib.error) as exc:
             raise InvalidRosterAgentPackageError("Roster Agent package is not a valid ZIP") from exc
+
+    def _validate_resource_members(
+        self,
+        archive: zipfile.ZipFile,
+        info_by_path: dict[str, zipfile.ZipInfo],
+        resources: Sequence[RosterAgentPackageSkill | RosterAgentPackageFile | PackageIcon],
+        *,
+        members: dict[str, RosterAgentPackageMember],
+        invalid_skills: dict[str, str],
+        streamed_size: int,
+    ) -> None:
+        nested_uncompressed_size = 0
+        for resource in resources:
+            info = info_by_path[resource.path]
+            if (
+                isinstance(resource, PackageIcon)
+                and resource.size > dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+            ):
+                raise RosterAgentPackageTooLargeError("Packaged icon exceeds the image size limit")
+            payload = b""
+            remaining_package_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - streamed_size
+            if isinstance(resource, RosterAgentPackageSkill):
+                max_skill_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
+                if info.file_size > max_skill_bytes:
+                    raise RosterAgentPackageTooLargeError(
+                        f"Roster Agent package Skill {resource.name!r} exceeds the size limit"
+                    )
+                try:
+                    payload, digest, actual_size = self._read_member(
+                        archive,
+                        info,
+                        collect=True,
+                        max_bytes=min(max_skill_bytes, remaining_package_bytes),
+                        expected_size=resource.size,
+                    )
+                except (InvalidRosterAgentPackageError, zipfile.BadZipFile, EOFError, zlib.error):
+                    invalid_skills[resource.id] = "archive_integrity_failed"
+                    streamed_size += info.file_size
+                    continue
+            else:
+                _, digest, actual_size = self._read_member(
+                    archive,
+                    info,
+                    collect=False,
+                    max_bytes=remaining_package_bytes,
+                    expected_size=resource.size,
+                )
+            streamed_size += actual_size
+            if digest != resource.sha256:
+                if isinstance(resource, RosterAgentPackageSkill):
+                    invalid_skills[resource.id] = "checksum_mismatch"
+                    continue
+                raise InvalidRosterAgentPackageError(
+                    f"Roster Agent package resource {resource.path!r} failed integrity checks",
+                )
+            members[resource.path] = RosterAgentPackageMember(
+                size=resource.size,
+                sha256=digest,
+            )
+            if isinstance(resource, RosterAgentPackageSkill):
+                try:
+                    inspection = self._skill_packages.inspect(content=payload, filename=resource.path)
+                except SkillPackageError as exc:
+                    invalid_skills[resource.id] = exc.code
+                    continue
+                nested_uncompressed_size += inspection.uncompressed_size
+                if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
+                    raise RosterAgentPackageTooLargeError(
+                        "Roster Agent package nested Skill contents exceed the size limit"
+                    )
+                if inspection.name != resource.name:
+                    invalid_skills[resource.id] = "skill_name_mismatch"
+
+    def _index_archive(self, archive: zipfile.ZipFile) -> dict[str, zipfile.ZipInfo]:
+        infos = archive.infolist()
+        if not infos:
+            raise InvalidRosterAgentPackageError("Roster Agent package is empty")
+        if len(infos) > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
+            raise InvalidRosterAgentPackageError("Roster Agent package has too many members")
+
+        info_by_path: dict[str, zipfile.ZipInfo] = {}
+        casefold_paths: set[str] = set()
+        total_uncompressed = 0
+        for info in infos:
+            path = self._validate_member_info(info)
+            if path in info_by_path or path.casefold() in casefold_paths:
+                raise InvalidRosterAgentPackageError("Roster Agent package contains duplicate member paths")
+            info_by_path[path] = info
+            casefold_paths.add(path.casefold())
+            total_uncompressed += info.file_size
+        if total_uncompressed > dify_config.AGENT_PACKAGE_MAX_BYTES:
+            raise RosterAgentPackageTooLargeError("Roster Agent package uncompressed size exceeds the limit")
+        return info_by_path
 
     @staticmethod
     def _copy_bounded(source: BinaryIO, target: BinaryIO) -> None:
@@ -297,17 +329,20 @@ class RosterAgentPackageReader:
         path: str,
         *,
         resource: RosterAgentPackageApp | None = None,
+        max_bytes: int | None = None,
     ) -> tuple[Any, int]:
+        if max_bytes is None:
+            max_bytes = dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES
         info = infos.get(path)
         if info is None:
             raise InvalidRosterAgentPackageError(f"Roster Agent package is missing {path}")
-        if info.file_size > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
+        if info.file_size > max_bytes:
             raise RosterAgentPackageTooLargeError(f"Roster Agent package {path} exceeds the size limit")
         payload, digest, size = self._read_member(
             archive,
             info,
             collect=True,
-            max_bytes=dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES,
+            max_bytes=max_bytes,
             expected_size=resource.size if resource is not None else info.file_size,
         )
         if resource is not None and digest != resource.sha256:

@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "أحداث المشغل",
   "upgrade.addChunks.description": "لقد وصلت إلى الحد الأقصى لإضافة الأجزاء لهذا الخطة.",
   "upgrade.addChunks.title": "قم بالترقية لمواصلة إضافة المقاطع",
+  "upgrade.agentRestore.description": "استعادة إصدارات تطبيق الوكيل غير متاحة في خطتك الحالية.",
+  "upgrade.agentRestore.title": "قم بالترقية لاستعادة إصدارات تطبيق الوكيل",
   "upgrade.uploadMultipleFiles.description": "ارفع عدة مستندات دفعة واحدة وزِد الحد الأقصى لحجم كل ملف إلى 50 MB.",
   "upgrade.uploadMultipleFiles.title": "قم بالترقية لإتاحة رفع الملفات دفعة واحدة والملفات الأكبر حجمًا",
   "upgrade.uploadMultiplePages.description": "لقد وصلت إلى حد التحميل — يمكن اختيار ورفع مستند واحد فقط في كل مرة على الخطة الحالية الخاصة بك.",

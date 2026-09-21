@@ -2,12 +2,12 @@ import type { ChatVariableTranslator, ToastPayload } from './variable-modal.help
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import { useVariableModalState } from './use-variable-modal-state'
 import {

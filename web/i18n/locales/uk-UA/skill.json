@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "Цей пакет не має SKILL.md. Додайте файл і імпортуйте його знову.",
   "skillManagement.errors.nameConflict": "Уміння під назвою \"{{name}}\" уже існує. Перейменуйте його в SKILL.md і імпортуйте знову.",
   "skillManagement.errors.workspaceLimit": "Ваша робоча область досягла ліміту в 500 навичок. Видаліть навик, щоб додати новий.",
-  "skillManagement.exportDialog.description": "Буде експортовано поточну збережену чернетку навички. Якщо в редакторі є незбережені зміни, збережіть їх перед експортом.",
-  "skillManagement.exportDialog.title": "Експорт поточної збереженої чернетки",
   "skillManagement.import": "Імпортувати",
   "skillManagement.importFailed": "Не вдалося імпортувати навички.",
   "skillManagement.importSuccess": "Skill імпортовано.",

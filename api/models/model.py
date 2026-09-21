@@ -428,9 +428,7 @@ class App(Base):
     icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     workflow_id = mapped_column(StringUUID, nullable=True)
-    status: Mapped[AppStatus] = mapped_column(
-        EnumText(AppStatus, length=255), server_default=sa.text("'normal'"), default=AppStatus.NORMAL
-    )
+    status: Mapped[AppStatus] = mapped_column(EnumText(AppStatus, length=255), default=AppStatus.NORMAL)
     enable_site: Mapped[bool] = mapped_column(sa.Boolean)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean)
     api_rpm: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"))
@@ -530,9 +528,8 @@ class App(Base):
         base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
         return normalize_api_base_url(base)
 
-    @property
-    def tenant(self) -> Tenant | None:
-        return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
+    def tenant(self, session: Session | scoped_session) -> Tenant | None:
+        return session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
     def is_agent_with_session(self, *, session: Session) -> bool:
         """Detect legacy agent mode, committing the compatible app mode through the supplied session."""
@@ -753,7 +750,6 @@ class AppModelConfig(TypeBase):
     prompt_type: Mapped[PromptType] = mapped_column(
         EnumText(PromptType, length=255),
         nullable=False,
-        server_default=sa.text("'simple'"),
         default=PromptType.SIMPLE,
     )
     chat_prompt_config: Mapped[str | None] = mapped_column(LongText, default=None)
@@ -947,13 +943,12 @@ class RecommendedApp(TypeBase):
     custom_disclaimer: Mapped[str] = mapped_column(LongText, default="")
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
-    is_learn_dify: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
-    is_cloud_only: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    is_learn_dify: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    is_cloud_only: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     language: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
-        server_default=sa.text("'en-US'"),
         default="en-US",
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -987,7 +982,7 @@ class InstalledApp(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_owner_tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1060,15 +1055,12 @@ class ExporleBanner(TypeBase):
     status: Mapped[BannerStatus] = mapped_column(
         EnumText(BannerStatus, length=255),
         nullable=False,
-        server_default=sa.text("'enabled'"),
         default=BannerStatus.ENABLED,
     )
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-    language: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'en-US'"), default="en-US"
-    )
+    language: Mapped[str] = mapped_column(String(255), nullable=False, default="en-US")
 
 
 class OAuthProviderApp(TypeBase):
@@ -1094,13 +1086,12 @@ class OAuthProviderApp(TypeBase):
     scope: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
-        server_default=sa.text("'read:name read:email read:avatar read:interface_language read:timezone'"),
         default="read:name read:email read:avatar read:interface_language read:timezone",
     )
     # First-party apps (e.g. the Dify Marketplace) skip the consent screen.
     # Default false: self-hosted / EE / newly registered apps keep the
     # consent-screen behavior.
-    auto_authorize: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    auto_authorize: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -1479,7 +1470,6 @@ class Message(Base):
     status: Mapped[MessageStatus] = mapped_column(
         EnumText(MessageStatus, length=255),
         nullable=False,
-        server_default=sa.text("'normal'"),
         default=MessageStatus.NORMAL,
     )
     error: Mapped[str | None] = mapped_column(LongText)
@@ -2215,20 +2205,12 @@ class Site(TypeBase):
 
     customize_domain: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     chat_color_theme: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
-    prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
-    chat_color_theme_inverted: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.false(), default=False
-    )
-    show_workflow_steps: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.true(), default=True
-    )
-    use_icon_as_answer_icon: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.false(), default=False
-    )
+    prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    show_workflow_steps: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+    use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     custom_disclaimer: Mapped[str] = mapped_column(LongText, nullable=False, default="")
-    status: Mapped[AppStatus] = mapped_column(
-        EnumText(AppStatus, length=255), nullable=False, server_default=sa.text("'normal'"), default=AppStatus.NORMAL
-    )
+    status: Mapped[AppStatus] = mapped_column(EnumText(AppStatus, length=255), nullable=False, default=AppStatus.NORMAL)
 
     @validates("custom_disclaimer")
     def _validate_custom_disclaimer(self, _key: str, value: str) -> str:
@@ -2365,7 +2347,6 @@ class UploadFile(TypeBase):
     created_by_role: Mapped[CreatorUserRole] = mapped_column(
         EnumText(CreatorUserRole, length=255),
         nullable=False,
-        server_default=sa.text("'account'"),
         default=CreatorUserRole.ACCOUNT,
     )
     # `used_by` may indicate the ID of the user who utilized this file.
@@ -2478,16 +2459,12 @@ class MessageAgentThought(TypeBase):
     message: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     message_unit_price: Mapped[Decimal | None] = mapped_column(sa.Numeric, nullable=True, default=None)
-    message_price_unit: Mapped[Decimal] = mapped_column(
-        sa.Numeric(10, 7), nullable=False, default=Decimal("0.001"), server_default=sa.text("0.001")
-    )
+    message_price_unit: Mapped[Decimal] = mapped_column(sa.Numeric(10, 7), nullable=False, default=Decimal("0.001"))
     message_files: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     answer: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     answer_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     answer_unit_price: Mapped[Decimal | None] = mapped_column(sa.Numeric, nullable=True, default=None)
-    answer_price_unit: Mapped[Decimal] = mapped_column(
-        sa.Numeric(10, 7), nullable=False, default=Decimal("0.001"), server_default=sa.text("0.001")
-    )
+    answer_price_unit: Mapped[Decimal] = mapped_column(sa.Numeric(10, 7), nullable=False, default=Decimal("0.001"))
     tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     total_price: Mapped[Decimal | None] = mapped_column(sa.Numeric, nullable=True, default=None)
     currency: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
@@ -2669,7 +2646,7 @@ class TraceAppConfig(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
+    is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
 
     @property
     def tracing_config_dict(self) -> dict[str, Any]:
@@ -2704,7 +2681,7 @@ class TenantCreditPool(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     pool_type: Mapped[ProviderQuotaType] = mapped_column(
-        EnumText(ProviderQuotaType, length=40), nullable=False, default=ProviderQuotaType.TRIAL, server_default="trial"
+        EnumText(ProviderQuotaType, length=40), nullable=False, default=ProviderQuotaType.TRIAL
     )
     quota_limit: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     quota_used: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)

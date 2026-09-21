@@ -1,5 +1,6 @@
 """Transport parsing, permission declarations and sandbox error serialization."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from inspect import unwrap
 from uuid import UUID
@@ -76,19 +77,37 @@ def service(monkeypatch: pytest.MonkeyPatch) -> SandboxService:
 
 
 @pytest.mark.parametrize(
-    ("resource", "verb", "operation", "workflow"),
+    ("resource", "method", "verb", "operation", "workflow"),
     [
-        (module.AgentAppSandboxInfoResource, "get", "info", False),
-        (module.AgentAppSandboxListResource, "get", "list", False),
-        (module.AgentAppSandboxReadResource, "get", "read", False),
-        (module.AgentAppSandboxDownloadResource, "post", "download", False),
-        (module.WorkflowAgentSandboxListResource, "get", "list", True),
-        (module.WorkflowAgentSandboxReadResource, "get", "read", True),
-        (module.WorkflowAgentSandboxDownloadResource, "post", "download", True),
+        (module.AgentAppSandboxInfoResource, module.AgentAppSandboxInfoResource.get, "get", "info", False),
+        (module.AgentAppSandboxListResource, module.AgentAppSandboxListResource.get, "get", "list", False),
+        (module.AgentAppSandboxReadResource, module.AgentAppSandboxReadResource.get, "get", "read", False),
+        (
+            module.AgentAppSandboxDownloadResource,
+            module.AgentAppSandboxDownloadResource.post,
+            "post",
+            "download",
+            False,
+        ),
+        (module.WorkflowAgentSandboxListResource, module.WorkflowAgentSandboxListResource.get, "get", "list", True),
+        (module.WorkflowAgentSandboxReadResource, module.WorkflowAgentSandboxReadResource.get, "get", "read", True),
+        (
+            module.WorkflowAgentSandboxDownloadResource,
+            module.WorkflowAgentSandboxDownloadResource.post,
+            "post",
+            "download",
+            True,
+        ),
     ],
 )
 def test_controller_parses_and_serializes(
-    app: Flask, service: SandboxService, resource: type[Resource], verb: str, operation: str, workflow: bool
+    app: Flask,
+    service: SandboxService,
+    resource: type[Resource],
+    method: Callable[..., object],
+    verb: str,
+    operation: str,
+    workflow: bool,
 ) -> None:
     payload = {"node_execution_id": "execution"} if workflow else {"caller_type": "build_draft", "caller_id": "draft"}
     if operation != "info":
@@ -96,7 +115,7 @@ def test_controller_parses_and_serializes(
     kwargs = {"json": payload} if verb == "post" else {"query_string": payload}
     params = (RESOURCE_ID, RESOURCE_ID, "node") if workflow else (RESOURCE_ID,)
     with app.test_request_context("/", method=verb.upper(), **kwargs):
-        result = unwrap(getattr(resource, verb))(resource(), CONTEXT, *params)
+        result = unwrap(method)(resource(), CONTEXT, *params)
     caller = (
         WorkflowSandboxCaller(str(RESOURCE_ID), str(RESOURCE_ID), "node", "execution")
         if workflow
@@ -112,7 +131,7 @@ def test_controller_parses_and_serializes(
     else:
         assert result == {"path": "~/report.txt", "entries": [], "truncated": False}
 
-    [check] = rbac_checks(getattr(resource, verb))
+    [check] = rbac_checks(method)
     if workflow:
         assert isinstance(check.locator, module.PlainApp)
         assert check.scene == module.RBACPermission.APP_VIEW_LAYOUT

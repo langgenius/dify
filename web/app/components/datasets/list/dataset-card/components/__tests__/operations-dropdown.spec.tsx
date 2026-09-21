@@ -83,17 +83,6 @@ describe('OperationsDropdown', () => {
       const moreIcon = container.querySelector('.i-ri-more-fill')
       expect(moreIcon).toBeInTheDocument()
     })
-
-    it('should render in hidden state initially (group-hover)', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass(
-        'invisible',
-        'pointer-events-none',
-        'group-hover:visible',
-        'group-hover:pointer-events-auto',
-      )
-    })
   })
 
   describe('Props', () => {

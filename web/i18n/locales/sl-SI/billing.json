@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "SPROŽITVENI DOGODKI",
   "upgrade.addChunks.description": "Dosegli ste omejitev dodajanja delov za ta načrt.",
   "upgrade.addChunks.title": "Nadgradite, da nadaljujete z dodajanjem delov",
+  "upgrade.agentRestore.description": "Obnovitev različic aplikacije agenta v vašem trenutnem paketu ni na voljo.",
+  "upgrade.agentRestore.title": "Nadgradite za obnovitev različic aplikacije agenta",
   "upgrade.uploadMultipleFiles.description": "Naložite več dokumentov hkrati in povečajte največjo velikost posamezne datoteke na 50 MB.",
   "upgrade.uploadMultipleFiles.title": "Nadgradite paket, da odklenete paketno nalaganje in večje datoteke",
   "upgrade.uploadMultiplePages.description": "Dosegli ste omejitev nalaganja — na vašem trenutnem načrtu je mogoče izbrati in naložiti le en dokument naenkrat.",
