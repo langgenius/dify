@@ -348,6 +348,24 @@ _WORKFLOW_TOPOLOGY_DIRECTIVE = (
     "Build a Dify WORKFLOW graph (this is NOT a chat app): it MUST begin with exactly one "
     "'start' node and terminate in at least one 'end' node that returns the result. Do NOT use "
     "'answer' nodes -- those exist only in chat / advanced-chat apps and are invalid in a workflow."
+    "\n\n"
+    # Node-usage guidance (meeting item 9). Builder-only: this string is
+    # prepended to the instruction at build.py:377 and cmd+K never sees it.
+    # Only rules that earned their place by breaking a real build belong here --
+    # every line costs planner output budget, which ESQ1-300 implicates.
+    "Node usage rules:\n"
+    "- A node may only reference variables its upstream node actually declares. A 'tool' node "
+    "exposes 'text', 'files' and 'json' (plus whatever its provider declares) -- it does NOT "
+    "expose 'result'. A 'code' node exposes exactly the keys in its own outputs map.\n"
+    "- 'document-extractor' requires a 'file' or 'file-list' input variable on the start node; "
+    "feed its 'text' output into the node that consumes it.\n"
+    "- Children of an 'iteration' or 'loop' belong INSIDE the container via their parent "
+    "reference. Do not wire a container's body as sibling top-level nodes.\n"
+    "- Compare like with like in 'if-else': a numeric variable needs a numeric operator, a "
+    "string variable a string operator.\n"
+    "- Use a 'tool' node for a third-party service only when the plan names an installed tool; "
+    "otherwise use 'http-request' and expose its changing inputs as start-node variables rather "
+    "than hardcoding them."
 )
 
 
