@@ -129,18 +129,19 @@ def build_catalog(app: Flask) -> dict[str, Any]:
         spec = spec_of(handler)
         if spec is None or not spec.allows(dify_config.DEPLOYMENT_EDITION):
             continue
+        meta = spec.catalog
         path_params = sorted(rule.arguments)
-        schema = op_input_schema(path_params=path_params, query=spec.query, body=spec.body)
-        ops[spec.op] = {
-            "summary": spec.summary,
+        schema = op_input_schema(path_params=path_params, query=meta.query, body=meta.body)
+        ops[meta.op] = {
+            "summary": meta.summary,
             "method": verb,
             "path": _catalog_path(rule.rule),
-            "kind": spec.kind.value,
+            "kind": meta.kind.value,
             "input": schema,
             "bind": derive_bind(method=verb, path_params=path_params, schema=schema),
-            "tags": [spec.op.split(".", 1)[0]],
-            "internal": spec.internal,
-            "deprecated": spec.deprecated,
+            "tags": [meta.op.split(".", 1)[0]],
+            "internal": meta.internal,
+            "deprecated": meta.deprecated,
         }
     return {"ops": ops}
 

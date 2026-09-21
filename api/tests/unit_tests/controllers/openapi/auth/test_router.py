@@ -16,7 +16,7 @@ from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import EndpointSpec, Kind
+from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Kind
 from controllers.openapi.auth.subjects import AccountSubject
 from enums import DeploymentEdition
 from libs.oauth_bearer import (
@@ -63,7 +63,11 @@ def _guard(
     edition: frozenset[DeploymentEdition] | None = None,
 ) -> Callable[..., object]:
     return subject_router.guard(
-        EndpointSpec(requirements=requirements, edition=edition, op="test.op", kind=Kind.OBJECT, summary="test")
+        EndpointSpec(
+            requirements=requirements,
+            edition=edition,
+            catalog=CatalogMeta(op="test.op", kind=Kind.OBJECT, summary="test"),
+        )
     )(view)
 
 

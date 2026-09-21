@@ -2,7 +2,8 @@
 the router reads nothing else off the view. It lives in `auth/` so the
 dependency runs `_contract.py` -> `auth/` and never back.
 
-Catalog fields ride on the same object so a route is described in one place.
+The catalog's view of the route rides along as `CatalogMeta`, so a route is
+still described in one place while each reader has its own object.
 """
 
 from __future__ import annotations
@@ -28,18 +29,13 @@ class Kind(StrEnum):
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class EndpointSpec:
-    """`edition` is the endpoint-level gate — a 404 raised before any bearer
-    is read, because the route is not exposed on this edition at all. It is
-    not `ExternalSsoPipeline`'s own gate, which 403s a token kind after
-    authentication.
+class CatalogMeta:
+    """What the catalog (`_catalog.py`) says about a route; the router never reads it.
 
-    `op`, `kind`, `summary`, `query`, `body`, `internal`, `deprecated` feed the
-    catalog (`_catalog.py`); the router does not read them.
+    `internal` hides the op from the CLI's default listing; `deprecated` marks it
+    as kept for compatibility only.
     """
 
-    requirements: tuple[Requirement, ...]
-    edition: frozenset[DeploymentEdition] | None = None
     op: str
     kind: Kind
     summary: str
@@ -47,6 +43,19 @@ class EndpointSpec:
     body: type[BaseModel] | None = None
     internal: bool = False
     deprecated: bool = False
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class EndpointSpec:
+    """`edition` is the endpoint-level gate — a 404 raised before any bearer
+    is read, because the route is not exposed on this edition at all. It is
+    not `ExternalSsoPipeline`'s own gate, which 403s a token kind after
+    authentication.
+    """
+
+    requirements: tuple[Requirement, ...]
+    catalog: CatalogMeta
+    edition: frozenset[DeploymentEdition] | None = None
 
     def allows(self, edition: DeploymentEdition) -> bool:
         """Whether this deployment exposes the route at all. `edition is None`

@@ -78,15 +78,16 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
             assert spec is None, f"{verb} {rule.rule} must stay out of the catalog"
             continue
         assert isinstance(spec, EndpointSpec), f"{verb} {rule.rule}"
-        assert OP_ID_RE.fullmatch(spec.op), spec.op
-        assert spec.summary.strip(), spec.op
-        assert spec.op not in seen, f"{spec.op} declared twice: {seen[spec.op]} and {verb} {rule.rule}"
-        seen[spec.op] = f"{verb} {rule.rule}"
+        meta = spec.catalog
+        assert OP_ID_RE.fullmatch(meta.op), meta.op
+        assert meta.summary.strip(), meta.op
+        assert meta.op not in seen, f"{meta.op} declared twice: {seen[meta.op]} and {verb} {rule.rule}"
+        seen[meta.op] = f"{verb} {rule.rule}"
         admitted = spec.edition is None or dify_config.DEPLOYMENT_EDITION in spec.edition
-        assert (spec.op in ops) is admitted, spec.op
+        assert (meta.op in ops) is admitted, meta.op
         if EventStreamResponse.__name__ in _response_model_names(fn):
-            streaming.add(spec.op)
-            assert spec.kind is Kind.SSE, spec.op
+            streaming.add(meta.op)
+            assert meta.kind is Kind.SSE, meta.op
     assert set(ops) <= set(seen)
     per_mode = {f"console_app.{mode}.run" for mode in ("workflow", "chat", "advanced_chat", "completion")}
     assert streaming == per_mode | {"run.events"}

@@ -27,7 +27,7 @@ from controllers.openapi.auth.requirements import (
     Rank,
     Requirement,
 )
-from controllers.openapi.auth.spec import EndpointSpec, Kind
+from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Kind
 from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, Subject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
@@ -98,7 +98,9 @@ def _run(
     return pipeline.run(
         subject=subject,
         auth=subject.auth,
-        spec=EndpointSpec(requirements=requirements, op="test.op", kind=Kind.OBJECT, summary="test"),
+        spec=EndpointSpec(
+            requirements=requirements, catalog=CatalogMeta(op="test.op", kind=Kind.OBJECT, summary="test")
+        ),
         ctx=ctx,
         session=session,
         call=call,
