@@ -8,7 +8,7 @@ import tempfile
 import zipfile
 import zlib
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, BinaryIO, Literal, Self, cast
 
 import yaml
@@ -25,12 +25,14 @@ from services.agent.package_resource_exporter import AgentPackageResourceExporte
 from services.agent.package_resource_importer import AgentPackageResourceImporter
 from services.agent.roster_package_entities import (
     AgentPackageResources,
+    PackageIcon,
     PreparedPackageArchive,
     RosterAgentPackageApp,
     RosterAgentPackageExport,
     RosterAgentPackageFile,
     RosterAgentPackageMember,
     RosterAgentPackageSkill,
+    validate_icon_references,
 )
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.dsl_content import DSL_MAX_SIZE
@@ -46,8 +48,10 @@ class AppPackageManifest(BaseModel):
     format_version: Literal[1]
     apps: list[RosterAgentPackageApp] = Field(min_length=1, max_length=1)
     agent_resources: dict[str, AgentPackageResources] = Field(default_factory=dict)
+    icons: list[PackageIcon] = Field(default_factory=list)
 
-    def iter_resources(self) -> Iterator[RosterAgentPackageSkill | RosterAgentPackageFile]:
+    def iter_resources(self) -> Iterator[RosterAgentPackageSkill | RosterAgentPackageFile | PackageIcon]:
+        yield from self.icons
         for group in self.agent_resources.values():
             yield from group.skills
             yield from group.files
@@ -67,6 +71,20 @@ class PreparedAppPackage(PreparedPackageArchive):
     dsl: str
     agents: dict[str, AgentPackage]
     agent_resources: dict[str, AgentPackageResources]
+    icons: list[PackageIcon] = field(default_factory=list)
+
+    def materialize_icons(self, *, data: dict[str, Any], tenant_id: str, account_id: str) -> None:
+        importer = AgentPackageResourceImporter()
+        for ref, resources in self.agent_resources.items():
+            importer.validate(resources=resources, agent_package=self.agents[ref])
+        mapping = importer.materialize_icons(archive=self, icons=self.icons, tenant_id=tenant_id, account_id=account_id)
+        metadata = [data["app"], *(agent.metadata for agent in self.agents.values())]
+        for item in metadata:
+            if isinstance(item, dict):
+                if item.get("icon_type") == "image" and item.get("icon") in mapping:
+                    item["icon"] = mapping[item["icon"]]
+            elif item.icon_type == "image" and item.icon in mapping:
+                item.icon = mapping[item.icon]
 
     def materialize_agents(self, *, tenant_id: str, account_id: str) -> tuple[dict[str, Any], list[DslImportWarning]]:
         importer = AgentPackageResourceImporter()
@@ -121,6 +139,12 @@ class AppPackageService(RosterAgentPackageReader):
                 ):
                     raise InvalidRosterAgentPackageError("App package DSL is invalid")
                 agents = self._validate_agents(app_data, manifest)
+                try:
+                    validate_icon_references(
+                        manifest.icons, [app_data["app"], *(agent.metadata.model_dump() for agent in agents.values())]
+                    )
+                except ValueError as exc:
+                    raise InvalidRosterAgentPackageError("App package icon references are invalid") from exc
                 members: dict[str, RosterAgentPackageMember] = {}
                 invalid_skills: dict[str, str] = {}
                 self._validate_resource_members(
@@ -139,6 +163,7 @@ class AppPackageService(RosterAgentPackageReader):
                 dsl=dsl,
                 agents=agents,
                 agent_resources=manifest.agent_resources,
+                icons=manifest.icons,
                 members=members,
                 invalid_skills=invalid_skills,
             )
@@ -193,6 +218,7 @@ class AppPackageService(RosterAgentPackageReader):
                 workflow_id=workflow_id,
                 resource_exporter=resources,
             )
+            resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=data["app"])
         resources.collect_workspace_skills()
         if resources.packages:
             data["agent_packages"] = {
@@ -209,7 +235,8 @@ class AppPackageService(RosterAgentPackageReader):
         archive = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b"))  # noqa: SIM115
         try:
             with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
-                agent_resources, _ = resources.write_resources(package) if resources is not None else ({}, 0)
+                agent_resources, total_size = resources.write_resources(package) if resources is not None else ({}, 0)
+                icons, _ = resources.write_icons(package, total_size=total_size) if resources is not None else ([], 0)
                 manifest = AppPackageManifest(
                     format="dify.app",
                     format_version=1,
@@ -219,6 +246,7 @@ class AppPackageService(RosterAgentPackageReader):
                         )
                     ],
                     agent_resources=agent_resources,
+                    icons=icons,
                 )
                 package.writestr(
                     "manifest.yaml", yaml.safe_dump(manifest.model_dump(mode="json", exclude_defaults=True))

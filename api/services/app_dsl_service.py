@@ -286,7 +286,7 @@ class AppDslService:
                     error="Missing app data in YAML content",
                 )
 
-            if package is not None and package.agent_resources:
+            if package is not None and (package.agent_resources or package.icons):
                 tenant_id = account.current_tenant_id
                 if tenant_id is None:
                     raise ValueError("Current tenant is not set")
@@ -298,9 +298,11 @@ class AppDslService:
                         if target is None:
                             raise ValueError("App not found")
                         self._validate_workflow_overwrite(target, data)
-                data["agent_packages"], self._warnings = package.materialize_agents(
-                    tenant_id=tenant_id, account_id=account.id
-                )
+                package.materialize_icons(data=data, tenant_id=tenant_id, account_id=account.id)
+                if package.agent_resources:
+                    data["agent_packages"], self._warnings = package.materialize_agents(
+                        tenant_id=tenant_id, account_id=account.id
+                    )
                 content = yaml.safe_dump(data, allow_unicode=True)
 
             # If app_id is provided, check if it exists
