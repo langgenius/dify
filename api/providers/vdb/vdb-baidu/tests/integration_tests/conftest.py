@@ -14,11 +14,6 @@ class MochowRow(TypedDict):
     id: str
 
 
-class AttrDict[K, V](UserDict[K, V]):
-    def __getattr__(self, item: K):
-        return self.get(item)
-
-
 class MochowIndex(TypedDict):
     indexName: str
 
