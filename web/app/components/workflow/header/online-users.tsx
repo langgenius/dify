@@ -158,7 +158,7 @@ const OnlineUsers = () => {
                     )
                   }
                 />
-                <TooltipContent placement="bottom" sideOffset={4} className="max-w-55 px-3">
+                <TooltipContent placement="bottom" sideOffset={4} className="max-w-55">
                   {displayName}
                   {isCurrentUser && (
                     <span className="ml-1 text-text-quaternary">{currentUserSuffix}</span>

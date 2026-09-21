@@ -202,7 +202,7 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
                 </button>
               }
             />
-            <TooltipContent placement="top" className="py-1 system-xs-regular text-text-primary">
+            <TooltipContent placement="top">
               {debugUrlCopied
                 ? t(($) => $['nodes.triggerWebhook.debugUrlCopied'], { ns: 'workflow' })
                 : t(($) => $['nodes.triggerWebhook.debugUrlCopy'], { ns: 'workflow' })}
