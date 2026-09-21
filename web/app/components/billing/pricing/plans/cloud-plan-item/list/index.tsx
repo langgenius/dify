@@ -40,7 +40,7 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
       <CloudPlanFeature
         label={t(($) => $['plansCommon.buildApps'], { ns: 'billing', count: planInfo.buildApps })}
       />
-      <Separator className="my-2 h-[0.5px]" variant="gradient" />
+      <Separator className="my-2 from-divider-accent" variant="gradient" />
       <CloudPlanFeature
         label={t(($) => $['plansCommon.documents'], { ns: 'billing', count: planInfo.documents })}
         description={t(($) => $['plansCommon.documentsTooltip'], { ns: 'billing' }) as string}
@@ -67,7 +67,7 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
           t(($) => $['plansCommon.documentProcessingPriority'], { ns: 'billing' }),
         ].join('')}
       />
-      <Separator className="my-2 h-[0.5px]" variant="gradient" />
+      <Separator className="my-2 from-divider-accent" variant="gradient" />
       <CloudPlanFeature
         label={
           planInfo.triggerEvents === NUM_INFINITE
@@ -103,7 +103,7 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
           t(($) => $['plansCommon.workflowExecution.tooltip'], { ns: 'billing' }) as string
         }
       />
-      <Separator className="my-2 h-[0.5px]" variant="gradient" />
+      <Separator className="my-2 from-divider-accent" variant="gradient" />
       <CloudPlanFeature
         label={t(($) => $['plansCommon.annotatedResponse.title'], {
           ns: 'billing',
@@ -134,7 +134,7 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
             : (t(($) => $['plansCommon.apiRateLimitTooltip'], { ns: 'billing' }) as string)
         }
       />
-      <Separator className="my-2 h-[0.5px]" variant="gradient" />
+      <Separator className="my-2 from-divider-accent" variant="gradient" />
       <CloudPlanFeature label={t(($) => $['plansCommon.modelProviders'], { ns: 'billing' })} />
     </div>
   )
