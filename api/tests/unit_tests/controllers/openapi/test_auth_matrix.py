@@ -759,10 +759,22 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_dsl.check_dependencies": _REQ_DSL_APP,
     "app_run.run": (CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)), *_REQ_RUN[1:]),
     "app_run.stop": (CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)), *_REQ_RUN[1:]),
-    "files.upload": _REQ_FILES,
-    "human_input_form.get": _REQ_RUN_FORM,
-    "human_input_form.submit": _REQ_RUN_FORM,
-    "workflow_events.stream": _REQ_RUN,
+    "files.upload": (
+        CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
+        *_REQ_FILES[1:],
+    ),
+    "human_input_form.get": (
+        CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
+        *_REQ_RUN_FORM[1:],
+    ),
+    "human_input_form.submit": (
+        CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
+        *_REQ_RUN_FORM[1:],
+    ),
+    "workflow_events.stream": (
+        CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
+        *_REQ_RUN[1:],
+    ),
     "permitted_external.list": _REQ_EXTERNAL_LIST,
     "permitted_external.describe": _REQ_EXTERNAL_DESCRIBE,
 }

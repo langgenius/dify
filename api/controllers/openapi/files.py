@@ -25,7 +25,7 @@ from controllers.openapi.auth.requirements import (
     CheckSubject,
     CheckWorkspaceMember,
 )
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
 from libs.oauth_bearer import Scope
@@ -46,7 +46,7 @@ class AppFileUploadApi(Resource):
     )
     @endpoint(
         requirements=(
-            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_RUN),

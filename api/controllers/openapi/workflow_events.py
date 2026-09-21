@@ -30,7 +30,7 @@ from controllers.openapi.auth.requirements import (
     CheckSubject,
     CheckWorkspaceMember,
 )
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -55,7 +55,7 @@ class OpenApiWorkflowEventsApi(Resource):
     @openapi_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @endpoint(
         requirements=(
-            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_RUN),

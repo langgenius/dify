@@ -27,7 +27,7 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
     Requirement,
 )
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject, Subject
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
@@ -87,7 +87,7 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
         requirements=(
-            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_RUN),
@@ -112,7 +112,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @endpoint(
         requirements=(
-            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_RUN),

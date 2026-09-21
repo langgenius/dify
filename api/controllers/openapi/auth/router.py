@@ -41,25 +41,24 @@ class AuthRouter:
         answers 404 before anything reveals whether the bearer was valid, and
         an enterprise deployment's licence answers 403 before the missing-bearer
         401. The licence is a fact about the deployment, not the route or the
-        caller, so this is the one place it is checked. The bearer feature flag
-        is the same kind of fact and answers 503 next.
+        caller, so this is the one place it is checked. The OAuth feature flag
+        answers 503 before OAuth authentication, but does not gate independent
+        resource credentials. Missing or unknown credentials still receive 503
+        when OAuth is disabled.
         """
         if spec.edition is not None and dify_config.DEPLOYMENT_EDITION not in spec.edition:
             raise NotFound()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             assert_license_valid()
-        assert_bearer_feature_enabled()
-
         token = extract_bearer(request)
+        is_resource_token = token is not None and TokenType.for_token(token) is TokenType.RESOURCE_ACCESS
+        if not is_resource_token:
+            assert_bearer_feature_enabled()
         if not token:
             raise Unauthorized("bearer required")
 
         try:
-            auth = (
-                authenticate_resource_token(token)
-                if TokenType.for_token(token) is TokenType.RESOURCE_ACCESS
-                else get_authenticator().authenticate(token)
-            )
+            auth = authenticate_resource_token(token) if is_resource_token else get_authenticator().authenticate(token)
         except InvalidBearerError:
             # One answer for every rejection reason - unknown prefix, no live row,
             # expired - so a caller cannot probe which one it hit. Same reasoning as

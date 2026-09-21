@@ -101,7 +101,9 @@ def test_a_dead_licence_403s_an_unauthenticated_caller_on_every_route_in_enterpr
             view()
 
 
-def test_a_disabled_bearer_feature_503s_before_the_bearer_is_read(
+@pytest.mark.parametrize("token", [None, "dfoa_test", "dfoe_test", "unknown"])
+def test_a_disabled_oauth_feature_503s_before_authentication(
+    token: str | None,
     app: Flask,
     config_overrides: Callable[..., None],
     monkeypatch: pytest.MonkeyPatch,
@@ -110,10 +112,11 @@ def test_a_disabled_bearer_feature_503s_before_the_bearer_is_read(
     the device endpoints do instead of a 500 from the unbound authenticator.
     """
     config_overrides(ENABLE_OAUTH_BEARER=False)
-    monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
+    monkeypatch.setattr(f"{ROUTER}.get_authenticator", never_reached)
     view = _guard(_nothing)
 
-    with app.test_request_context("/openapi/v1/account"):
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    with app.test_request_context("/openapi/v1/account", headers=headers):
         with pytest.raises(ServiceUnavailable, match="bearer_auth_disabled"):
             view()
 

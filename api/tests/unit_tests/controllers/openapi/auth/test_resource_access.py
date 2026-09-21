@@ -58,7 +58,6 @@ def resource_fixture(sqlite_session: Session):
             return_value=MagicMock(spec=EndUser),
         ) as end_user,
         patch("controllers.openapi.auth.pipelines._mount_flask_login"),
-        patch("controllers.openapi.auth.router.assert_bearer_feature_enabled"),
         patch("controllers.openapi.auth.router.assert_license_valid"),
     ):
         yield flask_app, app.id, token.id, tenant.id, end_user
@@ -296,3 +295,53 @@ def test_successful_request_records_token_usage(resource_fixture, sqlite_session
     assert sqlite_session.get(ResourceAccessToken, token_id).last_used_at is None
     call(flask_app, scope=Scope.WORKSPACE_READ)
     assert sqlite_session.get(ResourceAccessToken, token_id).last_used_at is not None
+
+
+def test_resource_token_works_when_oauth_is_disabled(resource_fixture, config_overrides):
+    config_overrides(ENABLE_OAUTH_BEARER=False)
+    flask_app, app_id, _, _, _ = resource_fixture
+    with patch("controllers.openapi.auth.router.get_authenticator") as oauth:
+        ctx = call(flask_app, app_id)
+    assert ctx.app.id == app_id
+    oauth.assert_not_called()
+
+
+@pytest.mark.parametrize("route", ["upload", "events", "form_get", "form_submit"])
+@pytest.mark.parametrize("bound", [True, False], ids=["bound", "unbound"])
+def test_run_companion_routes_enforce_resource_bindings(resource_fixture, route, bound):
+    from flask import request
+
+    from controllers.openapi.files import AppFileUploadApi
+    from controllers.openapi.human_input_form import (
+        OpenApiWorkflowHumanInputFormApi,
+        OpenApiWorkflowHumanInputFormSubmitApi,
+    )
+    from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
+
+    handlers = {
+        "upload": AppFileUploadApi.post,
+        "events": OpenApiWorkflowEventsApi.get,
+        "form_get": OpenApiWorkflowHumanInputFormApi.get,
+        "form_submit": OpenApiWorkflowHumanInputFormSubmitApi.post,
+    }
+    flask_app, app_id, _, _, end_user = resource_fixture
+    handler = MagicMock(return_value="admitted")
+    # Exercise the production endpoint's entire authorization pipeline without
+    # invoking file storage, workflow streaming, or form submission side effects.
+    guarded = subject_router.guard(handlers[route].__spec__)(handler)
+    with (
+        flask_app.test_request_context("/apps", headers={"Authorization": "Bearer sk-test"}),
+        patch("controllers.openapi.human_input_form.HumanInputService") as forms,
+    ):
+        forms.return_value.get_form_by_token.return_value = None
+        request.view_args = {"app_id": app_id if bound else str(uuid4()), "form_token": "form"}
+        if bound:
+            assert guarded() == "admitted"
+            ctx = handler.call_args.kwargs["ctx"]
+            assert ctx.app.id == app_id
+            assert ctx.end_user is end_user.return_value
+        else:
+            with pytest.raises(Forbidden, match="resource_not_authorized"):
+                guarded()
+            handler.assert_not_called()
+            end_user.assert_not_called()
