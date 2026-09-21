@@ -139,7 +139,6 @@ def build_catalog(app: Flask) -> dict[str, Any]:
             "kind": meta.kind.value,
             "input": schema,
             "bind": derive_bind(method=verb, path_params=path_params, schema=schema),
-            "tags": [meta.op.split(".", 1)[0]],
             "internal": meta.internal,
             "deprecated": meta.deprecated,
         }

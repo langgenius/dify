@@ -95,12 +95,11 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
 
 def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -> None:
     chat = ops["console_app.chat.run"]
-    assert set(chat) == {"summary", "method", "path", "kind", "input", "bind", "tags", "internal", "deprecated"}
-    assert (chat["method"], chat["path"], chat["kind"], chat["tags"]) == (
+    assert set(chat) == {"summary", "method", "path", "kind", "input", "bind", "internal", "deprecated"}
+    assert (chat["method"], chat["path"], chat["kind"]) == (
         "POST",
         "/openapi/v1/apps/{app_id}/chat:run",
         "sse",
-        ["console_app"],
     )
     assert {"app_id", "inputs", "query"} <= set(chat["input"]["required"])
     assert set(chat["bind"]) == set(chat["input"]["properties"])
