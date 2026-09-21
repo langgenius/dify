@@ -16,14 +16,11 @@ from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.agent import (
-    Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
-    AgentScope,
     AgentSource,
-    AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, UploadFile
@@ -77,7 +74,6 @@ class RosterAgentPackageImporter:
 
             check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=app_dsl.dependencies)
             try:
-                self._ensure_name_available(tenant_id=tenant_id, name=agent_package.metadata.name)
                 materialized, skill_warnings = self._resources.materialize(
                     archive=package,
                     resources=package.manifest,
@@ -125,22 +121,6 @@ class RosterAgentPackageImporter:
             return RosterAgentPackageImportResult(app_id=app_id, agent_id=agent_id, warnings=warnings)
 
     @staticmethod
-    def _ensure_name_available(*, tenant_id: str, name: str) -> None:
-        with session_factory.create_session() as session:
-            exists = session.scalar(
-                select(Agent.id)
-                .where(
-                    Agent.tenant_id == tenant_id,
-                    Agent.scope == AgentScope.ROSTER,
-                    Agent.status == AgentStatus.ACTIVE,
-                    Agent.name == name,
-                )
-                .limit(1)
-            )
-        if exists is not None:
-            raise AgentNameConflictError()
-
-    @staticmethod
     def _persist_import(
         *,
         tenant_id: str,
@@ -149,10 +129,11 @@ class RosterAgentPackageImporter:
         soul: AgentSoulConfig,
     ) -> tuple[str, str]:
         with session_factory.create_session() as session, session.begin():
+            name = AgentDslService(session).unique_roster_name(tenant_id=tenant_id, requested=metadata.name)
             app = App(**default_app_templates[AppMode.AGENT]["app"])
             app.id = str(uuid4())
             app.tenant_id = tenant_id
-            app.name = metadata.name
+            app.name = name
             app.description = metadata.description
             app.icon_type = DEFAULT_ICON_TYPE
             app.icon = DEFAULT_ICON
@@ -173,7 +154,7 @@ class RosterAgentPackageImporter:
                 tenant_id=tenant_id,
                 account_id=account.id,
                 app_id=app.id,
-                name=metadata.name,
+                name=name,
                 description=metadata.description,
                 role=metadata.role,
                 source=AgentSource.IMPORTED,

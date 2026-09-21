@@ -591,34 +591,64 @@ def test_import_validates_all_file_limits_before_staging(
     assert storage.files == {}
 
 
-def test_import_rejects_duplicate_agent_name_before_staging(
+@pytest.mark.parametrize(
+    ("requested", "existing_names", "expected"),
+    [
+        ("Imported Agent", [], "Imported Agent"),
+        ("Imported Agent", ["Imported Agent"], "Imported Agent import"),
+        (
+            "Imported Agent",
+            ["Imported Agent", "Imported Agent import", "Imported Agent import 2"],
+            "Imported Agent import 3",
+        ),
+        (
+            "Imported Agent",
+            ["Imported Agent", "Imported Agent import 2"],
+            "Imported Agent import",
+        ),
+        ("A" * 255, ["A" * 255], "A" * 248 + " import"),
+    ],
+)
+def test_import_uses_available_name_for_app_and_agent(
     sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    requested: str,
+    existing_names: list[str],
+    expected: str,
 ) -> None:
+    monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
     with sqlite_session_factory() as session, session.begin():
-        session.add(
-            Agent(
-                tenant_id="tenant-1",
-                name="Imported Agent",
-                description="",
-                role="",
-                agent_kind=AgentKind.DIFY_AGENT,
-                scope=AgentScope.ROSTER,
-                source=AgentSource.AGENT_APP,
-                status=AgentStatus.ACTIVE,
-                created_by=_account().id,
-                updated_by=_account().id,
+        for name in existing_names:
+            session.add(
+                Agent(
+                    tenant_id="tenant-1",
+                    name=name,
+                    description="",
+                    role="",
+                    agent_kind=AgentKind.DIFY_AGENT,
+                    scope=AgentScope.ROSTER,
+                    source=AgentSource.AGENT_APP,
+                    status=AgentStatus.ACTIVE,
+                    created_by=_account().id,
+                    updated_by=_account().id,
+                )
             )
-        )
     storage = _MemoryStorage()
 
-    with pytest.raises(AgentNameConflictError):
-        RosterAgentPackageImporter(storage_backend=storage).import_package(
-            source=io.BytesIO(_package()),
-            tenant_id="tenant-1",
-            account=_account(),
-        )
+    result = RosterAgentPackageImporter(storage_backend=storage).import_package(
+        source=io.BytesIO(_package(name=requested)),
+        tenant_id="tenant-1",
+        account=_account(),
+    )
 
-    assert storage.files == {}
+    with sqlite_session_factory() as session:
+        app = session.get(App, result.app_id)
+        agent = session.get(Agent, result.agent_id)
+        assert app is not None
+        assert agent is not None
+        assert app.name == agent.name == expected
+        assert _count(session, Agent) == len(existing_names) + 1
+    assert len(storage.files) == 4
 
 
 @pytest.mark.parametrize("fail_after_write", [False, True])
@@ -672,7 +702,7 @@ def test_import_preserves_error_mapping(
     def fail(**_kwargs) -> None:
         raise failure
 
-    monkeypatch.setattr(importer, "_ensure_name_available", fail)
+    monkeypatch.setattr(importer._resources, "materialize", fail)
     with pytest.raises(expected) as caught:
         importer.import_package(source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account())
     if isinstance(failure, expected):
