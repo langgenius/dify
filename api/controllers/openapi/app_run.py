@@ -84,6 +84,10 @@ from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
+# The service raises ValueError for a body the generator cannot run; its message names
+# internals (variable ids, config keys), so the caller gets a fixed text and the log the detail.
+_INVALID_RUN_INPUT: Final = "invalid run input"
+
 
 @contextmanager
 def _translate_service_errors() -> Generator[None, None, None]:
@@ -117,8 +121,9 @@ def _translate_service_errors() -> Generator[None, None, None]:
         raise InvokeRateLimitHttpError(ex.description)
     except InvokeError as e:
         raise CompletionRequestError(e.description)
-    except ValueError as ex:
-        raise BadRequest(str(ex))
+    except ValueError:
+        logger.warning("run input refused by the service.", exc_info=True)
+        raise BadRequest(_INVALID_RUN_INPUT)
     except HTTPException:
         raise
     except Exception:

@@ -41,10 +41,11 @@ def test_translate_maps_trigger_workflow_to_stable_unavailable_error():
     assert exc.value.code == 403
 
 
-def test_translate_maps_value_error_to_bad_request_with_message():
+def test_translate_maps_value_error_to_a_fixed_bad_request():
     # Regression guard: an unpublished workflow used to surface as a detail-less 500.
+    # The service message names internals, so the client gets a fixed text.
     with pytest.raises(BadRequest) as exc:
         with _translate_service_errors():
-            raise ValueError("Workflow not published")
+            raise ValueError("variable 'secret_key' of node 42 is missing")
     assert exc.value.code == 400
-    assert exc.value.description == "Workflow not published"
+    assert exc.value.description == "invalid run input"
