@@ -1,6 +1,7 @@
 import path from 'node:path'
 import * as ts from 'typescript'
 import { createTranslationApiResolver } from './api'
+import { createLocalDataflow } from './dataflow'
 
 export type RouteNamespacePolicy = { module: string; exportedName: string }
 
@@ -18,26 +19,21 @@ export function createRoutePolicyMatcher(
   const references = new Map<ts.FunctionDeclaration, ts.Identifier[]>()
   const written = new Set<ts.Symbol>()
   const translationApi = createTranslationApiResolver(root, checker)
-  const checkedWrites = new Set<ts.Node>()
   function declarations(node: ts.Node) {
     const symbol = checker.getSymbolAtLocation(node)
     return symbol?.flags && symbol.flags & ts.SymbolFlags.Alias
       ? (checker.getAliasedSymbol(symbol).declarations ?? [])
       : (symbol?.declarations ?? [])
   }
-  function markWritten(node: ts.Node) {
-    if (checkedWrites.has(node)) return
-    checkedWrites.add(node)
-    if (ts.isCallExpression(node) || ts.isFunctionLike(node)) return
-    if (ts.isIdentifier(node)) {
+  const dataflow = createLocalDataflow(declarations)
+  const markWritten = dataflow.createReferenceVisitor({
+    stop: (node) => ts.isCallExpression(node) || ts.isFunctionLike(node),
+    visit: (node) => {
+      if (!ts.isIdentifier(node)) return
       const symbol = checker.getSymbolAtLocation(node)
       if (symbol) written.add(symbol)
-      for (const declaration of declarations(node))
-        if (ts.isVariableDeclaration(declaration) && declaration.initializer)
-          markWritten(declaration.initializer)
-    }
-    ts.forEachChild(node, markWritten)
-  }
+    },
+  })
   function isReactEffect(expression: ts.Expression) {
     const symbol = checker.getSymbolAtLocation(expression)
     return (

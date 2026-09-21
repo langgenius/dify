@@ -97,6 +97,14 @@ resolved. Each route includes `unknownNamespaceSources` for reachable affected
 modules, including shared boundaries, lazy dependencies, slots, and client bridges.
 An empty list means no unknown expression was detected, not proof that all APIs or
 dependencies were understood.
+Local alias and container traversal is shared between graph analysis and route-policy
+validation in `dataflow.ts`. It follows variable initializers with cycle guards;
+it does not evaluate arbitrary callees or infer later container assignments.
+Each analysis owns its traversal boundaries and trust rules. Mutation visitors
+have separate visited sets for direct writes and call escapes; value containment
+checks do not descend into function bodies. Equivalent reference forms are exercised
+through real Vite builds for both namespace forwarding and policy validation.
+
 Direct function declarations forwarding namespace parameters are summarized and
 checked at their concrete call sites, including aliases and multi-hop forwarding.
 Summaries retain both fixed namespaces and parameter dependencies.

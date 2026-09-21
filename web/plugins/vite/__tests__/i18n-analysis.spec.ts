@@ -7,6 +7,25 @@ import { build, createBuilder, createLogger, createServer } from 'vite'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { i18nAnalysisPlugin } from '../i18n-analysis'
 
+// These forms carry the same array reference across both analysis boundaries.
+const mutationForms = [
+  { name: 'direct-mutation', code: (value: string) => `mutate(${value})` },
+  { name: 'alias-call-mutation', code: (value: string) => `const alias = ${value}; mutate(alias)` },
+  {
+    name: 'object-call-mutation',
+    code: (value: string) => `const box = { value: ${value} }; mutate(box.value)`,
+  },
+  {
+    name: 'array-call-mutation',
+    code: (value: string) => `const box = [${value}]; mutate(box[0])`,
+  },
+  {
+    name: 'nested-call-mutation',
+    code: (value: string) =>
+      `const first = ${value}; const box = { nested: [first] }; const alias = box; mutate(alias.nested[0])`,
+  },
+]
+
 describe('i18n build check', () => {
   let root: string
   let localeFile: string
@@ -630,6 +649,14 @@ describe('i18n build check', () => {
       "function load(ns = 'login') { return useTranslation(ns) }; const args = (globalThis as any).namespaces as string[]; export const page = load(...args)",
     ],
     [
+      'fixed-alias',
+      "function load(ns: string) { return useTranslation(['login', ns]) }; const alias = load; export const page = alias('app')",
+    ],
+    [
+      'fixed-spread',
+      "function load(ns: string) { return useTranslation(['login', ns]) }; export const page = load(...['app'] as [string])",
+    ],
+    [
       'fixed',
       "function load(ns: string) { return useTranslation(['login', ns]) }; export const page = load('app')",
     ],
@@ -645,10 +672,10 @@ describe('i18n build check', () => {
       'array-escape',
       "function load(ns: string) { return useTranslation(ns) }; const handlers = [load]; function register(value: unknown) { (globalThis as any).handlers = value }; register(handlers); export const page = load('app')",
     ],
-    [
-      'mutation',
-      "function mutate(ns: string[]) { ns.push('login') }; function load(ns: string[]) { mutate(ns); return useTranslation(ns) }; export const page = load(['app'])",
-    ],
+    ...mutationForms.map(({ name, code }) => [
+      name,
+      `function mutate(ns: string[]) { ns.push('login') }; function load(ns: string[]) { ${code('ns')}; return useTranslation(ns) }; export const page = load(['app'])`,
+    ]),
   ])('rejects incomplete namespace declarations after %s forwarding', async (mode, body) => {
     writeFileSync(localeFile, '{}')
     writeFileSync(path.join(root, 'i18n/locales/en-US/login.json'), '{}')
@@ -677,12 +704,12 @@ describe('i18n build check', () => {
         build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
       }),
     ).rejects.toThrow(
-      ['rest', 'fixed', 'fixed-hop', 'empty-spread'].includes(mode)
+      mode.startsWith('fixed') || ['rest', 'empty-spread'].includes(mode)
         ? /Undeclared namespace.*login/s
         : /Cannot verify namespace usage/,
     )
     if (mode === 'empty-spread') expect(reports[0]!.routes[0]!.namespaces).toEqual(['login'])
-    else if (mode === 'rest' || mode === 'fixed' || mode === 'fixed-hop')
+    else if (mode === 'rest' || mode.startsWith('fixed'))
       expect(reports[0]!.routes[0]!.namespaces).toEqual(['app', 'login'])
     else expect(reports[0]!.evidence.some((item) => item.kind === 'unknown-namespace')).toBe(true)
   })
@@ -740,7 +767,7 @@ describe('i18n build check', () => {
     'arbitrary',
     'spread',
     'alias-mutation',
-    'call-mutation',
+    ...mutationForms.map((form) => form.name),
     'effect-deps',
   ] as const)('applies route namespace policy only to proven %s props', async (mode) => {
     writeFileSync(localeFile, '{}')
@@ -766,7 +793,7 @@ describe('i18n build check', () => {
       function Loader({ required }: { required: string[] }) { useTranslation([...required]); return null }
       export function Provider() {
         const required = getRouteNamespaces(${mode === 'arbitrary' ? "'/other'" : 'usePathname()'})
-        ${mode === 'alias-mutation' ? "const alias = required; alias.push('workflow')" : mode === 'call-mutation' ? "function mutate(ns: string[]) { ns.push('workflow') }; mutate(required)" : ''}
+        ${mode === 'alias-mutation' ? "const alias = required; alias.push('workflow')" : mutationForms.some((form) => form.name === mode) ? `function mutate(ns: string[]) { ns.push('workflow') }; ${mutationForms.find((form) => form.name === mode)!.code('required')}` : ''}
         ${mode === 'effect-deps' ? 'useEffect(() => {}, [required])' : ''}
         return <Loader ${mode === 'spread' ? '{...{ required }}' : 'required={required}'} />
       }

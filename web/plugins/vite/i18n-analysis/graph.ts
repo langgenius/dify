@@ -5,6 +5,7 @@ import * as ts from 'typescript'
 import { createTranslationApiResolver } from './api'
 import { camelCase, readTranslationCatalog } from './catalog'
 import { createTranslationProgram, readCompilerOptions } from './compiler'
+import { createLocalDataflow, unwrapValue as unwrap } from './dataflow'
 import { createRoutePolicyMatcher } from './route-policy'
 
 const MAX_VALUES = 200
@@ -13,19 +14,6 @@ const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'
 type Translation = { namespaces: string[]; prefix: string; argument: number }
 type Value = ts.Expression | ts.FunctionDeclaration
 type Key = { text: string; wildcard?: boolean; namespace?: string }
-
-function unwrap(node: ts.Expression): ts.Expression {
-  if (
-    ts.isParenthesizedExpression(node) ||
-    ts.isAsExpression(node) ||
-    ts.isTypeAssertionExpression(node) ||
-    ts.isNonNullExpression(node) ||
-    ts.isSatisfiesExpression(node) ||
-    ts.isAwaitExpression(node)
-  )
-    return unwrap(node.expression)
-  return node
-}
 
 function literalTypes(type: ts.Type): string[] | undefined {
   if (type.isStringLiteral()) return [type.value]
@@ -135,6 +123,8 @@ export function checkTranslationGraph(
       ? [...local, ...(checker.getAliasedSymbol(symbol).declarations ?? [])]
       : local
   }
+
+  const dataflow = createLocalDataflow(declarations)
 
   function alternatives(expression: Value, seen = new Set<ts.Node>()): (Value | undefined)[] {
     if (ts.isFunctionDeclaration(expression)) return [expression]
@@ -583,23 +573,19 @@ export function checkTranslationGraph(
     }
   }
   const collectionStarted = performance.now()
-  const checkedWrites = new Set<ts.Node>()
-  const checkedEscapes = new Set<ts.Node>()
-  function markWrites(target: ts.Node, indirect = false) {
-    const checked = indirect ? checkedEscapes : checkedWrites
-    if (checked.has(target)) return
-    checked.add(target)
-    if (indirect && ts.isFunctionLike(target)) return
-    if (ts.isIdentifier(target)) {
-      for (const declaration of declarations(target)) {
-        if (ts.isParameter(declaration)) {
-          if (!indirect || !isPrimitive(mutationType(target))) writtenParameters.add(declaration)
-        } else if (ts.isVariableDeclaration(declaration) && declaration.initializer)
-          markWrites(declaration.initializer, indirect)
-      }
-    }
-    ts.forEachChild(target, (child) => markWrites(child, indirect))
+  function writeVisitor(indirect: boolean) {
+    return dataflow.createReferenceVisitor({
+      stop: (node) => indirect && ts.isFunctionLike(node),
+      visit: (node) => {
+        if (!ts.isIdentifier(node)) return
+        for (const declaration of declarations(node))
+          if (ts.isParameter(declaration) && (!indirect || !isPrimitive(mutationType(node))))
+            writtenParameters.add(declaration)
+      },
+    })
   }
+  const markDirectWrites = writeVisitor(false)
+  const markEscapes = writeVisitor(true)
   for (const id of modules.keys()) {
     if (id.endsWith('.json')) continue
     const source = program.getSourceFile(fileNames.get(id)!)
@@ -610,15 +596,15 @@ export function checkTranslationGraph(
         node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
         node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
       )
-        markWrites(node.left)
+        markDirectWrites(node.left)
       if (
         (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
         (node.operator === ts.SyntaxKind.PlusPlusToken ||
           node.operator === ts.SyntaxKind.MinusMinusToken)
       )
-        markWrites(node.operand)
+        markDirectWrites(node.operand)
       if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression))
-        markWrites(node.expression.expression)
+        markDirectWrites(node.expression.expression)
       if (ts.isFunctionDeclaration(node) && node.body)
         forwarding.set(node, { parameters: new Set(), namespaces: new Set() })
       if (ts.isCallExpression(node)) calls.push({ node, owner: enclosingFunction(node) })
@@ -635,7 +621,7 @@ export function checkTranslationGraph(
     mutationTypeQueries++
     return checker.getTypeAtLocation(node)
   }
-  // Match the same parameter/alias traversal as markWrites before requesting types.
+  // Match the same parameter/alias traversal as mutation tracking before requesting types.
   const parameterReferences = new Map<ts.Node, boolean>()
   function referencesParameter(node: ts.Node): boolean {
     const cached = parameterReferences.get(node)
@@ -644,15 +630,8 @@ export function checkTranslationGraph(
     // Cyclic initializers remain candidates; never prune an uncertain reference.
     parameterReferences.set(node, true)
     const result =
-      (ts.isIdentifier(node) &&
-        declarations(node).some(
-          (declaration) =>
-            ts.isParameter(declaration) ||
-            (ts.isVariableDeclaration(declaration) &&
-              !!declaration.initializer &&
-              referencesParameter(declaration.initializer)),
-        )) ||
-      !!ts.forEachChild(node, (child) => referencesParameter(child) || undefined)
+      (ts.isIdentifier(node) && declarations(node).some(ts.isParameter)) ||
+      !!dataflow.forEachReference(node, (child) => referencesParameter(child) || undefined)
     parameterReferences.set(node, result)
     return result
   }
@@ -680,7 +659,7 @@ export function checkTranslationGraph(
       mutationArguments++
       if (!referencesParameter(argument)) continue
       mutationCandidates++
-      if (!isPrimitive(mutationType(argument))) markWrites(argument, true)
+      if (!isPrimitive(mutationType(argument))) markEscapes(argument)
     }
   }
   const mutationMs = performance.now() - mutationStarted
@@ -794,31 +773,10 @@ export function checkTranslationGraph(
     finished.add(node)
   }
   for (const target of forwarding.keys()) findCycles(target, [])
-  function escapedForwarders(expression: ts.Expression, seen = new Set<ts.Node>()): boolean {
-    if (seen.has(expression)) return false
-    const next = new Set(seen).add(expression)
-    if (forwardingTargets(expression).some((target) => forwarding.get(target)!.parameters.size))
-      return true
-    const node = unwrap(expression)
-    if (ts.isObjectLiteralExpression(node))
-      return node.properties.some((member) =>
-        ts.isSpreadAssignment(member)
-          ? escapedForwarders(member.expression, next)
-          : ts.isPropertyAssignment(member)
-            ? escapedForwarders(member.initializer, next)
-            : ts.isShorthandPropertyAssignment(member) && escapedForwarders(member.name, next),
-      )
-    if (ts.isArrayLiteralExpression(node))
-      return node.elements.some((element) => escapedForwarders(element, next))
-    if (ts.isSpreadElement(node)) return escapedForwarders(node.expression, next)
-    if (ts.isIdentifier(node))
-      return declarations(node).some(
-        (declaration) =>
-          ts.isVariableDeclaration(declaration) &&
-          !!declaration.initializer &&
-          escapedForwarders(declaration.initializer, next),
-      )
-    return false
+  function escapedForwarders(expression: ts.Expression): boolean {
+    return dataflow.someContainedValue(expression, (value) =>
+      forwardingTargets(value).some((target) => forwarding.get(target)!.parameters.size > 0),
+    )
   }
   function isForwarded(expression: ts.Expression) {
     const owner = enclosingFunction(expression)
