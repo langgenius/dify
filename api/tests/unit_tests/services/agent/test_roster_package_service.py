@@ -10,7 +10,9 @@ import pytest
 import yaml
 from flask import Flask, send_file
 from pydantic import ValidationError
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from configs import dify_config
 from models.agent import (
@@ -40,6 +42,7 @@ from services.agent.errors import (
     RosterAgentPackageResourceUnavailableError,
     RosterAgentPackageTooLargeError,
 )
+from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
@@ -635,23 +638,22 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
     with pytest.raises(RosterAgentPackageTooLargeError, match="nested Skill contents"):
         RosterAgentPackageReader().read(io.BytesIO(package))
 
-    exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage(skill_payloads))
+    exporter = RosterAgentPackageExporter()
+    resources = AgentPackageResourceExporter(storage_backend=_MemoryStorage(skill_payloads))
     sources = [
-        roster_package_exporter_module._SkillSource(
+        _SkillSource(
             path=item.path,
             storage_key=item.path,
             id=item.id,
             scope=item.scope,
             name=item.name,
-            display_name=None,
-            description="Research skill.",
-            priority=None,
             audit_ref="source",
         )
         for item in manifest.skills
     ]
+    resources.sources["agent_1"] = (sources, list[_FileSource]())
     with pytest.raises(RosterAgentPackageTooLargeError, match="nested Skill contents"):
-        exporter._build_archive(app=_package_app(soul), skill_sources=sources, file_sources=[])
+        exporter._build_archive(app=_package_app(soul), resources=resources)
 
 
 @pytest.mark.parametrize("failure", ["checksum", "size", "name", "crc"])
@@ -724,22 +726,21 @@ def test_export_rejects_unusable_or_oversized_skill_payload(
     payload = _zip({"README.md": b"missing skill manifest"}) if case == "missing_manifest" else _skill_archive("other")
     if case == "size_limit":
         apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
-    source = roster_package_exporter_module._SkillSource(
+    source = _SkillSource(
         path="s_000001.zip",
         storage_key="skill",
         id="s_000001",
         scope="agent_config",
         name="research",
-        display_name=None,
-        description="Research skill.",
-        priority=None,
         audit_ref="source",
     )
     app = _package_app()
     app.package.soul.config_files = []
-    exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage({"skill": payload}))
+    exporter = RosterAgentPackageExporter()
+    resources = AgentPackageResourceExporter(storage_backend=_MemoryStorage({"skill": payload}))
+    resources.sources["agent_1"] = ([source], list[_FileSource]())
     with pytest.raises(error_type, match=message):
-        exporter._build_archive(app=app, skill_sources=[source], file_sources=[])
+        exporter._build_archive(app=app, resources=resources)
 
 
 @pytest.mark.parametrize("max_bytes", [0, 8])
@@ -1025,13 +1026,23 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
 def test_export_uses_current_workspace_skill_bindings(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    sqlite_engine: Engine,
 ) -> None:
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
     workspace_payload = _skill_archive("legacy-published")
     storage = _MemoryStorage({"tools/workspace.zip": workspace_payload})
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+
+    def load_legacy_skill(*, tenant_id: str, file_id: str) -> bytes:
+        assert tenant_id == "tenant-1"
+        assert file_id
+        assert pool.checkedout() == 0
+        return workspace_payload
+
     monkeypatch.setattr(
         "services.skill_management_service.SkillManagementService._load_tool_file_bytes",
-        staticmethod(lambda **_kwargs: workspace_payload),
+        staticmethod(load_legacy_skill),
     )
     archive_file = ToolFile(
         user_id="account-1",
@@ -1323,9 +1334,9 @@ def test_member_read_reports_closed_prepared_archive() -> None:
 
 
 def test_export_download_closes_owned_archive(app: Flask) -> None:
-    exported = RosterAgentPackageExporter()._build_archive(
-        app=_package_app(AgentSoulConfig()), skill_sources=[], file_sources=[]
-    )
+    resources = AgentPackageResourceExporter()
+    resources.sources["agent_1"] = (list[_SkillSource](), list[_FileSource]())
+    exported = RosterAgentPackageExporter()._build_archive(app=_package_app(AgentSoulConfig()), resources=resources)
     with app.test_request_context("/"):
         response = send_file(
             exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
@@ -1358,7 +1369,7 @@ def test_export_preserves_file_metadata_in_dsl(
 
     from models.model import UploadFile
 
-    exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage({}))
+    exporter = AgentPackageResourceExporter(storage_backend=_MemoryStorage({}))
     tool_file = ToolFile(
         user_id="account-1",
         tenant_id="tenant-1",

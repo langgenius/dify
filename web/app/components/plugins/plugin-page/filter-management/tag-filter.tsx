@@ -15,7 +15,6 @@ type TagsFilterProps = {
 }
 const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const { tags: options, getTagLabel } = useTags()
   const filteredOptions = options.filter((option) =>
@@ -24,7 +23,7 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
   const selectedTagsLength = value.length
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         nativeButton={false}
         render={

@@ -16,7 +16,6 @@ import { LANGUAGE_OPTIONS } from '../templates/template-language'
 export default function CatalogLanguagesFilter() {
   const { t } = useTranslation()
   const [languages, setLanguages] = useFilterTemplateLanguages()
-  const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const triggerRef = useRef<HTMLButtonElement>(null)
   const shouldRestoreFocusRef = useRef(false)
@@ -55,7 +54,7 @@ export default function CatalogLanguagesFilter() {
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <div className="relative inline-flex h-8 shrink-0 items-center">
         <PopoverTrigger
           render={

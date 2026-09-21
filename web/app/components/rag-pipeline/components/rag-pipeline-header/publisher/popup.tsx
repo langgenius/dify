@@ -11,6 +11,7 @@ import {
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -20,7 +21,6 @@ import { useQueryState } from 'nuqs'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import {
@@ -321,7 +321,7 @@ export function Popup({
             <RiArrowRightUpLine className="size-4 shrink-0" />
           </Button>
         )}
-        <Divider className="my-2" />
+        <Separator className="my-2 h-[0.5px]" />
         <Button
           className="w-full hover:bg-state-accent-hover hover:text-text-accent"
           variant="tertiary"

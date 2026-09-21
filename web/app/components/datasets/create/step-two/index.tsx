@@ -3,10 +3,10 @@
 import type { FC } from 'react'
 import type { StepTwoProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import Divider from '@/app/components/base/divider'
 import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -320,7 +320,7 @@ const StepTwo: FC<StepTwoProps> = ({
             onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
           />
         )}
-        <Divider className="my-5" />
+        <Separator className="my-5 h-[0.5px]" />
         <IndexingModeSection
           indexType={indexing.indexType}
           hasSetIndexType={hasSetIndexType}

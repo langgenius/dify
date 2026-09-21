@@ -43,7 +43,6 @@ const ConditionNumberInput = ({
 }: ConditionNumberInputProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation()
-  const [numberVarTypeVisible, setNumberVarTypeVisible] = useState(false)
   const [variableSelectorVisible, setVariableSelectorVisible] = useState(false)
   const [isFocus, { setTrue: setFocus, setFalse: setBlur }] = useBoolean()
 
@@ -57,7 +56,7 @@ const ConditionNumberInput = ({
 
   return (
     <div className="flex cursor-pointer items-center">
-      <DropdownMenu open={numberVarTypeVisible} onOpenChange={setNumberVarTypeVisible}>
+      <DropdownMenu>
         <DropdownMenuTrigger render={<Button className="shrink-0" variant="ghost" size="small" />}>
           {capitalize(numberVarType)}
           <RiArrowDownSLine className="size-3.5" />
