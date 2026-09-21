@@ -52,6 +52,7 @@ PLAIN: frozenset[str] = frozenset(
         "Test failed — no safe automatic fix; edit or keep draft.",
         "No automatic fix found — review the diagnosis and edit the canvas manually, or reject.",
         "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test.",
+        "No fix is staged for this failure -- keep the draft or revert.",
         # card titles
         "Test run",
         "Review",
@@ -67,6 +68,7 @@ PLAIN: frozenset[str] = frozenset(
         "High-impact rules",
         "Model not configured",
         "Proceeding with sensible defaults",
+        "Repeated failure",
         "Test failed",
         "Validation",
         # model-config-failure surface (build + edit)

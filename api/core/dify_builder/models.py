@@ -251,6 +251,11 @@ class DifyBuilderContext:
     failed_run_id: str = ""
     diagnosis: Diagnosis | None = None
     staged_repair: list[MutationIntent] = field(default_factory=list)
+    # Repair-loop convergence. Nothing tracked attempts before, so a repair
+    # that changed nothing could be approved forever (ESQ1-291) and a repair
+    # aimed at the wrong field could thrash indefinitely (ESQ1-285/290).
+    repair_attempts: int = 0
+    last_repair_error: str = ""
     risk: Risk | None = None
     change_set: ChangeSet | None = None
     checkpoint_id: str = ""
