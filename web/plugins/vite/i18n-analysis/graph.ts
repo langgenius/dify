@@ -470,12 +470,7 @@ export function checkTranslationGraph(
       ) {
         record(selectorKeys(value), info)
       } else {
-        record(
-          value && !ts.isFunctionDeclaration(value)
-            ? keyPatterns(value)
-            : [{ text: '.*', wildcard: true }],
-          info,
-        )
+        record(value ? keyPatterns(value) : [{ text: '.*', wildcard: true }], info)
       }
     }
   }
@@ -649,7 +644,6 @@ export function checkTranslationGraph(
     evidence: [...evidence.values()],
     timings: { programMs, analysisMs: performance.now() - analysisStarted },
     protectedNamespaces: [...protectedNamespaces].sort(),
-    moduleCount: modules.size,
     moduleNamespaces,
   }
 }

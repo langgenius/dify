@@ -53,13 +53,13 @@ export function i18nAnalysisPlugin(
     string,
     {
       modules: Map<string, string>
+      dependencies: Map<string, ModuleDependencies>
       resolutions: ModuleResolutions
       clientReferences: Set<string>
       resolveCalls: number
       resolutionMs: number
     }
   >()
-  const edges = new Map<string, Map<string, ModuleDependencies>>()
   const moduleId = normalizePath
   const checks = new Map<string, Promise<void>>()
   const snapshots = new Map<string, string>()
@@ -82,7 +82,7 @@ export function i18nAnalysisPlugin(
     for (const [environment, graph] of graphs) {
       const result = checkTranslationGraph(root, graph.modules, graph.resolutions, context)
       environments.set(environment, {
-        dependencies: edges.get(environment) ?? new Map(),
+        dependencies: graph.dependencies,
         usage: result.moduleNamespaces,
         clientReferences: graph.clientReferences,
         unknownNamespaces: new Set(
@@ -197,7 +197,6 @@ export function i18nAnalysisPlugin(
       },
       async buildApp() {
         graphs.clear()
-        edges.clear()
         checks.clear()
         snapshots.clear()
         buildingApp = true
@@ -209,7 +208,6 @@ export function i18nAnalysisPlugin(
         }
         if (!buildingApp && !snapshots.has(this.environment.name)) {
           graphs.clear()
-          edges.clear()
         }
       },
       transform: {
@@ -271,11 +269,13 @@ export function i18nAnalysisPlugin(
         snapshots.set(this.environment.name, snapshot)
         const { hasClientDirective, resolveTranslationImports } =
           await import('./i18n-analysis/compiler')
-        const clientReferences = new Set(
-          [...graph].filter(([, code]) => hasClientDirective(code)).map(([id]) => id),
-        )
+        const clientReferences = new Set<string>()
         if (this.environment.name === 'rsc') {
-          for (const id of clientReferences) graph.set(id, compiledModules.get(id) ?? '')
+          for (const [id, code] of graph) {
+            if (!hasClientDirective(code)) continue
+            clientReferences.add(id)
+            graph.set(id, compiledModules.get(id) ?? '')
+          }
         }
         const { resolutions, resolveCalls } = await resolveTranslationImports(
           graph,
@@ -291,12 +291,12 @@ export function i18nAnalysisPlugin(
         )
         graphs.set(this.environment.name, {
           modules: graph,
+          dependencies,
           resolutions,
           resolveCalls,
           resolutionMs: performance.now() - resolutionStarted,
           clientReferences,
         })
-        edges.set(this.environment.name, dependencies)
       },
       closeBundle() {
         snapshots.delete(this.environment.name)
@@ -330,7 +330,6 @@ export function i18nAnalysisPlugin(
           } finally {
             buildingApp = false
             graphs.clear()
-            edges.clear()
           }
         },
       },
