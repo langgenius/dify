@@ -110,7 +110,7 @@ export default class Call extends Command<typeof INPUT> {
       signal,
     }))
 
-    const code = await rendererFor(op.kind, out)(res, out, input)
+    const code = await rendererFor(op.kind, out)(res, out, input, input.op_id)
     return new Outcome(code)
   }
 }

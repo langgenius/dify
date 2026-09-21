@@ -13,10 +13,12 @@ const sse = (events: object[]) =>
     headers: { 'content-type': 'text/event-stream' },
   })
 
+const OP_ID = 'thing.export'
+
 function render(kind: string, res: Response, flags: CallFlags = {}) {
   const buf = bufferStreams()
   const io = ioService(buf)
-  return { buf, code: rendererFor(kind, io)(res, io, flags) }
+  return { buf, code: rendererFor(kind, io)(res, io, flags, OP_ID) }
 }
 
 it('object and list print the body unchanged, hints included', async () => {
@@ -112,4 +114,27 @@ it('file omits content_type when the server sent none', async () => {
   const r = render('file', res, { output: out })
   await r.code
   expect(JSON.parse(r.buf.outBuf())).toEqual({ path: out, size: 1 })
+})
+
+it('file names an unnamed download after the op and its content type', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const cwd = process.cwd()
+  process.chdir(dir)
+  const here = process.cwd()
+  try {
+    const yaml = render(
+      'file',
+      new Response('a: 1', { headers: { 'content-type': 'application/x-yaml' } }),
+    )
+    await yaml.code
+    expect(JSON.parse(yaml.buf.outBuf())).toMatchObject({ path: join(here, `${OP_ID}.yaml`) })
+    const blob = render(
+      'file',
+      new Response(new Uint8Array([1]), { headers: { 'content-type': 'application/vnd.unknown' } }),
+    )
+    await blob.code
+    expect(JSON.parse(blob.buf.outBuf())).toMatchObject({ path: join(here, `${OP_ID}.bin`) })
+  } finally {
+    process.chdir(cwd)
+  }
 })

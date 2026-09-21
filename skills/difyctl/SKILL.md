@@ -21,7 +21,7 @@ Run an app with the op for its mode: `console_app.workflow.run`, `console_app.ch
 
 ## Options (difyctl-only flags)
 
-`--stream` prints every event of a streaming op as one JSON line instead of folding them into one result. `--only <event>` filters streamed events (repeatable). `--output <path>` saves a file-kind response. `--verbose` includes the raw server response in errors. An option the operation's kind does not support exits 2.
+`--stream` prints every event of a streaming op as one JSON line instead of folding them into one result. `--only <event>` filters streamed events (repeatable). `--output <path>` saves a file-kind response; without it the file lands in the current directory under the server's filename, or `<op-id>.<ext>` when the server sent none. `--verbose` includes the raw server response in errors. An option the operation's kind does not support exits 2.
 
 ## Reading results
 
