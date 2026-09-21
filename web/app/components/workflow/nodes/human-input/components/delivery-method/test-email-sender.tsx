@@ -4,6 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightSFill } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop, unionBy } from 'es-toolkit/compat'
@@ -11,7 +12,6 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Divider from '@/app/components/base/divider'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
 import { formatValue } from '@/app/components/workflow/nodes/_base/components/before-run-form/helpers'
@@ -432,7 +432,7 @@ const EmailSenderContent = ({
       {generatedInputs.length > 0 && (
         <>
           <div>
-            <Divider className="mt-4! mb-2! h-px! w-12! bg-divider-regular" />
+            <Separator className="mt-4 mb-2 w-12" />
           </div>
           <div className="py-2">
             <button

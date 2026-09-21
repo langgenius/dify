@@ -4,6 +4,7 @@ import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import {
   RiAddLine,
   RiClipboardLine,
@@ -15,7 +16,6 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -97,7 +97,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         readonly={readOnly}
       />
       <div className="px-4 py-2">
-        <Divider className="my-0! h-px! bg-divider-subtle!" />
+        <Separator className="my-0 bg-divider-subtle" />
       </div>
       {/* form content */}
       <div
@@ -230,7 +230,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         )}
       </div>
       <div className="px-4 py-2">
-        <Divider className="my-0! h-px! bg-divider-subtle!" />
+        <Separator className="my-0 bg-divider-subtle" />
       </div>
       {/* timeout */}
       <div className="flex items-center justify-between px-4 py-2">

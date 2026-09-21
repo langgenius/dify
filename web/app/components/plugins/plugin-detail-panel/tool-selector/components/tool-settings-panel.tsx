@@ -7,9 +7,9 @@ import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
 import ReasoningConfigForm from './reasoning-config-form'
 
@@ -99,7 +99,7 @@ export function ToolSettingsPanel({
 
   return (
     <>
-      <Divider className="my-1 w-full" />
+      <Separator className="my-1 h-[0.5px]" />
       {nodeId && showTabSlider ? (
         <Tabs
           value={currType}

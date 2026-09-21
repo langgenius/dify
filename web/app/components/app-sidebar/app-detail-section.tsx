@@ -3,12 +3,12 @@
 import type { ComponentProps } from 'react'
 import type { NavIcon } from './nav-link'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
-import Divider from '@/app/components/base/divider'
 import Annotations from '@/app/components/base/icons/src/vender/Annotations'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -60,15 +60,10 @@ const isAnnotationsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/an
 
 const renderNavDivider = (key: string, expand: boolean) => (
   <div key={key} className={cn(expand ? 'px-3 py-0.5' : 'px-1 py-0.5')}>
-    <Divider
-      type="horizontal"
-      bgStyle={expand ? 'gradient' : 'solid'}
-      className={cn(
-        'my-0 h-px',
-        expand
-          ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
-          : 'bg-divider-subtle',
-      )}
+    <Separator
+      orientation="horizontal"
+      variant={expand ? 'gradient' : 'solid'}
+      className={cn('my-0', expand ? 'from-divider-subtle' : 'bg-divider-subtle')}
     />
   </div>
 )
@@ -191,10 +186,11 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
       {!expand && (
         <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-0.75">
-          <Divider
-            type="horizontal"
-            bgStyle="solid"
-            className="my-0 h-px w-6.75 bg-divider-subtle"
+          <Separator
+            decorative
+            orientation="horizontal"
+            variant="solid"
+            className="my-0 w-6.75 bg-divider-subtle"
           />
         </div>
       )}
