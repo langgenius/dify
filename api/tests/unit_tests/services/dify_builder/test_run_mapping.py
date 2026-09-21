@@ -412,3 +412,28 @@ def test_an_unknown_outcome_still_carries_the_per_node_rows_it_has():
     assert run.status == "running"
     assert [n.node_id for n in run.per_node] == ["node-1"]
     assert run.per_node[0].outputs == {"x": 1}
+
+
+def test_a_node_event_carries_the_run_id_so_the_canvas_can_follow_along() -> None:
+    """The point of streaming: a client can open the run on the canvas while
+    it is still going, so the run id has to ride the FIRST node event -- not
+    wait for the card that reports the outcome."""
+    event = node_event_from_stream_chunk(
+        {
+            "event": "node_started",
+            "workflow_run_id": "run-1",
+            "data": {"node_id": "n1", "title": "Start"},
+        }
+    )
+
+    assert event is not None
+    assert event.run_id == "run-1"
+    assert event.status == "running"
+
+
+def test_a_node_event_without_a_run_id_still_maps() -> None:
+    """An adapter that cannot supply one degrades to "", never raises."""
+    event = node_event_from_stream_chunk({"event": "node_finished", "data": {"node_id": "n1", "status": "succeeded"}})
+
+    assert event is not None
+    assert event.run_id == ""

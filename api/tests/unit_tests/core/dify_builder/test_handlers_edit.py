@@ -297,7 +297,9 @@ def test_edit_test_fail_routes_to_await_repair():
     assert error_card.payload["node_id"] == "output"
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result", "error", "change_set"]
-    assert {"event": "mark_test_error"} in events
+    # The canvas event carries the Dify run id so a client can open the
+    # failed run on the graph, not just colour the node red.
+    assert {"event": "mark_test_error", "dify_run_id": "build-run-1"} in events
 
 
 def test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate():

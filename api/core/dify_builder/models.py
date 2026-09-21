@@ -194,6 +194,11 @@ class NodeEvent:
     title: str = ""
     status: str = ""
     error: str = ""
+    # The Dify workflow run these nodes belong to. Carried on the event so a
+    # client can point the canvas at the run while it is still going -- the
+    # run id is known from the first streamed frame, long before the card
+    # that reports the outcome exists. "" when the adapter cannot supply one.
+    run_id: str = ""
 
 
 @dataclass(kw_only=True)
