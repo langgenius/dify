@@ -18,10 +18,10 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
@@ -114,7 +114,7 @@ const MemberMenu = ({
   if (!canAssignRoles && !canRemove && !showTransferOwnership) return null
 
   return (
-    <div role="presentation">
+    <div>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={
@@ -130,11 +130,7 @@ const MemberMenu = ({
             </IconButton>
           }
         />
-        <DropdownMenuContent
-          placement="bottom-end"
-          sideOffset={4}
-          className="min-w-[180px] rounded-xl"
-        >
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-45 rounded-xl">
           {canAssignRoles && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"

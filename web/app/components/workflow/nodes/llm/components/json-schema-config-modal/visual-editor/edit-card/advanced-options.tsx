@@ -1,9 +1,9 @@
 import type { FC } from 'react'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 
 export type AdvancedOptionsType = {
   enum: string
@@ -43,7 +43,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({ onChange, options }) => {
             {t(($) => $['nodes.llm.jsonSchema.stringValidations'], { ns: 'workflow' })}
           </span>
           <div className="grow">
-            <Divider type="horizontal" className="my-0 h-px bg-line-divider-bg" />
+            <Separator decorative orientation="horizontal" className="my-0 bg-line-divider-bg" />
           </div>
         </div>
         <div className="flex flex-col">

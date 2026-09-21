@@ -4,13 +4,13 @@ import type { AgentConfigSkillFileResponse } from '@dify/contracts/api/console/a
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentSkillDetail, AgentSkillDetailDownloadAction } from './detail-dialog'
 import type { AgentFileNode, AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
-import { toast } from '@langgenius/dify-ui/toast'
 import { queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import { getDriveFileIconType } from '../files/file-icon'
 
@@ -41,7 +41,7 @@ const getSkillFileContentQueryOptions = (url: string) =>
   queryOptions({
     queryKey: skillFileContentQueryKey(url),
     queryFn: () => fetchSkillFileContent(url),
-    staleTime: Infinity,
+    staleTime: 0,
   })
 
 const isSkillFolder = (file: AgentConfigSkillFileResponse) => file.type === 'directory'
@@ -281,6 +281,7 @@ export function useAgentSkillDetail({
         },
       },
     }),
+    staleTime: 0,
     enabled: shouldLoadImagePreview && !apiContext.workflow,
   })
   const workflowDownloadQuery = useQuery({
@@ -298,6 +299,7 @@ export function useAgentSkillDetail({
         },
       },
     }),
+    staleTime: 0,
     enabled: shouldLoadImagePreview && !!apiContext.workflow,
   })
   const downloadQuery = apiContext.workflow ? workflowDownloadQuery : agentDownloadQuery
@@ -334,29 +336,32 @@ export function useAgentSkillDetail({
       setDownloadActionLoadingTarget(action)
       try {
         if (apiContext.workflow) {
-          const result = await queryClient.fetchQuery(
-            consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
-              input: {
-                params: {
-                  app_id: apiContext.workflow.appId,
-                  name: skill.name,
-                },
-                query: {
-                  node_id: apiContext.workflow.nodeId,
-                  path,
-                  draft_type: apiContext.draftType,
-                  version_id: apiContext.versionId,
+          const result = await queryClient.query({
+            ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
+              {
+                input: {
+                  params: {
+                    app_id: apiContext.workflow.appId,
+                    name: skill.name,
+                  },
+                  query: {
+                    node_id: apiContext.workflow.nodeId,
+                    path,
+                    draft_type: apiContext.draftType,
+                    version_id: apiContext.versionId,
+                  },
                 },
               },
-            }),
-          )
-          const data = await queryClient.fetchQuery(getSkillFileContentQueryOptions(result.url))
+            ),
+            staleTime: 0,
+          })
+          const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
           downloadBlob({ data, fileName: file.name })
           return
         }
 
-        const result = await queryClient.fetchQuery(
-          consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
+        const result = await queryClient.query({
+          ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
             input: {
               params: {
                 agent_id: apiContext.agentId,
@@ -369,8 +374,9 @@ export function useAgentSkillDetail({
               },
             },
           }),
-        )
-        const data = await queryClient.fetchQuery(getSkillFileContentQueryOptions(result.url))
+          staleTime: 0,
+        })
+        const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
         downloadBlob({ data, fileName: file.name })
       } catch {
         toast.error(tCommon(($) => $['operation.downloadFailed']))
@@ -400,11 +406,11 @@ export function useAgentSkillDetail({
         : (previewQuery.data?.text ?? undefined),
       downloadActionLoadingTarget,
       fileName: selectedFile?.name,
-      imageData: imageContentQuery.data,
+      imageData: imageContentQuery.isFetching ? undefined : imageContentQuery.data,
       isDownloadError:
         shouldLoadImagePreview && (downloadQuery.isError || imageContentQuery.isError),
       isDownloadLoading:
-        shouldLoadImagePreview && (downloadQuery.isPending || imageContentQuery.isPending),
+        shouldLoadImagePreview && (downloadQuery.isFetching || imageContentQuery.isFetching),
       isError: isSkillMdSelected
         ? inspectQuery.isError
         : !!selectedPreviewPath && previewQuery.isError,

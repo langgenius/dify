@@ -13,10 +13,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { sourceName } from './document-model'
@@ -275,7 +275,6 @@ export function DocumentsEmpty({
       <Button
         className="mt-4"
         variant="primary"
-        aria-busy={uploading}
         disabled={!canEdit}
         loading={uploading}
         aria-describedby={!canEdit ? readOnlyReasonId : undefined}
@@ -454,7 +453,6 @@ export function DocumentsList({
         </Button>
         <Button
           variant="primary"
-          aria-busy={uploading}
           disabled={!canEdit}
           loading={uploading}
           aria-describedby={!canEdit ? readOnlyReasonId : undefined}
@@ -562,7 +560,7 @@ export function DocumentsList({
         )}
         {completingResults && (
           <div className="flex min-h-32 items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
       </div>
@@ -593,7 +591,6 @@ export function DocumentsList({
           <Button
             ref={loadMoreButtonRef}
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-            aria-busy={isFetchingNextDocumentPage}
             loading={isFetchingNextDocumentPage}
             onBlur={(event) => {
               if (event.relatedTarget) restoreLoadMoreFocusRef.current = false
@@ -610,7 +607,6 @@ export function DocumentsList({
         <div className="mt-5 flex justify-center">
           <Button
             ref={loadMoreButtonRef}
-            aria-busy={isFetchingNextPage}
             loading={isFetchingNextPage}
             onBlur={(event) => {
               if (event.relatedTarget) restoreLoadMoreFocusRef.current = false
@@ -659,7 +655,6 @@ export function DocumentBulkActions({
       >
         <Button
           aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
-          aria-busy={reindexing}
           className="shrink-0"
           disabled={disabled}
           loading={reindexing}

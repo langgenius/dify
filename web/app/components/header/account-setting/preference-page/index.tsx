@@ -1,5 +1,5 @@
 'use client'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import {
   Select,
   SelectContent,
@@ -8,18 +8,17 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { setLocaleOnClient } from '@/i18n-config'
-import { languages } from '@/i18n-config/language'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
-import { updateUserProfile } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { timezones } from '@/utils/timezone'
 
 type SelectOption = {
@@ -48,7 +47,7 @@ export default function PreferencePage() {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const updateTimezone = useMutation(consoleQuery.account.timezone.post.mutationOptions())
+  const updateProfile = useMutation(consoleQuery.account.profile.patch.mutationOptions())
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
   const router = useRouter()
@@ -68,11 +67,9 @@ export default function PreferencePage() {
     if (isThemeOption(item.value)) setTheme(item.value)
   }
   const handleSelectLanguage = async (item: SelectOption) => {
-    const url = '/account/interface-language'
-    const bodyKey = 'interface_language'
     setEditing(true)
     try {
-      await updateUserProfile({ url, body: { [bodyKey]: item.value } })
+      await updateProfile.mutateAsync({ body: { interface_language: item.value } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setLocaleOnClient(item.value.toString() as Locale, false)
       router.refresh()
@@ -85,7 +82,7 @@ export default function PreferencePage() {
   const handleSelectTimezone = async (item: TimezoneOption) => {
     setEditing(true)
     try {
-      await updateTimezone.mutateAsync({ body: { timezone: item.value } })
+      await updateProfile.mutateAsync({ body: { timezone: item.value } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
     } catch (e) {
       toast.error((e as Error).message)

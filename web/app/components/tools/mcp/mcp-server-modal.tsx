@@ -2,13 +2,12 @@
 import type { MCPServerDetail } from '@/app/components/tools/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import {
   useCreateMCPServer,
   useInvalidateMCPServerDetail,
@@ -60,21 +59,6 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
     return res
   }
 
-  const emitMcpServerUpdate = (action: 'created' | 'updated') => {
-    const socket = webSocketClient.getSocket(appID)
-    if (!socket) return
-
-    const timestamp = Date.now()
-    socket.emit('collaboration_event', {
-      type: 'mcp_server_update',
-      data: {
-        action,
-        timestamp,
-      },
-      timestamp,
-    })
-  }
-
   const submit = async () => {
     if (!data) {
       const payload: {
@@ -90,7 +74,6 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
 
       await createMCPServer(payload)
       invalidateMCPServerDetail(appID)
-      emitMcpServerUpdate('created')
       onHide()
     } else {
       const payload: {
@@ -107,7 +90,6 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
 
       await updateMCPServer(payload)
       invalidateMCPServerDetail(appID)
-      emitMcpServerUpdate('updated')
       onHide()
     }
   }
@@ -159,7 +141,11 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
                   <div className="shrink-0 system-xs-medium-uppercase text-text-primary">
                     {t(($) => $['mcp.server.modal.parameters'], { ns: 'tools' })}
                   </div>
-                  <Divider type="horizontal" className="m-0! h-px! grow bg-divider-subtle" />
+                  <Separator
+                    decorative
+                    orientation="horizontal"
+                    className="m-0 grow bg-divider-subtle"
+                  />
                 </div>
                 <div className="mb-2 body-xs-regular text-text-tertiary">
                   {t(($) => $['mcp.server.modal.parametersTip'], { ns: 'tools' })}

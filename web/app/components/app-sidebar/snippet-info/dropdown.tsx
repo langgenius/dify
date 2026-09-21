@@ -18,7 +18,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +26,7 @@ import {
   canCreateAndModifySnippets,
   canManageSnippets,
 } from '@/app/components/snippets/utils/permission'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import {
@@ -137,7 +137,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
             </IconButton>
           }
         />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[180px] p-1">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-45 p-1">
           {canCreateAndModifySnippet && (
             <>
               <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>

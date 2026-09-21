@@ -15,8 +15,8 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { jsonToCSV } from 'react-papaparse'
-import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { LanguagesSupported } from '@/i18n/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
 import { downloadBlob } from '@/utils/download'
 import AddAnnotationModal from '../add-annotation-modal'
@@ -95,7 +95,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           />
           {t(($) => $['table.header.bulkExport'], { ns: 'appAnnotation' })}
         </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent placement="left-start" sideOffset={4} className="min-w-[100px]">
+        <DropdownMenuSubContent placement="left-start" sideOffset={4} className="min-w-25">
           <DropdownMenuItem
             disabled={annotationUnavailable}
             onClick={() => {
@@ -190,7 +190,7 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[155px]">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-38.75">
           <OperationsMenu
             list={list}
             onClose={() => setIsOperationsMenuOpen(false)}

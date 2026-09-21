@@ -9,7 +9,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -59,8 +59,10 @@ vi.mock('../use-nodes-sync-draft', () => ({
   }),
 }))
 
-vi.mock('@/service/apps', () => ({
-  exportAppConfig: (...args: unknown[]) => mockExportAppConfig(...args),
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: { byAppId: { export: { get: (...args: unknown[]) => mockExportAppConfig(...args) } } },
+  },
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -93,6 +95,23 @@ describe('useDSLByCanEdit', () => {
     mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [] })
   })
 
+  it('downloads the default package bytes and forwards the selected workflow version', async () => {
+    const file = new File([new Uint8Array([0x50, 0x4b, 0xff])], 'workflow.ifpkg')
+    mockExportAppConfig.mockResolvedValue(file)
+    const { result } = renderHook(() => useDSLByCanEdit(true))
+    await act(async () => {
+      await result.current.handleExportDSL(true, 'revision-1')
+    })
+    expect(mockExportAppConfig).toHaveBeenCalledWith(
+      {
+        params: { app_id: 'app-1' },
+        query: { include_secret: true, workflow_id: 'revision-1' },
+      },
+      { context: { silent: true } },
+    )
+    expect(mockDownloadBlob).toHaveBeenCalledWith({ data: file, fileName: 'workflow.ifpkg' })
+  })
+
   it('should export workflow dsl and download the yaml blob when no secret env is present', async () => {
     const { result } = renderHook(() => useDSLByCanEdit(true))
 
@@ -102,11 +121,13 @@ describe('useDSLByCanEdit', () => {
 
     expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
     expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
-    expect(mockExportAppConfig).toHaveBeenCalledWith({
-      appID: 'app-1',
-      include: false,
-      workflowID: undefined,
-    })
+    expect(mockExportAppConfig).toHaveBeenCalledWith(
+      {
+        params: { app_id: 'app-1' },
+        query: { include_secret: false, workflow_id: undefined },
+      },
+      { context: { silent: true } },
+    )
     expect(mockDownloadBlob).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.any(Blob),
@@ -151,11 +172,13 @@ workflow:
       await result.current.handleExportDSL(true, 'workflow-1')
     })
 
-    expect(mockExportAppConfig).toHaveBeenCalledWith({
-      appID: 'app-1',
-      include: true,
-      workflowID: 'workflow-1',
-    })
+    expect(mockExportAppConfig).toHaveBeenCalledWith(
+      {
+        params: { app_id: 'app-1' },
+        query: { include_secret: true, workflow_id: 'workflow-1' },
+      },
+      { context: { silent: true } },
+    )
   })
 
   it('should emit DSL_EXPORT_CHECK when secret environment variables exist', async () => {

@@ -1,18 +1,18 @@
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useMarketplaceAllPlugins } from './hooks'
 
 type InstallFromMarketplaceProps = {
@@ -80,7 +80,7 @@ const InstallFromMarketplace = ({
       id="model-provider-marketplace"
       className="flex scroll-mt-4 flex-col gap-2"
     >
-      <Divider className="my-2! h-px" />
+      <Separator className="my-2" />
       <div className="relative flex flex-col gap-2">
         <div
           aria-hidden
@@ -124,9 +124,9 @@ const InstallFromMarketplace = ({
           </div>
         </div>
         {!collapse && shouldLoadMarketplace && !hasLoadedInstalledPluginIds && (
-          <Loading type="area" />
+          <LoadingPlaceholder />
         )}
-        {!collapse && hasLoadedInstalledPluginIds && isAllPluginsLoading && <Loading type="area" />}
+        {!collapse && hasLoadedInstalledPluginIds && isAllPluginsLoading && <LoadingPlaceholder />}
         {!isAllPluginsLoading && !collapse && hasLoadedInstalledPluginIds && (
           <List
             marketplaceCollections={[]}

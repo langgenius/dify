@@ -1,9 +1,7 @@
 import type { ChatConfig, ChatItem, OnFeedback } from '../types'
-/* oxlint-disable typescript/no-explicit-any */
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import type { AppData, ConversationItem } from '@/models/share'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -11,8 +9,9 @@ import { useTranslation } from 'react-i18next'
 import { useConversationSelection } from '@/app/components/base/chat/storage'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { useWebAppStore } from '@/context/web-app-context'
-import { changeLanguage } from '@/i18n-config/client'
+import { changeLanguage } from '@/i18n/client'
 import { AppSourceType, updateFeedback } from '@/service/share'
 import {
   useInvalidateShareConversations,
@@ -21,6 +20,7 @@ import {
   useShareConversations,
 } from '@/service/use-share'
 import { useGetTryAppInfo, useGetTryAppParams } from '@/service/use-try-app'
+import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
 import {
@@ -119,8 +119,14 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     setLanguageFromParams()
   }, [appInfo])
   const allowResetChat = !conversationId
+  const conversationScopeId = getWebAppConversationScopeId(resolveWebAppAddress(), appId)
+  const endUserId = (appInfo as AppData | undefined)?.end_user_id
   const { currentConversationId, handleConversationIdInfoChange, removeConversationIdInfo } =
-    useConversationSelection({ appId, userId, conversationId })
+    useConversationSelection({
+      scopeId: isTryApp || endUserId ? conversationScopeId : '',
+      userId: isTryApp ? userId : endUserId,
+      conversationId,
+    })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''

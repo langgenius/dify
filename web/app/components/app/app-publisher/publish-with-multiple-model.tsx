@@ -1,9 +1,9 @@
+import type {
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
-import type {
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -12,31 +12,37 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useProviderContext } from '@/context/provider-context'
+import { renderI18nObject } from '@/i18n/metadata'
+import { consoleQuery } from '@/service/console'
 import ModelIcon from '../../header/account-setting/model-provider-page/model-icon'
 
 type PublishWithMultipleModelProps = {
   disabled?: boolean
   multipleModelConfigs: ModelAndParameter[]
-  // textGenerationModelList?: Model[]
   onSelect: (v: ModelAndParameter) => void
 }
 const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
   disabled = false,
   multipleModelConfigs,
-  // textGenerationModelList = [],
   onSelect,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
-  const { textGenerationModelList } = useProviderContext()
-  const [open, setOpen] = useState(false)
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
 
-  const validModelConfigs: (ModelAndParameter & { modelItem: ModelItem; providerItem: Model })[] =
-    []
+  const validModelConfigs: (ModelAndParameter & {
+    modelItem: ProviderModelWithStatusEntity
+    providerItem: ProviderWithModelsResponse
+  })[] = []
 
   multipleModelConfigs.forEach((item) => {
     const provider = textGenerationModelList.find((model) => model.provider === item.provider)
@@ -60,7 +66,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
   const triggerDisabled = disabled || !validModelConfigs.length
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
         disabled={triggerDisabled}
         render={<Button variant="primary" disabled={triggerDisabled} className="w-full" />}
@@ -80,9 +86,9 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
             <ModelIcon modelName={item.model} provider={item.providerItem} className="ml-2" />
             <div
               className="ml-1 truncate text-text-secondary"
-              title={item.modelItem.label[language]}
+              title={renderI18nObject(item.modelItem.label, language)}
             >
-              {item.modelItem.label[language]}
+              {renderI18nObject(item.modelItem.label, language)}
             </div>
           </DropdownMenuItem>
         ))}

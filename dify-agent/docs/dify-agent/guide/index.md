@@ -2,7 +2,10 @@
 
 This guide describes how to run the MVP Dify Agent API server. The server is
 implemented in `dify-agent/src/dify_agent/server/app.py` and uses Redis for run
-records and per-run event streams only.
+records and per-run event streams. Optional E2B usage collection is triggered by
+the API's existing Celery Beat schedule through a separate one-shot endpoint.
+It adds no operation logging, polling loop, leader election or accounting context
+to business runtime execution.
 
 ## Default local startup
 
@@ -29,6 +32,12 @@ run.
 `ServerSettings` loads environment variables with the `DIFY_AGENT_` prefix. It
 also reads `.env` and `dify-agent/.env` when present.
 
+OpenShell-specific settings are listed in the
+[OpenShell configuration reference](openshell.md#configuration).
+
+Independent E2B execution accounting, activation and rollout checks are described
+in [E2B runtime metering](runtime-metering.md).
+
 | Environment variable | Default | Description |
 | --- | --- | --- |
 | `DIFY_AGENT_REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL. |
@@ -46,7 +55,7 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` | empty | API key sent to the Dify plugin daemon. |
 | `DIFY_AGENT_INNER_API_URL` | `http://localhost:5001` | Dify API service root used when dify-agent calls `/inner/api/...` endpoints. |
 | `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
-| `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, or `e2b` Home Snapshot + Execution Binding backend profile. |
+| `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, `e2b`, or `openshell` Home Snapshot + Execution Binding backend profile. |
 | `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
 | `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
 | `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
@@ -237,6 +246,12 @@ provider `RuntimeError` observed first becomes a tool observation. In contrast,
 run-deadline cancellation propagates through the Shell boundary; only the Dify
 Agent run deadline owns the terminal `agent_run_limit_exceeded` failure.
 
+## OpenShell backend
+
+See the [OpenShell Runtime Backend guide](openshell.md) for its configuration
+reference, runtime image build instructions, gateway and shared-volume setup,
+and deployment validation.
+
 ## Run runtime-backend integration contracts
 
 Run the disposable Local contract from the `dify-agent` directory. The script
@@ -273,9 +288,11 @@ DIFY_AGENT_TEST_E2B_TEMPLATE=difys-default-team/dify-agent-local-sandbox \
   -k e2b -q -rs
 ```
 
+For OpenShell, see [Run the OpenShell integration contract](openshell.md#run-the-openshell-integration-contract).
+
 The Local auth token is optional when shellctl has authentication disabled.
 The E2B contract uses the one-hour `E2B_MAX_ACTIVE_TIMEOUT_SECONDS` RuntimeLease
-limit. This is continuous active test time, not a post-test retention TTL. Both
+limit. This is continuous active test time, not a post-test retention TTL. All
 contracts create unique resources and perform explicit cleanup in `finally`
 blocks.
 
@@ -358,6 +375,49 @@ whose Agenton layers provide user input. With the MVP provider set, use
 `config.user` can be a string or a list of strings. Empty or whitespace-only
 effective prompts are rejected during create-run validation before the run is
 persisted or scheduled.
+
+Agent App callers can use the `dify.user_prompt` layer to send text and images
+in the same model turn. Each image must provide exactly one transport: an
+HTTP(S) `url` or unprefixed Base64 data in `base64_data`. The image is passed as
+structured multimodal content; it is not interpolated into `config.text`.
+
+```json
+{
+  "name": "agent_app_user_prompt",
+  "type": "dify.user_prompt",
+  "config": {
+    "text": "Describe this image.",
+    "files": [
+      {
+        "delivery": "multimodal",
+        "type": "image",
+        "filename": "earth.png",
+        "mime_type": "image/png",
+        "format": "png",
+        "url": "https://files.example.com/earth.png",
+        "base64_data": null,
+        "detail": "high"
+      }
+    ]
+  }
+}
+```
+
+All attachments use `config.files`. The `delivery` field selects how an attachment
+is presented, independently of its file `type` (`image`, `document`, `audio`,
+`video`, or `custom`):
+
+- `delivery: "multimodal"` currently supports `type: "image"` only. Dify API
+  chooses URL or Base64 transport according to `MULTIMODAL_SEND_FORMAT`.
+- `delivery: "download"` preserves the original file `type`, including `image`
+  when the selected model has no Vision feature. It contains either
+  `transfer_method: "remote_url"` with `url`, or a `local_file`, `tool_file`, or
+  `datasource_file` transfer method with a canonical `reference`.
+
+The layer appends sandbox file-download instructions for download attachments
+and adds multimodal attachments as structured model content. Callers keep
+`config.text` as the original user text. Omitting `config.files` is equivalent
+to an empty list.
 
 The optional Pydantic AI history layer uses the reserved name `history` and
 persists captured messages in session snapshots for later resume. Resume from a

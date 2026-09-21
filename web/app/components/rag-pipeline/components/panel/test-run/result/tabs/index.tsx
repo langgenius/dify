@@ -1,41 +1,35 @@
 import type { WorkflowRunningData } from '@/app/components/workflow/types'
-import * as React from 'react'
+import { TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
-import Tab from './tab'
 
 type TabsProps = {
-  currentTab: string
   workflowRunningData?: WorkflowRunningData
-  switchTab: (tab: string) => void
 }
 
-const Tabs = ({ currentTab, workflowRunningData, switchTab }: TabsProps) => {
+const Tabs = ({ workflowRunningData }: TabsProps) => {
   const { t } = useTranslation()
+  const tabs = [
+    { value: 'RESULT', label: t(($) => $.result, { ns: 'runLog' }) },
+    { value: 'DETAIL', label: t(($) => $.detail, { ns: 'runLog' }) },
+    { value: 'TRACING', label: t(($) => $.tracing, { ns: 'runLog' }) },
+  ]
   return (
-    <div className="flex shrink-0 items-center gap-x-6 border-b-[0.5px] border-divider-subtle px-4">
-      <Tab
-        isActive={currentTab === 'RESULT'}
-        label={t(($) => $.result, { ns: 'runLog' })}
-        value="RESULT"
-        workflowRunningData={workflowRunningData}
-        onClick={switchTab}
-      />
-      <Tab
-        isActive={currentTab === 'DETAIL'}
-        label={t(($) => $.detail, { ns: 'runLog' })}
-        value="DETAIL"
-        workflowRunningData={workflowRunningData}
-        onClick={switchTab}
-      />
-      <Tab
-        isActive={currentTab === 'TRACING'}
-        label={t(($) => $.tracing, { ns: 'runLog' })}
-        value="TRACING"
-        workflowRunningData={workflowRunningData}
-        onClick={switchTab}
-      />
-    </div>
+    <TabsList
+      aria-label={t(($) => $['testRun.title'], { ns: 'datasetPipeline' })}
+      className="shrink-0 items-center gap-x-6 border-b-[0.5px] border-divider-subtle px-4"
+    >
+      {tabs.map((tab) => (
+        <TabsTab
+          key={tab.value}
+          value={tab.value}
+          disabled={!workflowRunningData}
+          className="py-3 system-sm-semibold-uppercase!"
+        >
+          {tab.label}
+        </TabsTab>
+      ))}
+    </TabsList>
   )
 }
 
-export default React.memo(Tabs)
+export default Tabs

@@ -83,6 +83,7 @@ from models.account import (
     TenantPluginInstallPermission,
 )
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_account
 
 
 def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
@@ -358,10 +359,7 @@ def _expected_dynamic_option_dump() -> dict[str, Any]:
 
 
 def _account(role: TenantAccountRole = TenantAccountRole.OWNER) -> Account:
-    account = Account(name="Test User", email="u1@example.com")
-    account.id = "u1"
-    account.role = role
-    return account
+    return make_account(account_id="u1", name="Test User", email="u1@example.com", role=role)
 
 
 @pytest.fixture

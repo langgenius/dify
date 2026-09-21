@@ -17,6 +17,7 @@ from services.account_ports import (
     AccountWorkspaceMembershipQuery,
 )
 from services.entities.account_entities import AccountDeletionChallenge, AccountSnapshot
+from tests.unit_tests.model_factories import make_account_snapshot
 
 
 def _context() -> RequestContext:
@@ -29,21 +30,7 @@ def _context() -> RequestContext:
 
 
 def _account() -> AccountSnapshot:
-    return AccountSnapshot(
-        id="account-1",
-        name="Account",
-        email="account@example.com",
-        avatar=None,
-        is_password_set=True,
-        interface_language="en-US",
-        interface_theme="light",
-        timezone="UTC",
-        last_login_at=None,
-        last_login_ip=None,
-        status="active",
-        initialized_at=datetime(2026, 1, 1),
-        created_at=datetime(2026, 1, 1),
-    )
+    return make_account_snapshot(is_password_set=True, initialized_at=datetime(2026, 1, 1))
 
 
 def _service(*, accounts: Mock | None = None) -> tuple[AccountDeletionService, dict[str, Mock]]:

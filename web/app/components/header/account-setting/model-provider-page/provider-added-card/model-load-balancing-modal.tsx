@@ -17,11 +17,11 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { toast } from '@/app/notifications'
 import { useGetModelCredential, useUpdateModelLoadBalancingConfig } from '@/service/use-models'
 import { ConfigurationMethodEnum, FormTypeEnum } from '../declarations'
 import { useRefreshModel } from '../hooks'
@@ -277,7 +277,7 @@ const ModelLoadBalancingModal = ({
           </DialogTitle>
 
           {!draftConfig ? (
-            <Loading type="area" />
+            <LoadingPlaceholder />
           ) : (
             <>
               <div className="py-2">

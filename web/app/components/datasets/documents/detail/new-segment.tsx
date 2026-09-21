@@ -2,12 +2,12 @@ import type { FC } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkingMode } from '@/models/datasets'
 import { useParams } from '@/next/navigation'
@@ -165,7 +165,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
                 loading={loading}
                 actionType="add"
               />
-              <Divider type="vertical" className="mr-2 ml-4 h-3.5 bg-divider-regular" />
+              <Separator orientation="vertical" className="mr-2 ml-4 h-3.5" />
             </>
           )}
           <button

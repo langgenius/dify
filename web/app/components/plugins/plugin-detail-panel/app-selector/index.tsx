@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
 import { AppPicker } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import { AppTrigger } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const PAGE_SIZE = 20
 
@@ -29,7 +29,6 @@ type AppSelectorProps = {
 
 export function AppSelector({ value, disabled, offset = 4, onSelect }: AppSelectorProps) {
   const { t } = useTranslation()
-  const [isShow, setIsShow] = useState(false)
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
   const [searchText, setSearchText] = useState('')
 
@@ -114,7 +113,7 @@ export function AppSelector({ value, disabled, offset = 4, onSelect }: AppSelect
   )
 
   return (
-    <Popover open={isShow} onOpenChange={setIsShow}>
+    <Popover>
       <PopoverTrigger
         aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
         disabled={disabled}

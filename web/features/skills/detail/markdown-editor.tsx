@@ -311,7 +311,7 @@ function useSkillMarkdownComponents(onOpenReference?: (path: string) => void) {
             className="inline-flex cursor-pointer flex-col items-start px-0.5 py-px align-baseline outline-hidden focus-visible:rounded-[5px] focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={() => onOpenReference?.(referencePath)}
           >
-            <span className="inline-flex min-w-[18px] items-center overflow-hidden rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-px pr-1 pl-px text-text-accent shadow-xs">
+            <span className="inline-flex min-w-4.5 items-center overflow-hidden rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-px pr-1 pl-px text-text-accent shadow-xs">
               <span className="inline-flex min-w-0 items-center gap-0.5">
                 <span className="inline-flex shrink-0 items-center justify-center p-px">
                   <span
@@ -449,7 +449,7 @@ export function ReferenceFilesPicker({
 
   return (
     <div
-      className="fixed z-50 w-[360px] overflow-hidden rounded-xl border border-divider-regular bg-components-panel-bg shadow-lg"
+      className="fixed z-50 w-90 overflow-hidden rounded-xl border border-divider-regular bg-components-panel-bg shadow-lg"
       style={{
         left: Math.max(left, 16),
         top: Math.max(top, 16),
@@ -464,7 +464,7 @@ export function ReferenceFilesPicker({
           <span className="max-w-28 truncate system-xs-regular text-text-quaternary">{query}</span>
         )}
       </div>
-      <div className="max-h-[280px] overflow-y-auto p-1">
+      <div className="max-h-70 overflow-y-auto p-1">
         {currentDirectory && (
           <button
             type="button"
@@ -565,7 +565,7 @@ export function EditableMetadataField({
           <input
             aria-label={label}
             value={label}
-            className="[field-sizing:content] max-w-[calc(100%-28px)] min-w-0 rounded-[5px] border-0 bg-transparent px-1 py-0.5 system-sm-medium text-text-tertiary outline-hidden hover:bg-state-base-hover focus:bg-components-input-bg-active focus:text-text-placeholder focus:shadow-xs focus:inset-ring-1 focus:inset-ring-components-input-border-active"
+            className="field-sizing-content max-w-[calc(100%-28px)] min-w-0 rounded-[5px] border-0 bg-transparent px-1 py-0.5 system-sm-medium text-text-tertiary outline-hidden hover:bg-state-base-hover focus:bg-components-input-bg-active focus:text-text-placeholder focus:shadow-xs focus:inset-ring-1 focus:inset-ring-components-input-border-active"
             onChange={(event) => onLabelChange(event.target.value)}
           />
         )}
@@ -581,7 +581,7 @@ export function EditableMetadataField({
         )}
       </div>
       {readOnly || !onValueChange ? (
-        <div className="min-h-6 px-1 py-0.5 text-[14px]/5 break-words whitespace-pre-wrap text-text-primary">
+        <div className="min-h-6 px-1 py-0.5 text-[14px]/5 wrap-break-word whitespace-pre-wrap text-text-primary">
           {value || valuePlaceholder || '-'}
         </div>
       ) : multiline ? (
@@ -682,7 +682,7 @@ export function MarkdownSourceEditor({
       >
         <div style={{ transform: `translateY(${-scrollTop}px)` }}>
           {Array.from({ length: lineCount }, (_, index) => (
-            <div key={index} className="h-[22px] pr-2">
+            <div key={index} className="h-5.5 pr-2">
               {String(index + 1).padStart(2, '0')}
             </div>
           ))}
@@ -932,7 +932,7 @@ export function MarkdownLiveBodyEditor({
   }, [editorRef, focused])
 
   return (
-    <div className="relative min-h-[360px]">
+    <div className="relative min-h-90">
       {showRenderedPreview && (
         <div
           ref={previewRef}
@@ -940,7 +940,7 @@ export function MarkdownLiveBodyEditor({
           aria-label={placeholder}
           aria-multiline="true"
           tabIndex={0}
-          className="relative z-[2] min-h-[360px] cursor-text outline-none focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="relative z-2 min-h-90 cursor-text outline-none focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClickCapture={(event) => {
             if (!(event.target instanceof HTMLElement)) return
             const anchor = event.target.closest<HTMLAnchorElement>('a[href]')
@@ -991,7 +991,7 @@ export function MarkdownLiveBodyEditor({
           aria-multiline="true"
           tabIndex={0}
           suppressContentEditableWarning
-          className="relative z-[1] min-h-[360px] w-full bg-transparent text-[15px]/7 break-words whitespace-pre-wrap text-text-secondary caret-text-secondary outline-none"
+          className="relative z-1 min-h-90 w-full bg-transparent text-[15px]/7 wrap-break-word whitespace-pre-wrap text-text-secondary caret-text-secondary outline-none"
           onBlur={(event) => exitEditMode(event.currentTarget)}
           onClick={(event: MouseEvent<HTMLDivElement>) => {
             const referencePath = getReferencePath(event.target)
@@ -1126,7 +1126,7 @@ export function CsvTablePreview({ rows }: { rows: string[][] }) {
                       className="h-7 max-w-72 min-w-32 border-r border-b border-divider-subtle px-2 py-1 align-top system-xs-regular text-text-secondary"
                     >
                       <span
-                        className="block break-words whitespace-pre-wrap"
+                        className="block wrap-break-word whitespace-pre-wrap"
                         title={value || undefined}
                       >
                         {value || '-'}
@@ -1164,7 +1164,7 @@ export function VersionActionBar({
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
-      <div className="pointer-events-auto flex h-14 w-[428px] max-w-[calc(100%-2rem)] items-center gap-4 rounded-xl border border-divider-subtle bg-background-default px-4 shadow-xl">
+      <div className="pointer-events-auto flex h-14 w-107 max-w-[calc(100%-2rem)] items-center gap-4 rounded-xl border border-divider-subtle bg-background-default px-4 shadow-xl">
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="truncate system-sm-semibold text-text-primary">

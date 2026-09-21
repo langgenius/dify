@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react'
 import type { App } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AccessControl from '../index'
@@ -32,7 +32,7 @@ vi.mock('@/service/access-control', () => ({
     mockUseSearchForWhiteListCandidates(...args),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {

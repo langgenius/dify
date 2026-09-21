@@ -10,15 +10,17 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
-import TabSlider from '@/app/components/base/tab-slider-plain'
+import { useLocale } from '#i18n'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
@@ -27,8 +29,7 @@ import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { useLocale } from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { getPluginLanguage } from '@/i18n/metadata'
 import {
   fetchBuiltInToolList,
   fetchCustomToolList,
@@ -66,7 +67,7 @@ const SettingBuiltInTool: FC<Props> = ({
   onAuthorizationItemClick,
 }) => {
   const locale = useLocale()
-  const language = getLanguage(locale)
+  const language = getPluginLanguage(locale)
   const { t } = useTranslation()
   const passedTools = (collection as ToolWithProvider).tools
   const hasPassedTools = passedTools?.length > 0
@@ -81,7 +82,6 @@ const SettingBuiltInTool: FC<Props> = ({
   const showSettingAsDetails = readonly && showReadOnlySettingDetails
   const [tempSetting, setTempSetting] = useState(setting)
   const [currType, setCurrType] = useState('info')
-  const isInfoActive = currType === 'info'
   useEffect(() => {
     if (!collection || hasPassedTools) return
 
@@ -183,7 +183,7 @@ const SettingBuiltInTool: FC<Props> = ({
             )}
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-              {isLoading && <Loading type="app" />}
+              {isLoading && <LoadingPlaceholder className="h-full" />}
               {!isLoading && (
                 <>
                   {/* header */}
@@ -197,13 +197,14 @@ const SettingBuiltInTool: FC<Props> = ({
                       </IconButton>
                     </div>
                     {showBackButton && (
-                      <div
-                        className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
+                      <button
+                        type="button"
+                        className="mb-2 flex cursor-pointer appearance-none items-center gap-1 border-0 bg-transparent p-0 text-left system-xs-semibold-uppercase text-text-accent-secondary"
                         onClick={onHide}
                       >
                         <RiArrowLeftLine className="size-4" />
                         {t(($) => $['detailPanel.operation.back'], { ns: 'plugin' })}
-                      </div>
+                      </button>
                     )}
                     <div className="flex items-center gap-1">
                       <Icon size="tiny" className="size-6" src={collection.icon} />
@@ -213,9 +214,9 @@ const SettingBuiltInTool: FC<Props> = ({
                         packageName={collection.name.split('/').pop() || ''}
                       />
                     </div>
-                    <div className="mt-1 system-md-semibold text-text-primary">
+                    <DrawerTitle className="mt-1 system-md-semibold text-text-primary">
                       {currTool?.label[language]}
-                    </div>
+                    </DrawerTitle>
                     {!!currTool?.description[language] && (
                       <Description
                         className="mt-3 mb-2 h-auto"
@@ -236,60 +237,53 @@ const SettingBuiltInTool: FC<Props> = ({
                       />
                     )}
                   </div>
-                  {/* form */}
-                  <div className="h-full">
-                    <div className="flex h-full flex-col">
-                      {showSettingTab ? (
-                        <TabSlider
-                          className="mt-1 shrink-0 px-4"
-                          itemClassName="py-3"
-                          noBorderBottom
-                          value={currType}
-                          onChange={(value) => {
-                            setCurrType(value)
-                          }}
-                          options={[
-                            {
-                              value: 'info',
-                              text: t(($) => $['setBuiltInTools.parameters'], { ns: 'tools' })!,
-                            },
-                            {
-                              value: 'setting',
-                              text: t(($) => $['setBuiltInTools.setting'], { ns: 'tools' })!,
-                            },
-                          ]}
-                        />
-                      ) : (
-                        <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">
+                  <Tabs
+                    value={currType}
+                    onValueChange={setCurrType}
+                    className="flex min-h-0 flex-1 flex-col"
+                  >
+                    {showSettingTab ? (
+                      <TabsList className="mt-1 shrink-0 px-4">
+                        <TabsTab value="info">
                           {t(($) => $['setBuiltInTools.parameters'], { ns: 'tools' })}
-                        </div>
-                      )}
-                      <div className="h-0 grow overflow-y-auto px-4">
-                        {isInfoActive && infoUI}
-                        {!isInfoActive && showSettingAsDetails && settingDetailsUI}
-                        {!isInfoActive && !showSettingAsDetails && settingUI}
-                        {!readonly && !isInfoActive && (
-                          <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
-                            <Button
-                              className="flex h-8 items-center px-3! text-[13px]! font-medium"
-                              onClick={onHide}
-                            >
-                              {t(($) => $['operation.cancel'], { ns: 'common' })}
-                            </Button>
-                            <Button
-                              className="flex h-8 items-center px-3! text-[13px]! font-medium"
-                              variant="primary"
-                              disabled={!isValid}
-                              onClick={() => onSave?.(tempSetting)}
-                            >
-                              {t(($) => $['operation.save'], { ns: 'common' })}
-                            </Button>
-                          </div>
-                        )}
+                        </TabsTab>
+                        <TabsTab value="setting">
+                          {t(($) => $['setBuiltInTools.setting'], { ns: 'tools' })}
+                        </TabsTab>
+                      </TabsList>
+                    ) : (
+                      <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">
+                        {t(($) => $['setBuiltInTools.parameters'], { ns: 'tools' })}
                       </div>
-                      <ReadmeEntrance pluginDetail={collection as any} className="mt-auto" />
+                    )}
+                    <div className="min-h-0 flex-1 overflow-y-auto px-4">
+                      {showSettingTab ? (
+                        <>
+                          <TabsPanel value="info">{infoUI}</TabsPanel>
+                          <TabsPanel value="setting">
+                            {showSettingAsDetails ? settingDetailsUI : settingUI}
+                            {!readonly && (
+                              <div className="flex justify-end gap-2 py-2">
+                                <Button onClick={onHide}>
+                                  {t(($) => $['operation.cancel'], { ns: 'common' })}
+                                </Button>
+                                <Button
+                                  variant="primary"
+                                  disabled={!isValid}
+                                  onClick={() => onSave?.(tempSetting)}
+                                >
+                                  {t(($) => $['operation.save'], { ns: 'common' })}
+                                </Button>
+                              </div>
+                            )}
+                          </TabsPanel>
+                        </>
+                      ) : (
+                        infoUI
+                      )}
                     </div>
-                  </div>
+                    <ReadmeEntrance pluginDetail={collection as any} className="mt-auto" />
+                  </Tabs>
                 </>
               )}
             </DrawerContent>

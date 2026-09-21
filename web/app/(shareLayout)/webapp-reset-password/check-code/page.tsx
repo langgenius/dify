@@ -1,12 +1,12 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import Countdown from '@/app/components/signin/countdown'
-import { useLocale } from '@/context/i18n'
+import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppResetPasswordCode, verifyWebAppResetPasswordCode } from '@/service/common'
@@ -94,13 +94,7 @@ export default function CheckCode() {
           className="mt-1"
           placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) || ''}
         />
-        <Button
-          loading={loading}
-          disabled={loading}
-          className="my-3 w-full"
-          variant="primary"
-          onClick={verify}
-        >
+        <Button loading={loading} className="my-3 w-full" variant="primary" onClick={verify}>
           {t(($) => $['checkCode.verify'], { ns: 'login' })}
         </Button>
         <Countdown onResend={resendCode} />
@@ -113,7 +107,7 @@ export default function CheckCode() {
         onClick={() => router.back()}
         className="flex h-9 cursor-pointer appearance-none items-center justify-center text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
-        <span className="bg-background-default-dimm inline-block rounded-full p-1">
+        <span className="inline-block rounded-full p-1">
           <RiArrowLeftLine aria-hidden size={12} />
         </span>
         <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>

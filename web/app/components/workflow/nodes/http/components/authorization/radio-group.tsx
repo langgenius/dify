@@ -16,9 +16,10 @@ type ItemProps = {
 }
 const Item: FC<ItemProps> = ({ title, onClick, isSelected }) => {
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        'flex h-8 grow cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
+        'flex h-8 grow cursor-default appearance-none items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-left system-sm-regular text-text-secondary',
         !isSelected &&
           'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
         isSelected &&
@@ -27,7 +28,7 @@ const Item: FC<ItemProps> = ({ title, onClick, isSelected }) => {
       onClick={onClick}
     >
       {title}
-    </div>
+    </button>
   )
 }
 

@@ -18,15 +18,15 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { validPassword } from '@/config'
 import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
-import Loading from '../components/base/loading'
 
 const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, password: true }).extend({
   email: zPostSetupBody.shape.email.pipe(z.email()),
@@ -95,7 +95,7 @@ const InstallForm = () => {
   }, [push])
 
   return loading ? (
-    <Loading />
+    <LoadingPlaceholder />
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -110,7 +110,7 @@ const InstallForm = () => {
             <Field
               name="email"
               validate={(value) =>
-                accountFormSchema.shape.email.safeParse(value).success
+                accountFormSchema.shape.email.validate(value)
                   ? null
                   : t(($) => $['error.emailInValid'], { ns: 'login' })
               }
@@ -130,7 +130,7 @@ const InstallForm = () => {
             <Field
               name="name"
               validate={(value) =>
-                accountFormSchema.shape.name.safeParse(value).success
+                accountFormSchema.shape.name.validate(value)
                   ? null
                   : t(($) => $['error.nameEmpty'], { ns: 'login' })
               }
@@ -149,7 +149,7 @@ const InstallForm = () => {
             <Field
               name="password"
               validate={(value) =>
-                accountFormSchema.shape.password.safeParse(value).success
+                accountFormSchema.shape.password.validate(value)
                   ? null
                   : t(($) => $['error.passwordInvalid'], { ns: 'login' })
               }

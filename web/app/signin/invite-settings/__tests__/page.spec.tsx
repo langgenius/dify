@@ -1,8 +1,9 @@
 import type { MockedFunction } from 'vite-plus/test'
 import { useQuery } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
 import { useInvitationCheck } from '@/service/use-common'
@@ -41,14 +42,18 @@ vi.mock('@tanstack/react-query', async () => {
   }
 })
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n', () => ({
   i18n: {
     defaultLocale: 'en-US',
   },
+}))
+
+vi.mock('@/i18n/client', () => ({
   setLocaleOnClient: vi.fn(() => Promise.resolve()),
 }))
 
@@ -155,13 +160,25 @@ describe('InviteSettingsPage', () => {
   })
 
   describe('Activation payload', () => {
-    it('should default language to the current UI locale', async () => {
+    it('associates a missing name error with the account field', async () => {
+      const user = userEvent.setup()
       render(<InviteSettingsPage />)
 
-      fireEvent.change(screen.getByLabelText('login.name'), {
-        target: { value: 'Invitee' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
+      const nameInput = screen.getByLabelText('login.name')
+      await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
+
+      const error = await screen.findByText('login.enterYourName')
+      expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+      expect(nameInput).toHaveAccessibleDescription(error.textContent ?? '')
+      expect(nameInput).toHaveFocus()
+      expect(mockActivateMember).not.toHaveBeenCalled()
+    })
+
+    it('should default language to the current UI locale', async () => {
+      const user = userEvent.setup()
+      render(<InviteSettingsPage />)
+
+      await user.type(screen.getByLabelText('login.name'), 'Invitee{Enter}')
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -177,14 +194,13 @@ describe('InviteSettingsPage', () => {
     })
 
     it('should fall back to configured default locale when current locale is unsupported', async () => {
+      const user = userEvent.setup()
       mockUseLocale.mockReturnValue('unsupported-locale' as ReturnType<typeof useLocale>)
 
       render(<InviteSettingsPage />)
 
-      fireEvent.change(screen.getByLabelText('login.name'), {
-        target: { value: 'Invitee' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
+      await user.type(screen.getByLabelText('login.name'), 'Invitee')
+      await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -200,6 +216,7 @@ describe('InviteSettingsPage', () => {
     })
 
     it('should only submit the token when an active account accepts an invitation', async () => {
+      const user = userEvent.setup()
       mockUseInvitationCheck.mockReturnValue({
         data: {
           is_valid: true,
@@ -217,7 +234,7 @@ describe('InviteSettingsPage', () => {
       render(<InviteSettingsPage />)
 
       expect(screen.queryByLabelText('login.name')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
+      await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -230,6 +247,7 @@ describe('InviteSettingsPage', () => {
     })
 
     it('should only submit the token when an active account check omits setup state', async () => {
+      const user = userEvent.setup()
       mockUseInvitationCheck.mockReturnValue({
         data: {
           is_valid: true,
@@ -246,7 +264,7 @@ describe('InviteSettingsPage', () => {
       render(<InviteSettingsPage />)
 
       expect(screen.queryByLabelText('login.name')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
+      await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -259,6 +277,7 @@ describe('InviteSettingsPage', () => {
     })
 
     it('should submit setup fields when the invitation requires account setup', async () => {
+      const user = userEvent.setup()
       mockUseInvitationCheck.mockReturnValue({
         data: {
           is_valid: true,
@@ -275,10 +294,8 @@ describe('InviteSettingsPage', () => {
 
       render(<InviteSettingsPage />)
 
-      fireEvent.change(screen.getByLabelText('login.name'), {
-        target: { value: 'Invitee' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
+      await user.type(screen.getByLabelText('login.name'), 'Invitee')
+      await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -296,6 +313,7 @@ describe('InviteSettingsPage', () => {
 
   describe('Post-activation redirect', () => {
     it('should use the console home when the redirect target is external', async () => {
+      const user = userEvent.setup()
       mockUseSearchParams.mockReturnValue(
         new URLSearchParams(
           'invite_token=invite-token&redirect_url=https%3A%2F%2Fgoogle.com',
@@ -304,10 +322,8 @@ describe('InviteSettingsPage', () => {
 
       render(<InviteSettingsPage />)
 
-      fireEvent.change(screen.getByLabelText('login.name'), {
-        target: { value: 'Invitee' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
+      await user.type(screen.getByLabelText('login.name'), 'Invitee')
+      await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/')

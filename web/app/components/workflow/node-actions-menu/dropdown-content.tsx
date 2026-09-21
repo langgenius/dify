@@ -5,8 +5,15 @@ import {
   DropdownMenuLinkItem,
   DropdownMenuSeparator,
 } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  Popover,
+  PopoverBackdrop,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
-import { ChangeBlockMenuTrigger } from './change-block-menu-trigger'
+import { ChangeBlockPopup } from './change-block-popup'
 import {
   NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME,
   NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME,
@@ -33,11 +40,26 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
             <DropdownMenuItem onClick={model.handleRun}>{singleRunActionLabel}</DropdownMenuItem>
           )}
           {model.canChangeBlock && (
-            <ChangeBlockMenuTrigger
-              nodeId={model.id}
-              nodeData={model.data}
-              sourceHandle={model.sourceHandle}
-            />
+            <Popover modal="trap-focus">
+              <DropdownMenuItem
+                closeOnClick={false}
+                render={<PopoverTrigger nativeButton={false} render={<div />} />}
+                className="data-popup-open:bg-state-base-hover"
+              >
+                {t(($) => $['panel.changeBlock'], { ns: 'workflow' })}
+              </DropdownMenuItem>
+              <PopoverPortal>
+                <PopoverBackdrop />
+                <PopoverPositioner placement="right-start" positionMethod="fixed">
+                  <ChangeBlockPopup
+                    nodeId={model.id}
+                    nodeData={model.data}
+                    sourceHandle={model.sourceHandle}
+                    onComplete={props.onClose}
+                  />
+                </PopoverPositioner>
+              </PopoverPortal>
+            </Popover>
           )}
         </DropdownMenuGroup>
       )}

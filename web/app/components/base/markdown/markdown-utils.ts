@@ -31,10 +31,57 @@ export const preprocessLaTeX = (content: string) => {
   return processedContent
 }
 
+/**
+ * Insert missing </think> before a nested <think> and at end of content.
+ * Tool-call interruptions often drop the close tag, which nests the reply
+ * inside the thinking HTML (github.com/langgenius/dify/issues/41558).
+ */
+export const closeUnclosedThinkTags = (content: string) => {
+  if (typeof content !== 'string' || !content.includes('<think>')) return content
+
+  const open = '<think>'
+  const close = '</think>'
+  let result = ''
+  let inside = false
+  let contentSinceOpen = false
+  let i = 0
+
+  while (i < content.length) {
+    if (content.startsWith(open, i)) {
+      if (inside && contentSinceOpen) result += close
+      else if (inside) {
+        i += open.length
+        continue
+      }
+      result += open
+      inside = true
+      contentSinceOpen = false
+      i += open.length
+      continue
+    }
+    if (content.startsWith(close, i)) {
+      result += close
+      inside = false
+      contentSinceOpen = false
+      i += close.length
+      continue
+    }
+    const ch = content.charAt(i)
+    result += ch
+    if (inside && ch.trim() !== '') contentSinceOpen = true
+    i += 1
+  }
+
+  if (inside) result += close
+
+  return result
+}
+
 export const preprocessThinkTag = (content: string) => {
   const thinkOpenTagRegex = /(<think>\s*)+/g
   const thinkCloseTagRegex = /(\s*<\/think>)+/g
   return flow([
+    closeUnclosedThinkTags,
     (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
     (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>'),
     (str: string) => str.replace(/(<\/details>)(?![^\S\r\n]*[\r\n])(?![^\S\r\n]*$)/g, '$1\n'),

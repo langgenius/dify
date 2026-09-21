@@ -3,7 +3,6 @@ import type { ExtraContent } from '../chat/type'
 import type { Callback, ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -14,9 +13,10 @@ import {
 } from '@/app/components/base/chat/storage'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { InputVarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-import { changeLanguage } from '@/i18n-config/client'
+import { changeLanguage } from '@/i18n/client'
 import {
   AppSourceType,
   delConversation,
@@ -26,11 +26,13 @@ import {
   updateFeedback,
 } from '@/service/share'
 import {
+  EnvironmentConversationNotFoundError,
   useInvalidateShareConversations,
   useShareChatList,
   useShareConversationName,
   useShareConversations,
 } from '@/service/use-share'
+import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
@@ -164,6 +166,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     return appInfo
   }, [isInstalledApp, installedAppInfo, appInfo])
   const appId = useMemo(() => appData?.app_id, [appData])
+  const conversationScopeId = getWebAppConversationScopeId(resolveWebAppAddress(), appId)
   const [userId, setUserId] = useState<string>()
   useEffect(() => {
     getProcessedSystemVariablesFromUrlParams().then(({ user_id }) => {
@@ -186,8 +189,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     [appId, setStoredSidebarCollapseState],
   )
   const { currentConversationId, handleConversationIdInfoChange } = useConversationSelection({
-    appId,
-    userId,
+    scopeId: isInstalledApp || appData?.end_user_id ? conversationScopeId : '',
+    userId: isInstalledApp ? userId : appData?.end_user_id,
   })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
@@ -221,7 +224,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         refetchOnReconnect: false,
       },
     )
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList(
+  const {
+    data: appChatListData,
+    error: appChatListError,
+    isLoading: appChatListDataLoading,
+  } = useShareChatList(
     {
       conversationId: chatShouldReloadKey,
       appSourceType,
@@ -236,6 +243,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
+  useEffect(() => {
+    if (!(appChatListError instanceof EnvironmentConversationNotFoundError)) return
+
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing Environment conversation resets the active conversation.
+    setNewConversationId('')
+    handleConversationIdInfoChange('')
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing Environment conversation must clear the rendered chat.
+    setClearChatList(true)
+  }, [appChatListError, handleConversationIdInfoChange])
   const appPrevChatTree = useMemo(
     () =>
       currentConversationId && appChatListData?.data.length

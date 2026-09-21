@@ -18,7 +18,7 @@ type ListKnowledgeSpacesInfiniteOptions = {
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { info: toastInfoMock },
 }))
 
@@ -87,10 +87,14 @@ vi.mock('@/context/permission-state', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.example.com${path ?? ''}`,
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     knowledgeFs: {
       listKnowledgeSpaces: {
@@ -195,7 +199,7 @@ describe('NewKnowledgeList', () => {
     ).toHaveAttribute('href', '/datasets/new/space-2/sources')
     expect(within(list).getByText('Answers for customer support')).toBeInTheDocument()
     expect(within(list).getByText('dataset.newKnowledge.noDescription')).toBeInTheDocument()
-    expect(within(supportCard).getByLabelText('camera')).toBeInTheDocument()
+    expect(within(supportCard).getByTitle('camera')).toBeInTheDocument()
     expect(within(list).getAllByText('dataset.newKnowledge.cardType')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.tags')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.documentsUnavailable')).toHaveLength(2)

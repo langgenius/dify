@@ -14,10 +14,10 @@ import {
   ComboboxTrigger,
   ComboboxValue,
 } from '@langgenius/dify-ui/combobox'
+import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentList } from '@/service/knowledge/use-document'
 import FileIcon from '../document-file-icon'
@@ -192,8 +192,8 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
               {!data && (
                 <>
                   <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
-                  <div className="w-full" aria-hidden="true">
-                    <Loading />
+                  <div className="flex w-full justify-center" aria-hidden="true">
+                    <SpinnerIcon />
                   </div>
                 </>
               )}
