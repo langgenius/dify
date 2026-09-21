@@ -2,8 +2,8 @@ import logging
 import re
 
 from flask import jsonify, request
-from werkzeug.exceptions import NotFound
 
+from controllers.common.access_response import plugin_endpoint_not_found_response
 from controllers.trigger import bp
 from services.trigger.trigger_service import TriggerService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
@@ -21,7 +21,7 @@ def trigger_endpoint(endpoint_id: str):
     """
     # endpoint_id must be UUID
     if not UUID_MATCHER.match(endpoint_id):
-        raise NotFound("Invalid endpoint ID")
+        return plugin_endpoint_not_found_response()
     handling_chain = [
         TriggerService.process_endpoint,
         TriggerSubscriptionBuilderService.process_builder_validation_endpoint,
@@ -34,7 +34,7 @@ def trigger_endpoint(endpoint_id: str):
                 break
         if not response:
             logger.info("Endpoint not found for %s", endpoint_id)
-            return jsonify({"error": "Endpoint not found"}), 404
+            return plugin_endpoint_not_found_response()
         return response
     except ValueError as e:
         return jsonify({"error": "Endpoint processing failed", "message": str(e)}), 400

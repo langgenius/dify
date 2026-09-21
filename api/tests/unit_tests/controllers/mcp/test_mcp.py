@@ -229,13 +229,17 @@ class TestMCPAppApi:
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError):
-            post_fn("server-1")
+        response = post_fn("server-1")
+        assert response.status_code == 404
+        assert response.get_json()["error"]["message"] == "Server Not Found"
 
     def test_invalid_payload(self):
         fake_payload({"invalid": "data"})
 
         api = module.MCPAppApi()
+        api._get_mcp_server_and_app = MagicMock(
+            return_value=(_server(module.AppMCPServerStatus.ACTIVE), _app(module.AppMode.WORKFLOW))
+        )
         post_fn = unwrap(api.post)
 
         with pytest.raises(ValidationError):
@@ -277,15 +281,13 @@ class TestMCPAppApi:
         )
 
         api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(
-            side_effect=module.MCPRequestError(module.mcp_types.INVALID_REQUEST, "Server Not Found")
-        )
+        api._get_mcp_server_and_app = MagicMock(side_effect=module.MCPServerNotFoundError())
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "Server Not Found" in str(exc_info.value)
+        response = post_fn("server-1")
+        assert response.status_code == 404
+        assert response.get_json()["error"]["message"] == "Server Not Found"
 
     def test_app_not_found(self):
         """Test when app associated with server doesn't exist"""
@@ -303,15 +305,13 @@ class TestMCPAppApi:
         )
 
         api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(
-            side_effect=module.MCPRequestError(module.mcp_types.INVALID_REQUEST, "App Not Found")
-        )
+        api._get_mcp_server_and_app = MagicMock(side_effect=module.MCPServerNotFoundError())
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "App Not Found" in str(exc_info.value)
+        response = post_fn("server-1")
+        assert response.status_code == 404
+        assert response.get_json()["error"]["message"] == "Server Not Found"
 
     def test_app_unavailable_no_workflow(self):
         """Test when app has no workflow (ADVANCED_CHAT mode)"""

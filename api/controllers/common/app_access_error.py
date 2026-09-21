@@ -1,10 +1,12 @@
-"""Attach request-local IP metadata to Web and Console app-not-found responses.
+"""Keep public App failures indistinguishable from Gateway policy denials.
 
 This transport hook runs after Flask-RESTX has formatted errors, including errors
-with their own ``data`` payload. It deliberately does not change error ownership,
-authentication, status codes, or unmatched-route handling.
+with their own ``data`` payload. Web App identity errors use a minimal canonical
+404; Console keeps its existing error ownership and only receives IP metadata.
+Unrelated resources and authentication failures retain their own contracts.
 """
 
+from collections.abc import Mapping
 from typing import Literal
 
 from flask import Blueprint, Response, current_app, request
@@ -27,38 +29,78 @@ _APP_IDENTITY_ROUTES = {
     ),
 }
 
+_UNAVAILABLE_APP_CODES = frozenset({"app_unavailable", "agent_not_published"})
+
+
+def _canonical_json(response: Response, payload: Mapping[str, object]) -> Response:
+    """Match Gateway JSON bytes as well as its error status/header contract."""
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Content-Type"] = "application/json"
+    response.set_data(current_app.json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+    return response
+
 
 def register_app_access_error_metadata(blueprint: Blueprint, *, surface: Literal["web", "console"]) -> None:
-    """Enrich only typed app 404s and GET app-identity 404s on this blueprint.
+    """Normalize Web App identity failures, without masking dependency errors.
 
     Use matched route rules instead of caller-supplied paths or IDs. A missing
-    app does not have an App model, and unrelated resource/form 404s must retain
-    their existing response contracts. This hook is not registered on Service,
-    Inner, or other APIs.
+    app does not have an App model. HITL keeps its native form/token errors rather
+    than being reclassified as an App error. This hook is not registered on
+    Service, Inner, or other APIs.
     """
     prefix = (blueprint.url_prefix or "").rstrip("/")
     identity_rules = frozenset(prefix + route for route in _APP_IDENTITY_ROUTES[surface])
 
     @blueprint.after_request
     def add_app_access_error_metadata(response: Response) -> Response:
-        if (
-            response.status_code != 404
-            or response.is_streamed
-            or response.direct_passthrough
-            or not response.is_json
-            or request.url_rule is None
-            # HITL forms own their expiry/not-found UI, even if an underlying
-            # app lookup happened to produce the typed app error.
-            or request.url_rule.rule.startswith((prefix + "/form/human_input/", prefix + "/human-input-forms/"))
-        ):
+        if response.is_streamed or response.direct_passthrough or not response.is_json or request.url_rule is None:
             return response
 
         payload = response.get_json(silent=True)
         if not isinstance(payload, dict):
             return response
+        rule = request.url_rule.rule
+        # Preserve HITL's dedicated expiry/token UI and do not expose an App IP
+        # or policy-specific marker through these capability endpoints.
+        if rule.startswith((prefix + "/form/human_input/", prefix + "/human-input-forms/")):
+            if (
+                surface == "web"
+                and rule.startswith(prefix + "/form/human_input/")
+                and response.status_code == 404
+                and payload.get("code") == "not_found"
+            ):
+                return _canonical_json(response, {"code": "not_found", "message": "Form not found", "status": 404})
+            if (
+                surface == "web"
+                and rule == prefix + "/human-input-forms/files"
+                and response.status_code == 403
+                and payload.get("code") == "invalid_upload_token"
+            ):
+                return _canonical_json(
+                    response,
+                    {"code": "invalid_upload_token", "message": "Upload token is invalid or expired.", "status": 403},
+                )
+            return response
         is_app_identity = request.method == "GET" and request.url_rule.rule in identity_rules
+        if (
+            surface == "web"
+            and is_app_identity
+            and response.status_code == 400
+            and payload.get("code") in _UNAVAILABLE_APP_CODES
+        ):
+            # A known unavailable/unpublished App is the same public state as a
+            # missing one. Never apply this to arbitrary 400s or dependency503s.
+            response.status_code = 404
+        if response.status_code != 404:
+            return response
         if payload.get("code") != "app_not_found" and not is_app_identity:
             return response
+
+        if surface == "web":
+            # Do not preserve exception-specific data that would disclose why
+            # an App is unavailable (or whether it exists) to an unauthenticated
+            # visitor. Console's authenticated management errors are unchanged.
+            payload = {"code": "app_not_found", "message": "App not found.", "status": 404}
 
         # An app 404 can be cached by URL, but its client address cannot be.
         response.headers["Cache-Control"] = "no-store"
@@ -75,5 +117,7 @@ def register_app_access_error_metadata(blueprint: Blueprint, *, surface: Literal
                 # Optional display metadata must not turn a genuine 404 into 503.
                 pass
 
+        if surface == "web":
+            return _canonical_json(response, payload)
         response.set_data(current_app.json.dumps(payload))
         return response

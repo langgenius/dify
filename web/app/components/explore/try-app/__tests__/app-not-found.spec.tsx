@@ -16,6 +16,10 @@ import enShare from '@/i18n/en-US/share.json'
 import TryApp from '../index'
 
 vi.unmock('react-i18next')
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => window.location.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}))
 vi.mock('../app', () => ({ default: () => null }))
 vi.mock('../preview', () => ({ default: () => null }))
 vi.mock('../app-info', () => ({ default: () => null }))

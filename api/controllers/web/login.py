@@ -30,8 +30,10 @@ from controllers.console.wraps import (
     setup_required,
 )
 from controllers.web import web_ns
+from controllers.web.error import WebAppAccessServiceUnavailableError, WebAppNotFoundError
 from controllers.web.wraps import decode_jwt_token
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.passport import PassportService
@@ -41,9 +43,9 @@ from libs.token import (
     extract_webapp_access_token,
 )
 from services.account_service import AccountService
-from services.app_service import AppService
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.auth_entities import LoginPayloadBase
+from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 from services.webapp_auth_service import WebAppAuthService
 
 logger = logging.getLogger(__name__)
@@ -138,6 +140,8 @@ class LoginStatusApi(Resource):
         responses={
             200: "Login status",
             401: "Login status",
+            404: "App not found",
+            503: "Web app access service unavailable",
         }
     )
     @web_ns.response(200, "Login status", web_ns.models[LoginStatusResponse.__name__])
@@ -148,7 +152,12 @@ class LoginStatusApi(Resource):
         token = extract_webapp_access_token(request)
         if not app_code:
             return LoginStatusResponse(logged_in=bool(token), app_logged_in=False).model_dump(mode="json")
-        app_id = AppService.get_app_id_by_code(app_code, session=db.session())
+        try:
+            app_id = application_services().webapp_access.resolve_app_id(app_code=app_code)
+        except WebAppAccessAppNotFoundError:
+            raise WebAppNotFoundError() from None
+        except WebAppAccessUnavailableError:
+            raise WebAppAccessServiceUnavailableError() from None
         is_public = (
             dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE
             or not WebAppAuthService.is_app_require_permission_check(app_id=app_id, session=db.session())

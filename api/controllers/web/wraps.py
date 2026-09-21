@@ -6,10 +6,10 @@ from typing import Concatenate
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
-from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
+from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError, WebAppNotFoundError
 from core.db.session_factory import session_factory
 from core.logging.context import set_identity_context
 from extensions.ext_database import db
@@ -59,11 +59,11 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
             app_model = session.scalar(select(App).where(App.id == app_id))
             site = session.scalar(select(Site).where(Site.code == app_code))
             if not app_model:
-                raise NotFound()
+                raise WebAppNotFoundError()
             if not app_code or not site:
-                raise BadRequest("Site URL is no longer valid.")
+                raise WebAppNotFoundError()
             if app_model.enable_site is False:
-                raise BadRequest("Site is disabled.")
+                raise WebAppNotFoundError()
             end_user_id = decoded.get("end_user_id")
             end_user = session.scalar(select(EndUser).where(EndUser.id == end_user_id))
             if not end_user:

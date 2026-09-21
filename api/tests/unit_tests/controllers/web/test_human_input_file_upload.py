@@ -142,6 +142,25 @@ def test_local_upload_requires_authorization_before_reading_files(app: Flask) ->
             HumanInputFileUploadApi().post()
 
 
+@pytest.mark.parametrize("separator", ["\xa0", "\x1c", "\v", "\u2003"])
+def test_non_http_whitespace_cannot_bypass_gateway_upload_identity(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, separator: str
+) -> None:
+    service = MagicMock()
+    _patch_upload_service(monkeypatch, service)
+    with app.test_request_context(
+        "/api/human-input-forms/files",
+        method="POST",
+        headers={"Authorization": f"Bearer{separator}hitl_upload_token-1"},
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(InvalidUploadTokenUnauthorizedError):
+            HumanInputFileUploadApi().post()
+    service.validate_upload_token.assert_not_called()
+    service.upload_local_file.assert_not_called()
+    service.upload_remote_file.assert_not_called()
+
+
 def test_local_upload_delegates_to_human_input_upload_service(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
     context = _upload_context()
