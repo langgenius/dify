@@ -278,11 +278,13 @@ def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
     # The fail-closed branch must NOT fire (no enterprise → no forwarding).
     # The function will still try the legacy DB-load path; we patch that
     # to keep the test unit-scoped.
-    with patch("core.tools.mcp_tool.tool.MCPClientWithAuthRetry") as client_cls:
-        client_cls.return_value.__enter__.return_value.invoke_tool.return_value = CallToolResult(
+    with patch(
+        "core.mcp.client_manager.MCPClientManager.invoke_tool",
+        return_value=CallToolResult(
             content=[],
             _meta=None,
-        )
+        ),
+    ):
         with patch.object(tool, "_inject_forwarded_identity") as inject:
             with patch("services.tools.mcp_tools_manage_service.MCPToolManageService"):
                 with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"):
