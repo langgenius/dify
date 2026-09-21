@@ -99,7 +99,10 @@ An empty list means no unknown expression was detected, not proof that all APIs 
 dependencies were understood.
 Direct function declarations forwarding namespace parameters are summarized and
 checked at their concrete call sites, including aliases and multi-hop forwarding.
-Parameter assignments and method calls on parameters prevent passthrough summaries.
+Rest parameters collect all remaining arguments, including static spreads.
+Parameter assignments, method calls, and passing mutable parameters (including local
+aliases) to other functions prevent passthrough summaries. Such calls remain unknown
+even when the parameter has a default; arbitrary callees are not assumed pure.
 Defaults are evaluated at the call site, including explicit `undefined`. Recursive
 forwarding, captured parameters in closures, and callbacks escaping through objects
 or arrays retain unknown diagnostics. Uncalled entry functions remain unknown; passing a forwarding function as a call

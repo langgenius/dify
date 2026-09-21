@@ -616,6 +616,49 @@ describe('i18n build check', () => {
     },
   )
 
+  it.each([
+    [
+      'rest',
+      "function load(...ns: string[]) { return useTranslation(ns) }; export const page = load('app', 'login')",
+    ],
+    [
+      'mutation',
+      "function mutate(ns: string[]) { ns.push('login') }; function load(ns: string[]) { mutate(ns); return useTranslation(ns) }; export const page = load(['app'])",
+    ],
+  ])('rejects incomplete namespace declarations after %s forwarding', async (mode, body) => {
+    writeFileSync(localeFile, '{}')
+    writeFileSync(path.join(root, 'i18n/locales/en-US/login.json'), '{}')
+    writeFileSync(
+      path.join(root, 'i18n/lib.client.ts'),
+      'export function useTranslation(ns: string[]) { return ns }',
+    )
+    mkdirSync(path.join(root, 'app'), { recursive: true })
+    writeFileSync(
+      path.join(root, 'app/page.ts'),
+      `import { useTranslation } from '../i18n/lib.client'; ${body}`,
+    )
+    const reports: AnalysisReport[] = []
+    await expect(
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          i18nAnalysisPlugin({
+            strictNamespaces: true,
+            getDeclaredNamespaces: () => ['app'],
+            onAnalysis: (report) => reports.push(report),
+          }),
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+      }),
+    ).rejects.toThrow(
+      mode === 'rest' ? /Undeclared namespace.*login/s : /Cannot verify namespace usage/,
+    )
+    if (mode === 'rest') expect(reports[0]!.routes[0]!.namespaces).toEqual(['app', 'login'])
+    else expect(reports[0]!.evidence.some((item) => item.kind === 'unknown-namespace')).toBe(true)
+  })
+
   it.each(['broken', 'good'] as const)(
     'limits strict unknown namespace validation to the %s route',
     async (selected) => {

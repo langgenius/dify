@@ -73,6 +73,67 @@ describe('translation graph analysis', () => {
       },
     )
 
+    it.each([
+      "function load(...ns: string[]) { return useTranslation(ns) }; load('app', 'login')",
+      "function load(...ns: string[]) { return useTranslation(ns) }; load(...['app', 'login'])",
+      "function load(...ns: string[]) { return useTranslation(ns) }; function forward(a: string, b: string) { return load(a, b) }; forward('app', 'login')",
+    ])('collects every namespace in rest forwarding: %s', (body) => {
+      writeJson('i18n/locales/en-US/app.json', {})
+      writeSource('page.ts', `import { useTranslation } from 'react-i18next'; ${body}`)
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.moduleNamespaces.get(path.join(webRoot, 'page.ts'))).toEqual(
+        new Set(['app', 'login']),
+      )
+      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toEqual([])
+    })
+
+    it('keeps shifted parameters unknown when an earlier spread can omit their default', () => {
+      writeJson('i18n/locales/en-US/app.json', {})
+      writeSource(
+        'page.ts',
+        `import { useTranslation } from 'react-i18next';
+        function load(prefix: string, ns = 'login') { return useTranslation(ns) }
+        load(...['prefix'])
+      `,
+      )
+      expect(
+        checkTranslationGraph(webRoot, modules).evidence.some(
+          (item) => item.kind === 'unknown-namespace',
+        ),
+      ).toBe(true)
+    })
+
+    it('preserves primitive generic namespace parameters passed inside options', () => {
+      writeJson('i18n/locales/en-US/app.json', {})
+      writeSource(
+        'page.ts',
+        `import { useTranslation } from 'react-i18next';
+        declare function consume(options: { ns: string }): void
+        function load<T extends string>(ns: T) { consume({ ns }); return useTranslation(ns) }
+        load('app')
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.moduleNamespaces.get(path.join(webRoot, 'page.ts'))).toEqual(new Set(['app']))
+      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toEqual([])
+    })
+
+    it.each([
+      "function load(ns: string[] = ['app']) { mutate(ns); return useTranslation(ns) }; load()",
+      "function load(ns: string[]) { const alias = ns; mutate(alias); return useTranslation(ns) }; load(['app'])",
+    ])('keeps indirectly mutated parameters unknown: %s', (body) => {
+      writeJson('i18n/locales/en-US/app.json', {})
+      writeSource(
+        'page.ts',
+        `import { useTranslation } from 'react-i18next'; function mutate(ns: string[]) { ns.push('login') }; ${body}`,
+      )
+      expect(
+        checkTranslationGraph(webRoot, modules).evidence.some(
+          (item) => item.kind === 'unknown-namespace',
+        ),
+      ).toBe(true)
+    })
+
     it.each(['', 'undefined', "'other'"])(
       'resolves wrapper defaults at the call site: %s',
       (argument) => {

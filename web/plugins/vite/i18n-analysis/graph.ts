@@ -508,9 +508,16 @@ export function checkTranslationGraph(
     }
   }
 
+  const writtenParameters = new Set<ts.ParameterDeclaration>()
   function recordLoadedNamespaces(expression: ts.Expression, seen = new Set<ts.Node>()): boolean {
     const node = unwrap(expression)
     if (seen.has(node)) return false
+    if (
+      declarations(node).some(
+        (declaration) => ts.isParameter(declaration) && writtenParameters.has(declaration),
+      )
+    )
+      return false
     const next = new Set(seen).add(node)
     if (ts.isStringLiteralLike(node)) {
       currentNamespaces.add(node.text)
@@ -554,7 +561,6 @@ export function checkTranslationGraph(
     }
     return targets
   }
-  const writtenParameters = new Set<ts.ParameterDeclaration>()
   function forwardedParameters(
     expression: ts.Expression,
     owner: ts.FunctionDeclaration,
@@ -573,12 +579,23 @@ export function checkTranslationGraph(
       if (index >= 0) return new Set([index])
     }
   }
-  function markWrites(target: ts.Node) {
+  const checkedWrites = new Set<ts.Node>()
+  const checkedEscapes = new Set<ts.Node>()
+  function markWrites(target: ts.Node, indirect = false) {
+    const checked = indirect ? checkedEscapes : checkedWrites
+    if (checked.has(target)) return
+    checked.add(target)
+    if (indirect && ts.isFunctionLike(target)) return
     if (ts.isIdentifier(target)) {
-      for (const declaration of declarations(target))
-        if (ts.isParameter(declaration)) writtenParameters.add(declaration)
+      for (const declaration of declarations(target)) {
+        if (ts.isParameter(declaration)) {
+          if (!indirect || !isPrimitive(checker.getTypeAtLocation(target)))
+            writtenParameters.add(declaration)
+        } else if (ts.isVariableDeclaration(declaration) && declaration.initializer)
+          markWrites(declaration.initializer, indirect)
+      }
     }
-    ts.forEachChild(target, markWrites)
+    ts.forEachChild(target, (child) => markWrites(child, indirect))
   }
   for (const id of modules.keys()) {
     if (id.endsWith('.json')) continue
@@ -605,6 +622,45 @@ export function checkTranslationGraph(
     }
     collect(source)
   }
+  // Only primitive arguments are immune to mutation by an arbitrary callee.
+  function isPrimitive(type: ts.Type): boolean {
+    if (type.isUnion()) return type.types.every(isPrimitive)
+    const constraint = checker.getBaseConstraintOfType(type)
+    if (constraint && constraint !== type) return isPrimitive(constraint)
+    return !!(
+      type.flags &
+      (ts.TypeFlags.StringLike |
+        ts.TypeFlags.NumberLike |
+        ts.TypeFlags.BooleanLike |
+        ts.TypeFlags.BigIntLike |
+        ts.TypeFlags.ESSymbolLike |
+        ts.TypeFlags.Null |
+        ts.TypeFlags.Undefined |
+        ts.TypeFlags.Never)
+    )
+  }
+  for (const { node } of calls) {
+    const api = translationApi(node.expression)
+    if (api === 'useTranslation' || api === 'getTranslation') continue
+    for (const argument of node.arguments) {
+      if (!isPrimitive(checker.getTypeAtLocation(argument))) markWrites(argument, true)
+    }
+  }
+  function forwardedArguments(
+    node: ts.CallExpression,
+    target: ts.FunctionDeclaration,
+    index: number,
+  ) {
+    // A spread before a positional parameter makes its source ambiguous.
+    const spread = node.arguments.slice(0, index).find(ts.isSpreadElement)
+    if (spread) return undefined
+    if (target.parameters[index]?.dotDotDotToken) return node.arguments.slice(index)
+    const supplied = node.arguments[index]
+    const undefinedValue =
+      supplied && checker.getTypeAtLocation(supplied).flags & ts.TypeFlags.Undefined
+    const argument = !supplied || undefinedValue ? target.parameters[index]?.initializer : supplied
+    return argument ? [argument] : []
+  }
   const calledFunctions = new Set(
     calls.flatMap(({ node }) => [node.expression, ...node.arguments].flatMap(forwardingTargets)),
   )
@@ -614,15 +670,17 @@ export function checkTranslationGraph(
     for (const { node, owner } of calls) {
       if (!owner || !forwarding.has(owner)) continue
       const api = translationApi(node.expression)
-      const indexes =
+      const args =
         api === 'useTranslation'
-          ? [0]
+          ? node.arguments.slice(0, 1)
           : api === 'getTranslation'
-            ? [1]
-            : forwardingTargets(node.expression).flatMap((target) => [...forwarding.get(target)!])
-      for (const index of indexes) {
-        const argument = node.arguments[index]
-        if (!argument) continue
+            ? node.arguments.slice(1, 2)
+            : forwardingTargets(node.expression).flatMap((target) =>
+                [...forwarding.get(target)!].flatMap(
+                  (index) => forwardedArguments(node, target, index) ?? [],
+                ),
+              )
+      for (const argument of args) {
         for (const parameter of forwardedParameters(argument, owner) ?? []) {
           const summary = forwarding.get(owner)!
           if (!summary.has(parameter)) {
@@ -723,17 +781,23 @@ export function checkTranslationGraph(
       if (api !== 'useTranslation' && api !== 'getTranslation') {
         for (const target of forwardingTargets(node.expression)) {
           for (const index of forwarding.get(target)!) {
-            const supplied = node.arguments[index]
-            const defaultValue = target.parameters[index]?.initializer
-            const undefinedValue =
-              supplied && checker.getTypeAtLocation(supplied).flags & ts.TypeFlags.Undefined
-            const argument = !supplied || undefinedValue ? defaultValue : supplied
-            if (argument && !isForwarded(argument) && !recordLoadedNamespaces(argument))
+            const argumentsToCheck = forwardedArguments(node, target, index)
+            if (!argumentsToCheck) {
               explain(
                 'unknown-namespace',
                 [],
-                'The forwarded namespace cannot be resolved at this call site.',
+                'A spread prevents locating the forwarded namespace argument.',
               )
+              continue
+            }
+            for (const argument of argumentsToCheck) {
+              if (!isForwarded(argument) && !recordLoadedNamespaces(argument))
+                explain(
+                  'unknown-namespace',
+                  [],
+                  'The forwarded namespace cannot be resolved at this call site.',
+                )
+            }
           }
         }
       }
