@@ -197,8 +197,13 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByRole('heading', { name: 'Support knowledge' })).toBeInTheDocument()
     expect(screen.queryByText('knowledgeSpace.settings.retrievalMode.fast')).not.toBeInTheDocument()
     expect(screen.queryByText('text-embedding-3-large')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: 'dataset.knowledge' })).toHaveAttribute(
+    const breadcrumb = screen.getByRole('navigation', { name: 'dataset.knowledge' })
+    expect(within(breadcrumb).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(breadcrumb).getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute(
+      'href',
+      '/',
+    )
+    expect(within(breadcrumb).getByRole('link', { name: 'dataset.knowledge' })).toHaveAttribute(
       'href',
       '/datasets?view=agent',
     )
@@ -350,10 +355,13 @@ describe('KnowledgeSpaceShell', () => {
 
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
+    expect(screen.getByRole('navigation', { name: 'dataset.knowledge' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }))
+    expect(screen.queryByRole('navigation', { name: 'dataset.knowledge' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }))
+    expect(screen.getByRole('navigation', { name: 'dataset.knowledge' })).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }),
     ).toBeInTheDocument()

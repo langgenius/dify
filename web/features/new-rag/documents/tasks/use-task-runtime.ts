@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { taskIsActive, taskVersionIsAfter } from '../model'
 import { documentTasksInfiniteOptions } from '../queries'
 import { responseStatus } from '../request-error'
@@ -105,20 +106,26 @@ export function useTaskRuntimeController({
     ),
   )
 
-  const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
-  const terminalReconciliationTimeoutsRef = useRef(new Map<string, number>())
-  const terminalReconciliationControllersRef = useRef(new Map<string, AbortController>())
-  const failedTaskPollGenerationsRef = useRef(new Map<string, number>())
-  const blockedFailedTaskPollVersionsRef = useRef(new Map<string, string>())
-  const failedPollAuxiliaryDenialsRef = useRef(new Map<string, AuxiliaryTaskReadDenial>())
-  const terminalConfirmableAuxiliaryDenialsRef = useRef(new Map<string, AuxiliaryTaskReadDenial>())
-  const equalRetryListGenerationsRef = useRef(new Map<string, number>())
+  const terminalReconciliationGenerationsRef = useRefWithInit(() => new Map<string, number>())
+  const terminalReconciliationTimeoutsRef = useRefWithInit(() => new Map<string, number>())
+  const terminalReconciliationControllersRef = useRefWithInit(
+    () => new Map<string, AbortController>(),
+  )
+  const failedTaskPollGenerationsRef = useRefWithInit(() => new Map<string, number>())
+  const blockedFailedTaskPollVersionsRef = useRefWithInit(() => new Map<string, string>())
+  const failedPollAuxiliaryDenialsRef = useRefWithInit(
+    () => new Map<string, AuxiliaryTaskReadDenial>(),
+  )
+  const terminalConfirmableAuxiliaryDenialsRef = useRefWithInit(
+    () => new Map<string, AuxiliaryTaskReadDenial>(),
+  )
+  const equalRetryListGenerationsRef = useRefWithInit(() => new Map<string, number>())
   const failedTaskPollOffsetRef = useRef(0)
   const [taskStreamOffset, setTaskStreamOffset] = useState(0)
-  const listedBackgroundTaskStatesRef = useRef<{
+  const listedBackgroundTaskStatesRef = useRefWithInit<{
     knowledgeSpaceId: string
     states: Map<string, string>
-  }>({ knowledgeSpaceId, states: new Map() })
+  }>(() => ({ knowledgeSpaceId, states: new Map() }))
 
   const tasks = useAtomValue(effectiveTasksAtom)
   const activeTasks = useAtomValue(activeTasksAtom)
@@ -199,7 +206,7 @@ export function useTaskRuntimeController({
     }
     listedBackgroundTaskStatesRef.current = { knowledgeSpaceId, states }
     if (documentTaskReachedTerminal) onTaskReachedTerminal()
-  }, [backgroundTasks, knowledgeSpaceId, onTaskReachedTerminal])
+  }, [backgroundTasks, knowledgeSpaceId, onTaskReachedTerminal, listedBackgroundTaskStatesRef])
 
   useEffect(() => {
     if (permissionDenied || orderedActiveTasks.length <= MAX_TASK_EVENT_STREAMS) return
@@ -229,13 +236,16 @@ export function useTaskRuntimeController({
     }
   }, [blockedActiveTaskSignature, permissionDenied, refetchTasks])
 
-  const cancelTerminalReconciliation = useCallback((taskId: string) => {
-    terminalReconciliationControllersRef.current.get(taskId)?.abort()
-    terminalReconciliationControllersRef.current.delete(taskId)
-    const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
-    if (timeout !== undefined) window.clearTimeout(timeout)
-    terminalReconciliationTimeoutsRef.current.delete(taskId)
-  }, [])
+  const cancelTerminalReconciliation = useCallback(
+    (taskId: string) => {
+      terminalReconciliationControllersRef.current.get(taskId)?.abort()
+      terminalReconciliationControllersRef.current.delete(taskId)
+      const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
+      if (timeout !== undefined) window.clearTimeout(timeout)
+      terminalReconciliationTimeoutsRef.current.delete(taskId)
+    },
+    [terminalReconciliationTimeoutsRef, terminalReconciliationControllersRef],
+  )
 
   useEffect(() => {
     if (!permissionDenied) return
@@ -245,7 +255,13 @@ export function useTaskRuntimeController({
       window.clearTimeout(timeout)
     terminalReconciliationTimeoutsRef.current.clear()
     equalRetryListGenerationsRef.current.clear()
-  }, [cancelTerminalReconciliation, permissionDenied])
+  }, [
+    cancelTerminalReconciliation,
+    permissionDenied,
+    terminalReconciliationTimeoutsRef,
+    terminalReconciliationControllersRef,
+    equalRetryListGenerationsRef,
+  ])
 
   const reconcileTerminalTask = useCallback(
     async function reconcileTerminalTaskRequest(
@@ -342,6 +358,13 @@ export function useTaskRuntimeController({
       denyAuxiliaryTaskRead,
       knowledgeSpaceId,
       taskProgressStore,
+      terminalReconciliationGenerationsRef,
+      terminalReconciliationTimeoutsRef,
+      terminalReconciliationControllersRef,
+      failedTaskPollGenerationsRef,
+      blockedFailedTaskPollVersionsRef,
+      failedPollAuxiliaryDenialsRef,
+      terminalConfirmableAuxiliaryDenialsRef,
     ],
   )
 
@@ -367,7 +390,17 @@ export function useTaskRuntimeController({
       }
       return true
     },
-    [applyRuntimeEvent, auxiliaryTaskReadGuard, cancelTerminalReconciliation, taskProgressStore],
+    [
+      applyRuntimeEvent,
+      auxiliaryTaskReadGuard,
+      cancelTerminalReconciliation,
+      taskProgressStore,
+      terminalReconciliationGenerationsRef,
+      failedTaskPollGenerationsRef,
+      blockedFailedTaskPollVersionsRef,
+      failedPollAuxiliaryDenialsRef,
+      terminalConfirmableAuxiliaryDenialsRef,
+    ],
   )
 
   const handleTaskEvent = useCallback(
@@ -398,6 +431,8 @@ export function useTaskRuntimeController({
       onTaskReachedTerminal,
       reconcileTerminalTask,
       taskProgressStore,
+      terminalReconciliationGenerationsRef,
+      failedTaskPollGenerationsRef,
     ],
   )
 
@@ -416,7 +451,7 @@ export function useTaskRuntimeController({
       })
       denyAuxiliaryTaskRead(taskId, taskVersion)
     },
-    [denyAuxiliaryTaskRead, readRuntimeState],
+    [denyAuxiliaryTaskRead, readRuntimeState, terminalConfirmableAuxiliaryDenialsRef],
   )
 
   useEffect(() => {
@@ -443,6 +478,7 @@ export function useTaskRuntimeController({
     effectiveTaskById,
     permissionDenied,
     runtimeState.listGeneration,
+    terminalConfirmableAuxiliaryDenialsRef,
   ])
 
   useEffect(() => {
@@ -470,7 +506,14 @@ export function useTaskRuntimeController({
       terminalReconciliationGenerationsRef.current.set(task.id, reconciliationGeneration)
       void reconcileTerminalTask(task.id, task.updatedAt, reconciliationGeneration)
     }
-  }, [applyRuntimeEvent, baseTasks, permissionDenied, reconcileTerminalTask, runtimeState])
+  }, [
+    applyRuntimeEvent,
+    baseTasks,
+    permissionDenied,
+    reconcileTerminalTask,
+    runtimeState,
+    terminalReconciliationGenerationsRef,
+  ])
 
   useEffect(() => {
     const taskIds = new Set(baseTasks.map((task) => task.id))
@@ -488,7 +531,19 @@ export function useTaskRuntimeController({
     pruneMap(equalRetryListGenerationsRef.current)
     auxiliaryTaskReadGuard.retain(taskIds)
     taskProgressStore.retain(taskIds)
-  }, [auxiliaryTaskReadGuard, baseTasks, cancelTerminalReconciliation, taskProgressStore])
+  }, [
+    auxiliaryTaskReadGuard,
+    baseTasks,
+    cancelTerminalReconciliation,
+    taskProgressStore,
+    terminalReconciliationGenerationsRef,
+    terminalReconciliationControllersRef,
+    failedTaskPollGenerationsRef,
+    blockedFailedTaskPollVersionsRef,
+    failedPollAuxiliaryDenialsRef,
+    terminalConfirmableAuxiliaryDenialsRef,
+    equalRetryListGenerationsRef,
+  ])
 
   useEffect(() => {
     if (permissionDenied) return
@@ -548,6 +603,12 @@ export function useTaskRuntimeController({
     runtimeState.listGeneration,
     runtimeState.terminalPins,
     taskProgressStore,
+    terminalReconciliationGenerationsRef,
+    failedTaskPollGenerationsRef,
+    blockedFailedTaskPollVersionsRef,
+    failedPollAuxiliaryDenialsRef,
+    terminalConfirmableAuxiliaryDenialsRef,
+    equalRetryListGenerationsRef,
   ])
 
   useEffect(() => {
@@ -560,7 +621,13 @@ export function useTaskRuntimeController({
       failedPollAuxiliaryDenialsRef.current.delete(task.id)
       acceptTaskSnapshot(task)
     }
-  }, [acceptTaskSnapshot, baseTasks, permissionDenied, runtimeState.listGeneration])
+  }, [
+    acceptTaskSnapshot,
+    baseTasks,
+    permissionDenied,
+    runtimeState.listGeneration,
+    failedPollAuxiliaryDenialsRef,
+  ])
 
   useEffect(() => {
     for (const task of activeTasks) {
@@ -570,7 +637,7 @@ export function useTaskRuntimeController({
         (failedTaskPollGenerationsRef.current.get(task.id) ?? 0) + 1,
       )
     }
-  }, [activeTasks])
+  }, [activeTasks, failedTaskPollGenerationsRef, blockedFailedTaskPollVersionsRef])
 
   useEffect(() => {
     if (permissionDenied || !tasksOpen || !readOrderedFailedTasks().length) return
@@ -672,6 +739,9 @@ export function useTaskRuntimeController({
     knowledgeSpaceId,
     permissionDenied,
     tasksOpen,
+    failedTaskPollGenerationsRef,
+    blockedFailedTaskPollVersionsRef,
+    failedPollAuxiliaryDenialsRef,
   ])
 
   useEffect(
@@ -679,7 +749,7 @@ export function useTaskRuntimeController({
       for (const taskId of terminalReconciliationControllersRef.current.keys())
         cancelTerminalReconciliation(taskId)
     },
-    [cancelTerminalReconciliation, knowledgeSpaceId],
+    [cancelTerminalReconciliation, knowledgeSpaceId, terminalReconciliationControllersRef],
   )
 
   const observers = {

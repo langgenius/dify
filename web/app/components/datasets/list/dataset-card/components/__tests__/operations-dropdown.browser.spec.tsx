@@ -29,9 +29,9 @@ vi.mock('@/features/system-features/client', () => ({
 }))
 
 it.each([true, false])(
-  'keeps operations visible and keyboard accessible with embedding available: %s',
+  'reveals operations on hover, keyboard focus, and while open with embedding available: %s',
   async (embeddingAvailable) => {
-    // Real CSS and native Tab navigation catch visibility-hidden triggers that happy-dom misses.
+    // Real CSS proves hover disclosure and native Tab access, including focus restoration after closing.
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     })
@@ -62,7 +62,7 @@ it.each([true, false])(
     const screen = await render(
       <QueryClientProvider client={queryClient}>
         <button type="button">Before dataset</button>
-        <div className="group relative mt-10 h-40 w-80">
+        <div role="group" aria-label="Dataset card" className="group relative mt-10 h-40 w-80">
           <CornerLabels dataset={dataset} />
           <OperationsDropdown
             dataset={dataset}
@@ -76,9 +76,18 @@ it.each([true, false])(
       </QueryClientProvider>,
     )
 
-    screen.getByRole('button', { name: 'Before dataset' }).element().focus()
-    await userEvent.keyboard('{Tab}')
+    const before = screen.getByRole('button', { name: 'Before dataset' })
     const trigger = screen.getByRole('button', { name: 'Dataset operations' })
+    const isTriggerVisible = () => trigger.element().checkVisibility({ opacityProperty: true })
+    await userEvent.hover(before)
+    before.element().focus()
+    await expect.poll(isTriggerVisible).toBe(false)
+    await userEvent.hover(screen.getByRole('group', { name: 'Dataset card' }))
+    await expect.poll(isTriggerVisible).toBe(true)
+    await userEvent.hover(before)
+    await expect.poll(isTriggerVisible).toBe(false)
+    await userEvent.keyboard('{Tab}')
+    await expect.poll(isTriggerVisible).toBe(true)
     await expect.element(trigger).toHaveFocus()
     await expect.element(trigger).toBeVisible()
     if (!embeddingAvailable) {
@@ -91,9 +100,14 @@ it.each([true, false])(
     await userEvent.keyboard('{Enter}')
     const edit = screen.getByRole('menuitem', { name: 'common.operation.edit' })
     await expect.element(edit).toHaveFocus()
+    await expect.poll(isTriggerVisible).toBe(true)
     await userEvent.keyboard('{Enter}')
     expect(openRenameModal).toHaveBeenCalledTimes(1)
     await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
     await expect.element(trigger).toHaveFocus()
+    await expect.poll(isTriggerVisible).toBe(true)
+    await userEvent.keyboard('{Tab}')
+    await expect.element(screen.getByRole('button', { name: 'After dataset' })).toHaveFocus()
+    await expect.poll(isTriggerVisible).toBe(false)
   },
 )

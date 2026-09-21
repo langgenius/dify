@@ -2,6 +2,13 @@
 
 import type { CSSProperties, ReactNode } from 'react'
 import type { KnowledgeFsApiAccessStatus } from './api-access-dialog'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
@@ -209,25 +216,32 @@ export function KnowledgeSpaceShell({
           >
             {sidebarExpanded && (
               <>
-                <div className="flex min-w-0 flex-1 items-center gap-px">
-                  <Link
-                    href="/"
-                    aria-label={tCommon(($) => $['mainNav.home'])}
-                    className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary outline-hidden transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  >
-                    <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-                    <span aria-hidden className="i-ri-home-5-line size-4" />
-                  </Link>
-                  <span aria-hidden className="system-md-regular text-text-quaternary">
-                    /
-                  </span>
-                  <Link
-                    href={newKnowledgeListPath}
-                    className="truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary outline-hidden transition-colors hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  >
-                    {t(($) => $.knowledge, { ns: 'dataset' })}
-                  </Link>
-                </div>
+                <Breadcrumb
+                  aria-label={t(($) => $.knowledge, { ns: 'dataset' })}
+                  className="flex-1"
+                >
+                  <BreadcrumbList className="gap-px">
+                    <BreadcrumbItem className="shrink-0">
+                      <BreadcrumbLink
+                        render={<Link href="/" />}
+                        aria-label={tCommon(($) => $['mainNav.home'])}
+                        className="shrink-0 rounded-lg py-2 pr-1.5 pl-0.5 transition-colors hover:bg-state-base-hover"
+                      >
+                        <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+                        <span aria-hidden className="i-ri-home-5-line size-4" />
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator className="system-md-regular" />
+                    <BreadcrumbItem className="min-w-0">
+                      <BreadcrumbLink
+                        render={<Link href={newKnowledgeListPath} />}
+                        className="truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-state-base-hover hover:text-text-primary"
+                      >
+                        {t(($) => $.knowledge, { ns: 'dataset' })}
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                  </BreadcrumbList>
+                </Breadcrumb>
                 <DialogTrigger
                   handle={gotoAnythingDialogHandle}
                   render={
