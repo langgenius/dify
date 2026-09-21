@@ -455,7 +455,9 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
     runner._init_rag_pipeline_graph.assert_called_once()
 
 
-def test_run_recreates_pipeline_trace_after_task_serialization(mocker: MockerFixture, sqlite_session: Session):
+def test_prepare_recreates_pipeline_trace_after_task_serialization(
+    mocker: MockerFixture, sqlite_session: Session
+) -> None:
     from uuid import uuid4
 
     from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
@@ -512,10 +514,10 @@ def test_run_recreates_pipeline_trace_after_task_serialization(mocker: MockerFix
     mocker.patch.object(runner, "_init_rag_pipeline_graph", return_value=MagicMock())
     mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
     workflow_entry = MagicMock()
-    workflow_entry.run.return_value = []
     entry_constructor = mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
 
-    runner.run()
+    prepared = runner.prepare()
+    assert prepared.entry is workflow_entry
 
     create_trace.assert_called_once_with(
         tenant_id=tenant_id,

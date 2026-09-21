@@ -45,6 +45,7 @@ from graphon.nodes.llm.runtime_protocols import LLMProtocol, PromptMessageSerial
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
+from services.workflow_run_index import WorkflowRunIndex
 from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -71,7 +72,7 @@ def recorder(source: TraceSource, submitted: list[CompletedTrace]) -> WorkflowTr
 
 
 def make_persistence_layer(
-    recorder: WorkflowTraceRecorder, state: RuntimeState
+    recorder: WorkflowTraceRecorder, state: RuntimeState, index: WorkflowRunIndex
 ) -> tuple[WorkflowPersistenceLayer, Mock]:
     source = recorder.source
     add_variables_to_pool(state.variable_pool, build_system_variables(workflow_execution_id=source.operation_id))
@@ -96,6 +97,7 @@ def make_persistence_layer(
         workflow_node_execution_repository=node_repository,
         record_node_execution_index=recorder.record_node_execution_index,
     )
+    layer.set_node_run_indices(index.indices)
     return layer, node_repository
 
 
@@ -319,8 +321,10 @@ def test_real_engine_retry_preserves_prompt_model_metadata_and_failure_finish(
         runtime_state=state,
         command_channel=InMemoryChannel(),
     )
-    persistence, node_repository = make_persistence_layer(recorder, state)
+    index = WorkflowRunIndex()
+    persistence, node_repository = make_persistence_layer(recorder, state, index)
     engine.add_layer(recorder)
+    engine.add_layer(index)
     engine.add_layer(persistence)
     events = list(engine.run())
     recorder.finish_workflow_trace()

@@ -45,6 +45,7 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message, MessageAgentThought, UploadFile
 from models.workflow import Workflow, WorkflowType
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.ops.test_message_trace import RecordingQueue
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace
 
@@ -296,7 +297,7 @@ def test_other_enterprise_operations_keep_the_external_actor(operation_type: str
     assert client._user_id(trace, span, operation_type) == "alice"
 
 
-def run_chatflow_capture(
+def prepare_chatflow_capture(
     *,
     entity: AdvancedChatAppGenerateEntity,
     app_model: App,
@@ -333,9 +334,8 @@ def run_chatflow_capture(
         patch.object(runner, "_initialize_conversation_variables", return_value=[]),
         patch.object(runner, "handle_input_moderation", return_value=(False, {}, "Hello")),
         patch.object(runner, "handle_annotation_reply", return_value=None),
-        patch.object(runner, "_run_workflow", return_value=iter(())),
     ):
-        runner.run()
+        assert runner.prepare() is not None
     recorder = entry.call_args.kwargs["workflow_trace"]
     state = entry.call_args.kwargs["graph_runtime_state"]
     assert isinstance(recorder, WorkflowTraceRecorder)
@@ -371,7 +371,7 @@ def test_chatflow_generator_and_runner_keep_workflow_invocation_labels(
     sqlite_session.add(workflow)
     sqlite_session.commit()
     monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.db", SimpleNamespace(engine=sqlite_engine))
-    generator = AdvancedChatAppGenerator()
+    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
     generate = Mock(return_value={})
     monkeypatch.setattr(generator, "_generate", generate)
     generator.generate(
@@ -386,7 +386,7 @@ def test_chatflow_generator_and_runner_keep_workflow_invocation_labels(
     )
     entity = cast(AdvancedChatAppGenerateEntity, generate.call_args.kwargs["application_generate_entity"])
     conversation, message = generator._init_generate_records(entity, session=sqlite_session)
-    recorder, state = run_chatflow_capture(
+    recorder, state = prepare_chatflow_capture(
         entity=entity, app_model=app_model, workflow=workflow, conversation=conversation, message=message, user=user
     )
     if resume is not None:
@@ -411,7 +411,7 @@ def test_chatflow_generator_and_runner_keep_workflow_invocation_labels(
         assert entity.trace_recorder is not None
         user_field = "from_end_user_id" if isinstance(user, EndUser) else "from_account_id"
         assert entity.trace_recorder.attributes[user_field] == user.id
-        recorder, _ = run_chatflow_capture(
+        recorder, _ = prepare_chatflow_capture(
             entity=entity,
             app_model=app_model,
             workflow=workflow,

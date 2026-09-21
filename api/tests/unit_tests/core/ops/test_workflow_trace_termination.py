@@ -33,6 +33,7 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
+from services.workflow_run_index import WorkflowRunIndex
 from tests.unit_tests.core.ops.test_workflow_trace_compatibility import make_persistence_layer
 from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
 
@@ -59,7 +60,8 @@ def test_terminal_events_match_persisted_running_nodes_and_keep_finished_sibling
         submit_completed_trace=lambda trace: submitted.append(trace) is None,
     )
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=1)
-    persistence, _ = make_persistence_layer(recorder, state)
+    index = WorkflowRunIndex()
+    persistence, _ = make_persistence_layer(recorder, state, index)
     for layer in (recorder, persistence):
         layer.initialize(ReadOnlyRuntimeStateWrapper(state), InMemoryChannel())
         layer.on_event(GraphRunStartedEvent())
@@ -67,7 +69,8 @@ def test_terminal_events_match_persisted_running_nodes_and_keep_finished_sibling
     started = datetime(2026, 9, 12, 1)
     terminal_time = started + timedelta(seconds=5)
     nodes = [workflow_node(source, node_type="llm") for _ in range(3)]
-    for index, node in enumerate(nodes):
+    for node_index, node in enumerate(nodes):
+        index.on_node_run_start(node)
         with recorder.node_run_context(node):
             start = NodeRunStartedEvent(
                 id=node.execution_id,
@@ -75,7 +78,7 @@ def test_terminal_events_match_persisted_running_nodes_and_keep_finished_sibling
                 node_type=node.node_type,
                 node_title=node.title,
                 start_at=started,
-                node_run_result=NodeRunResult(inputs={"branch": index}),
+                node_run_result=NodeRunResult(inputs={"branch": node_index}),
             )
             recorder.on_event(start)
             persistence.on_event(start)

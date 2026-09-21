@@ -194,11 +194,12 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
     from graphon.engine import Engine
     from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
     from graphon.runtime import RuntimeState, VariablePool
+    from services.workflow_run_index import WorkflowRunIndex
     from tests.unit_tests.core.ops.test_workflow_trace_compatibility import make_persistence_layer
     from tests.unit_tests.core.workflow.test_workflow_tool_container import (
         _outer_graph,
-        _source_workflow,
         _workflow_tool_node,
+        _workflow_tool_source,
     )
 
     app_id = str(uuid4())
@@ -217,13 +218,13 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
         load_provider_settings=lambda _tenant_id, _app_id: (child_settings,),
     )
     state = RuntimeState(workflow_id="outer-workflow", variable_pool=VariablePool(), start_at=1)
+    workflow_source = _workflow_tool_source()
     tool, runtime, request = _workflow_tool_node(state, app_id=app_id)
     tool.run_context[DIFY_RUN_CONTEXT_KEY].tenant_id = source.tenant_id
     runtime.build_workflow_tool_container_payload.return_value = request.model_copy(
-        update={"source_app_id": child_app_id}
+        update={"source_app_id": child_app_id, "source_workflow_id": workflow_source.workflow_id}
     )
-    _, workflow = _source_workflow()
-    source_graph = dict(workflow.graph_dict)
+    source_graph = dict(workflow_source.graph_config)
     if include_loop:
         source_graph["nodes"].extend(
             [
@@ -251,13 +252,14 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
     repository = MagicMock(spec=WorkflowToolSourceRepository)
     repository.get_source.return_value = WorkflowToolSource(
         app_id=child_app_id,
-        workflow_id=workflow.id,
+        workflow_id=workflow_source.workflow_id,
         graph_config=source_graph,
         features_dict={},
         environment_variables=[],
-        workflow_kind="standard",
+        workflow_kind=workflow_source.workflow_kind,
     )
-    persistence, node_repository = make_persistence_layer(recorder, state)
+    index = WorkflowRunIndex()
+    persistence, node_repository = make_persistence_layer(recorder, state, index)
     event_listeners = {}
     engine = Engine(
         graph=_outer_graph(tool),
@@ -282,6 +284,7 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
         ),
     )
     engine.add_layer(recorder)
+    engine.add_layer(index)
     engine.add_layer(persistence)
     public_events = list(engine.run())
     recorder.finish_workflow_trace()
@@ -307,8 +310,10 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
     persisted_nodes = {call.args[0].id: call.args[0] for call in node_repository.save.call_args_list}
     child_repository = node_repository.for_workflow_tool.return_value
     persisted_child_nodes = {call.args[0].id: call.args[0] for call in child_repository.save.call_args_list}
-    assert sorted(execution.index for execution in persisted_child_nodes.values()) == list(
-        range(1, len(persisted_child_nodes) + 1)
+    # Index allocation includes the two loop-start executions even though those
+    # control-flow events are hidden from the persistence listener.
+    assert {execution.node_id: execution.index for execution in persisted_child_nodes.values()} == (
+        {"source-start": 1, "source-loop": 2, "source-end": 5} if include_loop else {"source-start": 1, "source-end": 2}
     )
     assert persisted_child_nodes
     persisted_nodes.update(persisted_child_nodes)
