@@ -40,7 +40,6 @@ from enums import DeploymentEdition
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
@@ -609,7 +608,6 @@ class ProviderManager:
         """Invalidate cross-process provider configuration source cache for a tenant."""
         _ProviderConfigurationSourceCache.invalidate_tenant(tenant_id, sources=sources)
 
-    @trace_span()
     def get_configurations(self, tenant_id: str) -> ProviderConfigurations:
         """
         Get model provider configurations.
@@ -678,7 +676,8 @@ class ProviderManager:
                 )
 
         # Get all provider entities
-        provider_entities = self._get_provider_entities()
+        model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
+        provider_entities = model_provider_factory.get_providers()
 
         # Get All preferred provider types of the workspace
         provider_name_to_preferred_model_provider_records_dict = self._get_all_preferred_model_providers(tenant_id)
@@ -826,7 +825,6 @@ class ProviderManager:
         # Return the encapsulated object
         return provider_configurations
 
-    @trace_span()
     def get_provider_model_bundle(self, tenant_id: str, provider: str, model_type: ModelType) -> ProviderModelBundle:
         """
         Get provider model bundle.
@@ -848,12 +846,6 @@ class ProviderManager:
             configuration=provider_configuration,
             model_type_instance=model_type_instance,
         )
-
-    @trace_span()
-    def _get_provider_entities(self) -> list[ProviderEntity]:
-        """Load installed provider declarations from the plugin runtime."""
-        model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
-        return model_provider_factory.get_providers()
 
     def get_default_model(self, tenant_id: str, model_type: ModelType) -> DefaultModelEntity | None:
         """

@@ -38,7 +38,6 @@ class WeightsDict(TypedDict):
 class DataPostProcessor:
     """Interface for data post-processing document."""
 
-    @trace_span()
     def __init__(
         self,
         tenant_id: str,
@@ -113,7 +112,6 @@ class DataPostProcessor:
             return ReorderRunner()
         return None
 
-    @trace_span()
     def _get_rerank_model_instance(
         self, tenant_id: str, reranking_model: RerankingModelDict | None
     ) -> ModelInstance | None:
