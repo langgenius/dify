@@ -1,3 +1,4 @@
+import type { Buffer } from 'node:buffer'
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
@@ -5,7 +6,12 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import picomatch from 'picomatch'
-import { compressRaster, compressSvg } from './image-optimizer.mjs'
+import { compressRaster, compressSvg } from './image-optimizer.ts'
+
+type IgnoreRule = { pattern: string; reason: string }
+type Status = 'passed' | 'skipped' | 'error' | 'ignored' | 'fixed'
+type Inspection = { status: Status; message: string; candidate?: Buffer }
+const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const imageExtensions = new Set([
@@ -22,11 +28,11 @@ const imageExtensions = new Set([
   '.tiff',
 ])
 
-export function git(args, root = ROOT) {
+export function git(args: string[], root = ROOT) {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
 }
 
-export function imagePaths(base, root = ROOT) {
+export function imagePaths(base: string | undefined, root = ROOT) {
   const output = base
     ? git(
         [
@@ -47,20 +53,27 @@ export function imagePaths(base, root = ROOT) {
     .sort()
 }
 
-export async function loadIgnoreRules(root = ROOT) {
-  const rules = JSON.parse(
+export async function loadIgnoreRules(root = ROOT): Promise<IgnoreRule[]> {
+  const rules: unknown = JSON.parse(
     await fs.readFile(path.join(root, 'packages/image-resources/ignore.json'), 'utf8'),
   )
   if (!Array.isArray(rules))
     throw new Error('ignore.json must contain an array of pattern/reason objects')
-  for (const rule of rules) {
+  for (const rule of rules as unknown[]) {
     if (
       !rule ||
       typeof rule !== 'object' ||
+      !('pattern' in rule) ||
+      !('reason' in rule) ||
       Object.keys(rule).sort().join(',') !== 'pattern,reason'
     )
       throw new Error('Each ignore rule must contain only pattern and reason')
-    if (!Object.values(rule).every((value) => typeof value === 'string' && value.trim()))
+    if (
+      typeof rule.pattern !== 'string' ||
+      !rule.pattern.trim() ||
+      typeof rule.reason !== 'string' ||
+      !rule.reason.trim()
+    )
       throw new Error('Ignore pattern and reason must be nonempty strings')
     if (
       rule.pattern.startsWith('/') ||
@@ -69,10 +82,10 @@ export async function loadIgnoreRules(root = ROOT) {
     )
       throw new Error('Ignore patterns must be repository-relative paths using forward slashes')
   }
-  return rules
+  return rules as IgnoreRule[]
 }
 
-export function ignoredReason(name, rules) {
+export function ignoredReason(name: string, rules: IgnoreRule[]) {
   const rule = rules.find((rule) =>
     picomatch
       .makeRe(rule.pattern.replace(/[()+|^$"]/g, '\\$&'), {
@@ -91,11 +104,11 @@ export function ignoredReason(name, rules) {
   return rule ? `${rule.reason} (pattern: ${rule.pattern})` : undefined
 }
 
-export function exceedsThreshold(before, after) {
+export function exceedsThreshold(before: number, after: number) {
   return (before - after) * 100 > before * 25
 }
 
-export async function inspectImage(name, root = ROOT) {
+export async function inspectImage(name: string, root = ROOT): Promise<Inspection> {
   try {
     const filename = path.join(root, name)
     if ((await fs.lstat(filename)).isSymbolicLink())
@@ -117,11 +130,11 @@ export async function inspectImage(name, root = ROOT) {
       }
     return { status: 'passed', message }
   } catch (error) {
-    return { status: 'error', message: `Unable to inspect image: ${error.message}` }
+    return { status: 'error', message: `Unable to inspect image: ${errorMessage(error)}` }
   }
 }
 
-export function escapeAnnotation(value) {
+export function escapeAnnotation(value: string) {
   return value
     .replaceAll('%', '%25')
     .replaceAll('\r', '%0D')
@@ -130,14 +143,14 @@ export function escapeAnnotation(value) {
     .replaceAll(':', '%3A')
 }
 
-const escapeHtml = (value) =>
+const escapeHtml = (value: string) =>
   value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;')
-const inside = (parent, child) => {
+const inside = (parent: string, child: string) => {
   const relative = path.relative(parent, child)
   return (
     relative === '' ||
@@ -146,16 +159,16 @@ const inside = (parent, child) => {
 }
 
 // Resolve existing ancestors too, so a symlink cannot turn an outside output path into the source tree.
-async function resolveDestination(filename) {
+async function resolveDestination(filename: string): Promise<string> {
   try {
     return await fs.realpath(filename)
   } catch (error) {
-    if (error.code !== 'ENOENT') throw error
+    if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error
     return path.join(await resolveDestination(path.dirname(filename)), path.basename(filename))
   }
 }
 
-async function replaceImage(filename, candidate) {
+async function replaceImage(filename: string, candidate: Buffer) {
   const temporary = `${filename}.${randomUUID()}.tmp`
   try {
     const { mode } = await fs.stat(filename)
@@ -168,7 +181,9 @@ async function replaceImage(filename, candidate) {
 
 /* oxlint-disable no-console -- CLI output includes reports and GitHub Actions annotations. */
 export async function main(args = process.argv.slice(2), root = ROOT) {
-  let options, rules, outputDir
+  let options
+  let rules: IgnoreRule[]
+  let outputDir: string | undefined
   try {
     options = parseArgs({
       args,
@@ -182,7 +197,7 @@ export async function main(args = process.argv.slice(2), root = ROOT) {
     }).values
     if (options.help) {
       console.log(
-        'Usage: node packages/image-resources/check-image-resources.mjs (--base REF | --all) [--fix | --output-dir DIR]',
+        'Usage: node packages/image-resources/check-image-resources.ts (--base REF | --all) [--fix | --output-dir DIR]',
       )
       return 0
     }
@@ -198,16 +213,18 @@ export async function main(args = process.argv.slice(2), root = ROOT) {
     try {
       rules = await loadIgnoreRules(root)
     } catch (error) {
-      throw new Error(`Invalid image ignore configuration: ${error.message}`)
+      throw new Error(`Invalid image ignore configuration: ${errorMessage(error)}`)
     }
   } catch (error) {
-    console.error(error.message)
+    console.error(errorMessage(error))
     return 2
   }
-  const results = []
+  const results: (Inspection & { name: string })[] = []
   for (const name of imagePaths(options.base, root)) {
     const reason = ignoredReason(name, rules)
-    const result = reason ? { status: 'ignored', message: reason } : await inspectImage(name, root)
+    const result: Inspection = reason
+      ? { status: 'ignored', message: reason }
+      : await inspectImage(name, root)
     if (result.candidate && options.fix) {
       try {
         await replaceImage(path.join(root, name), result.candidate)
@@ -217,7 +234,7 @@ export async function main(args = process.argv.slice(2), root = ROOT) {
           'Applied candidate. Review the image in its rendered context before committing.',
         )
       } catch (error) {
-        result.message = `Unable to write optimized image: ${error.message}`
+        result.message = `Unable to write optimized image: ${errorMessage(error)}`
       }
     }
     if (result.candidate && outputDir) {
@@ -228,7 +245,7 @@ export async function main(args = process.argv.slice(2), root = ROOT) {
         await fs.mkdir(path.dirname(output), { recursive: true })
         await fs.writeFile(output, result.candidate)
       } catch (error) {
-        result.message += `. Unable to export candidate: ${error.message}`
+        result.message += `. Unable to export candidate: ${errorMessage(error)}`
       }
     }
     results.push({ name, ...result })
@@ -236,7 +253,7 @@ export async function main(args = process.argv.slice(2), root = ROOT) {
     if (result.status === 'error' && process.env.GITHUB_ACTIONS === 'true')
       console.log(`::error file=${escapeAnnotation(name)}::${escapeAnnotation(result.message)}`)
   }
-  const count = (status) => results.filter((result) => result.status === status).length
+  const count = (status: Status) => results.filter((result) => result.status === status).length
   const summary = `Checked ${results.length} images: ${count('error')} failures, ${count('skipped')} skipped, ${count('ignored')} ignored, ${count('fixed')} fixed.`
   console.log(summary)
   if (count('fixed'))
@@ -259,7 +276,7 @@ if (import.meta.main) {
     // oxlint-disable-next-line antfu/no-top-level-await -- Wait for CLI completion before setting its exit status.
     process.exitCode = await main()
   } catch (error) {
-    console.error(error.message)
+    console.error(errorMessage(error))
     process.exitCode = 1
   }
 }

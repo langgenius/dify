@@ -1,3 +1,4 @@
+import type { Config } from 'svgo'
 import { Buffer } from 'node:buffer'
 import { crc32, deflateSync, inflateSync } from 'node:zlib'
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom'
@@ -8,9 +9,9 @@ const pngSignature = Buffer.from('89504e470d0a1a0a', 'hex')
 const xmlNamespace = 'http://www.w3.org/XML/1998/namespace'
 const xlinkNamespace = 'http://www.w3.org/1999/xlink'
 // Never enable preset-default: preserve geometry, styles, IDs and definitions.
-const svgConfig = { plugins: ['removeComments', 'sortAttrs'], js2svg: { pretty: false } }
+const svgConfig: Config = { plugins: ['removeComments', 'sortAttrs'], js2svg: { pretty: false } }
 
-export function pngChunks(data) {
+export function pngChunks(data: Buffer) {
   if (!data.subarray(0, 8).equals(pngSignature)) throw new Error('Invalid PNG signature')
   const chunks = []
   let offset = 8
@@ -39,7 +40,7 @@ export function pngChunks(data) {
   return chunks
 }
 
-function pngChunk(type, data) {
+function pngChunk(type: string, data: Buffer) {
   const chunk = Buffer.alloc(data.length + 12)
   chunk.writeUInt32BE(data.length)
   chunk.write(type, 4, 4, 'ascii')
@@ -48,12 +49,12 @@ function pngChunk(type, data) {
   return chunk
 }
 
-export async function compressRaster(data) {
+export async function compressRaster(data: Buffer) {
   if (data.subarray(0, 8).equals(pngSignature)) {
     const chunks = pngChunks(data)
     if (chunks.some((chunk) => chunk.type === 'acTL'))
       return { data, method: 'skipped: animated/multi-frame image' }
-    if (chunks[0].data[8] === 16)
+    if (chunks[0]!.data[8] === 16)
       return { data, method: 'skipped: 16-bit PNG (preserve source precision)' }
     // Decode for validation only. Never re-encode pixels or colour metadata.
     const input = sharp(data, { failOn: 'warning' })
@@ -102,7 +103,7 @@ export async function compressRaster(data) {
   }
 }
 
-export function parseSvg(data) {
+export function parseSvg(data: Buffer) {
   const document = new DOMParser({
     onError: (_level, message) => {
       throw new Error(message)
@@ -112,7 +113,7 @@ export function parseSvg(data) {
   return document
 }
 
-function decodePayload(header, payload) {
+function decodePayload(header: string, payload: string) {
   // Percent escapes represent bytes, including arbitrary binary data URLs.
   const bytes = []
   for (let i = 0; i < payload.length; i++) {
@@ -120,7 +121,7 @@ function decodePayload(header, payload) {
       bytes.push(Number.parseInt(payload.slice(i + 1, i + 3), 16))
       i += 2
     } else {
-      bytes.push(...Buffer.from(payload[i]))
+      bytes.push(...Buffer.from(payload[i]!))
     }
   }
   const data = Buffer.from(bytes)
@@ -134,14 +135,14 @@ function decodePayload(header, payload) {
   return Buffer.from(text, 'base64')
 }
 
-export async function compressSvg(data) {
+export async function compressSvg(data: Buffer) {
   const document = parseSvg(data)
   const elements = Array.from(document.getElementsByTagName('*'))
   // Guard before SVGO parsing: its whitespace trimming is not plugin-controlled.
   if (
     elements.some(
       (element) =>
-        ['text', 'tspan', 'textPath', 'foreignObject'].includes(element.localName) ||
+        ['text', 'tspan', 'textPath', 'foreignObject'].includes(element.localName ?? '') ||
         element.getAttributeNS(xmlNamespace, 'space') === 'preserve',
     )
   ) {

@@ -129,6 +129,7 @@ catalog:
   '@types/lockfile': 1.0.4
   '@types/negotiator': 0.6.5
   '@types/node': 25.9.7
+  '@types/picomatch': 4.0.3
   '@types/qs': 6.15.1
   '@types/react': 19.3.0
   '@types/react-dom': 19.3.0

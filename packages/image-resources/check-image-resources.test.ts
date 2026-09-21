@@ -1,3 +1,4 @@
+import type { TestContext } from 'vitest'
 import assert from 'node:assert/strict'
 import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
@@ -6,11 +7,10 @@ import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-// oxlint-disable-next-line vitest/no-import-node-test -- This standalone CLI uses the Node.js test runner.
-import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { crc32, deflateSync, inflateSync } from 'node:zlib'
 import sharp from 'sharp'
+import { it, vi } from 'vitest'
 import {
   escapeAnnotation,
   exceedsThreshold,
@@ -20,23 +20,23 @@ import {
   inspectImage,
   loadIgnoreRules,
   main,
-} from './check-image-resources.mjs'
-import { compressRaster, compressSvg, parseSvg, pngChunks } from './image-optimizer.mjs'
+} from './check-image-resources.ts'
+import { compressRaster, compressSvg, parseSvg, pngChunks } from './image-optimizer.ts'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const namespace = 'http://www.w3.org/2000/svg'
 const xlink = 'http://www.w3.org/1999/xlink'
-const write = (root, name, data) => {
+const write = (root: string, name: string, data: string | Buffer) => {
   const p = path.join(root, name)
   fs.mkdirSync(path.dirname(p), { recursive: true })
   fs.writeFileSync(p, data)
   return p
 }
-const wrap = (body) =>
+const wrap = (body: string) =>
   Buffer.from(
     `<svg xmlns="${namespace}" xmlns:s="${namespace}" xmlns:xlink="${xlink}" width="80" height="80" viewBox="0 0 80 80">${body}</svg>`,
   )
-const embedded = (data, attribute = 'href') =>
+const embedded = (data: Buffer, attribute = 'href') =>
   wrap(
     `<image width="80" height="80" ${attribute}="data:image/png;base64,${data.toString('base64')}"/>`,
   )
@@ -51,8 +51,8 @@ const png = (optimized = false) =>
   })
     .png({ compressionLevel: optimized ? 9 : 0 })
     .toBuffer()
-const nodes = (doc) => Array.from(doc.getElementsByTagName('*'))
-function structure(data) {
+const nodes = (doc: ReturnType<typeof parseSvg>) => Array.from(doc.getElementsByTagName('*'))
+function structure(data: Buffer) {
   return nodes(parseSvg(data)).map((node) => ({
     name: node.nodeName,
     attributes: Object.fromEntries(
@@ -60,7 +60,7 @@ function structure(data) {
     ),
   }))
 }
-function chunk(type, data) {
+function chunk(type: string, data: Buffer) {
   const buffer = Buffer.alloc(data.length + 12)
   buffer.writeUInt32BE(data.length)
   buffer.write(type, 4)
@@ -68,7 +68,7 @@ function chunk(type, data) {
   buffer.writeUInt32BE(crc32(buffer.subarray(4, -4)), buffer.length - 4)
   return buffer
 }
-function png16(type) {
+function png16(type: 0 | 2 | 4 | 6) {
   const header = Buffer.alloc(13)
   header.writeUInt32BE(80)
   header.writeUInt32BE(80, 4)
@@ -84,42 +84,44 @@ function png16(type) {
     chunk('IEND', Buffer.alloc(0)),
   ])
 }
-function repository(t) {
+function repository(t: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'image-resources-'))
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  t.onTestFinished(() => fs.rmSync(root, { recursive: true, force: true }))
   git(['init', '-q'], root)
   git(['config', 'user.email', 'test@example.invalid'], root)
   git(['config', 'user.name', 'Test'], root)
   const scripts = path.join(root, 'packages/image-resources')
   write(root, 'packages/image-resources/ignore.json', '[]')
-  for (const name of ['check-image-resources.mjs', 'image-optimizer.mjs'])
+  write(root, 'packages/image-resources/package.json', '{"type":"module"}')
+  for (const name of ['check-image-resources.ts', 'image-optimizer.ts'])
     fs.copyFileSync(path.join(here, name), path.join(scripts, name))
   fs.symlinkSync(path.join(here, 'node_modules'), path.join(scripts, 'node_modules'), 'dir')
   return {
     root,
     scripts,
-    cli: (args, env = {}) =>
-      spawnSync(process.execPath, [path.join(scripts, 'check-image-resources.mjs'), ...args], {
+    cli: (args: string[], env: NodeJS.ProcessEnv = {}) =>
+      spawnSync(process.execPath, [path.join(scripts, 'check-image-resources.ts'), ...args], {
         encoding: 'utf8',
         env: { ...process.env, ...env },
       }),
   }
 }
 
-test('strict 25 percent boundary without a byte cap', () => {
+it('strict 25 percent boundary without a byte cap', () => {
   assert.equal(exceedsThreshold(100, 75), false)
   assert.equal(exceedsThreshold(100, 74), true)
   assert.equal(exceedsThreshold(100, 110), false)
 })
 
-test('PNG recompression preserves exact scanlines, pixels and transparency', async (t) => {
+it('PNG recompression preserves exact scanlines, pixels and transparency', async (t) => {
   const { root } = repository(t)
   const original = await png()
   const filename = write(root, 'image.png', original)
   const result = await inspectImage('image.png', root)
   assert.equal(result.status, 'error')
+  assert.ok(result.candidate)
   assert.deepEqual(fs.readFileSync(filename), original)
-  const scanlines = (data) =>
+  const scanlines = (data: Buffer) =>
     inflateSync(
       Buffer.concat(
         pngChunks(data)
@@ -136,7 +138,7 @@ test('PNG recompression preserves exact scanlines, pixels and transparency', asy
   assert.equal((await inspectImage('image.png', root)).status, 'passed')
 })
 
-test('PNG preserves all non-IDAT chunks including colour and textual metadata', async () => {
+it('PNG preserves all non-IDAT chunks including colour and textual metadata', async () => {
   const original = await png()
   const gamma = Buffer.alloc(4)
   gamma.writeUInt32BE(45455)
@@ -148,14 +150,14 @@ test('PNG preserves all non-IDAT chunks including colour and textual metadata', 
     original.subarray(33),
   ])
   const candidate = await compressRaster(source)
-  const metadata = (data) =>
+  const metadata = (data: Buffer) =>
     pngChunks(data)
       .filter((c) => c.type !== 'IDAT')
       .map((c) => c.bytes)
   assert.deepEqual(metadata(candidate.data), metadata(source))
 })
 
-test('large incompressible PNG passes regardless of absolute size', async (t) => {
+it('large incompressible PNG passes regardless of absolute size', async (t) => {
   const { root } = repository(t)
   const data = await sharp(randomBytes(512 * 512 * 3), {
     raw: { width: 512, height: 512, channels: 3 },
@@ -167,21 +169,21 @@ test('large incompressible PNG passes regardless of absolute size', async (t) =>
   assert.equal((await inspectImage('large.png', root)).status, 'passed')
 })
 
-test('16-bit PNG remains skipped both standalone and embedded', async () => {
-  for (const type of [0, 2, 4, 6]) {
+it('16-bit PNG remains skipped both standalone and embedded', async () => {
+  for (const type of [0, 2, 4, 6] as const) {
     const original = png16(type)
     const result = await compressRaster(original)
     assert.match(result.method, /skipped: 16-bit PNG/)
     assert.deepEqual(result.data, original)
     const svg = await compressSvg(embedded(original))
     assert.match(svg.method, /embedded skipped: 16-bit PNG/)
-    const href = parseSvg(svg.data).getElementsByTagName('image')[0].getAttribute('href')
-    assert.deepEqual(Buffer.from(href.split(',')[1], 'base64'), original)
+    const href = parseSvg(svg.data).getElementsByTagName('image')[0]!.getAttribute('href')
+    assert.deepEqual(Buffer.from(href!.split(',')[1]!, 'base64'), original)
   }
 })
 
-test('JPEG and WebP are labelled lossy, preserve dimensions and EXIF orientation', async () => {
-  for (const format of ['jpeg', 'webp']) {
+it('JPEG and WebP are labelled lossy, preserve dimensions and EXIF orientation', async () => {
+  for (const format of ['jpeg', 'webp'] as const) {
     const source = await sharp({
       create: { width: 80, height: 60, channels: 3, background: 'red' },
     })
@@ -200,7 +202,7 @@ test('JPEG and WebP are labelled lossy, preserve dimensions and EXIF orientation
   }
 })
 
-test('animated PNG and multi-page GIF are skipped', async () => {
+it('animated PNG and multi-page GIF are skipped', async () => {
   const source = await png()
   const control = Buffer.alloc(8)
   control.writeUInt32BE(2)
@@ -215,33 +217,33 @@ test('animated PNG and multi-page GIF are skipped', async () => {
   assert.match((await compressRaster(data)).method, /skipped: animated/)
 })
 
-test('unsupported static raster formats explicitly skip', async () => {
+it('unsupported static raster formats explicitly skip', async () => {
   const gif = await sharp(await png())
     .gif()
     .toBuffer()
   assert.match((await compressRaster(gif)).method, /skipped: no optimizer/)
 })
 
-test('embedded Base64 handles both href forms, whitespace and XML entities', async () => {
+it('embedded Base64 handles both href forms, whitespace and XML entities', async () => {
   const original = await png()
   const encoded = original.toString('base64')
   for (const attribute of ['href', 'xlink:href']) {
     for (const payload of [
       encoded,
-      encoded.match(/.{1,64}/g).join('\n'),
-      encoded.match(/.{1,64}/g).join('\r\n\t'),
-      encoded.match(/.{1,64}/g).join('&#10;'),
+      encoded.match(/.{1,64}/g)!.join('\n'),
+      encoded.match(/.{1,64}/g)!.join('\r\n\t'),
+      encoded.match(/.{1,64}/g)!.join('&#10;'),
       `&#105;${encoded.slice(1)}`,
     ]) {
       const source = Buffer.from(embedded(original, attribute).toString().replace(encoded, payload))
       const trial = await compressSvg(source)
       assert.ok(exceedsThreshold(source.length, trial.data.length))
       assert.match(trial.method, /embedded PNG/)
-      const image = parseSvg(trial.data).getElementsByTagName('image')[0]
+      const image = parseSvg(trial.data).getElementsByTagName('image')[0]!
       assert.equal(image.getAttribute('width'), '80')
       assert.equal(image.getAttribute('height'), '80')
       const href = image.getAttribute(attribute)
-      const candidate = Buffer.from(href.split(',')[1], 'base64')
+      const candidate = Buffer.from(href!.split(',')[1]!, 'base64')
       assert.deepEqual(
         await sharp(candidate).raw().toBuffer(),
         await sharp(original).raw().toBuffer(),
@@ -250,20 +252,20 @@ test('embedded Base64 handles both href forms, whitespace and XML entities', asy
   }
 })
 
-test('percent-encoded binary data URLs are recompressed without UTF-8 corruption', async () => {
+it('percent-encoded binary data URLs are recompressed without UTF-8 corruption', async () => {
   const source = await png()
   const url = [...source].map((byte) => `%${byte.toString(16).padStart(2, '0')}`).join('')
   const trial = await compressSvg(wrap(`<image href="data:image/png,${url}"/>`))
   assert.match(trial.method, /embedded PNG/)
 })
 
-test('external image URLs are not fetched or inlined', async () => {
+it('external image URLs are not fetched or inlined', async () => {
   const trial = await compressSvg(wrap('<image href="https://example.invalid/image.png"/>'))
   assert.ok(trial.data.includes('https://example.invalid/image.png'))
   assert.ok(!trial.data.includes('data:image'))
 })
 
-test('CSS groups, inline styles and external stylesheets retain structure', async () => {
+it('CSS groups, inline styles and external stylesheets retain structure', async () => {
   for (const body of [
     '<style>g {opacity:0.5}</style><g><rect width="80" height="80"/></g>',
     '<style>rect {fill:red}</style><rect style="fill:blue" width="80" height="80"/>',
@@ -288,7 +290,7 @@ test('CSS groups, inline styles and external stylesheets retain structure', asyn
   )
 })
 
-test('CLI fix preserves CSS precedence and SVG 2, xlink, and external sprite definitions', async (t) => {
+it('CLI fix preserves CSS precedence and SVG 2, xlink, and external sprite definitions', async (t) => {
   const { root, cli } = repository(t)
   const bodies = [
     '<style>g {opacity:0.5}</style><g><rect width="80" height="80"/></g>',
@@ -320,7 +322,7 @@ test('CLI fix preserves CSS precedence and SVG 2, xlink, and external sprite def
   }
 })
 
-test('geometry, metadata, accessibility and protected comments survive SVGO', async () => {
+it('geometry, metadata, accessibility and protected comments survive SVGO', async () => {
   const source = wrap(
     '<!--! License notice --><!-- editor comment --><title id="title">Accessible icon</title><desc>Description</desc><metadata>Author data</metadata><g transform="translate(0.123456789 0.987654321)"><path id="shape" fill="black" d="M0.123456789 1 L2.987654321 3"/></g>',
   )
@@ -330,12 +332,12 @@ test('geometry, metadata, accessibility and protected comments survive SVGO', as
   assert.ok(!trial.data.includes('editor comment'))
   for (const tag of ['title', 'desc', 'metadata'])
     assert.equal(
-      parseSvg(trial.data).getElementsByTagName(tag)[0].textContent,
-      parseSvg(source).getElementsByTagName(tag)[0].textContent,
+      parseSvg(trial.data).getElementsByTagName(tag)[0]!.textContent,
+      parseSvg(source).getElementsByTagName(tag)[0]!.textContent,
     )
 })
 
-test('whitespace-sensitive SVGs remain byte-identical through check and fix', async (t) => {
+it('whitespace-sensitive SVGs remain byte-identical through check and fix', async (t) => {
   const { root, cli } = repository(t)
   const bodies = [
     '<foreignObject width="100" height="100"><div xmlns="http://www.w3.org/1999/xhtml"><span>Hello</span> <span>world</span></div></foreignObject>',
@@ -367,42 +369,42 @@ test('whitespace-sensitive SVGs remain byte-identical through check and fix', as
   }
 })
 
-test('formatting-only SVG redundancy is compressed', async () => {
+it('formatting-only SVG redundancy is compressed', async () => {
   const source = wrap(`${'\n        '.repeat(100)}<rect width="10" height="10"/>`)
   assert.ok(exceedsThreshold(source.length, (await compressSvg(source)).data.length))
 })
 
-test('empty, corrupt, malformed XML and embedded Base64 produce failures', async (t) => {
+it('empty, corrupt, malformed XML and embedded Base64 produce failures', async (t) => {
   const { root } = repository(t)
   for (const [name, data] of [
     ['empty.png', ''],
     ['bad.png', 'not a PNG'],
     ['bad.svg', '<svg>'],
     ['bad.svg', '<svg><image href="data:image/png;base64,%%%"/></svg>'],
-  ]) {
+  ] as const) {
     write(root, name, data)
     assert.equal((await inspectImage(name, root)).status, 'error')
   }
   const corrupt = await png()
-  corrupt[40] ^= 1
+  corrupt[40] = corrupt[40]! ^ 1
   write(root, 'crc.png', corrupt)
   assert.match((await inspectImage('crc.png', root)).message, /checksum/)
 })
 
-test('symlinks are never optimized', async (t) => {
+it('symlinks are never optimized', async (t) => {
   const { root } = repository(t)
   write(root, 'original.png', await png())
   fs.symlinkSync(path.join(root, 'original.png'), path.join(root, 'link.png'))
   assert.match((await inspectImage('link.png', root)).message, /symlinks/)
 })
 
-test('annotation escaping prevents injected workflow commands', () => {
+it('annotation escaping prevents injected workflow commands', () => {
   assert.ok(!/[\r\n,:]/.test(escapeAnnotation('image,prop:x%\r\n::error::injected')))
 })
 
-test('ignore validation and matching preserve full-path case-sensitive patterns', async (t) => {
+it('ignore validation and matching preserve full-path case-sensitive patterns', async (t) => {
   const { root } = repository(t)
-  const config = (value) =>
+  const config = (value: unknown) =>
     write(root, 'packages/image-resources/ignore.json', JSON.stringify(value))
   assert.deepEqual(await loadIgnoreRules(root), [])
   const rules = [
@@ -433,7 +435,7 @@ test('ignore validation and matching preserve full-path case-sensitive patterns'
   }
 })
 
-test('ignore consistently controls check, fix, export, and summaries', async (t) => {
+it('ignore consistently controls check, fix, export, and summaries', async (t) => {
   const { root, cli } = repository(t)
   const original = await png()
   write(root, 'fixtures/keep.png', original)
@@ -444,7 +446,7 @@ test('ignore consistently controls check, fix, export, and summaries', async (t)
     JSON.stringify([{ pattern: 'fixtures/*.png', reason: 'Preserve encoding fixture' }]),
   )
   const output = fs.mkdtempSync(path.join(os.tmpdir(), 'image-output-'))
-  t.after(() => fs.rmSync(output, { recursive: true, force: true }))
+  t.onTestFinished(() => fs.rmSync(output, { recursive: true, force: true }))
   const env = { GITHUB_ACTIONS: 'true', GITHUB_STEP_SUMMARY: path.join(output, 'summary.md') }
   for (const args of [[], ['--fix'], ['--output-dir', output]]) {
     const result = cli(['--all', ...args], env)
@@ -464,7 +466,7 @@ test('ignore consistently controls check, fix, export, and summaries', async (t)
   assert.deepEqual(fs.readFileSync(path.join(root, 'fixtures/keep.png')), original)
 })
 
-test('fix applies candidates, preserves skipped/invalid files and is repeatable', async (t) => {
+it('fix applies candidates, preserves skipped/invalid files and is repeatable', async (t) => {
   const { root, cli } = repository(t)
   const originals = {
     'fix.png': await png(),
@@ -481,7 +483,7 @@ test('fix applies candidates, preserves skipped/invalid files and is repeatable'
   assert.match(result.stdout, /visually/)
   for (const name of ['fix.png', 'fix.svg'])
     assert.equal((await inspectImage(name, root)).status, 'passed')
-  for (const name of ['passed.png', 'broken.png', 'high-depth.png'])
+  for (const name of ['passed.png', 'broken.png', 'high-depth.png'] as const)
     assert.deepEqual(fs.readFileSync(path.join(root, name)), originals[name])
   git(['rm', '-f', 'broken.png'], root)
   const before = fs.readFileSync(path.join(root, 'fix.png'))
@@ -495,7 +497,7 @@ test('fix applies candidates, preserves skipped/invalid files and is repeatable'
   assert.equal(cli([]).status, 2)
 })
 
-test('full PR diff selects all directories, renames and earlier commits; exports candidates', async (t) => {
+it('full PR diff selects all directories, renames and earlier commits; exports candidates', async (t) => {
   const { root, cli } = repository(t)
   write(root, 'untouched.png', await png())
   write(root, 'deleted.png', await png())
@@ -524,7 +526,7 @@ test('full PR diff selects all directories, renames and earlier commits; exports
     unusual,
   ])
   const output = fs.mkdtempSync(path.join(os.tmpdir(), 'image-output-'))
-  t.after(() => fs.rmSync(output, { recursive: true, force: true }))
+  t.onTestFinished(() => fs.rmSync(output, { recursive: true, force: true }))
   const env = { GITHUB_ACTIONS: 'true', GITHUB_STEP_SUMMARY: path.join(output, 'summary.md') }
   const result = cli(['--base', base, '--output-dir', output], env)
   assert.equal(result.status, 1, result.stderr)
@@ -540,16 +542,18 @@ test('full PR diff selects all directories, renames and earlier commits; exports
   assert.equal(cli(['--base', base, '--output-dir', path.join(output, 'alias/new')]).status, 2)
 })
 
-test('failed atomic replacement retains source bytes and cleans temporary output', async (t) => {
+it('failed atomic replacement retains source bytes and cleans temporary output', async (t) => {
   const { root } = repository(t)
   const original = await png()
   write(root, 'image.png', original)
   git(['add', 'image.png'], root)
-  t.mock.method(fsPromises, 'rename', async () => {
+  vi.spyOn(fsPromises, 'rename').mockImplementation(async () => {
     throw new Error('Simulated rename failure')
   })
-  const logs = []
-  t.mock.method(console, 'log', (line) => logs.push(line))
+  const logs: string[] = []
+  vi.spyOn(console, 'log').mockImplementation((line: string) => {
+    logs.push(line)
+  })
   assert.equal(await main(['--all', '--fix'], root), 1)
   assert.deepEqual(fs.readFileSync(path.join(root, 'image.png')), original)
   assert.equal(

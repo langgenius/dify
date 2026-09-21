@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test check-image-resources.test.mjs",
-    "check:images": "node check-image-resources.mjs"
+    "test": "vp test run",
+    "type-check": "tsc --project tsconfig.json",
+    "check:images": "node check-image-resources.ts"
   },
   "dependencies": {
     "@xmldom/xmldom": "catalog:",
@@ -13,7 +14,16 @@
     "sharp": "catalog:",
     "svgo": "catalog:"
   },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/picomatch": "catalog:",
+    "@typescript/native": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  },
   "engines": {
-    "node": ">=24.2.0"
+    "node": "^24.20.0"
   }
 }

@@ -2,7 +2,7 @@
 
 The `Image optimization` workflow trial-compresses added or modified images in pull requests. It fails when the candidate is **more than 25% smaller** than the original, or an image cannot be inspected. There are no fixed file-size limits or gzip budgets. Explicit ignore rules require a reason.
 
-The checker and tests are maintained in this directory. SVGO, Sharp, XML parsing, glob matching, and their transitive dependencies are managed through the root pnpm catalog and `pnpm-lock.yaml`, with `catalog:` references in this workspace package; CI needs no external image service or repository write permission.
+The TypeScript checker and Vitest regression tests are maintained in this directory. SVGO, Sharp, XML parsing, glob matching, and their transitive dependencies are managed through the root pnpm catalog and `pnpm-lock.yaml`, with `catalog:` references in this workspace package; CI needs no external image service or repository write permission.
 
 ## Compression policy
 
@@ -18,7 +18,7 @@ PNG trials recompress the existing IDAT stream without changing scanline filters
 
 JPEG/WebP trials are **lossy**: savings are evidence of an optimization opportunity, not proof of identical quality. Review candidates before using them. Check mode never overwrites source images. Explicit `--fix` mode applies candidates exceeding the same 25% threshold. Neither mode resizes images or fetches/inlines external SVG images. It cannot detect excessive pixel dimensions relative to CSS display size, so oversized rasters displayed in small UI elements still require visual/contextual review.
 
-`image-optimizer.mjs` uses only SVGO's `removeComments` (preserving protected `<!--! ... -->` comments) and `sortAttrs` plugins, with compact XML serialization. It does **not** enable `preset-default`. Groups, styles, IDs, definitions, geometry, namespaces, and references are retained; CSS-bearing SVGs, SVG 2 `href`, legacy `xlink:href`, and externally referenced sprites are supported. This deliberately trades compression opportunities from structural rewrites for a smaller set of transformations. Keep the CSS/reference regression tests when changing this policy.
+`image-optimizer.ts` uses only SVGO's `removeComments` (preserving protected `<!--! ... -->` comments) and `sortAttrs` plugins, with compact XML serialization. It does **not** enable `preset-default`. Groups, styles, IDs, definitions, geometry, namespaces, and references are retained; CSS-bearing SVGs, SVG 2 `href`, legacy `xlink:href`, and externally referenced sprites are supported. This deliberately trades compression opportunities from structural rewrites for a smaller set of transformations. Keep the CSS/reference regression tests when changing this policy.
 
 SVGs containing `text`, `tspan`, `textPath`, `foreignObject`, or any `xml:space="preserve"` attribute are skipped entirely, including namespace-prefixed elements and root-level attributes. SVGO can trim meaningful whitespace during parsing even without structural plugins. These files and their embedded images remain byte-for-byte unchanged in check and fix modes.
 
@@ -59,10 +59,11 @@ Use the repository’s Node.js/pnpm toolchain. This is the `@dify/image-resource
 pnpm install --frozen-lockfile
 ```
 
-CI uses `pnpm --filter @dify/image-resources... install --frozen-lockfile --ignore-scripts` to install the checker and root tooling from the shared lockfile. The checker and tests run entirely in Node.js and do not download tools at runtime. Missing dependencies or optimizer failures fail the check. Then run:
+CI uses `pnpm --filter @dify/image-resources... install --frozen-lockfile --ignore-scripts` to install the checker and root tooling from the shared lockfile. Node.js runs the TypeScript CLI directly; Vitest runs the regression tests through the project’s Vite+ toolchain. Neither downloads tools at runtime. Missing dependencies or optimizer failures fail the check. Then run:
 
 ```sh
 pnpm --filter @dify/image-resources check:images --base origin/main
+pnpm --filter @dify/image-resources type-check
 pnpm --filter @dify/image-resources test
 ```
 

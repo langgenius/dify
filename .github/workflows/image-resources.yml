@@ -26,6 +26,9 @@ jobs:
       - name: Install image checker dependencies
         run: pnpm --filter @dify/image-resources... install --frozen-lockfile --ignore-scripts
 
+      - name: Type-check image checker
+        run: pnpm --filter @dify/image-resources type-check
+
       - name: Test image checker
         run: pnpm --filter @dify/image-resources test
 
