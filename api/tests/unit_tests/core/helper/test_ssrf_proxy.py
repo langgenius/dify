@@ -1,5 +1,6 @@
 import gzip
 from collections.abc import Callable
+from types import SimpleNamespace
 from typing import override
 from unittest.mock import ANY, MagicMock, call, patch
 
@@ -7,6 +8,7 @@ import httpx
 import pytest
 
 from core.helper.ssrf_proxy import (
+    BACKOFF_FACTOR,
     SSRF_DEFAULT_MAX_RETRIES,
     ResponseTooLargeError,
     SSRFProxy,
@@ -116,7 +118,9 @@ def test_request_can_return_an_open_stream_the_caller_closes() -> None:
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_retry_exceed_max_retries(mock_get_client):
+def test_retry_exceed_max_retries(mock_get_client, monkeypatch: pytest.MonkeyPatch):
+    sleep = MagicMock()
+    monkeypatch.setattr("core.helper.ssrf_proxy.time", SimpleNamespace(sleep=sleep))
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 500
@@ -126,6 +130,10 @@ def test_retry_exceed_max_retries(mock_get_client):
     with pytest.raises(Exception) as e:
         make_request("GET", "http://example.com", max_retries=SSRF_DEFAULT_MAX_RETRIES - 1)
     assert str(e.value) == f"Reached maximum retries ({SSRF_DEFAULT_MAX_RETRIES - 1}) for URL http://example.com"
+    assert mock_client.send.call_count == SSRF_DEFAULT_MAX_RETRIES
+    assert sleep.call_args_list == [
+        call(BACKOFF_FACTOR * 2**attempt) for attempt in range(SSRF_DEFAULT_MAX_RETRIES - 1)
+    ]
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)

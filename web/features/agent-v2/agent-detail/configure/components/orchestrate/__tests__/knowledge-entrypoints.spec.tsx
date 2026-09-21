@@ -97,7 +97,6 @@ function setup({ enabled = true, workflow = false, readOnly = false, configured 
       <AgentOrchestratePanel
         agentId="agent-1"
         {...(workflow ? { appId: 'workflow-1', nodeId: 'node-1' } : {})}
-        textGenerationModelList={[]}
         onSelectModel={vi.fn()}
         showHeader={false}
         showPublishBar={false}

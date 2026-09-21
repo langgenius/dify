@@ -1,8 +1,8 @@
 'use client'
 
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
-import * as React from 'react'
 import { cn } from '../cn'
 import { parsePlacement } from '../placement'
 

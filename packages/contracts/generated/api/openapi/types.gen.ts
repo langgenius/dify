@@ -15,7 +15,7 @@ export type AccountResponse = {
   default_workspace_id?: string | null
   subject_email?: string | null
   subject_issuer?: string | null
-  subject_type: string
+  subject_type: SubjectType
   workspaces?: Array<WorkspacePayload>
 }
 
@@ -169,7 +169,7 @@ export type DeviceTokenResponse = {
   expires_at: string
   subject_email?: string | null
   subject_issuer?: string | null
-  subject_type: 'account' | 'external_sso'
+  subject_type: SubjectType
   token: string
   token_id: string
   workspaces?: Array<WorkspacePayload>
@@ -632,6 +632,8 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type SubjectType = 'account' | 'external_sso'
+
 export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
 
 export type TaskStopResponse = {
@@ -945,6 +947,13 @@ export type GetAppsByAppIdHumanInputFormsByFormTokenData = {
   url: '/apps/{app_id}/human-input-forms/{form_token}'
 }
 
+export type GetAppsByAppIdHumanInputFormsByFormTokenErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdHumanInputFormsByFormTokenError =
+  GetAppsByAppIdHumanInputFormsByFormTokenErrors[keyof GetAppsByAppIdHumanInputFormsByFormTokenErrors]
+
 export type GetAppsByAppIdHumanInputFormsByFormTokenResponses = {
   200: HumanInputFormDefinitionResponse
 }
@@ -990,6 +999,13 @@ export type GetAppsByAppIdTasksByTaskIdEventsData = {
   url: '/apps/{app_id}/tasks/{task_id}/events'
 }
 
+export type GetAppsByAppIdTasksByTaskIdEventsErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdTasksByTaskIdEventsError =
+  GetAppsByAppIdTasksByTaskIdEventsErrors[keyof GetAppsByAppIdTasksByTaskIdEventsErrors]
+
 export type GetAppsByAppIdTasksByTaskIdEventsResponses = {
   200: EventStreamResponse
 }
@@ -1032,6 +1048,7 @@ export type PostAppsByAppIdRunData = {
 
 export type PostAppsByAppIdRunErrors = {
   422: ErrorBody
+  default: ErrorBody
 }
 
 export type PostAppsByAppIdRunError = PostAppsByAppIdRunErrors[keyof PostAppsByAppIdRunErrors]

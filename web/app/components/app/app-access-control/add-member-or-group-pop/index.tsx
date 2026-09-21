@@ -155,12 +155,10 @@ export default function AddMemberOrGroupDialog({
                 />
               </div>
               {shouldShowBreadcrumb && (
-                <div className="flex h-7 items-center px-2 py-0.5">
-                  <SelectedGroupsBreadcrumb
-                    groups={selectedGroupsForBreadcrumb}
-                    onChange={setSelectedGroupsForBreadcrumb}
-                  />
-                </div>
+                <SelectedGroupsBreadcrumb
+                  groups={selectedGroupsForBreadcrumb}
+                  onChange={setSelectedGroupsForBreadcrumb}
+                />
               )}
               {hasResults && (
                 <ul className="p-1">

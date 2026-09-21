@@ -4,7 +4,7 @@ import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { CommonNodeType, ToolWithProvider } from '../types'
 import { CollectionType } from '@/app/components/tools/types'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { BlockEnum } from '../types'
 
 export function matchToolInCollection(
@@ -14,7 +14,7 @@ export function matchToolInCollection(
   return collection.find(
     (tool) =>
       (data.plugin_id && tool.plugin_id === data.plugin_id) ||
-      canFindTool(tool.id, data.provider_id) ||
+      matchesProviderReference(tool, data.provider_id) ||
       tool.name === data.provider_name,
   )
 }

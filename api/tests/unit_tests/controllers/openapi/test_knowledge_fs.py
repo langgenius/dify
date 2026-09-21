@@ -8,10 +8,13 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from pydantic import BaseModel, ValidationError
+from sqlalchemy.orm import Session
 from werkzeug.routing.rules import Rule
 
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.subjects import AccountSubject
+from libs.oauth_bearer import AuthContext, TokenType
 
 
 @runtime_checkable
@@ -88,7 +91,21 @@ def test_list_controller_adapts_public_pagination_to_the_product_operation(monke
             api,
             workspace_id="workspace-1",
             knowledge_space_id="space-1",
-            auth_data=AuthData.model_construct(account_id=account_id),
+            ctx=Context(
+                subject=AccountSubject(
+                    AuthContext(
+                        token_type=TokenType.OAUTH_ACCOUNT,
+                        account_id=account_id,
+                        subject_email=None,
+                        subject_issuer=None,
+                        client_id=None,
+                        token_id=uuid.uuid4(),
+                        expires_at=None,
+                    )
+                ),
+                session=Mock(spec=Session),
+                view_args={},
+            ),
         )
 
     assert status == 200
@@ -262,7 +279,21 @@ def test_each_custom_interface_delegates_with_an_internal_product_query(
         api_class(),
         workspace_id="workspace-1",
         knowledge_space_id="space-1",
-        auth_data=AuthData.model_construct(account_id=account_id),
+        ctx=Context(
+            subject=AccountSubject(
+                AuthContext(
+                    token_type=TokenType.OAUTH_ACCOUNT,
+                    account_id=account_id,
+                    subject_email=None,
+                    subject_issuer=None,
+                    client_id=None,
+                    token_id=uuid.uuid4(),
+                    expires_at=None,
+                )
+            ),
+            session=Mock(spec=Session),
+            view_args={},
+        ),
         **({"body": public_model} if method_name == "post" else {"query": public_model}),
     )
 

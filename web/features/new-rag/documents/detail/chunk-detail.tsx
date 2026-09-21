@@ -1,5 +1,5 @@
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -210,18 +210,17 @@ export function DocumentReadingPane() {
                         <DocumentSectionSummary>{block.summary}</DocumentSectionSummary>
                       )}
                     </div>
-                    <Button
+                    <IconButton
                       aria-label={tCommon(($) => $['operation.copy'])}
                       className="absolute top-1 right-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
                       onClick={() => {
                         copy(chunk.text)
                         toast.success(tCommon(($) => $['actionMsg.copySuccessfully']))
                       }}
-                      size="small"
-                      variant="ghost"
+                      size="md"
                     >
                       <span aria-hidden className="i-ri-file-copy-line size-4" />
-                    </Button>
+                    </IconButton>
                     {chunkMultimodalItems.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1 py-1">
                         {chunkMultimodalItems.map((item) => (

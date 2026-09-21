@@ -113,19 +113,6 @@ describe('OperationsDropdown', () => {
       const moreIcon = container.querySelector('.i-ri-more-fill')
       expect(moreIcon).toBeInTheDocument()
     })
-
-    it('should reveal the initially transparent trigger on hover or keyboard focus', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass(
-        'pointer-events-none',
-        'opacity-0',
-        'group-hover:pointer-events-auto',
-        'group-hover:opacity-100',
-        'focus-within:pointer-events-auto',
-        'focus-within:opacity-100',
-      )
-    })
   })
 
   describe('Props', () => {

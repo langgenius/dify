@@ -4,7 +4,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { AgentPermission, getAgentACLCapabilities } from '../acl'
 import { useCanCreateAgents, useCanImportAgents } from '../permissions'
 
-describe('Agent creation and DSL import permissions', () => {
+describe('Agent creation and package import permissions', () => {
   it('does not let legacy manage or preview grant creation', () => {
     const { wrapper } = createConsoleQueryWrapper({
       workspacePermissionKeys: ['agent.manage', AgentPermission.Preview],
@@ -13,17 +13,22 @@ describe('Agent creation and DSL import permissions', () => {
     expect(result.current).toBe(false)
   })
 
-  it.each([true, false])(
-    'uses default Agent ACL for import independently of create: %s',
-    (canImport) => {
+  it.each([
+    { canCreate: true, hasImportPermission: true },
+    { canCreate: true, hasImportPermission: false },
+    { canCreate: false, hasImportPermission: true },
+    { canCreate: false, hasImportPermission: false },
+  ])(
+    'requires creation and default Agent import permissions: %o',
+    ({ canCreate, hasImportPermission }) => {
       const { wrapper, queryClient } = createConsoleQueryWrapper({
-        workspacePermissionKeys: [AgentPermission.Create],
+        workspacePermissionKeys: canCreate ? [AgentPermission.Create] : [],
       })
       const key = consoleQuery.workspaces.current.rbac.myPermissions.get.queryKey()
       queryClient.setQueryData(key, {
         ...queryClient.getQueryData(key),
         agent: {
-          default_permission_keys: canImport ? [AgentPermission.ImportExportDSL] : [],
+          default_permission_keys: hasImportPermission ? [AgentPermission.ImportExportDSL] : [],
           overrides: [],
         },
       })
@@ -31,7 +36,7 @@ describe('Agent creation and DSL import permissions', () => {
         () => ({ canCreate: useCanCreateAgents(), canImport: useCanImportAgents() }),
         { wrapper },
       )
-      expect(result.current).toEqual({ canCreate: true, canImport })
+      expect(result.current).toEqual({ canCreate, canImport: canCreate && hasImportPermission })
     },
   )
 

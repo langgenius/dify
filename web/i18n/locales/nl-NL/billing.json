@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "TRIGGER EVENTS",
   "upgrade.addChunks.description": "You’ve reached the limit of adding chunks for this plan.",
   "upgrade.addChunks.title": "Upgrade to continue adding chunks",
+  "upgrade.agentRestore.description": "Het herstellen van versies van de agent-app is niet beschikbaar in je huidige abonnement.",
+  "upgrade.agentRestore.title": "Upgrade om versies van de agent-app te herstellen",
   "upgrade.uploadMultipleFiles.description": "Upload meerdere documenten tegelijk en verhoog de maximale bestandsgrootte naar 50 MB.",
   "upgrade.uploadMultipleFiles.title": "Upgrade je abonnement om batchuploads en grotere bestanden te ontgrendelen",
   "upgrade.uploadMultiplePages.description": "You’ve reached the upload limit — only one document can be selected and uploaded at a time on your current plan.",

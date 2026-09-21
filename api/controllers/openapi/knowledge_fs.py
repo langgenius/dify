@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, m
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts, returns
+from controllers.openapi._contract import endpoint
 from controllers.openapi._errors import (
     ErrorBody,
     KnowledgeFsAccessDeniedError,
@@ -33,11 +33,12 @@ from controllers.openapi._errors import (
     KnowledgeFsResourceNotFoundError,
     KnowledgeFsUnavailableError,
 )
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.requirements import CheckScope, CheckSubject, CheckWorkspaceMember
+from controllers.openapi.auth.subjects import AccountSubject
 from core.db.session_factory import session_factory
 from fields.base import ResponseModel
-from libs.oauth_bearer import Scope, TokenType
+from libs.oauth_bearer import Scope
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_authorization import KnowledgeFSProductNotFoundError
 from services.knowledge_fs.product_dto import (
@@ -454,17 +455,17 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def _account_id(auth_data: AuthData) -> str:
-    return str(auth_data.account_id)
+def _account_id(ctx: Context) -> str:
+    return str(ctx.subject.account_id)
 
 
-def _facade_args(workspace_id: str, knowledge_space_id: str, auth_data: AuthData) -> dict[str, str]:
+def _facade_args(workspace_id: str, knowledge_space_id: str, ctx: Context) -> dict[str, str]:
     # The OpenAPI resource ID is resolved through Dify's control-plane record.
     # Keeping that implementation name at this adapter boundary prevents it from
     # leaking into the external path and leaves the backing lookup replaceable.
     return {
         "tenant_id": workspace_id,
-        "account_id": _account_id(auth_data),
+        "account_id": _account_id(ctx),
         "control_space_id": knowledge_space_id,
     }
 
@@ -571,28 +572,31 @@ def _knowledge_fs_operation[**P, R](
 class KnowledgeFsEntryListApi(Resource):
     """List direct child entries; default ordering is stable and encoded by the page token."""
 
-    @auth_router.guard_workspace(
-        scope=Scope.WORKSPACE_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_READ),
+            CheckWorkspaceMember(),
+        ),
+        query=KnowledgeFSEntryListQuery,
+        returns=(200, KnowledgeFSEntryListResponse, "Agent Knowledge Base entry page"),
     )
     @_knowledge_fs_operation(
         "ls_knowledge_fs",
         summary="List an Agent Knowledge Base directory (ls)",
         description=(f"Lists direct child entries under path, equivalent to difyctl fs ls. {_PAGINATION_DESCRIPTION}"),
     )
-    @returns(200, KnowledgeFSEntryListResponse, description="Agent Knowledge Base entry page")
-    @accepts(query=KnowledgeFSEntryListQuery)
     @_knowledge_fs_errors
     def get(
         self,
         workspace_id: str,
         knowledge_space_id: str,
         *,
-        auth_data: AuthData,
+        ctx: Context,
         query: KnowledgeFSEntryListQuery,
     ) -> KnowledgeFSEntryListResponse:
         response = _knowledge_fs_facade().list_knowledge_fs(
-            **_facade_args(workspace_id, knowledge_space_id, auth_data),
+            **_facade_args(workspace_id, knowledge_space_id, ctx),
             query=_list_product_query(query),
         )
         return KnowledgeFSEntryListResponse.from_product(response)
@@ -600,9 +604,14 @@ class KnowledgeFsEntryListApi(Resource):
 
 @openapi_ns.route(f"{_FS_ROUTE}:tree")
 class KnowledgeFsEntryTreeApi(Resource):
-    @auth_router.guard_workspace(
-        scope=Scope.WORKSPACE_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_READ),
+            CheckWorkspaceMember(),
+        ),
+        query=KnowledgeFSEntryTreeQuery,
+        returns=(200, KnowledgeFSEntryTreeResponse, "Agent Knowledge Base entry tree"),
     )
     @_knowledge_fs_operation(
         "tree_knowledge_fs",
@@ -612,19 +621,17 @@ class KnowledgeFsEntryTreeApi(Resource):
             f"{_PAGINATION_DESCRIPTION}"
         ),
     )
-    @returns(200, KnowledgeFSEntryTreeResponse, description="Agent Knowledge Base entry tree")
-    @accepts(query=KnowledgeFSEntryTreeQuery)
     @_knowledge_fs_errors
     def get(
         self,
         workspace_id: str,
         knowledge_space_id: str,
         *,
-        auth_data: AuthData,
+        ctx: Context,
         query: KnowledgeFSEntryTreeQuery,
     ) -> KnowledgeFSEntryTreeResponse:
         response = _knowledge_fs_facade().tree_knowledge_fs(
-            **_facade_args(workspace_id, knowledge_space_id, auth_data),
+            **_facade_args(workspace_id, knowledge_space_id, ctx),
             query=_tree_product_query(query),
         )
         return KnowledgeFSEntryTreeResponse.from_product(response)
@@ -632,9 +639,14 @@ class KnowledgeFsEntryTreeApi(Resource):
 
 @openapi_ns.route(f"{_FS_ROUTE}:grep")
 class KnowledgeFsEntryContentSearchApi(Resource):
-    @auth_router.guard_workspace(
-        scope=Scope.WORKSPACE_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_READ),
+            CheckWorkspaceMember(),
+        ),
+        query=KnowledgeFSEntryContentSearchQuery,
+        returns=(200, KnowledgeFSEntryContentSearchResponse, "Agent Knowledge Base content matches"),
     )
     @_knowledge_fs_operation(
         "grep_knowledge_fs",
@@ -644,19 +656,17 @@ class KnowledgeFsEntryContentSearchApi(Resource):
             f"traversal order and source-offset order within each entry. {_PAGINATION_DESCRIPTION}"
         ),
     )
-    @returns(200, KnowledgeFSEntryContentSearchResponse, description="Agent Knowledge Base content matches")
-    @accepts(query=KnowledgeFSEntryContentSearchQuery)
     @_knowledge_fs_errors
     def get(
         self,
         workspace_id: str,
         knowledge_space_id: str,
         *,
-        auth_data: AuthData,
+        ctx: Context,
         query: KnowledgeFSEntryContentSearchQuery,
     ) -> KnowledgeFSEntryContentSearchResponse:
         response = _knowledge_fs_facade().grep_knowledge_fs(
-            **_facade_args(workspace_id, knowledge_space_id, auth_data),
+            **_facade_args(workspace_id, knowledge_space_id, ctx),
             query=_content_search_product_query(query),
         )
         return KnowledgeFSEntryContentSearchResponse.from_product(response)
@@ -664,9 +674,14 @@ class KnowledgeFsEntryContentSearchApi(Resource):
 
 @openapi_ns.route(f"{_FS_ROUTE}:find")
 class KnowledgeFsEntrySearchApi(Resource):
-    @auth_router.guard_workspace(
-        scope=Scope.WORKSPACE_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_READ),
+            CheckWorkspaceMember(),
+        ),
+        query=KnowledgeFSEntrySearchQuery,
+        returns=(200, KnowledgeFSEntryListResponse, "Agent Knowledge Base entry search results"),
     )
     @_knowledge_fs_operation(
         "find_knowledge_fs",
@@ -677,19 +692,17 @@ class KnowledgeFsEntrySearchApi(Resource):
             f"{_PAGINATION_DESCRIPTION}"
         ),
     )
-    @returns(200, KnowledgeFSEntryListResponse, description="Agent Knowledge Base entry search results")
-    @accepts(query=KnowledgeFSEntrySearchQuery)
     @_knowledge_fs_errors
     def get(
         self,
         workspace_id: str,
         knowledge_space_id: str,
         *,
-        auth_data: AuthData,
+        ctx: Context,
         query: KnowledgeFSEntrySearchQuery,
     ) -> KnowledgeFSEntryListResponse:
         response = _knowledge_fs_facade().find_knowledge_fs(
-            **_facade_args(workspace_id, knowledge_space_id, auth_data),
+            **_facade_args(workspace_id, knowledge_space_id, ctx),
             query=_search_product_query(query),
         )
         return KnowledgeFSEntryListResponse.from_product(response)
@@ -699,9 +712,14 @@ class KnowledgeFsEntrySearchApi(Resource):
 class KnowledgeFsEntryCompareApi(Resource):
     """Side-effect-free comparison query; semantic summaries can consume model quota on every retry."""
 
-    @auth_router.guard_workspace(
-        scope=Scope.WORKSPACE_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_READ),
+            CheckWorkspaceMember(),
+        ),
+        body=KnowledgeFSEntryComparePayload,
+        returns=(200, KnowledgeFSEntryComparisonResponse, "Agent Knowledge Base entry comparison"),
     )
     @_knowledge_fs_operation(
         "diff_knowledge_fs",
@@ -712,19 +730,17 @@ class KnowledgeFsEntryCompareApi(Resource):
             "when include_semantic_summary=true because each retry can consume quota again."
         ),
     )
-    @returns(200, KnowledgeFSEntryComparisonResponse, description="Agent Knowledge Base entry comparison")
-    @accepts(body=KnowledgeFSEntryComparePayload)
     @_knowledge_fs_errors
     def post(
         self,
         workspace_id: str,
         knowledge_space_id: str,
         *,
-        auth_data: AuthData,
+        ctx: Context,
         body: KnowledgeFSEntryComparePayload,
     ) -> KnowledgeFSEntryComparisonResponse:
         response = _knowledge_fs_facade().diff_knowledge_fs(
-            **_facade_args(workspace_id, knowledge_space_id, auth_data),
+            **_facade_args(workspace_id, knowledge_space_id, ctx),
             query=_compare_product_query(body),
         )
         return KnowledgeFSEntryComparisonResponse.from_product(response)
@@ -732,9 +748,14 @@ class KnowledgeFsEntryCompareApi(Resource):
 
 @openapi_ns.route(f"{_FS_ROUTE}:cat")
 class KnowledgeFsEntryReadContentApi(Resource):
-    @auth_router.guard_workspace(
-        scope=Scope.WORKSPACE_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_READ),
+            CheckWorkspaceMember(),
+        ),
+        query=KnowledgeFSEntryReadContentQuery,
+        returns=(200, KnowledgeFSEntryReadContentResponse, "Agent Knowledge Base entry content"),
     )
     @_knowledge_fs_operation(
         "cat_knowledge_fs",
@@ -744,19 +765,17 @@ class KnowledgeFsEntryReadContentApi(Resource):
             f"{_CONTENT_CONTINUATION_DESCRIPTION}"
         ),
     )
-    @returns(200, KnowledgeFSEntryReadContentResponse, description="Agent Knowledge Base entry content")
-    @accepts(query=KnowledgeFSEntryReadContentQuery)
     @_knowledge_fs_errors
     def get(
         self,
         workspace_id: str,
         knowledge_space_id: str,
         *,
-        auth_data: AuthData,
+        ctx: Context,
         query: KnowledgeFSEntryReadContentQuery,
     ) -> KnowledgeFSEntryReadContentResponse:
         response = _knowledge_fs_facade().cat_knowledge_fs(
-            **_facade_args(workspace_id, knowledge_space_id, auth_data),
+            **_facade_args(workspace_id, knowledge_space_id, ctx),
             query=_read_content_product_query(query),
         )
         return KnowledgeFSEntryReadContentResponse.from_product(response)
@@ -764,9 +783,14 @@ class KnowledgeFsEntryReadContentApi(Resource):
 
 @openapi_ns.route(f"{_FS_ROUTE}:stat")
 class KnowledgeFsEntryInspectApi(Resource):
-    @auth_router.guard_workspace(
-        scope=Scope.WORKSPACE_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_READ),
+            CheckWorkspaceMember(),
+        ),
+        query=KnowledgeFSEntryInspectQuery,
+        returns=(200, KnowledgeFSEntryMetadataResponse, "Agent Knowledge Base entry metadata"),
     )
     @_knowledge_fs_operation(
         "stat_knowledge_fs",
@@ -776,19 +800,17 @@ class KnowledgeFsEntryInspectApi(Resource):
             "equivalent to difyctl fs stat."
         ),
     )
-    @returns(200, KnowledgeFSEntryMetadataResponse, description="Agent Knowledge Base entry metadata")
-    @accepts(query=KnowledgeFSEntryInspectQuery)
     @_knowledge_fs_errors
     def get(
         self,
         workspace_id: str,
         knowledge_space_id: str,
         *,
-        auth_data: AuthData,
+        ctx: Context,
         query: KnowledgeFSEntryInspectQuery,
     ) -> KnowledgeFSEntryMetadataResponse:
         response = _knowledge_fs_facade().stat_knowledge_fs(
-            **_facade_args(workspace_id, knowledge_space_id, auth_data),
+            **_facade_args(workspace_id, knowledge_space_id, ctx),
             query=_inspect_product_query(query),
         )
         return KnowledgeFSEntryMetadataResponse.from_product(response)

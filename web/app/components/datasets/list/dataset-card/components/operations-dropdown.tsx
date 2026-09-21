@@ -84,14 +84,7 @@ const OperationsDropdown = ({
   if (!canShowOperations) return null
 
   return (
-    <div
-      className={cn(
-        'absolute top-2 right-2 z-5',
-        open
-          ? 'pointer-events-auto opacity-100'
-          : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100',
-      )}
-    >
+    <div className={cn('absolute right-2 z-5', dataset.embedding_available ? 'top-2' : 'top-6')}>
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           ref={triggerRef}

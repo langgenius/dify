@@ -48,6 +48,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from enums import DeploymentEdition
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
@@ -83,6 +84,7 @@ from services.app_service import AgentAppPublicationCounts, AppListParams, AppSe
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
+from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
@@ -1311,6 +1313,12 @@ class AgentRosterVersionRestoreApi(Resource):
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, version_id: UUID):
+        if (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and not FeatureService.get_workspace_plan(tenant_id).is_paid
+        ):
+            abort(403, description="This feature requires a paid plan.")
+
         return dump_response(
             AgentConfigSnapshotRestoreResponse,
             _agent_roster_service(session).restore_agent_version(

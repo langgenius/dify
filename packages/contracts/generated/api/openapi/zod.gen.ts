@@ -845,6 +845,11 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * SubjectType
+ */
+export const zSubjectType = z.enum(['account', 'external_sso'])
+
+/**
  * SupportedAppType
  *
  * App types the ``app`` usage face (``get app``) lists and filters.
@@ -965,7 +970,7 @@ export const zAccountResponse = z.object({
   default_workspace_id: z.string().nullish(),
   subject_email: z.string().nullish(),
   subject_issuer: z.string().nullish(),
-  subject_type: z.string(),
+  subject_type: zSubjectType,
   workspaces: z.array(zWorkspacePayload).optional().default([]),
 })
 
@@ -978,7 +983,7 @@ export const zDeviceTokenResponse = z.object({
   expires_at: z.string(),
   subject_email: z.string().nullish(),
   subject_issuer: z.string().nullish(),
-  subject_type: z.enum(['account', 'external_sso']),
+  subject_type: zSubjectType,
   token: z.string(),
   token_id: z.string(),
   workspaces: z.array(zWorkspacePayload).optional().default([]),

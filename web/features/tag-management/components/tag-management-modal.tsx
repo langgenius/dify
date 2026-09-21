@@ -1,6 +1,6 @@
 'use client'
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
-import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -73,10 +73,10 @@ export const TagManagementModal = ({
 
   return (
     <Dialog open={show} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="w-150 max-w-150 rounded-xl p-8">
-        <div className="relative pb-2 text-xl/7.5 font-semibold text-text-primary">
+      <DialogContent className="w-150 rounded-xl p-8">
+        <DialogTitle className="relative pb-2 text-xl/7.5 font-semibold text-text-primary">
           {t(($) => $['tag.manageTags'], { ns: 'common' })}
-        </div>
+        </DialogTitle>
         <DialogClose
           render={
             <IconButton

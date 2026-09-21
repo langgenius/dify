@@ -4329,7 +4329,13 @@ export const zPostAppsResponse = zAppDetailWithSite
 export const zPostAppsImportsBody = z.union([
   zAppImportPayload,
   z.object({
+    app_id: z.string().optional(),
+    description: z.string().optional(),
     file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+    icon: z.string().optional(),
+    icon_background: z.string().optional(),
+    icon_type: z.string().optional(),
+    name: z.string().optional(),
   }),
 ])
 
@@ -5130,6 +5136,7 @@ export const zGetAppsByAppIdExportPath = z.object({
 export const zGetAppsByAppIdExportQuery = z.object({
   format: z.enum(['ifpkg', 'yaml']).optional(),
   include_secret: z.boolean().optional().default(false),
+  version_id: z.uuid().optional(),
   workflow_id: z.string().optional(),
 })
 

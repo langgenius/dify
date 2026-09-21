@@ -143,11 +143,13 @@ function CreateFromDSLModal({
   const isPackageImport =
     currentTab === CreateFromDSLModalTab.FROM_FILE &&
     currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
+  // URL imports are classified by the server before applying the appropriate quota.
+  const requiresAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
   const isAppQuotaUnavailable =
-    !isPackageImport && deploymentEdition === 'CLOUD' && appQuota === undefined
+    requiresAppQuota && deploymentEdition === 'CLOUD' && appQuota === undefined
   // A limit of 0 means unlimited.
   const isAppsFull =
-    !isPackageImport &&
+    requiresAppQuota &&
     deploymentEdition === 'CLOUD' &&
     appQuota !== undefined &&
     appQuota.limit > 0 &&
@@ -304,7 +306,7 @@ function CreateFromDSLModal({
                     className="h-full pt-0 pb-0"
                     disabled={isImporting}
                   >
-                    {t(($) => $.importFromDSLFile, { ns: 'app' })}
+                    {t(($) => $.importFromFile, { ns: 'app' })}
                   </TabsTab>
                   <TabsTab
                     value={CreateFromDSLModalTab.FROM_URL}
@@ -320,8 +322,7 @@ function CreateFromDSLModal({
                   className="px-6 py-4"
                 >
                   <Uploader
-                    accept=".yaml,.yml,.ifpkg"
-                    displayName={isPackageImport ? 'IFPKG' : 'YAML'}
+                    importType="app"
                     browseButtonRef={browseButtonRef}
                     className="mt-0"
                     file={currentFile}
@@ -342,7 +343,7 @@ function CreateFromDSLModal({
                       autoComplete="off"
                       required
                       disabled={isImporting}
-                      placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
+                      placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' }) || ''}
                       defaultValue={dslUrl}
                     />
                     <FieldError />
@@ -364,7 +365,7 @@ function CreateFromDSLModal({
                   loading={isImporting}
                   variant="primary"
                 >
-                  <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
+                  <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
                   <KbdGroup>
                     {CREATE_FROM_DSL_HOTKEY.split('+').map((key) => (
                       <Kbd key={key} color="white">

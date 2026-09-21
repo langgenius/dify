@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
-import { checkTranslationGraph } from '../i18n-prune/graph'
+import { checkTranslationGraph } from '../i18n-analysis/graph'
 
 let webRoot: string
 let modules: Map<string, string>
@@ -28,7 +28,7 @@ function sortedUnusedKeysByNamespace(result: ReturnType<typeof checkTranslationG
 describe('translation graph analysis', () => {
   beforeEach(() => {
     modules = new Map()
-    webRoot = mkdtempSync(path.join(tmpdir(), 'dify-i18n-prune-'))
+    webRoot = mkdtempSync(path.join(tmpdir(), 'dify-i18n-analysis-'))
     writeSource('placeholder.ts', '')
   })
 
@@ -37,6 +37,59 @@ describe('translation graph analysis', () => {
   })
 
   describe('Usage Analysis', () => {
+    it('reports explicit namespace loads even when no translation key is consumed', () => {
+      writeJson('i18n/locales/en-US/app.json', { unused: 'Unused' })
+      writeSource(
+        'src/page.ts',
+        `
+        declare function useTranslation(ns: string[]): unknown
+        declare function getTranslation(locale: string, ns: string): unknown
+        useTranslation(['app', 'common'])
+        getTranslation('en-US', 'login')
+        export function boundary(requiredNamespaces: ('workflow' | 'dataset')[]) {
+          useTranslation([...requiredNamespaces])
+        }
+        `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect([...result.moduleNamespaces.get(path.join(webRoot, 'src/page.ts'))!].sort()).toEqual([
+        'app',
+        'common',
+        'login',
+      ])
+      expect(result.unused).toEqual({ app: ['unused'] })
+    })
+
+    it('resolves namespace constants, imported arrays and nested static spreads without consuming keys', () => {
+      writeJson('i18n/locales/en-US/workflow.json', { unused: 'Unused' })
+      writeSource(
+        'src/namespaces.ts',
+        `
+        export const workflow = 'workflow'
+        export const extras = ['login', workflow] as const
+      `,
+      )
+      writeSource(
+        'src/page.ts',
+        `
+        import { workflow, extras } from './namespaces'
+        declare function useTranslation(ns: readonly string[]): unknown
+        declare function getTranslation(locale: string, ns: string): unknown
+        const shared = ['common', ...extras] as const
+        useTranslation([workflow, ...shared])
+        const cyclic = [cyclic]
+        useTranslation(cyclic)
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect([...result.moduleNamespaces.get(path.join(webRoot, 'src/page.ts'))!].sort()).toEqual([
+        'common',
+        'login',
+        'workflow',
+      ])
+      expect(result.unused).toEqual({ workflow: ['unused'] })
+    })
+
     it('resolves generic metadata selectors using the namespace at each call site', () => {
       writeJson('i18n/locales/en-US/app.json', { resetPassword: 'Unused app key' })
       writeJson('i18n/locales/en-US/login.json', {

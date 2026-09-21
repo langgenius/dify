@@ -383,27 +383,36 @@ describe('AgentRosterList', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('exports the Agent App DSL with the backing App id', async () => {
-    const user = userEvent.setup()
-    renderList([createAgent()])
+  it.each(['dropdown', 'context'])(
+    'exports the Agent App package from the %s menu with the backing App id',
+    async (menu) => {
+      const user = userEvent.setup()
+      renderList([createAgent()])
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
-    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+      if (menu === 'context')
+        await user.pointer({
+          target: screen.getByRole('link', { name: 'Research Agent' }),
+          keys: '[MouseRight]',
+        })
+      else await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+      await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
-    expect(exportAppDslMock).toHaveBeenCalledWith({
-      appId: 'app-1',
-      appName: 'Research Agent',
-    })
-  })
+      expect(exportAppDslMock).toHaveBeenCalledWith({
+        format: 'ifpkg',
+        appId: 'app-1',
+        appName: 'Research Agent',
+      })
+    },
+  )
 
-  it('disables export while an Agent App DSL export is pending', async () => {
+  it('disables export while an Agent App package export is pending', async () => {
     const user = userEvent.setup()
     exportAppDslState.isExporting = true
     renderList([createAgent()])
 
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
 
-    expect(screen.getByRole('menuitem', { name: 'app.export' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
