@@ -11,7 +11,7 @@ import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging.version import parse as parse_version
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -53,11 +53,12 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
-from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise.rbac_service import RBACService
 from services.entities.dsl_entities import (
+    AppDslExportData,
     CheckDependenciesResult,
     DslImportWarning,
+    Import,
     ImportMode,
     ImportStatus,
     PendingImportOwner,
@@ -71,7 +72,6 @@ from services.icon_configuration import (
     is_valid_image_icon,
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from services.system_feature_service import SystemFeatureService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -81,18 +81,6 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
-
-
-class Import(BaseModel):
-    id: str
-    status: ImportStatus
-    app_id: str | None = None
-    app_mode: str | None = None
-    permission_keys: list[str] = Field(default_factory=list)
-    current_dsl_version: str = CURRENT_DSL_VERSION
-    imported_dsl_version: str = ""
-    error: str = ""
-    warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
 class PendingData(PendingImportOwner):
@@ -117,55 +105,6 @@ class AppDslService:
     def __init__(self, session: Session):
         self._session = session
         self._warnings = []
-
-    def copy_app(
-        self,
-        *,
-        app_model: App,
-        account: Account,
-        tenant_id: str,
-        name: str | None = None,
-        description: str | None = None,
-        icon_type: str | None = None,
-        icon: str | None = None,
-        icon_background: str | None = None,
-    ) -> tuple[Import, App | None]:
-        """Copy an app, finalizing the import before inheriting external access settings.
-
-        Failed and pending imports roll back the current transaction. Completed
-        imports commit before external I/O, then load the copy in the caller's tenant.
-        """
-        if app_model.tenant_id != tenant_id or account.current_tenant_id != tenant_id:
-            raise NoPermissionError("App does not belong to the current workspace")
-
-        original_app_id = app_model.id
-        yaml_content = self.export_dsl(app_model=app_model, session=self._session, include_secret=True)
-        result = self.import_app(
-            account=account,
-            import_mode=ImportMode.YAML_CONTENT,
-            yaml_content=yaml_content,
-            name=name,
-            description=description,
-            icon_type=icon_type,
-            icon=icon,
-            icon_background=icon_background,
-        )
-        if result.status in {ImportStatus.FAILED, ImportStatus.PENDING}:
-            self._session.rollback()
-            return result, None
-        self._session.commit()
-
-        if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
-            try:
-                original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(original_app_id)
-                access_mode = original_settings.access_mode
-            except Exception:
-                # Old apps without settings default to public, matching the access fallback.
-                access_mode = "public"
-            EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
-
-        app = self._session.scalar(select(App).where(App.id == result.app_id, App.tenant_id == tenant_id))
-        return result, app
 
     def import_app(
         self,
@@ -481,8 +420,12 @@ class AppDslService:
         app_model: App,
     ) -> CheckDependenciesResult:
         """Check dependencies"""
+        return self.check_app_dependencies(tenant_id=app_model.tenant_id, app_id=app_model.id)
+
+    @staticmethod
+    def check_app_dependencies(*, tenant_id: str, app_id: str) -> CheckDependenciesResult:
         # Get dependencies from Redis
-        redis_key = f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_model.id}"
+        redis_key = f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_id}"
         dependencies = redis_client.get(redis_key)
         if not dependencies:
             return CheckDependenciesResult()
@@ -492,7 +435,7 @@ class AppDslService:
 
         # Get leaked dependencies
         leaked_dependencies = DependenciesAnalysisService.get_leaked_dependencies(
-            tenant_id=app_model.tenant_id, dependencies=dependencies.dependencies
+            tenant_id=tenant_id, dependencies=dependencies.dependencies
         )
         return CheckDependenciesResult(
             leaked_dependencies=leaked_dependencies,
@@ -789,6 +732,27 @@ class AppDslService:
         :raises IsDraftWorkflowError: If the selected workflow is a draft
         :return:
         """
+        return cls.serialize_export_data(
+            cls.load_export_data(
+                app_model,
+                session=session,
+                include_secret=include_secret,
+                workflow_id=workflow_id,
+                version_id=version_id,
+            )
+        )
+
+    @classmethod
+    def load_export_data(
+        cls,
+        app_model: App,
+        *,
+        session: Session,
+        include_secret: bool = False,
+        workflow_id: str | None = None,
+        version_id: uuid.UUID | None = None,
+    ) -> AppDslExportData:
+        """Load portable data using the caller's transaction, without requesting plugin dependencies."""
         app_mode = AppMode.value_of(app_model.mode)
 
         if app_mode == AppMode.AGENT:
@@ -798,14 +762,12 @@ class AppDslService:
                 app_model,
                 package_ref=package_ref,
                 packages=packages,
-                dependencies=DependenciesAnalysisService.generate_dependencies(
-                    tenant_id=app_model.tenant_id, dependencies=dependencies
-                ),
+                dependencies=[],
             ).model_dump(mode="json")
         else:
             export_data = make_app_dsl(app_model)
             if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-                cls._append_workflow_export_data(
+                dependencies = cls._append_workflow_export_data(
                     export_data=export_data,
                     app_model=app_model,
                     include_secret=include_secret,
@@ -813,8 +775,18 @@ class AppDslService:
                     session=session,
                 )
             else:
-                cls._append_model_config_export_data(export_data, app_model, session=session)
+                dependencies = cls._append_model_config_export_data(export_data, app_model, session=session)
 
+        return AppDslExportData(app_model.tenant_id, export_data, dependencies)
+
+    @staticmethod
+    def serialize_export_data(prepared: AppDslExportData) -> str:
+        """Resolve plugin metadata and serialize materialized data; no Session is required."""
+        dependencies = DependenciesAnalysisService.generate_dependencies(
+            tenant_id=prepared.tenant_id, dependencies=prepared.dependency_identifiers
+        )
+        export_data = dict(prepared.data)
+        export_data["dependencies"] = [jsonable_encoder(item.model_dump()) for item in dependencies]
         return yaml.dump(export_data, allow_unicode=True)
 
     @classmethod
@@ -826,7 +798,7 @@ class AppDslService:
         include_secret: bool,
         session: Session,
         workflow_id: str | None = None,
-    ):
+    ) -> list[str]:
         """
         Append workflow export data
         :param export_data: export data
@@ -883,12 +855,7 @@ class AppDslService:
             export_data["agent_packages"] = {
                 key: package.model_dump(mode="json") for key, package in agent_packages.items()
             }
-        export_data["dependencies"] = [
-            jsonable_encoder(d.model_dump())
-            for d in DependenciesAnalysisService.generate_dependencies(
-                tenant_id=app_model.tenant_id, dependencies=dependencies
-            )
-        ]
+        return dependencies
 
     def _status_with_warnings(self, status: ImportStatus) -> ImportStatus:
         if status == ImportStatus.COMPLETED and self._warnings:
@@ -896,7 +863,9 @@ class AppDslService:
         return status
 
     @classmethod
-    def _append_model_config_export_data(cls, export_data: dict[str, Any], app_model: App, *, session: Session) -> None:
+    def _append_model_config_export_data(
+        cls, export_data: dict[str, Any], app_model: App, *, session: Session
+    ) -> list[str]:
         """
         Append model config export data
         :param export_data: export data
@@ -920,12 +889,7 @@ class AppDslService:
         export_data["model_config"] = model_config
 
         dependencies = cls._extract_dependencies_from_model_config(model_config)
-        export_data["dependencies"] = [
-            jsonable_encoder(d.model_dump())
-            for d in DependenciesAnalysisService.generate_dependencies(
-                tenant_id=app_model.tenant_id, dependencies=dependencies
-            )
-        ]
+        return dependencies
 
     @classmethod
     def _extract_dependencies_from_workflow(cls, workflow: Workflow) -> list[str]:

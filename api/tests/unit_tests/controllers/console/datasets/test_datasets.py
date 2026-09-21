@@ -4,7 +4,7 @@ from collections.abc import Callable
 from contextlib import ExitStack
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -51,10 +51,13 @@ from fields.dataset_fields import build_dataset_detail_prefetch
 from models.account import Account, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
-from models.model import ApiToken, App, AppMode, IconType, UploadFile
+from models.model import ApiToken, AppMode, IconType, UploadFile
 from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
+from services.entities.app_entities import AppRecord
+
+pytestmark = pytest.mark.usefixtures("app_query_services")
 
 
 @pytest.fixture(autouse=True)
@@ -128,24 +131,21 @@ def make_account(role: TenantAccountRole = TenantAccountRole.EDITOR) -> Account:
     return account
 
 
-def make_related_app(**overrides) -> App:
+def make_related_app(**overrides) -> AppRecord:
     base = {
         "id": "app-1",
-        "tenant_id": "tenant-1",
         "name": "App",
         "description": "desc",
-        "mode": AppMode.CHAT,
+        "mode_compatible_with_agent": AppMode.CHAT,
         "icon_type": IconType.EMOJI,
         "icon": "🤖",
         "icon_background": "#fff",
-        "app_model_config_id": None,
-        "workflow_id": None,
         "enable_site": False,
         "enable_api": False,
         "created_by": "account-1",
     }
     base.update(overrides)
-    return App(**base)
+    return AppRecord(**base)
 
 
 def make_document_status(**overrides) -> Document:
@@ -1308,15 +1308,9 @@ class TestDatasetRelatedAppListApi(_UsesSQLiteSession):
             patch("controllers.console.datasets.datasets.DatasetService.check_dataset_permission", return_value=None),
             patch("controllers.console.datasets.datasets.DatasetService.get_related_apps", return_value=[join1, join2]),
             patch(
-                "controllers.console.datasets.datasets.AppService.get_app_by_id",
-                side_effect=[app1, app2],
-            ) as get_app_by_id,
-            patch.object(
-                App,
-                "mode_compatible_with_agent_with_session",
-                autospec=True,
-                side_effect=lambda app_model, *, session: str(app_model.mode),
-            ) as compatible_mode,
+                "services.app.query_service.AppQueryService.related_apps",
+                return_value=[app1, app2],
+            ) as related_apps,
         ):
             response, status = method(api, session, make_account(), "dataset-1")
         assert status == 200
@@ -1343,8 +1337,7 @@ class TestDatasetRelatedAppListApi(_UsesSQLiteSession):
                 "icon_url": None,
             },
         ]
-        assert compatible_mode.call_args_list == [call(app1, session=session), call(app2, session=session)]
-        assert get_app_by_id.call_args_list == [call("app-1", session), call("app-2", session)]
+        related_apps.assert_called_once_with(dataset.tenant_id, ["app-1", "app-2"])
 
     def test_get_dataset_not_found(self, app: Flask):
         api = DatasetRelatedAppListApi()
@@ -1385,8 +1378,8 @@ class TestDatasetRelatedAppListApi(_UsesSQLiteSession):
             patch("controllers.console.datasets.datasets.DatasetService.check_dataset_permission", return_value=None),
             patch("controllers.console.datasets.datasets.DatasetService.get_related_apps", return_value=[join1, join2]),
             patch(
-                "controllers.console.datasets.datasets.AppService.get_app_by_id",
-                side_effect=[app1, None],
+                "services.app.query_service.AppQueryService.related_apps",
+                return_value=[app1],
             ),
         ):
             response, status = method(api, session, make_account(), "dataset-1")

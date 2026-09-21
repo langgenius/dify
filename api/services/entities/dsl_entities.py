@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -20,6 +21,27 @@ class ImportStatus(StrEnum):
     FAILED = "failed"
 
 
+class AppImportParams(BaseModel):
+    mode: str = Field(..., description="Import mode")
+    yaml_content: str | None = None
+    yaml_url: str | None = None
+    name: str | None = None
+    description: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    app_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AppDslExportData:
+    """Materialized export input; remote dependencies can be resolved after closing the read transaction."""
+
+    tenant_id: str
+    data: dict[str, Any]
+    dependency_identifiers: list[str]
+
+
 class PendingImportOwner(BaseModel):
     model_config = ConfigDict(hide_input_in_errors=True)
 
@@ -37,6 +59,18 @@ class DslImportWarning(BaseModel):
     path: str
     message: str
     details: dict[str, Any] = Field(default_factory=dict)
+
+
+class Import(BaseModel):
+    id: str
+    status: ImportStatus
+    app_id: str | None = None
+    app_mode: str | None = None
+    permission_keys: list[str] = Field(default_factory=list)
+    current_dsl_version: str = CURRENT_APP_DSL_VERSION
+    imported_dsl_version: str = ""
+    error: str = ""
+    warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
 class CheckDependenciesResult(BaseModel):

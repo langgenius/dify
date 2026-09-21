@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
+from extensions.application_services.app import AppServices
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account
@@ -63,6 +64,7 @@ from services.account_oauth_adapters import (
     DeploymentOAuthPolicyGateway,
     RedisOAuthAccountClaimLock,
 )
+from services.app.creators_platform_gateway import CreatorsPlatformGateway
 from services.app_site_service import AppSiteService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
@@ -159,6 +161,11 @@ def test_init_app_registers_services_for_the_current_app(
         assert services is app.extensions["application_services"]
         assert services.init_validation.is_validated(session_validated=False) is False
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
+        assert isinstance(services.apps, AppServices)
+        assert services.apps.console._apps is services.apps.queries._apps
+        creators = services.apps.console._creators
+        assert isinstance(creators, CreatorsPlatformGateway)
+        assert creators._oauth is services.oauth_server
 
 
 @pytest.mark.parametrize(

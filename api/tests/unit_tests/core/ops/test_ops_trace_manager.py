@@ -464,26 +464,6 @@ def test_message_config_lookup_uses_real_conversation_and_model_config(database:
     assert OpsTraceManager.get_app_config_through_message_id("missing") is None
 
 
-def test_update_and_get_app_tracing_config_persist_state(trace_environment: None, database: Session) -> None:
-    app = _app(database)
-    assert OpsTraceManager.get_app_tracing_config(app.id, database) == {
-        "enabled": False,
-        "tracing_provider": None,
-    }
-    OpsTraceManager.update_app_tracing_config(app.id, True, "dummy")
-    database.expire_all()
-    assert OpsTraceManager.get_app_tracing_config(app.id, database) == {
-        "enabled": True,
-        "tracing_provider": "dummy",
-    }
-    with pytest.raises(ValueError, match="Invalid tracing provider"):
-        OpsTraceManager.update_app_tracing_config(app.id, True, "missing")
-    with pytest.raises(ValueError, match="App not found"):
-        OpsTraceManager.update_app_tracing_config("missing", False, None)
-    with pytest.raises(ValueError, match="App not found"):
-        OpsTraceManager.get_app_tracing_config("missing", database)
-
-
 def test_message_trace_reads_real_conversation_app_and_message_file(
     trace_environment: None,
     database: Session,

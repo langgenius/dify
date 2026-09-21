@@ -21,3 +21,4 @@ class EndpointSpec:
 
     requirements: tuple[Requirement, ...]
     edition: frozenset[DeploymentEdition] | None = None
+    account_context: bool = False
