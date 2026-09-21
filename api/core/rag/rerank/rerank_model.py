@@ -5,14 +5,14 @@ from sqlalchemy.orm import Session
 
 from core.credit_usage import CreditUsageCreatedBy
 from core.model_context import with_credit_usage_created_by
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelInstance
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from extensions.ext_storage import storage
 from extensions.otel import trace_span
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from models.model import UploadFile
 
@@ -43,15 +43,7 @@ class RerankModelRunner(BaseRerankRunner):
         :param top_n: top n
         :return:
         """
-        model_manager = ModelManager.for_tenant(
-            tenant_id=self.rerank_model_instance.provider_model_bundle.configuration.tenant_id
-        )
-        is_support_vision = model_manager.check_model_support_vision(
-            tenant_id=self.rerank_model_instance.provider_model_bundle.configuration.tenant_id,
-            provider=self.rerank_model_instance.provider,
-            model=self.rerank_model_instance.model_name,
-            model_type=ModelType.RERANK,
-        )
+        is_support_vision = self._check_model_support_vision()
         if not is_support_vision:
             if query_type == QueryType.TEXT_QUERY:
                 rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
@@ -62,6 +54,23 @@ class RerankModelRunner(BaseRerankRunner):
                 query, documents, score_threshold, top_n, query_type
             )
 
+        return self._format_rerank_documents(rerank_result, unique_documents, score_threshold, top_n)
+
+    @trace_span()
+    def _check_model_support_vision(self) -> bool:
+        """Check capabilities on the model instance already resolved for this run."""
+        model_schema = self.rerank_model_instance.get_model_schema()
+        return ModelFeature.VISION in (model_schema.features or [])
+
+    @trace_span()
+    def _format_rerank_documents(
+        self,
+        rerank_result: RerankResult,
+        unique_documents: list[Document],
+        score_threshold: float | None,
+        top_n: int | None,
+    ) -> list[Document]:
+        """Build and sort reranked documents in an independently timed span."""
         rerank_documents = []
         for result in rerank_result.docs:
             if score_threshold is None or result.score >= score_threshold:
@@ -78,6 +87,7 @@ class RerankModelRunner(BaseRerankRunner):
         rerank_documents.sort(key=lambda x: x.metadata.get("score", 0.0), reverse=True)
         return rerank_documents[:top_n] if top_n else rerank_documents
 
+    @trace_span()
     def fetch_text_rerank(
         self,
         query: str,
@@ -116,6 +126,7 @@ class RerankModelRunner(BaseRerankRunner):
         )
         return rerank_result, unique_documents
 
+    @trace_span()
     def fetch_multimodal_rerank(
         self,
         query: str,

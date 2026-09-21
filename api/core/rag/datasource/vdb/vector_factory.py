@@ -61,6 +61,7 @@ class _LazyEmbeddings(Embeddings):
         self._dataset = dataset
         self._real: Embeddings | None = None
 
+    @trace_span()
     def _ensure(self) -> Embeddings:
         if self._real is None:
             model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
@@ -83,6 +84,12 @@ class _LazyEmbeddings(Embeddings):
 
     @override
     def embed_query(self, text: str) -> list[float]:
+        provider = self._dataset.embedding_model_provider
+        model_name = self._dataset.embedding_model
+        if provider and model_name:
+            cached_embedding = CacheEmbedding.get_cached_query_embedding(provider, model_name, text)
+            if cached_embedding is not None:
+                return cached_embedding
         return self._ensure().embed_query(text)
 
     @override
@@ -129,6 +136,7 @@ class Vector:
         self._vector_processor = self._init_vector(session=session)
 
     @staticmethod
+    @trace_span()
     def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
         vector_type = dify_config.VECTOR_STORE
 
@@ -148,14 +156,20 @@ class Vector:
 
         return vector_type
 
+    @trace_span()
     def _init_vector(self, *, session: Session) -> BaseVector:
         vector_type = self.resolve_vector_type(self._dataset, session=session)
         vector_factory_cls = self.get_vector_factory(vector_type)
-        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
+        return self._create_vector_processor(vector_factory_cls)
 
     @staticmethod
+    @trace_span()
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
         return get_vector_factory_class(vector_type)
+
+    @trace_span()
+    def _create_vector_processor(self, vector_factory_cls: type[AbstractVectorFactory]) -> BaseVector:
+        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
 
     @staticmethod
     def _filter_empty_text_documents(documents: list[Document]) -> list[Document]:
@@ -273,6 +287,7 @@ class Vector:
         )
         return self._search_by_vector_traced(multimodal_vector, **kwargs)
 
+    @trace_span()
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)
 

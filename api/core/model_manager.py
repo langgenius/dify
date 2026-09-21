@@ -22,6 +22,7 @@ from core.model_context import get_credit_usage_metadata
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
+from extensions.otel import trace_span
 from graphon.model_runtime.callbacks.base_callback import Callback
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
@@ -848,6 +849,7 @@ class ModelManager:
         self._request_metadata = dict(request_metadata) if request_metadata else None
 
     @classmethod
+    @trace_span()
     def for_tenant(
         cls,
         tenant_id: str,
@@ -903,6 +905,7 @@ class ModelManager:
             return QuotaManagedModelInstance
         return ModelInstance
 
+    @trace_span()
     def get_model_instance(
         self,
         tenant_id: str,

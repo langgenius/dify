@@ -40,6 +40,7 @@ from enums import DeploymentEdition
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
@@ -608,6 +609,7 @@ class ProviderManager:
         """Invalidate cross-process provider configuration source cache for a tenant."""
         _ProviderConfigurationSourceCache.invalidate_tenant(tenant_id, sources=sources)
 
+    @trace_span()
     def get_configurations(self, tenant_id: str) -> ProviderConfigurations:
         """
         Get model provider configurations.
@@ -676,8 +678,7 @@ class ProviderManager:
                 )
 
         # Get all provider entities
-        model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
-        provider_entities = model_provider_factory.get_providers()
+        provider_entities = self._get_provider_entities()
 
         # Get All preferred provider types of the workspace
         provider_name_to_preferred_model_provider_records_dict = self._get_all_preferred_model_providers(tenant_id)
@@ -825,6 +826,7 @@ class ProviderManager:
         # Return the encapsulated object
         return provider_configurations
 
+    @trace_span()
     def get_provider_model_bundle(self, tenant_id: str, provider: str, model_type: ModelType) -> ProviderModelBundle:
         """
         Get provider model bundle.
@@ -846,6 +848,12 @@ class ProviderManager:
             configuration=provider_configuration,
             model_type_instance=model_type_instance,
         )
+
+    @trace_span()
+    def _get_provider_entities(self) -> list[ProviderEntity]:
+        """Load installed provider declarations from the plugin runtime."""
+        model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
+        return model_provider_factory.get_providers()
 
     def get_default_model(self, tenant_id: str, model_type: ModelType) -> DefaultModelEntity | None:
         """
@@ -1001,6 +1009,7 @@ class ProviderManager:
             raise ValueError(f"Model {model} does not exist.")
 
     @staticmethod
+    @trace_span()
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
         with session_factory.create_session() as session:
@@ -1017,6 +1026,7 @@ class ProviderManager:
         return provider_name_to_provider_records_dict
 
     @staticmethod
+    @trace_span()
     def _get_all_provider_models(tenant_id: str) -> dict[str, list[_ProviderModelCacheEntry]]:
         """
         Get all provider model records of the workspace.
@@ -1035,6 +1045,7 @@ class ProviderManager:
         return provider_name_to_provider_model_records_dict
 
     @staticmethod
+    @trace_span()
     def _get_all_preferred_model_providers(tenant_id: str) -> dict[str, _TenantPreferredModelProviderCacheEntry]:
         """
         Get All preferred provider types of the workspace.
@@ -1053,6 +1064,7 @@ class ProviderManager:
         }
 
     @staticmethod
+    @trace_span()
     def _get_all_provider_model_settings(tenant_id: str) -> dict[str, list[_ProviderModelSettingCacheEntry]]:
         """
         Get All provider model settings of the workspace.
@@ -1073,6 +1085,7 @@ class ProviderManager:
         return provider_name_to_provider_model_settings_dict
 
     @staticmethod
+    @trace_span()
     def _get_all_provider_model_credentials(tenant_id: str) -> dict[str, list[_ProviderModelCredentialCacheEntry]]:
         """
         Get All provider model credentials of the workspace.
@@ -1093,6 +1106,7 @@ class ProviderManager:
         return provider_name_to_provider_model_credentials_dict
 
     @staticmethod
+    @trace_span()
     def _get_all_provider_credentials(tenant_id: str) -> dict[str, list[_ProviderCredentialCacheEntry]]:
         """
         Get All provider credentials of the workspace.
@@ -1111,6 +1125,7 @@ class ProviderManager:
         return provider_name_to_provider_credentials_dict
 
     @staticmethod
+    @trace_span()
     def _get_all_provider_load_balancing_configs(
         tenant_id: str,
     ) -> dict[str, list[_LoadBalancingModelConfigCacheEntry]]:
@@ -1239,6 +1254,7 @@ class ProviderManager:
         ]
 
     @staticmethod
+    @trace_span()
     def _init_trial_provider_records(
         tenant_id: str, provider_name_to_provider_records_dict: dict[str, list[Provider]]
     ) -> dict[str, list[Provider]]:
@@ -1307,6 +1323,7 @@ class ProviderManager:
 
         return provider_name_to_provider_records_dict
 
+    @trace_span()
     def _to_custom_configuration(
         self,
         tenant_id: str,
@@ -1557,6 +1574,7 @@ class ProviderManager:
         credentials_cache.set(credentials=credentials)
         return credentials
 
+    @trace_span()
     def _to_system_configuration(
         self, tenant_id: str, provider_entity: ProviderEntity, provider_records: list[Provider]
     ) -> SystemConfiguration:
@@ -1774,6 +1792,7 @@ class ProviderManager:
 
         return secret_input_form_variables
 
+    @trace_span()
     def _to_model_settings(
         self,
         provider_entity: ProviderEntity,
