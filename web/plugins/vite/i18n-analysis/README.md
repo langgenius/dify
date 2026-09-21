@@ -97,45 +97,19 @@ resolved. Each route includes `unknownNamespaceSources` for reachable affected
 modules, including shared boundaries, lazy dependencies, slots, and client bridges.
 An empty list means no unknown expression was detected, not proof that all APIs or
 dependencies were understood.
-Local alias and container traversal is shared between graph analysis and route-policy
-validation in `dataflow.ts`. It follows variable initializers with cycle guards;
-it does not evaluate arbitrary callees or infer later container assignments.
-Each analysis owns its traversal boundaries and trust rules. Mutation visitors
-have separate visited sets for direct writes and call escapes; value containment
-checks do not descend into function bodies. Equivalent reference forms are exercised
-through real Vite builds for both namespace forwarding and policy validation.
+Namespace loading recognizes string literals, inline arrays/spreads of supported
+values, and local/imported `const` string bindings. Const string aliases are followed
+with a cycle guard. Parameters, defaults, function results, object properties and
+arrays stored in variables remain unknown, even with literal types or `as const`.
+No mutation/escape analysis, cross-function namespace forwarding, JSX prop tracking,
+or route-policy trust exceptions are performed. Prefer a visible unknown result
+over inferring runtime behavior.
 
-Direct function declarations forwarding namespace parameters are summarized and
-checked at their concrete call sites, including aliases and multi-hop forwarding.
-Summaries retain both fixed namespaces and parameter dependencies.
-Static array spreads are expanded before matching positional/rest arguments and
-defaults, including empty spreads. Unexpandable spreads retain unknown diagnostics.
-Rest parameters collect all remaining arguments.
-Local variable and parameter assignments, method calls, and passing mutable values (including local
-aliases) to other functions prevent passthrough summaries. Namespace loads depending on written bindings remain unknown instead of reusing
-their initializers. Such calls remain unknown
-even when the parameter has a default; arbitrary callees are not assumed pure.
-Defaults are evaluated at the call site, including explicit `undefined`. Recursive
-forwarding, captured parameters in closures, and callbacks escaping through objects
-or arrays (including variables holding these containers) retain unknown diagnostics. Uncalled entry functions remain unknown; passing a forwarding function as a call
-argument reports an escape instead of assuming its future arguments. Runtime
-route-dependent provider props require an explicit `routeNamespacePolicy` contract
-with `module`, `exportedName`, and `getNamespaces(route)`. The analyzer recognizes
-the configured function called with `usePathname()` and follows immutable local
-variables and direct props into a local, unexported JSX component. Spread props,
-arbitrary pathname expressions, writes, and escaping components remain unknown.
-Policy values modified through local aliases or passed to arbitrary functions lose
-their trusted status and retain unknown diagnostics. Computed mutator calls such as
-`ns['push'](...)` are treated like dot calls; unknown computed method names also
-cancel trust. Known computed read methods follow the same rules as dot calls.
-Named effect hooks imported
-from React may receive these values in their dependency lists, which React reads
-for comparison; mutations inside effect callbacks are still checked.
-The callback supplies reviewed route values; the analyzer verifies this restricted
-dataflow, not the arbitrary implementation of the configured policy or router.
-An undefined callback result leaves that route unknown. `routePolicySources` records
-the provenance and `route-namespace-load` evidence distinguishes policy-backed loads
-from independently inferred namespace values.
+Key matching retains TypeScript selector and finite key types, direct selectors,
+static object-map lookup, and syntactic template-prefix protection. Function bodies
+are not executed to infer call results; keys returned by runtime helpers protect
+the relevant namespace. This deliberately accepts fewer unused-key findings.
+
 Unresolved import evidence includes the specifier, a syntactic kind (style, asset,
 package, virtual, or source), and whether the import appears in source or was
 introduced by transforms. These labels do not prove relevance or suppress checks.
@@ -144,15 +118,7 @@ prevent an unused-key conclusion. Unresolved imports make the analysis incomplet
 
 `metrics` records shared setup, per-environment resolution, Program/checker setup,
 semantic analysis and route traversal durations, plus module and resolver-call
-counts. Semantic analysis is split into `collectionMs`, `mutationMs`,
-`forwardingMs`, and `usageMs`. `mutationArguments` counts non-translation call
-arguments, `mutationCandidates` counts those requiring a mutation type check after
-local binding/alias filtering, and `mutationTypeQueries` counts mutation-related
-`getTypeAtLocation` calls (including references inside candidates).
-`forwardingVisits` counts calls processed by the dependency-driven summary queue;
-only callers of changed summaries are revisited. These counters are per environment
-and do not count type queries from other analysis phases.
-`totalMs` sums work for the final environment graphs and final analysis;
+counts. `totalMs` sums work for the final environment graphs and final analysis;
 it excludes superseded scan graphs, output serialization and the rest of the build,
 and is not wall-clock build duration when environments run concurrently.
 
@@ -179,9 +145,10 @@ arguments are included even when no translation key is consumed.
 
 The application passes `getDeclaredRouteNamespaces` from
 `i18n/route-namespaces.ts`, sharing declarations with server resource selection
-and client navigation. Currently only `/signin` and its descendants opt in. The application enables
-strict validation for these declared routes and configures its route namespace
-policy explicitly; routes without declarations retain unknown policy loads.
+and client navigation. Currently only `/signin` and its descendants opt in. The
+application uses the default non-strict mode: runtime providers and wrappers emit
+unknown warnings, while statically detected undeclared namespaces still fail.
+No policy callback substitutes configured values for unknown expressions.
 Undeclared routes keep the full catalog and can be migrated independently.
 
 This validates statically detected usage, with the recognition and conservative

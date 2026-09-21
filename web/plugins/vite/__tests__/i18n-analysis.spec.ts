@@ -7,25 +7,6 @@ import { build, createBuilder, createLogger, createServer } from 'vite'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { i18nAnalysisPlugin } from '../i18n-analysis'
 
-// These forms carry the same array reference across both analysis boundaries.
-const mutationForms = [
-  { name: 'direct-mutation', code: (value: string) => `mutate(${value})` },
-  { name: 'alias-call-mutation', code: (value: string) => `const alias = ${value}; mutate(alias)` },
-  {
-    name: 'object-call-mutation',
-    code: (value: string) => `const box = { value: ${value} }; mutate(box.value)`,
-  },
-  {
-    name: 'array-call-mutation',
-    code: (value: string) => `const box = [${value}]; mutate(box[0])`,
-  },
-  {
-    name: 'nested-call-mutation',
-    code: (value: string) =>
-      `const first = ${value}; const box = { nested: [first] }; const alias = box; mutate(alias.nested[0])`,
-  },
-]
-
 describe('i18n build check', () => {
   let root: string
   let localeFile: string
@@ -636,70 +617,17 @@ describe('i18n build check', () => {
   )
 
   it.each([
-    [
-      'rest',
-      "function load(...ns: string[]) { return useTranslation(ns) }; export const page = load('app', 'login')",
-    ],
-    [
-      'fixed-hop',
-      "function load(ns: string) { return useTranslation(['login', ns]) }; function forward(ns: string) { return load(ns) }; export const page = forward('app')",
-    ],
-    [
-      'dynamic-spread',
-      "function load(ns = 'login') { return useTranslation(ns) }; const args = (globalThis as any).namespaces as string[]; export const page = load(...args)",
-    ],
-    [
-      'fixed-alias',
-      "function load(ns: string) { return useTranslation(['login', ns]) }; const alias = load; export const page = alias('app')",
-    ],
-    [
-      'fixed-spread',
-      "function load(ns: string) { return useTranslation(['login', ns]) }; export const page = load(...['app'] as [string])",
-    ],
-    [
-      'fixed',
-      "function load(ns: string) { return useTranslation(['login', ns]) }; export const page = load('app')",
-    ],
-    [
-      'empty-spread',
-      "function load(ns = 'login') { return useTranslation(ns) }; export const page = load(...[] as [])",
-    ],
-    [
-      'object-escape',
-      "function load(ns: string) { return useTranslation(ns) }; const handlers = { callback: load }; function register(value: unknown) { (globalThis as any).handlers = value }; register(handlers); export const page = load('app')",
-    ],
-    [
-      'array-escape',
-      "function load(ns: string) { return useTranslation(ns) }; const handlers = [load]; function register(value: unknown) { (globalThis as any).handlers = value }; register(handlers); export const page = load('app')",
-    ],
-    ['local-assignment', "let ns = 'app'; ns = 'login'; export const page = useTranslation(ns)"],
-    ['local-array', "const ns = ['app']; ns.push('login'); export const page = useTranslation(ns)"],
-    [
-      'local-alias',
-      "const ns = ['app']; const alias = ns; alias.push('login'); export const page = useTranslation(ns)",
-    ],
-    [
-      'local-alias-read',
-      "const ns = ['app']; const alias = ns; ns.push('login'); export const page = useTranslation(alias)",
-    ],
-    [
-      'local-call',
-      "function mutate(ns: string[]) { ns.push('login') }; const ns = ['app']; mutate(ns); export const page = useTranslation(ns)",
-    ],
-    [
-      'local-computed',
-      "const ns = ['app']; ns['push']('login'); export const page = useTranslation(ns)",
-    ],
-    ...mutationForms.map(({ name, code }) => [
-      name,
-      `function mutate(ns: string[]) { ns.push('login') }; function load(ns: string[]) { ${code('ns')}; return useTranslation(ns) }; export const page = load(['app'])`,
-    ]),
-  ])('rejects incomplete namespace declarations after %s forwarding', async (mode, body) => {
+    "function load(ns: string) { return useTranslation(ns) }; export const page = load('app')",
+    "function load(ns = 'app') { return useTranslation(ns) }; export const page = load(...[] as [])",
+    "const ns = ['app']; export const page = useTranslation(ns)",
+    "let ns = 'app'; ns = 'login'; export const page = useTranslation(ns)",
+    "const ns = ['app']; const alias = ns; alias['push']('login'); export const page = useTranslation(ns)",
+    "function policy() { return ['app'] }; export const page = useTranslation(policy())",
+  ])('rejects runtime namespace values in strict mode: %s', async (body) => {
     writeFileSync(localeFile, '{}')
-    writeFileSync(path.join(root, 'i18n/locales/en-US/login.json'), '{}')
     writeFileSync(
       path.join(root, 'i18n/lib.client.ts'),
-      'export function useTranslation(ns: string[]) { return ns }',
+      'export function useTranslation(ns: unknown) { return ns }',
     )
     mkdirSync(path.join(root, 'app'), { recursive: true })
     writeFileSync(
@@ -721,15 +649,8 @@ describe('i18n build check', () => {
         ],
         build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
       }),
-    ).rejects.toThrow(
-      mode.startsWith('fixed') || ['rest', 'empty-spread'].includes(mode)
-        ? /Undeclared namespace.*login/s
-        : /Cannot verify namespace usage/,
-    )
-    if (mode === 'empty-spread') expect(reports[0]!.routes[0]!.namespaces).toEqual(['login'])
-    else if (mode === 'rest' || mode.startsWith('fixed'))
-      expect(reports[0]!.routes[0]!.namespaces).toEqual(['app', 'login'])
-    else expect(reports[0]!.evidence.some((item) => item.kind === 'unknown-namespace')).toBe(true)
+    ).rejects.toThrow('Cannot verify namespace usage')
+    expect(reports[0]!.routes[0]!.unknownNamespaceSources).toEqual(['app/page.ts'])
   })
 
   it.each(['broken', 'good'] as const)(
@@ -780,95 +701,35 @@ describe('i18n build check', () => {
     },
   )
 
-  it.each([
-    'current',
-    'arbitrary',
-    'spread',
-    'alias-mutation',
-    'computed-mutation',
-    'computed-read',
-    'dynamic-method',
-    ...mutationForms.map((form) => form.name),
-    'effect-deps',
-  ] as const)('applies route namespace policy only to proven %s props', async (mode) => {
+  it('reports runtime provider namespaces without blocking non-strict validation', async () => {
     writeFileSync(localeFile, '{}')
     writeFileSync(
       path.join(root, 'i18n/lib.client.ts'),
-      `export function useTranslation(ns: string[]) { return ns }`,
+      'export function useTranslation(ns: unknown) { return ns }',
     )
+    mkdirSync(path.join(root, 'app'), { recursive: true })
     writeFileSync(
-      path.join(root, 'i18n/policy.ts'),
-      `export function getRouteNamespaces(path: string) { return ['login'] }`,
-    )
-    writeFileSync(
-      path.join(root, 'navigation.ts'),
-      `export function usePathname() { return '/known' }`,
-    )
-    writeFileSync(
-      path.join(root, 'provider.tsx'),
-      `
-      import { useTranslation } from './i18n/lib.client'
-      import { useEffect } from 'react'
-      import { getRouteNamespaces } from './i18n/policy'
-      import { usePathname } from 'next/navigation'
-      function Loader({ required }: { required: string[] }) { useTranslation([...required]); return null }
-      export function Provider() {
-        const required = getRouteNamespaces(${mode === 'arbitrary' ? "'/other'" : 'usePathname()'})
-        ${mode === 'alias-mutation' ? "const alias = required; alias.push('workflow')" : mutationForms.some((form) => form.name === mode) ? `function mutate(ns: string[]) { ns.push('workflow') }; ${mutationForms.find((form) => form.name === mode)!.code('required')}` : ''}
-        ${mode === 'computed-mutation' ? "required['push']('workflow')" : mode === 'dynamic-method' ? "const method = (globalThis as any).method; required[method]('workflow')" : ''}
-        ${mode === 'computed-read' ? "required['join'](':')" : ''}
-        ${mode === 'effect-deps' ? 'useEffect(() => {}, [required])' : ''}
-        return <Loader ${mode === 'spread' ? '{...{ required }}' : 'required={required}'} />
-      }
-    `,
-    )
-    for (const route of ['known', 'other']) {
-      mkdirSync(path.join(root, `app/${route}`), { recursive: true })
-      writeFileSync(
-        path.join(root, `app/${route}/page.ts`),
-        `export { Provider as page } from '../../provider'`,
-      )
-    }
-    writeFileSync(
-      path.join(root, 'entry.ts'),
-      `export { page as known } from './app/known/page'; export { page as other } from './app/other/page'`,
+      path.join(root, 'app/page.ts'),
+      `import { useTranslation } from '../i18n/lib.client';
+      function policy() { return ['app'] }; export const page = useTranslation(policy())`,
     )
     const reports: AnalysisReport[] = []
-    const result = build({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      resolve: { alias: { 'next/navigation': path.join(root, 'navigation.ts') } },
-      plugins: [
-        i18nAnalysisPlugin({
-          strictNamespaces: true,
-          onAnalysis: (report) => reports.push(report),
-          getDeclaredNamespaces: (route) => (route === '/known' ? ['login'] : undefined),
-          routeNamespacePolicy: {
-            module: 'i18n/policy.ts',
-            exportedName: 'getRouteNamespaces',
-            getNamespaces: (route) => (route === '/known' ? ['login'] : undefined),
-          },
-        }),
-      ],
-      build: {
-        write: false,
-        lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] },
-        rollupOptions: { external: ['react', 'react/jsx-runtime', 'react/jsx-dev-runtime'] },
-      },
-    })
-    if (['current', 'effect-deps', 'computed-read'].includes(mode))
-      await expect(result).resolves.toBeDefined()
-    else await expect(result).rejects.toThrow('Cannot verify namespace usage')
-    const known = reports[0]!.routes.find((route) => route.route === '/known')!
-    expect(known.unknownNamespaceSources).toEqual(
-      ['current', 'effect-deps', 'computed-read'].includes(mode) ? [] : ['provider.tsx'],
-    )
-    if (['current', 'effect-deps', 'computed-read'].includes(mode))
-      expect(known.namespaces).toEqual(['login'])
-    expect(
-      reports[0]!.routes.find((route) => route.route === '/other')!.unknownNamespaceSources,
-    ).toEqual(['provider.tsx'])
+    await expect(
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          i18nAnalysisPlugin({
+            getDeclaredNamespaces: () => ['app'],
+            onAnalysis: (report) => reports.push(report),
+          }),
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+      }),
+    ).resolves.toBeDefined()
+    expect(reports[0]!.routes[0]!.namespaces).toEqual([])
+    expect(reports[0]!.routes[0]!.unknownNamespaceSources).toEqual(['app/page.ts'])
   })
 
   it('tracks rewritten imports and analyzes multiple output formats only once', async () => {
@@ -1153,7 +1014,8 @@ describe('i18n build check', () => {
       `
       import { identity } from 'test-hooks'
       import icon from './icon.svg'
-      export function label(t: (key: string) => string) { return t(identity(icon)) }
+      export const asset = identity(icon)
+      export function label(t: (key: string) => string, key: ReturnType<typeof identity>) { return t(key) }
     `,
     )
     const reports: AnalysisReport[] = []

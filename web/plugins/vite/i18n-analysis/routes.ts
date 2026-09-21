@@ -12,7 +12,6 @@ export type RouteNamespaceReport = {
   page: string
   namespaces: string[]
   unknownNamespaceSources?: string[]
-  routePolicySources?: string[]
   groups: Record<'page' | 'shared' | 'lazy' | 'slots', NamespaceSources[]>
 }
 
@@ -63,8 +62,6 @@ export function analyzeRouteNamespaces(
     sourcePath?: (id: string) => string
     entries?: ReadonlySet<string>
     unknownNamespaces?: ReadonlySet<string>
-    routeNamespaceLoads?: ReadonlySet<string>
-    getPolicyNamespaces?: (route: string) => readonly string[] | undefined
     recordPath?: (id: string, parent: number | null) => number
   } = {},
 ): RouteNamespaceReport[] {
@@ -86,7 +83,6 @@ export function analyzeRouteNamespaces(
     .map((page) => {
       const segments = sourcePath(page).slice(app.length).split('/').slice(0, -1)
       const route = `/${segments.filter((segment) => !/^\([^)]*\)$/.test(segment) && !segment.startsWith('@')).join('/')}`
-      const policyNamespaces = options.getPolicyNamespaces?.(route)
       const ancestors = new Set([app.slice(0, -1)])
       for (let i = 1; i <= segments.length; i++) ancestors.add(app + segments.slice(0, i).join('/'))
       const sharedEntries = boundaries.filter((file) =>
@@ -146,10 +142,7 @@ export function analyzeRouteNamespaces(
         }
         const byNamespace = new Map<string, Set<string>>()
         for (const id of modules) {
-          for (const namespace of new Set([
-            ...(usage.get(id) ?? []),
-            ...(options.routeNamespaceLoads?.has(id) ? (policyNamespaces ?? []) : []),
-          ])) {
+          for (const namespace of usage.get(id) ?? []) {
             const files = byNamespace.get(namespace) ?? new Set<string>()
             files.add(path.posix.relative(root.replaceAll('\\', '/'), sourcePath(id)))
             byNamespace.set(namespace, files)
@@ -193,27 +186,12 @@ export function analyzeRouteNamespaces(
         page: sourcePath(page).slice(root.replaceAll('\\', '/').length + 1),
         namespaces: [...namespaces].sort(),
         groups,
-        ...(options.routeNamespaceLoads
-          ? {
-              routePolicySources: [
-                ...new Set(
-                  [...mainModules.modules, ...slotModules]
-                    .filter((id) => options.routeNamespaceLoads!.has(id))
-                    .map((id) => path.posix.relative(root.replaceAll('\\', '/'), sourcePath(id))),
-                ),
-              ].sort(),
-            }
-          : {}),
         ...(options.unknownNamespaces
           ? {
               unknownNamespaceSources: [
                 ...new Set(
                   [...mainModules.modules, ...slotModules]
-                    .filter(
-                      (id) =>
-                        options.unknownNamespaces!.has(id) ||
-                        (!policyNamespaces && options.routeNamespaceLoads?.has(id)),
-                    )
+                    .filter((id) => options.unknownNamespaces!.has(id))
                     .map((id) => path.posix.relative(root.replaceAll('\\', '/'), sourcePath(id))),
                 ),
               ].sort(),
@@ -228,13 +206,11 @@ export type EnvironmentUsage = {
   usage: ReadonlyMap<string, ReadonlySet<string>>
   clientReferences: ReadonlySet<string>
   unknownNamespaces?: ReadonlySet<string>
-  routeNamespaceLoads?: ReadonlySet<string>
 }
 
 export function analyzeEnvironmentRoutes(
   root: string,
   environments: ReadonlyMap<string, EnvironmentUsage>,
-  getPolicyNamespaces?: (route: string) => readonly string[] | undefined,
 ) {
   const modules: ModuleLocation[] = []
   const moduleIndexes = new Map<string, number>()
@@ -262,9 +238,7 @@ export function analyzeEnvironmentRoutes(
   const dependencies = new Map<string, ModuleDependencies>()
   const usage = new Map<string, ReadonlySet<string>>()
   const unknownNamespaces = new Set<string>()
-  const routeNamespaceLoads = new Set<string>()
   for (const [environment, graph] of environments) {
-    for (const id of graph.routeNamespaceLoads ?? []) routeNamespaceLoads.add(key(environment, id))
     for (const id of graph.unknownNamespaces ?? []) unknownNamespaces.add(key(environment, id))
     for (const [id, namespaces] of graph.usage) {
       const identity = key(environment, id)
@@ -296,17 +270,12 @@ export function analyzeEnvironmentRoutes(
       sourcePath: (id) => sourcePaths.get(id) ?? id,
       recordPath,
       unknownNamespaces,
-      routeNamespaceLoads,
-      getPolicyNamespaces,
     })) {
       const previous = reports.get(report.page)
       if (!previous) {
         reports.set(report.page, report)
         continue
       }
-      previous.routePolicySources = [
-        ...new Set([...(previous.routePolicySources ?? []), ...(report.routePolicySources ?? [])]),
-      ].sort()
       previous.unknownNamespaceSources = [
         ...new Set([
           ...(previous.unknownNamespaceSources ?? []),

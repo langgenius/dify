@@ -1,12 +1,9 @@
 import type { ModuleResolutions } from './compiler'
-import type { RouteNamespacePolicy } from './route-policy'
 import path from 'node:path'
 import * as ts from 'typescript'
 import { createTranslationApiResolver } from './api'
 import { camelCase, readTranslationCatalog } from './catalog'
 import { createTranslationProgram, readCompilerOptions } from './compiler'
-import { createLocalDataflow, unwrapValue as unwrap } from './dataflow'
-import { createRoutePolicyMatcher } from './route-policy'
 
 const MAX_VALUES = 200
 const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -14,6 +11,19 @@ const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'
 type Translation = { namespaces: string[]; prefix: string; argument: number }
 type Value = ts.Expression | ts.FunctionDeclaration
 type Key = { text: string; wildcard?: boolean; namespace?: string }
+
+function unwrap(node: ts.Expression): ts.Expression {
+  if (
+    ts.isParenthesizedExpression(node) ||
+    ts.isAsExpression(node) ||
+    ts.isTypeAssertionExpression(node) ||
+    ts.isNonNullExpression(node) ||
+    ts.isSatisfiesExpression(node) ||
+    ts.isAwaitExpression(node)
+  )
+    return unwrap(node.expression)
+  return node
+}
 
 function literalTypes(type: ts.Type): string[] | undefined {
   if (type.isStringLiteral()) return [type.value]
@@ -43,7 +53,7 @@ function initializer(node: ts.Node): Value | undefined {
 }
 
 export type AnalysisEvidence = {
-  kind: 'usage' | 'dynamic-key' | 'unresolved-import' | 'unknown-namespace' | 'route-namespace-load'
+  kind: 'usage' | 'dynamic-key' | 'unresolved-import' | 'unknown-namespace'
   moduleId: string
   file: string
   line: number
@@ -57,11 +67,10 @@ export type AnalysisEvidence = {
   }
 }
 
-export function createAnalysisContext(root: string, routeNamespacePolicy?: RouteNamespacePolicy) {
+export function createAnalysisContext(root: string) {
   return {
     translations: readTranslationCatalog(root),
     compilerOptions: readCompilerOptions(root),
-    routeNamespacePolicy,
   }
 }
 
@@ -85,7 +94,6 @@ export function checkTranslationGraph(
   const programMs = performance.now() - programStarted
   const analysisStarted = performance.now()
   const translationApi = createTranslationApiResolver(root, checker)
-  const routePolicy = createRoutePolicyMatcher(root, checker, context.routeNamespacePolicy)
   const evidence = new Map<string, AnalysisEvidence>()
   let currentModule = ''
   let currentSite: ts.Node | undefined
@@ -124,8 +132,6 @@ export function checkTranslationGraph(
       : local
   }
 
-  const dataflow = createLocalDataflow(declarations)
-
   function alternatives(expression: Value, seen = new Set<ts.Node>()): (Value | undefined)[] {
     if (ts.isFunctionDeclaration(expression)) return [expression]
     if (
@@ -138,31 +144,6 @@ export function checkTranslationGraph(
     const next = new Set(seen).add(node)
     if (ts.isConditionalExpression(node))
       return [...alternatives(node.whenTrue, next), ...alternatives(node.whenFalse, next)]
-    if (ts.isCallExpression(node)) {
-      for (const fn of alternatives(node.expression, next)) {
-        if (
-          !fn ||
-          !(
-            ts.isArrowFunction(fn) ||
-            ts.isFunctionExpression(fn) ||
-            ts.isFunctionDeclaration(fn)
-          ) ||
-          !fn.body
-        )
-          continue
-        const body = ts.isBlock(fn.body)
-          ? fn.body.statements.length === 1 && ts.isReturnStatement(fn.body.statements[0]!)
-            ? fn.body.statements[0]!.expression
-            : undefined
-          : fn.body
-        if (!body) continue
-        const returned = unwrap(body)
-        const index = fn.parameters.findIndex(
-          (parameter) => parameter.name.getText() === returned.getText(),
-        )
-        if (index >= 0 && node.arguments[index]) return alternatives(node.arguments[index]!, next)
-      }
-    }
     if (ts.isIdentifier(node)) {
       if (node.text === 'undefined') return []
       const values = declarations(node)
@@ -211,6 +192,7 @@ export function checkTranslationGraph(
     if (!expression) return
     const node = unwrap(expression)
     if (ts.isStringLiteralLike(node)) return [node.text]
+    if (ts.isCallExpression(node)) return undefined
     if (ts.isArrayLiteralExpression(node)) {
       const values = node.elements.map((element) => strings(element))
       return values.every((value) => value !== undefined) ? values.flat() : undefined
@@ -288,7 +270,7 @@ export function checkTranslationGraph(
               const nsIndex = api === 'getTranslation' ? 1 : 0
               return {
                 namespaces:
-                  strings(call.arguments[nsIndex]) ??
+                  (call.arguments[nsIndex] && namespaceStrings(call.arguments[nsIndex]!)) ??
                   (call.arguments[nsIndex] ? [...catalog.keys()] : ['app']),
                 prefix: strings(property(call.arguments[nsIndex + 1], 'keyPrefix'))?.[0] ?? '',
                 argument: 0,
@@ -330,15 +312,15 @@ export function checkTranslationGraph(
 
   function keyPatterns(expression: ts.Expression): Key[] {
     const node = unwrap(expression)
-    if (ts.isCallExpression(node) || ts.isIdentifier(node)) {
+    if (ts.isCallExpression(node)) return [{ text: '.*', wildcard: true }]
+    if (ts.isIdentifier(node)) {
       const values = alternatives(node)
       if (
         values.some((value) => value !== node) &&
-        (ts.isCallExpression(node) ||
-          values.some(
-            (value) =>
-              value && !ts.isFunctionDeclaration(value) && ts.isTemplateExpression(unwrap(value)),
-          ))
+        values.some(
+          (value) =>
+            value && !ts.isFunctionDeclaration(value) && ts.isTemplateExpression(unwrap(value)),
+        )
       ) {
         return values.flatMap((value) =>
           value && !ts.isFunctionDeclaration(value)
@@ -498,321 +480,49 @@ export function checkTranslationGraph(
     }
   }
 
-  const writtenBindings = new Set<ts.Declaration>()
-  const writtenReferences = new Map<ts.Node, boolean>()
-  function hasWrittenReference(node: ts.Node): boolean {
-    const cached = writtenReferences.get(node)
-    if (cached !== undefined) return cached
-    if (ts.isFunctionLike(node)) return false
-    // Cyclic references cannot establish a concrete namespace load.
-    writtenReferences.set(node, true)
-    const result =
-      declarations(node).some((declaration) => writtenBindings.has(declaration)) ||
-      !!dataflow.forEachReference(node, (child) => hasWrittenReference(child) || undefined)
-    writtenReferences.set(node, result)
-    return result
-  }
-  function recordLoadedNamespaces(expression: ts.Expression, seen = new Set<ts.Node>()): boolean {
-    const node = unwrap(expression)
-    if (seen.has(node)) return false
-    if (hasWrittenReference(node)) return false
-    const next = new Set(seen).add(node)
-    if (ts.isStringLiteralLike(node)) {
-      currentNamespaces.add(node.text)
-      explain('usage', [node.text], 'Explicit namespace load.')
-      return true
-    }
-    if (ts.isArrayLiteralExpression(node))
-      return node.elements.map((element) => recordLoadedNamespaces(element, next)).every(Boolean)
-    if (ts.isSpreadElement(node)) return recordLoadedNamespaces(node.expression, next)
-    const values = alternatives(node)
-    // A finite type describes possibilities, not necessarily a concrete load.
-    return (
-      values.length > 0 &&
-      values
-        .map(
-          (value) =>
-            !!value && !ts.isFunctionDeclaration(value) && recordLoadedNamespaces(value, next),
-        )
-        .every(Boolean)
-    )
-  }
-
-  // Summarize direct namespace forwarding before scanning usage. Attribute the
-  // forwarded load to callers, not every route importing a shared wrapper.
-  const forwarding = new Map<
-    ts.FunctionDeclaration,
-    { parameters: Set<number>; namespaces: Set<string> }
-  >()
-  const calls: { node: ts.CallExpression; owner?: ts.FunctionDeclaration }[] = []
-  function enclosingFunction(node: ts.Node): ts.FunctionDeclaration | undefined {
-    for (let parent = node.parent; parent; parent = parent.parent) {
-      if (ts.isFunctionLike(parent)) return ts.isFunctionDeclaration(parent) ? parent : undefined
-    }
-  }
-  const targetCache = new Map<ts.Expression, ts.FunctionDeclaration[]>()
-  function forwardingTargets(expression: ts.Expression) {
-    let targets = targetCache.get(expression)
-    if (!targets) {
-      targets = alternatives(expression).filter(
-        (value): value is ts.FunctionDeclaration =>
-          !!value && ts.isFunctionDeclaration(value) && forwarding.has(value),
-      )
-      targetCache.set(expression, targets)
-    }
-    return targets
-  }
-  function forwardedParameters(
+  // Namespace values are deliberately narrower than key/type matching. Only
+  // inline arrays and immutable string bindings are concrete loading evidence.
+  function namespaceStrings(
     expression: ts.Expression,
-    owner: ts.FunctionDeclaration,
-  ): Set<number> | undefined {
+    seen = new Set<ts.Node>(),
+    allowArray = true,
+  ): string[] | undefined {
     const node = unwrap(expression)
-    if (ts.isStringLiteralLike(node)) return new Set()
-    if (ts.isSpreadElement(node)) return forwardedParameters(node.expression, owner)
-    if (ts.isArrayLiteralExpression(node)) {
-      const items = node.elements.map((item) => forwardedParameters(item, owner))
-      return items.some((item) => !item) ? undefined : new Set(items.flatMap((item) => [...item!]))
-    }
-    if (ts.isIdentifier(node)) {
-      const index = owner.parameters.findIndex(
-        (parameter) => !writtenBindings.has(parameter) && declarations(node).includes(parameter),
-      )
-      if (index >= 0) return new Set([index])
-    }
-  }
-  const collectionStarted = performance.now()
-  function writeVisitor(indirect: boolean) {
-    return dataflow.createReferenceVisitor({
-      stop: (node) => indirect && ts.isFunctionLike(node),
-      visit: (node) => {
-        if (!ts.isIdentifier(node)) return
-        for (const declaration of declarations(node))
-          if (
-            (ts.isParameter(declaration) || ts.isVariableDeclaration(declaration)) &&
-            (!indirect || !isPrimitive(mutationType(node)))
-          )
-            writtenBindings.add(declaration)
-      },
-    })
-  }
-  const markDirectWrites = writeVisitor(false)
-  const markEscapes = writeVisitor(true)
-  for (const id of modules.keys()) {
-    if (id.endsWith('.json')) continue
-    const source = program.getSourceFile(fileNames.get(id)!)
-    if (!source) continue
-    const collect = (node: ts.Node) => {
-      if (
-        ts.isBinaryExpression(node) &&
-        node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
-        node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
-      )
-        markDirectWrites(node.left)
-      if (
-        (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
-        (node.operator === ts.SyntaxKind.PlusPlusToken ||
-          node.operator === ts.SyntaxKind.MinusMinusToken)
-      )
-        markDirectWrites(node.operand)
-      if (
-        ts.isCallExpression(node) &&
-        (ts.isPropertyAccessExpression(node.expression) ||
-          ts.isElementAccessExpression(node.expression))
-      )
-        markDirectWrites(node.expression.expression)
-      if (ts.isFunctionDeclaration(node) && node.body)
-        forwarding.set(node, { parameters: new Set(), namespaces: new Set() })
-      if (ts.isCallExpression(node)) calls.push({ node, owner: enclosingFunction(node) })
-      ts.forEachChild(node, collect)
-    }
-    collect(source)
-  }
-  const collectionMs = performance.now() - collectionStarted
-  const mutationStarted = performance.now()
-  let mutationArguments = 0
-  let mutationCandidates = 0
-  let mutationTypeQueries = 0
-  function mutationType(node: ts.Node) {
-    mutationTypeQueries++
-    return checker.getTypeAtLocation(node)
-  }
-  // Match the same local binding/alias traversal as mutation tracking before requesting types.
-  const bindingReferences = new Map<ts.Node, boolean>()
-  function referencesBinding(node: ts.Node): boolean {
-    const cached = bindingReferences.get(node)
-    if (cached !== undefined) return cached
-    if (ts.isFunctionLike(node)) return false
-    // Cyclic initializers remain candidates; never prune an uncertain reference.
-    bindingReferences.set(node, true)
-    const result =
-      (ts.isIdentifier(node) &&
-        declarations(node).some(
-          (declaration) => ts.isParameter(declaration) || ts.isVariableDeclaration(declaration),
-        )) ||
-      !!dataflow.forEachReference(node, (child) => referencesBinding(child) || undefined)
-    bindingReferences.set(node, result)
-    return result
-  }
-  // Only primitive arguments are immune to mutation by an arbitrary callee.
-  function isPrimitive(type: ts.Type): boolean {
-    if (type.isUnion()) return type.types.every(isPrimitive)
-    const constraint = checker.getBaseConstraintOfType(type)
-    if (constraint && constraint !== type) return isPrimitive(constraint)
-    return !!(
-      type.flags &
-      (ts.TypeFlags.StringLike |
-        ts.TypeFlags.NumberLike |
-        ts.TypeFlags.BooleanLike |
-        ts.TypeFlags.BigIntLike |
-        ts.TypeFlags.ESSymbolLike |
-        ts.TypeFlags.Null |
-        ts.TypeFlags.Undefined |
-        ts.TypeFlags.Never)
-    )
-  }
-  for (const { node } of calls) {
-    const api = translationApi(node.expression)
-    if (api === 'useTranslation' || api === 'getTranslation') continue
-    for (const argument of node.arguments) {
-      mutationArguments++
-      if (!referencesBinding(argument)) continue
-      mutationCandidates++
-      if (!isPrimitive(mutationType(argument))) markEscapes(argument)
-    }
-  }
-  const mutationMs = performance.now() - mutationStarted
-  const forwardingStarted = performance.now()
-  let forwardingVisits = 0
-  function expandArguments(args: readonly ts.Expression[]): ts.Expression[] | undefined {
-    const result: ts.Expression[] = []
-    for (const argument of args) {
-      if (!ts.isSpreadElement(argument)) {
-        result.push(argument)
-        continue
-      }
-      const value = unwrap(argument.expression)
-      if (!ts.isArrayLiteralExpression(value)) return undefined
-      const expanded = expandArguments(value.elements)
-      if (!expanded) return undefined
-      result.push(...expanded)
-    }
-    return result
-  }
-  function fixedNamespaces(expression: ts.Expression): string[] {
-    const node = unwrap(expression)
+    if (seen.has(node)) return undefined
+    const next = new Set(seen).add(node)
     if (ts.isStringLiteralLike(node)) return [node.text]
-    if (ts.isSpreadElement(node)) return fixedNamespaces(node.expression)
-    if (ts.isArrayLiteralExpression(node)) return node.elements.flatMap(fixedNamespaces)
-    return []
-  }
-  function forwardedArguments(
-    node: ts.CallExpression,
-    target: ts.FunctionDeclaration,
-    index: number,
-  ) {
-    const args = expandArguments(node.arguments)
-    if (!args) return undefined
-    if (target.parameters[index]?.dotDotDotToken) return args.slice(index)
-    const supplied = args[index]
-    const undefinedValue =
-      supplied && checker.getTypeAtLocation(supplied).flags & ts.TypeFlags.Undefined
-    const argument = !supplied || undefinedValue ? target.parameters[index]?.initializer : supplied
-    return argument ? [argument] : []
-  }
-  const calledFunctions = new Set(
-    calls.flatMap(({ node }) => [node.expression, ...node.arguments].flatMap(forwardingTargets)),
-  )
-  // Revisit only callers whose callee summary gained a namespace parameter.
-  type Call = (typeof calls)[number]
-  const dependents = new Map<ts.FunctionDeclaration, Set<Call>>()
-  const pending = new Set<Call>()
-  for (const call of calls) {
-    if (!call.owner || !forwarding.has(call.owner)) continue
-    const api = translationApi(call.node.expression)
-    if (api === 'useTranslation' || api === 'getTranslation') pending.add(call)
-    else
-      for (const target of forwardingTargets(call.node.expression)) {
-        const callers = dependents.get(target) ?? new Set<Call>()
-        callers.add(call)
-        dependents.set(target, callers)
-      }
-  }
-  for (const call of pending) {
-    pending.delete(call)
-    forwardingVisits++
-    const { node, owner } = call
-    const api = translationApi(node.expression)
-    const args =
-      api === 'useTranslation'
-        ? node.arguments.slice(0, 1)
-        : api === 'getTranslation'
-          ? node.arguments.slice(1, 2)
-          : forwardingTargets(node.expression).flatMap((target) =>
-              [...forwarding.get(target)!.parameters].flatMap(
-                (index) => forwardedArguments(node, target, index) ?? [],
-              ),
-            )
-    const summary = forwarding.get(owner!)!
-    const previousSize = summary.parameters.size + summary.namespaces.size
-    for (const argument of args) {
-      const parameters = forwardedParameters(argument, owner!)
-      if (!parameters) continue
-      for (const parameter of parameters) summary.parameters.add(parameter)
-      for (const namespace of fixedNamespaces(argument)) summary.namespaces.add(namespace)
+    if (allowArray && ts.isArrayLiteralExpression(node)) {
+      const values = node.elements.map((element) => namespaceStrings(element, next))
+      return values.every((value) => value !== undefined) ? values.flat() : undefined
     }
-    if (api !== 'useTranslation' && api !== 'getTranslation')
-      for (const target of forwardingTargets(node.expression))
-        for (const namespace of forwarding.get(target)!.namespaces)
-          summary.namespaces.add(namespace)
-    if (summary.parameters.size + summary.namespaces.size !== previousSize)
-      for (const dependent of dependents.get(owner!) ?? []) pending.add(dependent)
-  }
-  const recursive = new Set<ts.FunctionDeclaration>()
-  const adjacency = new Map<ts.FunctionDeclaration, Set<ts.FunctionDeclaration>>()
-  for (const { node, owner } of calls) {
-    if (!owner) continue
-    const targets = adjacency.get(owner) ?? new Set<ts.FunctionDeclaration>()
-    for (const target of forwardingTargets(node.expression)) targets.add(target)
-    adjacency.set(owner, targets)
-  }
-  const finished = new Set<ts.FunctionDeclaration>()
-  function findCycles(node: ts.FunctionDeclaration, stack: ts.FunctionDeclaration[]) {
-    const index = stack.indexOf(node)
-    if (index >= 0) {
-      for (const item of stack.slice(index)) recursive.add(item)
-      return
-    }
-    if (finished.has(node)) return
-    if (stack.length >= 100) {
-      for (const item of [...stack, node]) recursive.add(item)
-      return
-    }
-    for (const target of adjacency.get(node) ?? []) findCycles(target, [...stack, node])
-    finished.add(node)
-  }
-  for (const target of forwarding.keys()) findCycles(target, [])
-  function escapedForwarders(expression: ts.Expression): boolean {
-    return dataflow.someContainedValue(expression, (value) =>
-      forwardingTargets(value).some((target) => forwarding.get(target)!.parameters.size > 0),
-    )
-  }
-  function isForwarded(expression: ts.Expression) {
-    const owner = enclosingFunction(expression)
+    if (allowArray && ts.isSpreadElement(node)) return namespaceStrings(node.expression, next)
     if (
-      !owner ||
-      recursive.has(owner) ||
-      (!calledFunctions.has(owner) && !(owner.name && translationApi(owner.name)))
+      !ts.isIdentifier(node) &&
+      !ts.isPropertyAccessExpression(node) &&
+      !ts.isElementAccessExpression(node)
     )
-      return false
-    const parameters = forwardedParameters(expression, owner)
-    return (
-      !!parameters?.size &&
-      [...parameters].every((index) => forwarding.get(owner)?.parameters.has(index))
+      return undefined
+    const values = declarations(node).filter(ts.isVariableDeclaration)
+    if (!values.length) return undefined
+    const resolved = values.map((declaration) =>
+      ts.isVariableDeclarationList(declaration.parent) &&
+      declaration.parent.flags & ts.NodeFlags.Const &&
+      declaration.initializer
+        ? namespaceStrings(declaration.initializer, next, false)
+        : undefined,
     )
+    return resolved.every((value) => value !== undefined) ? resolved.flat() : undefined
+  }
+  function recordLoadedNamespaces(expression: ts.Expression): boolean {
+    const namespaces = namespaceStrings(expression)
+    if (!namespaces) return false
+    for (const namespace of namespaces) {
+      currentNamespaces.add(namespace)
+      explain('usage', [namespace], 'Explicit namespace load.')
+    }
+    return true
   }
 
-  const forwardingMs = performance.now() - forwardingStarted
-  const usageStarted = performance.now()
   function visit(node: ts.Node) {
     currentSite = node
     if (ts.isStringLiteralLike(node) && (node.text.includes('.') || node.text.includes(':'))) {
@@ -834,54 +544,11 @@ export function checkTranslationGraph(
         // Do not mark translation keys as used merely because a namespace loads.
         const nsIndex = api === 'getTranslation' ? 1 : 0
         const argument = node.arguments[nsIndex]
-        if (argument && !isForwarded(argument) && !recordLoadedNamespaces(argument)) {
-          if (routePolicy(argument))
-            explain(
-              'route-namespace-load',
-              [],
-              'Namespace load follows the configured current-route policy.',
-            )
-          else
-            explain(
-              'unknown-namespace',
-              [],
-              'The explicit namespace load cannot be fully resolved.',
-            )
-        }
-      }
-      if (api !== 'useTranslation' && api !== 'getTranslation') {
-        for (const target of forwardingTargets(node.expression)) {
-          for (const namespace of forwarding.get(target)!.namespaces) {
-            currentNamespaces.add(namespace)
-            explain('usage', [namespace], 'Fixed namespace loaded by a forwarding function.')
-          }
-          for (const index of forwarding.get(target)!.parameters) {
-            const argumentsToCheck = forwardedArguments(node, target, index)
-            if (!argumentsToCheck) {
-              explain(
-                'unknown-namespace',
-                [],
-                'A spread prevents locating the forwarded namespace argument.',
-              )
-              continue
-            }
-            for (const argument of argumentsToCheck) {
-              if (!isForwarded(argument) && !recordLoadedNamespaces(argument))
-                explain(
-                  'unknown-namespace',
-                  [],
-                  'The forwarded namespace cannot be resolved at this call site.',
-                )
-            }
-          }
-        }
-      }
-      for (const argument of node.arguments) {
-        if (escapedForwarders(argument))
+        if (argument && !recordLoadedNamespaces(argument))
           explain(
             'unknown-namespace',
             [],
-            'A namespace-forwarding function escapes through a call argument.',
+            'Only literal namespaces, inline arrays and const string bindings are resolved; runtime values remain unknown.',
           )
       }
       const info = translation(node.expression, node)
@@ -889,8 +556,8 @@ export function checkTranslationGraph(
       if (info && argument) {
         const options = node.arguments.at(-1)
         const namespaceOption = property(options, 'ns')
-        const namespaces = strings(namespaceOption)
-        if (namespaceOption && !namespaces && !isForwarded(namespaceOption))
+        const namespaces = namespaceOption && namespaceStrings(namespaceOption)
+        if (namespaceOption && !namespaces)
           explain(
             'unknown-namespace',
             [],
@@ -916,12 +583,13 @@ export function checkTranslationGraph(
         if (value) attributes.set(attribute.name.getText(), value)
       }
       const key = attributes.get('i18nKey')
-      if (attributes.has('ns') && !strings(attributes.get('ns')))
+      if (attributes.has('ns') && !namespaceStrings(attributes.get('ns')!))
         explain('unknown-namespace', [], 'The Trans namespace cannot be narrowed to finite values.')
       if (key)
         consume(key, {
           namespaces:
-            strings(attributes.get('ns')) ?? (attributes.has('ns') ? [...catalog.keys()] : ['app']),
+            (attributes.get('ns') && namespaceStrings(attributes.get('ns')!)) ??
+            (attributes.has('ns') ? [...catalog.keys()] : ['app']),
           prefix: '',
           argument: 0,
         })
@@ -979,18 +647,7 @@ export function checkTranslationGraph(
   return {
     unused,
     evidence: [...evidence.values()],
-    timings: {
-      programMs,
-      analysisMs: performance.now() - analysisStarted,
-      collectionMs,
-      mutationMs,
-      forwardingMs,
-      usageMs: performance.now() - usageStarted,
-      mutationArguments,
-      mutationCandidates,
-      mutationTypeQueries,
-      forwardingVisits,
-    },
+    timings: { programMs, analysisMs: performance.now() - analysisStarted },
     protectedNamespaces: [...protectedNamespaces].sort(),
     moduleCount: modules.size,
     moduleNamespaces,

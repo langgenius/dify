@@ -1,7 +1,6 @@
 import type { Logger, Plugin } from 'vite'
 import type { ModuleResolutions } from './i18n-analysis/compiler'
 import type { AnalysisEvidence } from './i18n-analysis/graph'
-import type { RouteNamespacePolicy } from './i18n-analysis/route-policy'
 import type {
   EnvironmentUsage,
   ModuleDependencies,
@@ -33,14 +32,6 @@ export type AnalysisReport = {
       resolutionMs: number
       programMs: number
       analysisMs: number
-      collectionMs: number
-      mutationMs: number
-      forwardingMs: number
-      usageMs: number
-      mutationArguments: number
-      mutationCandidates: number
-      mutationTypeQueries: number
-      forwardingVisits: number
     }[]
   }
 }
@@ -51,9 +42,6 @@ export function i18nAnalysisPlugin(
   options: {
     onAnalysis?: (report: AnalysisReport) => void
     strictNamespaces?: boolean
-    routeNamespacePolicy?: RouteNamespacePolicy & {
-      getNamespaces: (route: string) => readonly string[] | undefined
-    }
     getDeclaredNamespaces?: (route: string) => readonly string[] | undefined
   } = {},
 ): Plugin[] {
@@ -79,7 +67,7 @@ export function i18nAnalysisPlugin(
   const check = async () => {
     const started = performance.now()
     const { checkTranslationGraph, createAnalysisContext } = await import('./i18n-analysis/graph')
-    const context = createAnalysisContext(root, options.routeNamespacePolicy)
+    const context = createAnalysisContext(root)
     const setupMs = performance.now() - started
     const environments = new Map<string, EnvironmentUsage>()
     const evidence: AnalysisReport['evidence'] = []
@@ -97,11 +85,6 @@ export function i18nAnalysisPlugin(
         dependencies: edges.get(environment) ?? new Map(),
         usage: result.moduleNamespaces,
         clientReferences: graph.clientReferences,
-        routeNamespaceLoads: new Set(
-          result.evidence
-            .filter((item) => item.kind === 'route-namespace-load')
-            .map((item) => item.moduleId),
-        ),
         unknownNamespaces: new Set(
           result.evidence
             .filter((item) => item.kind === 'unknown-namespace')
@@ -129,11 +112,7 @@ export function i18nAnalysisPlugin(
             )
     }
     const routesStarted = performance.now()
-    const { routes, modules, paths } = analyzeEnvironmentRoutes(
-      normalizePath(root),
-      environments,
-      options.routeNamespacePolicy?.getNamespaces,
-    )
+    const { routes, modules, paths } = analyzeEnvironmentRoutes(normalizePath(root), environments)
     metrics.routesMs = performance.now() - routesStarted
     metrics.totalMs =
       performance.now() -
