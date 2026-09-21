@@ -13,9 +13,9 @@ const issue = (nodeTitle: string, referencedTitle: string) => ({
 
 describe('formatVariableReferenceWarningPairs', () => {
   it('joins consumer and producer titles for the toast', () => {
-    expect(formatVariableReferenceWarningPairs([issue('Consumer', 'Producer')], () => '+1 more')).toBe(
-      '"Consumer" ← "Producer"',
-    )
+    expect(
+      formatVariableReferenceWarningPairs([issue('Consumer', 'Producer')], () => '+1 more'),
+    ).toBe('"Consumer" ← "Producer"')
   })
 
   it('caps the listed pairs and appends the overflow label', () => {

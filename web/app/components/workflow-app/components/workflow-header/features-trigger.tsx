@@ -179,11 +179,13 @@ const FeaturesTrigger = () => {
               t(($) => $['common.publishUnsafeVariableReference'], {
                 ns: 'workflow',
                 count: res.variable_reference_warnings.length,
-                pairs: formatVariableReferenceWarningPairs(res.variable_reference_warnings, (overflow) =>
-                  t(($) => $['common.publishUnsafeVariableReferenceMore'], {
-                    ns: 'workflow',
-                    count: overflow,
-                  }),
+                pairs: formatVariableReferenceWarningPairs(
+                  res.variable_reference_warnings,
+                  (overflow) =>
+                    t(($) => $['common.publishUnsafeVariableReferenceMore'], {
+                      ns: 'workflow',
+                      count: overflow,
+                    }),
                 ),
               }),
             )

@@ -731,25 +731,6 @@ export const zPublishWorkflowPayload = z.object({
 })
 
 /**
- * WorkflowVariableReferenceWarningResponse
- */
-export const zWorkflowVariableReferenceWarningResponse = z.object({
-  node_id: z.string(),
-  node_title: z.string(),
-  referenced_node_id: z.string(),
-  referenced_node_title: z.string(),
-})
-
-/**
- * WorkflowPublishResponse
- */
-export const zWorkflowPublishResponse = z.object({
-  created_at: z.int(),
-  result: z.string(),
-  variable_reference_warnings: z.array(zWorkflowVariableReferenceWarningResponse).nullish(),
-})
-
-/**
  * WebhookTriggerResponse
  */
 export const zWebhookTriggerResponse = z.object({
@@ -2164,6 +2145,25 @@ export const zWorkflowDraftVariableWithoutValue = z.object({
 export const zWorkflowDraftVariableListWithoutValue = z.object({
   items: z.array(zWorkflowDraftVariableWithoutValue).optional(),
   total: z.int().optional(),
+})
+
+/**
+ * WorkflowVariableReferenceWarningResponse
+ */
+export const zWorkflowVariableReferenceWarningResponse = z.object({
+  node_id: z.string(),
+  node_title: z.string(),
+  referenced_node_id: z.string(),
+  referenced_node_title: z.string(),
+})
+
+/**
+ * WorkflowPublishResponse
+ */
+export const zWorkflowPublishResponse = z.object({
+  created_at: z.int(),
+  result: z.string(),
+  variable_reference_warnings: z.array(zWorkflowVariableReferenceWarningResponse).nullish(),
 })
 
 /**

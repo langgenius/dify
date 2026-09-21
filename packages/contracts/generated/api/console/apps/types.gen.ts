@@ -1190,13 +1190,6 @@ export type PublishWorkflowPayload = {
   marked_name?: string | null
 }
 
-export type WorkflowVariableReferenceWarningResponse = {
-  node_id: string
-  node_title: string
-  referenced_node_id: string
-  referenced_node_title: string
-}
-
 export type WorkflowPublishResponse = {
   created_at: number
   result: string
@@ -2109,6 +2102,13 @@ export type WorkflowDraftVariableWithoutValue = {
   type?: string
   value_type?: string
   visible?: boolean
+}
+
+export type WorkflowVariableReferenceWarningResponse = {
+  node_id: string
+  node_title: string
+  referenced_node_id: string
+  referenced_node_title: string
 }
 
 export type ModelConfigPartial = {

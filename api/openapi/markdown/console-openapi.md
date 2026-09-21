@@ -23595,6 +23595,7 @@ tenant's default model. The underlying generator never raises — an empty
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | Yes |
 | result | string |  | Yes |
+| variable_reference_warnings | [ [WorkflowVariableReferenceWarningResponse](#workflowvariablereferencewarningresponse) ] | Unsafe cross-branch variable references. Null when none are found. | No |
 
 #### WorkflowResponse
 
@@ -23991,6 +23992,15 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | marked_comment | string |  | No |
 | marked_name | string |  | No |
+
+#### WorkflowVariableReferenceWarningResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string | Node that reads the variable | Yes |
+| node_title | string | Title of the reading node | Yes |
+| referenced_node_id | string | Node that produces the variable | Yes |
+| referenced_node_title | string | Title of the producing node | Yes |
 
 #### WorkspaceAccessMatrix
 
