@@ -199,6 +199,8 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
+    onServerDraftRequest: vi.fn(() => vi.fn()),
+    onServerDraftApplied: vi.fn(() => vi.fn()),
     onVarsAndFeaturesUpdate: mockOnVarsAndFeaturesUpdate.mockImplementation(
       (handler: (update: unknown) => void | Promise<void>) => {
         collaborationListeners.varsAndFeaturesUpdate = handler
@@ -1096,7 +1098,7 @@ describe('WorkflowMain', () => {
     expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
   })
 
-  it('notifies collaborators only after the generated graph is applied', async () => {
+  it('completes a Builder refresh without issuing another graph notification', async () => {
     collaborationRuntime.isEnabled = true
     let resolveRefresh!: (value: boolean) => void
     hookFns.handleRefreshWorkflowDraft.mockReturnValueOnce(
@@ -1109,6 +1111,6 @@ describe('WorkflowMain', () => {
     expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
     resolveRefresh(true)
     expect(await refresh).toBe(true)
-    expect(mockEmitWorkflowUpdate).toHaveBeenCalledExactlyOnceWith('app-1')
+    expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
   })
 })

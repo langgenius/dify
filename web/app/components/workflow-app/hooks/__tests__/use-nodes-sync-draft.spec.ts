@@ -57,7 +57,12 @@ vi.mock('reactflow', () => ({
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
+      ...draftStore.getState(),
       ...workflowStoreState,
+      invalidateWorkflowDraftSync: () => {
+        draftStore.getState().invalidateWorkflowDraftSync()
+        return ++workflowStoreState.workflowDraftGeneration
+      },
       hasWorkflowDraftConflict: draftStore.getState().hasWorkflowDraftConflict,
       setWorkflowDraftConflict: (conflicted: boolean) => {
         draftStore.getState().setWorkflowDraftConflict(conflicted)
@@ -425,6 +430,235 @@ describe('useNodesSyncDraft', () => {
       }),
     )
     expect(workflowStoreState.syncWorkflowDraftHash).toBe('saved-2')
+  })
+
+  it('shares successful saves and their hashes across hook instances', async () => {
+    mockSetSyncWorkflowDraftHash.mockImplementation((hash: string) => {
+      workflowStoreState.syncWorkflowDraftHash = hash
+    })
+    mockSyncWorkflowDraft
+      .mockResolvedValueOnce({ hash: 'saved-1', updated_at: 1 })
+      .mockResolvedValueOnce({ hash: 'saved-2', updated_at: 2 })
+    const first = renderUseNodesSyncDraft()
+    const second = renderUseNodesSyncDraft()
+    const saving = first.result.current.doSyncWorkflowDraft()
+    mockGetNodes.mockReturnValue([{ id: 'latest-edit', data: { type: BlockEnum.End } }])
+    const queued = second.result.current.doSyncWorkflowDraft()
+    await saving
+    await queued
+
+    expect(mockSyncWorkflowDraft).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        params: expect.objectContaining({
+          hash: 'saved-1',
+          graph: expect.objectContaining({
+            nodes: [expect.objectContaining({ id: 'latest-edit' })],
+          }),
+        }),
+      }),
+    )
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('saved-2')
+  })
+
+  it('drains an in-flight save, saves the latest edits, and blocks stale saves throughout Builder execution', async () => {
+    let finishSaving!: (value: { hash: string; updated_at: number }) => void
+    mockSyncWorkflowDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishSaving = resolve
+      }),
+    )
+    mockSetSyncWorkflowDraftHash.mockImplementation((hash: string) => {
+      workflowStoreState.syncWorkflowDraftHash = hash
+    })
+    const cancel = vi.spyOn(draftStore.getState().debouncedSyncWorkflowDraft, 'cancel')
+    const autosave = renderUseNodesSyncDraft()
+    const builder = renderUseNodesSyncDraft()
+    const saving = autosave.result.current.doSyncWorkflowDraft()
+    await vi.waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+    mockGetNodes.mockReturnValue([{ id: 'queued-edit', data: { type: BlockEnum.End } }])
+    mockSyncWorkflowDraft.mockResolvedValueOnce({ hash: 'saved-2', updated_at: 2 })
+    const queued = autosave.result.current.doSyncWorkflowDraft(false, undefined, {
+      environmentVariablePatch: {
+        environmentVariables: [],
+        deletedEnvironmentVariableIds: ['old-variable'],
+      },
+    })
+    mockGetNodes.mockReturnValue([{ id: 'latest-edit', data: { type: BlockEnum.End } }])
+    const preparing = builder.result.current.prepareWorkflowDraftForBuilder(
+      true,
+      new AbortController().signal,
+    )
+    expect(draftStore.getState().workflowDraftSyncPhase).toBe('preparing')
+    expect(cancel).toHaveBeenCalled()
+    expect(workflowStoreState.workflowDraftGeneration).toBe(0)
+    // Builder's busy projection may lock the canvas while preparation is waiting.
+    mockGetNodesReadOnly.mockReturnValue(true)
+    expect(await autosave.result.current.doSyncWorkflowDraft()).toBeNull()
+    autosave.result.current.syncWorkflowDraftWhenPageClose()
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+
+    finishSaving({ hash: 'saved-1', updated_at: 1 })
+    expect(await saving).toEqual({ hash: 'saved-1', updatedAt: 1 })
+    expect(await queued).toEqual({ hash: 'saved-2', updatedAt: 2 })
+    await preparing
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(3)
+    expect(mockSyncWorkflowDraft).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        params: expect.objectContaining({
+          hash: 'saved-1',
+          environment_variable_patch: {
+            environment_variables: [],
+            deleted_environment_variable_ids: ['old-variable'],
+          },
+        }),
+      }),
+    )
+    expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          hash: 'saved-2',
+          graph: expect.objectContaining({
+            nodes: [expect.objectContaining({ id: 'latest-edit' })],
+          }),
+        }),
+      }),
+    )
+    expect(draftStore.getState().workflowDraftSyncPhase).toBe('builder')
+    expect(workflowStoreState.workflowDraftGeneration).toBe(1)
+    mockGetNodesReadOnly.mockReturnValue(false)
+    expect(
+      await autosave.result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true }),
+    ).toBeNull()
+    autosave.result.current.syncWorkflowDraftWhenPageClose()
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(3)
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+  })
+
+  it('releases the barrier without reloading local edits when preparation cannot save', async () => {
+    mockSyncWorkflowDraft.mockRejectedValueOnce(new Error('offline'))
+    const { result } = renderUseNodesSyncDraft()
+
+    await expect(
+      result.current.prepareWorkflowDraftForBuilder(true, new AbortController().signal),
+    ).rejects.toThrow('workflow.common.draftSaveFailed')
+    expect(draftStore.getState().workflowDraftSyncPhase).toBe('idle')
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(workflowStoreState.workflowDraftGeneration).toBe(0)
+    expect(await result.current.doSyncWorkflowDraft()).toEqual({ hash: 'new', updatedAt: 1 })
+  })
+
+  it.each([true, false])(
+    'preserves local edits when a drained save conflicts before Builder preparation with saveDraft=%s',
+    async (saveDraft) => {
+      let rejectSave!: (error: Response) => void
+      mockSyncWorkflowDraft.mockReturnValueOnce(
+        new Promise((_, reject) => {
+          rejectSave = reject
+        }),
+      )
+      const { result } = renderUseNodesSyncDraft()
+      const saving = result.current.doSyncWorkflowDraft()
+      await vi.waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+      const preparing = expect(
+        result.current.prepareWorkflowDraftForBuilder(saveDraft, new AbortController().signal),
+      ).rejects.toThrow('workflow.draftConflict.message')
+
+      rejectSave(new Response(JSON.stringify({ code: 'draft_workflow_not_sync' }), { status: 409 }))
+      await saving
+      await preparing
+      expect(draftStore.getState().hasWorkflowDraftConflict).toBe(true)
+      expect(draftStore.getState().workflowDraftSyncPhase).toBe('idle')
+      expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+    },
+  )
+
+  it('can serve a directed save while Builder preparation waits for the collaborator acknowledgment', async () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+    let acknowledge!: (value: { hash: string; updatedAt: number }) => void
+    mockCollaborationRequestWorkflowSync.mockReturnValueOnce(
+      new Promise((resolve) => {
+        acknowledge = resolve
+      }),
+    )
+    const { result } = renderUseNodesSyncDraft()
+    const preparing = result.current.prepareWorkflowDraftForBuilder(
+      true,
+      new AbortController().signal,
+    )
+    await vi.waitFor(() => expect(mockCollaborationRequestWorkflowSync).toHaveBeenCalledOnce())
+    mockGetNodesReadOnly.mockReturnValue(true)
+
+    const saved = await result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true })
+    expect(saved).toEqual({ hash: 'new', updatedAt: 1 })
+    expect(draftStore.getState().workflowDraftSyncPhase).toBe('preparing')
+    acknowledge(saved!)
+    await preparing
+    expect(draftStore.getState().workflowDraftSyncPhase).toBe('builder')
+  })
+
+  it('drains saves without writing an old local graph when restoring Builder', async () => {
+    let finishSaving!: (value: { hash: string; updated_at: number }) => void
+    mockSyncWorkflowDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishSaving = resolve
+      }),
+    )
+    const { result } = renderUseNodesSyncDraft()
+    const saving = result.current.doSyncWorkflowDraft()
+    await vi.waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+    const preparing = result.current.prepareWorkflowDraftForBuilder(
+      false,
+      new AbortController().signal,
+    )
+    expect(workflowStoreState.workflowDraftGeneration).toBe(0)
+    finishSaving({ hash: 'saved', updated_at: 1 })
+    await saving
+    await preparing
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+    expect(draftStore.getState().workflowDraftSyncPhase).toBe('builder')
+  })
+
+  it('allows a replacement restore to take over a canceled preparation without saving the old graph', async () => {
+    const { result } = renderUseNodesSyncDraft()
+    const first = new AbortController()
+    const canceled = expect(
+      result.current.prepareWorkflowDraftForBuilder(false, first.signal),
+    ).rejects.toThrow()
+    first.abort()
+    const restored = result.current.prepareWorkflowDraftForBuilder(
+      false,
+      new AbortController().signal,
+    )
+
+    await canceled
+    await restored
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(draftStore.getState().workflowDraftSyncPhase).toBe('builder')
+  })
+
+  it('retains the accepted Builder save snapshot if the editor unmounts before the queue runs', async () => {
+    const { result } = renderUseNodesSyncDraft()
+    const controller = new AbortController()
+    const preparing = expect(
+      result.current.prepareWorkflowDraftForBuilder(true, controller.signal),
+    ).rejects.toThrow()
+    controller.abort()
+    mockGetNodes.mockReturnValue([])
+
+    await preparing
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          graph: expect.objectContaining({ nodes: [expect.objectContaining({ id: 'n1' })] }),
+        }),
+      }),
+    )
   })
 
   it('ignores a save response that arrives after a newer draft was loaded', async () => {

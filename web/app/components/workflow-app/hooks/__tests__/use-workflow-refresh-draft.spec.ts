@@ -13,7 +13,10 @@ const mockSetEnvSecrets = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetIsWorkflowDataLoaded = vi.fn()
 const mockCancel = vi.fn()
-const mockCanApplyLocalGraphMutation = vi.fn()
+const mockCanRestoreGraphFromCrdt = vi.fn()
+const mockIsConnected = vi.fn()
+const mockRequestServerDraftSync = vi.fn()
+const sharedGraph = { nodes: [{ id: 'shared-node' }], edges: [] }
 let draftStore: ReturnType<typeof createWorkflowStore>
 let appStoreState: {
   appDetail: {
@@ -37,6 +40,7 @@ let workflowStoreState: {
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
+      ...draftStore.getState(),
       ...workflowStoreState,
       workflowDraftGeneration: draftStore.getState().workflowDraftGeneration,
       invalidateWorkflowDraftSync: draftStore.getState().invalidateWorkflowDraftSync,
@@ -57,7 +61,11 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
-    canApplyLocalGraphMutation: () => mockCanApplyLocalGraphMutation(),
+    canRestoreGraphFromCrdt: () => mockCanRestoreGraphFromCrdt(),
+    isConnected: () => mockIsConnected(),
+    requestServerDraftSync: () => mockRequestServerDraftSync(),
+    getNodes: () => sharedGraph.nodes,
+    getEdges: () => sharedGraph.edges,
   },
 }))
 
@@ -82,7 +90,9 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       mockCancel,
     )
     mockHandleUpdateWorkflowCanvas.mockReturnValue(true)
-    mockCanApplyLocalGraphMutation.mockReturnValue(true)
+    mockCanRestoreGraphFromCrdt.mockReturnValue(true)
+    mockIsConnected.mockReturnValue(false)
+    mockRequestServerDraftSync.mockResolvedValue({ hash: 'server-hash' })
     workflowStoreState = {
       appId: 'app-1',
       isWorkflowDataLoaded: true,
@@ -120,6 +130,53 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       result.current.handleRefreshWorkflowDraft(false)
     })
     expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the accepted collaborative graph instead of rewriting the fetched JSON', async () => {
+    mockIsConnected.mockReturnValue(true)
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+
+    expect(await result.current.handleRefreshWorkflowDraft()).toBe(true)
+
+    expect(mockRequestServerDraftSync).toHaveBeenCalledOnce()
+    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith(
+      { ...sharedGraph, viewport: draftResponse.graph.viewport },
+      expect.objectContaining({ syncToCollaboration: false }),
+    )
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
+  })
+
+  it('refreshes the Builder canvas from HTTP without a collaborative document or socket', async () => {
+    mockCanRestoreGraphFromCrdt.mockReturnValue(false)
+    draftStore.getState().setWorkflowDraftSyncPhase('builder')
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+
+    expect(
+      await result.current.handleRefreshWorkflowDraft(false, {
+        resolveConflict: true,
+        builderRefresh: true,
+      }),
+    ).toBe(true)
+
+    expect(mockRequestServerDraftSync).not.toHaveBeenCalled()
+    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith(
+      draftResponse.graph,
+      expect.objectContaining({ syncToCollaboration: false }),
+    )
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
+    expect(draftStore.getState().workflowDraftSyncPhase).toBe('idle')
+  })
+
+  it('does not apply metadata from a draft older than the accepted graph', async () => {
+    mockIsConnected.mockReturnValue(true)
+    mockRequestServerDraftSync.mockResolvedValueOnce({ hash: 'newer-server-hash' })
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+
+    expect(await result.current.handleRefreshWorkflowDraft()).toBe(false)
+
+    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
   })
 
   it('should NOT update canvas when notUpdateCanvas=true', async () => {
@@ -182,6 +239,9 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       firstRefresh = result.current.handleRefreshWorkflowDraft(false, {
         shouldApply: () => firstIsCurrent,
       })
+    })
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledOnce())
+    act(() => {
       secondRefresh = result.current.handleRefreshWorkflowDraft(false, {
         shouldApply: () => true,
       })
@@ -236,7 +296,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
 
   it('allows explicit conflict recovery while the collaborative graph is reconnecting', async () => {
     draftStore.getState().setWorkflowDraftConflict(true)
-    mockCanApplyLocalGraphMutation.mockReturnValue(false)
+    mockCanRestoreGraphFromCrdt.mockReturnValue(false)
     const { result } = renderHook(() => useWorkflowRefreshDraft())
 
     expect(await result.current.handleRefreshWorkflowDraft(false, { resolveConflict: true })).toBe(
@@ -419,9 +479,12 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     const first = renderHook(() => useWorkflowRefreshDraft())
     const second = renderHook(() => useWorkflowRefreshDraft())
     const oldRefresh = first.result.current.handleRefreshWorkflowDraft()
-    expect(await second.result.current.handleRefreshWorkflowDraft()).toBe(true)
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledOnce())
+    const newRefresh = second.result.current.handleRefreshWorkflowDraft()
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledOnce()
     resolveOldResponse({ ...draftResponse, hash: 'outdated' })
     expect(await oldRefresh).toBe(false)
+    expect(await newRefresh).toBe(true)
     expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledOnce()
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledExactlyOnceWith('server-hash')
   })
@@ -437,9 +500,51 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     const metadata = renderHook(() => useWorkflowRefreshDraft())
     const refreshing = full.result.current.handleRefreshWorkflowDraft()
     expect(await metadata.result.current.handleRefreshWorkflowDraft(true)).toBe(false)
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledOnce()
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledOnce())
     resolveResponse(draftResponse)
     expect(await refreshing).toBe(true)
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
   })
+
+  it('blocks background reloads and releases the Builder barrier only after graph and hash are applied', async () => {
+    draftStore.getState().setWorkflowDraftSyncPhase('builder')
+    mockHandleUpdateWorkflowCanvas.mockImplementation(() => {
+      expect(draftStore.getState().workflowDraftSyncPhase).toBe('builder')
+      return true
+    })
+    mockSetSyncWorkflowDraftHash.mockImplementation(() => {
+      expect(draftStore.getState().workflowDraftSyncPhase).toBe('builder')
+    })
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+
+    expect(await result.current.handleRefreshWorkflowDraft()).toBe(false)
+    expect(await result.current.handleRefreshWorkflowDraft(true)).toBe(false)
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+    expect(await result.current.handleRefreshWorkflowDraft(false, { builderRefresh: true })).toBe(
+      true,
+    )
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
+    expect(draftStore.getState().workflowDraftSyncPhase).toBe('idle')
+    mockSetSyncWorkflowDraftHash.mockReset()
+  })
+
+  it.each(['fetch', 'apply'] as const)(
+    'keeps the Builder barrier on %s failure until an explicit retry succeeds',
+    async (failure) => {
+      draftStore.getState().setWorkflowDraftSyncPhase('builder')
+      if (failure === 'fetch') mockFetchWorkflowDraft.mockRejectedValueOnce(new Error('offline'))
+      else mockHandleUpdateWorkflowCanvas.mockReturnValueOnce(false)
+      const { result } = renderHook(() => useWorkflowRefreshDraft())
+
+      expect(await result.current.handleRefreshWorkflowDraft(false, { builderRefresh: true })).toBe(
+        false,
+      )
+      expect(draftStore.getState().workflowDraftSyncPhase).toBe('builder')
+      expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+      expect(await result.current.handleRefreshWorkflowDraft(false, { builderRefresh: true })).toBe(
+        true,
+      )
+      expect(draftStore.getState().workflowDraftSyncPhase).toBe('idle')
+    },
+  )
 })

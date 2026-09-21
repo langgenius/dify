@@ -6,11 +6,11 @@ import type {
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
   useNodesReadOnlyByCanEdit,
@@ -40,10 +40,10 @@ const shouldSkipDraftSync = (
   isAppDeletingOrDeleted(appId)
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
+  const { t } = useTranslation('workflow')
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
-  const lastLocalSaveRef = useRef<{ appId: string; generation: number; hash: string } | null>(null)
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_collaboration_mode,
@@ -151,7 +151,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   }, [store, featuresStore, workflowStore, isCollaborationEnabled])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
-    if (getNodesReadOnly()) return
+    if (getNodesReadOnly() || workflowStore.getState().workflowDraftSyncPhase !== 'idle') return
 
     const canPersistOnPageClose =
       !isCollaborationEnabled ||
@@ -162,15 +162,19 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const postParams = getPostParams()
 
     if (postParams) postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
-  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
+  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled, workflowStore])
 
   const performLocalSync = useCallback(
     async (
       baseParams: NonNullable<ReturnType<typeof getPostParams>>,
       callback?: SyncDraftCallback,
       options?: SyncDraftOptions,
+      preparingBuilder = false,
     ): Promise<SyncDraftResult | null> => {
-      if (getNodesReadOnly()) {
+      if (
+        !preparingBuilder &&
+        (getNodesReadOnly() || workflowStore.getState().workflowDraftSyncPhase !== 'idle')
+      ) {
         callback?.onSettled?.()
         return null
       }
@@ -201,7 +205,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
       try {
         const currentHash = workflowStore.getState().syncWorkflowDraftHash
-        const lastSave = lastLocalSaveRef.current
+        const lastSave = workflowStore.getState().lastSavedWorkflowDraft
         // Only a successful save from this queue may advance a captured graph's
         // hash. A server refresh must never lend its hash to an older graph.
         const canUseLastSave =
@@ -231,11 +235,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         const res = await syncWorkflowDraft(postParams)
         if (!isCurrent() || workflowStore.getState().syncWorkflowDraftHash !== currentHash)
           return null
-        lastLocalSaveRef.current = {
+        workflowStore.getState().setLastSavedWorkflowDraft({
           appId: baseParams.appId,
           generation: baseParams.generation,
           hash: res.hash,
-        }
+        })
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
@@ -270,7 +274,16 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     [workflowStore, getNodesReadOnly, isCollaborationEnabled],
   )
 
-  const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync)
+  const doSyncWorkflowDraftLocally = useCallback(
+    (...args: Parameters<typeof performLocalSync>) =>
+      workflowStore.getState().enqueueWorkflowDraftOperation(() => {
+        // Saves accepted before the barrier must finish, including variable
+        // patches that cannot be reconstructed from the final canvas snapshot.
+        const drainingForBuilder = workflowStore.getState().workflowDraftSyncPhase !== 'idle'
+        return performLocalSync(args[0], args[1], args[2], args[3] || drainingForBuilder)
+      }),
+    [performLocalSync, workflowStore],
+  )
   const doSyncWorkflowDraft = useCallback(
     async (
       _notRefreshWhenSyncError?: boolean,
@@ -283,9 +296,14 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         isSyncingWorkflowDraft,
         workflowDraftGeneration,
         hasWorkflowDraftConflict,
+        workflowDraftSyncPhase,
       } = workflowStore.getState()
+      // A follower awaiting the selected saver's ACK must still be able to
+      // serve a directed save request. This wait never occupies the queue.
+      const preparingBuilder =
+        workflowDraftSyncPhase === 'preparing' && options?.forceLocal === true
       if (
-        getNodesReadOnly() ||
+        (!preparingBuilder && (getNodesReadOnly() || workflowDraftSyncPhase !== 'idle')) ||
         shouldSkipDraftSync(
           appId,
           isWorkflowDataLoaded,
@@ -311,7 +329,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           return null
         }
 
-        return doSyncWorkflowDraftLocally(baseParams, callback, options)
+        return doSyncWorkflowDraftLocally(baseParams, callback, options, preparingBuilder)
       }
 
       try {
@@ -356,8 +374,77 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     ],
   )
 
+  const prepareWorkflowDraftForBuilder = useCallback(
+    async (saveDraft: boolean, signal: AbortSignal) => {
+      const state = workflowStore.getState()
+      const appId = state.appId
+      signal.throwIfAborted()
+      // A replacement restore may take over a canceled request's barrier.
+      if (saveDraft && state.workflowDraftSyncPhase !== 'idle')
+        throw new Error(t(($) => $['common.syncingData']))
+      if (state.hasWorkflowDraftConflict) throw new Error(t(($) => $['draftConflict.message']))
+
+      const shouldSave = saveDraft && !state.canvasReadOnly
+      if (shouldSave && getNodesReadOnly()) throw new Error(t(($) => $['common.draftSaveFailed']))
+      const requestLeader =
+        shouldSave &&
+        isCollaborationEnabled &&
+        collaborationManager.isConnected() &&
+        !collaborationManager.getIsLeader()
+      // Lock editing around this snapshot and retain it if ReactFlow unmounts
+      // while older saves drain. An accepted save still finishes on cancellation.
+      const snapshot = shouldSave ? getPostParams() : null
+      state.debouncedSyncWorkflowDraft.cancel?.()
+      state.setWorkflowDraftSyncPhase(shouldSave ? 'preparing' : 'builder')
+      try {
+        let saved: SyncDraftResult | null = null
+        if (shouldSave && !requestLeader) {
+          saved = await state.enqueueWorkflowDraftOperation(async () =>
+            snapshot ? performLocalSync(snapshot, undefined, undefined, true) : null,
+          )
+        } else {
+          await state.enqueueWorkflowDraftOperation(async () => undefined)
+          signal.throwIfAborted()
+          if (workflowStore.getState().appId !== appId)
+            throw new Error(t(($) => $['common.draftSaveFailed']))
+          if (requestLeader) {
+            const generation = workflowStore.getState().workflowDraftGeneration
+            saved = await collaborationManager.requestWorkflowSync()
+            signal.throwIfAborted()
+            if (
+              workflowStore.getState().appId !== appId ||
+              workflowStore.getState().workflowDraftGeneration !== generation
+            )
+              throw new Error(t(($) => $['common.draftSaveFailed']))
+            state.setSyncWorkflowDraftHash(saved.hash)
+            state.setDraftUpdatedAt(saved.updatedAt)
+          }
+        }
+        signal.throwIfAborted()
+        if (workflowStore.getState().appId !== appId)
+          throw new Error(t(($) => $['common.draftSaveFailed']))
+        if (workflowStore.getState().hasWorkflowDraftConflict)
+          throw new Error(t(($) => $['draftConflict.message']))
+        if (shouldSave && !saved) throw new Error(t(($) => $['common.draftSaveFailed']))
+        state.invalidateWorkflowDraftSync()
+        state.setWorkflowDraftSyncPhase('builder')
+      } catch (error) {
+        if (workflowStore.getState().appId === appId) {
+          state.setWorkflowDraftSyncPhase(signal.aborted ? 'builder' : 'idle')
+          if (error instanceof Error && error.message === 'draft_workflow_not_sync') {
+            state.setWorkflowDraftConflict(true)
+            throw new Error(t(($) => $['draftConflict.message']))
+          }
+        }
+        throw error
+      }
+    },
+    [getNodesReadOnly, getPostParams, isCollaborationEnabled, performLocalSync, t, workflowStore],
+  )
+
   return {
     doSyncWorkflowDraft,
+    prepareWorkflowDraftForBuilder,
     syncWorkflowDraftWhenPageClose,
   }
 }

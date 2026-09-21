@@ -36,7 +36,6 @@ const mockSetCurrentLogItem = vi.fn()
 const mockSetShowMessageLogModal = vi.fn()
 const mockSetShowPanel = vi.fn()
 const mockStartFix = vi.fn(async () => true)
-const mockSyncDraft = vi.fn(async () => undefined)
 
 let appStoreState: AppStoreState
 let workflowStoreState: WorkflowStoreState
@@ -169,7 +168,6 @@ const createDifyBuilderRuntime = (enabled: boolean, canEdit: boolean): DifyBuild
   canEdit,
   enabled,
   getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
-  onSyncDraft: mockSyncDraft,
   session: {
     getTrace: vi.fn(() => ({ entries: [], truncated: false })),
     loadOlderConversation: vi.fn(async () => true),
@@ -314,8 +312,7 @@ describe('WorkflowPanel', () => {
     await user.click(await screen.findByRole('button', { name: 'Fix failed run with App Builder' }))
 
     expect(mockSetShowPanel).toHaveBeenCalledWith(true)
-    expect(mockSyncDraft).toHaveBeenCalledTimes(1)
-    expect(mockStartFix).toHaveBeenCalledWith('app-123', 'failed-run-1', undefined)
+    expect(mockStartFix).toHaveBeenCalledExactlyOnceWith('app-123', 'failed-run-1', undefined)
   })
 
   it('should keep run Fix disabled without edit access or while the Builder session is busy', async () => {
