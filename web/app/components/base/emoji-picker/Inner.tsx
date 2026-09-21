@@ -1,14 +1,14 @@
 'use client'
+import type { EmojiPickerListEmojiProps } from 'frimousse'
 import { cn } from '@langgenius/dify-ui/cn'
-import { InputGroup, InputGroupAddon } from '@langgenius/dify-ui/input-group'
-import { Separator } from '@langgenius/dify-ui/separator'
 import { EmojiPicker } from 'frimousse'
 import * as React from 'react'
-import { useState } from 'react'
+import { createContext, use, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveEmoji } from '@/utils/emoji'
 import { basePath } from '@/utils/var'
-import { backgroundColors, defaultEmojiBackground } from './constants'
+import { defaultEmojiBackground, emojiStyles, recommendedEmojis } from './constants'
+import { useRecentEmojisValue } from './storage'
 
 type IEmojiPickerInnerProps = {
   emoji?: string
@@ -17,142 +17,190 @@ type IEmojiPickerInnerProps = {
   className?: string
 }
 
+const emojiButtonClassName =
+  'flex h-8 w-full min-w-0 max-w-8 flex-1 items-center justify-center rounded-lg text-2xl leading-none hover:bg-state-base-hover focus-visible:outline-2 focus-visible:outline-state-accent-solid data-[active]:bg-state-base-hover aria-pressed:ring-[1.5px] aria-pressed:ring-components-option-card-option-selected-border aria-pressed:ring-inset'
+
+const SelectedEmojiContext = createContext('')
+
+function EmojiButton({ emoji, ...props }: EmojiPickerListEmojiProps) {
+  const selectedEmoji = use(SelectedEmojiContext)
+  return (
+    <button
+      {...props}
+      type="button"
+      aria-pressed={selectedEmoji === emoji.emoji}
+      className={emojiButtonClassName}
+    >
+      {emoji.emoji}
+    </button>
+  )
+}
+
 const listComponents: NonNullable<React.ComponentProps<typeof EmojiPicker.List>['components']> = {
   CategoryHeader: ({ category, ...props }) => (
     <div
       {...props}
-      className="bg-components-panel-bg px-3 pb-1 system-xs-medium-uppercase text-text-primary"
+      className="bg-components-panel-bg px-3.5 py-1 system-xs-medium-uppercase text-text-tertiary"
     >
       {category.label}
     </div>
   ),
   Row: ({ children, ...props }) => (
-    <div {...props} className="scroll-my-1 gap-1 px-3 pb-1">
+    <div {...props} className="scroll-my-1 gap-px px-3 pb-px">
       {children}
     </div>
   ),
-  Emoji: ({ emoji, ...props }) => (
-    <button
-      {...props}
-      type="button"
-      className="flex h-10 min-w-0 flex-1 items-center justify-center rounded-lg text-xl focus-visible:outline-2 focus-visible:outline-offset-2 data-[active]:bg-state-base-hover"
-    >
-      {emoji.emoji}
-    </button>
-  ),
+  Emoji: EmojiButton,
 }
 
 function EmojiPickerInner({ emoji, background, onSelect, className }: IEmojiPickerInnerProps) {
   const { t } = useTranslation()
-  const [selectedEmoji, setSelectedEmoji] = useState(() => (emoji ? resolveEmoji(emoji) : ''))
-  const [selectedBackground, setSelectedBackground] = useState(background || defaultEmojiBackground)
-  const [showStyleColors, setShowStyleColors] = useState(!!emoji)
+  const [search, setSearch] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const recentEmojis = useRecentEmojisValue()
+  const selectedEmoji = emoji ? resolveEmoji(emoji) : ''
+  const handleEmojiSelect = (value: string) =>
+    onSelect?.(value, background || defaultEmojiBackground)
 
-  const styleColorsLabelId = React.useId()
-
-  const handleEmojiSelect = (emoji: string) => {
-    setSelectedEmoji(emoji)
-    setShowStyleColors(true)
-    onSelect?.(emoji, selectedBackground)
-  }
-
-  const handleBackgroundSelect = (background: string) => {
-    setSelectedBackground(background)
-    if (selectedEmoji) onSelect?.(selectedEmoji, background)
-  }
+  const renderGroup = (label: string, emojis: string[]) => (
+    <section aria-label={label} className="px-3 pb-2">
+      <h3 className="px-0.5 py-1 system-xs-medium-uppercase text-text-tertiary">{label}</h3>
+      <div className="grid grid-cols-9 gap-px">
+        {emojis.map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-label={value}
+            aria-pressed={selectedEmoji === value}
+            className={emojiButtonClassName}
+            onClick={() => handleEmojiSelect(value)}
+          >
+            {value}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
 
   return (
-    <div className={cn(className, 'flex min-h-0 w-full min-w-0 flex-col')}>
-      <EmojiPicker.Root
-        className="flex min-h-0 flex-1 flex-col"
-        locale="en"
-        columns={8}
-        emojibaseUrl={`${basePath}/emoji/emojibase-17.0.0`}
-        onEmojiSelect={({ emoji }) => handleEmojiSelect(emoji)}
-      >
-        <div className="px-3 pb-2">
-          <InputGroup>
-            <EmojiPicker.Search
-              aria-label={t(($) => $['operation.search'], { ns: 'common' })}
-              placeholder={t(($) => $['operation.search'], { ns: 'common' })}
-              className="h-8 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-hover"
-            />
-            <InputGroupAddon className="ps-3 pe-2">
-              <span
-                className="i-heroicons-magnifying-glass size-5 text-text-quaternary"
-                aria-hidden="true"
-              />
-            </InputGroupAddon>
-          </InputGroup>
+    <EmojiPicker.Root
+      className={cn('flex min-h-0 w-full min-w-0 flex-col', className)}
+      locale="en"
+      columns={9}
+      emojibaseUrl={`${basePath}/emoji/emojibase-17.0.0`}
+      onEmojiSelect={({ emoji }) => handleEmojiSelect(emoji)}
+      onKeyUp={(event) => {
+        if (
+          ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)
+        ) {
+          scrollRef.current
+            ?.querySelector<HTMLElement>('[frimousse-emoji][data-active]')
+            ?.scrollIntoView({ block: 'nearest' })
+        }
+      }}
+    >
+      <div className="shrink-0 border-b border-divider-subtle px-3 pb-2">
+        <div className="flex h-8 items-center gap-1.5 rounded-lg border border-transparent bg-components-input-bg-normal px-2 focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active">
+          <span
+            className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+            aria-hidden="true"
+          />
+          <EmojiPicker.Search
+            aria-label={t(($) => $['iconPicker.search'], { ns: 'app' })}
+            placeholder={t(($) => $['iconPicker.search'], { ns: 'app' })}
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              scrollRef.current?.scrollTo({ top: 0 })
+            }}
+            className="h-full min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 system-sm-regular text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder [&::-webkit-search-cancel-button]:appearance-none"
+          />
         </div>
-        <Separator decorative className="my-3 h-[0.5px]" />
-        <EmojiPicker.Viewport className="relative h-50 min-h-0 w-full overflow-x-hidden overflow-y-auto">
-          <EmojiPicker.Loading className="block p-3 text-text-tertiary">
-            {t(($) => $.loading, { ns: 'common' })}
-          </EmojiPicker.Loading>
-          <EmojiPicker.Empty className="block p-3 text-text-tertiary">
-            {t(($) => $.noData, { ns: 'common' })}
-          </EmojiPicker.Empty>
-          <EmojiPicker.List components={listComponents} />
-        </EmojiPicker.Viewport>
-      </EmojiPicker.Root>
-
-      {/* Color Select */}
-      <div className={cn('flex shrink-0 items-center justify-between p-3 pb-0')}>
-        <p id={styleColorsLabelId} className="mb-2 system-xs-medium-uppercase text-text-primary">
-          Choose Style
-        </p>
-        {showStyleColors ? (
-          <button
-            type="button"
-            aria-labelledby={styleColorsLabelId}
-            aria-expanded="true"
-            className="i-heroicons-chevron-down size-4 cursor-pointer border-none bg-transparent p-0 text-text-quaternary focus-visible:outline-2 focus-visible:outline-offset-2"
-            onClick={() => setShowStyleColors(!showStyleColors)}
-          />
-        ) : (
-          <button
-            type="button"
-            aria-labelledby={styleColorsLabelId}
-            aria-expanded="false"
-            className="i-heroicons-chevron-up size-4 cursor-pointer border-none bg-transparent p-0 text-text-quaternary focus-visible:outline-2 focus-visible:outline-offset-2"
-            onClick={() => setShowStyleColors(!showStyleColors)}
-          />
-        )}
       </div>
-      {showStyleColors && (
-        <div className="grid w-full shrink-0 grid-cols-8 gap-1 px-3">
-          {backgroundColors.map((color) => {
-            return (
-              <button
-                type="button"
-                key={color}
-                aria-label={color}
-                className={cn(
-                  'cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2',
-                  'border-none bg-transparent p-0',
-                  'ring-components-input-border-hover ring-offset-1 hover:ring-1',
-                  'inline-flex h-10 w-full min-w-0 items-center justify-center rounded-lg',
-                  color === selectedBackground ? 'ring-1 ring-components-input-border-hover' : '',
+      <div
+        ref={scrollRef}
+        role="region"
+        aria-label={t(($) => $['iconPicker.emoji'], { ns: 'app' })}
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
+        style={{ scrollbarWidth: 'none' }}
+      >
+        <div className="py-2">
+          {!search && (
+            <div className="shrink-0">
+              {!!recentEmojis.length &&
+                renderGroup(
+                  t(($) => $['iconPicker.recent'], { ns: 'app' }),
+                  recentEmojis,
                 )}
-                onClick={() => {
-                  handleBackgroundSelect(color)
-                }}
+              {renderGroup(
+                t(($) => $['iconPicker.recommend'], { ns: 'app' }),
+                recommendedEmojis,
+              )}
+            </div>
+          )}
+          <EmojiPicker.Viewport
+            className="relative w-full"
+            // The outer scroller owns all groups; let this viewport grow with its list.
+            style={{
+              contain: 'none',
+              containIntrinsicSize: 'none',
+              overflow: 'visible',
+              scrollbarGutter: 'auto',
+              willChange: 'auto',
+            }}
+          >
+            <EmojiPicker.Loading className="block p-3 text-text-tertiary">
+              {t(($) => $.loading, { ns: 'common' })}
+            </EmojiPicker.Loading>
+            <EmojiPicker.Empty className="block p-3 text-text-tertiary">
+              {t(($) => $.noData, { ns: 'common' })}
+            </EmojiPicker.Empty>
+            <SelectedEmojiContext value={selectedEmoji}>
+              <EmojiPicker.List components={listComponents} />
+            </SelectedEmojiContext>
+          </EmojiPicker.Viewport>
+        </div>
+      </div>
+      {selectedEmoji && (
+        <section
+          aria-label={t(($) => $['iconPicker.chooseStyle'], { ns: 'app' })}
+          className="shrink-0 border-t border-divider-subtle bg-components-panel-bg-blur px-3 pt-2 pb-3 backdrop-blur-sm"
+        >
+          <h3 className="px-0.5 py-1 system-xs-semibold-uppercase text-text-primary">
+            {t(($) => $['iconPicker.chooseStyle'], { ns: 'app' })}
+          </h3>
+          <div className="grid grid-cols-6 justify-items-center gap-0.75 pt-0.5">
+            {emojiStyles.map((style) => (
+              <button
+                key={style.background}
+                type="button"
+                aria-label={style.background}
+                aria-pressed={
+                  (background || defaultEmojiBackground).toUpperCase() === style.background
+                }
+                className={cn(
+                  'flex aspect-square w-full max-w-11.5 items-center justify-center rounded-xl p-0.75 ring-inset focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid',
+                  (background || defaultEmojiBackground).toUpperCase() === style.background && [
+                    'ring-[1.5px]',
+                    style.selectedClassName,
+                  ],
+                )}
+                onClick={() => onSelect?.(selectedEmoji, style.background)}
               >
                 <span
                   className={cn(
-                    'flex size-8 max-w-full items-center justify-center rounded-lg p-1 text-xl',
+                    'flex aspect-square w-full items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular text-2xl leading-none',
+                    style.backgroundClassName,
                   )}
-                  style={{ background: color }}
                 >
                   {selectedEmoji}
                 </span>
               </button>
-            )
-          })}
-        </div>
+            ))}
+          </div>
+        </section>
       )}
-    </div>
+    </EmojiPicker.Root>
   )
 }
 export default EmojiPickerInner
