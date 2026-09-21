@@ -22,6 +22,16 @@ MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
     "insert_between": ("edge", "node_type", "config"),
 }
 
+# Args that name a node. An LLM occasionally emits these as ints or empty
+# strings; unchecked they reach diff_graphs, which drops falsy/non-str ids
+# from its node maps, and then crash build_change_set's join (ESQ1-271).
+_NODE_ID_ARGS = ("node_id", "from_node", "to_node")
+
+# `path` reaches _resolve_path's str.split; a non-string raises AttributeError
+# there, so the rejection reason the repair agent reads is a Python internals
+# message instead of an actionable one.
+_STRING_ARGS = ("path",)
+
 
 def validate_intent_args(intent: MutationIntent) -> None:
     """Raise ``ValueError`` if ``intent.args`` is missing a required key for
@@ -35,6 +45,20 @@ def validate_intent_args(intent: MutationIntent) -> None:
     missing = [key for key in required if key not in intent.args]
     if missing:
         raise ValueError(f"missing required arg(s) {missing} for op {intent.op!r}")
+
+    for key in _NODE_ID_ARGS:
+        if key not in intent.args:
+            continue
+        value = intent.args[key]
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{key} must be a non-empty string for op {intent.op!r}, got {value!r}")
+
+    for key in _STRING_ARGS:
+        if key not in intent.args:
+            continue
+        value = intent.args[key]
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{key} must be a non-empty string for op {intent.op!r}, got {value!r}")
 
 
 def _resolve_path(container: dict[str, Any], path: str) -> tuple[Any, str | int]:

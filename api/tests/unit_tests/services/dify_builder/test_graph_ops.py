@@ -645,3 +645,30 @@ def test_filter_applicable_rejects_a_bad_path_with_a_reason():
     assert applicable == []
     assert len(rejected) == 1
     assert "out of range" in rejected[0][1]
+
+
+@pytest.mark.parametrize(
+    ("op", "args"),
+    [
+        ("set_node_config", {"node_id": 5, "path": "code", "value": "x"}),
+        ("delete_node", {"node_id": ""}),
+        ("connect", {"from_node": "n1", "to_node": 2}),
+        ("connect", {"from_node": None, "to_node": "n2"}),
+    ],
+)
+def test_validate_intent_args_rejects_a_non_string_node_id(op, args):
+    with pytest.raises(ValueError, match="must be a non-empty string"):
+        validate_intent_args(MutationIntent(op=op, args=args))
+
+
+def test_validate_intent_args_still_accepts_string_node_ids():
+    validate_intent_args(MutationIntent(op="connect", args={"from_node": "n1", "to_node": "n2"}))
+    validate_intent_args(MutationIntent(op="delete_node", args={"node_id": "n1"}))
+
+
+@pytest.mark.parametrize("bad_path", [5, "", None, ["cases", 0]])
+def test_validate_intent_args_rejects_a_non_string_path(bad_path):
+    with pytest.raises(ValueError, match="must be a non-empty string"):
+        validate_intent_args(
+            MutationIntent(op="set_node_config", args={"node_id": "n1", "path": bad_path, "value": "x"})
+        )
