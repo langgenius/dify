@@ -281,6 +281,11 @@ class WorkflowResponseConverter:
         outputs_mapping = graph_runtime_state.outputs or {}
         encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
 
+        # `total_tokens` mirrors the runtime scalar, but the input/output split lives only
+        # in the aggregated `llm_usage`, which graphon maintains alongside it. Surface both
+        # so workflow apps expose prompt/completion tokens like chatflow's `usage` does.
+        llm_usage = graph_runtime_state.llm_usage
+
         created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
         match user:
@@ -307,6 +312,8 @@ class WorkflowResponseConverter:
                 error=error,
                 elapsed_time=elapsed_time,
                 total_tokens=graph_runtime_state.total_tokens,
+                prompt_tokens=llm_usage.prompt_tokens,
+                completion_tokens=llm_usage.completion_tokens,
                 total_steps=graph_runtime_state.node_run_steps,
                 created_by=created_by,
                 created_at=int(started_at.timestamp()),
