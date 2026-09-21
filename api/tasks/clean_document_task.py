@@ -34,7 +34,7 @@ def clean_document_task(
     """
     logger.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
-    total_attachment_files = []
+    total_attachment_files: list[str] = []
     vector_cleanup_succeeded = False
 
     with session_factory.create_session() as session:
@@ -59,7 +59,9 @@ def clean_document_task(
 
             attachment_ids = [attachment_file.id for _, attachment_file in attachments_with_bindings]
             binding_ids = [binding.id for binding, _ in attachments_with_bindings]
-            total_attachment_files.extend([attachment_file.key for _, attachment_file in attachments_with_bindings])
+            attachment_keys_by_id = {
+                attachment_file.id: attachment_file.key for _, attachment_file in attachments_with_bindings
+            }
 
             index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             segment_contents = [segment.content for segment in segments]
@@ -135,14 +137,52 @@ def clean_document_task(
                 session.delete(file)
 
     with session_factory.create_session() as session, session.begin():
-        # delete segment attachments
-        if attachment_ids:
-            attachment_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(attachment_ids))
-            session.execute(attachment_file_delete_stmt)
-
+        # Drop this document's bindings first, then keep only the attachments that no other
+        # document still references. The same UploadFile may be bound to segments of several
+        # documents, so deleting every attachment of this document would break those.
+        # Mirrors delete_segment_from_index_task / document_indexing_update_task.
         if binding_ids:
             binding_delete_stmt = delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.id.in_(binding_ids))
             session.execute(binding_delete_stmt)
+            session.flush()
+
+        if attachment_ids:
+            remaining_attachment_ids = set(
+                session.scalars(
+                    select(SegmentAttachmentBinding.attachment_id).where(
+                        SegmentAttachmentBinding.attachment_id.in_(attachment_ids)
+                    )
+                ).all()
+            )
+            orphan_attachment_ids = [
+                attachment_id for attachment_id in attachment_ids if attachment_id not in remaining_attachment_ids
+            ]
+
+            if orphan_attachment_ids:
+                total_attachment_files.extend(
+                    key for key in (attachment_keys_by_id.get(a_id) for a_id in orphan_attachment_ids) if key
+                )
+                # Attachment vectors are written under doc_id == UploadFile.id, so they are not
+                # covered by the segment index_node_ids cleaned above and have to be removed here.
+                attachment_dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+                if attachment_dataset:
+                    try:
+                        IndexProcessorFactory(doc_form).init_index_processor().clean(
+                            attachment_dataset,
+                            orphan_attachment_ids,
+                            with_keywords=False,
+                            session=session,
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Failed to clean attachment vectors in clean_document_task, "
+                            "document_id=%s, dataset_id=%s, orphan_attachment_ids_count=%d. "
+                            "Continuing with PG / storage cleanup; vector orphans can be reaped later.",
+                            document_id,
+                            dataset_id,
+                            len(orphan_attachment_ids),
+                        )
+                session.execute(delete(UploadFile).where(UploadFile.id.in_(orphan_attachment_ids)))
 
     for attachment_file_key in total_attachment_files:
         try:
