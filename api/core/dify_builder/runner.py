@@ -20,7 +20,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 """
 
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -39,7 +39,6 @@ from core.dify_builder.models import (
     Checkpoint,
     ConversationItem,
     DifyBuilderContext,
-    NodeEvent,
     Run,
     Session,
     Snapshot,
@@ -80,10 +79,9 @@ class Env:
     agent: DifyBuilderAgent
     repo: Repository
     now: Callable[[], datetime]
-    # Emit forwards live progress (node events) during a working step. The
-    # usecase sets it per-Advance to publish to the session broadcaster; None
-    # is treated as a no-op.
-    emit: Callable[[NodeEvent], None] | None = None
+    # Forward native workflow events unchanged. Node summaries remain local to
+    # the progress reporter; the frontend consumes the full execution stream.
+    emit_workflow: Callable[[Mapping[str, object]], None] | None = None
     # Emit forwards granular canvas mutations (add_*_node, apply_error_fix,
     # ...) as each MutationIntent is applied. None is treated as a no-op --
     # the caller (a handler) decides whether to wire it (opt-in, spec Sec 6):

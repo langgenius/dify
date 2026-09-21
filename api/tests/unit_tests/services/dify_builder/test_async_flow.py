@@ -93,7 +93,20 @@ def _wire(monkeypatch, repo: SqlDifyBuilderRepository) -> tuple[DifyBuilderServi
     and the real (faked-Redis) session_lock module."""
     monkeypatch.setattr(session_lock, "redis_client", _FakeRedis())  # real lock module, faked redis (shared)
     monkeypatch.setattr(task_mod, "_build_repo", lambda: repo)  # task uses the SAME repo
-    monkeypatch.setattr(task_mod, "WorkflowServiceDifyPort", FakeDifyPort)
+
+    def make_port():
+        port = FakeDifyPort()
+        port.workflow_events = [
+            {
+                "event": "workflow_started",
+                "task_id": "task-1",
+                "workflow_run_id": "dify-run-1",
+                "data": {"id": "dify-run-1", "workflow_id": "workflow-1", "inputs": {}, "created_at": 1},
+            }
+        ]
+        return port
+
+    monkeypatch.setattr(task_mod, "WorkflowServiceDifyPort", make_port)
     monkeypatch.setattr(task_mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
     monkeypatch.setattr(
         service_mod,
@@ -151,9 +164,9 @@ def test_full_fix_flow_create_to_publish_success_eager_async(monkeypatch, repo: 
     stored, _fc = repo.get_session(sid)
     assert stored.current_state == PcState.SUCCESS
 
-    # the bus received both node events (from the provide_testdata -> fix.verify
+    # the bus received both native workflow events (from provide_testdata -> fix.verify
     # draft run) and terminal state events across the whole flow.
-    assert any(ev.get("kind") == "node" for _sid, ev in events)
+    assert any(ev.get("kind") == "workflow" for _sid, ev in events)
     assert any(ev.get("kind") == "state" for _sid, ev in events)
 
     # the lock was acquired-then-released on every dispatch, including the

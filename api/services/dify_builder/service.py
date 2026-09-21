@@ -229,7 +229,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
         UiAction(id="provide_testdata", label="Provide test data", kind=ActionKind.PRIMARY),
     ],
     PcState.BUILD_AWAIT_REPAIR: [
-        UiAction(id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY, next_state="build.test_and_repair"),
+        UiAction(id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY, next_state="build.execution"),
         UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY, next_state="build.review"),
         UiAction(
             id="revert",
@@ -314,9 +314,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
         UiAction(id="provide_testdata", label="Provide test data", kind=ActionKind.PRIMARY),
     ],
     PcState.EDIT_AWAIT_REPAIR: [
-        UiAction(
-            id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY, next_state="edit.test_affected_paths"
-        ),
+        UiAction(id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY, next_state="edit.apply_changes"),
         UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY, next_state="edit.review"),
         UiAction(
             id="revert",

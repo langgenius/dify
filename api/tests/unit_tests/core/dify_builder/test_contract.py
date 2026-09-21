@@ -399,18 +399,28 @@ def test_sse_union_accepts_current_payloads():
     events = [
         {"event": "command_started", "data": {"kind": "command_started", **view}},
         {
-            "event": "node",
+            "event": "workflow",
             "data": {
-                "kind": "node",
+                "kind": "workflow",
                 "session_id": "s1",
                 "operation_id": "operation-1",
                 "stage_id": "edit.impact_analysis",
                 "at_version": 3,
                 "revision": 2,
-                "node_id": "n1",
-                "title": "LLM",
-                "status": "running",
-                "error": "",
+                "payload": {
+                    "event": "node_started",
+                    "task_id": "task-1",
+                    "workflow_run_id": "run-1",
+                    "data": {
+                        "id": "exec-1",
+                        "node_id": "n1",
+                        "node_type": "llm",
+                        "title": "LLM",
+                        "index": 1,
+                        "created_at": 1,
+                        "inputs": {"query": "hello"},
+                    },
+                },
             },
         },
         {

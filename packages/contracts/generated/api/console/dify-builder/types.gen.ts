@@ -15,8 +15,8 @@ export type DifyBuilderStreamEventResponse =
       event: 'command_started'
     } & DifyBuilderCommandStartedEventResponse)
   | ({
-      event: 'node'
-    } & DifyBuilderNodeEventResponse)
+      event: 'workflow'
+    } & DifyBuilderWorkflowEventResponse)
   | ({
       event: 'canvas'
     } & DifyBuilderCanvasEventResponse)
@@ -174,9 +174,9 @@ export type DifyBuilderCommandStartedEventResponse = {
   event: 'command_started'
 }
 
-export type DifyBuilderNodeEventResponse = {
-  data: NodeEventData
-  event: 'node'
+export type DifyBuilderWorkflowEventResponse = {
+  data: DifyBuilderWorkflowEventData
+  event: 'workflow'
 }
 
 export type DifyBuilderCanvasEventResponse = {
@@ -492,21 +492,94 @@ export type DifyBuilderCommandStartedEventData = {
   version: number
 }
 
-export type NodeEventData = {
+export type DifyBuilderWorkflowEventData = {
   at_version: number
-  error: string
-  kind?: 'node'
-  node_id: string
+  kind?: 'workflow'
   operation_id: string
+  payload:
+    | ({
+        event: 'workflow_started'
+      } & WorkflowStreamEventLiteralWorkflowStartedData)
+    | ({
+        event: 'workflow_finished'
+      } & WorkflowStreamEventLiteralWorkflowFinishedData)
+    | ({
+        event: 'workflow_paused'
+      } & WorkflowStreamEventLiteralWorkflowPausedData)
+    | ({
+        event: 'node_started'
+      } & WorkflowStreamEventLiteralNodeStartedData)
+    | ({
+        event: 'node_finished'
+      } & WorkflowStreamEventLiteralNodeFinishedData)
+    | ({
+        event: 'node_retry'
+      } & WorkflowStreamEventLiteralNodeRetryData)
+    | ({
+        event: 'iteration_started'
+      } & WorkflowStreamEventLiteralIterationStartedData)
+    | ({
+        event: 'iteration_next'
+      } & WorkflowStreamEventLiteralIterationNextData)
+    | ({
+        event: 'iteration_completed'
+      } & WorkflowStreamEventLiteralIterationCompletedData)
+    | ({
+        event: 'loop_started'
+      } & WorkflowStreamEventLiteralLoopStartedData)
+    | ({
+        event: 'loop_next'
+      } & WorkflowStreamEventLiteralLoopNextData)
+    | ({
+        event: 'loop_completed'
+      } & WorkflowStreamEventLiteralLoopCompletedData)
+    | ({
+        event: 'text_chunk'
+      } & WorkflowStreamDataEventLiteralTextChunkData)
+    | ({
+        event: 'text_replace'
+      } & WorkflowStreamDataEventLiteralTextReplaceData)
+    | ({
+        event: 'reasoning_chunk'
+      } & WorkflowStreamDataEventLiteralReasoningChunkData)
+    | ({
+        event: 'agent_log'
+      } & WorkflowStreamDataEventLiteralAgentLogData)
+    | ({
+        event: 'human_input_required'
+      } & WorkflowStreamEventLiteralHumanInputRequiredData)
+    | ({
+        event: 'human_input_form_filled'
+      } & WorkflowStreamEventLiteralHumanInputFormFilledData)
+    | ({
+        event: 'human_input_form_timeout'
+      } & WorkflowStreamEventLiteralHumanInputFormTimeoutData)
+    | ({
+        event: 'tts_message' | 'tts_message_end'
+      } & WorkflowStreamAudio)
+    | ({
+        event: 'message'
+      } & WorkflowStreamMessage)
+    | ({
+        event: 'message_end'
+      } & WorkflowStreamMessageEnd)
+    | ({
+        event: 'message_file'
+      } & WorkflowStreamMessageFile)
+    | ({
+        event: 'message_replace'
+      } & WorkflowStreamMessageReplace)
+    | ({
+        event: 'error'
+      } & WorkflowStreamError)
   revision: number
   session_id: string
   stage_id: string
-  status: string
-  title: string
 }
 
 export type CanvasEventData = {
   at_version: number
+  dify_run_id?: string
   edge?: CanvasEdge | null
   event: CanvasEvent
   kind?: 'canvas'
@@ -717,7 +790,6 @@ export type ChallengeCard = {
 }
 
 export type ResourceSelectCard = {
-  conflict_policy_options?: Array<ConflictPolicyOption>
   recommended?: Array<ResourceOption>
 }
 
@@ -735,6 +807,8 @@ export type ChangeSetCard = {
 }
 
 export type TestResultCard = {
+  dify_run_id?: string
+  output?: string
   run_ids?: Array<string>
   stats?: Array<TestStat>
   subtitle: string
@@ -767,6 +841,220 @@ export type PublishCard = {
 export type BuildLearningCard = {
   policy: string
   state: string
+}
+
+export type WorkflowStreamEventLiteralWorkflowStartedData = {
+  data: CoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData
+  event: 'workflow_started'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralWorkflowFinishedData = {
+  data: CoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData
+  event: 'workflow_finished'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralWorkflowPausedData = {
+  data: CoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData
+  event: 'workflow_paused'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralNodeStartedData = {
+  data: CoreAppEntitiesTaskEntitiesNodeStartStreamResponseData
+  event: 'node_started'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralNodeFinishedData = {
+  data: CoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData
+  event: 'node_finished'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralNodeRetryData = {
+  data: CoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData
+  event: 'node_retry'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralIterationStartedData = {
+  data: CoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData
+  event: 'iteration_started'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralIterationNextData = {
+  data: CoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData
+  event: 'iteration_next'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralIterationCompletedData = {
+  data: CoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData
+  event: 'iteration_completed'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralLoopStartedData = {
+  data: CoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData
+  event: 'loop_started'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralLoopNextData = {
+  data: CoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData
+  event: 'loop_next'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralLoopCompletedData = {
+  data: CoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData
+  event: 'loop_completed'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamDataEventLiteralTextChunkData = {
+  data: CoreAppEntitiesTaskEntitiesTextChunkStreamResponseData
+  event: 'text_chunk'
+  task_id: string
+  workflow_run_id?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowStreamDataEventLiteralTextReplaceData = {
+  data: CoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData
+  event: 'text_replace'
+  task_id: string
+  workflow_run_id?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowStreamDataEventLiteralReasoningChunkData = {
+  data: CoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData
+  event: 'reasoning_chunk'
+  task_id: string
+  workflow_run_id?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowStreamDataEventLiteralAgentLogData = {
+  data: CoreAppEntitiesTaskEntitiesAgentLogStreamResponseData
+  event: 'agent_log'
+  task_id: string
+  workflow_run_id?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralHumanInputRequiredData = {
+  data: CoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData
+  event: 'human_input_required'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralHumanInputFormFilledData = {
+  data: CoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData
+  event: 'human_input_form_filled'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamEventLiteralHumanInputFormTimeoutData = {
+  data: CoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData
+  event: 'human_input_form_timeout'
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowStreamAudio = {
+  audio: string
+  audio_type?: string | null
+  event: 'tts_message' | 'tts_message_end'
+  task_id: string
+  workflow_run_id?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowStreamMessage = {
+  answer: string
+  event: 'message'
+  from_variable_selector?: Array<string>
+  id: string
+  task_id: string
+  workflow_run_id?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowStreamMessageEnd = {
+  event: 'message_end'
+  files?: Array<{
+    [key: string]: unknown
+  }>
+  id: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  task_id: string
+  workflow_run_id?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowStreamMessageFile = {
+  belongs_to: string
+  event: 'message_file'
+  id: string
+  task_id: string
+  type: string
+  url: string
+  workflow_run_id?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowStreamMessageReplace = {
+  answer: string
+  event: 'message_replace'
+  reason: string
+  task_id: string
+  workflow_run_id?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowStreamError = {
+  code: string
+  event: 'error'
+  message: string
+  status: number
+  workflow_run_id?: string | null
+  [key: string]: unknown
 }
 
 export type CanvasEdge = {
@@ -839,12 +1127,6 @@ export type FormField = {
   unit?: string | null
 }
 
-export type ConflictPolicyOption = {
-  id: string
-  label: string
-  recommended?: boolean
-}
-
 export type ResourceOption = {
   id: string
   kind: string
@@ -868,6 +1150,329 @@ export type SummaryRow = {
   value: string
 }
 
+export type CoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = {
+  created_at: number
+  id: string
+  inputs: {
+    [key: string]: unknown
+  }
+  reason?: WorkflowStartReason
+  workflow_id: string
+}
+
+export type CoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData = {
+  created_at: number
+  created_by?: {
+    [key: string]: unknown
+  }
+  elapsed_time: number
+  error?: string | null
+  exceptions_count?: number
+  files?: Array<{
+    [key: string]: unknown
+  }> | null
+  finished_at: number | null
+  id: string
+  outputs?: {
+    [key: string]: unknown
+  } | null
+  status: WorkflowExecutionStatus
+  total_steps: number
+  total_tokens: number
+  workflow_id: string
+}
+
+export type CoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData = {
+  created_at: number
+  elapsed_time: number
+  outputs?: {
+    [key: string]: unknown
+  }
+  paused_nodes?: Array<string>
+  reasons?: Array<{
+    [key: string]: unknown
+  }>
+  status: WorkflowExecutionStatus
+  total_steps: number
+  total_tokens: number
+  workflow_run_id: string
+}
+
+export type CoreAppEntitiesTaskEntitiesNodeStartStreamResponseData = {
+  agent_strategy?: AgentStrategyInfo | null
+  created_at: number
+  extras?: {
+    [key: string]: unknown
+  }
+  id: string
+  index: number
+  inputs?: {
+    [key: string]: unknown
+  } | null
+  inputs_truncated?: boolean
+  iteration_id?: string | null
+  loop_id?: string | null
+  node_id: string
+  node_type: string
+  predecessor_node_id?: string | null
+  title: string
+}
+
+export type CoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData = {
+  created_at: number
+  elapsed_time: number
+  error?: string | null
+  execution_metadata?:
+    | {
+        [key in WorkflowNodeExecutionMetadataKey]?: unknown
+      }
+    | null
+  files?: Array<{
+    [key: string]: unknown
+  }> | null
+  finished_at: number
+  id: string
+  index: number
+  inputs?: {
+    [key: string]: unknown
+  } | null
+  inputs_truncated?: boolean
+  iteration_id?: string | null
+  loop_id?: string | null
+  node_id: string
+  node_type: string
+  outputs?: {
+    [key: string]: unknown
+  } | null
+  outputs_truncated?: boolean
+  predecessor_node_id?: string | null
+  process_data?: {
+    [key: string]: unknown
+  } | null
+  process_data_truncated?: boolean
+  status: WorkflowNodeExecutionStatus
+  title: string
+}
+
+export type CoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData = {
+  created_at: number
+  elapsed_time: number
+  error?: string | null
+  execution_metadata?:
+    | {
+        [key in WorkflowNodeExecutionMetadataKey]?: unknown
+      }
+    | null
+  files?: Array<{
+    [key: string]: unknown
+  }> | null
+  finished_at: number
+  id: string
+  index: number
+  inputs?: {
+    [key: string]: unknown
+  } | null
+  inputs_truncated?: boolean
+  iteration_id?: string | null
+  loop_id?: string | null
+  node_id: string
+  node_type: string
+  outputs?: {
+    [key: string]: unknown
+  } | null
+  outputs_truncated?: boolean
+  predecessor_node_id?: string | null
+  process_data?: {
+    [key: string]: unknown
+  } | null
+  process_data_truncated?: boolean
+  retry_index?: number
+  status: WorkflowNodeExecutionStatus
+  title: string
+}
+
+export type CoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData = {
+  created_at: number
+  extras?: {
+    [key: string]: unknown
+  }
+  id: string
+  inputs?: {
+    [key: string]: unknown
+  }
+  inputs_truncated?: boolean
+  metadata?: {
+    [key: string]: unknown
+  }
+  node_id: string
+  node_type: string
+  title: string
+}
+
+export type CoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData = {
+  created_at: number
+  extras?: {
+    [key: string]: unknown
+  }
+  id: string
+  index: number
+  node_id: string
+  node_type: string
+  title: string
+}
+
+export type CoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData = {
+  created_at: number
+  elapsed_time: number
+  error?: string | null
+  execution_metadata?: {
+    [key: string]: unknown
+  }
+  extras?: {
+    [key: string]: unknown
+  } | null
+  finished_at: number
+  id: string
+  inputs?: {
+    [key: string]: unknown
+  } | null
+  inputs_truncated?: boolean
+  node_id: string
+  node_type: string
+  outputs?: {
+    [key: string]: unknown
+  } | null
+  outputs_truncated?: boolean
+  status: WorkflowNodeExecutionStatus
+  steps: number
+  title: string
+  total_tokens: number
+}
+
+export type CoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData = {
+  created_at: number
+  extras?: {
+    [key: string]: unknown
+  }
+  id: string
+  inputs?: {
+    [key: string]: unknown
+  }
+  inputs_truncated?: boolean
+  metadata?: {
+    [key: string]: unknown
+  }
+  node_id: string
+  node_type: string
+  title: string
+}
+
+export type CoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData = {
+  created_at: number
+  extras?: {
+    [key: string]: unknown
+  }
+  id: string
+  index: number
+  node_id: string
+  node_type: string
+  pre_loop_output?: unknown
+  title: string
+}
+
+export type CoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData = {
+  created_at: number
+  elapsed_time: number
+  error?: string | null
+  execution_metadata?: {
+    [key: string]: unknown
+  }
+  extras?: {
+    [key: string]: unknown
+  } | null
+  finished_at: number
+  id: string
+  inputs?: {
+    [key: string]: unknown
+  } | null
+  inputs_truncated?: boolean
+  node_id: string
+  node_type: string
+  outputs?: {
+    [key: string]: unknown
+  } | null
+  outputs_truncated?: boolean
+  status: WorkflowNodeExecutionStatus
+  steps: number
+  title: string
+  total_tokens: number
+}
+
+export type CoreAppEntitiesTaskEntitiesTextChunkStreamResponseData = {
+  from_variable_selector?: Array<string> | null
+  text: string
+}
+
+export type CoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData = {
+  text: string
+}
+
+export type CoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData = {
+  is_final?: boolean
+  message_id?: string | null
+  node_id?: string | null
+  reasoning: string
+}
+
+export type CoreAppEntitiesTaskEntitiesAgentLogStreamResponseData = {
+  data: {
+    [key: string]: unknown
+  }
+  error?: string | null
+  id: string
+  label: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  node_execution_id: string
+  node_id: string
+  parent_id?: string | null
+  status: string
+}
+
+export type CoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = {
+  actions?: Array<UserActionConfig>
+  approval_channels?: Array<string>
+  display_in_ui?: boolean
+  expiration_time: number
+  form_content: string
+  form_id: string
+  form_token?: string | null
+  inputs?: Array<FormInputConfig>
+  node_id: string
+  node_title: string
+  resolved_default_values?: {
+    [key: string]: unknown
+  }
+}
+
+export type CoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData = {
+  action_id: string
+  action_text: string
+  node_id: string
+  node_title: string
+  rendered_content: string
+  submitted_data?: {
+    [key: string]: unknown
+  } | null
+}
+
+export type CoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData = {
+  expiration_time: number
+  node_id: string
+  node_title: string
+}
+
 export type ExecutionActivity = {
   id: string
   kind?: 'node' | 'stage'
@@ -875,6 +1480,124 @@ export type ExecutionActivity = {
   parent_id?: string | null
   state: 'active' | 'done' | 'failed' | 'stopped'
 }
+
+export type WorkflowStartReason = 'initial' | 'resumption'
+
+export type WorkflowExecutionStatus =
+  | 'failed'
+  | 'partial-succeeded'
+  | 'paused'
+  | 'running'
+  | 'scheduled'
+  | 'stopped'
+  | 'succeeded'
+
+export type AgentStrategyInfo = {
+  icon?: string | null
+  name: string
+}
+
+export type WorkflowNodeExecutionMetadataKey =
+  | 'agent_log'
+  | 'completed_reason'
+  | 'currency'
+  | 'datasource_info'
+  | 'error_strategy'
+  | 'iteration_duration_map'
+  | 'iteration_id'
+  | 'iteration_index'
+  | 'loop_duration_map'
+  | 'loop_id'
+  | 'loop_index'
+  | 'loop_variable_map'
+  | 'parallel_id'
+  | 'parallel_mode_run_id'
+  | 'parallel_start_node_id'
+  | 'parent_parallel_id'
+  | 'parent_parallel_start_node_id'
+  | 'tool_info'
+  | 'total_price'
+  | 'total_tokens'
+  | 'trigger_info'
+
+export type WorkflowNodeExecutionStatus =
+  | 'exception'
+  | 'failed'
+  | 'paused'
+  | 'pending'
+  | 'retry'
+  | 'running'
+  | 'stopped'
+  | 'succeeded'
+
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type FormInputConfig =
+  | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+  | ({
+      type: 'select'
+    } & SelectInputConfig)
+  | ({
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
+}
+
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
+}
+
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type ValueSourceType = 'constant' | 'variable'
 
 export type PostDifyBuilderAgentPingData = {
   body?: never

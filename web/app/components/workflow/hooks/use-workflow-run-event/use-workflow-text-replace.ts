@@ -7,10 +7,8 @@ export const useWorkflowTextReplace = () => {
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowTextReplace = useCallback(
-    (params: TextReplaceResponse) => {
-      const {
-        data: { text },
-      } = params
+    (params: TextReplaceResponse | { answer: string }) => {
+      const text = 'answer' in params ? params.answer : params.data.text
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
       setWorkflowRunningData(
         produce(workflowRunningData!, (draft) => {
