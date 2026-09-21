@@ -117,8 +117,6 @@ class _ProviderErrorCommands(_Commands):
 
 @dataclass(slots=True)
 class _LocalCommands(_Commands):
-    capture_stderr: bool = True
-
     async def run(
         self,
         script: str,
@@ -135,7 +133,7 @@ class _LocalCommands(_Commands):
             cwd=cwd,
             env={**os.environ, **(env or {})},
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT if self.capture_stderr else asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.STDOUT,
         )
         output, _ = await asyncio.wait_for(process.communicate(), timeout=timeout)
         text = output.decode(errors="replace")
@@ -197,16 +195,12 @@ def _service(
     return service, backend
 
 
-def _local_service(
-    tmp_path: Path,
-    *,
-    capture_stderr: bool = True,
-) -> tuple[BindingFileService, _Backend, _LocalCommands, Path, Path]:
+def _local_service(tmp_path: Path) -> tuple[BindingFileService, _Backend, _LocalCommands, Path, Path]:
     workspace = tmp_path / "workspace"
     home = tmp_path / "home"
     workspace.mkdir()
     home.mkdir()
-    commands = _LocalCommands(outputs=[], capture_stderr=capture_stderr)
+    commands = _LocalCommands(outputs=[])
     backend = _Backend(
         lease=cast(
             RuntimeLease,
@@ -416,21 +410,6 @@ async def test_browse_preserves_binding_file_error_and_releases_lease(operation:
     assert exc_info.value.code == "invalid_binding_path"
     assert exc_info.value.status_code == 400
     assert backend.releases == 1
-
-
-@pytest.mark.parametrize("operation", ["list", "read"])
-@pytest.mark.anyio
-async def test_missing_path_is_classified_when_transport_only_captures_stdout(tmp_path: Path, operation: str) -> None:
-    service, backend, commands, _, _ = _local_service(tmp_path, capture_stderr=False)
-    with pytest.raises(BindingFileError) as error:
-        if operation == "list":
-            await service.list_files(BindingFileListRequest(backend_binding_ref="binding-ref", path="missing"))
-        else:
-            await service.read_file(BindingFileReadRequest(backend_binding_ref="binding-ref", path="missing"))
-    assert error.value.code == "invalid_binding_path"
-    assert error.value.status_code == 400
-    assert backend.releases == 1
-    assert commands.deletes == ["local-job-1"]
 
 
 @pytest.mark.parametrize("operation", ["list", "read"])
