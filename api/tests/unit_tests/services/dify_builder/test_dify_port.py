@@ -674,7 +674,15 @@ def _node_exec() -> SimpleNamespace:
 
 
 def test_run_draft_streams_node_events_while_the_run_is_still_going(mock_session: MagicMock):
-    """The point of streaming: the callback fires per event, not once at the end."""
+    """The stream-consumption path: when handed an event stream, the callback
+    fires per event rather than once at the end.
+
+    NOTE: production no longer asks for a stream -- ``run_draft`` runs inside a
+    Celery task and streaming mode would enqueue a second Celery task and block
+    on it, deadlocking the worker (see
+    ``test_run_draft_does_not_enqueue_a_second_celery_task``). This path is kept
+    and tested so it stays correct for a future consumer that is NOT a worker,
+    which is what live node streaming to the frontend will need."""
     account = SimpleNamespace(id="acc-1")
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
@@ -705,7 +713,7 @@ def test_run_draft_streams_node_events_while_the_run_is_still_going(mock_session
     assert kwargs["user"] is account
     assert kwargs["args"] == {"inputs": {"q": "hi"}}
     assert kwargs["invoke_from"] == InvokeFrom.DEBUGGER
-    assert kwargs["streaming"] is True
+    assert kwargs["streaming"] is False  # see the docstring: never True from a worker
     assert kwargs["session"] is mock_session
 
     # Ping frames and workflow-level frames produce no node event.
@@ -1022,3 +1030,77 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
 
 def test_workflow_service_dify_port_conforms_to_dify_port_protocol():
     assert isinstance(WorkflowServiceDifyPort(), DifyPort)
+
+
+def test_run_draft_reads_a_blocking_dict_response(mock_session: MagicMock):
+    """AppGenerateService.generate(streaming=False) returns a DICT, not a
+    stream. Iterating it yields its KEYS as strings -- probed live against the
+    real service:
+
+        response type: dict
+        [1] raw=str -> stream_chunk_as_mapping=None  'task_id'
+        [2] raw=str -> stream_chunk_as_mapping=None  'workflow_run_id'
+        [3] raw=str -> stream_chunk_as_mapping=None  'data'
+
+    so no run id and no terminal frame were ever found and every Builder test
+    run was recorded status=running with an empty dify_run_id, bouncing the
+    user back to build.execution forever. The pre-3838db8aa7 code read
+    ``response["data"]`` directly; the streaming rewrite dropped that path.
+    """
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    blocking_response = {
+        "task_id": "task-1",
+        "workflow_run_id": "run-1",
+        "data": dict(_FINISHED_CHUNK["data"]),
+    }
+
+    events: list[NodeEvent] = []
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = blocking_response
+        mock_node_exec_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        mock_node_exec_repo.get_executions_by_workflow_run.return_value = [_node_exec()]
+
+        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {"q": "hi"}, events.append)
+
+    assert run.status == "succeeded"
+    assert run.dify_run_id == "run-1"
+    assert run.per_node[0].outputs == {"x": 1}
+
+
+def test_run_draft_does_not_enqueue_a_second_celery_task(mock_session: MagicMock):
+    """``run_draft`` executes INSIDE the Celery task dify_builder_advance_task.
+    In streaming mode AppGenerateService enqueues workflow_based_app_execution_task
+    and returns a subscription (app_generate_service.py:322-324), so the advance
+    task would block on events from a task that needs the worker slot the advance
+    task is holding -- a self-deadlock. Observed live: advance_session succeeded
+    in 300.59s (the idle timeout) x4 while the workflow itself ran in ~2s.
+    """
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = {
+            "task_id": "t",
+            "workflow_run_id": "run-1",
+            "data": dict(_FINISHED_CHUNK["data"]),
+        }
+        mock_repo_factory.create_api_workflow_node_execution_repository.return_value.get_executions_by_workflow_run.return_value = []
+        WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+
+    _, kwargs = mock_ags.generate.call_args
+    assert kwargs["streaming"] is False, (
+        "streaming=True makes AppGenerateService delay() a second Celery task and "
+        "blocks this worker waiting for it -- deadlock at concurrency 1, capacity "
+        "bomb at concurrency N"
+    )
