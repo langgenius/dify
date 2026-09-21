@@ -913,11 +913,6 @@ export const lintConfig = {
                   'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
               },
               {
-                group: ['**/base/input', '**/base/input/*'],
-                message:
-                  'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input for standalone inputs, and @langgenius/dify-ui/field for labelled or validated form composition.',
-              },
-              {
                 group: [
                   '@/service/base',
                   '@/service/base/*',
@@ -983,11 +978,6 @@ export const lintConfig = {
                 group: ['@floating-ui/*'],
                 message:
                   'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
-              },
-              {
-                group: ['**/base/input', '**/base/input/*'],
-                message:
-                  'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input for standalone inputs, and @langgenius/dify-ui/field for labelled or validated form composition.',
               },
               {
                 group: [
@@ -1163,6 +1153,15 @@ export const lintConfig = {
     {
       files: ['packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {
+        'unicorn/import-style': [
+          'error',
+          {
+            extendDefaultStyles: false,
+            styles: {
+              react: { namespace: true },
+            },
+          },
+        ],
         'react/exhaustive-deps': [
           'error',
           {

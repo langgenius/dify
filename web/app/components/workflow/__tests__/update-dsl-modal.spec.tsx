@@ -1,7 +1,7 @@
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { EventEmitterValue } from '@/context/event-emitter'
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from '../update-dsl-modal'
@@ -21,7 +21,7 @@ vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 const mockEmit = vi.fn()
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     info: vi.fn(),
@@ -32,9 +32,17 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-vi.mock('@/service/apps', () => ({
-  importDSL: (payload: unknown) => mockImportDSL(payload),
-  importDSLConfirm: (payload: unknown) => mockImportDSLConfirm(payload),
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: {
+      imports: {
+        post: ({ body }: { body: unknown }) => mockImportDSL(body),
+        byImportId: {
+          confirm: { post: ({ params }: { params: unknown }) => mockImportDSLConfirm(params) },
+        },
+      },
+    },
+  },
 }))
 
 const mockFetchWorkflowDraft = vi.fn()
@@ -114,6 +122,16 @@ describe('UpdateDSLModal', () => {
       </EventEmitterContext.Provider>,
     )
   }
+
+  it('uploads an ifpkg without decoding it as YAML when overwriting a workflow', async () => {
+    mockImportDSL.mockResolvedValue({ status: DSLImportStatus.COMPLETED, app_id: 'app-1' })
+    render(<UpdateDSLModal {...defaultProps} />)
+    const file = new File([new Uint8Array([0x50, 0x4b, 0xff])], 'workflow.IFPKG')
+    fireEvent.change(screen.getByTestId('dsl-file-input'), { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file, app_id: 'app-1' }))
+    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalled())
+  })
 
   it('should keep import disabled until a file is selected', () => {
     renderModal()

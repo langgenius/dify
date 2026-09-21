@@ -44,22 +44,11 @@ const nodes = [
   },
 ]
 const edges = [{ id: 'connection', source: 'node', target: 'output', type: 'straight' }]
-function TestNode({ id, data }: NodeProps) {
-  const store = useStoreApi()
+function TestNode({ data }: NodeProps) {
   return (
     <div style={{ width: 200, height: 100 }}>
       <Handle type="target" position={Position.Left} />
-      <button
-        type="button"
-        aria-label={`Select ${data.title}`}
-        data-node-keyboard-target
-        onClick={() => {
-          const { getNodes, setNodes } = store.getState()
-          setNodes(getNodes().map((node) => ({ ...node, selected: node.id === id })))
-        }}
-      >
-        {data.title}
-      </button>
+      <span>{data.title}</span>
       <textarea className="nodrag" aria-label={`${data.title} editor`} />
       <Handle type="source" position={Position.Right} />
     </div>
@@ -126,11 +115,9 @@ it('moves a Tab-focused node without selecting it first, at canvas scale without
   expect(edge.element().getBoundingClientRect().y).toBe(initialEdge.y + 10)
   await expect.element(node).toHaveFocus()
   await userEvent.tab()
-  await userEvent.tab()
   await expect.element(screen.getByRole('textbox', { name: 'Code editor' })).toHaveFocus()
   await userEvent.keyboard('{ArrowRight}')
   expect(node.element().getBoundingClientRect().x).toBe(initial.x + 2.5)
-  await userEvent.tab({ shift: true })
   await userEvent.tab({ shift: true })
   await userEvent.keyboard('{Escape}{ArrowRight}')
   await expect.poll(() => node.element().getBoundingClientRect().x).toBe(initial.x + 5)
@@ -143,9 +130,8 @@ it('keeps a connected edge attached when a click-selected node moves with the ke
   const node = screen.getByRole('button', { name: 'Code', exact: true })
   const edge = screen.getByRole('img', { name: 'Edge from node to output' })
   await expect.element(edge).toBeVisible()
-  const header = screen.getByRole('button', { name: 'Select Code' })
-  await header.click()
-  await expect.element(header).toHaveFocus()
+  await screen.getByText('Code', { exact: true }).click()
+  await expect.element(node).toHaveFocus()
   const initialNode = node.element().getBoundingClientRect()
   const initialEdge = edge.element().getBoundingClientRect()
 
@@ -158,5 +144,5 @@ it('keeps a connected edge attached when a click-selected node moves with the ke
   await expect.poll(() => node.element().getBoundingClientRect().x).toBe(initialNode.x - 7.5)
   expect(edge.element().getBoundingClientRect().x).toBe(initialEdge.x - 7.5)
   expect(edge.element().getBoundingClientRect().right).toBe(initialEdge.right)
-  await expect.element(header).toHaveFocus()
+  await expect.element(node).toHaveFocus()
 })

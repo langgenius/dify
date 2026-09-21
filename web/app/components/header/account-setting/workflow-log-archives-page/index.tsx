@@ -7,7 +7,6 @@ import type {
 } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
@@ -18,6 +17,7 @@ import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
+import { toast } from '@/app/notifications'
 import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'

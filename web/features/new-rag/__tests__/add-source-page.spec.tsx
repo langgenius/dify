@@ -18,7 +18,7 @@ vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { info: toastInfoMock },
 }))
 
@@ -234,7 +234,7 @@ describe('AddSourcePage', () => {
     })
     expect(options.getNextPageParam({ items: [], nextCursor: 'next' })).toBe('next')
     expect(options.initialPageParam).toBeNull()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('continues loading connection pages automatically', async () => {
@@ -561,7 +561,7 @@ describe('AddSourcePage', () => {
         params: { id: 'space-1' },
       }),
     )
-    await screen.findByRole('status', { name: 'appApi.loading' })
+    await screen.findByRole('progressbar', { name: 'common.loading' })
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(queryClientMock.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['source-connections'],
@@ -595,7 +595,7 @@ describe('AddSourcePage', () => {
     expect(clientMock.createConnection).toHaveBeenCalledOnce()
 
     await act(async () => createConnectionDeferred.resolve(connection('active')))
-    await screen.findByRole('status', { name: 'appApi.loading' })
+    await screen.findByRole('progressbar', { name: 'common.loading' })
   })
 
   it('releases the parent history guard before the crawl preview owns navigation', async () => {
@@ -681,7 +681,7 @@ describe('AddSourcePage', () => {
     view.rerender(
       <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
     )
-    await screen.findByRole('status', { name: 'appApi.loading' })
+    await screen.findByRole('progressbar', { name: 'common.loading' })
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
 
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue(
@@ -735,7 +735,7 @@ describe('AddSourcePage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
 
     await waitFor(() => expect(clientMock.createConnection).toHaveBeenCalledOnce())
-    await screen.findByRole('status', { name: 'appApi.loading' })
+    await screen.findByRole('progressbar', { name: 'common.loading' })
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(await screen.findByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
     expect(screen.queryByText('dataset.newKnowledge.connectionFailed')).not.toBeInTheDocument()

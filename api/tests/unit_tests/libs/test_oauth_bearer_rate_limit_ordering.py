@@ -4,42 +4,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from libs.oauth_bearer import (
-    BearerAuthenticator,
-    InvalidBearerError,
-    Scope,
-    SubjectType,
-    TokenKind,
-    TokenKindRegistry,
-    TokenType,
-)
+from libs.oauth_bearer import BearerAuthenticator, InvalidBearerError, TokenType
 
 
-def _registry_with_resolver(resolver) -> TokenKindRegistry:
-    return TokenKindRegistry(
-        [
-            TokenKind(
-                prefix="dfoa_",
-                subject_type=SubjectType.ACCOUNT,
-                scopes=frozenset({Scope.FULL}),
-                token_type=TokenType.OAUTH_ACCOUNT,
-                resolver=resolver,
-            )
-        ]
-    )
-
-
-@patch("libs.oauth_bearer.enforce_bearer_rate_limit")
-def test_rate_limit_called_on_unknown_revoked_token(rl):
-    resolver = MagicMock()
-    resolver.resolve.return_value = None
-    auth = BearerAuthenticator(_registry_with_resolver(resolver))
-
-    with pytest.raises(InvalidBearerError):
-        auth.authenticate("dfoa_revokedtoken123")
-
-    rl.assert_called_once()
-    resolver.resolve.assert_called_once()
+def _authenticator_with(resolver) -> BearerAuthenticator:
+    return BearerAuthenticator({TokenType.OAUTH_ACCOUNT: resolver})
 
 
 @patch("libs.oauth_bearer.enforce_bearer_rate_limit")
@@ -48,7 +17,7 @@ def test_rate_limit_called_before_resolve(rl):
     rl.side_effect = lambda _h: call_order.append("rl")
     resolver = MagicMock()
     resolver.resolve.side_effect = lambda _h: call_order.append("resolve") or None
-    auth = BearerAuthenticator(_registry_with_resolver(resolver))
+    auth = _authenticator_with(resolver)
 
     with pytest.raises(InvalidBearerError):
         auth.authenticate("dfoa_xyz")
@@ -56,30 +25,12 @@ def test_rate_limit_called_before_resolve(rl):
     assert call_order == ["rl", "resolve"], f"expected rl before resolve, got {call_order}"
 
 
-def test_unknown_prefix_raises_generic_invalid_bearer():
-    auth = BearerAuthenticator(
-        TokenKindRegistry(
-            [
-                TokenKind(
-                    prefix="dfoa_",
-                    subject_type=SubjectType.ACCOUNT,
-                    scopes=frozenset({Scope.FULL}),
-                    token_type=TokenType.OAUTH_ACCOUNT,
-                    resolver=MagicMock(),
-                )
-            ]
-        )
-    )
-    with pytest.raises(InvalidBearerError) as exc:
-        auth.authenticate("zzz_xyz")
-    assert str(exc.value) == "invalid_bearer"
-
-
+@pytest.mark.parametrize("token", ["zzz_xyz", "dfoa_revoked"], ids=["unknown prefix", "revoked"])
 @patch("libs.oauth_bearer.enforce_bearer_rate_limit")
-def test_revoked_token_raises_generic_invalid_bearer(rl):
+def test_every_refusal_raises_the_generic_invalid_bearer(rl, token: str):
     resolver = MagicMock()
     resolver.resolve.return_value = None
-    auth = BearerAuthenticator(_registry_with_resolver(resolver))
+    auth = _authenticator_with(resolver)
     with pytest.raises(InvalidBearerError) as exc:
-        auth.authenticate("dfoa_revoked")
+        auth.authenticate(token)
     assert str(exc.value) == "invalid_bearer"

@@ -1,11 +1,12 @@
 import type { FC } from 'react'
 import type { ScheduleTriggerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
+import WorkflowField from '@/app/components/workflow/nodes/_base/components/field'
 import FrequencySelector from './components/frequency-selector'
 import ModeToggle from './components/mode-toggle'
 import MonthlyDaysSelector from './components/monthly-days-selector'
@@ -18,7 +19,7 @@ const i18nPrefix = 'nodes.triggerSchedule'
 
 const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
-  const cronExpressionId = React.useId()
+  const timeInputId = React.useId()
   const {
     inputs,
     setInputs,
@@ -33,7 +34,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
   return (
     <div className="mt-2">
       <div className="space-y-4 px-4 pt-2 pb-3">
-        <Field
+        <WorkflowField
           title={t(($) => $[`${i18nPrefix}.title`], { ns: 'workflow' })}
           operations={<ModeToggle mode={inputs.mode} onChange={handleModeChange} />}
         >
@@ -41,15 +42,10 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
             {inputs.mode === 'visual' && (
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-gray-500">
-                      {t(($) => $['nodes.triggerSchedule.frequencyLabel'], { ns: 'workflow' })}
-                    </label>
-                    <FrequencySelector
-                      frequency={inputs.frequency || 'daily'}
-                      onChange={handleFrequencyChange}
-                    />
-                  </div>
+                  <FrequencySelector
+                    frequency={inputs.frequency || 'daily'}
+                    onChange={handleFrequencyChange}
+                  />
                   <div className="col-span-2">
                     {inputs.frequency === 'hourly' ? (
                       <OnMinuteSelector
@@ -58,10 +54,14 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
                       />
                     ) : (
                       <>
-                        <label className="mb-2 block text-xs font-medium text-gray-500">
+                        <label
+                          htmlFor={timeInputId}
+                          className="mb-2 block text-xs font-medium text-text-secondary"
+                        >
                           {t(($) => $['nodes.triggerSchedule.time'], { ns: 'workflow' })}
                         </label>
                         <TimePicker
+                          id={timeInputId}
                           notClearable={true}
                           timezone={inputs.timezone}
                           value={inputs.visual_config?.time || '12:00 AM'}
@@ -111,26 +111,20 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
             )}
 
             {inputs.mode === 'cron' && (
-              <div className="space-y-2">
-                <div>
-                  <label
-                    htmlFor={cronExpressionId}
-                    className="mb-2 block text-xs font-medium text-gray-500"
-                  >
-                    {t(($) => $['nodes.triggerSchedule.cronExpression'], { ns: 'workflow' })}
-                  </label>
-                  <Input
-                    id={cronExpressionId}
-                    value={inputs.cron_expression || ''}
-                    onValueChange={(value) => handleCronExpressionChange(value)}
-                    placeholder="0 0 * * *"
-                    className="font-mono"
-                  />
-                </div>
-              </div>
+              <Field className="gap-2">
+                <FieldLabel className="py-0 text-xs">
+                  {t(($) => $['nodes.triggerSchedule.cronExpression'], { ns: 'workflow' })}
+                </FieldLabel>
+                <Input
+                  value={inputs.cron_expression || ''}
+                  onValueChange={(value) => handleCronExpressionChange(value)}
+                  placeholder="0 0 * * *"
+                  className="font-mono"
+                />
+              </Field>
             )}
           </div>
-        </Field>
+        </WorkflowField>
 
         <div className="border-t border-divider-subtle"></div>
 

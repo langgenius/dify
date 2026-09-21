@@ -59,7 +59,7 @@ export function RunMode({ text }: RunModeProps) {
   if (!canRun) return null
 
   return (
-    <div className="flex items-center gap-x-px">
+    <div className="nokey flex items-center gap-x-px">
       <button
         type="button"
         className={cn(
@@ -102,22 +102,24 @@ export function RunMode({ text }: RunModeProps) {
         <button
           type="button"
           className={cn(
-            'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
+            'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
           )}
+          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
           onClick={handleStop}
         >
-          <StopCircle className="size-4 text-text-accent" />
+          <StopCircle aria-hidden="true" className="size-4 text-text-accent" />
         </button>
       )}
       {isPreparingDataSource && (
         <button
           type="button"
           className={cn(
-            'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
+            'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
           )}
+          aria-label={t(($) => $['operation.cancel'], { ns: 'common' })}
           onClick={handleCancelPreparingDataSource}
         >
-          <RiCloseLine className="size-4 text-text-accent" />
+          <RiCloseLine aria-hidden="true" className="size-4 text-text-accent" />
         </button>
       )}
     </div>

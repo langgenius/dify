@@ -156,16 +156,6 @@ export const fetchDefaultModal = (url: string): Promise<{ data: DefaultModelResp
   return get<{ data: DefaultModelResponse }>(url)
 }
 
-export const updateDefaultModel = ({
-  url,
-  body,
-}: {
-  url: string
-  body: any
-}): Promise<CommonResponse> => {
-  return post<CommonResponse>(url, { body })
-}
-
 export const fetchModelParameterRules = (url: string): Promise<{ data: ModelParameterRule[] }> => {
   return get<{ data: ModelParameterRule[] }>(url)
 }

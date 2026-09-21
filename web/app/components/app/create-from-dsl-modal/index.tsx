@@ -17,7 +17,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -25,6 +24,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -103,6 +103,12 @@ function CreateFromDSLModal({
   )
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
+      if (
+        source.type === CreateFromDSLModalTab.FROM_FILE &&
+        source.file.name.toLowerCase().endsWith('.ifpkg')
+      )
+        return requestImport({ body: { file: source.file } })
+
       const body =
         source.type === CreateFromDSLModalTab.FROM_FILE
           ? ({
@@ -134,9 +140,16 @@ function CreateFromDSLModal({
       select: (data) => data.apps,
     }),
   )
-  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  const isPackageImport =
+    currentTab === CreateFromDSLModalTab.FROM_FILE &&
+    currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
+  // URL imports are classified by the server before applying the appropriate quota.
+  const requiresAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
+  const isAppQuotaUnavailable =
+    requiresAppQuota && deploymentEdition === 'CLOUD' && appQuota === undefined
   // A limit of 0 means unlimited.
   const isAppsFull =
+    requiresAppQuota &&
     deploymentEdition === 'CLOUD' &&
     appQuota !== undefined &&
     appQuota.limit > 0 &&
@@ -293,7 +306,7 @@ function CreateFromDSLModal({
                     className="h-full pt-0 pb-0"
                     disabled={isImporting}
                   >
-                    {t(($) => $.importFromDSLFile, { ns: 'app' })}
+                    {t(($) => $.importFromFile, { ns: 'app' })}
                   </TabsTab>
                   <TabsTab
                     value={CreateFromDSLModalTab.FROM_URL}
@@ -309,6 +322,7 @@ function CreateFromDSLModal({
                   className="px-6 py-4"
                 >
                   <Uploader
+                    importType="app"
                     browseButtonRef={browseButtonRef}
                     className="mt-0"
                     file={currentFile}
@@ -329,7 +343,7 @@ function CreateFromDSLModal({
                       autoComplete="off"
                       required
                       disabled={isImporting}
-                      placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
+                      placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' }) || ''}
                       defaultValue={dslUrl}
                     />
                     <FieldError />
@@ -351,7 +365,7 @@ function CreateFromDSLModal({
                   loading={isImporting}
                   variant="primary"
                 >
-                  <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
+                  <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
                   <KbdGroup>
                     {CREATE_FROM_DSL_HOTKEY.split('+').map((key) => (
                       <Kbd key={key} color="white">

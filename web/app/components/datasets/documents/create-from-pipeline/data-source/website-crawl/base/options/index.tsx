@@ -1,7 +1,6 @@
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useEffect, useId, useMemo } from 'react'
@@ -14,6 +13,7 @@ import {
   useConfigurations,
   useInitialData,
 } from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import { toast } from '@/app/notifications'
 import { CrawlStep } from '@/models/datasets'
 
 const I18N_PREFIX = 'stepOne.website'

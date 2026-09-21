@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 from typing import Any, TypedDict
+from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -1002,7 +1003,7 @@ class AgentRosterService:
     def _get_runtime_resolvable_agent(self, *, tenant_id: str, agent_id: str) -> Agent | None:
         """Load an Agent that is eligible to resolve to a runtime backing App.
 
-        Shared by the runtime resolver and the read-only authorization resolver
+        Shared by the runtime resolvers and the read-only authorization resolver
         so both agree on what counts as a resolvable Agent.
         """
 
@@ -1042,6 +1043,20 @@ class AgentRosterService:
             return None
         return agent.app_id
 
+    def get_existing_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
+        """Resolve an existing runtime App without creating or committing state.
+
+        Workflow-only Agents must already have a hidden backing App. Their
+        parent workflow App must never stand in for a missing runtime App.
+        """
+        agent = self._get_runtime_resolvable_agent(tenant_id=tenant_id, agent_id=agent_id)
+        if agent is None:
+            raise AgentNotFoundError()
+        app_id = agent.backing_app_id if agent.scope == AgentScope.WORKFLOW_ONLY else self.runtime_backing_app_id(agent)
+        if not app_id:
+            raise AgentNotFoundError()
+        return self._get_runtime_app_model_by_id(tenant_id=tenant_id, app_id=app_id)
+
     def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
         """Resolve the App that backs an Agent runtime surface.
 
@@ -1064,11 +1079,14 @@ class AgentRosterService:
         if should_commit_backing_app:
             self._session.commit()
 
+        return self._get_runtime_app_model_by_id(tenant_id=tenant_id, app_id=backing_app_id)
+
+    def _get_runtime_app_model_by_id(self, *, tenant_id: str, app_id: str) -> App:
         app = self._session.scalar(
             select(App)
             .where(
                 App.tenant_id == tenant_id,
-                App.id == backing_app_id,
+                App.id == app_id,
                 App.mode == AppMode.AGENT,
                 App.status == AppStatus.NORMAL,
             )
@@ -1378,6 +1396,24 @@ class AgentRosterService:
             )
             .subquery()
         )
+
+    def get_visible_agent_version_snapshot(
+        self, *, tenant_id: str, agent_id: str, version_id: UUID
+    ) -> AgentConfigSnapshot:
+        """Resolve a version exposed in the roster history within its complete owner scope."""
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        visible_version_ids = self._visible_version_ids_stmt(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
+        snapshot = self._session.scalar(
+            select(AgentConfigSnapshot).where(
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+                AgentConfigSnapshot.id == str(version_id),
+                AgentConfigSnapshot.id.in_(select(visible_version_ids.c.current_snapshot_id)),
+            )
+        )
+        if snapshot is None:
+            raise AgentVersionNotFoundError()
+        return snapshot
 
     def get_agent_version_detail(self, *, tenant_id: str, agent_id: str, version_id: str) -> dict[str, Any]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)

@@ -1,6 +1,6 @@
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 
 type OperationsProps = {
   openEditModal: () => void
@@ -53,7 +53,7 @@ const Operations = ({ openEditModal, onDelete, onExport, onClose }: OperationsPr
           </span>
         </div>
       </div>
-      <Divider type="horizontal" className="my-0 bg-divider-subtle" />
+      <Separator orientation="horizontal" className="my-0 h-[0.5px] bg-divider-subtle" />
       <div className="flex flex-col p-1">
         <div
           className="group flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-destructive-hover"

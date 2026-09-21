@@ -26,7 +26,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -96,10 +96,6 @@ vi.mock('@/app/components/workflow/store', () => ({
       setPublishedAt: mockSetPublishedAt,
     }),
   }),
-}))
-
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <hr />,
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({

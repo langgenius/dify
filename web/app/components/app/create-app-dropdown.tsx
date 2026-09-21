@@ -111,10 +111,10 @@ export function CreateAppDropdown({
               </span>
               <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-1">
                 <span className="system-md-regular text-text-secondary">
-                  {t(($) => $.importDSL, { ns: 'app' })}
+                  {t(($) => $.importApp, { ns: 'app' })}
                 </span>
                 <span className="system-xs-regular text-text-tertiary">
-                  {t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
+                  {t(($) => $.importAppDescription, { ns: 'app' })}
                 </span>
               </span>
             </DropdownMenuItem>

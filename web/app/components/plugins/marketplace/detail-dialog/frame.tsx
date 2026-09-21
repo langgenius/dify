@@ -12,6 +12,7 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
+import { isMarketplaceImagePreviewMessage } from './image-preview-message'
 
 type ReplyToMarketplaceFrame = (data: unknown) => void
 
@@ -39,6 +40,12 @@ export default function MarketplaceDetailDialogFrame({
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [imagePreview, setImagePreview] = useState({ src, dialogOpen: open, open: false })
+
+  // A controlled close/reopen or another detail URL starts a fresh frame
+  // session, including when a close transition has not finished unmounting.
+  if (imagePreview.src !== src || imagePreview.dialogOpen !== open)
+    setImagePreview({ src, dialogOpen: open, open: false })
 
   useEffect(() => {
     if (!open) return
@@ -48,14 +55,19 @@ export default function MarketplaceDetailDialogFrame({
   }, [open, src])
 
   useEffect(() => {
-    if (!open || !onMessage) return
+    if (!open) return
 
     const marketplaceOrigin = new URL(src, window.location.href).origin
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow || event.origin !== marketplaceOrigin)
         return
 
-      onMessage(event.data, (payload) => {
+      if (isMarketplaceImagePreviewMessage(event.data)) {
+        setImagePreview({ src, dialogOpen: open, open: event.data.open })
+        return
+      }
+
+      onMessage?.(event.data, (payload) => {
         iframeRef.current?.contentWindow?.postMessage(payload, marketplaceOrigin)
       })
     }
@@ -65,7 +77,10 @@ export default function MarketplaceDetailDialogFrame({
   }, [onMessage, open, src])
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) setIsLoading(true)
+    if (!nextOpen) {
+      setIsLoading(true)
+      setImagePreview({ src, dialogOpen: open, open: false })
+    }
     onOpenChange(nextOpen)
   }
 
@@ -119,18 +134,22 @@ export default function MarketplaceDetailDialogFrame({
             src={src}
             title={title}
           />
-          <DialogClose
-            render={
-              <IconButton
-                ref={closeButtonRef}
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="sm"
-                className="absolute top-5 right-5 z-10 size-8 rounded-lg"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
+          {/* The image preview lives inside a different document, so its
+              backdrop cannot cover this host control through z-index. */}
+          {!imagePreview.open && (
+            <DialogClose
+              render={
+                <IconButton
+                  ref={closeButtonRef}
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="sm"
+                  className="absolute top-5 right-5 z-10 size-8 rounded-lg"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
+          )}
         </DialogPopup>
       </DialogPortal>
     </Dialog>
