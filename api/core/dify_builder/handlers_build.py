@@ -507,6 +507,52 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
     to_apply = delete_intents + [intent for intent in intents if not _already_present(intent)]
 
+    # A FIRST build of this session that would apply no node at all has not
+    # built anything. The draft already carries a PREVIOUS graph under the same
+    # generated ids -- the generator always emits node1, node2, ... -- so
+    # _already_present filtered every create against nodes this session never
+    # built, matching on id alone (an existing node2:llm swallows a planned
+    # node2:parameter-extractor). Reporting "graph built" here would claim a
+    # canvas the user never got: the empty-build false-success failure, one
+    # level further in than the zero-create-intents guard above.
+    #
+    # The loop-back re-approve this filter exists for is the opposite case and
+    # must still no-op silently -- there ``built_node_ids`` names the nodes
+    # this session built, so it never reaches this branch.
+    if not fc.built_node_ids and not any(intent.op == "create_node" for intent in to_apply):
+        progress.fail_step("build-validate-graph")
+        execution = progress.finish(status="error")
+        error_items = append_card(
+            fc,
+            ErrorCard(
+                title="Nothing was applied to the canvas",
+                body=(
+                    "This app's canvas already contains nodes with the same ids as the ones this "
+                    "plan would create, so applying it would have changed nothing and I've stopped "
+                    "rather than report a build that did not happen. Clear the canvas (or start "
+                    "from a new app) and approve again."
+                ),
+            ),
+        )
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                execution=execution,
+                reply_text=(
+                    "I didn't apply anything: the canvas already has nodes with these ids. "
+                    "Clear it or start from a new app, then approve again."
+                ),
+                cards=["error"],
+            ),
+        )
+        return StepResult(
+            next=PcState.BUILD_PLAN_APPROVAL,
+            context=fc,
+            items=[*error_items, *turn_items],
+        )
+
     progress.activate("build-apply-graph")
     result = env.dify.apply_repair(
         s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
@@ -907,7 +953,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
     progress.activate("build-diagnose-failure")
     diagnosis = env.agent.diagnose(run, graph, per_node)
-    _note_repair_error(fc, diagnosis.root_cause)
+    _note_repair_error(fc, run)
     if _repair_is_repeating(fc):
         # The same failure has now survived _MAX_REPEATED_REPAIRS repairs, so
         # another round would aim at the same wrong thing. Stop spending runs
@@ -1003,20 +1049,48 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 _MAX_REPEATED_REPAIRS = 2
 
 
-def _note_repair_error(fc: DifyBuilderContext, error: str) -> None:
-    """Record this failure's root cause and count CONSECUTIVE repeats of it.
+def _failure_signature(run: Run) -> str:
+    """A STABLE key for "this is the same failure again", built from the
+    ENGINE's own output: the first failed node's id plus its error text, or the
+    launch error when the run threw before any node ran. Whitespace is
+    collapsed so formatting alone cannot look like a new failure. Returns ""
+    when the run carries nothing identifying -- an unknown failure must never
+    compare equal to another unknown one.
 
-    ``repair_attempts`` is not a global budget: a different error means the
+    Deliberately NOT ``diagnosis.root_cause``. That is LLM prose, regenerated
+    on every diagnosis call: in one observed session it was reworded on each of
+    four turns and switched to Chinese on one of them. Keying on it meant
+    ``error == fc.last_repair_error`` could never hold, so ``repair_attempts``
+    reset forever and ``_repair_is_repeating`` was unreachable -- that session
+    burned 9 failed runs and 8 repair approvals with this guard in place.
+    """
+    for node in run.per_node:
+        if node.status == "failed":
+            node_error = " ".join((node.error or "").split())
+            if node.node_id or node_error:
+                return f"{node.node_id}|{node_error}"
+    launch_error = " ".join((run.error or "").split())
+    return f"|{launch_error}" if launch_error else ""
+
+
+def _note_repair_error(fc: DifyBuilderContext, run: Run) -> None:
+    """Record this failure's signature and count CONSECUTIVE repeats of it.
+
+    ``repair_attempts`` is not a global budget: a different failure means the
     loop is still making progress, however slowly, so the count restarts.
-    The same error again means the repair that just ran did not address the
+    The same failure again means the repair that just ran did not address the
     cause, so the count advances. Call this once per diagnosis, before
     ``_repair_is_repeating``.
+
+    Takes the ``Run`` rather than a message so the key comes from the engine
+    (see ``_failure_signature``) and not from anything an LLM wrote.
     """
-    if error and error == fc.last_repair_error:
+    signature = _failure_signature(run)
+    if signature and signature == fc.last_repair_error:
         fc.repair_attempts += 1
     else:
         fc.repair_attempts = 0
-    fc.last_repair_error = error
+    fc.last_repair_error = signature
 
 
 def _repair_is_repeating(fc: DifyBuilderContext) -> bool:

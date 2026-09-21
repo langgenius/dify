@@ -97,6 +97,37 @@ def _degraded_form(goal_text: str) -> dict[str, Any]:
     }
 
 
+# The node types a plan step may map to. This exists because the Builder's own
+# planner previously had NO node vocabulary (ESQ1-279): it planned in business
+# language ("Send a Feishu notification"), and the generator -- whose system
+# prompt DOES carry a node whitelist -- was then handed steps it could not map
+# onto any real node, failing only after the user had approved the plan.
+#
+# Deliberately Builder-only. The generator's own whitelist lives in the SHARED
+# core/workflow/generator/prompts/planner_prompts.py, which cmd+K also uses and
+# which this package must not touch. Keep the two conceptually aligned, but do
+# not try to import across that boundary.
+_DIFY_NODE_VOCABULARY = """\
+- "start"               — workflow entry. Always present. Holds the input form variables.
+- "end"                 — workflow exit. Returns the result.
+- "llm"                 — call an LLM with a prompt.
+- "knowledge-retrieval" — query a Dify knowledge base.
+- "code"                — run a Python/JavaScript snippet.
+- "template-transform"  — Jinja2 string templating.
+- "http-request"        — call an external HTTP API.
+- "tool"                — call a Dify built-in or installed plugin tool (web search, Slack, JSON, …).
+- "if-else"             — branch on a condition.
+- "iteration"           — run a sub-pipeline over every item of a list.
+- "loop"                — repeat a sub-pipeline until an exit condition holds.
+- "question-classifier" — route to a labelled branch by free-text intent.
+- "parameter-extractor" — pull structured fields out of free text with an LLM.
+- "document-extractor"  — extract text from an uploaded file. Needs a file input.
+- "variable-aggregator" — rejoin mutually-exclusive branches into one variable.
+- "list-operator"       — filter / sort / slice an array variable.
+- "assigner"            — update an existing conversation or loop variable.
+- "human-input"         — pause for a person to review, approve, or enter data."""
+
+
 def propose_plan_v1(
     model,
     requirements: dict[str, Any],
@@ -106,7 +137,18 @@ def propose_plan_v1(
         return _degraded_plan()
     system = (
         "You are a Dify workflow planner. Given requirements, propose an ordered list of "
-        'concise build steps. Reply with ONLY JSON: {"plan": ["step", ...]}.'
+        "concise build steps.\n\n"
+        "Every step MUST be implementable by exactly one of these Dify node types, and you "
+        "may plan ONLY in these terms:\n\n"
+        f"{_DIFY_NODE_VOCABULARY}\n\n"
+        "Write each step as the work that node does, naming the node type. Good: "
+        '"llm node drafts a reply from the ticket text". Bad: "Notify the team on Feishu" '
+        "-- that names a product, not a node.\n\n"
+        "Dify has no scheduler, database, email or messaging node. A step that needs one of "
+        "those is either a `tool` node (when an installed plugin provides it), an "
+        "`http-request` node, or outside the workflow entirely -- say so in the step rather "
+        "than inventing a node.\n\n"
+        'Reply with ONLY JSON: {"plan": ["step", ...]}.'
     ) + llm.json_language_instruction("plan steps")
     try:
         data = llm.invoke_json(
@@ -294,9 +336,7 @@ def _selected_workflow_model(tenant_id: str, resource_ids: Sequence[str]) -> Mod
     provider, _, name = selected.rpartition("/")
     if not provider or not name:
         return None
-    return ModelConfig.model_validate(
-        {"provider": provider, "name": name, "mode": "chat", "completion_params": {}}
-    )
+    return ModelConfig.model_validate({"provider": provider, "name": name, "mode": "chat", "completion_params": {}})
 
 
 # Prepended to the generator instruction so the LLM emits a WORKFLOW-shaped graph
@@ -308,6 +348,24 @@ _WORKFLOW_TOPOLOGY_DIRECTIVE = (
     "Build a Dify WORKFLOW graph (this is NOT a chat app): it MUST begin with exactly one "
     "'start' node and terminate in at least one 'end' node that returns the result. Do NOT use "
     "'answer' nodes -- those exist only in chat / advanced-chat apps and are invalid in a workflow."
+    "\n\n"
+    # Node-usage guidance (meeting item 9). Builder-only: this string is
+    # prepended to the instruction at build.py:377 and cmd+K never sees it.
+    # Only rules that earned their place by breaking a real build belong here --
+    # every line costs planner output budget, which ESQ1-300 implicates.
+    "Node usage rules:\n"
+    "- A node may only reference variables its upstream node actually declares. A 'tool' node "
+    "exposes 'text', 'files' and 'json' (plus whatever its provider declares) -- it does NOT "
+    "expose 'result'. A 'code' node exposes exactly the keys in its own outputs map.\n"
+    "- 'document-extractor' requires a 'file' or 'file-list' input variable on the start node; "
+    "feed its 'text' output into the node that consumes it.\n"
+    "- Children of an 'iteration' or 'loop' belong INSIDE the container via their parent "
+    "reference. Do not wire a container's body as sibling top-level nodes.\n"
+    "- Compare like with like in 'if-else': a numeric variable needs a numeric operator, a "
+    "string variable a string operator.\n"
+    "- Use a 'tool' node for a third-party service only when the plan names an installed tool; "
+    "otherwise use 'http-request' and expose its changing inputs as start-node variables rather "
+    "than hardcoding them."
 )
 
 
