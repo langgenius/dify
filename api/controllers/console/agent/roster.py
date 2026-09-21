@@ -293,7 +293,11 @@ class AgentPublishPayload(BaseModel):
 class AgentPublishResponse(ResponseModel):
     result: str
     publication_kind: Literal["first", "update"] = Field(
-        description="Whether this publication first enables access or updates an already accessible Agent"
+        description=(
+            "Classifies the publication by whether the Agent had a publish-visible active snapshot before publishing: "
+            "'first' if none existed, otherwise 'update'. This is not a historical first-publish indicator. "
+            "It does not depend on draft edits, Web App or API enablement, or the requesting user's access permissions."
+        )
     )
     active_config_snapshot_id: str
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
