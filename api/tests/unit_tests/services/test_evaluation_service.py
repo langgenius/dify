@@ -600,7 +600,9 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
     )
 
     assert run.target_workflow_version_id == "workflow-version-7"
-    dispatched_payload = apply_async.call_args.kwargs["args"][0]
+    dispatch_kwargs = apply_async.call_args.kwargs
+    assert set(dispatch_kwargs) == {"args", "task_id"}
+    dispatched_payload = dispatch_kwargs["args"][0]
     assert dispatched_payload["target_workflow_version_id"] == "workflow-version-7"
 
 
