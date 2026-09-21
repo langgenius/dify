@@ -49,7 +49,7 @@ export function imagePaths(base, root = ROOT) {
 
 export async function loadIgnoreRules(root = ROOT) {
   const rules = JSON.parse(
-    await fs.readFile(path.join(root, 'scripts/image-resources/ignore.json'), 'utf8'),
+    await fs.readFile(path.join(root, 'packages/image-resources/ignore.json'), 'utf8'),
   )
   if (!Array.isArray(rules))
     throw new Error('ignore.json must contain an array of pattern/reason objects')
@@ -166,6 +166,7 @@ async function replaceImage(filename, candidate) {
   }
 }
 
+/* oxlint-disable no-console -- CLI output includes reports and GitHub Actions annotations. */
 export async function main(args = process.argv.slice(2), root = ROOT) {
   let options, rules, outputDir
   try {
@@ -181,7 +182,7 @@ export async function main(args = process.argv.slice(2), root = ROOT) {
     }).values
     if (options.help) {
       console.log(
-        'Usage: node scripts/image-resources/check-image-resources.mjs (--base REF | --all) [--fix | --output-dir DIR]',
+        'Usage: node packages/image-resources/check-image-resources.mjs (--base REF | --all) [--fix | --output-dir DIR]',
       )
       return 0
     }
@@ -251,8 +252,11 @@ export async function main(args = process.argv.slice(2), root = ROOT) {
   return Number(count('error') > 0)
 }
 
+/* oxlint-enable no-console */
+
 if (import.meta.main) {
   try {
+    // oxlint-disable-next-line antfu/no-top-level-await -- Wait for CLI completion before setting its exit status.
     process.exitCode = await main()
   } catch (error) {
     console.error(error.message)

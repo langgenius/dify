@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+// oxlint-disable-next-line vitest/no-import-node-test -- This standalone CLI uses the Node.js test runner.
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { crc32, deflateSync, inflateSync } from 'node:zlib'
@@ -78,7 +80,7 @@ function png16(type) {
   return Buffer.concat([
     Buffer.from('89504e470d0a1a0a', 'hex'),
     chunk('IHDR', header),
-    chunk('IDAT', deflateSync(Buffer.concat(Array(80).fill(row)), { level: 0 })),
+    chunk('IDAT', deflateSync(Buffer.concat(Array.from({ length: 80 }, () => row)), { level: 0 })),
     chunk('IEND', Buffer.alloc(0)),
   ])
 }
@@ -88,8 +90,8 @@ function repository(t) {
   git(['init', '-q'], root)
   git(['config', 'user.email', 'test@example.invalid'], root)
   git(['config', 'user.name', 'Test'], root)
-  const scripts = path.join(root, 'scripts/image-resources')
-  write(root, 'scripts/image-resources/ignore.json', '[]')
+  const scripts = path.join(root, 'packages/image-resources')
+  write(root, 'packages/image-resources/ignore.json', '[]')
   for (const name of ['check-image-resources.mjs', 'image-optimizer.mjs'])
     fs.copyFileSync(path.join(here, name), path.join(scripts, name))
   fs.symlinkSync(path.join(here, 'node_modules'), path.join(scripts, 'node_modules'), 'dir')
@@ -401,7 +403,7 @@ test('annotation escaping prevents injected workflow commands', () => {
 test('ignore validation and matching preserve full-path case-sensitive patterns', async (t) => {
   const { root } = repository(t)
   const config = (value) =>
-    write(root, 'scripts/image-resources/ignore.json', JSON.stringify(value))
+    write(root, 'packages/image-resources/ignore.json', JSON.stringify(value))
   assert.deepEqual(await loadIgnoreRules(root), [])
   const rules = [
     { pattern: 'logo.png', reason: 'Brand asset' },
@@ -438,7 +440,7 @@ test('ignore consistently controls check, fix, export, and summaries', async (t)
   git(['add', 'fixtures'], root)
   write(
     root,
-    'scripts/image-resources/ignore.json',
+    'packages/image-resources/ignore.json',
     JSON.stringify([{ pattern: 'fixtures/*.png', reason: 'Preserve encoding fixture' }]),
   )
   const output = fs.mkdtempSync(path.join(os.tmpdir(), 'image-output-'))
@@ -453,9 +455,9 @@ test('ignore consistently controls check, fix, export, and summaries', async (t)
     assert.equal(fs.existsSync(path.join(output, 'fixtures/keep.png')), false)
   }
   assert.match(fs.readFileSync(env.GITHUB_STEP_SUMMARY, 'utf8'), /\*\*ignored\*\*/)
-  write(root, 'scripts/image-resources/ignore.json', '[]')
+  write(root, 'packages/image-resources/ignore.json', '[]')
   assert.equal(cli(['--all']).status, 1)
-  write(root, 'scripts/image-resources/ignore.json', 'invalid json')
+  write(root, 'packages/image-resources/ignore.json', 'invalid json')
   const result = cli(['--all', '--fix'])
   assert.equal(result.status, 2)
   assert.match(result.stderr, /Invalid image ignore configuration/)

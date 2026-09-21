@@ -18,22 +18,22 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - name: Set up workspace toolchain
+        uses: ./.github/actions/setup-web
         with:
-          node-version: '24'
+          run-install: 'false'
 
       - name: Install image checker dependencies
-        run: npm ci --prefix scripts/image-resources --ignore-scripts --no-audit --no-fund
+        run: pnpm --filter @dify/image-resources... install --frozen-lockfile --ignore-scripts
 
       - name: Test image checker
-        run: npm test --prefix scripts/image-resources
+        run: pnpm --filter @dify/image-resources test
 
       - name: Check image optimization
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          node scripts/image-resources/check-image-resources.mjs --base "$BASE_SHA" --output-dir "$RUNNER_TEMP/image-optimization-candidates"
+          pnpm --filter @dify/image-resources check:images --base "$BASE_SHA" --output-dir "$RUNNER_TEMP/image-optimization-candidates"
 
       - name: Upload optimization candidates
         if: failure()

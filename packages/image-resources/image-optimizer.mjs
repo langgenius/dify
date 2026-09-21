@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { crc32, deflateSync, inflateSync } from 'node:zlib'
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom'
 import sharp from 'sharp'

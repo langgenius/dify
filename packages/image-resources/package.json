@@ -1,0 +1,19 @@
+{
+  "name": "@dify/image-resources",
+  "version": "0.0.0-private",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test check-image-resources.test.mjs",
+    "check:images": "node check-image-resources.mjs"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "catalog:",
+    "picomatch": "catalog:",
+    "sharp": "catalog:",
+    "svgo": "catalog:"
+  },
+  "engines": {
+    "node": ">=24.2.0"
+  }
+}

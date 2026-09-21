@@ -2,17 +2,17 @@
 
 The `Image optimization` workflow trial-compresses added or modified images in pull requests. It fails when the candidate is **more than 25% smaller** than the original, or an image cannot be inspected. There are no fixed file-size limits or gzip budgets. Explicit ignore rules require a reason.
 
-The checker and tests are maintained in this directory. SVGO, Sharp, XML parsing, glob matching, and their transitive dependencies are pinned in the standalone `package.json`/`package-lock.json` here; CI needs no external image service or repository write permission.
+The checker and tests are maintained in this directory. SVGO, Sharp, XML parsing, glob matching, and their transitive dependencies are managed through the root pnpm catalog and `pnpm-lock.yaml`, with `catalog:` references in this workspace package; CI needs no external image service or repository write permission.
 
 ## Compression policy
 
-| Format | Trial optimization |
-| --- | --- |
-| Static PNG (up to 8-bit samples) | Node.js zlib lossless IDAT recompression, preserving original pixel encoding and all non-IDAT chunks |
-| Static JPEG | Sharp quality 90, progressive encoding |
-| Static WebP | Sharp quality 90, effort 6 |
-| SVG without whitespace-sensitive content | SVGO with an explicit plugin allowlist, plus recompression of supported embedded rasters |
-| SVG with whitespace-sensitive content, 16-bit PNG, animated/multi-frame images and other raster formats | Explicitly reported as skipped |
+| Format                                                                                                  | Trial optimization                                                                                   |
+| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Static PNG (up to 8-bit samples)                                                                        | Node.js zlib lossless IDAT recompression, preserving original pixel encoding and all non-IDAT chunks |
+| Static JPEG                                                                                             | Sharp quality 90, progressive encoding                                                               |
+| Static WebP                                                                                             | Sharp quality 90, effort 6                                                                           |
+| SVG without whitespace-sensitive content                                                                | SVGO with an explicit plugin allowlist, plus recompression of supported embedded rasters             |
+| SVG with whitespace-sensitive content, 16-bit PNG, animated/multi-frame images and other raster formats | Explicitly reported as skipped                                                                       |
 
 PNG trials recompress the existing IDAT stream without changing scanline filters, palette, transparency, or metadata chunks. Sharp validates PNG decoding but does not produce its output pixels. This is deliberately more conservative than re-encoding with a different PNG encoder. JPEG/WebP trials retain ICC/EXIF (including orientation), XMP, and density.
 
@@ -36,8 +36,14 @@ The workflow runs only on pull requests and checks out the PR head commit. Check
 
 ```json
 [
-  {"pattern": "docs/images/upstream-logo.png", "reason": "Keep the upstream brand asset unchanged"},
-  {"pattern": "api/tests/fixtures/images/*.png", "reason": "Tests require the original encoded bytes"}
+  {
+    "pattern": "docs/images/upstream-logo.png",
+    "reason": "Keep the upstream brand asset unchanged"
+  },
+  {
+    "pattern": "api/tests/fixtures/images/*.png",
+    "reason": "Tests require the original encoded bytes"
+  }
 ]
 ```
 
@@ -47,23 +53,23 @@ Check mode, `--fix`, and `--output-dir` all honor the same rules. Ignored images
 
 ## Local use
 
-Use Node.js 24 (24.2 or newer). Install the isolated checker dependencies once from the repository root (also after lockfile changes):
+Use the repository’s Node.js/pnpm toolchain. This is the `@dify/image-resources` workspace package under `packages/`. Install dependencies from the repository root:
 
 ```sh
-npm ci --prefix scripts/image-resources --ignore-scripts --no-audit --no-fund
+pnpm install --frozen-lockfile
 ```
 
-This does not install the application's frontend dependencies. The checker and tests run entirely in Node.js and do not download tools at runtime. Missing dependencies or optimizer failures fail the check. Then run:
+CI uses `pnpm --filter @dify/image-resources... install --frozen-lockfile --ignore-scripts` to install the checker and root tooling from the shared lockfile. The checker and tests run entirely in Node.js and do not download tools at runtime. Missing dependencies or optimizer failures fail the check. Then run:
 
 ```sh
-node scripts/image-resources/check-image-resources.mjs --base origin/main
-npm test --prefix scripts/image-resources
+pnpm --filter @dify/image-resources check:images --base origin/main
+pnpm --filter @dify/image-resources test
 ```
 
 To audit everything and save candidates for review:
 
 ```sh
-node scripts/image-resources/check-image-resources.mjs --all --output-dir /tmp/dify-image-candidates
+pnpm --filter @dify/image-resources check:images --all --output-dir /tmp/dify-image-candidates
 ```
 
 The output directory must be outside the repository. Only candidates exceeding the savings threshold are saved, preserving repository-relative paths. Compare them in their actual display context, including dark mode and high-DPI displays, before manually applying any candidate.
@@ -71,9 +77,9 @@ The output directory must be outside the repository. Only candidates exceeding t
 To apply fixes locally using the same compression policy:
 
 ```sh
-node scripts/image-resources/check-image-resources.mjs --base origin/main --fix
+pnpm --filter @dify/image-resources check:images --base origin/main --fix
 # Inspect the modified images visually, then rerun the check before committing.
-node scripts/image-resources/check-image-resources.mjs --base origin/main
+pnpm --filter @dify/image-resources check:images --base origin/main
 ```
 
 Use `--all --fix` to optimize all tracked images in scope. `--fix` and `--output-dir` are mutually exclusive. Fix mode overwrites only images exceeding the 25% savings threshold, reports each modified file and its savings, and leaves passing/skipped/invalid images untouched. It exits successfully when all detected opportunities are fixed; inspection or write errors still return a failure, even if other files were fixed. Each replacement is written to a temporary file in the same directory and renamed only after writing succeeds. Changes are not staged or committed. Review them in their actual display context, especially JPEG/WebP candidates (including embedded rasters), because these are lossy. Subsequent checks read the updated files.
