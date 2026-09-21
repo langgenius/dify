@@ -386,7 +386,7 @@ const Operations = ({
         <>
           {renderListSwitch()}
           {hasOperationsMenu && (
-            <Separator decorative className="mx-2 mr-2 ml-4 h-3" orientation="vertical" />
+            <Separator decorative className="mr-2 ml-4 h-3" orientation="vertical" />
           )}
         </>
       )}

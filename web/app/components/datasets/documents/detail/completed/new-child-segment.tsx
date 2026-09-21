@@ -121,7 +121,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
                 actionType="add"
                 isChildChunk={true}
               />
-              <Separator orientation="vertical" className="mx-2 mr-2 ml-4 h-3.5" />
+              <Separator orientation="vertical" className="mr-2 ml-4 h-3.5" />
             </>
           )}
           <button

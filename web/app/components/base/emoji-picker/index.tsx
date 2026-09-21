@@ -54,7 +54,7 @@ function EmojiPickerContent({ className, onOpenChange, onSelect }: EmojiPickerCo
           setSelectedBackground(background)
         }}
       />
-      <Separator decorative className="my-2 mt-3 mb-0 h-[0.5px]" />
+      <Separator decorative className="mt-3 mb-0 h-[0.5px]" />
       <div className="flex w-full items-center justify-center gap-2 p-3">
         <Button className="w-full" onClick={() => onOpenChange(false)}>
           {t(($) => $['iconPicker.cancel'], { ns: 'app' })}

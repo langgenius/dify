@@ -256,7 +256,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaC
             <Button variant="secondary" onClick={handleResetDefaults}>
               {t(($) => $['nodes.llm.jsonSchema.resetDefaults'], { ns: 'workflow' })}
             </Button>
-            <Separator orientation="vertical" className="mx-2 mr-0 ml-1 h-4" />
+            <Separator orientation="vertical" className="mr-0 ml-1 h-4" />
           </div>
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleCancel}>

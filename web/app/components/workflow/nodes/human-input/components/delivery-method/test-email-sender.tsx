@@ -432,7 +432,7 @@ const EmailSenderContent = ({
       {generatedInputs.length > 0 && (
         <>
           <div>
-            <Separator className="my-2 mt-4 mb-2 w-12" />
+            <Separator className="mt-4 mb-2 w-12" />
           </div>
           <div className="py-2">
             <button

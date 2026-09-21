@@ -167,7 +167,7 @@ const MultipleToolSelector = ({
               <span>{`${enabledCount}/${value.length}`}</span>
               <span>{t(($) => $['agent.tools.enabled'], { ns: 'appDebug' })}</span>
             </div>
-            <Separator decorative orientation="vertical" className="mx-2 mr-1 ml-3 h-3" />
+            <Separator decorative orientation="vertical" className="mr-1 ml-3 h-3" />
           </>
         )}
         {!disabled && (
