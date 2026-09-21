@@ -188,7 +188,10 @@ def build_change_set(
     ``default_scope`` behavior so those callers stay green. ``fallback_diff``
     is used when the joined changes string is empty.
     """
-    changes = list(result.changes) if result.changes else list(result.changed_nodes)
+    # str() defensively: a non-string id must never crash the session on the
+    # join below. validate_intent_args rejects these at the boundary now, but
+    # this is the line that took the whole session down (ESQ1-271).
+    changes = list(result.changes) if result.changes else [str(node) for node in result.changed_nodes]
     scope = result.scope or default_scope
     change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or fallback_diff)
     return changes, scope, change_set
