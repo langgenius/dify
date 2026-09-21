@@ -42,7 +42,7 @@ the P2 plan's Global Constraints):
   matters for Agent-node workflows and is not part of this port's contract.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -327,28 +327,47 @@ class WorkflowServiceDifyPort:
             app = load_app(session, app_id, actor)
             tenant_id = app.tenant_id
 
-            # ``generate`` does all of its Session work EAGERLY, before it
-            # returns: ``_dispatch_generate`` is a plain function (not a
-            # generator), and its streaming branch resolves the workflow and
-            # serialises everything the run needs into an ``AppExecutionParams``
-            # JSON payload while this block is still open. The generator it
-            # hands back only reads a Redis subscription
-            # (``streaming_utils.stream_topic_events``) and formats strings --
-            # the run itself executes in a Celery worker with its own Session.
-            # So the stream is consumed OUTSIDE this block: holding a DB
-            # connection open for the length of a workflow run would cost real
-            # pool capacity and buy nothing.
+            # MUST stay blocking. ``run_draft`` executes inside the Celery task
+            # ``dify_builder_advance_task.advance_session``, and streaming mode
+            # does NOT run the workflow here: it enqueues
+            # ``workflow_based_app_execution_task.delay(...)`` on first subscribe
+            # (services/app_generate_service.py:322-324) and hands back a Redis
+            # subscription. This task would then block on events from a task that
+            # needs the very worker slot this task is holding -- a self-deadlock.
+            # Observed live: advance_session "succeeded in 300.59s" (the idle
+            # timeout) four times running, while each workflow_run itself
+            # finished in under 2s. It deadlocks every time at worker
+            # concurrency 1, and as soon as N test runs are in flight at
+            # concurrency N.
+            #
+            # Blocking mode runs the workflow in-process
+            # (``WorkflowAppGenerator().generate(..., streaming=False)``) and
+            # returns a dict, so there is no second task to wait for.
             response = AppGenerateService.generate(
                 app_model=app,
                 user=account,
                 args={"inputs": inputs},
                 invoke_from=InvokeFrom.DEBUGGER,
                 session=session,
-                streaming=True,
+                streaming=False,
             )
 
         final: dict[str, Any] = {}
         stream_run_id = ""
+
+        # Blocking mode returns a MAPPING ({"task_id", "workflow_run_id",
+        # "data"}), not a stream. Iterating it would walk its KEYS as strings --
+        # which is exactly what happened after the streaming rewrite: no run id
+        # and no terminal frame were ever found, every test run was recorded
+        # status="running" with an empty dify_run_id, and the Builder bounced the
+        # user back to build.execution forever. Handle both shapes so the stream
+        # path stays correct if it is ever reinstated behind a non-worker consumer.
+        if isinstance(response, Mapping):
+            final = dict(response.get("data") or {})
+            if not final.get("id"):
+                final["id"] = str(response.get("workflow_run_id") or "")
+            return self._finish_run(tenant_id, app_id, final, stream_run_id="")
+
         try:
             for chunk in response:
                 # Streaming yields SSE-formatted strings ("data: {...}" events
@@ -375,10 +394,15 @@ class WorkflowServiceDifyPort:
             if callable(close):
                 close()
 
+        return self._finish_run(tenant_id, app_id, final, stream_run_id)
+
+    def _finish_run(self, tenant_id: str, app_id: str, final: dict[str, Any], stream_run_id: str) -> Run:
+        """Turn the run's terminal data into a ``Run``. Shared by the blocking
+        and streaming paths so they can never disagree about the outcome."""
         run_id = str(final.get("id") or stream_run_id or "")
 
-        # The stream carries progress, not outputs: ``map_run_result`` still
-        # needs the node-execution rows for ``per_node[].outputs``.
+        # The terminal frame carries status, not per-node outputs:
+        # ``map_run_result`` still needs the node-execution rows.
         node_execs = (
             DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
                 sessionmaker(bind=db.engine)
@@ -390,11 +414,11 @@ class WorkflowServiceDifyPort:
         if final:
             return map_run_result(final, node_execs)
 
-        # The stream ended without a terminal frame -- the subscription hit its
-        # idle timeout, or the publishing worker died. The stream is no longer
-        # the authority on how the run went; the database is. Synthesising
-        # "failed" here would report a run that may well have SUCCEEDED as a
-        # failed build and feed the repair loop a lie.
+        # No terminal data -- a consumed stream ended without its terminal frame
+        # (idle timeout, or the publishing worker died). The database is now the
+        # authority on how the run went; synthesising "failed" here would report
+        # a run that may well have SUCCEEDED as a failed build and feed the
+        # repair loop a lie.
         return self._run_result_without_terminal_frame(tenant_id, app_id, run_id, node_execs)
 
     @staticmethod
