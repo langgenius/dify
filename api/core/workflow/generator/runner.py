@@ -1864,8 +1864,20 @@ class WorkflowGenerator:
         if node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM:
             return var == "output"
         if node_type == BuiltinNodeTypes.TOOL:
-            # Tool outputs are dynamic — validated at run time, not here.
-            return True
+            # A tool's outputs are NOT opaque: tool_node.py fixes the envelope
+            # to text/files/json plus the provider's declared variables, and
+            # the generator copies the provider's output_schema onto the node
+            # when it builds it. Validate against both.
+            #
+            # Fails OPEN when no schema is present: this file is shared with
+            # cmd+K, and a tool we cannot describe must keep behaving exactly
+            # as it did before. We reject only references we can prove wrong.
+            if var in {"text", "files", "json"}:
+                return True
+            properties = (data.get("output_schema") or {}).get("properties") or {}
+            if not properties:
+                return True
+            return var in properties
         if node_type in (BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP):
             return var == "output"
         if node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
@@ -1894,6 +1906,9 @@ class WorkflowGenerator:
     # files} and never `response`; the response body a workflow wants is `body`.
     _OUTPUT_ALIASES: dict[tuple[str, str], str] = {
         (BuiltinNodeTypes.HTTP_REQUEST, "response"): "body",
+        # `result` is the output name models reach for on a tool node; the
+        # real one is `text`. Rewriting beats failing the build over it.
+        (BuiltinNodeTypes.TOOL, "result"): "text",
     }
 
     @classmethod

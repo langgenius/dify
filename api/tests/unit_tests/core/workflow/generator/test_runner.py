@@ -4715,3 +4715,50 @@ class TestWorkflowGeneratorStream:
         )
 
         assert result["mode"] == "workflow"
+
+
+def _tool_node(node_id="node2", output_schema=None):
+    data = {"type": "tool", "title": "JSON Parse", "provider_name": "json_process"}
+    if output_schema is not None:
+        data["output_schema"] = output_schema
+    return {"id": node_id, "data": data}
+
+
+def test_tool_node_declares_its_fixed_envelope():
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
+    assert G._declares_variable(node, "text") is True
+    assert G._declares_variable(node, "files") is True
+    assert G._declares_variable(node, "json") is True
+
+
+def test_tool_node_declares_its_output_schema_properties():
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
+    assert G._declares_variable(node, "parsed") is True
+
+
+def test_tool_node_rejects_an_undeclared_output_when_a_schema_is_present():
+    """ESQ1-296 / ESQ1-289: `result` is the reference the model invents."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
+    assert G._declares_variable(node, "result") is False
+
+
+def test_tool_node_fails_open_without_an_output_schema():
+    """cmd+K safety: a tool we cannot describe keeps today's behaviour."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    assert G._declares_variable(_tool_node(), "anything") is True
+    assert G._declares_variable(_tool_node(output_schema={}), "anything") is True
+
+
+def test_tool_result_is_aliased_to_text():
+    """Self-heal the common mistake rather than failing the build for it."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
+    assert G._aliased_output(node, "result") == "text"
