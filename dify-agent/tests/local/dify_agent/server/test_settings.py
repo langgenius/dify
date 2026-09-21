@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import secrets
 
 import pytest
@@ -727,6 +728,70 @@ def test_server_settings_rejects_unknown_trajectory_trace_context_mode(
 
     with pytest.raises(ValidationError, match="trajectory_trace_context_mode"):
         _ = ServerSettings.model_validate({"trajectory_trace_context_mode": bad_mode})
+
+
+def test_server_settings_observability_dotenv_snapshot_only_captures_sdk_keys(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+    monkeypatch.delenv("LOGFIRE_EMPTY", raising=False)
+    monkeypatch.delenv("LOGFIRE_TOKEN", raising=False)
+    dotenv = tmp_path / "otel.env"
+    dotenv.write_text(
+        "OTEL_EXPORTER_OTLP_ENDPOINT=http://snap:4318\n"
+        "LOGFIRE_EMPTY=\n"
+        "LOGFIRE_TOKEN=dotenv-test-only-secret\n"
+        "OTEL_UNSET\n"
+        "DIFY_AGENT_API_TOKEN=not-captured\n"
+        "UNRELATED=not-captured\n"
+    )
+
+    settings = ServerSettings(_env_file=dotenv)
+
+    snapshot = settings.observability_dotenv
+    assert set(snapshot) == {"OTEL_EXPORTER_OTLP_ENDPOINT", "LOGFIRE_EMPTY", "LOGFIRE_TOKEN"}
+    assert snapshot["OTEL_EXPORTER_OTLP_ENDPOINT"].get_secret_value() == "http://snap:4318"
+    assert snapshot["LOGFIRE_EMPTY"].get_secret_value() == ""
+    assert snapshot["LOGFIRE_TOKEN"].get_secret_value() == "dotenv-test-only-secret"
+    assert "OTEL_EXPORTER_OTLP_ENDPOINT" not in os.environ
+    assert "LOGFIRE_TOKEN" not in os.environ
+    assert "observability_dotenv" not in settings.model_dump()
+    assert "observability_dotenv" not in settings.model_dump_json()
+    assert "http://snap:4318" not in repr(settings)
+    assert "http://snap:4318" not in repr(snapshot)
+    assert "dotenv-test-only-secret" not in repr(settings)
+    assert "dotenv-test-only-secret" not in repr(snapshot)
+    assert "dotenv-test-only-secret" not in settings.model_dump_json()
+    assert "dotenv-test-only-secret" not in repr(settings.model_dump())
+
+
+def test_server_settings_observability_dotenv_snapshots_are_independent(tmp_path: Path) -> None:
+    first = tmp_path / "first.env"
+    first.write_text("OTEL_EXPORTER_OTLP_ENDPOINT=http://first:4318\n")
+    second = tmp_path / "second.env"
+    second.write_text("OTEL_EXPORTER_OTLP_ENDPOINT=http://second:4318\n")
+
+    settings_first = ServerSettings(_env_file=first)
+    settings_second = ServerSettings(_env_file=second)
+    settings_none = ServerSettings(_env_file=None)
+
+    assert settings_first.observability_dotenv["OTEL_EXPORTER_OTLP_ENDPOINT"].get_secret_value() == "http://first:4318"
+    assert (
+        settings_second.observability_dotenv["OTEL_EXPORTER_OTLP_ENDPOINT"].get_secret_value() == "http://second:4318"
+    )
+    assert settings_none.observability_dotenv == {}
+
+
+def test_server_settings_observability_dotenv_canonicalizes_names_by_case_sensitivity(tmp_path: Path) -> None:
+    dotenv = tmp_path / "otel.env"
+    dotenv.write_text("otel_exporter_otlp_endpoint=http://lower:4318\nLOGFIRE_SERVICE_NAME=upper\n")
+
+    insensitive = ServerSettings(_env_file=dotenv)
+    assert set(insensitive.observability_dotenv) == {"OTEL_EXPORTER_OTLP_ENDPOINT", "LOGFIRE_SERVICE_NAME"}
+
+    sensitive = ServerSettings(_env_file=dotenv, _case_sensitive=True)
+    assert set(sensitive.observability_dotenv) == {"LOGFIRE_SERVICE_NAME"}
 
 
 @pytest.mark.parametrize(

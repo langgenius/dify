@@ -16,6 +16,7 @@ from typing import ClassVar, Literal, cast
 
 from pydantic import AliasChoices, AnyHttpUrl, Field, SecretStr, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings.sources import DotEnvSettingsSource, InitSettingsSource, PydanticBaseSettingsSource
 
 from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url
 from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
@@ -45,7 +46,12 @@ DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH = 5000
 
 
 class ServerSettings(BaseSettings):
-    """Environment settings for scheduling, outbound HTTP, and runtime resources."""
+    """Environment settings for scheduling, outbound HTTP, and runtime resources.
+
+    ``observability_dotenv`` is a construction-time snapshot of the effective
+    dotenv source restricted to ``OTEL_*``/``LOGFIRE_*`` keys; it is excluded
+    from serialization and repr, and is consumed only by observability setup.
+    """
 
     redis_url: str = "redis://localhost:6379/0"
     redis_prefix: str = "dify-agent"
@@ -142,6 +148,7 @@ class ServerSettings(BaseSettings):
     outbound_http_max_connections: int = Field(default=100, ge=1)
     outbound_http_max_keepalive_connections: int = Field(default=20, ge=0)
     outbound_http_keepalive_expiry: float = Field(default=30.0, ge=0)
+    observability_dotenv: dict[str, SecretStr] = Field(default_factory=dict, exclude=True, repr=False)
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_prefix="DIFY_AGENT_",
@@ -149,6 +156,29 @@ class ServerSettings(BaseSettings):
         extra="ignore",
         populate_by_name=True,
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        variables: dict[str, str] = {}
+        if isinstance(dotenv_settings, DotEnvSettingsSource):
+            for key, value in dotenv_settings.env_vars.items():
+                name = key if dotenv_settings.case_sensitive else key.upper()
+                if value is not None and name.startswith(("OTEL_", "LOGFIRE_")):
+                    variables[name] = value
+        return (
+            InitSettingsSource(settings_cls, {"observability_dotenv": variables}),
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
 
     @field_validator("agent_stub_api_base_url")
     @classmethod

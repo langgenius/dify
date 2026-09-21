@@ -4,9 +4,9 @@ The run server performs observability setup at the FastAPI app boundary rather
 than inside agent runtime code. Global instrumentations cover shared HTTPX and
 Redis clients once per process; the FastAPI instrumentation is applied per app
 instance because tests and embedded callers can build multiple apps in one
-Python process. ``OTEL_*`` and ``LOGFIRE_*`` values from the server's
-configured dotenv files are forwarded before SDK setup without overriding the
-process environment. Logfire-platform export remains token-gated through
+Python process. ``OTEL_*`` and ``LOGFIRE_*`` values captured in the
+``ServerSettings`` dotenv snapshot are forwarded before SDK setup without
+overriding the process environment. Logfire-platform export remains token-gated through
 ``if-token-present``; standard OTLP export is configured independently.
 
 The optional Agent trajectory pipeline is a separate, deployment-opt-in Logfire
@@ -31,7 +31,6 @@ from fastapi import FastAPI, Request, WebSocket
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ALWAYS_ON, ParentBased
-from pydantic_settings import DotEnvSettingsSource
 
 from dify_agent.runtime.observability import AgentObservability, IsolatedTracerProvider
 from dify_agent.server.settings import ServerSettings
@@ -66,7 +65,8 @@ def configure_server_observability(app: FastAPI, *, settings: ServerSettings | N
 
     Platform instrumentation captures infrastructure metadata without parsed
     request payloads or HTTP bodies. SDK environment variables
-    are forwarded from the server's dotenv files with process-environment priority.
+    are forwarded from the settings dotenv snapshot with process-environment
+    priority.
     Logfire-platform export stays token-gated; OTLP endpoints do not require a
     Logfire token. FastAPI parsed argument/error payloads, HTTPX bodies and
     headers, and Redis statements are not captured. The trace context mode is a
@@ -82,10 +82,9 @@ def configure_server_observability(app: FastAPI, *, settings: ServerSettings | N
     with _observability_configuration_lock:
         if _global_instrumentation_ready and _global_trace_context_mode != mode:
             raise ValueError("Trace context mode cannot change after platform instrumentation; restart the process")
-        dotenv = DotEnvSettingsSource(ServerSettings, case_sensitive=True)
-        for key, value in dotenv.env_vars.items():
-            if value is not None and key.startswith(("OTEL_", "LOGFIRE_")):
-                os.environ.setdefault(key, value)
+        for key, value in resolved_settings.observability_dotenv.items():
+            if key.startswith(("OTEL_", "LOGFIRE_")):
+                os.environ.setdefault(key, value.get_secret_value())
 
         platform = logfire.configure(
             send_to_logfire="if-token-present",
