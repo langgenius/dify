@@ -327,6 +327,53 @@ class ImageOptimizationTests(unittest.TestCase):
         for old, new in zip(before.iter(), after.iter(), strict=True):
             self.assertEqual((old.tag, old.attrib, old.text), (new.tag, new.attrib, new.text))
 
+    def test_fix_skips_svgs_with_whitespace_sensitive_content(self):
+        self.run_git("init", "-q")
+        bodies = [
+            (
+                '<foreignObject width="100" height="100"><div xmlns="http://www.w3.org/1999/xhtml">'
+                "<span>Hello</span> <span>world</span></div></foreignObject>"
+            ),
+            '<s:text xml:space="preserve">  Hello world  </s:text>',
+            "<text>Hello <tspan>world</tspan></text>",
+            '<g xml:space="preserve"><rect width="10" height="10"/></g>',
+            '<s:foreignObject><div xmlns="http://www.w3.org/1999/xhtml">Hello world</div></s:foreignObject>',
+        ]
+        sources = [
+            (
+                '<svg xmlns="http://www.w3.org/2000/svg" xmlns:s="http://www.w3.org/2000/svg">'
+                + "\n    " * 80
+                + body
+                + "</svg>"
+            ).encode()
+            for body in bodies
+        ]
+        sources.append(b'<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve">  <rect width="10"/>  </svg>')
+        originals = {}
+        for index, source in enumerate(sources):
+            originals[self.write(f"images/text-{index}.svg", source)] = source
+        self.run_git("add", ".")
+        scripts = self.root / "scripts/image-resources"
+        scripts.mkdir(parents=True)
+        shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        shutil.copy(Path(checker.__file__).with_name("optimize_svg.mjs"), scripts / "optimize_svg.mjs")
+        (scripts / "node_modules").symlink_to(
+            Path(checker.__file__).with_name("node_modules"), target_is_directory=True
+        )
+        (scripts / "ignore.json").write_text("[]")
+        command = [sys.executable, str(scripts / "check_image_resources.py"), "--all"]
+        for args in [[], ["--fix"]]:
+            result = subprocess.run(command + args, capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("6 skipped", result.stdout)
+            self.assertIn("0 fixed", result.stdout)
+            for path, source in originals.items():
+                self.assertEqual(path.read_bytes(), source)
+        for source in sources:
+            candidate, method = checker.compress_svg(source)
+            self.assertEqual(candidate, source)
+            self.assertIn("skipped: SVG contains whitespace-sensitive content", method)
+
     def test_svg_markup_is_optimized(self):
         data = (
             b'<svg xmlns="http://www.w3.org/2000/svg">' + b"\n        " * 100 + b'<rect width="10" height="10"/></svg>'

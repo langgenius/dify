@@ -96,6 +96,14 @@ def compress_svg(data: bytes) -> tuple[bytes, str]:
     root = document.documentElement
     if root.localName != "svg":
         raise ValueError("Expected an SVG root element")
+    # SVGO trims whitespace during parsing, before the plugin allowlist runs.
+    # Match local names so namespace-prefixed SVG content gets the same protection.
+    if any(
+        element.localName in {"text", "tspan", "textPath", "foreignObject"}
+        or element.getAttributeNS("http://www.w3.org/XML/1998/namespace", "space") == "preserve"
+        for element in [root, *root.getElementsByTagName("*")]
+    ):
+        return data, "skipped: SVG contains whitespace-sensitive content; preserve original bytes"
     methods = ["SVGO conservative optimization"]
     for element in root.getElementsByTagName("*"):
         if element.localName != "image":
