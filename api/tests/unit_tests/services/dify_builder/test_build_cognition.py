@@ -354,10 +354,10 @@ def test_build_nodes_sends_the_directive_to_the_generator(monkeypatch):
         @staticmethod
         def generate_workflow_graph(
             *,
-            tenant_id,
-            mode,
+            tenant_id,  # noqa: ARG004
+            mode,  # noqa: ARG004
             instruction,
-            model_config,
+            model_config,  # noqa: ARG004
             current_graph,  # noqa: ARG004
         ):
             seen["instruction"] = instruction
