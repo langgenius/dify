@@ -3,6 +3,7 @@
 import hashlib
 import io
 import zipfile
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 from uuid import uuid4
@@ -15,7 +16,7 @@ from services.agent.errors import (
     RosterAgentPackageExportFailedError,
     RosterAgentPackageTooLargeError,
 )
-from services.agent.package_resource_exporter import AgentPackageResourceExporter
+from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
 from services.agent.package_resource_importer import AgentPackageResourceImporter
 from services.agent.roster_package_entities import PackageIcon, PreparedPackageArchive, RosterAgentPackageMember
 from services.app_package_service import AppPackageService
@@ -45,7 +46,7 @@ def _icon_archive(*, payload: bytes = b"image", digest: str | None = None, refer
     return output
 
 
-def test_app_icon_export_deduplicates_uploads_and_restores_references(monkeypatch):
+def test_app_icon_export_deduplicates_uploads_and_restores_references(monkeypatch: pytest.MonkeyPatch) -> None:
     source_id = str(uuid4())
     payload = b"image payload"
     backend = Mock()
@@ -76,31 +77,31 @@ def test_app_icon_export_deduplicates_uploads_and_restores_references(monkeypatc
             assert restore.call_args.kwargs["tenant_id"] == "destination"
 
 
-def test_icon_export_rejects_unavailable_tenant_upload(monkeypatch):
+def test_icon_export_rejects_unavailable_tenant_upload(monkeypatch: pytest.MonkeyPatch) -> None:
     exporter = AgentPackageResourceExporter(storage_backend=Mock())
     monkeypatch.setattr(exporter, "_upload_files", Mock(return_value={}))
     with pytest.raises(RosterAgentPackageExportFailedError, match="unavailable"):
         exporter.collect_icon(session=Mock(), tenant_id="tenant", metadata={"icon_type": "image", "icon": str(uuid4())})
 
 
-def test_icon_checksum_is_required():
+def test_icon_checksum_is_required() -> None:
     with pytest.raises(InvalidRosterAgentPackageError, match="integrity"):
         AppPackageService().read_package(_icon_archive(digest="0" * 64))
 
 
 @pytest.mark.parametrize("reference", ["i_000002", "unrelated-upload"])
-def test_icon_must_resolve_to_metadata(reference):
+def test_icon_must_resolve_to_metadata(reference: str) -> None:
     with pytest.raises(InvalidRosterAgentPackageError, match="references"):
         AppPackageService().read_package(_icon_archive(reference=reference))
 
 
-def test_icon_image_limit_is_enforced(config_overrides):
+def test_icon_image_limit_is_enforced(config_overrides: Callable[..., None]) -> None:
     config_overrides(UPLOAD_IMAGE_FILE_SIZE_LIMIT=0)
     with pytest.raises(RosterAgentPackageTooLargeError, match="image size"):
         AppPackageService().read_package(_icon_archive())
 
 
-def test_materialized_icon_is_owned_by_destination(monkeypatch):
+def test_materialized_icon_is_owned_by_destination(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = b"image payload"
     digest = hashlib.sha256(payload).hexdigest()
     archive = io.BytesIO()
@@ -129,7 +130,7 @@ def test_materialized_icon_is_owned_by_destination(monkeypatch):
     backend.save.assert_called_once_with(row.key, payload)
 
 
-def test_roster_export_embeds_agent_icon(monkeypatch):
+def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> None:
     from models.agent_config_entities import AgentSoulConfig
     from models.model import App
     from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata, make_agent_app_dsl
@@ -139,7 +140,7 @@ def test_roster_export_embeds_agent_icon(monkeypatch):
     backend = Mock()
     backend.load_stream.side_effect = lambda _: iter([b"icon"])
     resources = AgentPackageResourceExporter(storage_backend=backend)
-    resources.sources["agent_1"] = ([], [])
+    resources.sources["agent_1"] = (list[_SkillSource](), list[_FileSource]())
     metadata = {"name": "Agent", "icon_type": "image", "icon": "source-id"}
     monkeypatch.setattr(
         resources,
@@ -154,7 +155,9 @@ def test_roster_export_embeds_agent_icon(monkeypatch):
     app = make_agent_app_dsl(
         App(name="Agent", mode="agent"),
         package_ref="agent_1",
-        packages={"agent_1": AgentPackage(metadata=AgentPackageMetadata(**metadata), soul=AgentSoulConfig())},
+        packages={
+            "agent_1": AgentPackage(metadata=AgentPackageMetadata.model_validate(metadata), soul=AgentSoulConfig())
+        },
         dependencies=[],
     )
     with RosterAgentPackageExporter(storage_backend=backend)._build_archive(app=app, resources=resources) as exported:
