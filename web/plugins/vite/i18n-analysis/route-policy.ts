@@ -63,12 +63,21 @@ export function createRoutePolicyMatcher(
         markWritten(node.left)
       if (
         ts.isCallExpression(node) &&
-        ts.isPropertyAccessExpression(node.expression) &&
-        /^(?:push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin)$/.test(
-          node.expression.name.text,
+        (ts.isPropertyAccessExpression(node.expression) ||
+          ts.isElementAccessExpression(node.expression))
+      ) {
+        const access = node.expression
+        const method = ts.isPropertyAccessExpression(access)
+          ? access.name.text
+          : ts.isStringLiteralLike(access.argumentExpression)
+            ? access.argumentExpression.text
+            : undefined
+        if (
+          !method ||
+          /^(?:push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin)$/.test(method)
         )
-      )
-        markWritten(node.expression.expression)
+          markWritten(access.expression)
+      }
       if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
         const api = translationApi(node.expression)
         if (api !== 'useTranslation' && api !== 'getTranslation')

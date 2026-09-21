@@ -672,6 +672,24 @@ describe('i18n build check', () => {
       'array-escape',
       "function load(ns: string) { return useTranslation(ns) }; const handlers = [load]; function register(value: unknown) { (globalThis as any).handlers = value }; register(handlers); export const page = load('app')",
     ],
+    ['local-assignment', "let ns = 'app'; ns = 'login'; export const page = useTranslation(ns)"],
+    ['local-array', "const ns = ['app']; ns.push('login'); export const page = useTranslation(ns)"],
+    [
+      'local-alias',
+      "const ns = ['app']; const alias = ns; alias.push('login'); export const page = useTranslation(ns)",
+    ],
+    [
+      'local-alias-read',
+      "const ns = ['app']; const alias = ns; ns.push('login'); export const page = useTranslation(alias)",
+    ],
+    [
+      'local-call',
+      "function mutate(ns: string[]) { ns.push('login') }; const ns = ['app']; mutate(ns); export const page = useTranslation(ns)",
+    ],
+    [
+      'local-computed',
+      "const ns = ['app']; ns['push']('login'); export const page = useTranslation(ns)",
+    ],
     ...mutationForms.map(({ name, code }) => [
       name,
       `function mutate(ns: string[]) { ns.push('login') }; function load(ns: string[]) { ${code('ns')}; return useTranslation(ns) }; export const page = load(['app'])`,
@@ -767,6 +785,9 @@ describe('i18n build check', () => {
     'arbitrary',
     'spread',
     'alias-mutation',
+    'computed-mutation',
+    'computed-read',
+    'dynamic-method',
     ...mutationForms.map((form) => form.name),
     'effect-deps',
   ] as const)('applies route namespace policy only to proven %s props', async (mode) => {
@@ -794,6 +815,8 @@ describe('i18n build check', () => {
       export function Provider() {
         const required = getRouteNamespaces(${mode === 'arbitrary' ? "'/other'" : 'usePathname()'})
         ${mode === 'alias-mutation' ? "const alias = required; alias.push('workflow')" : mutationForms.some((form) => form.name === mode) ? `function mutate(ns: string[]) { ns.push('workflow') }; ${mutationForms.find((form) => form.name === mode)!.code('required')}` : ''}
+        ${mode === 'computed-mutation' ? "required['push']('workflow')" : mode === 'dynamic-method' ? "const method = (globalThis as any).method; required[method]('workflow')" : ''}
+        ${mode === 'computed-read' ? "required['join'](':')" : ''}
         ${mode === 'effect-deps' ? 'useEffect(() => {}, [required])' : ''}
         return <Loader ${mode === 'spread' ? '{...{ required }}' : 'required={required}'} />
       }
@@ -834,13 +857,15 @@ describe('i18n build check', () => {
         rollupOptions: { external: ['react', 'react/jsx-runtime', 'react/jsx-dev-runtime'] },
       },
     })
-    if (mode === 'current' || mode === 'effect-deps') await expect(result).resolves.toBeDefined()
+    if (['current', 'effect-deps', 'computed-read'].includes(mode))
+      await expect(result).resolves.toBeDefined()
     else await expect(result).rejects.toThrow('Cannot verify namespace usage')
     const known = reports[0]!.routes.find((route) => route.route === '/known')!
     expect(known.unknownNamespaceSources).toEqual(
-      mode === 'current' || mode === 'effect-deps' ? [] : ['provider.tsx'],
+      ['current', 'effect-deps', 'computed-read'].includes(mode) ? [] : ['provider.tsx'],
     )
-    if (mode === 'current' || mode === 'effect-deps') expect(known.namespaces).toEqual(['login'])
+    if (['current', 'effect-deps', 'computed-read'].includes(mode))
+      expect(known.namespaces).toEqual(['login'])
     expect(
       reports[0]!.routes.find((route) => route.route === '/other')!.unknownNamespaceSources,
     ).toEqual(['provider.tsx'])

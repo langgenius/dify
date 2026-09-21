@@ -498,16 +498,24 @@ export function checkTranslationGraph(
     }
   }
 
-  const writtenParameters = new Set<ts.ParameterDeclaration>()
+  const writtenBindings = new Set<ts.Declaration>()
+  const writtenReferences = new Map<ts.Node, boolean>()
+  function hasWrittenReference(node: ts.Node): boolean {
+    const cached = writtenReferences.get(node)
+    if (cached !== undefined) return cached
+    if (ts.isFunctionLike(node)) return false
+    // Cyclic references cannot establish a concrete namespace load.
+    writtenReferences.set(node, true)
+    const result =
+      declarations(node).some((declaration) => writtenBindings.has(declaration)) ||
+      !!dataflow.forEachReference(node, (child) => hasWrittenReference(child) || undefined)
+    writtenReferences.set(node, result)
+    return result
+  }
   function recordLoadedNamespaces(expression: ts.Expression, seen = new Set<ts.Node>()): boolean {
     const node = unwrap(expression)
     if (seen.has(node)) return false
-    if (
-      declarations(node).some(
-        (declaration) => ts.isParameter(declaration) && writtenParameters.has(declaration),
-      )
-    )
-      return false
+    if (hasWrittenReference(node)) return false
     const next = new Set(seen).add(node)
     if (ts.isStringLiteralLike(node)) {
       currentNamespaces.add(node.text)
@@ -567,7 +575,7 @@ export function checkTranslationGraph(
     }
     if (ts.isIdentifier(node)) {
       const index = owner.parameters.findIndex(
-        (parameter) => !writtenParameters.has(parameter) && declarations(node).includes(parameter),
+        (parameter) => !writtenBindings.has(parameter) && declarations(node).includes(parameter),
       )
       if (index >= 0) return new Set([index])
     }
@@ -579,8 +587,11 @@ export function checkTranslationGraph(
       visit: (node) => {
         if (!ts.isIdentifier(node)) return
         for (const declaration of declarations(node))
-          if (ts.isParameter(declaration) && (!indirect || !isPrimitive(mutationType(node))))
-            writtenParameters.add(declaration)
+          if (
+            (ts.isParameter(declaration) || ts.isVariableDeclaration(declaration)) &&
+            (!indirect || !isPrimitive(mutationType(node)))
+          )
+            writtenBindings.add(declaration)
       },
     })
   }
@@ -603,7 +614,11 @@ export function checkTranslationGraph(
           node.operator === ts.SyntaxKind.MinusMinusToken)
       )
         markDirectWrites(node.operand)
-      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression))
+      if (
+        ts.isCallExpression(node) &&
+        (ts.isPropertyAccessExpression(node.expression) ||
+          ts.isElementAccessExpression(node.expression))
+      )
         markDirectWrites(node.expression.expression)
       if (ts.isFunctionDeclaration(node) && node.body)
         forwarding.set(node, { parameters: new Set(), namespaces: new Set() })
@@ -621,18 +636,21 @@ export function checkTranslationGraph(
     mutationTypeQueries++
     return checker.getTypeAtLocation(node)
   }
-  // Match the same parameter/alias traversal as mutation tracking before requesting types.
-  const parameterReferences = new Map<ts.Node, boolean>()
-  function referencesParameter(node: ts.Node): boolean {
-    const cached = parameterReferences.get(node)
+  // Match the same local binding/alias traversal as mutation tracking before requesting types.
+  const bindingReferences = new Map<ts.Node, boolean>()
+  function referencesBinding(node: ts.Node): boolean {
+    const cached = bindingReferences.get(node)
     if (cached !== undefined) return cached
     if (ts.isFunctionLike(node)) return false
     // Cyclic initializers remain candidates; never prune an uncertain reference.
-    parameterReferences.set(node, true)
+    bindingReferences.set(node, true)
     const result =
-      (ts.isIdentifier(node) && declarations(node).some(ts.isParameter)) ||
-      !!dataflow.forEachReference(node, (child) => referencesParameter(child) || undefined)
-    parameterReferences.set(node, result)
+      (ts.isIdentifier(node) &&
+        declarations(node).some(
+          (declaration) => ts.isParameter(declaration) || ts.isVariableDeclaration(declaration),
+        )) ||
+      !!dataflow.forEachReference(node, (child) => referencesBinding(child) || undefined)
+    bindingReferences.set(node, result)
     return result
   }
   // Only primitive arguments are immune to mutation by an arbitrary callee.
@@ -657,7 +675,7 @@ export function checkTranslationGraph(
     if (api === 'useTranslation' || api === 'getTranslation') continue
     for (const argument of node.arguments) {
       mutationArguments++
-      if (!referencesParameter(argument)) continue
+      if (!referencesBinding(argument)) continue
       mutationCandidates++
       if (!isPrimitive(mutationType(argument))) markEscapes(argument)
     }

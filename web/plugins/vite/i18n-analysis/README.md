@@ -111,8 +111,9 @@ Summaries retain both fixed namespaces and parameter dependencies.
 Static array spreads are expanded before matching positional/rest arguments and
 defaults, including empty spreads. Unexpandable spreads retain unknown diagnostics.
 Rest parameters collect all remaining arguments.
-Parameter assignments, method calls, and passing mutable parameters (including local
-aliases) to other functions prevent passthrough summaries. Such calls remain unknown
+Local variable and parameter assignments, method calls, and passing mutable values (including local
+aliases) to other functions prevent passthrough summaries. Namespace loads depending on written bindings remain unknown instead of reusing
+their initializers. Such calls remain unknown
 even when the parameter has a default; arbitrary callees are not assumed pure.
 Defaults are evaluated at the call site, including explicit `undefined`. Recursive
 forwarding, captured parameters in closures, and callbacks escaping through objects
@@ -124,7 +125,10 @@ the configured function called with `usePathname()` and follows immutable local
 variables and direct props into a local, unexported JSX component. Spread props,
 arbitrary pathname expressions, writes, and escaping components remain unknown.
 Policy values modified through local aliases or passed to arbitrary functions lose
-their trusted status and retain unknown diagnostics. Named effect hooks imported
+their trusted status and retain unknown diagnostics. Computed mutator calls such as
+`ns['push'](...)` are treated like dot calls; unknown computed method names also
+cancel trust. Known computed read methods follow the same rules as dot calls.
+Named effect hooks imported
 from React may receive these values in their dependency lists, which React reads
 for comparison; mutations inside effect callbacks are still checked.
 The callback supplies reviewed route values; the analyzer verifies this restricted
@@ -143,7 +147,7 @@ semantic analysis and route traversal durations, plus module and resolver-call
 counts. Semantic analysis is split into `collectionMs`, `mutationMs`,
 `forwardingMs`, and `usageMs`. `mutationArguments` counts non-translation call
 arguments, `mutationCandidates` counts those requiring a mutation type check after
-parameter/alias filtering, and `mutationTypeQueries` counts mutation-related
+local binding/alias filtering, and `mutationTypeQueries` counts mutation-related
 `getTypeAtLocation` calls (including references inside candidates).
 `forwardingVisits` counts calls processed by the dependency-driven summary queue;
 only callers of changed summaries are revisited. These counters are per environment
