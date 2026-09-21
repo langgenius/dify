@@ -420,7 +420,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     )
 
     if status == "succeeded":
-        emit_canvas(env, "mark_test_success")
+        emit_canvas(env, "mark_test_success", dify_run_id=run.dify_run_id)
         test_items = append_card(
             fc,
             TestResultCard(
@@ -462,7 +462,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     # failure: real diagnosis + proposed repair, staged for the approval gate
     run.culprit_node_id = first_failed_node(per_node)
     fc.verify_run_id = run.id
-    emit_canvas(env, "mark_test_error")
+    emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
 
     if is_input_failure(run):
         # the run failed on its INPUT, not the config -- route back to the

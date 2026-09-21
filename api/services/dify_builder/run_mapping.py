@@ -108,6 +108,7 @@ def node_event_from_stream_chunk(chunk: Mapping[str, Any]) -> NodeEvent | None:
         title=str(data.get("title") or ""),
         status=str(status or ""),
         error=str(data.get("error") or ""),
+        run_id=run_id_from_stream_chunk(chunk),
     )
 
 
