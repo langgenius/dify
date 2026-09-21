@@ -763,6 +763,33 @@ describe('useFormState', () => {
         }),
       })
     })
+
+    it('should send the configured score threshold when score_threshold_enabled is true', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setRetrievalConfig({
+          ...result.current.retrievalConfig,
+          score_threshold_enabled: true,
+          score_threshold: 0.62,
+        })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            score_threshold_enabled: true,
+            score_threshold: 0.62,
+          }),
+        }),
+      })
+    })
   })
 
   describe('Hybrid Search reranking_enable derivation', () => {
