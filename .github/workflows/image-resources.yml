@@ -18,28 +18,22 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Set up uv and Python
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        with:
-          enable-cache: false
-          python-version: '3.12'
-
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
 
-      - name: Install SVG optimizer
+      - name: Install image checker dependencies
         run: npm ci --prefix scripts/image-resources --ignore-scripts --no-audit --no-fund
 
       - name: Test image checker
-        run: uv run --with-requirements scripts/image-resources/requirements.txt python -m unittest discover -s scripts/image-resources -p 'test_check_image_resources.py'
+        run: npm test --prefix scripts/image-resources
 
       - name: Check image optimization
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          uv run --with-requirements scripts/image-resources/requirements.txt python scripts/image-resources/check_image_resources.py --base "$BASE_SHA" --output-dir "$RUNNER_TEMP/image-optimization-candidates"
+          node scripts/image-resources/check-image-resources.mjs --base "$BASE_SHA" --output-dir "$RUNNER_TEMP/image-optimization-candidates"
 
       - name: Upload optimization candidates
         if: failure()

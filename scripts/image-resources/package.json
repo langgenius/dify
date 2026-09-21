@@ -3,6 +3,15 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@xmldom/xmldom": "0.9.12",
+    "picomatch": "4.0.3",
+    "sharp": "0.35.4",
     "svgo": "4.1.0"
+  },
+  "engines": {
+    "node": ">=24.2.0"
+  },
+  "scripts": {
+    "test": "node --test check-image-resources.test.mjs"
   }
 }
