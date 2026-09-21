@@ -1,4 +1,4 @@
-"""Fail when trial compression can reduce a frontend image by more than 25%."""
+"""Fail when trial compression can reduce an image by more than 25%."""
 
 from __future__ import annotations
 
@@ -18,7 +18,6 @@ from PIL.PngImagePlugin import PngInfo
 from scour import scour
 
 ROOT = Path(__file__).resolve().parents[2]
-PREFIXES = ("web/public/", "web/app/", "packages/iconify-collections/assets/")
 IMAGE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif", ".ico", ".bmp", ".tif", ".tiff"}
 MAX_SAVINGS_PERCENT = 25
 
@@ -33,11 +32,7 @@ def image_paths(base: str | None, root: Path = ROOT) -> list[str]:
     else:
         ancestor = git("merge-base", base, "HEAD", root=root).decode().strip()
         output = git("diff", "--name-only", "--diff-filter=ACMRT", "-z", ancestor, "HEAD", "--", root=root)
-    return sorted(
-        path
-        for path in output.decode().split("\0")
-        if path.startswith(PREFIXES) and Path(path).suffix.lower() in IMAGE_EXTENSIONS
-    )
+    return sorted(path for path in output.decode().split("\0") if Path(path).suffix.lower() in IMAGE_EXTENSIONS)
 
 
 def compress_raster(data: bytes) -> tuple[bytes, str]:
@@ -149,7 +144,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--base", help="Check images changed between the merge base and HEAD")
-    mode.add_argument("--all", action="store_true", help="Audit all tracked frontend images")
+    mode.add_argument("--all", action="store_true", help="Audit all tracked images")
     action = parser.add_mutually_exclusive_group()
     action.add_argument("--output-dir", type=Path, help="Save failing compression candidates outside the repository")
     action.add_argument(

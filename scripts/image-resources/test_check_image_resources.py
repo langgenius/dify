@@ -277,9 +277,15 @@ class ImageOptimizationTests(unittest.TestCase):
         self.run_git("mv", "web/public/renamed.png", unusual_name)
         self.write("web/public/added.svg", svg(png()))
         self.write("images/docs.png", png())
+        self.write("api/fixtures/asset.PNG", png(optimized=True))
+        self.write("logo.png", png(optimized=True))
+        self.write("docs/readme.md", b"not an image")
         self.run_git("add", ".")
         self.run_git("commit", "-qm", "changes")
-        self.assertEqual(checker.image_paths(base, self.root), ["web/public/added.svg", unusual_name])
+        self.assertEqual(
+            checker.image_paths(base, self.root),
+            ["api/fixtures/asset.PNG", "images/docs.png", "logo.png", "web/public/added.svg", unusual_name],
+        )
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
@@ -296,6 +302,8 @@ class ImageOptimizationTests(unittest.TestCase):
             self.assertTrue(candidate.exists())
             self.assertIn("No fixed byte limits", (Path(output) / "summary.md").read_text())
             shutil.copy(candidate, self.root / "web/public/added.svg")
+            self.assertIn("::error file=images/docs.png::", result.stdout)
+            shutil.copy(Path(output) / "images/docs.png", self.root / "images/docs.png")
         result = subprocess.run(command, cwd=self.root, capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
         result = subprocess.run(command[:-2] + ["--all"], cwd=self.root, capture_output=True, text=True, check=False)
