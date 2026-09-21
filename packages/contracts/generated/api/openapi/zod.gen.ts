@@ -144,32 +144,6 @@ export const zAppListRow = z.object({
 })
 
 /**
- * AppRunRequest
- *
- * Deprecated union of every mode's body, taken by `POST /apps/{app_id}:run`.
- */
-export const zAppRunRequest = z.object({
-  attachments: z
-    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
-    .nullish(),
-  auto_generate_name: z.boolean().optional().default(true),
-  conversation_id: z.string().nullish(),
-  files: z
-    .record(
-      z.string(),
-      z.union([
-        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
-      ]),
-    )
-    .nullish(),
-  inputs: z.record(z.string(), z.unknown()),
-  query: z.string().nullish(),
-  workflow_id: z.string().nullish(),
-  workspace_id: z.string().nullish(),
-})
-
-/**
  * ChatRunPayload
  */
 export const zChatRunPayload = z.object({
@@ -1080,17 +1054,6 @@ export const zPostAppsByAppIdWorkflowRunPath = z.object({
  * Run result (SSE stream)
  */
 export const zPostAppsByAppIdWorkflowRunResponse = zEventStreamResponse
-
-export const zPostAppsByAppIdRunBody = zAppRunRequest
-
-export const zPostAppsByAppIdRunPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Run result (SSE stream)
- */
-export const zPostAppsByAppIdRunResponse = zEventStreamResponse
 
 export const zPostOauthDeviceApproveBody = zDeviceMutateRequest
 

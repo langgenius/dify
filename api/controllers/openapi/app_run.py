@@ -1,9 +1,9 @@
-"""Run routes on /openapi/v1: one per app mode, plus the deprecated mode-agnostic :run."""
+"""Run routes on /openapi/v1: one per app mode."""
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Collection, Generator, Iterable, Mapping
+from collections.abc import Collection, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from typing import Any, Final
 
@@ -28,7 +28,6 @@ from controllers.openapi._files import materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
-    AppRunRequest,
     ChatRunPayload,
     CompletionRunPayload,
     Hint,
@@ -198,39 +197,6 @@ def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generato
     return attach_stream_hints(events, event=StreamEvent.MESSAGE_END.value, build=build)
 
 
-def _run_chat(app: App, caller: Any, payload: AppRunRequest, session: Session):
-    if not payload.query or not payload.query.strip():
-        raise UnprocessableEntity("query_required_for_chat")
-    args = _generate_args(caller, payload)
-    with _translate_service_errors():
-        return _generate(app, caller, args, session)
-
-
-def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Session):
-    args = _generate_args(caller, payload)
-    args["auto_generate_name"] = False
-    args.setdefault("query", "")
-    with _translate_service_errors():
-        return _generate(app, caller, args, session)
-
-
-def _run_workflow(app: App, caller: Any, payload: AppRunRequest, session: Session):
-    if payload.query is not None:
-        raise UnprocessableEntity("query_not_supported_for_workflow")
-    args = _generate_args(caller, payload, exclude={"query", "conversation_id", "auto_generate_name"})
-    with _translate_service_errors():
-        return _generate(app, caller, args, session)
-
-
-_DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, Session], Any]] = {
-    AppMode.CHAT: _run_chat,
-    AppMode.AGENT_CHAT: _run_chat,
-    AppMode.ADVANCED_CHAT: _run_chat,
-    AppMode.COMPLETION: _run_completion,
-    AppMode.WORKFLOW: _run_workflow,
-}
-
-
 @openapi_ns.route("/apps/<string:app_id>/workflow:run")
 class WorkflowRunApi(Resource):
     @endpoint(
@@ -294,45 +260,6 @@ class CompletionRunApi(Resource):
     def post(self, ctx: Context, app_id: str, *, body: CompletionRunPayload):
         _require_mode(ctx.app, AppMode.COMPLETION)
         return _respond(ctx, _stream(ctx, _generate_args(ctx.caller, body)))
-
-
-@openapi_ns.route("/apps/<string:app_id>:run")
-class AppRunApi(Resource):
-    @endpoint(
-        op="console_app.run",
-        kind=Kind.SSE,
-        summary="Deprecated: use console_app.<mode>.run for the app's mode",
-        requirements=_RUN_GUARDS,
-        body=AppRunRequest,
-        returns=_STREAM_RESULT,
-        deprecated=True,
-    )
-    def post(self, ctx: Context, app_id: str, *, body: AppRunRequest):
-        app_model = ctx.app
-        caller = ctx.caller
-
-        handler = _DISPATCH.get(app_model.mode)
-        if handler is None:
-            raise UnprocessableEntity("mode_not_runnable")
-
-        try:
-            stream_obj = handler(app_model, caller, body, ctx.session)
-        except HTTPException:
-            raise
-        except Exception:
-            logger.exception("internal server error.")
-            raise InternalServerError()
-
-        emit_app_run(
-            app_id=app_model.id,
-            tenant_id=app_model.tenant_id,
-            caller_kind=ctx.subject.caller_role,
-            mode=str(app_model.mode),
-            surface="apps",
-        )
-
-        # response-contract:ignore compact_generate_response
-        return helper.compact_generate_response(with_form_hints(stream_obj, app_id=app_model.id))
 
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")

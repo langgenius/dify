@@ -377,14 +377,6 @@ class CompletionRunPayload(RunPayloadBase):
     query: str = Field(default="", description="Prompt text; most completion apps take their input through `inputs`")
 
 
-class AppRunRequest(RunPayloadBase, _ConversationFields, _WorkflowVersionFields):
-    """Deprecated union of every mode's body, taken by `POST /apps/{app_id}:run`."""
-
-    query: str | None = Field(
-        default=None, description="User message. Required for chat-family apps, rejected for workflow apps"
-    )
-
-
 class FileUploadRequest(BaseModel):
     file: UploadPart = Field(
         description="The file to upload; its id can then be used in an app run's file variables",
@@ -551,7 +543,7 @@ class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
 
     files: UploadParts | None = Field(
         default=None,
-        description="Local files keyed by the form's file input name, same convention as console_app.run",
+        description="Local files keyed by the form's file input name, same convention as the run ops' `files`",
     )
 
 

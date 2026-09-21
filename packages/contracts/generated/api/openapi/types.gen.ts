@@ -136,21 +136,6 @@ export type AppMode =
   | 'rag-pipeline'
   | 'workflow'
 
-export type AppRunRequest = {
-  attachments?: Array<Blob | File> | null
-  auto_generate_name?: boolean
-  conversation_id?: string | null
-  files?: {
-    [key: string]: Blob | File | Array<Blob | File>
-  } | null
-  inputs: {
-    [key: string]: unknown
-  }
-  query?: string | null
-  workflow_id?: string | null
-  workspace_id?: string | null
-}
-
 export type ChatRunPayload = {
   attachments?: Array<Blob | File> | null
   auto_generate_name?: boolean
@@ -1042,29 +1027,6 @@ export type PostAppsByAppIdWorkflowRunResponses = {
 
 export type PostAppsByAppIdWorkflowRunResponse =
   PostAppsByAppIdWorkflowRunResponses[keyof PostAppsByAppIdWorkflowRunResponses]
-
-export type PostAppsByAppIdRunData = {
-  body: AppRunRequest
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}:run'
-}
-
-export type PostAppsByAppIdRunErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type PostAppsByAppIdRunError = PostAppsByAppIdRunErrors[keyof PostAppsByAppIdRunErrors]
-
-export type PostAppsByAppIdRunResponses = {
-  200: EventStreamResponse
-}
-
-export type PostAppsByAppIdRunResponse =
-  PostAppsByAppIdRunResponses[keyof PostAppsByAppIdRunResponses]
 
 export type PostOauthDeviceApproveData = {
   body: DeviceMutateRequest

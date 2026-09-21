@@ -330,27 +330,6 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /apps/{app_id}:run
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AppRunRequest](#apprunrequest)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ### [POST] /oauth/device/approve
 #### Request Body
 
@@ -775,21 +754,6 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | AppMode | string |  |  |
 
-#### AppRunRequest
-
-Deprecated union of every mode's body, taken by `POST /apps/{app_id}:run`.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
-| auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
-| conversation_id | string | Continue an existing conversation | No |
-| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
-| query | string | User message. Required for chat-family apps, rejected for workflow apps | No |
-| workflow_id | string | Pin a published workflow version | No |
-| workspace_id | string | Workspace that owns the app | No |
-
 #### ChatRunPayload
 
 | Name | Type | Description | Required |
@@ -1116,7 +1080,7 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
-| files | object | Local files keyed by the form's file input name, same convention as console_app.run | No |
+| files | object | Local files keyed by the form's file input name, same convention as the run ops' `files` | No |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### Package

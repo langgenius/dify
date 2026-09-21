@@ -61,9 +61,6 @@ import {
   zPostAppsByAppIdHumanInputFormsByFormTokenSubmitBody,
   zPostAppsByAppIdHumanInputFormsByFormTokenSubmitPath,
   zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse,
-  zPostAppsByAppIdRunBody,
-  zPostAppsByAppIdRunPath,
-  zPostAppsByAppIdRunResponse,
   zPostAppsByAppIdTasksByTaskIdStopPath,
   zPostAppsByAppIdTasksByTaskIdStopResponse,
   zPostAppsByAppIdWorkflowRunBody,
@@ -422,21 +419,6 @@ export const workflow = {
   run: run4,
 }
 
-export const post8 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAppsByAppIdRun',
-    path: '/apps/{app_id}:run',
-    tags: ['openapi'],
-  })
-  .input(z.object({ body: zPostAppsByAppIdRunBody, params: zPostAppsByAppIdRunPath }))
-  .output(zPostAppsByAppIdRunResponse)
-
-export const run5 = {
-  post: post8,
-}
-
 export const get10 = oc
   .route({
     inputStructure: 'detailed',
@@ -459,7 +441,6 @@ export const byAppId = {
   humanInputForms,
   tasks,
   workflow,
-  run: run5,
 }
 
 export const get11 = oc
@@ -478,7 +459,7 @@ export const apps = {
   byAppId,
 }
 
-export const post9 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -490,10 +471,10 @@ export const post9 = oc
   .output(zPostOauthDeviceApproveResponse)
 
 export const approve = {
-  post: post9,
+  post: post8,
 }
 
-export const post10 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -505,10 +486,10 @@ export const post10 = oc
   .output(zPostOauthDeviceCodeResponse)
 
 export const code = {
-  post: post10,
+  post: post9,
 }
 
-export const post11 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -520,7 +501,7 @@ export const post11 = oc
   .output(zPostOauthDeviceDenyResponse)
 
 export const deny = {
-  post: post11,
+  post: post10,
 }
 
 export const get12 = oc
@@ -538,7 +519,7 @@ export const lookup = {
   get: get12,
 }
 
-export const post12 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -550,7 +531,7 @@ export const post12 = oc
   .output(zPostOauthDeviceTokenResponse)
 
 export const token = {
-  post: post12,
+  post: post11,
 }
 
 export const device = {
@@ -601,7 +582,7 @@ export const permittedExternalApps = {
   byAppId: byAppId2,
 }
 
-export const post13 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -613,14 +594,14 @@ export const post13 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse)
 
 export const confirm = {
-  post: post13,
+  post: post12,
 }
 
 export const byImportId = {
   confirm,
 }
 
-export const post14 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -637,7 +618,7 @@ export const post14 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsResponse)
 
 export const imports = {
-  post: post14,
+  post: post13,
   byImportId,
 }
 
@@ -693,7 +674,7 @@ export const get15 = oc
   )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
-export const post15 = oc
+export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -712,11 +693,11 @@ export const post15 = oc
 
 export const members = {
   get: get15,
-  post: post15,
+  post: post14,
   byMemberId,
 }
 
-export const post16 = oc
+export const post15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -728,7 +709,7 @@ export const post16 = oc
   .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
 
 export const switch_ = {
-  post: post16,
+  post: post15,
 }
 
 export const get16 = oc

@@ -1,4 +1,4 @@
-"""Tests for the /openapi/v1 run routes: per-mode bodies and handlers, the deprecated :run, task stop."""
+"""Tests for the /openapi/v1 run routes: per-mode bodies and handlers, task stop."""
 
 from __future__ import annotations
 
@@ -17,7 +17,6 @@ from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
-    AppRunRequest,
     ChatRunPayload,
     CompletionRunPayload,
     TaskStopResponse,
@@ -51,24 +50,25 @@ def _make_account() -> Account:
     return account
 
 
-def test_app_run_request_has_no_response_mode_field():
-    """Not a declared field, and a body carrying it is accepted and ignored."""
-    assert "response_mode" not in AppRunRequest.model_fields
-    req = AppRunRequest.model_validate({"inputs": {}, "response_mode": "blocking"})
-    assert not hasattr(req, "response_mode")
-
-
 @pytest.mark.parametrize(
     ("model", "payload"),
     [
         pytest.param(ChatRunPayload, {"inputs": {}, "query": "   "}, id="chat.blank_query"),
         pytest.param(WorkflowRunPayload, {"inputs": {}, "query": "x"}, id="workflow.query_is_foreign"),
         pytest.param(CompletionRunPayload, {"inputs": {}, "conversation_id": "x"}, id="completion.conversation_id"),
+        pytest.param(ChatRunPayload, {"inputs": {}, "query": "hi", "response_mode": "blocking"}, id="chat.foreign"),
+        pytest.param(ChatRunPayload, {"inputs": {}, "query": "hi", "conversation_id": "not-a-uuid"}, id="chat.bad_cid"),
     ],
 )
 def test_per_mode_payloads_reject_what_the_mode_does_not_take(model: type[BaseModel], payload: dict):
     with pytest.raises(ValidationError):
         model.model_validate(payload)
+
+
+def test_chat_payload_normalizes_conversation_id():
+    assert ChatRunPayload(inputs={}, query="hi", conversation_id="   ").conversation_id is None
+    cid = str(uuid.uuid4())
+    assert ChatRunPayload(inputs={}, query="hi", conversation_id=cid).conversation_id == cid
 
 
 def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch: pytest.MonkeyPatch):
