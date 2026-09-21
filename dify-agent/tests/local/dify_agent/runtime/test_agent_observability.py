@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 from collections.abc import Iterator
+from typing import Literal, cast
 
 import httpx
 import logfire
@@ -20,7 +21,12 @@ from pydantic_ai.models.test import TestModel
 
 import dify_agent.server.observability as server_observability
 from dify_agent.runtime.agent_factory import create_agent
-from dify_agent.runtime.observability import AgentObservability, IsolatedTracerProvider
+from dify_agent.runtime.observability import (
+    DIFY_AGENT_ID_ATTRIBUTE,
+    DIFY_TENANT_ID_ATTRIBUTE,
+    AgentObservability,
+    IsolatedTracerProvider,
+)
 from dify_agent.server.settings import ServerSettings
 
 
@@ -574,3 +580,82 @@ def test_shared_mode_agent_pipeline_respects_remote_parent_sampling(monkeypatch:
         assert root.parent.span_id == 0x2222
     finally:
         observability_instance.client.shutdown(timeout_millis=5000)
+
+
+@pytest.mark.parametrize("trace_context_mode", ["isolated", "shared"])
+def test_agent_observability_stamps_dify_identity_on_every_run_span(trace_context_mode: str) -> None:
+    exporter = InMemorySpanExporter()
+    client = _local_client(exporter)
+    try:
+        observability = AgentObservability(
+            client=client,
+            trace_context_mode=cast(Literal["isolated", "shared"], trace_context_mode),
+        )
+        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        observability.instrument(agent, tenant_id="tenant-1", agent_id="agent-1")
+
+        _ = agent.run_sync("test-only input")
+        assert client.force_flush(timeout_millis=10000)
+
+        spans = exporter.get_finished_spans()
+        assert spans
+        for span in spans:
+            attributes = dict(span.attributes or {})
+            assert attributes[DIFY_TENANT_ID_ATTRIBUTE] == "tenant-1", span.name
+            assert attributes[DIFY_AGENT_ID_ATTRIBUTE] == "agent-1", span.name
+        run_span = _spans_by_name(exporter, "invoke_agent agent")[0]
+        assert run_span.attributes is not None
+        assert run_span.attributes["gen_ai.operation.name"] == "invoke_agent"
+    finally:
+        client.shutdown(timeout_millis=5000)
+
+
+def test_agent_observability_omits_identity_attributes_when_run_has_no_dify_owner() -> None:
+    exporter = InMemorySpanExporter()
+    client = _local_client(exporter)
+    try:
+        observability = AgentObservability(client=client)
+        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        observability.instrument(agent, tenant_id=None, agent_id="")
+
+        _ = agent.run_sync("test-only input")
+        assert client.force_flush(timeout_millis=10000)
+
+        spans = exporter.get_finished_spans()
+        assert spans
+        for span in spans:
+            attributes = dict(span.attributes or {})
+            assert DIFY_TENANT_ID_ATTRIBUTE not in attributes
+            assert DIFY_AGENT_ID_ATTRIBUTE not in attributes
+    finally:
+        client.shutdown(timeout_millis=5000)
+
+
+def test_identity_attributes_do_not_break_isolated_parent_policy() -> None:
+    platform_exporter = InMemorySpanExporter()
+    platform_client = _local_client(platform_exporter)
+    business_exporter = InMemorySpanExporter()
+    business_client = _local_client(business_exporter)
+    try:
+        observability = AgentObservability(client=business_client)
+        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        observability.instrument(agent, tenant_id="tenant-1", agent_id="agent-1")
+
+        with platform_client.span("platform-incoming-request"):
+            _ = agent.run_sync("test-only input")
+        assert platform_client.force_flush(timeout_millis=10000)
+        assert business_client.force_flush(timeout_millis=10000)
+
+        platform_root = next(
+            span for span in platform_exporter.get_finished_spans() if span.name == "platform-incoming-request"
+        )
+        root = _spans_by_name(business_exporter, "invoke_agent agent")[0]
+        assert root.parent is None
+        assert root.context is not None
+        assert root.context.trace_id != platform_root.context.trace_id
+        _assert_parents_resolve_within(business_exporter)
+        for span in platform_exporter.get_finished_spans():
+            assert DIFY_TENANT_ID_ATTRIBUTE not in dict(span.attributes or {})
+    finally:
+        business_client.shutdown(timeout_millis=5000)
+        platform_client.shutdown(timeout_millis=5000)

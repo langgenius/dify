@@ -35,7 +35,11 @@ def create_agent(
     carries the Pydantic hooks needed for schema exposure and runtime validation,
     so agent construction does not need to register a separate validator.
     """
-    agent = cast(Agent[None, object], Agent(model, output_type=output_type, tools=tools))
+    agent = cast(Agent[None, object], Agent(
+        model,
+        name="dify-agent", # TODO: propagate roster name, so gen_ai.agent.name can pick that up
+        output_type=output_type,
+        tools=tools))
     agent.instrument = False
     return agent
 

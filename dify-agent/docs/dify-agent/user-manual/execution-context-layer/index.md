@@ -18,6 +18,10 @@ on this layer to reach the plugin daemon.
 | `invoke_from` | `Literal[...]` | Dify caller category recorded for observability and correlation. |
 | `app_id` / `workflow_id` / `workflow_run_id` / `node_id` / `node_execution_id` / `conversation_id` / `agent_id` / `agent_config_version_id` / `trace_id` | `str \| None` | Optional Dify-owned execution identifiers forwarded with the run. |
 
+When Agent trajectory export is enabled, `tenant_id` and `agent_id` from this
+layer are attached to every trajectory span of the run as `dify.tenant_id` and
+`dify.agent_id`.
+
 The execution-context layer type id is `dify.execution_context`.
 
 ## Basic usage
