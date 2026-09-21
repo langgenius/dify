@@ -720,6 +720,43 @@ describe('i18n build check', () => {
     },
   )
 
+  it.each(['named', 'namespace'] as const)(
+    'does not treat a local Vite alias as the official API through %s imports',
+    async (kind) => {
+      writeFileSync(localeFile, '{}')
+      mkdirSync(path.join(root, 'app'), { recursive: true })
+      writeFileSync(
+        path.join(root, 'replacement.ts'),
+        `export function useTranslation(value: string) { return value }`,
+      )
+      writeFileSync(
+        path.join(root, 'app/page.ts'),
+        kind === 'named'
+          ? `import { useTranslation as load } from 'react-i18next'; export const page = load('placeholder')`
+          : `import * as labels from 'react-i18next'; export const page = labels.useTranslation('placeholder')`,
+      )
+      const reports: AnalysisReport[] = []
+      await expect(
+        build({
+          root,
+          configFile: false,
+          logLevel: 'silent',
+          resolve: { alias: { 'react-i18next': path.join(root, 'replacement.ts') } },
+          plugins: [
+            i18nAnalysisPlugin({
+              strictNamespaces: true,
+              getDeclaredNamespaces: () => [],
+              onAnalysis: (report) => reports.push(report),
+            }),
+          ],
+          build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+        }),
+      ).resolves.toBeDefined()
+      expect(reports[0]!.routes[0]!.namespaces).toEqual([])
+      expect(reports[0]!.routes[0]!.unknownNamespaceSources).toEqual([])
+    },
+  )
+
   it.each(['static', 'dynamic', 'undeclared'] as const)(
     'validates %s metadata adapter calls through aliased exports and re-exports',
     async (mode) => {

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
@@ -55,6 +55,11 @@ describe('translation graph analysis', () => {
   beforeEach(() => {
     modules = new Map()
     webRoot = mkdtempSync(path.join(tmpdir(), 'dify-i18n-analysis-'))
+    mkdirSync(path.join(webRoot, 'node_modules'), { recursive: true })
+    symlinkSync(
+      path.resolve(import.meta.dirname, '../../../node_modules/react-i18next'),
+      path.join(webRoot, 'node_modules/react-i18next'),
+    )
     writeSource('placeholder.ts', '')
     writeSource(
       'i18n/server.ts',

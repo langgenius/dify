@@ -74,13 +74,6 @@ export function createTranslationApiResolver(
     )
     const declarations = symbol?.declarations ?? []
     for (const declaration of declarations) {
-      if (ts.isImportSpecifier(declaration)) {
-        const module = declaration.parent.parent.parent.moduleSpecifier
-        if (ts.isStringLiteral(module)) {
-          const api = known((declaration.propertyName ?? declaration.name).text, module.text)
-          if (api) return api
-        }
-      }
       if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
         const api = resolve(declaration.initializer, next)
         if (api) return api
@@ -99,17 +92,6 @@ export function createTranslationApiResolver(
     for (const declaration of declarations) {
       const api = resolveDeclaration(declaration)
       if (api) return api
-    }
-    if (ts.isPropertyAccessExpression(node)) {
-      for (const declaration of checker.getSymbolAtLocation(node.expression)?.declarations ?? []) {
-        if (ts.isNamespaceImport(declaration)) {
-          const module = declaration.parent.parent.moduleSpecifier
-          if (ts.isStringLiteral(module)) {
-            const api = known(node.name.text, module.text)
-            if (api) return api
-          }
-        }
-      }
     }
   }
   function resolveDeclaration(declaration: ts.Declaration): TranslationApi | undefined {
