@@ -71,6 +71,26 @@ function importBindings(code: string): ImportBinding[] {
       })
     }
   }
+  function visit(node: ts.Node) {
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments[0] &&
+      ts.isStringLiteralLike(node.arguments[0])
+    ) {
+      const specifier = node.arguments[0].text
+      // Dynamic imports have no stable local binding after arbitrary transforms.
+      // Do not pair them by position: rewrites may reorder, split or inline calls.
+      result.push({
+        specifier,
+        signature: JSON.stringify(['dynamic', specifier]),
+        typeOnly: false,
+        locals: [],
+      })
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
   return result
 }
 

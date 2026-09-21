@@ -586,6 +586,60 @@ describe('i18n build check', () => {
     )
   })
 
+  it.each(['rewrite', 'inline'] as const)(
+    'blocks disk fallback after a dynamic import %s',
+    async (mode) => {
+      writeFileSync(localeFile, '{}')
+      for (const namespace of ['old', 'actual'])
+        writeFileSync(path.join(root, `i18n/locales/en-US/${namespace}.json`), '{}')
+      mkdirSync(path.join(root, 'app'), { recursive: true })
+      writeFileSync(path.join(root, 'app/old.ts'), `export const ns = 'old'`)
+      writeFileSync(path.join(root, 'app/actual.ts'), `export const ns = 'actual'`)
+      writeFileSync(
+        path.join(root, 'app/page.ts'),
+        `export async function page(t: (key: string, options: { ns: string }) => string) {
+      const resource = await import('./old')
+      return t('title', { ns: resource.ns })
+    }`,
+      )
+      const reports: AnalysisReport[] = []
+      await expect(
+        build({
+          root,
+          configFile: false,
+          logLevel: 'silent',
+          plugins: [
+            i18nAnalysisPlugin({
+              onAnalysis: (report) => reports.push(report),
+              getDeclaredNamespaces: () => ['old'],
+            }),
+            {
+              name: 'rewrite-dynamic-import',
+              enforce: 'pre',
+              transform(code, id) {
+                if (id.endsWith('/app/page.ts'))
+                  return code.replace(
+                    "import('./old')",
+                    mode === 'rewrite' ? "import('./actual')" : "Promise.resolve({ ns: 'actual' })",
+                  )
+              },
+            },
+          ],
+          build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+        }),
+      ).rejects.toThrow(/Undeclared namespace: actual/)
+      expect(reports[0]!.evidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'unresolved-import',
+            file: 'app/page.ts',
+            message: expect.stringContaining('./old'),
+          }),
+        ]),
+      )
+    },
+  )
+
   it('reports untraceable rewrites instead of reading the old runtime module', async () => {
     writeFileSync(localeFile, '{}')
     writeFileSync(path.join(root, 'old.ts'), `export const value = 'old'`)
