@@ -180,6 +180,47 @@ def test_apply_writes_graph_locks_during_work_unlocks_at_await_verify():
     assert "output" in fc.change_set.changed_nodes
 
 
+def test_apply_refuses_to_apply_an_empty_staged_repair():
+    """ESQ1-291 in Fix: handle_propose routes straight to fix.apply whenever
+    the risk is low, including when the agent found no safe fix at all.
+    Applying nothing and then spending a verify run on it re-offers the
+    identical failure forever."""
+    env, repo = _new_env()
+    s = _session(current_state=PcState.FIX_APPLY)
+    fc = DifyBuilderContext(staged_repair=[])
+
+    result = handle_apply(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.FIX_AWAIT_DECISION
+    assert "notice" in [item.kind for item in result.items]
+    assert not env.dify.applied, "nothing staged -> the adapter must not be called"
+
+
+def test_apply_surfaces_a_stale_intent_instead_of_failing_the_session():
+    """ESQ1-271: apply_repair re-validates against the draft as it is NOW.
+    An uncaught ValueError here reaches the runner and kills the session."""
+    from core.dify_builder.models import MutationIntent
+
+    env, _repo = _new_env()
+
+    def _stale(*_args, **_kwargs):
+        raise ValueError("path 'outputs.result': no key 'outputs' at outputs")
+
+    env.dify.apply_repair = _stale  # type: ignore[method-assign]
+    s = _session(current_state=PcState.FIX_APPLY)
+    fc = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "code", "path": "o.r", "value": 1})]
+    )
+
+    result = handle_apply(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.FIX_AWAIT_DECISION
+    error = next(i for i in result.items if i.kind == "error")
+    assert error.payload["title"] == "Couldn't apply the fix"
+    assert "no key 'outputs'" in error.payload["body"]
+    assert result.context.staged_repair == []
+
+
 def test_apply_forwards_env_emit_canvas_to_the_adapters_on_canvas_callback():
     events: list[dict] = []
     repo = InMemoryRepository()

@@ -112,6 +112,11 @@ def _reset_working_fields(fc: DifyBuilderContext) -> None:
     requirements, edit_rules, checklist_errors, failed_run_id, source)."""
     fc.diagnosis = None
     fc.staged_repair = []
+    # Repair-loop convergence is per-flow working state too: a fresh build
+    # that inherited repair_attempts >= _MAX_REPEATED_REPAIRS would decline a
+    # repair on its FIRST failure, one the user never approved once.
+    fc.repair_attempts = 0
+    fc.last_repair_error = ""
     fc.risk = None
     fc.change_set = None
     fc.checkpoint_id = ""

@@ -67,6 +67,7 @@ PLAIN: frozenset[str] = frozenset(
         "Edit published",
         "High-impact rules",
         "Model not configured",
+        "Couldn't apply the fix",
         "Proceeding with sensible defaults",
         "Repeated failure",
         "Test failed",
@@ -165,6 +166,14 @@ TEMPLATES: list[Template] = [
         pattern=re.compile(r"^Model changed to (?P<name>.*)$", re.DOTALL),
         template="Model changed to {name}",
         translate_fields=frozenset(),  # name is a model identifier; re-inserted verbatim
+    ),
+    Template(
+        pattern=re.compile(
+            r"^The proposed fix no longer applies to the current draft: (?P<value>.+)$",
+            re.DOTALL,
+        ),
+        template="The proposed fix no longer applies to the current draft: {value}",
+        translate_fields=frozenset(),  # value is a validation message; re-inserted verbatim
     ),
     # Deliberately last: the app name is arbitrary, so this pattern is the
     # broadest here and every more specific template must get first refusal.
