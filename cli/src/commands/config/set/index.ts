@@ -1,29 +1,19 @@
-import type { CommandEffect } from '@/framework/command'
-import { DifyCommand } from '@/commands/_shared/dify-command'
-import { Args } from '@/framework/flags'
-import { raw } from '@/framework/output'
-import { getConfigurationStore } from '@/store/manager'
-import { runConfigSet } from './run'
+import type { CommandContext } from '@/plugins/base'
+import { z } from 'zod'
+import { Command } from '@/plugins/commands/command'
+import { config } from '@/plugins/config'
 
-export default class ConfigSet extends DifyCommand {
-  static override description = 'Set a config key (validates value)'
+const INPUT = z.object({ key: z.string(), value: z.string() })
 
-  static override effect: CommandEffect = 'write'
+export default class ConfigSet extends Command<typeof INPUT> {
+  static override summary = 'Set a local config value'
+  static override effect = 'write' as const
+  static override input = INPUT
+  static override positional = ['key', 'value'] as const
 
-  static override examples = [
-    '<%= config.bin %> config set defaults.format json',
-    '<%= config.bin %> config set defaults.limit 50',
-  ]
-
-  static override args = {
-    key: Args.string({ description: 'config key', required: true }),
-    value: Args.string({ description: 'config value', required: true }),
-  }
-
-  async run(argv: string[]) {
-    const { args } = this.parse(ConfigSet, argv)
-    return raw(
-      await runConfigSet({ store: getConfigurationStore(), key: args.key, value: args.value }),
-    )
+  async run(input: z.infer<typeof INPUT>, ctx: CommandContext) {
+    const configService = await ctx.get(config)
+    await configService.set(input.key, input.value)
+    return undefined
   }
 }

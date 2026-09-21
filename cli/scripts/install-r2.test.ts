@@ -12,7 +12,6 @@ const MANIFEST = [
   '  "version": "0.1.0-edge.2fd7b82",',
   '  "commit": "abc1234",',
   '  "buildDate": "2026-06-14T12:00:00Z",',
-  '  "compat": {"minDify":"1.14.0","maxDify":"1.15.0"},',
   '  "baseUrl": "https://pub.example.r2.dev/difyctl/edge/0.1.0-edge.2fd7b82",',
   '  "targets": {',
   '    "linux-x64": { "asset": "difyctl-v0.1.0-edge.2fd7b82-linux-x64", "sha256": "deadbeef" },',

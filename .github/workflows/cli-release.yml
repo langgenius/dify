@@ -77,11 +77,6 @@ jobs:
           echo "dify_tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "::notice::target Dify release ${tag}"
 
-      - name: Compatibility check
-        env:
-          DIFY_TAG: ${{ steps.resolve.outputs.dify_tag }}
-        run: node scripts/release-naming.mjs compat-check "$DIFY_TAG"
-
   release:
     name: build + attach standalone binaries (all targets)
     needs: validate

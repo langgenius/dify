@@ -4,90 +4,58 @@ Onboarding ref for `dify/cli/` contributors. Cover canonical patterns, layer con
 
 ---
 
-## Project layout
+## Layout
 
 ```
 src/
-  commands/          one folder per command leaf
-  api/               HTTP client wrappers (one file per resource)
-  auth/              hosts.yml read/write
-  cache/             app-info cache
-  config/            config.yml read/write
-  errors/            BaseError, ErrorCode, exit codes
-  http/              ky client factory + middleware
-  sys/io/            IOStreams, prompts, spinner, output rendering
-  limit/             --limit flag parsing
-  types/             shared TypeScript types
-  util/              small pure helpers
-  workspace/         workspace ID resolution
+  kernel/       plugin + Context primitives — no CLI knowledge
+  plugins/      argv global-flags env config session token catalog http ops io commands — the 11 services, one folder each; index.ts is the plugin and the only file anything outside the folder imports
+    argv/       the invocation's tokens as a context input, plus the argv parser (parse.ts, framework shared by global-flags and commands)
+    global-flags/ flags any command accepts (`--verbose`), parsed off argv before the command is resolved
+    catalog/    the cached catalog document: types, parseCatalog, op lookup
+    http/       the authenticated fetch wrapper with the catalog fingerprint header and 412 refetch
+    ops/        the catalog as the CLI shows it: resolve an op (refetch once on unknown), list rows, describe one op with its pins
+    commands/   command pipeline plus the command framework (command.ts, cancel.ts, registry.ts) every command imports
+  protocol/     pure catalog-shape logic: kinds, bind, pins, fold — no I/O
+  call/         the `call` flag table; JSON and SSE response decoding; builds a request from a resolved op + validated input; renders the response by kind
+  commands/     one folder per command leaf; index.ts is the only file the registry discovers
+  net/          fetch init and proxy dispatcher, shared by the http plugin and the pre-login device flow
+  store/        config/session/token file and keychain persistence
+  skills/       SKILL.md template + install
 ```
+
+---
+
+## Kernel
+
+A plugin is `{ name, needs, build(ctx) }`. `needs` is a list of the other plugin objects it reads through `ctx.get(...)` — an array of the actual plugin values, not strings or classes, so a plugin literally names its dependencies and TypeScript checks `build`'s `ctx` against that list (`src/kernel/plugin.ts`).
+
+`Context` (`src/kernel/context.ts`) builds services lazily: `ctx.get(plugin)` runs `plugin.build(ctx)` the first time that plugin is requested, caches the result, and returns the cached service on every later call in the same invocation. A plugin never builds if nothing asks for it. `needs` is only the compile-time allow-list for that plugin's `ctx.get`; the kernel never walks it, so declaring `needs: BASE_PLUGINS` on the `commands` plugin costs nothing until a command actually calls `ctx.get` on one of them (`version` logged out builds six plugins, never `http`).
+
+State stays with its owner. A plugin's `build()` closes over its own state (an in-memory cache, a loaded config document); nothing outside reaches into it — code that needs it calls `ctx.get(thatPlugin)` again and gets the same cached instance.
+
+`ctx.defer(fn)` queues a cleanup to run after the command finishes (for example, aborting a streaming call's `AbortController` on `SIGINT`), instead of scattering `try`/`finally` through command bodies.
+
+There is no event bus and no listener registration. Plugins that need to react to something call `ctx.get` on the plugin that has it; there is no subscribe/publish path to keep in sync.
+
+The one `commands` plugin (`src/plugins/commands/index.ts`) needs `BASE_PLUGINS` (`global-flags env config session token catalog http ops io`) and its `build()` returns `{ run }`. `runPipeline` takes the argv left over by `global-flags`, resolves the typed `Command` from the generated tree, parses those tokens against that command's Zod `input` schema, and calls `run(input, ctx)` — the pipeline never branches on which command it is.
+
+A plugin's folder is private. Code outside it imports only the plugin's `index.ts` (`@/plugins/<name>`) and reaches the plugin's behaviour through `ctx.get(plugin)`; a helper two plugins share is exposed on a service, and a helper only commands use lives outside `src/plugins/`. The two exceptions are contracts rather than services: the command framework in `plugins/commands/` (`Command`, `Outcome`, `runSignal`, the tree types) and the argv parser in `plugins/argv/parse.ts`.
+
+Global flags are one Zod object in `src/plugins/global-flags/index.ts`. The plugin pulls the flags it knows out of the `argv` input, exposes their values as `flags` and the remaining tokens as `rest`; any plugin or command reads a global flag through `ctx.get(globalFlags)`, never by scanning argv. Which flag wins over an env var or a config key is decided in the plugin that owns the setting, not here.
+
+Help is the row: `commandRow(Ctor, path)` (`src/plugins/commands/describe.ts`) is the one function that renders a command's `--help` output and its entry in the root command list — there is no separate help-text template.
+
+Tests substitute one plugin's service directly: `new Context([[plugin, mockService]])` seeds the cache so `ctx.get(plugin)` returns the mock without building the real one.
 
 ---
 
 ## New command scaffold
 
-Recipe for adding command leaf. Follow order.
-
-**1. Create folder**
-
-```
-src/commands/<topic>/<verb>/
-```
-
-Examples: `get/app/`, `auth/devices/revoke/`, `describe/app/`.
-
-**2. Mandatory file**
-
-| File       | Responsibility                                                                       |
-| ---------- | ------------------------------------------------------------------------------------ |
-| `index.ts` | `DifyCommand` subclass. Owns flag/arg parsing, framework output, and command wiring. |
-
-**3. Optional files — add as needed**
-
-| File               | Purpose                                                            |
-| ------------------ | ------------------------------------------------------------------ |
-| `run.ts`           | Typed behavior owner when logic merits independent tests or reuse  |
-| `handlers.ts`      | Output types implementing `FormattedPrintable` or `TablePrintable` |
-| `payload-shape.ts` | Response type narrowing/transformation                             |
-| `run.test.ts`      | Behavior tests against `run.ts`                                    |
-| `guide.ts`         | Agent onboarding text — exports `agentGuide` string                |
-
-**4. Checklist**
-
-- [ ] `index.ts` extends `DifyCommand`
-- [ ] Authed command calls `this.authedCtx()`; non-authed skips
-- [ ] Let the command boundary handle `BaseError`; catch only when the command owns recovery
-- [ ] Keep framework parsing and output construction in `index.ts`
-- [ ] When present, `run.ts` returns typed behavior data or owns explicit streaming/interactive I/O and does not import `src/framework/`
-- [ ] HTTP client via factory dep, not direct
-- [ ] Add focused behavior tests when the command changes an observable contract
-- [ ] `pnpm tree:gen` run after adding command (updates `src/commands/tree.generated.ts`)
-- [ ] README command table updated by hand
-
----
-
-## DifyCommand base class
-
-All commands extend `DifyCommand`, not `Command`.
-
-```typescript
-export default class MyCommand extends DifyCommand {
-  async run(argv: string[]) {
-    const { args, flags } = this.parse(MyCommand, argv)
-
-    const ctx = await this.authedCtx({ retryFlag: undefined, format: flags.output })
-    const result = await runMyThing(
-      { id: args.id },
-      { active: ctx.active, http: ctx.http, io: ctx.io },
-    )
-    return formatted({ format: flags.output, data: result.data })
-  }
-}
-```
-
-**`authedCtx(opts)`** — wraps `buildAuthedContext` and returns the authenticated registry, account, HTTP, I/O, and optional cache dependencies. Pass the selected output format so authentication failures use the same serialization contract. Required for commands that need a bearer token.
-
-The framework runner in `src/framework/run.ts` catches command errors, normalizes unknown failures, and serializes `BaseError` according to the selected output format. Catch inside a command only when that command owns a real recovery path.
+1. Create the folder: `src/commands/<topic>/<verb>/` (or `src/commands/<verb>/` for a top-level command like `login`).
+2. Write `index.ts`: a default-exported class extending `Command<typeof INPUT>` with static `summary`, `effect` (`'read' | 'write' | 'destructive'`, default `'read'`), `input` (a Zod object), optional `positional` and `examples`, and an instance `run(input, ctx)` that returns the value to print — or an `Outcome` when the command needs a non-zero exit or has already written its own output.
+3. Run `pnpm tree:gen` to add the command to `src/commands/tree.generated.ts`.
+4. Run `pnpm tree:check` (also gated in CI) to confirm the generated tree matches the command folders.
 
 ---
 
@@ -102,131 +70,52 @@ import { ErrorCode } from '@/errors/codes'
 throw new BaseError({
   code: ErrorCode.UsageMissingArg,
   message: 'workspace id required',
-  hint: "pass --workspace or run 'difyctl use workspace <id>'",
+  hint: "pass --workspace or run 'difyctl workspace use <id>'",
 })
 ```
 
-`ErrorCode` is the exhaustive error-code object; do not scatter raw code strings. `exitFor(code)` maps it to a process exit code, and the framework runner calls `formatErrorForCli` so JSON/YAML consumers receive machine-readable errors.
+`ErrorCode` is the exhaustive error-code object; do not scatter raw code strings. `exitFor(code)` maps it to a process exit code, and `BaseError.toEnvelope()` serializes it as the one JSON error line on stderr.
 
-| Exit | Meaning                                   |
-| ---- | ----------------------------------------- |
-| 0    | Success                                   |
-| 1    | Generic error                             |
-| 2    | Usage error (bad flag, missing arg)       |
-| 4    | Auth error (not logged in, token expired) |
-| 6    | Version/compat error                      |
-| 7    | Rate limited                              |
+| Exit | Meaning                                          |
+| ---- | ------------------------------------------------ |
+| 0    | Success                                          |
+| 1    | Generic error                                    |
+| 2    | Usage error (bad flag, missing or invalid input) |
+| 4    | Auth error (not logged in, forbidden)            |
+| 6    | Catalog error (unavailable, or unknown op id)    |
+| 7    | Rate limited                                     |
 
-New error code: add to `ErrorCode` + map to `ExitCode` in `codes.ts`. Never scatter exit codes inline.
+New error code: add to `ErrorCode` and map it to an `ExitCode` in `codes.ts`. Never scatter exit codes inline.
 
 ---
 
-## IOStreams
+## Output
 
-I/O context passed through every layer. Carries stdout, stderr, stdin, TTY flags, `outputFormat`.
+Everything the CLI prints goes through the `io` plugin's service, never through a stream directly. Four writes cover every case; a new output format or a `--quiet` flag is a change inside this one plugin.
 
 ```typescript
-export type IOStreams = {
-  out: NodeJS.WritableStream
-  err: NodeJS.WritableStream
-  in: NodeJS.ReadableStream
-  isOutTTY: boolean
-  isErrTTY: boolean
-  outputFormat: string // 'json' | 'yaml' | 'name' | 'wide' | ''
-}
+export type IOService = Readonly<{
+  line: (value: Printable) => Promise<void> // one JSON line on stdout: results, streamed events
+  document: (value: Printable) => Promise<void> // pretty JSON on stdout: help
+  notice: (text: string) => void // one text line on stderr: warnings, progress
+  raw: (chunk: string | Buffer) => Promise<void> // bytes as given: a text-kind body
+  streams: IOStreams // stdin and the TTY flags
+}>
 ```
 
-| Factory               | When                              |
-| --------------------- | --------------------------------- |
-| `realStreams(format)` | Production — wraps `process.std*` |
-| `bufferStreams()`     | Tests — captures output in memory |
-| `nullStreams()`       | When IO irrelevant                |
+`Printable` (a JSON primitive, an array, or a plain object) is what a command may return and what `line` accepts. stdout writes use the callback form so a closed pipe reaches `printEnvelope` as a rejection and the run ends at exit 0. `printEnvelope` itself writes the error envelope to the raw stderr stream, since it runs in `main` after the context may have failed to build.
 
-`outputFormat` set at construction. Do not mutate. Do not pass `format` as separate arg downstream — put in `IOStreams`, pass struct.
-
----
-
-## Spinner
-
-`runWithSpinner` wraps async call with animated spinner on stderr. Auto-disables for structured output — no manual `enabled:` flag needed.
-
-```typescript
-const result = await runWithSpinner({ io, label: 'Fetching apps' }, () => client.list(params))
-```
-
-`STRUCTURED_FORMATS = new Set(['json', 'yaml', 'name'])` drives disable check. New structured format = add to this set only — no other callsites change.
-
-Only override `enabled` for intentional suppression (e.g., tests using `bufferStreams` already suppress via `isErrTTY: false`).
-
----
-
-## Output protocol
-
-Output rendering separated from data fetching via protocol objects.
-
-- Data classes implement `TablePrintable` or `FormattedPrintable` from `src/framework/output`.
-- Streaming commands implement `StreamPrinter` from `src/framework/stream`.
-- `index.ts` wraps the result with `table({format, data})` or `formatted({format, data})` and returns it; `src/framework/run.ts` calls `stringifyOutput()`.
-- Commands that write incrementally (streaming) write directly from the strategy via `deps.io.out.write(stringifyOutput(...))`.
-
-```typescript
-// handlers.ts — implement the protocol on the data object
-export class MyListOutput implements TablePrintable {
-  tableColumns() {
-    return COLUMNS
-  }
-  tableRows() {
-    return this.rows.map((r) => r.tableRow())
-  }
-  json() {
-    return { items: this.rows.map((r) => r.json()) }
-  }
-}
-
-// index.ts — wrap and return
-return table({ format: flags.output, data: result })
-```
-
-New output format: add to `OutputFormat` in `framework/output.ts` and handle in `stringifyOutput`. Never add `if (format === 'json')` branches in `run.ts` or handlers.
-
----
-
-## Strategy pattern (mode dispatch)
-
-Singleton strategies + picker function. No switch ladders on discriminator.
-
-```typescript
-export type RunStrategy = {
-  execute: (ctx: RunContext) => Promise<void>
-}
-
-const streamingText = new StreamingTextStrategy()
-const streamingStructured = new StreamingStructuredStrategy()
-
-export function pickStrategy(isText: boolean, livePrint: boolean): RunStrategy {
-  return isText && livePrint ? streamingText : streamingStructured
-}
-```
-
-New mode = new class + one line in picker. Singletons avoid per-call allocation.
-
----
-
-## HTTP clients
-
-Keep resource clients under `src/api/`. They receive the shared `HttpClient` and call generated oRPC operations through `createOpenApiClient(...)` when the OpenAPI contract covers the endpoint. Reuse generated request and response types instead of duplicating wire shapes.
-
-Pass `HttpClient` into behavior owners. Add a client or factory dependency only when it owns a real substitution or lifecycle boundary; behavior tests normally exercise the real client stack against `test/fixtures/dify-mock/`. Keep client construction out of `index.ts` so the command remains a framework and output boundary.
+`IOStreams` is the raw layer underneath: `realStreams()` wraps `process.std*` in production, `bufferStreams()` captures output in tests, and `ioService(streams)` wraps either.
 
 ---
 
 ## Testing
 
-Keep tests beside the owner as `*.test.ts`. When a command has a behavior module, test that public function directly for domain and protocol behavior. Test the command class or framework boundary when argument parsing, flags, help, output construction, or command wiring is the observable contract. Establish a failing case first when practical for behavior changes and bug fixes.
+Keep tests beside the owner as `*.test.ts`. When a command delegates to a pure module (`call/`, `protocol/`), test that module directly. Test the command class or the `commands` pipeline when argument parsing, help, or command wiring is the observable contract. Establish a failing case first when practical for behavior changes and bug fixes.
 
 ### dify-mock fixture server
 
-`test/fixtures/dify-mock/server.ts` mirrors `/openapi/v1/*`. Each test starts isolated instance:
+`test/fixtures/dify-mock/server.ts` mirrors `/openapi/v1/*` and the catalog endpoint. Each test starts an isolated instance:
 
 ```typescript
 import { startMock } from '../../../test/fixtures/dify-mock/server.js'
@@ -236,23 +125,16 @@ const mock = await startMock({ scenario: 'happy' })
 await mock.stop()
 ```
 
-| Scenario          | Effect                                                                        |
-| ----------------- | ----------------------------------------------------------------------------- |
-| `happy` (default) | Standard fixtures: 4 apps across 2 workspaces, 2 workspaces, 1 active session |
-| `sso`             | `/workspaces` returns empty (external-SSO bearer model)                       |
-| `expired`         | All authenticated routes return 401 `auth_expired`                            |
-| `pagination`      | `/apps` honors `?page=` + `?limit=`, total > one page                         |
-| `slow`            | Adds `Retry-After: 1` to GETs to test ky retry behavior                       |
+`happy` (default) is the standard fixture set: 4 apps across 2 workspaces, 2 workspaces, 1 active session. See `Scenario` in `scenarios.ts` for the full union — auth failures, rate limiting, catalog-fingerprint mismatches, HITL pauses, pending imports, and more.
 
-New scenario: extend `Scenario` union in `scenarios.ts`, branch in relevant handler. No per-test mocks — one fixture surface keeps tests aligned with real API.
+New scenario: extend the `Scenario` union in `scenarios.ts`, branch in the relevant handler. No per-test mocks — one fixture surface keeps tests aligned with the real API.
 
 ### Assertions
 
 Inline string/regex/JSON checks — no golden files.
 
 ```typescript
-expect(out).toMatch(/^ID\s+NAME\s+ROLE/)
-expect(JSON.parse(out).workspaces).toHaveLength(2)
+expect(JSON.parse(out).ops).toHaveLength(2)
 ```
 
 ---
@@ -270,6 +152,7 @@ expect(JSON.parse(out).workspaces).toHaveLength(2)
 | `pnpm tree:gen`         | Regenerate `src/commands/tree.generated.ts`    |
 | `pnpm tree:check`       | Verify the generated tree matches the commands |
 | `pnpm build:bin`        | Cross-compile standalone binaries via Bun (CI) |
+| `pnpm build:bin:local`  | Same, pinned to the `dev` channel              |
 
 **`pnpm tree:gen` rule:** run after adding, removing, or renaming any command. The generated `tree.generated.ts` is the runtime command registry; a stale tree makes commands invisible at runtime. It also runs through `prebuild`, `predev`, and `pretest`.
 
@@ -296,7 +179,6 @@ Run `vp check --fix cli` from the repository root for scoped formatting, lint, a
 ## PR conventions
 
 - One feature, one PR. Bundle test + impl + doc update.
-- Branch off `feat/cli`. Never target `main`.
 - Commit style: `<type>(cli): <imperative subject>`. Types: `feat`, `fix`, `refactor`, `docs`, `chore`. Body explains why if non-obvious.
 - Plan/spec/superpowers files do not ship in CLI commits.
 - Verify diff before committing — `.local.json` and `.vitest-cache/` gitignored but check anyway.
@@ -305,15 +187,11 @@ Run `vp check --fix cli` from the repository root for scoped formatting, lint, a
 
 ## Anti-patterns
 
-| Pattern                                                              | Do instead                                                                 |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `if (format === 'json') { ... }` in `run.ts`                         | Printer handler per format                                                 |
-| `try { ... } catch (e) { if (isBaseError(e)) ... }` in every command | Throw `BaseError`; `src/framework/run.ts` normalizes and formats it        |
-| Raw string error codes `'not_logged_in'`                             | `ErrorCode.NotLoggedIn`                                                    |
-| `enabled: !isHuman` in `runWithSpinner`                              | Set `outputFormat` on `IOStreams`; spinner auto-detects                    |
-| Long positional arg lists                                            | Options struct                                                             |
-| `Record<string, Strategy>` dispatch map                              | Named singletons + picker function                                         |
-| `src/framework/` import in `run.ts`, `api/`, or `auth/`              | Framework imports belong in `index.ts`, `handlers.ts`, and strategies only |
-| `buildAuthedContext(this, opts)` in command body                     | `this.authedCtx(opts)`                                                     |
-| `console.log` in `src/`                                              | Return `CommandOutput` from the command or use owned I/O for streaming     |
-| New dependency without approval                                      | Check first                                                                |
+| Pattern                                                     | Do instead                                                             |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Raw string error codes `'not_logged_in'`                    | `ErrorCode.NotLoggedIn`                                                |
+| Long positional arg lists                                   | A Zod `input` object with named fields                                 |
+| `if (kind === 'sse') { ... } else if (kind === 'list') ...` | A `Record<Kind, Renderer>` dispatch table (see `call/render/index.ts`) |
+| A command reaching into another plugin's closed-over state  | `ctx.get(thatPlugin)` — the cached service, not its internals          |
+| `console.log` in `src/`                                     | Return the value from `run()`; the pipeline prints it                  |
+| New dependency without approval                             | Check first                                                            |

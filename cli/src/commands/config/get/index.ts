@@ -1,20 +1,17 @@
-import { DifyCommand } from '@/commands/_shared/dify-command'
-import { Args } from '@/framework/flags'
-import { raw } from '@/framework/output'
-import { getConfigurationStore } from '@/store/manager'
-import { runConfigGet } from './run'
+import type { CommandContext } from '@/plugins/base'
+import { z } from 'zod'
+import { Command } from '@/plugins/commands/command'
+import { config } from '@/plugins/config'
 
-export default class ConfigGet extends DifyCommand {
-  static override description = "Print one config key's value"
+const INPUT = z.object({ key: z.string().optional() })
 
-  static override examples = ['<%= config.bin %> config get defaults.format']
+export default class ConfigGet extends Command<typeof INPUT> {
+  static override summary = 'Print the local config, or one key'
+  static override input = INPUT
+  static override positional = ['key'] as const
 
-  static override args = {
-    key: Args.string({ description: 'config key', required: true }),
-  }
-
-  async run(argv: string[]) {
-    const { args } = this.parse(ConfigGet, argv)
-    return raw(await runConfigGet({ store: getConfigurationStore(), key: args.key }))
+  async run(input: z.infer<typeof INPUT>, ctx: CommandContext) {
+    const configService = await ctx.get(config)
+    return configService.get(input.key)
   }
 }

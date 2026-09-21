@@ -1,9 +1,4 @@
 {
-  "cli/src/framework/run.test.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
   "packages/migrate-no-unchecked-indexed-access/src/no-unchecked-indexed-access/migrate.ts": {
     "no-console": {
       "count": 11

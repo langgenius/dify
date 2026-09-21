@@ -145,11 +145,11 @@ catalog:
   abcjs: 6.7.0
   agentation: 3.0.2
   ahooks: 3.10.0
+  ajv: 8.20.0
   bowser: 2.14.1
   c12: 4.0.0-rc.1
   chokidar: 5.0.0
   class-variance-authority: 0.7.1
-  cli-table3: 0.6.5
   cn: 0.3.0
   code-inspector-plugin: 1.6.6
   concurrently: 10.0.5
@@ -219,8 +219,6 @@ catalog:
   next-themes: 0.4.6
   nuqs: 2.10.1
   open: 11.0.4
-  ora: 9.4.1
-  picocolors: 1.1.1
   picomatch: 4.0.7
   pinyin-pro: 3.29.4
   playwright: 1.63.0

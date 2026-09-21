@@ -1,14 +1,10 @@
-import type { StorageMode, Store } from './store'
+import type { StorageMode } from './store'
 import type { TokenStore } from './token-store'
 import { join } from 'node:path'
-import { resolveCacheDir, resolveConfigDir } from './dir'
+import { resolveConfigDir } from './dir'
 import { YamlStore } from './store'
 import { FileTokenStore, KeychainTokenStore } from './token-store'
 
-export const CACHE_APP_INFO = 'app-info'
-export const CACHE_NUDGE = 'nudge'
-export const CACHE_COMPAT = 'compat'
-const HOSTS_FILE = 'hosts.yml'
 const TOKENS_FILE = 'tokens.yml'
 export const CONFIG_FILE_NAME = 'config.yml'
 
@@ -18,20 +14,8 @@ function getStore(filePath: string): YamlStore {
   return new YamlStore(filePath)
 }
 
-export function cachePath(cacheDir: string, name: string): string {
-  return join(cacheDir, `${name}.yml`)
-}
-
 export function getConfigurationStore(): YamlStore {
   return getStore(join(resolveConfigDir(), CONFIG_FILE_NAME))
-}
-
-export function getCache(cacheName: string): Store {
-  return getStore(cachePath(resolveCacheDir(), cacheName))
-}
-
-export function getHostStore(): YamlStore {
-  return getStore(join(resolveConfigDir(), HOSTS_FILE))
 }
 
 const PROBE_HOST = '__difyctl_probe__'

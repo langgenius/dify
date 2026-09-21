@@ -31,24 +31,18 @@
     "pretest": "pnpm tree:gen",
     "ci": "pnpm tree:check && pnpm test:coverage && pnpm build",
     "clean": "rm -rf dist node_modules/.cache",
+    "smoke": "bun scripts/run-smoke.ts",
     "version:info": "bun scripts/print-buildinfo.ts",
     "build:bin": "scripts/release-build.sh",
     "build:bin:local": "DIFYCTL_CHANNEL=dev scripts/release-build.sh"
   },
   "dependencies": {
-    "@dify/contracts": "workspace:*",
     "@napi-rs/keyring": "catalog:",
-    "@orpc/client": "catalog:",
-    "@orpc/contract": "catalog:",
-    "@orpc/openapi-client": "catalog:",
-    "cli-table3": "catalog:",
+    "ajv": "catalog:",
     "eventsource-parser": "catalog:",
     "js-yaml": "catalog:",
     "lockfile": "catalog:",
     "open": "catalog:",
-    "ora": "catalog:",
-    "picocolors": "catalog:",
-    "std-semver": "catalog:",
     "undici": "catalog:",
     "zod": "catalog:"
   },
@@ -70,10 +64,6 @@
   },
   "difyctl": {
     "channel": "stable",
-    "compat": {
-      "minDify": "1.16.0",
-      "maxDify": "1.17.1"
-    },
     "release": {
       "tagPrefix": "difyctl-v",
       "binName": "difyctl",
