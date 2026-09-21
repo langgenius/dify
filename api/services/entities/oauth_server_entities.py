@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 
 
@@ -58,6 +59,7 @@ class OAuthProviderAccount:
     avatar: str | None
     interface_language: str | None
     timezone: str | None
+    created_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,3 +71,4 @@ class OAuthProviderAccountRecord:
     interface_language: str | None
     timezone: str | None
     status: OAuthProviderAccountStatus
+    created_at: datetime

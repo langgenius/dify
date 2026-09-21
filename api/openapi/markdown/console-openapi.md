@@ -21096,6 +21096,7 @@ Coarse node-level status used by Inspector to pick a banner.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | avatar | string |  | No |
+| created_at | integer |  | Yes |
 | email | string |  | Yes |
 | id | string |  | Yes |
 | interface_language | string |  | Yes |
