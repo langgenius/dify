@@ -137,37 +137,43 @@ def test_to_intents_connect_without_handles_has_no_handle_keys():
     assert connect.args == {"from_node": "n1", "to_node": "n2"}
 
 
-def test_to_intents_skips_synthetic_container_start_nodes():
-    """ESQ1-288: these are frontend-synthesized markers. Persisting them as
-    generic `custom` nodes crashes the canvas with React error #130."""
+def test_to_intents_carries_the_container_start_marker_with_its_flow_type():
+    """ESQ1-288: the marker is a REAL node the engine roots the body frame at.
+    The crash was never the marker -- it was persisting it as a generic
+    `custom` node, which the canvas has no component for (React error #130).
+    Carry the generator's node-level type instead of dropping the node."""
     from services.dify_builder.agent.graph_translate import to_intents
 
     graph = {
         "nodes": [
-            {"id": "iter1", "data": {"type": "iteration", "title": "Loop over items"}},
-            {"id": "iter1start", "data": {"type": "iteration-start"}},
-            {"id": "loop1", "data": {"type": "loop", "title": "Retry"}},
-            {"id": "loop1start", "data": {"type": "loop-start"}},
-            {"id": "llm1", "data": {"type": "llm", "title": "Summarize"}},
+            {"id": "iter1", "type": "custom", "data": {"type": "iteration", "title": "Loop over items"}},
+            {"id": "iter1start", "type": "custom-iteration-start", "data": {"type": "iteration-start"}},
+            {"id": "loop1", "type": "custom", "data": {"type": "loop", "title": "Retry"}},
+            {"id": "loop1start", "type": "custom-loop-start", "data": {"type": "loop-start"}},
+            {"id": "llm1", "type": "custom", "data": {"type": "llm", "title": "Summarize"}},
         ],
         "edges": [],
     }
     intents = to_intents(graph)
-    created = [i.args["node_id"] for i in intents if i.op == "create_node"]
-    assert created == ["iter1", "loop1", "llm1"]
-    assert "iter1start" not in created
-    assert "loop1start" not in created
+    creates = {i.args["node_id"]: i for i in intents if i.op == "create_node"}
+    assert list(creates) == ["iter1", "iter1start", "loop1", "loop1start", "llm1"]
+    assert creates["iter1start"].args["flow_type"] == "custom-iteration-start"
+    assert creates["loop1start"].args["flow_type"] == "custom-loop-start"
+    # a generic `custom` node carries no flow_type -- _build_node already defaults to it
+    assert "flow_type" not in creates["llm1"].args
+    assert "flow_type" not in creates["iter1"].args
 
 
-def test_to_intents_strips_start_node_id_from_container_config():
-    """The frontend regenerates container start markers and rewrites start_node_id.
-    Persisting our pointer leaves it dangling, causing TypeError on canvas init."""
+def test_to_intents_keeps_start_node_id_in_the_container_config():
+    """`IterationNodeData.start_node_id` has no default: stripping it makes
+    Graph.init fail for the WHOLE draft, not just the container."""
     from services.dify_builder.agent.graph_translate import to_intents
 
     graph = {
         "nodes": [
             {
                 "id": "iter1",
+                "type": "custom",
                 "data": {
                     "type": "iteration",
                     "title": "Loop",
@@ -175,42 +181,37 @@ def test_to_intents_strips_start_node_id_from_container_config():
                     "other_field": "value",
                 },
             },
-            {"id": "llm1", "data": {"type": "llm", "title": "LLM"}},
+            {"id": "llm1", "type": "custom", "data": {"type": "llm", "title": "LLM"}},
         ],
         "edges": [],
     }
     intents = to_intents(graph)
     iter_create = next(i for i in intents if i.args["node_id"] == "iter1")
-    # start_node_id should be stripped, but other fields preserved
-    assert "start_node_id" not in iter_create.args["config"]
+    assert iter_create.args["config"]["start_node_id"] == "iter1start"
     assert iter_create.args["config"]["title"] == "Loop"
     assert iter_create.args["config"]["other_field"] == "value"
 
 
-def test_to_intents_skips_edges_to_from_synthetic_nodes():
-    """Edges to/from skipped synthetic nodes produce no connect intent,
-    keeping the intent list honest about what it asks the backend to create."""
+def test_to_intents_keeps_the_container_entry_edge():
+    """The generator synthesizes `<container>start -> first child`
+    (runner.py:1392-1397). Drop it and the body has no incoming edge."""
     from services.dify_builder.agent.graph_translate import to_intents
 
     graph = {
         "nodes": [
-            {"id": "iter1", "data": {"type": "iteration", "title": "Loop"}},
-            {"id": "iter1start", "data": {"type": "iteration-start"}},
-            {"id": "llm1", "data": {"type": "llm", "title": "LLM"}},
-            {"id": "llm2", "data": {"type": "llm", "title": "Next"}},
+            {"id": "iter1", "type": "custom", "data": {"type": "iteration", "title": "Loop"}},
+            {"id": "iter1start", "type": "custom-iteration-start", "data": {"type": "iteration-start"}},
+            {"id": "llm1", "type": "custom", "data": {"type": "llm", "title": "LLM"}},
+            {"id": "llm2", "type": "custom", "data": {"type": "llm", "title": "Next"}},
         ],
         "edges": [
-            {"id": "e1", "source": "iter1start", "target": "llm1"},  # from synthetic
-            {"id": "e2", "source": "llm1", "target": "iter1start"},  # to synthetic
-            {"id": "e3", "source": "llm1", "target": "llm2"},  # normal edge
+            {"id": "e1", "source": "iter1start", "target": "llm1"},
+            {"id": "e2", "source": "llm1", "target": "llm2"},
         ],
     }
     intents = to_intents(graph)
-    connects = [i for i in intents if i.op == "connect"]
-    # Only the normal edge should produce a connect
-    assert len(connects) == 1
-    assert connects[0].args["from_node"] == "llm1"
-    assert connects[0].args["to_node"] == "llm2"
+    connects = [(i.args["from_node"], i.args["to_node"]) for i in intents if i.op == "connect"]
+    assert connects == [("iter1start", "llm1"), ("llm1", "llm2")]
 
 
 def test_to_intents_preserves_nesting_and_layout():
@@ -244,3 +245,145 @@ def test_to_intents_preserves_nesting_and_layout():
     assert "parent_id" not in by_id["iter1"].args
     # data-level markers already survived via config -- confirm we didn't lose them
     assert by_id["child1"].args["config"]["iteration_id"] == "iter1"
+
+
+def _apply_all(graph):
+    """Drive a generator-shaped graph all the way to a persisted draft graph:
+    to_intents -> filter_applicable -> the real APPLY_FNS, exactly as
+    build.py:409-416 and dify_port.apply_repair do."""
+    from services.dify_builder import graph_ops
+    from services.dify_builder.agent.graph_translate import to_intents
+
+    intents = to_intents(graph)
+    applicable, rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents)
+    assert rejected == [], f"intents rejected: {[(i.op, r) for i, r in rejected]}"
+    persisted = {"nodes": [], "edges": []}
+    for intent in applicable:
+        persisted, _changed = graph_ops.APPLY_FNS[intent.op](persisted, **intent.args)
+    return persisted, intents
+
+
+def test_translated_iteration_graph_validates_against_the_engine():
+    """The regression this branch shipped and this test now blocks: dropping
+    the marker / start_node_id / entry edge made EVERY container workflow fail
+    `Graph.init` on a required-field ValidationError, which is worse than the
+    canvas crash it was meant to fix (ESQ1-288)."""
+    from graphon.nodes.iteration.entities import IterationNodeData
+
+    graph = {
+        "nodes": [
+            {
+                "id": "node1",
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {"type": "start", "title": "Start", "variables": []},
+            },
+            {
+                "id": "node2",
+                "type": "custom",
+                "position": {"x": 300, "y": 0},
+                "data": {
+                    "type": "iteration",
+                    "title": "Iterate",
+                    "start_node_id": "node2start",
+                    "iterator_selector": ["node1", "items"],
+                    "output_selector": ["node3", "text"],
+                },
+            },
+            {
+                "id": "node2start",
+                "type": "custom-iteration-start",
+                "parentId": "node2",
+                "extent": "parent",
+                "zIndex": 1002,
+                "position": {"x": 60, "y": 78},
+                "data": {"type": "iteration-start", "title": "", "desc": "", "isInIteration": True},
+            },
+            {
+                "id": "node3",
+                "type": "custom",
+                "parentId": "node2",
+                "extent": "parent",
+                "zIndex": 1002,
+                "position": {"x": 160, "y": 78},
+                "data": {"type": "llm", "title": "Summarize", "isInIteration": True, "iteration_id": "node2"},
+            },
+        ],
+        "edges": [
+            {"id": "e1", "source": "node1", "target": "node2"},
+            {"id": "e2", "source": "node2start", "target": "node3"},
+        ],
+    }
+    persisted, intents = _apply_all(graph)
+    by_id = {n["id"]: n for n in persisted["nodes"]}
+
+    # 1. the container data the engine validates eagerly at graph construction
+    IterationNodeData.model_validate(by_id["node2"]["data"])
+
+    # 2. the marker survives WITH the ReactFlow type the canvas has a component for
+    assert by_id["node2start"]["type"] == "custom-iteration-start"
+    assert by_id["node2start"]["parentId"] == "node2"
+
+    # 3. the body is reachable: the entry edge marker -> first child survives
+    connects = [(i.args["from_node"], i.args["to_node"]) for i in intents if i.op == "connect"]
+    assert ("node2start", "node3") in connects
+    assert ("node2start", "node3") in [(e["source"], e["target"]) for e in persisted["edges"]]
+
+
+def test_translated_loop_graph_validates_against_the_engine():
+    """Same contract for loops -- `LoopNodeData.start_node_id` is required too."""
+    from graphon.nodes.loop.entities import LoopNodeData
+
+    graph = {
+        "nodes": [
+            {
+                "id": "node1",
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {"type": "start", "title": "Start", "variables": []},
+            },
+            {
+                "id": "node2",
+                "type": "custom",
+                "position": {"x": 300, "y": 0},
+                "data": {
+                    "type": "loop",
+                    "title": "Retry",
+                    "start_node_id": "node2start",
+                    "loop_count": 3,
+                    "break_conditions": [],
+                    "logical_operator": "and",
+                },
+            },
+            {
+                "id": "node2start",
+                "type": "custom-loop-start",
+                "parentId": "node2",
+                "extent": "parent",
+                "zIndex": 1002,
+                "position": {"x": 60, "y": 78},
+                "data": {"type": "loop-start", "title": "", "desc": "", "isInLoop": True},
+            },
+            {
+                "id": "node3",
+                "type": "custom",
+                "parentId": "node2",
+                "extent": "parent",
+                "zIndex": 1002,
+                "position": {"x": 160, "y": 78},
+                "data": {"type": "llm", "title": "Attempt", "isInLoop": True, "loop_id": "node2"},
+            },
+        ],
+        "edges": [
+            {"id": "e1", "source": "node1", "target": "node2"},
+            {"id": "e2", "source": "node2start", "target": "node3"},
+        ],
+    }
+    persisted, intents = _apply_all(graph)
+    by_id = {n["id"]: n for n in persisted["nodes"]}
+
+    LoopNodeData.model_validate(by_id["node2"]["data"])
+    assert by_id["node2start"]["type"] == "custom-loop-start"
+    assert by_id["node2start"]["parentId"] == "node2"
+    assert ("node2start", "node3") in [(i.args["from_node"], i.args["to_node"]) for i in intents if i.op == "connect"]
+    assert ("node2start", "node3") in [(e["source"], e["target"]) for e in persisted["edges"]]

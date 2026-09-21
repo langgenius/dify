@@ -221,6 +221,30 @@ def test_create_node_without_a_parent_carries_no_wrapper_keys():
     assert "zIndex" not in node
 
 
+def test_create_node_defaults_the_reactflow_type_to_custom():
+    graph = {"nodes": [], "edges": []}
+    out, _changed = apply_create_node(graph, "llm", {"title": "LLM"}, node_id="n1")
+    assert out["nodes"][0]["type"] == "custom"
+
+
+def test_create_node_carries_a_container_start_markers_reactflow_type():
+    """The canvas resolves its component from the NODE-level type. A marker
+    persisted as "custom" has no component and crashes it (ESQ1-288)."""
+    graph = {"nodes": [], "edges": []}
+    out, _changed = apply_create_node(
+        graph,
+        "iteration-start",
+        {"title": ""},
+        node_id="iter1start",
+        parent_id="iter1",
+        flow_type="custom-iteration-start",
+    )
+    node = out["nodes"][0]
+    assert node["type"] == "custom-iteration-start"
+    assert node["data"]["type"] == "iteration-start"
+    assert node["parentId"] == "iter1"
+
+
 # ---- apply_delete_node ------------------------------------------------------
 
 
