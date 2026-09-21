@@ -429,6 +429,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
                 tone="success",
                 stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
                 run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
             ),
         )
         emit_canvas(env, "mark_review_ready")
@@ -479,6 +480,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
                 tone="error",
                 stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
                 run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
             ),
         )
         form_items = append_card(
@@ -532,6 +534,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
                 tone="error",
                 stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
                 run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
             ),
         )
         error_items = append_card(
@@ -587,6 +590,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             tone="error",
             stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
             run_ids=[run.id],
+            dify_run_id=run.dify_run_id,
         ),
     )
     error_items = append_card(

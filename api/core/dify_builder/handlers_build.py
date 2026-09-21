@@ -729,6 +729,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 tone="success",
                 stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
                 run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
                 output=_terminal_output(per_node),
             ),
         )
@@ -807,6 +808,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 tone="error",
                 stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
                 run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
             ),
         )
         form_items = append_card(
@@ -861,6 +863,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 tone="error",
                 stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
                 run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
             ),
         )
         error_items = append_card(
@@ -916,6 +919,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             tone="error",
             stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
             run_ids=[run.id],
+            dify_run_id=run.dify_run_id,
         ),
     )
     error_items = append_card(
