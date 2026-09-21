@@ -103,7 +103,16 @@ def compress_svg(data: bytes) -> tuple[bytes, str]:
             # DOM serialization retains namespace prefixes used by SVG/CSS references.
             attribute.value = header.split(";", 1)[0] + ";base64," + base64.b64encode(candidate).decode()
             methods.append(f"embedded {method}")
-    options = scour.parse_args(["--disable-embed-rasters", "--strip-xml-prolog", "--indent=none", "--no-line-breaks"])
+    # Retain groups that may be targeted by CSS selectors such as `g` or `g > rect`.
+    options = scour.parse_args(
+        [
+            "--disable-group-collapsing",
+            "--disable-embed-rasters",
+            "--strip-xml-prolog",
+            "--indent=none",
+            "--no-line-breaks",
+        ]
+    )
     return scour.scourString(document.toxml(), options).encode(), "; ".join(dict.fromkeys(methods))
 
 

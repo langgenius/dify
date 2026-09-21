@@ -156,6 +156,22 @@ class ImageOptimizationTests(unittest.TestCase):
         self.assertIn(b"https://example.invalid/image.png", result)
         self.assertNotIn(b"data:image", result)
 
+    def test_svg_group_css_is_preserved_in_optimization_candidate(self):
+        source = (
+            b'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">'
+            b"<style>g {opacity:0.5}</style>" + b"\n    " * 80 + b'<g><rect width="100" height="100"/></g></svg>'
+        )
+        self.write("web/public/group.svg", source)
+        status, _, candidate = checker.inspect_image("web/public/group.svg", self.root)
+        self.assertEqual(status, "error")
+        self.assertTrue(checker.exceeds_threshold(len(source), len(candidate)))
+        root = ET.fromstring(candidate)
+        ns = {"svg": "http://www.w3.org/2000/svg"}
+        self.assertEqual(root.find("svg:style", ns).text, "g {opacity:0.5}")
+        self.assertIsNotNone(root.find("svg:g/svg:rect", ns))
+        self.write("web/public/group.svg", candidate)
+        self.assertEqual(checker.inspect_image("web/public/group.svg", self.root)[0], "passed")
+
     def test_svg_markup_is_optimized(self):
         data = (
             b'<svg xmlns="http://www.w3.org/2000/svg">' + b"\n        " * 100 + b'<rect width="10" height="10"/></svg>'
