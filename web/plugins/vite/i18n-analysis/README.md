@@ -1,18 +1,15 @@
 # i18n build analysis
 
-`i18nAnalysisPlugin()` prints a route namespace report during production Vite builds,
+`i18nAnalysisPlugin()` prints a compact summary during production Vite builds,
 before the existing unused-key check. With Vinext it reports once, after combining
 the completed client, SSR and RSC graphs. Development does not run the analysis.
 
-Each route contains its pattern, source page, sorted namespaces and four groups:
-
-```text
-/items/[id] (app/(console)/items/[id]/page.tsx): app, common, workflow
-  page: app
-  shared: common
-  lazy: workflow
-  slots: (none detected)
-```
+The console shows route and diagnostic counts, namespaces protected by dynamic
+keys, and the report path. Diagnostic counts include separate environment records.
+Individual route/group listings are available in `i18n-routes.json` (or through
+`onAnalysis` when `build.write` is false). Each route retains its pattern, source
+page, sorted namespaces and the page/shared/lazy/slots groups. Validation failures
+still print the affected route and source details.
 
 The report follows resolved static and dynamic imports, including virtual modules,
 and adds ancestor layouts, templates, loading/error/not-found boundaries. Route

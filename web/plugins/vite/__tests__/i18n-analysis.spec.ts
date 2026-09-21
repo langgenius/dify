@@ -91,14 +91,10 @@ describe('i18n build check', () => {
       .map(([message]) => message)
       .filter((message) => message.startsWith('[i18n] Route'))
     expect(reports).toHaveLength(1)
-    expect(reports[0]).toContain(
-      '/items/[id] (app/(group)/items/[id]/page.ts): client, common, group, lazy, ssr',
+    expect(reports[0]).toBe(
+      '[i18n] Routes: 2; unknown namespace records: 0; dynamic key records: 0; protected namespaces: (none).',
     )
-    expect(reports[0]).toContain('/other (app/other/page.ts): common, other')
-    expect(reports[0]).toContain('    page: client, ssr')
-    expect(reports[0]).toContain('    shared: common, group')
-    expect(reports[0]).toContain('    lazy: lazy')
-    expect(reports[0]).not.toContain('ignored')
+    expect(info.mock.calls.some(([message]) => message.includes('/items/[id]'))).toBe(false)
     const artifact: unknown = JSON.parse(
       readFileSync(path.join(root, 'dist/i18n-routes.json'), 'utf8'),
     )
@@ -107,6 +103,7 @@ describe('i18n build check', () => {
       routes: expect.arrayContaining([
         expect.objectContaining({
           route: '/items/[id]',
+          namespaces: ['client', 'common', 'group', 'lazy', 'ssr'],
           groups: {
             page: [
               expect.objectContaining({ namespace: 'client', sources: ['component.ts'] }),
@@ -120,6 +117,7 @@ describe('i18n build check', () => {
             slots: [],
           },
         }),
+        expect.objectContaining({ route: '/other', namespaces: ['common', 'other'] }),
       ]),
     })
   })

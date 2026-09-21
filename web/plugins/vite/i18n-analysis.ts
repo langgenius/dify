@@ -139,21 +139,11 @@ export function i18nAnalysisPlugin(
       logger.warn(
         `[i18n] Namespace analysis is incomplete for ${incomplete.length} routes; inspect unknownNamespaceSources before treating validation as complete.`,
       )
-    if (routes.length) {
-      logger.info(
-        [
-          '[i18n] Route namespace analysis (static build graph; may overestimate or miss runtime usage):',
-          'Includes ancestor boundaries, dynamic imports and all built parallel-slot branches. Interception segments remain in route labels.',
-          ...routes.flatMap(({ route, page, namespaces, groups }) => [
-            `  ${route} (${page}): ${namespaces.join(', ') || '(none detected)'}`,
-            ...Object.entries(groups).map(
-              ([name, entries]) =>
-                `    ${name}: ${entries.map((entry) => entry.namespace).join(', ') || '(none detected)'}`,
-            ),
-          ]),
-        ].join('\n'),
-      )
-    }
+    const unknown = evidence.filter((item) => item.kind === 'unknown-namespace').length
+    const dynamic = evidence.filter((item) => item.kind === 'dynamic-key').length
+    logger.info(
+      `[i18n] Routes: ${routes.length}; unknown namespace records: ${unknown}; dynamic key records: ${dynamic}; protected namespaces: ${[...protectedNamespaces].sort().join(', ') || '(none)'}.`,
+    )
     if (reportPath) {
       await fs.mkdir(path.dirname(reportPath), { recursive: true })
       await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`)
