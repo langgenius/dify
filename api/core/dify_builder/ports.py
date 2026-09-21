@@ -19,7 +19,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
   ``seam_test.go``'s ``TestSeam_AnyConformingAgent_DrivesFlowToTerminal``).
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, Protocol, runtime_checkable
 
 from core.dify_builder.contract import ConversationPage, ResourceOption
@@ -157,7 +157,15 @@ class DifyPort(Protocol):
         expected_revision: str,
     ) -> ApplyResult: ...
 
-    def run_draft(self, app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run: ...
+    def run_draft(
+        self,
+        app_id: str,
+        actor: Actor,
+        inputs: Inputs,
+        on_event: Callable[[NodeEvent], None],
+        *,
+        on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+    ) -> Run: ...
 
     def publish(self, app_id: str, actor: Actor) -> None: ...
 

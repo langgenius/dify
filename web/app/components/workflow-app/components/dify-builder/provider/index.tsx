@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { SessionRunEvents } from '../session/types'
 import type { DifyBuilderCanvasNode } from '../utils'
 import { ScopeProvider } from 'jotai-scope'
 import { useHydrateAtoms } from 'jotai/utils'
@@ -14,6 +15,8 @@ import { DifyBuilderCanvasLockSync, DifyBuilderCanvasRefreshSync } from './canva
 import { DifyBuilderCreationStart } from './creation-start'
 import { DifyBuilderSessionPersistence } from './session-persistence'
 import { getSessionStorageKey } from './session-storage'
+import { useDifyBuilderCanvasEvents } from './use-canvas-events'
+import { useDifyBuilderRunEvents } from './use-run-events'
 
 type DifyBuilderProviderProps = {
   appId?: string
@@ -42,7 +45,23 @@ const DifyBuilderProviderContent = ({
 }: DifyBuilderProviderProps) => {
   const enabled = useProviderContextSelector((context) => context.difyBuilderEnabled)
   const setShowPanel = useStore((state) => state.setShowDifyBuilderPanel)
-  const session = useDifyBuilderSessionController(onSyncDraft)
+  const runEvents = useDifyBuilderRunEvents(appId)
+  const canvasEvents = useDifyBuilderCanvasEvents(onFocusCanvas)
+  const sessionEvents = useMemo<SessionRunEvents>(
+    () => ({
+      ...runEvents,
+      onCanvasEvent: (event) => {
+        runEvents.onCanvasEvent(event)
+        canvasEvents.onCanvasEvent(event)
+      },
+      reset: () => {
+        runEvents.reset()
+        canvasEvents.reset()
+      },
+    }),
+    [canvasEvents, runEvents],
+  )
+  const session = useDifyBuilderSessionController(onSyncDraft, sessionEvents)
   const runtime = useMemo(
     () => ({
       appId,
@@ -63,8 +82,8 @@ const DifyBuilderProviderContent = ({
     <>
       <DifyBuilderCanvasLockSync />
       <DifyBuilderCanvasRefreshSync
-        onFocusCanvas={onFocusCanvas}
         onRefreshCanvas={onRefreshCanvas}
+        onCanvasRefreshed={session.onCanvasRefreshed}
       />
       {children}
       {/* Mount canvas and panel subscriptions before restoring or starting a session. */}

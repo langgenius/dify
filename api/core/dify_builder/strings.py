@@ -86,7 +86,7 @@ PLAIN: frozenset[str] = frozenset(
         # decision texts
         "Accepted skill learning",
         "Approved the change plan",
-        "Approved the fix; retesting",
+        "Applied the fix; ready to retest",
         "Approved the plan",
         "Checklist still failing, re-diagnosing",
         "Chose to publish",
