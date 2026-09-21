@@ -2,8 +2,6 @@ name: Image optimization
 
 on:
   pull_request:
-  merge_group:
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,6 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           fetch-depth: 0
 
@@ -30,13 +29,9 @@ jobs:
 
       - name: Check image optimization
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          args=(--all)
-          if [ -n "$BASE_SHA" ]; then
-            args=(--base "$BASE_SHA")
-          fi
-          uv run --with-requirements scripts/image-resources/requirements.txt python scripts/image-resources/check_image_resources.py "${args[@]}" --output-dir "$RUNNER_TEMP/image-optimization-candidates"
+          uv run --with-requirements scripts/image-resources/requirements.txt python scripts/image-resources/check_image_resources.py --base "$BASE_SHA" --output-dir "$RUNNER_TEMP/image-optimization-candidates"
 
       - name: Upload optimization candidates
         if: failure()
