@@ -15,8 +15,8 @@ import type {
 } from './type'
 import type { TracingStatus } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -24,7 +24,6 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Divider from '@/app/components/base/divider'
 import {
   AliyunIcon,
   ArizeIcon,
@@ -37,7 +36,8 @@ import {
   TencentIcon,
   WeaveIcon,
 } from '@/app/components/base/icons/src/public/tracing'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname } from '@/next/navigation'
@@ -257,7 +257,7 @@ const Panel: FC = () => {
     return (
       <div className="mb-3 flex items-center justify-between">
         <div className="w-50">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       </div>
     )
@@ -299,7 +299,7 @@ const Panel: FC = () => {
             <div className="rounded-md p-1">
               <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </div>
-            <Divider type="vertical" className="h-3.5" />
+            <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
             <div className="rounded-md p-1">
               <span className="i-ri-arrow-down-double-line size-4 text-text-tertiary" />
             </div>
@@ -343,7 +343,7 @@ const Panel: FC = () => {
             <div className="ml-2 rounded-md p-1">
               <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </div>
-            <Divider type="vertical" className="h-3.5" />
+            <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
           </div>
         </ConfigButton>
       )}

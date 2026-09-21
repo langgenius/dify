@@ -24,8 +24,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Compute build source hash
+        id: build-source
+        shell: bash
+        run: |
+          # Hash tracked build inputs, excluding generated files and backend-only changes.
+          source_hash=$(git ls-tree -r HEAD -- web packages e2e/scripts e2e/package.json e2e/test-env.ts package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc .github/actions/setup-web .github/workflows/web-e2e.yml | sha256sum | cut -d ' ' -f 1)
+          echo "hash=$source_hash" >> "$GITHUB_OUTPUT"
+
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
+
+      - name: Restore Next.js build cache
+        id: next-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: web/.next/cache
+          key: e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-${{ steps.build-source.outputs.hash }}
+          restore-keys: |
+            e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-
 
       - name: Run E2E support unit tests
         working-directory: ./e2e
@@ -35,7 +52,15 @@ jobs:
         working-directory: ./e2e
         env:
           E2E_FORCE_WEB_BUILD: '1'
-        run: vp run e2e:web:build
+          CACHE_HIT: ${{ steps.next-cache.outputs.cache-hit || 'false' }}
+        run: |
+          started=$SECONDS
+          vp run e2e:web:build
+          {
+            echo "### E2E Web build"
+            echo "Build: $((SECONDS - started))s"
+            echo "Exact cache hit: $CACHE_HIT (false can include a compatible fallback)"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Package Web build
         run: >-
@@ -53,6 +78,13 @@ jobs:
           if-no-files-found: error
           overwrite: true
           retention-days: 7
+
+      - name: Save Next.js build cache
+        if: github.event_name != 'merge_group' && steps.next-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: web/.next/cache
+          key: ${{ steps.next-cache.outputs.cache-primary-key }}
 
   chromium-full:
     name: Chromium Full (${{ matrix.shard }}/3)
@@ -76,18 +108,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup web dependencies
-        uses: ./.github/actions/setup-web
-
-      - name: Setup UV and Python
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - name: Prepare Chromium E2E dependencies
+        timeout-minutes: 15
+        uses: ./.github/actions/setup-core-e2e
         with:
-          enable-cache: true
-          python-version: '3.12'
-          cache-dependency-glob: api/uv.lock
-
-      - name: Install API dependencies
-        run: uv sync --project api --dev
+          browser: chromium
 
       - name: Download Web build
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -96,11 +121,6 @@ jobs:
 
       - name: Extract Web build
         run: tar -xf e2e-web-build.tar -C web
-
-      - name: Install Chromium
-        timeout-minutes: 15
-        working-directory: ./e2e
-        run: vp run e2e:install:ci:chromium
 
       - name: Run Chromium full shard
         working-directory: ./e2e
@@ -146,18 +166,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup web dependencies
-        uses: ./.github/actions/setup-web
-
-      - name: Setup UV and Python
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - name: Prepare WebKit E2E dependencies
+        timeout-minutes: 15
+        uses: ./.github/actions/setup-core-e2e
         with:
-          enable-cache: true
-          python-version: '3.12'
-          cache-dependency-glob: api/uv.lock
-
-      - name: Install API dependencies
-        run: uv sync --project api --dev
+          browser: webkit
 
       - name: Download Web build
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -166,11 +179,6 @@ jobs:
 
       - name: Extract Web build
         run: tar -xf e2e-web-build.tar -C web
-
-      - name: Install WebKit
-        timeout-minutes: 15
-        working-directory: ./e2e
-        run: vp run e2e:install:ci:webkit
 
       - name: Run WebKit browser smoke
         working-directory: ./e2e

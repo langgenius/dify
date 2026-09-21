@@ -10,7 +10,7 @@ import FeatureCard from '@/app/components/base/features/new-feature-panel/featur
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { TextToAudio } from '@/app/components/base/icons/src/vender/features'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 import { TtsAutoPlay } from '@/types/app'
 
 type Props = Readonly<{

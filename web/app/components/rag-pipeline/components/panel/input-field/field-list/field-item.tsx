@@ -4,10 +4,15 @@ import type { InputVarType } from '@/app/components/workflow/types'
 import type { InputVar } from '@/models/pipeline'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { RiDeleteBinLine, RiDraggable, RiEditLine } from '@remixicon/react'
-import { useHover } from 'ahooks'
+import {
+  RiArrowDownLine,
+  RiArrowUpLine,
+  RiDeleteBinLine,
+  RiDraggable,
+  RiEditLine,
+} from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
@@ -20,6 +25,8 @@ type FieldItemProps = {
   index: number
   onClickEdit: (id: string) => void
   onRemove: (index: number) => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
 }
 
 const FieldItem = ({
@@ -29,11 +36,12 @@ const FieldItem = ({
   onClickEdit,
   onRemove,
   dragHandleProps,
+  onMoveUp,
+  onMoveDown,
 }: FieldItemProps) => {
   const { t } = useTranslation()
 
-  const ref = useRef(null)
-  const isHovering = useHover(ref)
+  const fieldNameId = useId()
 
   const handleOnClickEdit = useCallback(
     (e: React.MouseEvent) => {
@@ -55,13 +63,10 @@ const FieldItem = ({
 
   return (
     <div
-      ref={ref}
       className={cn(
-        'group flex h-8 cursor-pointer items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 pl-2 shadow-xs hover:shadow-sm',
-        isHovering && !readonly ? 'cursor-all-scroll pr-1' : 'pr-2.5',
+        'group flex min-h-8 items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 pr-1 pl-2 shadow-xs hover:shadow-sm',
         readonly && 'cursor-default',
       )}
-      // onClick={handleOnClickEdit}
     >
       <div className="relative size-4 shrink-0">
         <InputField
@@ -81,6 +86,7 @@ const FieldItem = ({
       </div>
       <div className="flex grow basis-0 items-center gap-x-1 overflow-hidden">
         <div
+          id={fieldNameId}
           title={payload.variable}
           className="max-w-32.5 shrink-0 truncate system-sm-medium text-text-secondary"
         >
@@ -98,16 +104,37 @@ const FieldItem = ({
           </>
         )}
       </div>
-      {isHovering && !readonly ? (
+      {!readonly && (
         <div className="flex shrink-0 items-center gap-x-1">
+          {dragHandleProps && (
+            <>
+              <IconButton
+                aria-label={t(($) => $['operation.moveUp'], { ns: 'common' })}
+                aria-describedby={fieldNameId}
+                disabled={!onMoveUp}
+                onClick={onMoveUp}
+              >
+                <RiArrowUpLine aria-hidden="true" className="size-4" />
+              </IconButton>
+              <IconButton
+                aria-label={t(($) => $['operation.moveDown'], { ns: 'common' })}
+                aria-describedby={fieldNameId}
+                disabled={!onMoveDown}
+                onClick={onMoveDown}
+              >
+                <RiArrowDownLine aria-hidden="true" className="size-4" />
+              </IconButton>
+            </>
+          )}
           <IconButton
+            aria-describedby={fieldNameId}
             aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
-            className="mr-1"
             onClick={handleOnClickEdit}
           >
             <RiEditLine aria-hidden="true" className="size-4 text-text-tertiary" />
           </IconButton>
           <IconButton
+            aria-describedby={fieldNameId}
             aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
             onClick={handleRemove}
           >
@@ -117,17 +144,16 @@ const FieldItem = ({
             />
           </IconButton>
         </div>
-      ) : (
-        <div className="flex shrink-0 items-center gap-x-2">
-          {payload.required && (
-            <Badge>{t(($) => $['nodes.start.required'], { ns: 'workflow' })}</Badge>
-          )}
-          <InputVarTypeIcon
-            type={payload.type as unknown as InputVarType}
-            className="size-3 text-text-tertiary"
-          />
-        </div>
       )}
+      <div className="flex shrink-0 items-center gap-x-2">
+        {payload.required && (
+          <Badge>{t(($) => $['nodes.start.required'], { ns: 'workflow' })}</Badge>
+        )}
+        <InputVarTypeIcon
+          type={payload.type as unknown as InputVarType}
+          className="size-3 text-text-tertiary"
+        />
+      </div>
     </div>
   )
 }

@@ -23,7 +23,6 @@ import {
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -35,6 +34,7 @@ import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
 import { normalizeWorkflowOutputName } from '@/app/components/workflow/utils/variable'
+import { toast } from '@/app/notifications'
 import {
   buildWorkflowToolRequestPayload,
   getReservedWorkflowOutputParameters,

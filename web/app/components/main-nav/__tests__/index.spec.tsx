@@ -364,8 +364,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -379,8 +379,12 @@ vi.mock('@/app/components/header/github-star', () => ({
   default: ({ className }: { className?: string }) => <span className={className}>1,234</span>,
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
+}))
+
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
@@ -1540,7 +1544,7 @@ describe('MainNav', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('separates pinned and unpinned installed web apps', async () => {
+  it('keeps pinned and unpinned installed web apps in one accessible list', async () => {
     mockInstalledApps = [
       createInstalledApp({
         id: 'installed-1',
@@ -1558,7 +1562,7 @@ describe('MainNav', () => {
 
     expect(await screen.findByText('Pinned App')).toBeInTheDocument()
     expect(screen.getByText('Unpinned App')).toBeInTheDocument()
-    expect(screen.getByTestId('divider')).toBeInTheDocument()
+
     const rows = within(
       screen.getByRole('navigation', { name: 'explore.sidebar.webApps' }),
     ).getAllByRole('listitem')

@@ -53,10 +53,6 @@ vi.mock('@/app/components/app-sidebar/nav-link', () => ({
   default: ({ href, name }: { href: string; name: string }) => <a href={href}>{name}</a>,
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
-}))
-
 vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
@@ -127,27 +123,26 @@ describe('AgentDetailSection', () => {
   })
 
   it('renders the current agent avatar, name, and role', () => {
-    const { container } = renderAgentDetailSection()
+    renderAgentDetailSection()
     const agentName = screen.getByText('Research Agent')
-    const agentAvatar = container.querySelector('em-emoji')?.parentElement
+    const agentAvatar = screen.getByText('🧪')
 
     expect(agentName).toBeInTheDocument()
     expect(screen.getByText('Research Assistant')).toBeInTheDocument()
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
     expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
-    expect(container.querySelector('em-emoji')).toHaveAttribute('id', '🧪')
+    expect(agentAvatar).toHaveTextContent('🧪')
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
   })
 
   it.each([null, '', '   '])(
-    'omits an empty role without adding a type placeholder (%s)',
+    'omits an empty role while keeping the agent accessible (%s)',
     (role) => {
       mocks.queryData = createAgent({ role })
       renderAgentDetailSection()
 
       expect(screen.getByText('Research Agent')).toBeInTheDocument()
       expect(screen.queryByText('Research Assistant')).not.toBeInTheDocument()
-      expect(screen.queryByText('agentV2.agentDetail.type')).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Research Agent/ })).toBeInTheDocument()
     },
   )
@@ -165,19 +160,20 @@ describe('AgentDetailSection', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'agentV2.roster.editInfo',
       'common.operation.duplicate',
-      'app.export',
+      'app.exportApp',
       'common.operation.delete',
     ])
   })
 
-  it('exports the Agent App DSL from the detail action menu', async () => {
+  it('exports the Agent App package from the detail action menu', async () => {
     const user = userEvent.setup()
     renderAgentDetailSection()
 
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
-    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
     expect(mocks.exportAppDsl).toHaveBeenCalledWith({
+      format: 'ifpkg',
       appId: 'app-1',
       appName: 'Research Agent',
     })

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from inspect import unwrap
 from uuid import uuid4
 
 from flask import Flask
@@ -10,7 +9,7 @@ from sqlalchemy.orm import Session
 from controllers.openapi.app_run import AppRunTaskStopApi
 from models import Account, App
 from services.app_service import AppService, CreateAppParams
-from tests.test_containers_integration_tests.controllers.openapi.conftest import auth_for
+from tests.test_containers_integration_tests.controllers.openapi.conftest import context_for
 
 
 def _create_app(db_session: Session, account: Account, *, name: str = "Runner") -> App:
@@ -39,11 +38,15 @@ class TestAppRunTaskStop:
 
         api = AppRunTaskStopApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/tasks/{task_id}:stop", method="POST"):
-            result = unwrap(api.post)(
+            result = api.post.__handler__(
                 api,
-                app_id=app_model.id,
-                task_id=task_id,
-                auth_data=auth_for(account, app_model=app_model, caller_kind="account"),
+                context_for(
+                    account,
+                    session=db_session_with_containers,
+                    view_args={"app_id": app_model.id, "task_id": task_id},
+                ),
+                app_model.id,
+                task_id,
             )
 
         assert result.result == "success"

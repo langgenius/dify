@@ -1,5 +1,5 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import useThemeMock from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import AudioPlayer from '../AudioPlayer'

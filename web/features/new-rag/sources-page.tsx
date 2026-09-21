@@ -23,12 +23,12 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -557,7 +557,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       </header>
       {sourcesQuery.isPending ? (
         <div className="flex min-h-64 flex-1 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       ) : sourcesQuery.error && !sourcesQuery.data ? (
         <div className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center">
@@ -724,7 +724,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               )}
             {!filteredSources.length && completingFilteredResults && (
               <div className="flex min-h-40 items-center justify-center">
-                <Loading />
+                <LoadingPlaceholder />
               </div>
             )}
           </div>
