@@ -20,7 +20,7 @@ from pydantic_ai.models.instrumented import InstrumentationSettings
 from pydantic_ai.models.test import TestModel
 
 import dify_agent.server.observability as server_observability
-from dify_agent.runtime.agent_factory import create_agent
+from dify_agent.runtime.agent_factory import DIFY_AGENT_RUN_NAME, create_agent
 from dify_agent.runtime.observability import (
     DIFY_AGENT_ID_ATTRIBUTE,
     DIFY_TENANT_ID_ATTRIBUTE,
@@ -28,6 +28,8 @@ from dify_agent.runtime.observability import (
     IsolatedTracerProvider,
 )
 from dify_agent.server.settings import ServerSettings
+
+_AGENT_RUN_SPAN_NAME = f"invoke_agent {DIFY_AGENT_RUN_NAME}"
 
 
 @pytest.fixture(autouse=True)
@@ -173,7 +175,7 @@ def test_business_agent_root_detaches_from_platform_parent_span() -> None:
         platform_root = next(
             span for span in platform_exporter.get_finished_spans() if span.name == "platform-incoming-request"
         )
-        agent_root = next(span for span in business_exporter.get_finished_spans() if span.name == "invoke_agent agent")
+        agent_root = next(span for span in business_exporter.get_finished_spans() if span.name == _AGENT_RUN_SPAN_NAME)
         assert agent_root.parent is None
         assert agent_root.context is not None
         assert agent_root.context.trace_id != platform_root.context.trace_id
@@ -241,7 +243,7 @@ def test_business_descendants_stay_in_business_trace_and_caller_context_restored
 
         platform_trace_ids = {span.context.trace_id for span in platform_exporter.get_finished_spans()}
         business_spans = business_exporter.get_finished_spans()
-        roots = _spans_by_name(business_exporter, "invoke_agent agent")
+        roots = _spans_by_name(business_exporter, _AGENT_RUN_SPAN_NAME)
         assert len(roots) == 1
         root = roots[0]
         assert root.parent is None
@@ -294,7 +296,7 @@ def test_platform_httpx_client_span_detaches_from_business_parent() -> None:
             assert span.context.trace_id not in business_trace_ids
         _assert_parents_resolve_within(platform_exporter)
         _assert_parents_resolve_within(business_exporter)
-        assert _spans_by_name(business_exporter, "invoke_agent agent")
+        assert _spans_by_name(business_exporter, _AGENT_RUN_SPAN_NAME)
     finally:
         http.close()
         business_client.shutdown(timeout_millis=5000)
@@ -415,7 +417,7 @@ def test_concurrent_agent_runs_have_independent_business_roots() -> None:
         assert platform_client.force_flush(timeout_millis=10000)
         assert business_client.force_flush(timeout_millis=10000)
 
-        roots = _spans_by_name(business_exporter, "invoke_agent agent")
+        roots = _spans_by_name(business_exporter, _AGENT_RUN_SPAN_NAME)
         assert len(roots) == 2
         assert all(root.parent is None for root in roots)
         assert roots[0].context.trace_id != roots[1].context.trace_id
@@ -505,7 +507,7 @@ def test_shared_trace_context_mode_links_business_run_to_platform_parent() -> No
         all_spans = [*platform_spans, *business_spans]
         assert len({span.context.trace_id for span in all_spans}) == 1
         assert all(span.context.trace_id == platform_context.trace_id for span in all_spans)
-        root = _spans_by_name(business_exporter, "invoke_agent agent")[0]
+        root = _spans_by_name(business_exporter, _AGENT_RUN_SPAN_NAME)[0]
         assert root.parent is not None
         assert root.parent.span_id == platform_context.span_id
         http_spans = [span for span in platform_spans if span.name.startswith("GET")]
@@ -575,7 +577,7 @@ def test_shared_mode_agent_pipeline_respects_remote_parent_sampling(monkeypatch:
         spans = business_exporter.get_finished_spans()
         assert spans
         assert all(span.context.trace_id == 0x8888 for span in spans)
-        root = _spans_by_name(business_exporter, "invoke_agent agent")[0]
+        root = _spans_by_name(business_exporter, _AGENT_RUN_SPAN_NAME)[0]
         assert root.parent is not None
         assert root.parent.span_id == 0x2222
     finally:
@@ -603,7 +605,7 @@ def test_agent_observability_stamps_dify_identity_on_every_run_span(trace_contex
             attributes = dict(span.attributes or {})
             assert attributes[DIFY_TENANT_ID_ATTRIBUTE] == "tenant-1", span.name
             assert attributes[DIFY_AGENT_ID_ATTRIBUTE] == "agent-1", span.name
-        run_span = _spans_by_name(exporter, "invoke_agent agent")[0]
+        run_span = _spans_by_name(exporter, _AGENT_RUN_SPAN_NAME)[0]
         assert run_span.attributes is not None
         assert run_span.attributes["gen_ai.operation.name"] == "invoke_agent"
     finally:
@@ -649,7 +651,7 @@ def test_identity_attributes_do_not_break_isolated_parent_policy() -> None:
         platform_root = next(
             span for span in platform_exporter.get_finished_spans() if span.name == "platform-incoming-request"
         )
-        root = _spans_by_name(business_exporter, "invoke_agent agent")[0]
+        root = _spans_by_name(business_exporter, _AGENT_RUN_SPAN_NAME)[0]
         assert root.parent is None
         assert root.context is not None
         assert root.context.trace_id != platform_root.context.trace_id

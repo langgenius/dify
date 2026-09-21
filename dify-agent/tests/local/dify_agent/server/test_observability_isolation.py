@@ -24,10 +24,12 @@ from pydantic_ai import Agent, Tool
 from pydantic_ai.models.test import TestModel
 
 import dify_agent.server.observability as observability
-from dify_agent.runtime.agent_factory import create_agent
+from dify_agent.runtime.agent_factory import DIFY_AGENT_RUN_NAME, create_agent
 from dify_agent.runtime.observability import IsolatedTracerProvider
 from dify_agent.server.observability import configure_agent_observability
 from dify_agent.server.settings import ServerSettings
+
+_AGENT_RUN_SPAN_NAME = f"invoke_agent {DIFY_AGENT_RUN_NAME}"
 
 
 class _OTLPReceiver:
@@ -329,7 +331,7 @@ def test_agent_pipeline_isolation_with_real_env_export_in_subprocess(tmp_path) -
         assert "platform-subprocess-marker" in platform_names
         assert "platform-subprocess-marker" not in agent_names
         assert not any("pydantic" in scope for scope in platform_receiver.scope_names())
-        assert "invoke_agent agent" in agent_names
+        assert _AGENT_RUN_SPAN_NAME in agent_names
         assert any("smoke_tool" in name for name in agent_names)
         assert set(platform_receiver.service_names()) == {"platform-test"}
         assert set(agent_receiver.service_names()) == {"dify-agent-trajectory"}
@@ -339,7 +341,7 @@ def test_agent_pipeline_isolation_with_real_env_export_in_subprocess(tmp_path) -
         platform_spans = platform_receiver.spans()
         agent_spans = agent_receiver.spans()
         marker = next(span for span in platform_spans if span[3] == "platform-subprocess-marker")
-        invoke = next(span for span in agent_spans if span[3] == "invoke_agent agent")
+        invoke = next(span for span in agent_spans if span[3] == _AGENT_RUN_SPAN_NAME)
         assert invoke[2] == ""
         assert invoke[0] != marker[0]
         assert any(span[3].startswith("GET") for span in platform_spans)
@@ -419,12 +421,12 @@ def test_agent_pipeline_shared_context_with_real_env_export_in_subprocess(tmp_pa
 
         spans = receiver.spans()
         names = {span[3] for span in spans}
-        assert {"shared-platform-marker", "invoke_agent agent"} <= names
+        assert {"shared-platform-marker", _AGENT_RUN_SPAN_NAME} <= names
         assert any(name.startswith("GET") for name in names)
         assert any("smoke_tool" in name or "execute_tool" in name for name in names)
         assert len({span[0] for span in spans}) == 1
         marker = next(span for span in spans if span[3] == "shared-platform-marker")
-        invoke = next(span for span in spans if span[3] == "invoke_agent agent")
+        invoke = next(span for span in spans if span[3] == _AGENT_RUN_SPAN_NAME)
         assert invoke[2] == marker[1]
         local_span_ids = {span[1] for span in spans}
         for span in spans:
