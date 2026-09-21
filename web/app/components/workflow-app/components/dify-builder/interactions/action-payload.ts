@@ -20,13 +20,10 @@ export const getDefaultActionPayload = (
       card?.kind === 'resource_select'
         ? (card.payload.recommended?.map((resource) => resource.id) ?? [])
         : []
-    const policy =
-      (card?.kind === 'resource_select'
-        ? card.payload.conflict_policy_options?.find((option) => option.recommended)?.id
-        : undefined) ?? 'ask'
-    return { resource_ids: selected, conflict_policy: policy }
+    return { resource_ids: selected }
   }
 
-  if (actionId === 'provide_testdata') return { mode: 'mock' }
+  if (actionId === 'provide_testdata')
+    return { mode: 'provide', inputs: card?.kind === 'form' ? (card.payload.values ?? {}) : {} }
   return {}
 }

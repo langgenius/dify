@@ -221,6 +221,16 @@ export const ConversationCard = memo(
               ))}
             </div>
           ) : undefined}
+          {item.payload.output && (
+            <details className="mt-2" aria-label={t(($) => $['common.output'], { ns: 'workflow' })}>
+              <summary className="cursor-pointer system-xs-medium text-text-secondary">
+                {t(($) => $['common.output'], { ns: 'workflow' })}
+              </summary>
+              <pre className="mt-2 max-h-60 overflow-auto font-mono text-xs break-words whitespace-pre-wrap text-text-secondary">
+                {item.payload.output}
+              </pre>
+            </details>
+          )}
         </DifyBuilderCard>
       )
     }
