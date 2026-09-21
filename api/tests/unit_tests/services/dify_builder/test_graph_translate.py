@@ -3,10 +3,18 @@ def test_to_intents_translates_nodes_then_edges_preserving_ids():
 
     graph = {
         "nodes": [
-            {"id": "n_start", "type": "custom", "position": {"x": 0, "y": 0},
-             "data": {"type": "start", "title": "Start", "variables": []}},
-            {"id": "n_llm", "type": "custom", "position": {"x": 1, "y": 0},
-             "data": {"type": "llm", "title": "LLM", "model": {"provider": "", "name": ""}}},
+            {
+                "id": "n_start",
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {"type": "start", "title": "Start", "variables": []},
+            },
+            {
+                "id": "n_llm",
+                "type": "custom",
+                "position": {"x": 1, "y": 0},
+                "data": {"type": "llm", "title": "LLM", "model": {"provider": "", "name": ""}},
+            },
         ],
         "edges": [{"id": "e1", "source": "n_start", "target": "n_llm", "type": "custom"}],
     }
@@ -22,12 +30,23 @@ def test_to_intents_translates_nodes_then_edges_preserving_ids():
 
 def test_to_intents_preserves_original_start_id_and_references():
     from services.dify_builder.agent.graph_translate import to_intents
+
     graph = {
         "nodes": [
-            {"id": "node1", "type": "custom", "data": {"type": "start", "title": "Start",
-                "variables": [{"variable": "document", "type": "file", "required": True}]}},
-            {"id": "node2", "type": "custom", "data": {"type": "document-extractor", "title": "Extract",
-                "variable_selector": ["node1", "document"]}},
+            {
+                "id": "node1",
+                "type": "custom",
+                "data": {
+                    "type": "start",
+                    "title": "Start",
+                    "variables": [{"variable": "document", "type": "file", "required": True}],
+                },
+            },
+            {
+                "id": "node2",
+                "type": "custom",
+                "data": {"type": "document-extractor", "title": "Extract", "variable_selector": ["node1", "document"]},
+            },
         ],
         "edges": [{"id": "e1", "source": "node1", "target": "node2", "type": "custom"}],
     }
@@ -45,12 +64,14 @@ def test_to_intents_preserves_original_start_id_and_references():
 
 def test_to_intents_skips_malformed_nodes():
     from services.dify_builder.agent.graph_translate import to_intents
+
     graph = {"nodes": [{"id": "x", "data": {}}, {"id": "", "data": {"type": "llm"}}], "edges": []}
     assert to_intents(graph) == []  # no type / no id -> dropped
 
 
 def test_to_intents_preserves_ids_and_order_for_multiple_nodes():
     from services.dify_builder.agent.graph_translate import to_intents
+
     # Graph with two start-type nodes: neither is renamed, and creates/connects
     # are emitted in the generator's original node/edge order.
     graph = {
@@ -114,3 +135,79 @@ def test_to_intents_connect_without_handles_has_no_handle_keys():
     intents = to_intents(graph)
     connect = next(i for i in intents if i.op == "connect")
     assert connect.args == {"from_node": "n1", "to_node": "n2"}
+
+
+def test_to_intents_skips_synthetic_container_start_nodes():
+    """ESQ1-288: these are frontend-synthesized markers. Persisting them as
+    generic `custom` nodes crashes the canvas with React error #130."""
+    from services.dify_builder.agent.graph_translate import to_intents
+
+    graph = {
+        "nodes": [
+            {"id": "iter1", "data": {"type": "iteration", "title": "Loop over items"}},
+            {"id": "iter1start", "data": {"type": "iteration-start"}},
+            {"id": "loop1", "data": {"type": "loop", "title": "Retry"}},
+            {"id": "loop1start", "data": {"type": "loop-start"}},
+            {"id": "llm1", "data": {"type": "llm", "title": "Summarize"}},
+        ],
+        "edges": [],
+    }
+    intents = to_intents(graph)
+    created = [i.args["node_id"] for i in intents if i.op == "create_node"]
+    assert created == ["iter1", "loop1", "llm1"]
+    assert "iter1start" not in created
+    assert "loop1start" not in created
+
+
+def test_to_intents_strips_start_node_id_from_container_config():
+    """The frontend regenerates container start markers and rewrites start_node_id.
+    Persisting our pointer leaves it dangling, causing TypeError on canvas init."""
+    from services.dify_builder.agent.graph_translate import to_intents
+
+    graph = {
+        "nodes": [
+            {
+                "id": "iter1",
+                "data": {
+                    "type": "iteration",
+                    "title": "Loop",
+                    "start_node_id": "iter1start",
+                    "other_field": "value",
+                },
+            },
+            {"id": "llm1", "data": {"type": "llm", "title": "LLM"}},
+        ],
+        "edges": [],
+    }
+    intents = to_intents(graph)
+    iter_create = next(i for i in intents if i.args["node_id"] == "iter1")
+    # start_node_id should be stripped, but other fields preserved
+    assert "start_node_id" not in iter_create.args["config"]
+    assert iter_create.args["config"]["title"] == "Loop"
+    assert iter_create.args["config"]["other_field"] == "value"
+
+
+def test_to_intents_skips_edges_to_from_synthetic_nodes():
+    """Edges to/from skipped synthetic nodes produce no connect intent,
+    keeping the intent list honest about what it asks the backend to create."""
+    from services.dify_builder.agent.graph_translate import to_intents
+
+    graph = {
+        "nodes": [
+            {"id": "iter1", "data": {"type": "iteration", "title": "Loop"}},
+            {"id": "iter1start", "data": {"type": "iteration-start"}},
+            {"id": "llm1", "data": {"type": "llm", "title": "LLM"}},
+            {"id": "llm2", "data": {"type": "llm", "title": "Next"}},
+        ],
+        "edges": [
+            {"id": "e1", "source": "iter1start", "target": "llm1"},  # from synthetic
+            {"id": "e2", "source": "llm1", "target": "iter1start"},  # to synthetic
+            {"id": "e3", "source": "llm1", "target": "llm2"},  # normal edge
+        ],
+    }
+    intents = to_intents(graph)
+    connects = [i for i in intents if i.op == "connect"]
+    # Only the normal edge should produce a connect
+    assert len(connects) == 1
+    assert connects[0].args["from_node"] == "llm1"
+    assert connects[0].args["to_node"] == "llm2"
