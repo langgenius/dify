@@ -127,12 +127,10 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         try:
             yield
         finally:
-            try:
-                await scheduler.shutdown()
-            finally:
-                await dify_api_inner_http_client.aclose()
-                await plugin_daemon_http_client.aclose()
-                await redis.aclose()
+            await scheduler.shutdown()
+            await dify_api_inner_http_client.aclose()
+            await plugin_daemon_http_client.aclose()
+            await redis.aclose()
 
     app = FastAPI(title="Dify Agent Run Server", version="0.1.0", lifespan=lifespan)
     configure_server_observability(app)
