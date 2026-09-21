@@ -26,11 +26,14 @@ from tasks.evaluation_task import (
     _apply_judgment,
     _build_missing_result_errors,
     _compute_metrics_summary,
+    _execute_evaluation,
     _execute_evaluation_runner,
     _finalize_results,
     _generate_result_xlsx,
     _merge_customized_results,
     _merge_result,
+    _renew_evaluation_run_heartbeat,
+    _renew_evaluation_run_heartbeat_while_running,
     _stamp_and_merge,
     _workflow_task_id,
     reconcile_stale_evaluation_runs,
@@ -156,7 +159,142 @@ def test_workflow_task_ids_are_deterministic_per_run_phase_and_position() -> Non
     assert _workflow_task_id("run-1", "evaluator", 3) == "evaluation:run-1:evaluator:3"
 
 
-def test_reconcile_stale_evaluation_runs_uses_running_started_at(
+def test_execute_evaluation_starts_running_lease_before_work(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory,
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000051"
+    workflow_version_id = "30000000-0000-0000-0000-000000000004"
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id="30000000-0000-0000-0000-000000000002",
+                target_type="apps",
+                target_id="30000000-0000-0000-0000-000000000003",
+                target_workflow_version_id=workflow_version_id,
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.PENDING,
+                total_items=0,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+
+    evaluation_instance = MagicMock()
+    monkeypatch.setattr(
+        "tasks.evaluation_task.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=evaluation_instance),
+    )
+    execute_running = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", execute_running)
+    maintained_run_ids: list[str] = []
+
+    @contextmanager
+    def maintain_heartbeat(evaluation_run_id: str):
+        maintained_run_ids.append(evaluation_run_id)
+        yield
+
+    monkeypatch.setattr("tasks.evaluation_task._maintain_evaluation_run_heartbeat", maintain_heartbeat)
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id="30000000-0000-0000-0000-000000000002",
+        target_type="apps",
+        target_id="30000000-0000-0000-0000-000000000003",
+        target_workflow_version_id=workflow_version_id,
+        evaluation_model_provider="",
+        evaluation_model="",
+        input_list=[],
+    )
+
+    with sqlite_session_factory() as session:
+        _execute_evaluation(session, run_data)
+
+    with sqlite_session_factory() as session:
+        run = session.get(EvaluationRun, run_id)
+        assert run is not None
+        assert run.status == EvaluationRunStatus.RUNNING
+        assert run.started_at is not None
+        assert run.heartbeat_at is not None
+    assert maintained_run_ids == [run_id]
+    execute_running.assert_called_once()
+
+
+def test_heartbeat_loop_renews_until_run_is_no_longer_running(monkeypatch: pytest.MonkeyPatch) -> None:
+    stop_event = MagicMock()
+    stop_event.wait.side_effect = [False, False]
+    renew_heartbeat = MagicMock(side_effect=[True, False])
+    monkeypatch.setattr("tasks.evaluation_task._renew_evaluation_run_heartbeat", renew_heartbeat)
+    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_HEARTBEAT_INTERVAL", 17)
+
+    _renew_evaluation_run_heartbeat_while_running("run-1", stop_event)
+
+    assert stop_event.wait.call_count == 2
+    stop_event.wait.assert_called_with(17)
+    assert renew_heartbeat.call_count == 2
+
+
+def test_renew_evaluation_run_heartbeat_only_updates_running_run(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory,
+) -> None:
+    now = naive_utc_now()
+    running_run_id = "30000000-0000-0000-0000-000000000031"
+    completed_run_id = "30000000-0000-0000-0000-000000000041"
+    with sqlite_session_factory() as session:
+        session.add_all(
+            [
+                EvaluationRun(
+                    id=running_run_id,
+                    tenant_id="30000000-0000-0000-0000-000000000002",
+                    target_type="apps",
+                    target_id="30000000-0000-0000-0000-000000000003",
+                    target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.RUNNING,
+                    total_items=2,
+                    created_by="30000000-0000-0000-0000-000000000006",
+                    heartbeat_at=now - timedelta(minutes=10),
+                ),
+                EvaluationRun(
+                    id=completed_run_id,
+                    tenant_id="30000000-0000-0000-0000-000000000002",
+                    target_type="apps",
+                    target_id="30000000-0000-0000-0000-000000000003",
+                    target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.COMPLETED,
+                    total_items=2,
+                    created_by="30000000-0000-0000-0000-000000000006",
+                ),
+            ]
+        )
+        session.commit()
+
+    @contextmanager
+    def create_session():
+        with sqlite_session_factory() as session:
+            yield session
+
+    monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
+
+    assert _renew_evaluation_run_heartbeat(running_run_id) is True
+    assert _renew_evaluation_run_heartbeat(completed_run_id) is False
+
+    with sqlite_session_factory() as session:
+        running_run = session.get(EvaluationRun, running_run_id)
+        assert running_run is not None
+        assert running_run.heartbeat_at is not None
+        assert running_run.heartbeat_at > now - timedelta(minutes=10)
+        completed_run = session.get(EvaluationRun, completed_run_id)
+        assert completed_run is not None
+        assert completed_run.heartbeat_at is None
+
+
+def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory,
 ) -> None:
@@ -177,7 +315,8 @@ def test_reconcile_stale_evaluation_runs_uses_running_started_at(
                     celery_task_id="celery-1",
                     created_by="30000000-0000-0000-0000-000000000006",
                     created_at=now,
-                    started_at=now - timedelta(hours=2),
+                    started_at=now,
+                    heartbeat_at=now - timedelta(hours=2),
                 ),
                 EvaluationRun(
                     id="30000000-0000-0000-0000-000000000011",
@@ -192,6 +331,7 @@ def test_reconcile_stale_evaluation_runs_uses_running_started_at(
                     celery_task_id="celery-2",
                     created_by="30000000-0000-0000-0000-000000000006",
                     created_at=now - timedelta(hours=2),
+                    heartbeat_at=now - timedelta(hours=2),
                 ),
                 EvaluationRun(
                     id="30000000-0000-0000-0000-000000000021",
@@ -206,7 +346,8 @@ def test_reconcile_stale_evaluation_runs_uses_running_started_at(
                     celery_task_id="celery-3",
                     created_by="30000000-0000-0000-0000-000000000006",
                     created_at=now - timedelta(hours=2),
-                    started_at=now,
+                    started_at=now - timedelta(hours=2),
+                    heartbeat_at=now,
                 ),
             ]
         )
@@ -218,7 +359,7 @@ def test_reconcile_stale_evaluation_runs_uses_running_started_at(
             yield session
 
     monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
-    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_TASK_TIMEOUT", 60)
+    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_LEASE_TIMEOUT", 60)
     stop_tasks = MagicMock()
     monkeypatch.setattr(EvaluationService, "_stop_workflow_tasks", stop_tasks)
     celery_control = MagicMock()
@@ -230,13 +371,13 @@ def test_reconcile_stale_evaluation_runs_uses_running_started_at(
         run = session.get(EvaluationRun, "30000000-0000-0000-0000-000000000001")
         assert run is not None
         assert run.status == EvaluationRunStatus.FAILED
-        assert "timeout" in (run.error or "")
+        assert "lease" in (run.error or "")
         pending_run = session.get(EvaluationRun, "30000000-0000-0000-0000-000000000011")
         assert pending_run is not None
         assert pending_run.status == EvaluationRunStatus.PENDING
-        recently_started_run = session.get(EvaluationRun, "30000000-0000-0000-0000-000000000021")
-        assert recently_started_run is not None
-        assert recently_started_run.status == EvaluationRunStatus.RUNNING
+        recently_renewed_run = session.get(EvaluationRun, "30000000-0000-0000-0000-000000000021")
+        assert recently_renewed_run is not None
+        assert recently_renewed_run.status == EvaluationRunStatus.RUNNING
     stop_tasks.assert_called_once_with("30000000-0000-0000-0000-000000000001", 2)
     celery_control.revoke.assert_called_once_with("celery-1", terminate=False)
 

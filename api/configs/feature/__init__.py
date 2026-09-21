@@ -1486,7 +1486,7 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=True,
     )
     ENABLE_EVALUATION_RUN_RECONCILER: bool = Field(
-        description="Enable periodic recovery of running evaluations that exceed the execution timeout",
+        description="Enable periodic recovery of running evaluations whose heartbeat lease has expired",
         default=True,
     )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
@@ -1782,14 +1782,24 @@ class EvaluationConfig(BaseSettings):
         description="Maximum number of rows in an evaluation dataset.",
         default=500,
     )
-    EVALUATION_TASK_TIMEOUT: PositiveInt = Field(
-        description="Hard timeout in seconds for an evaluation task.",
-        default=3600,
+    EVALUATION_RUN_HEARTBEAT_INTERVAL: PositiveInt = Field(
+        description="Interval in seconds between evaluation run heartbeat renewals.",
+        default=30,
+    )
+    EVALUATION_RUN_LEASE_TIMEOUT: PositiveInt = Field(
+        description="Maximum seconds without an evaluation run heartbeat before recovery.",
+        default=180,
     )
     EVALUATION_MAX_PARALLEL_TARGETS: PositiveInt = Field(
         description="Maximum target executions performed in parallel by one evaluation task.",
         default=5,
     )
+
+    @model_validator(mode="after")
+    def validate_heartbeat_lease(self) -> "EvaluationConfig":
+        if self.EVALUATION_RUN_HEARTBEAT_INTERVAL >= self.EVALUATION_RUN_LEASE_TIMEOUT:
+            raise ValueError("Evaluation heartbeat interval must be shorter than the lease timeout")
+        return self
 
 
 class FeatureConfig(

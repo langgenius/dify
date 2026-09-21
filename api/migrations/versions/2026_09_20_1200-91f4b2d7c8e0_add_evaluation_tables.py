@@ -74,6 +74,7 @@ def upgrade() -> None:
         sa.Column("celery_task_id", sa.String(length=255), nullable=True),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
         sa.Column("started_at", sa.DateTime(), nullable=True),
+        sa.Column("heartbeat_at", sa.DateTime(), nullable=True),
         sa.Column("completed_at", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), server_default=_current_timestamp_default(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=_current_timestamp_default(), nullable=False),
@@ -86,6 +87,7 @@ def upgrade() -> None:
             unique=False,
         )
         batch_op.create_index("evaluation_run_tenant_status_idx", ["tenant_id", "status"], unique=False)
+        batch_op.create_index("evaluation_run_status_heartbeat_idx", ["status", "heartbeat_at"], unique=False)
 
     op.create_table(
         "evaluation_run_items",
@@ -119,6 +121,7 @@ def downgrade() -> None:
     op.drop_table("evaluation_run_items")
 
     with op.batch_alter_table("evaluation_runs", schema=None) as batch_op:
+        batch_op.drop_index("evaluation_run_status_heartbeat_idx")
         batch_op.drop_index("evaluation_run_tenant_status_idx")
         batch_op.drop_index("evaluation_run_target_created_idx")
     op.drop_table("evaluation_runs")

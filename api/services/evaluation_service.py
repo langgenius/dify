@@ -891,8 +891,6 @@ class EvaluationService:
             run_evaluation.apply_async(
                 args=(run_data.model_dump(mode="json"),),
                 task_id=celery_task_id,
-                time_limit=dify_config.EVALUATION_TASK_TIMEOUT,
-                soft_time_limit=max(1, dify_config.EVALUATION_TASK_TIMEOUT - 30),
             )
         except Exception as exc:
             evaluation_run.status = EvaluationRunStatus.FAILED

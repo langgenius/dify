@@ -10,7 +10,7 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from yarl import URL
 
 from configs.app_config import DifyConfig
-from configs.feature import OpsTraceConfig
+from configs.feature import EvaluationConfig, OpsTraceConfig
 from enums import DeploymentEdition
 
 
@@ -39,6 +39,21 @@ def test_ops_trace_config_accepts_parent_context_ttl_covering_retry_window() -> 
         OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
         OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
         OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=20,
+    )
+
+
+def test_evaluation_config_rejects_heartbeat_interval_not_shorter_than_lease() -> None:
+    with pytest.raises(ValidationError, match="heartbeat interval must be shorter than the lease timeout"):
+        EvaluationConfig(
+            EVALUATION_RUN_HEARTBEAT_INTERVAL=60,
+            EVALUATION_RUN_LEASE_TIMEOUT=60,
+        )
+
+
+def test_evaluation_config_accepts_heartbeat_interval_shorter_than_lease() -> None:
+    EvaluationConfig(
+        EVALUATION_RUN_HEARTBEAT_INTERVAL=30,
+        EVALUATION_RUN_LEASE_TIMEOUT=180,
     )
 
 
