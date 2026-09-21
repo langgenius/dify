@@ -25,10 +25,11 @@ from pydantic import BaseModel
 from werkzeug.routing import Rule
 
 from configs import dify_config
+from constants import HEADER_NAME_CATALOG
 from controllers.openapi._upload import has_binary_leaf
 from controllers.openapi.auth.spec import spec_of
 
-CATALOG_HEADER: Final = "X-Dify-Catalog"
+CATALOG_HEADER: Final = HEADER_NAME_CATALOG
 # Trailing slash: `/openapi/v1beta/x` is a different surface, not this one.
 _PREFIX: Final = "/openapi/v1/"
 CATALOG_PATH: Final = f"{_PREFIX}_catalog"

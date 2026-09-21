@@ -16,6 +16,7 @@ from flask_cors import CORS
 from flask_restx import Resource
 
 from configs import dify_config
+from constants import HEADER_NAME_CATALOG
 from extensions.ext_blueprints import EXPOSED_HEADERS, OPENAPI_HEADERS, OPENAPI_MAX_AGE_SECONDS
 from libs.external_api import ExternalApi
 
@@ -133,4 +134,21 @@ def test_catalog_fingerprint_header_is_exposed():
     response = client.get("/openapi/v1/_health", headers={"Origin": "https://app.example.com"})
 
     expose_headers = response.headers.get("Access-Control-Expose-Headers", "")
-    assert "X-Dify-Catalog" in expose_headers
+    assert HEADER_NAME_CATALOG in expose_headers
+
+
+def test_catalog_fingerprint_header_is_allowed_on_requests():
+    """Every guarded route needs the fingerprint on the request, so preflight must admit it."""
+    app = _make_app(["https://app.example.com"], "openapi_t7")
+    client = app.test_client()
+    response = client.options(
+        "/openapi/v1/_health",
+        headers={
+            "Origin": "https://app.example.com",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": HEADER_NAME_CATALOG,
+        },
+    )
+
+    allow_headers = response.headers.get("Access-Control-Allow-Headers", "").lower()
+    assert HEADER_NAME_CATALOG.lower() in allow_headers
