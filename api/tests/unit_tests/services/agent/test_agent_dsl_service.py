@@ -944,12 +944,13 @@ def test_resolve_legacy_package_asset_references(
         tenant_id="tenant-1", package=package, package_path="agent_packages.agent_1"
     )
 
-    ref = getattr(resolved, field)[0]
+    ref = (resolved.config_skills if field == "config_skills" else resolved.config_files)[0]
     assert ref.is_missing is (availability != "local")
     assert ref.file_id == (file_id if availability == "local" else "")
     assert ref.name == "asset"
     assert ref.size == 42
-    assert getattr(package.soul, field)[0].file_id == file_id
+    original_ref = (package.soul.config_skills if field == "config_skills" else package.soul.config_files)[0]
+    assert original_ref.file_id == file_id
     if availability == "local":
         assert warnings == []
     else:
