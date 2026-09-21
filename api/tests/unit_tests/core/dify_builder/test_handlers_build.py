@@ -1249,10 +1249,19 @@ def test_full_build_flow_goal_to_complete():
     assert len(graph["nodes"]) == 4
     assert len(graph["edges"]) == 3
 
-    # 5) run_test -> the generated start schema declares no file/file-list
-    # variable, so inputs are mocked inline (no gate) -> build.test_and_repair
+    # 5) run_test -> the testdata form arrives PRE-FILLED with mock values and
+    # rests at build.await_testdata, so the user can see and edit what will be
+    # tested. Submitting it (one click, nothing to type) -> build.test_and_repair
     # (working, auto) -> rests at build.review.
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
     assert out.current_state == PcState.BUILD_REVIEW
 
     # 6) publish_workflow -> build.publish (auto) -> governance_feedback (auto)
@@ -1363,6 +1372,14 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     # No file/file-list start variable -> mocked inline, no gate.
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    # the testdata form arrives pre-filled; submitting it is one click
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
     assert out.current_state == PcState.BUILD_REVIEW
 
     out = runner.advance(s.id, Turn(action=Action(kind="keep_draft", base_version=out.version), actor=_actor()))
@@ -1412,6 +1429,14 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
 
     # No file/file-list start variable -> mocked inline, no gate.
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    # the testdata form arrives pre-filled; submitting it is one click
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
     assert out.current_state == PcState.BUILD_REVIEW
 
     # loop back: continue_adjusting (-> re_fix) -> build.initial_plan (re-plan)
@@ -1485,8 +1510,11 @@ def test_run_test_skips_gate_when_input_prepared():
     assert result.next == PcState.BUILD_TEST_AND_REPAIR
 
 
-def test_run_test_mocks_its_own_inputs():
-    """Nothing to upload, so nothing to ask -- mock the inputs inline and run."""
+def test_run_test_prefills_the_form_with_mock_values():
+    """The user never has to invent test data -- but they do get to see and
+    edit it. Inventing the values is the cost item 5 removed; confirming them
+    with one click is not, and a green check produced by inputs nobody saw is
+    weak evidence about the workflow."""
     from core.dify_builder.handlers_build import handle_execution
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -1504,9 +1532,11 @@ def test_run_test_mocks_its_own_inputs():
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
     fc = DifyBuilderContext(test_input_ref="")
     result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
-    assert result.next == PcState.BUILD_TEST_AND_REPAIR
-    assert result.context.test_input_ref  # mocked + persisted, not left blank
-    assert not any(i.kind == "form" for i in result.items)  # no gate shown
+    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    form = next(i for i in result.items if i.kind == "form")
+    assert form.payload["variant"] == "testdata"
+    assert form.payload["frozen"] is False  # editable, not a read-only receipt
+    assert form.payload["values"]  # pre-filled from the mock, not an empty form
 
 
 def test_run_test_still_asks_when_a_file_is_declared_among_other_variables():

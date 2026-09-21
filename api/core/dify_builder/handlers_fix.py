@@ -48,6 +48,7 @@ from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
     Graph,
+    Inputs,
     NodeEvent,
     NodeOutput,
     Run,
@@ -92,6 +93,8 @@ __all__ = [
     "perform_revert",
     "start_schema",
     "testdata_form_fields",
+    "upload_variable_names",
+    "without_upload_values",
 ]
 
 
@@ -253,15 +256,34 @@ def start_schema(graph: Graph) -> StartSchema:
 _UPLOAD_VARIABLE_TYPES = frozenset({"file", "file-list"})
 
 
-def needs_upload_inputs(schema: StartSchema) -> bool:
-    """Whether any declared start variable takes a file.
+def upload_variable_names(schema: StartSchema) -> set[str]:
+    """Names of the start variables that take a file.
 
-    Everything else can be mocked; an upload cannot, so it is the only reason
-    left to stop and ask a human for test data.
+    Nothing can invent an upload, so these are the values a human still has to
+    supply even when every other field is mocked for them.
     """
-    return any(
-        isinstance(v, dict) and str(v.get("type") or "") in _UPLOAD_VARIABLE_TYPES for v in schema.get("variables", [])
-    )
+    return {
+        str(v["variable"])
+        for v in schema.get("variables", [])
+        if isinstance(v, dict) and v.get("variable") and str(v.get("type") or "") in _UPLOAD_VARIABLE_TYPES
+    }
+
+
+def needs_upload_inputs(schema: StartSchema) -> bool:
+    """Whether any declared start variable takes a file."""
+    return bool(upload_variable_names(schema))
+
+
+def without_upload_values(schema: StartSchema, inputs: Inputs) -> Inputs:
+    """``inputs`` minus anything bound to an upload variable.
+
+    The mock generator falls back to a plain string for a type it does not
+    know, so it cheerfully produces ``"test"`` for a ``file`` -- pre-filling a
+    file field with a value the run cannot use. Drop those and let the form
+    ask for them instead.
+    """
+    dropped = upload_variable_names(schema)
+    return {key: value for key, value in inputs.items() if key not in dropped}
 
 
 def _string_list(value: object) -> list[str]:

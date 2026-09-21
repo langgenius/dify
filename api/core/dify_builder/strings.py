@@ -35,7 +35,7 @@ PLAIN: frozenset[str] = frozenset(
         "No workspace resources matched this plan — continuing without any.",
         "Plan v1 ready for approval.",
         "Workflow built on the canvas.",
-        "Provide test inputs (or use mock data) to run the test.",
+        "I filled in test inputs -- edit them if you like, then run the test.",
         "Tests passed; ready for review.",
         "The run failed on its inputs — provide test data and retry.",
         "Here's the impact of your change.",
