@@ -7,6 +7,7 @@ import type {
 import type { OperationKey } from '@orpc/tanstack-query'
 import type userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
@@ -115,11 +116,18 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useDefaultModel: () => ({
     data: mocks.defaultTextGenerationModel,
   }),
-  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
-    currentProvider: mocks.textGenerationModelList[0],
-    currentModel: mocks.textGenerationModelList[0]?.models[0],
-    activeTextGenerationModelList: mocks.textGenerationModelList,
-  }),
+  useTextGenerationCurrentProviderAndModelAndModelList: (selectedModel?: DefaultModel) => {
+    const currentProvider = mocks.textGenerationModelList.find(
+      (provider) => provider.provider === selectedModel?.provider,
+    )
+    return {
+      currentProvider,
+      currentModel: currentProvider?.models.find((model) => model.model === selectedModel?.model),
+      activeTextGenerationModelList: mocks.textGenerationModelList.filter(
+        (provider) => provider.status === 'active',
+      ),
+    }
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
