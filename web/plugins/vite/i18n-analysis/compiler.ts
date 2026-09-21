@@ -67,7 +67,14 @@ function importBindings(code: string): ImportBinding[] {
         specifier: statement.moduleSpecifier.text,
         signature: JSON.stringify(['export', statement.exportClause?.getText(source)]),
         locals: [],
-        typeOnly: statement.isTypeOnly,
+        typeOnly:
+          statement.isTypeOnly ||
+          !!(
+            statement.exportClause &&
+            ts.isNamedExports(statement.exportClause) &&
+            statement.exportClause.elements.length > 0 &&
+            statement.exportClause.elements.every((element) => element.isTypeOnly)
+          ),
       })
     }
   }

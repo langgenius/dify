@@ -495,6 +495,37 @@ describe('i18n build check', () => {
     )
   })
 
+  it.each(["export type { Key } from './types'", "export { type Key } from './types'"])(
+    'preserves erased type re-exports: %s',
+    async (declaration) => {
+      writeFileSync(localeFile, JSON.stringify({ used: 'Used', unused: 'Unused' }))
+      writeFileSync(path.join(root, 'types.ts'), `export type Key = 'used'`)
+      writeFileSync(path.join(root, 'barrel.ts'), `${declaration}; export const marker = 1`)
+      writeFileSync(
+        path.join(root, 'entry.ts'),
+        `
+        import { type Key, marker } from './barrel'
+        export function label(t: (key: string) => string, key: Key) { return [marker, t(key)] }
+      `,
+      )
+      const reports: AnalysisReport[] = []
+      await expect(
+        build({
+          root,
+          configFile: false,
+          logLevel: 'silent',
+          plugins: [i18nAnalysisPlugin({ onAnalysis: (report) => reports.push(report) })],
+          build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
+        }),
+      ).rejects.toThrow(/Found 1 potentially unused i18n keys[\s\S]*app:unused/)
+      expect(
+        reports[0]!.evidence.some(
+          (item) => item.kind === 'unresolved-import' || item.kind === 'dynamic-key',
+        ),
+      ).toBe(false)
+    },
+  )
+
   it('tracks rewritten imports and analyzes multiple output formats only once', async () => {
     writeFileSync(localeFile, JSON.stringify({ actual: 'Actual' }))
     writeFileSync(
