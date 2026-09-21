@@ -3,6 +3,8 @@
 import json
 from collections.abc import Iterator, Mapping
 
+from pydantic import BaseModel
+
 from controllers.openapi._hints import attach_stream_hints, next_page_hint
 from controllers.openapi._models import Hint, PageQuery, PaginationEnvelope
 
@@ -49,6 +51,25 @@ def test_attach_stream_hints_decorates_only_the_wanted_event() -> None:
         **wanted,
         "hints": [{"summary": "Go on", "op": "thing.resume", "input": {"run_id": "r1"}}],
     }
+
+
+def test_attach_stream_hints_passes_through_what_it_cannot_read() -> None:
+    """A frame that only mentions the event name, a non-object frame, and an event the
+    builder cannot read all reach the wire unchanged instead of ending the stream."""
+
+    class _Fields(BaseModel):
+        run_id: str
+
+    def build(event: Mapping[str, object]) -> list[Hint]:
+        return _build(_Fields.model_validate(event).model_dump())
+
+    chunks = [
+        'data: {"answer": "the paused word", "event": "message"}\n\n',
+        "data: not json but paused\n\n",
+        'data: ["paused"]\n\n',
+        _sse({"event": "paused", "data": {"x": 1}}),
+    ]
+    assert list(attach_stream_hints(iter(chunks), event="paused", build=build)) == chunks
 
 
 def test_attach_stream_hints_closes_the_source() -> None:

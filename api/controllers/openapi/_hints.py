@@ -10,12 +10,15 @@ the caller passes it.
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable, Generator, Iterable, Mapping
 from typing import Any, Final, Protocol, runtime_checkable
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from controllers.openapi._models import Hint, Hinted, PageQuery, PaginationEnvelope
+
+logger = logging.getLogger(__name__)
 
 # The core's SSE framing and its event key; it exports no name for either.
 _DATA_PREFIX: Final = "data: "
@@ -41,25 +44,44 @@ def next_page_hint(
     return Hint(summary="Next page", op=op, input=params)
 
 
+def _wanted_event(chunk: str, event: str) -> dict[str, Any] | None:
+    """The parsed event when `chunk` is a `data:` frame of that kind, else None.
+
+    Only chunks that can be the wanted event are parsed — every other chunk of a long run
+    passes on a substring test. A frame that is not JSON, or not an object, is not the
+    wanted event either; the stream owns its bytes and this layer never breaks it.
+    """
+    if not chunk.startswith(_DATA_PREFIX) or event not in chunk:
+        return None
+    try:
+        parsed = json.loads(chunk[len(_DATA_PREFIX) :])
+    except ValueError:
+        return None
+    if not isinstance(parsed, dict) or parsed.get(_EVENT_FIELD) != event:
+        return None
+    return parsed
+
+
 def attach_stream_hints(events: Iterable[str], *, event: str, build: HintBuilder) -> Generator[str, None, None]:
     """Yield the source SSE chunks, adding a top-level `hints` list to every `event` that `build` hints.
 
-    `event: ping` chunks, other event kinds, and events `build` returns nothing for are
-    yielded as the original string so the wire bytes stay identical. Only chunks that can
-    be the wanted event are parsed — every other chunk of a long run is passed through on
-    a substring test. Closing this generator closes the source (the run stream is a
-    `RateLimitGenerator` that releases its slot on close).
+    `event: ping` chunks, other event kinds, events `build` returns nothing for, and events
+    `build` cannot read are yielded as the original string so the wire bytes stay identical.
+    Closing this generator closes the source (the run stream is a `RateLimitGenerator` that
+    releases its slot on close).
     """
     try:
         for chunk in events:
-            if not chunk.startswith(_DATA_PREFIX) or event not in chunk:
+            parsed = _wanted_event(chunk, event)
+            if parsed is None:
                 yield chunk
                 continue
-            parsed = json.loads(chunk[len(_DATA_PREFIX) :])
-            if parsed.get(_EVENT_FIELD) != event:
+            try:
+                hints = build(parsed)
+            except ValidationError:
+                logger.warning("%s event without the fields its hint needs; passed through.", event, exc_info=True)
                 yield chunk
                 continue
-            hints = build(parsed)
             if not hints:
                 yield chunk
                 continue

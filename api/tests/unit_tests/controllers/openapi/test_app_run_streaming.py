@@ -204,3 +204,13 @@ def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pyte
             "input": {"app_id": _TEST_APP_ID, "conversation_id": "c1", "query": None, "inputs": {}},
         }
     ]
+
+
+def test_chat_route_passes_a_message_end_without_conversation_through(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    end = 'data: {"event": "message_end", "message_id": "m1", "created_at": 1, "id": "m1", "task_id": "t1"}\n\n'
+    _generate_stub(monkeypatch, [end])
+    api = ChatRunApi()
+    body = ChatRunPayload(inputs={}, query="hi")
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
+        response = api.post.__handler__(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
+        assert list(response.response) == [end]
