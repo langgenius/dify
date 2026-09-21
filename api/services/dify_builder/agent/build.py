@@ -139,10 +139,12 @@ def discover_resources(
         return []
     system = (
         "You are a Dify workflow resource recommender. From the AVAILABLE resources, pick the "
-        "ids relevant to the plan. Use ONLY listed ids. Reply with ONLY JSON: "
+        "ids relevant to the plan. Each is listed with its readiness: 'ready' or 'missing_config' "
+        "(installed but not authorized for this workspace, so it cannot actually be used) -- never "
+        "recommend a missing_config resource. Use ONLY listed ids. Reply with ONLY JSON: "
         '{"resource_ids": ["<id>", ...]}.'
     )
-    listing = "\n".join(f"- {rid} ({kind}): {ref.label}" for rid, (kind, ref) in catalog.items())
+    listing = "\n".join(f"- {rid} ({kind}, {ref.readiness}): {ref.label}" for rid, (kind, ref) in catalog.items())
     user = f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
@@ -168,9 +170,45 @@ def discover_resources(
     ]
 
 
-def bind_resources(
-    model, tenant_id: str, plan_items: list[str], resource_ids: list[str], conflict_policy: str
-) -> list[str]:
+_GAP_SYSTEM = (
+    "You check whether a workflow plan can be built from the resources listed. Each resource is "
+    "shown with its readiness: 'ready' or 'missing_config' -- installed but not authorized for "
+    "this workspace, so it is not usable; treat a missing_config resource as unavailable, the "
+    "same as if it were not listed at all. "
+    "Name in ONE plain sentence any step no listed resource can perform, and say what "
+    "capability is missing -- never which product to install. Reply with ONLY JSON: "
+    '{"gap": "<sentence, or empty string when the plan is covered>"}.'
+)
+
+
+def assess_capability_gap(model, plan_items: list[str], options: list[ResourceOption]) -> str:
+    """One sentence naming what the workspace cannot do, or "".
+
+    Grounded only in what is installed -- there is no marketplace lookup, so
+    this says a capability is missing, never which plugin would supply it. A
+    ``missing_config`` tool (installed but unauthorized) cannot actually cover
+    a step, so it counts against the plan the same as if it weren't there at
+    all -- the readiness the model is shown reflects that. A model we cannot
+    reach reports no gap: inventing one would block a build that might be
+    fine.
+    """
+    if model is None or not plan_items:
+        return ""
+    listing = "\n".join(f"- {o.label} ({o.kind}, {o.readiness})" for o in options) or "- (none)"
+    try:
+        data = llm.invoke_json(
+            model,
+            system=_GAP_SYSTEM + llm.json_language_instruction("the gap sentence"),
+            user=f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}",
+        )
+    except Exception:
+        logger.warning("dify_builder: capability-gap assessment failed", exc_info=True)
+        return ""
+    gap = data.get("gap")
+    return str(gap).strip() if isinstance(gap, str) else ""
+
+
+def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: list[str]) -> list[str]:
     inv = resources.list_tenant_resources(tenant_id)
     by_id = {r.id: r for r in (*inv.datasets, *inv.tools, *inv.models)}
     labels = [by_id[rid].label for rid in resource_ids if rid in by_id]

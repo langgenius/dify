@@ -23,8 +23,16 @@ the P2 plan's Global Constraints):
   changed since it was read) is re-mapped to the domain ``HashMismatchError``.
 - ``run_draft`` invokes ``AppGenerateService.generate`` with
   ``invoke_from=InvokeFrom.DEBUGGER`` (runs the *draft*, not the published
-  workflow) and ``streaming=False`` (blocks in-process -- safe to call from a
-  worker/Celery task, no SSE plumbing needed).
+  workflow) and ``streaming=True``, so ``on_event`` fires while the run is
+  still going instead of replaying finished rows afterwards. Streaming makes
+  ``AppGenerateService`` hand the execution to the
+  ``workflow_based_app_execution`` Celery queue and hand *us* a Redis-backed
+  event stream; the Builder's own task runs on the separate ``dify_builder``
+  queue, so the two never contend for the same worker slots. If the stream
+  ends WITHOUT a terminal frame (idle timeout, dead publishing worker), the
+  outcome is recovered from the workflow-run row rather than synthesised as a
+  failure -- reporting a run that actually succeeded as failed would feed the
+  repair loop a lie.
 - ``publish`` MUST update ``app.workflow_id`` in the same transaction as
   ``publish_workflow``: ``publish_workflow`` only creates the new published
   ``Workflow`` row: it does not repoint the app at it. Skipping that update
@@ -64,7 +72,16 @@ from services.dify_builder import graph_ops
 from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializedError
 from services.dify_builder.identity import load_app, resolve_account
 from services.dify_builder.revision import execution_revision
-from services.dify_builder.run_mapping import map_run_result, to_node_event
+from services.dify_builder.run_mapping import (
+    is_unfinished_run_status,
+    map_run_result,
+    map_unknown_run_outcome,
+    node_event_from_stream_chunk,
+    run_id_from_stream_chunk,
+    run_result_data_from_run_row,
+    run_result_data_from_terminal_chunk,
+    stream_chunk_as_mapping,
+)
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_draft_sync_service import notify_workflow_draft_changed
 from services.workflow_service import WorkflowService
@@ -310,26 +327,96 @@ class WorkflowServiceDifyPort:
             app = load_app(session, app_id, actor)
             tenant_id = app.tenant_id
 
+            # ``generate`` does all of its Session work EAGERLY, before it
+            # returns: ``_dispatch_generate`` is a plain function (not a
+            # generator), and its streaming branch resolves the workflow and
+            # serialises everything the run needs into an ``AppExecutionParams``
+            # JSON payload while this block is still open. The generator it
+            # hands back only reads a Redis subscription
+            # (``streaming_utils.stream_topic_events``) and formats strings --
+            # the run itself executes in a Celery worker with its own Session.
+            # So the stream is consumed OUTSIDE this block: holding a DB
+            # connection open for the length of a workflow run would cost real
+            # pool capacity and buy nothing.
             response = AppGenerateService.generate(
                 app_model=app,
                 user=account,
                 args={"inputs": inputs},
                 invoke_from=InvokeFrom.DEBUGGER,
                 session=session,
-                streaming=False,
+                streaming=True,
             )
 
-        data = response["data"]
-        run_id = data["id"]
+        final: dict[str, Any] = {}
+        stream_run_id = ""
+        try:
+            for chunk in response:
+                # Streaming yields SSE-formatted strings ("data: {...}" events
+                # and "event: ping" keep-alives), not dicts.
+                payload = stream_chunk_as_mapping(chunk)
+                if payload is None:
+                    continue
+                # Every non-ping frame stamps the run id, so it is known long
+                # before the terminal frame -- which may never arrive.
+                stream_run_id = stream_run_id or run_id_from_stream_chunk(payload)
+                node_event = node_event_from_stream_chunk(payload)
+                if node_event is not None:
+                    on_event(node_event)
+                    continue
+                terminal = run_result_data_from_terminal_chunk(payload)
+                if terminal is not None:
+                    final = terminal
+        finally:
+            # In streaming mode ``_run_with_guardrails`` does NOT release the
+            # app's rate-limit slot; only closing the generator does. Normal
+            # exhaustion self-closes, so this only matters when ``on_event``
+            # raises -- but a leaked slot blocks every later test run.
+            close = getattr(response, "close", None)
+            if callable(close):
+                close()
 
-        node_execs = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            sessionmaker(bind=db.engine)
-        ).get_executions_by_workflow_run(tenant_id, app_id, run_id)
+        run_id = str(final.get("id") or stream_run_id or "")
 
-        for node_exec in node_execs:
-            on_event(to_node_event(node_exec))
+        # The stream carries progress, not outputs: ``map_run_result`` still
+        # needs the node-execution rows for ``per_node[].outputs``.
+        node_execs = (
+            DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                sessionmaker(bind=db.engine)
+            ).get_executions_by_workflow_run(tenant_id, app_id, run_id)
+            if run_id
+            else []
+        )
 
-        return map_run_result(data, node_execs)
+        if final:
+            return map_run_result(final, node_execs)
+
+        # The stream ended without a terminal frame -- the subscription hit its
+        # idle timeout, or the publishing worker died. The stream is no longer
+        # the authority on how the run went; the database is. Synthesising
+        # "failed" here would report a run that may well have SUCCEEDED as a
+        # failed build and feed the repair loop a lie.
+        return self._run_result_without_terminal_frame(tenant_id, app_id, run_id, node_execs)
+
+    @staticmethod
+    def _run_result_without_terminal_frame(tenant_id: str, app_id: str, run_id: str, node_execs: list[Any]) -> Run:
+        """Recover a truncated stream's outcome from the workflow-run row."""
+        run_row = (
+            DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+                sessionmaker(bind=db.engine)
+            ).get_workflow_run_by_id(tenant_id=tenant_id, app_id=app_id, run_id=run_id)
+            if run_id
+            else None
+        )
+        if run_row is None:
+            # No id, or no row: nothing can say how this went.
+            return map_unknown_run_outcome({"id": run_id}, node_execs)
+
+        recovered = run_result_data_from_run_row(run_row)
+        if is_unfinished_run_status(recovered["status"]):
+            # The row says the run is still going, so its outcome is genuinely
+            # unknown rather than bad.
+            return map_unknown_run_outcome(recovered, node_execs)
+        return map_run_result(recovered, node_execs)
 
     def publish(self, app_id: str, actor: Actor) -> None:
         with _session_factory()() as session:

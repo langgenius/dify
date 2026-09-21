@@ -140,10 +140,92 @@ def test_discover_resources_keeps_only_ids_the_model_actually_picked(monkeypatch
     assert [o.id for o in opts] == ["kb-3"]
 
 
+def test_discover_resources_shows_the_model_each_options_readiness(monkeypatch):
+    captured = {}
+
+    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+        captured["system"] = system
+        captured["user"] = user
+        return {"resource_ids": []}
+
+    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    _stub_inventory(
+        monkeypatch,
+        tools=[resources.ResourceRef(id="tool-slack/send", label="Slack", readiness="missing_config")],
+    )
+
+    build.discover_resources(_FakeInstance([]), "t1", ["Notify on Slack"])
+
+    # The recommender must see readiness, not just ids/labels -- otherwise it
+    # has no signal to avoid recommending an unauthorized tool (the bug this
+    # guards: a missing_config tool recommended anyway).
+    assert "missing_config" in captured["user"]
+    assert "missing_config" in captured["system"]
+
+
+def test_gap_system_defines_missing_config():
+    # The gap-checker's system prompt must define what missing_config means --
+    # installed but not authorized, i.e. not usable -- not just show the raw
+    # label with no basis for the model to treat it as unavailable.
+    assert "missing_config" in build._GAP_SYSTEM
+
+
+def test_assess_capability_gap_names_the_gap_in_plain_words():
+    m = _FakeInstance([json.dumps({"gap": "Nothing installed can send email."})])
+    assert build.assess_capability_gap(m, ["Email the manager"], []) == "Nothing installed can send email."
+
+
+def test_assess_capability_gap_reports_no_gap_when_the_plan_is_covered():
+    m = _FakeInstance([json.dumps({"gap": ""})])
+    assert build.assess_capability_gap(m, ["Summarize text"], []) == ""
+
+
+def test_assess_capability_gap_reports_no_gap_without_a_model():
+    # A gap we cannot assess is not a gap -- inventing one would block a build
+    # that might be fine.
+    assert build.assess_capability_gap(None, ["Email the manager"], []) == ""
+
+
+def test_assess_capability_gap_reports_no_gap_on_model_failure():
+    m = _BoomInstance()
+    assert build.assess_capability_gap(m, ["Email the manager"], []) == ""
+
+
+def test_assess_capability_gap_reports_no_gap_for_an_empty_plan():
+    m = _FakeInstance([json.dumps({"gap": "should never be read"})])
+    assert build.assess_capability_gap(m, [], []) == ""
+
+
+def test_assess_capability_gap_reports_no_gap_on_unparseable_reply():
+    m = _FakeInstance([json.dumps({"gap": 42})])
+    assert build.assess_capability_gap(m, ["Email the manager"], []) == ""
+
+
+def test_assess_capability_gap_shows_the_model_each_option_and_its_readiness(monkeypatch):
+    from core.dify_builder.contract import ResourceOption
+
+    captured = {}
+
+    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+        captured["user"] = user
+        return {"gap": ""}
+
+    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    option = ResourceOption(id="tool-slack", label="Slack", meta="", kind="plugin", readiness="missing_config")
+
+    build.assess_capability_gap(_FakeInstance([]), ["Notify on Slack"], [option])
+
+    # A missing_config tool is installed but unauthorized -- the assessment
+    # must see that distinction, not just that "Slack" is present, or an
+    # unauthorized tool would look like real coverage.
+    assert "missing_config" in captured["user"]
+    assert "Slack" in captured["user"]
+
+
 def test_bind_resources_names_bound_label(monkeypatch):
     monkeypatch.setattr(build.resources, "list_tenant_resources", lambda t: resources.TenantResources(  # noqa: ARG005
         models=[], datasets=[resources.ResourceRef(id="kb-1", label="Company KB")], tools=[]))
-    out = build.bind_resources(None, "t1", ["Retrieve knowledge"], ["kb-1"], "audited")
+    out = build.bind_resources(None, "t1", ["Retrieve knowledge"], ["kb-1"])
     assert any("Company KB" in item for item in out)
 
 

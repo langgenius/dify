@@ -122,7 +122,43 @@ def test_build_registry_maps_capability_check():
     assert build_registry()[PcState.BUILD_CAPABILITY_CHECK] is handle_capability_check
 
 
-def test_goal_analysis_submit_requirements_advances_to_initial_plan_with_plan_v1():
+def test_a_session_carrying_a_goal_needs_no_send_action():
+    """Task 4: the capability_check gate is on the GOAL, not the action. A
+    session whose composer already carried the goal in (fc.goal_text set at
+    creation) proceeds on ANY turn, even one with no action at all -- only a
+    goal-less (create-from-blank) session still needs send_goal."""
+    from core.dify_builder.handlers_build import handle_capability_check
+
+    env, _ = _new_env()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_CAPABILITY_CHECK)
+    fc = DifyBuilderContext(goal_text="Build a quarterly report workflow")
+
+    result = handle_capability_check(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_GOAL_ANALYSIS
+    assert result.context.goal_text == "Build a quarterly report workflow"
+
+
+def test_a_goal_less_session_still_waits_for_one():
+    """A create-from-blank session (no goal yet) is unaffected: with no
+    action and no goal_text, it must keep waiting at capability_check."""
+    from core.dify_builder.handlers_build import handle_capability_check
+
+    env, _ = _new_env()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_CAPABILITY_CHECK)
+    fc = DifyBuilderContext(goal_text="")
+
+    result = handle_capability_check(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_CAPABILITY_CHECK
+
+
+def test_submitting_requirements_goes_straight_to_resources():
+    """The decision-free find_resources gate at build.initial_plan is gone --
+    submit_requirements now tail-calls the shared discovery helper directly,
+    so the resource card arrives in the SAME step and no plan card is shown
+    (the plan is still computed internally; it just isn't displayed until
+    build.resource_recommendation confirms it, per task 3's renumbering)."""
     from core.dify_builder.handlers_build import handle_goal_analysis
 
     env, repo = _new_env()
@@ -146,20 +182,73 @@ def test_goal_analysis_submit_requirements_advances_to_initial_plan_with_plan_v1
     )
     res = handle_goal_analysis(env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1])
 
-    assert res.next == PcState.BUILD_INITIAL_PLAN
+    assert res.next == PcState.BUILD_RESOURCE_RECOMMENDATION
     assert res.context.requirements["currency"] == "EUR"  # payload overrides
     assert res.context.requirements["audience"] == "board"  # new listed key merged
     assert res.context.requirements["metrics"] == "revenue"  # untouched key survives (not blind-overwrite)
     assert "junk" not in res.context.requirements  # non-listed key excluded
     assert res.context.plan_version_tag == "v1"
-    assert res.context.plan_items
+    assert res.context.plan_items  # the plan is still drafted internally
     kinds = [i.kind for i in res.items]
     assert "decision" in kinds
-    assert "plan" in kinds
+    assert "resource_select" in kinds
     assert "assistant_turn" in kinds
+    assert "plan" not in kinds  # no plan card is shown a second time
 
 
-def test_initial_plan_find_resources_advances_to_resource_recommendation():
+def test_submitting_requirements_progress_is_one_operation_with_monotonic_revisions():
+    """Regression: handle_goal_analysis used to build its own ProgressReporter
+    (build-review-requirements/build-draft-plan), finish() it, then
+    tail-call _discover_and_offer_resources, which built a SECOND reporter
+    under the SAME env.operation_id -- restarting `revision` at 1.
+    ProgressEventData's docstring (contract.py) requires revision to be
+    monotonic within an operation_id, and every other handler in this file
+    uses exactly one ProgressReporter per step. The straight-through path
+    (requirements submitted) must emit ONE operation_id with strictly
+    increasing revisions across all four progress steps (review-requirements,
+    draft-plan, discover-resources, prepare-resource-options)."""
+    from core.dify_builder.handlers_build import build_registry
+
+    events: list = []
+    env, repo = _new_env()
+    env.emit_progress = events.append
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_GOAL_ANALYSIS,
+        requirements={"currency": "USD"},
+        form_fields=[{"key": "currency", "label": "Currency", "type": "text"}],
+    )
+    runner = Runner(env, build_registry())
+    turn = Turn(action=Action(kind="submit_requirements", payload={"currency": "USD"}, base_version=1), actor=_actor())
+    runner.advance(s.id, turn)
+
+    assert events, "expected progress events to be emitted"
+    operation_ids = {e.operation_id for e in events}
+    assert len(operation_ids) == 1, f"expected a single operation_id across the whole step, got {operation_ids}"
+    revisions = [e.revision for e in events]
+    assert revisions == sorted(revisions), f"revision must be non-decreasing, got {revisions}"
+    assert len(revisions) == len(set(revisions)), f"revision must not repeat, got {revisions}"
+    # all four progress steps actually fired (review, draft, discover, prepare)
+    activity_ids = {a.id for e in events for a in e.execution.activities}
+    assert {
+        "build-review-requirements",
+        "build-draft-plan",
+        "build-discover-resources",
+        "build-prepare-resource-options",
+    } <= activity_ids
+
+
+def test_continue_adjusting_still_reaches_resource_discovery():
+    """handle_initial_plan is now reachable only via the continue_adjusting/
+    retry_after_revert loop-back (build.initial_plan has no straight-through
+    entry and no projected UI action -- see test_initial_plan_state_offers_no_
+    actions in test_service.py). It is a working/pass-through state (state.py)
+    now, not a waiting one, so the runner drives it unconditionally with the
+    action already consumed -- NO find_resources action is sent or required;
+    a bare actor-only turn must still reach the resource card via the shared
+    discovery helper. (The end-to-end regression that this genuinely unwedges
+    the continue_adjusting loop-back through the Runner is
+    test_continue_adjusting_reaches_resources_without_find_resources_action.)"""
     from core.dify_builder.handlers_build import handle_initial_plan
 
     env, repo = _new_env()
@@ -169,16 +258,48 @@ def test_initial_plan_find_resources_advances_to_resource_recommendation():
         plan_items=["Retrieve", "Summarize"],
         plan_version_tag="v1",
     )
-    turn = Turn(action=Action(kind="find_resources", base_version=1), actor=_actor())
+    turn = Turn(actor=_actor())  # no action -- the runner consumes it before driving a pass-through state
     res = handle_initial_plan(env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1])
 
     assert res.next == PcState.BUILD_RESOURCE_RECOMMENDATION
     rs = next(i for i in res.items if i.kind == "resource_select")
     assert rs.payload["recommended"][0]["readiness"] == "ready"
-    assert len(rs.payload["conflict_policy_options"]) == 2
+    assert "conflict_policy_options" not in rs.payload
 
 
-def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v2():
+def test_continue_adjusting_reaches_resources_without_find_resources_action():
+    """End-to-end regression for the fix that made build.initial_plan a
+    working/pass-through state (state.py) instead of a waiting one: before
+    that fix, continue_adjusting landed a session on build.initial_plan with
+    NO projected UI action (task 2) AND a handler that still gated on
+    find_resources (task 2's original state) -- a dead end the loop-back
+    could never escape. Drive the Runner from build.review with ONLY
+    continue_adjusting (resolved to re_fix); it must fall straight through
+    build.initial_plan's unconditional discovery, in the SAME advance() call,
+    and settle at build.resource_recommendation with a resource_select card
+    -- no find_resources action is ever sent."""
+    from core.dify_builder.handlers_build import build_registry
+
+    env, repo = _new_env()
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_REVIEW,
+        requirements={"currency": "USD"},
+        built_node_ids=["start", "llm", "end"],
+    )
+    runner = Runner(env, build_registry())
+
+    re_fix_turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, re_fix_turn)
+
+    # Settled straight at the resource gate -- never stopped at (or needed an
+    # action to leave) build.initial_plan.
+    assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    kinds = [i.kind for i in repo.list_conversation(s.id)]
+    assert "resource_select" in kinds
+
+
+def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v1():
     from core.dify_builder.handlers_build import handle_resource_recommendation
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -189,7 +310,7 @@ def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v2():
     turn = Turn(
         action=Action(
             kind="confirm_resources",
-            payload={"resource_ids": ["kb-company"], "conflict_policy": "audited"},
+            payload={"resource_ids": ["kb-company"]},
             base_version=1,
         ),
         actor=_actor(),
@@ -197,8 +318,11 @@ def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v2():
     res = handle_resource_recommendation(env, turn, *repo.get_session(s.id))
 
     assert res.next == PcState.BUILD_PLAN_APPROVAL
-    assert res.context.plan_version_tag == "v2"
-    assert res.context.resource_selection == {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    # Task 3: the only plan card a build emits is now v1 -- the duplicate
+    # "v2" card that used to redisplay the same plan under a second version
+    # number is gone (collapsed into task 2's straight-through path).
+    assert res.context.plan_version_tag == "v1"
+    assert res.context.resource_selection == {"resource_ids": ["kb-company"]}
     assert res.context.checkpoint_id
     assert res.context.last_structure_fingerprint != ""
     cp, _snap = repo.get_checkpoint(res.context.checkpoint_id)
@@ -216,7 +340,7 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes():
     dify = FakeBuildDifyPort()
     env, repo = _new_env(dify=dify, emit_canvas=events.append)
     s = _seed_build_session(
-        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve", "Summarize"], plan_version_tag="v2"
+        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve", "Summarize"], plan_version_tag="v1"
     )
     # approve_plan resolves (via service.resolve_action_kind) to "approve_repair".
     turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
@@ -246,7 +370,7 @@ def test_plan_approval_ignores_non_approve_action():
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     env, repo = _new_env(dify=FakeBuildDifyPort())
-    s = _seed_build_session(repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v2")
+    s = _seed_build_session(repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v1")
     turn = Turn(action=Action(kind="message", base_version=1), actor=_actor())
     res = handle_plan_approval(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_PLAN_APPROVAL
@@ -458,6 +582,57 @@ def test_test_and_repair_pass_goes_to_review_with_real_run():
     assert "mark_review_ready" in names
 
 
+def test_a_passing_test_shows_what_the_workflow_produced():
+    """A passing test's card carries what the run actually produced, not just
+    a bare "All checks passed" -- and it must show it even though
+    FakeDifyPort's per-node status spelling ("success") differs from the
+    Run-level one ("succeeded"): status-agnostic, per the terminal-output
+    helper's contract."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+
+    env, _ = _new_env()  # default FakeDifyPort; verify_pass=True by default
+    env.dify.run_outputs = {"result": "42"}
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    assert result.next == PcState.BUILD_REVIEW
+    test_result = next(i for i in result.items if i.kind == "test_result")
+    assert '"result": "42"' in test_result.payload["output"]
+
+
+def test_a_passing_test_caps_an_oversized_output_with_a_marker():
+    """Node outputs are only truncated upstream at ~100,000 chars per string,
+    so an uncapped render (e.g. a report-generating workflow, the Builder's
+    showcase case) could push hundreds of KB of JSON into the card, the SSE
+    frame, and the localizer walk on every successful build. The card must
+    cap the rendered output instead, with a visible truncation marker."""
+    from core.dify_builder.handlers_build import _MAX_TERMINAL_OUTPUT_CHARS, handle_test_and_repair
+
+    env, _ = _new_env()  # default FakeDifyPort; verify_pass=True by default
+    env.dify.run_outputs = {"report": "x" * 50_000}  # far beyond the cap once JSON-rendered
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    test_result = next(i for i in result.items if i.kind == "test_result")
+    output = test_result.payload["output"]
+    assert len(output) < _MAX_TERMINAL_OUTPUT_CHARS + 100  # capped, not the ~50KB payload
+    assert "truncated" in output
+
+
+def test_a_passing_test_with_no_output_shows_none():
+    """No output produced -> the card's output is "", not a stale/placeholder
+    value -- a passing test that shows nothing is not evidence of anything,
+    but it also mustn't lie about what ran."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+
+    env, _ = _new_env()  # run_outputs defaults to {}
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    test_result = next(i for i in result.items if i.kind == "test_result")
+    assert test_result.payload["output"] == ""
+
+
 def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
     from core.dify_builder.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
@@ -485,7 +660,9 @@ def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
     assert error_card.payload["node_id"] == "output"
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result", "error", "change_set"]
-    assert {"event": "mark_test_error"} in events
+    # The canvas event carries the Dify run id so a client can open the
+    # failed run on the graph, not just colour the node red.
+    assert {"event": "mark_test_error", "dify_run_id": "build-run-1"} in events
 
 
 def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate():
@@ -627,6 +804,45 @@ def test_test_and_repair_model_config_failure_surfaces_without_repair():
     assert "change_set" not in kinds  # no repair change-set offered
     error = next(i for i in result.items if i.kind == "error")
     assert "model" in error.payload["body"].lower()  # diagnosis names the model-config issue
+
+
+def test_test_and_repair_running_status_is_not_treated_as_failure():
+    """A truncated-stream run (status="running" -- the outcome is genuinely
+    unknown, per Run.status's third value) must NOT be diagnosed or repaired:
+    it returns to build.execution (re-runnable) with a neutral notice
+    instead of the failure path."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import Run
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    diagnose_calls: list[object] = []
+    agent = StubAgent()
+    agent.diagnose = lambda *a, **kw: diagnose_calls.append((a, kw))
+    env, _ = _new_env(agent=agent)
+    env.dify = FakeBuildDifyPort()
+    env.dify.run_draft = lambda *_a, **_k: Run(
+        dify_run_id="",
+        status="running",
+        per_node=[],
+        error="the workflow run's progress stream ended before the run did, so its outcome is unknown",
+    )
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_EXECUTION
+    assert result.run is not None
+    assert result.run.status == "running"
+    assert not diagnose_calls  # diagnose must NOT be called for an unknown outcome
+    assert result.context.staged_repair == []
+    assert result.context.diagnosis is None
+    kinds = [i.kind for i in result.items]
+    assert "notice" in kinds
+    assert "test_result" not in kinds  # not labeled pass/fail
+    assert "error" not in kinds
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert assistant.payload["cards"] == ["notice"]
 
 
 def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed():
@@ -779,6 +995,11 @@ def test_review_keep_draft_skips_publish_to_governance():
 
 
 def test_review_continue_adjusting_returns_to_initial_plan_with_fresh_plan():
+    """The plan is drafted (fc.plan_items/plan_version_tag) but NOT shown as
+    a card here: build.initial_plan (next) falls straight through to
+    build.resource_recommendation, which shows the ONE plan card for this
+    pass (v1, resources bound). Showing it here too would be the same
+    duplicate-card task 2 already removed from the straight-through path."""
     from core.dify_builder.handlers_build import handle_review
 
     env, repo = _new_env()
@@ -787,7 +1008,9 @@ def test_review_continue_adjusting_returns_to_initial_plan_with_fresh_plan():
     res = handle_review(env, re_fix_turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_INITIAL_PLAN
     assert res.context.plan_version_tag == "v1"
-    assert any(i.kind == "plan" for i in res.items)
+    assert res.context.plan_items  # drafted internally
+    assert not any(i.kind == "plan" for i in res.items)  # not shown yet
+    assert any(i.kind == "decision" for i in res.items)
 
 
 def test_review_revert_records_intent_only():
@@ -916,6 +1139,10 @@ def test_await_learning_skip_completes_without_learning():
 
 
 def test_reverted_retry_returns_to_initial_plan():
+    """Same duplicate-card removal as handle_review's re_fix branch: the plan
+    is drafted but not shown here -- build.initial_plan (next) falls
+    straight through to build.resource_recommendation, which shows the ONE
+    plan card for this pass."""
     from core.dify_builder.handlers_build import handle_reverted
 
     env, repo = _new_env()
@@ -925,7 +1152,8 @@ def test_reverted_retry_returns_to_initial_plan():
     )
     assert res.next == PcState.BUILD_INITIAL_PLAN
     assert res.context.plan_version_tag == "v1"
-    assert any(i.kind == "plan" for i in res.items)
+    assert res.context.plan_items  # drafted internally
+    assert not any(i.kind == "plan" for i in res.items)  # not shown yet
 
 
 def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
@@ -1000,22 +1228,20 @@ def test_full_build_flow_goal_to_complete():
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_GOAL_ANALYSIS
 
-    # 2) submit_requirements -> build.initial_plan
+    # 2) submit_requirements -> build.resource_recommendation directly (the
+    # decision-free find_resources gate at build.initial_plan is gone --
+    # handle_goal_analysis tail-calls the shared discovery helper itself)
     reqs_action = Action(kind="submit_requirements", payload={"currency": "USD"}, base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
-    assert out.current_state == PcState.BUILD_INITIAL_PLAN
-
-    # 3) find_resources -> build.resource_recommendation
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
 
-    # 4) confirm_resources -> build.plan_approval
-    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    # 3) confirm_resources -> build.plan_approval
+    confirm_payload = {"resource_ids": ["kb-company"]}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_PLAN_APPROVAL
 
-    # 5) approve_plan (-> approve_repair) -> THE BUILD -> build.execution
+    # 4) approve_plan (-> approve_repair) -> THE BUILD -> build.execution
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_EXECUTION
     # the graph was actually built.
@@ -1023,23 +1249,29 @@ def test_full_build_flow_goal_to_complete():
     assert len(graph["nodes"]) == 4
     assert len(graph["edges"]) == 3
 
-    # 6) run_test -> build.await_testdata (gate; no test input prepared yet)
+    # 5) run_test -> the testdata form arrives PRE-FILLED with mock values and
+    # rests at build.await_testdata, so the user can see and edit what will be
+    # tested. Submitting it (one click, nothing to type) -> build.test_and_repair
+    # (working, auto) -> rests at build.review.
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
-
-    # 6b) provide_testdata (mock) -> build.test_and_repair (working, auto) -> rest at build.review
-    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
-    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
     assert out.current_state == PcState.BUILD_REVIEW
 
-    # 7) publish_workflow -> build.publish (auto) -> governance_feedback (auto)
+    # 6) publish_workflow -> build.publish (auto) -> governance_feedback (auto)
     # -> rests at build.await_learning (default policy "ask")
     publish_action = Action(kind="publish_workflow", base_version=out.version)
     out = runner.advance(s.id, Turn(action=publish_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_AWAIT_LEARNING
     assert dify.published is True
 
-    # 8) skip_learning -> build.complete
+    # 7) skip_learning -> build.complete
     out = runner.advance(s.id, Turn(action=Action(kind="skip_learning", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_COMPLETE
 
@@ -1068,7 +1300,17 @@ def test_full_build_flow_goal_to_complete():
     assert any(i.kind == "summary" and i.payload.get("variant") == "completion" for i in items)
 
 
-def test_full_build_flow_keep_draft_reaches_complete_without_publish():
+def test_full_build_flow_file_schema_routes_through_testdata_gate_via_fsm():
+    """End-to-end FSM coverage for the OTHER branch of handle_execution's
+    conditional gate (needs_upload_inputs): a built graph whose Start node
+    declares a file variable must still stop at BUILD_AWAIT_TESTDATA with a
+    testdata form shown, and a real provide_testdata action submitted
+    through the Runner (not a direct handler call) must be what unsticks
+    it. test_full_build_flow_goal_to_complete is the complementary case --
+    its generated graph declares no file variable, so run_test there
+    bypasses the gate and lands straight at build.review; together the two
+    tests exercise both branches of the conditional through the real state
+    machine, not via disconnected direct-handler-call fragments."""
     from core.dify_builder.handlers_build import build_registry
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -1081,15 +1323,63 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
     reqs_action = Action(kind="submit_requirements", base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
-    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    confirm_payload = {"resource_ids": ["kb-company"]}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_EXECUTION
+
+    # Give THIS test's built graph a file-declaring Start node -- mutating
+    # the fake's already-built graph directly, not the shared default
+    # config the other full-flow tests rely on.
+    start_node = next(n for n in dify.graph["nodes"] if n.get("data", {}).get("type") == "start")
+    start_node["data"]["variables"] = [{"variable": "doc", "type": "file"}]
+
+    # run_test -> the file variable can't be mocked -> build.await_testdata,
+    # with a testdata form card actually emitted.
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
+    items = repo.list_conversation(s.id)
+    form_cards = [i for i in items if i.kind == "form" and i.payload.get("variant") == "testdata"]
+    assert form_cards
+    assert form_cards[-1].payload["fields"][0]["type"] == "file"
+
+    # provide_testdata, submitted through the real Runner -> unsticks the
+    # gate and the run proceeds to build.review.
     testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
     out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
+    assert out.current_state == PcState.BUILD_REVIEW
+
+
+def test_full_build_flow_keep_draft_reaches_complete_without_publish():
+    from core.dify_builder.handlers_build import build_registry
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
+    runner = Runner(env, build_registry())
+
+    goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
+    out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
+    # submit_requirements now goes straight to build.resource_recommendation
+    # (the decision-free find_resources gate at build.initial_plan is gone).
+    reqs_action = Action(kind="submit_requirements", base_version=out.version)
+    out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
+    confirm_payload = {"resource_ids": ["kb-company"]}
+    confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    # No file/file-list start variable -> mocked inline, no gate.
+    out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    # the testdata form arrives pre-filled; submitting it is one click
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
     assert out.current_state == PcState.BUILD_REVIEW
 
     out = runner.advance(s.id, Turn(action=Action(kind="keep_draft", base_version=out.version), actor=_actor()))
@@ -1103,10 +1393,13 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
 
 def test_review_continue_adjusting_then_reapprove_is_idempotent():
     """Final-review fix (Important #1): looping back from build.review via
-    continue_adjusting (resolved re_fix) and re-walking find_resources ->
-    confirm_resources -> approve_plan must NOT crash on the second build.
-    build_nodes() always emits create_node with the SAME fixed node ids
-    (start/knowledge_retrieval/llm/end); without idempotency the second
+    continue_adjusting (resolved re_fix) — which now falls straight through
+    build.initial_plan's unconditional resource discovery to
+    build.resource_recommendation in the SAME advance() call, since
+    build.initial_plan is a working/pass-through state (state.py) — and
+    re-walking confirm_resources -> approve_plan must NOT crash on the second
+    build. build_nodes() always emits create_node with the SAME fixed node
+    ids (start/knowledge_retrieval/llm/end); without idempotency the second
     apply_repair raises ValueError on the colliding node id and the session
     dead-ends at build.plan_approval. handle_plan_approval must filter out
     intents that already exist in the current draft graph before applying."""
@@ -1120,10 +1413,11 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
 
     goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
+    # submit_requirements now goes straight to build.resource_recommendation
+    # (the decision-free find_resources gate at build.initial_plan is gone).
     reqs_action = Action(kind="submit_requirements", base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
-    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    confirm_payload = {"resource_ids": ["kb-company"]}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
 
@@ -1133,22 +1427,39 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
     assert len(dify.graph["nodes"]) == 4
     assert len(dify.graph["edges"]) == 3
 
+    # No file/file-list start variable -> mocked inline, no gate.
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
-    assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
-    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
-    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
+    # the testdata form arrives pre-filled; submitting it is one click
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
     assert out.current_state == PcState.BUILD_REVIEW
 
     # loop back: continue_adjusting (-> re_fix) -> build.initial_plan (re-plan)
+    # -> falls straight through (working/pass-through, no action needed) to
+    # build.resource_recommendation, all within this one advance() call.
+    plan_cards_before_loop_back = sum(1 for i in repo.list_conversation(s.id) if i.kind == "plan")
     out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
-    assert out.current_state == PcState.BUILD_INITIAL_PLAN
-
-    # re-walk find_resources -> confirm_resources -> approve_plan
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    # re_fix must NOT show the plan card a second time -- it drafts fc.plan_items
+    # but defers display to confirm_resources below, exactly like the
+    # straight-through path (task 2's duplicate-card removal).
+    assert sum(1 for i in repo.list_conversation(s.id) if i.kind == "plan") == plan_cards_before_loop_back
+
+    # confirm_resources -> approve_plan
     confirm_action_2 = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action_2, actor=_actor()))
     assert out.current_state == PcState.BUILD_PLAN_APPROVAL
+    # exactly ONE plan card for this whole loop-back pass (re_fix + discovery
+    # + confirm_resources): the same "v1, resources bound" card the
+    # straight-through path shows, not two under different version tags.
+    plan_cards_after_confirm = [i for i in repo.list_conversation(s.id) if i.kind == "plan"]
+    assert len(plan_cards_after_confirm) == plan_cards_before_loop_back + 1
+    assert plan_cards_after_confirm[-1].payload["version_tag"] == "v1"
 
     # THE re-approve: must not raise ValueError, must reach build.execution,
     # and must not double the graph (idempotent -- everything already exists).
@@ -1199,6 +1510,67 @@ def test_run_test_skips_gate_when_input_prepared():
     assert result.next == PcState.BUILD_TEST_AND_REPAIR
 
 
+def test_run_test_prefills_the_form_with_mock_values():
+    """The user never has to invent test data -- but they do get to see and
+    edit it. Inventing the values is the cost item 5 removed; confirming them
+    with one click is not, and a green check produced by inputs nobody saw is
+    weak evidence about the workflow."""
+    from core.dify_builder.handlers_build import handle_execution
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {"type": "start", "variables": [{"variable": "topic", "type": "text-input"}]},
+            }
+        ],
+        "edges": [],
+    }
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    fc = DifyBuilderContext(test_input_ref="")
+    result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
+    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    form = next(i for i in result.items if i.kind == "form")
+    assert form.payload["variant"] == "testdata"
+    assert form.payload["frozen"] is False  # editable, not a read-only receipt
+    assert form.payload["values"]  # pre-filled from the mock, not an empty form
+
+
+def test_run_test_still_asks_when_a_file_is_declared_among_other_variables():
+    """Mixed schema: text can be mocked, but the file variable cannot -- the
+    gate must still fire so a human can supply the upload."""
+    from core.dify_builder.handlers_build import handle_execution
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "topic", "type": "text-input"},
+                        {"variable": "doc", "type": "file"},
+                    ],
+                },
+            }
+        ],
+        "edges": [],
+    }
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    fc = DifyBuilderContext(test_input_ref="")
+    result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
+    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    assert result.context.test_input_ref == ""
+    form = next(i for i in result.items if i.kind == "form")
+    assert [f["type"] for f in form.payload["fields"]] == ["text-input", "file"]
+
+
 def test_await_testdata_mock_prepares_input_and_advances():
     from core.dify_builder.handlers_build import handle_await_testdata
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
@@ -1247,7 +1619,10 @@ def test_build_await_testdata_is_waiting_and_projected():
 
 def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
     """Same idempotency path via the revert -> reverted -> retry_after_revert
-    loop (handle_reverted's re_fix), not continue_adjusting."""
+    loop (handle_reverted's re_fix), not continue_adjusting. re_fix lands on
+    build.initial_plan, which is a working/pass-through state (state.py) that
+    falls straight through to build.resource_recommendation in the same
+    advance() call, with no find_resources action needed."""
     from core.dify_builder.handlers_build import build_registry
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -1259,11 +1634,12 @@ def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
     out = runner.advance(
         s.id, Turn(action=Action(kind="send_goal", payload={"text": "Build it"}, base_version=1), actor=_actor())
     )
+    # submit_requirements now goes straight to build.resource_recommendation
+    # (the decision-free find_resources gate at build.initial_plan is gone).
     out = runner.advance(
         s.id, Turn(action=Action(kind="submit_requirements", base_version=out.version), actor=_actor())
     )
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
-    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    confirm_payload = {"resource_ids": ["kb-company"]}
     out = runner.advance(
         s.id,
         Turn(
@@ -1279,11 +1655,11 @@ def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
     out = runner.advance(s.id, Turn(action=Action(kind="undo", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_REVERTED
 
-    # retry_after_revert (-> re_fix) -> build.initial_plan (re-plan)
+    # retry_after_revert (-> re_fix) -> build.initial_plan (re-plan) -> falls
+    # straight through to build.resource_recommendation in this one call.
     out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
-    assert out.current_state == PcState.BUILD_INITIAL_PLAN
+    assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
 
-    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
     out = runner.advance(
         s.id,
         Turn(
@@ -1434,7 +1810,7 @@ def _approve_plan(**fc_kwargs):
 
     env, repo = _new_env(dify=FakeBuildDifyPort())
     s = _seed_build_session(
-        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v2", **fc_kwargs
+        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v1", **fc_kwargs
     )
     turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
     res = handle_plan_approval(env, turn, *repo.get_session(s.id))
@@ -1528,3 +1904,84 @@ def test_the_empty_recommendation_notice_is_localizable():
     notice = next(i for i in res.items if i.kind == "notice")
 
     assert notice.payload["text"] in strings.PLAIN
+
+
+class _GapAgent(PlaceholderAgent):
+    def __init__(self, options, gap) -> None:
+        self.options = options
+        self.gap = gap
+
+    def discover_resources(self, _plan_items):
+        return self.options
+
+    def assess_capability_gap(self, _plan_items, _options):
+        return self.gap
+
+
+def _find_resources_with_agent(agent):
+    from core.dify_builder.handlers_build import handle_initial_plan
+
+    env, repo = _new_env(agent=agent)
+    s = _seed_build_session(repo, PcState.BUILD_INITIAL_PLAN, plan_items=["Send a notification"])
+    turn = Turn(action=Action(kind="find_resources", base_version=1), actor=_actor())
+    return handle_initial_plan(env, turn, *repo.get_session(s.id))
+
+
+def test_a_named_capability_gap_is_surfaced_as_a_notice():
+    from core.dify_builder.contract import ResourceOption
+
+    options = [ResourceOption(id="kb-1", label="KB", meta="", kind="knowledge", readiness="ready")]
+    res = _find_resources_with_agent(_GapAgent(options, "Nothing installed can send email."))
+
+    notice = next(i for i in res.items if i.kind == "notice")
+    assert notice.payload["text"] == "Nothing installed can send email."
+
+
+def test_a_capability_gap_and_the_empty_recommendation_notice_both_appear():
+    # The two notices are independent -- an empty recommendation AND an
+    # unnamed capability gap can both be true of the same plan.
+    res = _find_resources_with_agent(_GapAgent([], "Nothing installed can send email."))
+
+    notices = [i.payload["text"] for i in res.items if i.kind == "notice"]
+    assert "No workspace resources matched this plan — continuing without any." in notices
+    assert "Nothing installed can send email." in notices
+
+
+def test_no_gap_notice_when_the_agent_reports_no_gap():
+    from core.dify_builder.contract import ResourceOption
+
+    options = [ResourceOption(id="kb-1", label="KB", meta="", kind="knowledge", readiness="ready")]
+    res = _find_resources_with_agent(_GapAgent(options, ""))
+
+    assert not any(i.kind == "notice" for i in res.items)
+
+
+def test_a_missing_config_tool_still_lets_the_gap_agent_report_a_gap():
+    # readiness is threaded through to the agent unmodified -- the handler
+    # itself makes no readiness judgment, it only relays what the agent says.
+    from core.dify_builder.contract import ResourceOption
+
+    options = [ResourceOption(id="tool-1", label="Slack", meta="", kind="plugin", readiness="missing_config")]
+    res = _find_resources_with_agent(_GapAgent(options, "Nothing installed can send a Slack message."))
+
+    notice = next(i for i in res.items if i.kind == "notice")
+    assert notice.payload["text"] == "Nothing installed can send a Slack message."
+
+
+def test_the_test_result_card_names_the_dify_run_so_the_canvas_is_reachable_later():
+    """``run_ids`` holds BUILDER run ids, which resolve to nothing outside the
+    engine. Reopening the run on the canvas needs the DIFY run id, and it has
+    to ride the persisted card: the SSE frames that also carry it are gone
+    after a page reload."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+
+    env, _ = _new_env()  # default FakeDifyPort; verify_pass=True
+    s_ = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s_, fc)
+
+    card = next(i for i in result.items if i.kind == "test_result")
+    assert card.payload["dify_run_id"] == "dify-run-1"
+    # and it is NOT the Builder run id the card already carried
+    assert card.payload["dify_run_id"] not in card.payload["run_ids"]

@@ -47,8 +47,9 @@ def test_build_methods_call_build_module_with_resolved_model(monkeypatch):
 
 def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     """Mirrors test_build_methods_call_build_module_with_resolved_model for
-    analyze_goal: pins that propose_plan_v1/discover_resources/bind_resources/
-    build_nodes/learn_from_build each call the corresponding build.* with the
+    analyze_goal: pins that propose_plan_v1/discover_resources/
+    assess_capability_gap/bind_resources/build_nodes/learn_from_build each call
+    the corresponding build.* with the
     resolved model threaded through (build_nodes takes no model -- it threads
     self._tenant_id/self._model_config directly instead)."""
     seen = {}
@@ -61,8 +62,12 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
         seen["discover_resources"] = (model, tenant_id, plan_items)
         return []
 
-    def mock_bind_resources(model, tenant_id, plan_items, resource_ids, conflict_policy):
-        seen["bind_resources"] = (model, tenant_id, plan_items, resource_ids, conflict_policy)
+    def mock_assess_capability_gap(model, plan_items, options):
+        seen["assess_capability_gap"] = (model, plan_items, options)
+        return ""
+
+    def mock_bind_resources(model, tenant_id, plan_items, resource_ids):
+        seen["bind_resources"] = (model, tenant_id, plan_items, resource_ids)
         return []
 
     def mock_build_nodes(tenant_id, model_config, plan_items, resource_ids=()):
@@ -75,6 +80,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
 
     monkeypatch.setattr(build_mod, "propose_plan_v1", mock_propose_plan_v1)
     monkeypatch.setattr(build_mod, "discover_resources", mock_discover_resources)
+    monkeypatch.setattr(build_mod, "assess_capability_gap", mock_assess_capability_gap)
     monkeypatch.setattr(build_mod, "bind_resources", mock_bind_resources)
     monkeypatch.setattr(build_mod, "build_nodes", mock_build_nodes)
     monkeypatch.setattr(build_mod, "learn_from_build", mock_learn_from_build)
@@ -89,8 +95,11 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     agent.discover_resources(["step"])
     assert seen["discover_resources"] == ("MODEL", "t1", ["step"])
 
-    agent.bind_resources(["step"], ["rid"], "audited")
-    assert seen["bind_resources"] == ("MODEL", "t1", ["step"], ["rid"], "audited")
+    agent.assess_capability_gap(["step"], [])
+    assert seen["assess_capability_gap"] == ("MODEL", ["step"], [])
+
+    agent.bind_resources(["step"], ["rid"])
+    assert seen["bind_resources"] == ("MODEL", "t1", ["step"], ["rid"])
 
     agent.build_nodes(["step"])
     assert seen["build_nodes"] == ("t1", model_config, ["step"], ())

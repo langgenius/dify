@@ -439,6 +439,39 @@ def test_verify_fail_freezes_run_allows_re_fix():
     assert verify.immutable
 
 
+def test_verify_running_status_routes_to_await_testdata_not_decision():
+    """A truncated-stream run (status="running" -- the outcome is genuinely
+    unknown) must NOT be treated as a failure: the flow returns to
+    fix.await_testdata (re-runnable) with a neutral notice, never reaching
+    fix.await_decision -- where publish/re_fix would act on an unknown
+    result."""
+    from core.dify_builder.models import Run
+
+    env, repo = _new_env()
+    runner, s = _drive_to_await_verify(env, repo)
+
+    turn = Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_TESTDATA
+
+    env.dify.run_draft = lambda *_a, **_k: Run(
+        dify_run_id="",
+        status="running",
+        per_node=[],
+        error="the workflow run's progress stream ended before the run did, so its outcome is unknown",
+    )
+    turn = Turn(
+        action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version), actor=_actor()
+    )
+    out = runner.advance(s.id, turn)
+
+    assert out.current_state == PcState.FIX_AWAIT_TESTDATA  # re-runnable, not fix.await_decision
+
+    _, fc = repo.get_session(s.id)
+    verify = repo.get_run(fc.verify_run_id)
+    assert verify.status == "running"
+
+
 # ---- await_decision --------------------------------------------------------
 
 
@@ -621,6 +654,50 @@ def test_start_schema_empty_when_no_start_or_no_vars():
 
     assert start_schema({"nodes": [{"id": "llm", "data": {"type": "llm"}}], "edges": []}) == {"variables": []}
     assert start_schema({"nodes": [{"id": "s", "data": {"type": "start"}}], "edges": []}) == {"variables": []}
+
+
+# ---- needs_upload_inputs -----------------------------------------------------
+
+
+def test_needs_upload_inputs_false_for_an_all_text_schema():
+    from core.dify_builder.handlers_fix import needs_upload_inputs
+
+    schema = {"variables": [{"variable": "topic", "type": "text-input"}, {"variable": "count", "type": "number"}]}
+    assert needs_upload_inputs(schema) is False
+
+
+def test_needs_upload_inputs_false_when_there_are_no_variables():
+    from core.dify_builder.handlers_fix import needs_upload_inputs
+
+    assert needs_upload_inputs({"variables": []}) is False
+
+
+def test_needs_upload_inputs_true_for_a_file_variable():
+    from core.dify_builder.handlers_fix import needs_upload_inputs
+
+    schema = {"variables": [{"variable": "doc", "type": "file"}]}
+    assert needs_upload_inputs(schema) is True
+
+
+def test_needs_upload_inputs_true_for_a_file_list_variable():
+    from core.dify_builder.handlers_fix import needs_upload_inputs
+
+    schema = {"variables": [{"variable": "docs", "type": "file-list"}]}
+    assert needs_upload_inputs(schema) is True
+
+
+def test_needs_upload_inputs_true_for_a_mixed_schema():
+    """A human still has to supply the file even though everything else in
+    the schema could be mocked -- the mixed case must still stop at the gate."""
+    from core.dify_builder.handlers_fix import needs_upload_inputs
+
+    schema = {
+        "variables": [
+            {"variable": "topic", "type": "text-input"},
+            {"variable": "doc", "type": "file"},
+        ]
+    }
+    assert needs_upload_inputs(schema) is True
 
 
 # ---- is_input_failure / testdata_form_fields -------------------------------

@@ -10,6 +10,7 @@ no handler -- its completion summary is emitted by the governance-tail handlers
 ``handle_await_learning`` for the ask policy).
 """
 
+import json
 import logging
 import uuid
 
@@ -20,7 +21,6 @@ from core.dify_builder.contract import (
     ChallengeCard,
     ChangeSetCard,
     CheckpointCard,
-    ConflictPolicyOption,
     DecisionItem,
     ErrorCard,
     ExecutionProgress,
@@ -35,6 +35,7 @@ from core.dify_builder.contract import (
     TestStat,
 )
 from core.dify_builder.handlers_fix import (
+    UNKNOWN_TEST_OUTCOME_NOTICE,
     action_kind,
     action_string,
     append_card,
@@ -50,6 +51,7 @@ from core.dify_builder.handlers_fix import (
     perform_revert,
     start_schema,
     testdata_form_fields,
+    without_upload_values,
 )
 from core.dify_builder.models import (
     ConversationItem,
@@ -57,6 +59,7 @@ from core.dify_builder.models import (
     DifyBuilderContext,
     MutationIntent,
     NodeEvent,
+    NodeOutput,
     Risk,
     Run,
     Session,
@@ -125,16 +128,21 @@ def _refine_app_name(env: Env, fc: DifyBuilderContext) -> None:
 
 
 def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) Entry state. On ``send_goal`` reset the canvas, analyze the
-    goal into requirements, and transition to build.goal_analysis emitting its
-    form + challenge cards."""
+    """(waiting) Entry state. Gates on the GOAL, not the action: a session
+    whose composer already carried the goal in (fc.goal_text set at creation)
+    needs no send_goal action and proceeds immediately. Only a goal-less
+    session (create-from-blank) still waits for someone to supply one via
+    send_goal. Either way: reset the canvas, analyze the goal into
+    requirements, and transition to build.goal_analysis emitting its form +
+    challenge cards."""
     kind = action_kind(turn)
-    if kind != "send_goal":
-        return StepResult(next=PcState.BUILD_CAPABILITY_CHECK, context=fc)
-
     text, ok = action_string(turn, "text")
     if ok and text:
         fc.goal_text = text
+    # The composer already carried the goal in; only a goal-less session
+    # (create-from-blank) still needs someone to supply one.
+    if not fc.goal_text and kind != "send_goal":
+        return StepResult(next=PcState.BUILD_CAPABILITY_CHECK, context=fc)
 
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
@@ -191,7 +199,11 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
 
 def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) On ``submit_requirements`` merge the form payload, propose
-    plan v1, and transition to build.initial_plan emitting the plan card."""
+    plan v1, and go straight to resource discovery (build.resource_recommendation)
+    via the shared ``_discover_and_offer_resources`` helper. The decision-free
+    find_resources gate that used to sit at build.initial_plan (showing the
+    same plan a second time) is gone; that state is now reached only via the
+    continue_adjusting/retry_after_revert loop-back (handle_initial_plan)."""
     kind = action_kind(turn)
     if kind != "submit_requirements":
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
@@ -216,49 +228,45 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     fc.plan_version_tag = "v1"
 
     decision_items = append_card(fc, DecisionItem(text="Submitted requirements"))
-    plan_items = append_card(
-        fc,
-        PlanCard(
-            title="Build plan",
-            version_tag="v1",
-            items=list(fc.plan_items),
-        ),
-    )
-    execution = progress.finish()
-    turn_items = append_card(
-        fc,
-        AssistantTurnItem(
-            turn_id=progress.operation_id,
-            stage_id=str(s.current_state),
-            execution=execution,
-            reply_text="Here's the initial plan.",
-            cards=["plan"],
-        ),
-    )
+    # Pass the live reporter through: this is still the SAME operation as the
+    # requirements review above, and every other handler in this file uses
+    # exactly one ProgressReporter per step. A second reporter under the same
+    # env.operation_id would restart `revision` at 1, breaking the documented
+    # per-operation-monotonic invariant (contract.py's ProgressEventData).
+    resource_items, next_state = _discover_and_offer_resources(env, s, fc, progress)
     return StepResult(
-        next=PcState.BUILD_INITIAL_PLAN,
+        next=next_state,
         context=fc,
-        items=[*decision_items, *plan_items, *turn_items],
+        items=[*decision_items, *resource_items],
     )
 
 
-def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) On ``find_resources`` discover the (canned, ready) resource
-    and transition to build.resource_recommendation."""
-    kind = action_kind(turn)
-    if kind != "find_resources":
-        return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
+def _discover_and_offer_resources(
+    env: Env, s: Session, fc: DifyBuilderContext, progress: ProgressReporter | None = None
+) -> tuple[list[ConversationItem], PcState]:
+    """Discover tenant resources and emit the selection card.
 
-    progress = ProgressReporter.for_session(
-        emit=env.emit_progress,
-        operation_id=env.operation_id,
-        session=s,
-        stage_id=str(s.current_state),
-        steps=[
-            ("build-discover-resources", "Find compatible resources"),
-            ("build-prepare-resource-options", "Prepare resource recommendations"),
-        ],
-    )
+    Shared by the straight-through path (requirements submitted -- continues
+    the caller's still-open ``progress`` reporter, so the whole step stays
+    ONE operation with monotonically increasing revisions) and the
+    continue_adjusting path, which re-enters at BUILD_INITIAL_PLAN with no
+    reporter yet (``progress=None``, so one is created here). One
+    implementation so the two entries cannot drift apart.
+    """
+    steps = [
+        ("build-discover-resources", "Find compatible resources"),
+        ("build-prepare-resource-options", "Prepare resource recommendations"),
+    ]
+    if progress is None:
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            stage_id=str(s.current_state),
+            steps=steps,
+        )
+    else:
+        progress.add_steps(steps)
     progress.activate("build-discover-resources")
     options = env.agent.discover_resources(list(fc.plan_items))
     progress.activate("build-prepare-resource-options")
@@ -266,10 +274,6 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         fc,
         ResourceSelectCard(
             recommended=options,
-            conflict_policy_options=[
-                ConflictPolicyOption(id="audited", label="Prefer audited", recommended=True),
-                ConflictPolicyOption(id="ask", label="Ask each time"),
-            ],
         ),
     )
     if not options:
@@ -281,6 +285,14 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             fc,
             NoticeItem(text="No workspace resources matched this plan — continuing without any."),
         )
+    gap = env.agent.assess_capability_gap(list(fc.plan_items), options)
+    if gap:
+        # Distinct from the empty-resources notice above: this fires even when
+        # SOME resources matched but one plan step still has nothing that can
+        # perform it (including a tool that's installed but unauthorized --
+        # readiness "missing_config" doesn't cover a step either). The two
+        # notices are independent and can both appear.
+        rs_items += append_card(fc, NoticeItem(text=gap))
     execution = progress.finish()
     turn_items = append_card(
         fc,
@@ -292,15 +304,24 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             cards=["resource_select"],
         ),
     )
-    return StepResult(
-        next=PcState.BUILD_RESOURCE_RECOMMENDATION,
-        context=fc,
-        items=[*rs_items, *turn_items],
-    )
+    return [*rs_items, *turn_items], PcState.BUILD_RESOURCE_RECOMMENDATION
+
+
+def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    """(working, auto) Discover the (canned, ready) resource and fall straight
+    through to build.resource_recommendation. Reachable only via the
+    continue_adjusting/retry_after_revert loop-back -- the straight-through
+    path no longer stops here (see handle_goal_analysis). Unconditional: this
+    is a working/pass-through state now (state.py), so the runner drives it
+    on entry with no action to gate on -- it must NOT re-require find_resources,
+    or the loop-back (which lands here with the action already consumed)
+    could never advance past it."""
+    items, next_state = _discover_and_offer_resources(env, s, fc)
+    return StepResult(next=next_state, context=fc, items=items)
 
 
 def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) On ``confirm_resources`` bind resources into plan v2 and
+    """(waiting) On ``confirm_resources`` bind resources into plan v1 and
     snapshot the pre-build graph as the restore checkpoint (self-minted id so
     the CheckpointCard shown at plan_approval carries a real id -- mirrors
     handle_verify's self-minted run id). Transition to build.plan_approval."""
@@ -322,24 +343,20 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     fc.checkpoint_seq = fc.next_seq
 
     resource_ids: list[str] = []
-    conflict_policy = ""
     if turn.action is not None and isinstance(turn.action.payload, dict):
         raw_ids = turn.action.payload.get("resource_ids")
         if isinstance(raw_ids, list):
             resource_ids = [r for r in raw_ids if isinstance(r, str)]
-        cp = turn.action.payload.get("conflict_policy")
-        if isinstance(cp, str):
-            conflict_policy = cp
-    fc.resource_selection = {"resource_ids": resource_ids, "conflict_policy": conflict_policy}
-    fc.plan_items = env.agent.bind_resources(list(fc.plan_items), resource_ids, conflict_policy)
-    fc.plan_version_tag = "v2"
+    fc.resource_selection = {"resource_ids": resource_ids}
+    fc.plan_items = env.agent.bind_resources(list(fc.plan_items), resource_ids)
+    fc.plan_version_tag = "v1"
 
     progress.activate("build-create-checkpoint")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.BUILD_PLAN_APPROVAL)
 
     decision_items = append_card(fc, DecisionItem(text="Confirmed resources"))
-    plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v2", items=list(fc.plan_items)))
+    plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
     checkpoint_items = append_card(
         fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-build checkpoint", created_at="")
     )
@@ -350,7 +367,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
             turn_id=progress.operation_id,
             stage_id=str(s.current_state),
             execution=execution,
-            reply_text="Plan v2 ready for approval.",
+            reply_text="Plan v1 ready for approval.",
             cards=["plan", "checkpoint"],
         ),
     )
@@ -365,7 +382,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     """(waiting) THE BUILD. Only ``approve_repair`` (resolved from approve_plan)
     builds: drive apply_repair once with all create_node/connect intents
     (node-by-node canvas reveal via env.emit_canvas), emit the change_set +
-    plan v2.x + assistant_turn(with execution activities), transition to build.execution.
+    plan v1.x + assistant_turn(with execution activities), transition to build.execution.
 
     Idempotent by construction (final-review fix, Important #1): a loop-back
     from build.review/build.reverted (continue_adjusting/revert/retry_after_
@@ -518,7 +535,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         fc,
         PlanCard(
             title=f"{fc.app_name} is ready" if fc.app_name else "Build plan",
-            version_tag="v2.1",
+            version_tag="v1.1",
             items=list(fc.plan_items),
         ),
     )
@@ -543,7 +560,10 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
 def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) At rest after the build. ``run_test`` -> build.await_testdata
-    when no test input is prepared yet (gate), else straight to
+    ONLY when no test input is prepared yet AND the start schema declares a
+    file/file-list variable (a human has to supply an upload; nothing else
+    needs one) -- else the inputs are mocked inline via
+    ``env.agent.generate_mock_inputs`` and the flow goes straight to
     build.test_and_repair; ``revert`` (resolved to ``undo``) -> build.reverted:
     restores the pre-build draft from the checkpoint and invalidates the
     approvals made since it (via perform_revert)."""
@@ -555,12 +575,19 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
     if kind == "run_test":
         if fc.test_input_ref == "":
             graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+            schema = start_schema(graph)
+            # Pre-fill the form with mock values instead of asking the user to
+            # invent them: the cost is one click, not N fields. Still SHOW
+            # them -- a green check produced by inputs nobody ever saw is weak
+            # evidence about the workflow. Upload fields stay empty because
+            # nothing can mock a file, so the form asks for those alone.
+            prefill = without_upload_values(schema, env.agent.generate_mock_inputs(schema, {}))
             form_items = append_card(
                 fc,
                 FormCard(
                     variant="testdata",
-                    fields=testdata_form_fields(start_schema(graph)),
-                    values={},
+                    fields=testdata_form_fields(schema),
+                    values=prefill,
                     frozen=False,
                 ),
             )
@@ -570,7 +597,7 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
                     turn_id=str(uuid.uuid4()),
                     stage_id=str(s.current_state),
                     execution=ExecutionProgress(status="completed"),
-                    reply_text="Provide test inputs (or use mock data) to run the test.",
+                    reply_text="I filled in test inputs -- edit them if you like, then run the test.",
                     cards=["form"],
                 ),
             )
@@ -606,6 +633,34 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     env.repo.save_test_input(ti)
     fc.test_input_ref = ti.id
     return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc)
+
+
+# Node outputs are only truncated upstream at ~100,000 chars per string, so a
+# report-generating workflow (the Builder's showcase case) can otherwise push
+# hundreds of KB of JSON into the conversation-item row, the SSE frame, and
+# the localizer walk on every successful build. The card is a preview, not a
+# download -- this cap keeps it one.
+_MAX_TERMINAL_OUTPUT_CHARS = 2000
+_TERMINAL_OUTPUT_TRUNCATED_MARKER = "\n… (truncated)"
+
+
+def _terminal_output(per_node: list[NodeOutput]) -> str:
+    """The last node that produced anything, as readable JSON, or "".
+
+    Deliberately status-agnostic: node status spellings differ by source
+    ("success" vs "succeeded"), and a status filter that silently misses is
+    worse than showing the output of a run that ended badly -- showing what
+    ran is the point of the card. Capped at ``_MAX_TERMINAL_OUTPUT_CHARS``
+    (see its comment) -- a big JSON blob is capped with a visible marker
+    rather than silently dropped.
+    """
+    for node in reversed(per_node):
+        if node.outputs:
+            rendered = json.dumps(node.outputs, ensure_ascii=False, indent=2)
+            if len(rendered) > _MAX_TERMINAL_OUTPUT_CHARS:
+                return rendered[:_MAX_TERMINAL_OUTPUT_CHARS] + _TERMINAL_OUTPUT_TRUNCATED_MARKER
+            return rendered
+    return ""
 
 
 def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -668,7 +723,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
 
     if status == "succeeded":
-        emit_canvas(env, "mark_test_success")
+        emit_canvas(env, "mark_test_success", dify_run_id=run.dify_run_id)
         test_items = append_card(
             fc,
             TestResultCard(
@@ -677,6 +732,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 tone="success",
                 stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
                 run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
+                output=_terminal_output(per_node),
             ),
         )
         emit_canvas(env, "mark_review_ready")
@@ -707,10 +764,37 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             run_id_sink=[run.id],
         )
 
+    if status == "running":
+        # Stream truncated: the run's outcome is genuinely unknown, NOT a
+        # failure (Run.status documents "running" for exactly this case).
+        # Diagnosing/staging a repair here would edit the draft under a run
+        # that may still be executing -- surface a neutral notice instead and
+        # return to build.execution (re-runnable), without ever calling
+        # diagnose or propose_repair.
+        notice_items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
+        execution = progress.finish()
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                execution=execution,
+                reply_text=UNKNOWN_TEST_OUTCOME_NOTICE,
+                cards=["notice"],
+            ),
+        )
+        return StepResult(
+            next=PcState.BUILD_EXECUTION,
+            context=fc,
+            items=[*notice_items, *turn_items],
+            run=run,
+            run_id_sink=[run.id],
+        )
+
     # failure: real diagnosis + proposed repair, staged for the approval gate
     run.culprit_node_id = first_failed_node(per_node)
     fc.verify_run_id = run.id
-    emit_canvas(env, "mark_test_error")
+    emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
 
     if is_input_failure(run):
         # the run failed on its INPUT, not the config -- route back to the
@@ -727,6 +811,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 tone="error",
                 stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
                 run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
             ),
         )
         form_items = append_card(
@@ -781,6 +866,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 tone="error",
                 stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
                 run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
             ),
         )
         error_items = append_card(
@@ -836,6 +922,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             tone="error",
             stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
             run_ids=[run.id],
+            dify_run_id=run.dify_run_id,
         ),
     )
     error_items = append_card(
@@ -961,12 +1048,17 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             steps=[("build-revise-plan", "Revise the workflow plan")],
         )
         progress.activate("build-revise-plan")
+        # Draft the plan, but do NOT show it yet: build.initial_plan (next)
+        # runs resource discovery unconditionally and falls straight through
+        # to build.resource_recommendation, which shows the ONE plan card for
+        # this pass (v1, resources bound) -- exactly the duplicate-card
+        # removal task 2 already did for the straight-through path. Showing
+        # it here too would mean two "Build plan" v1 cards in one pass.
         fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
         fc.plan_version_tag = "v1"
         fc.test_input_ref = ""
         fc.verify_run_id = ""
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
-        plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
         execution = progress.finish()
         turn_items = append_card(
             fc,
@@ -975,13 +1067,13 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
                 stage_id=str(s.current_state),
                 execution=execution,
                 reply_text="Revised plan.",
-                cards=["plan"],
+                cards=[],
             ),
         )
         return StepResult(
             next=PcState.BUILD_INITIAL_PLAN,
             context=fc,
-            items=[*decision_items, *plan_items, *turn_items],
+            items=[*decision_items, *turn_items],
         )
     if kind == "undo":  # revert
         perform_revert(env, turn, s, fc)
@@ -1080,11 +1172,14 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         steps=[("build-restart-plan", "Rebuild the workflow plan")],
     )
     progress.activate("build-restart-plan")
+    # Draft the plan, but do NOT show it yet -- same duplicate-card removal
+    # as handle_review's re_fix branch: build.initial_plan (next) falls
+    # straight through to build.resource_recommendation, which shows the ONE
+    # plan card for this pass (v1, resources bound).
     fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
     fc.plan_version_tag = "v1"
     fc.test_input_ref = ""
     fc.verify_run_id = ""
-    plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
     execution = progress.finish()
     turn_items = append_card(
         fc,
@@ -1093,10 +1188,10 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
             stage_id=str(s.current_state),
             execution=execution,
             reply_text="Restarting the plan.",
-            cards=["plan"],
+            cards=[],
         ),
     )
-    return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc, items=[*plan_items, *turn_items])
+    return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc, items=list(turn_items))
 
 
 def build_registry() -> dict[PcState, Handler]:

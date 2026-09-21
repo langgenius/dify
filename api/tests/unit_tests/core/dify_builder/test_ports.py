@@ -125,7 +125,10 @@ class _StubAgent:
     def discover_resources(self, _plan_items):
         return []
 
-    def bind_resources(self, _plan_items, _resource_ids, _conflict_policy):
+    def assess_capability_gap(self, _plan_items, _options):
+        return ""
+
+    def bind_resources(self, _plan_items, _resource_ids):
         return []
 
     def build_nodes(self, _plan_items, _resource_ids=None):

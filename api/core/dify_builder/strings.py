@@ -31,12 +31,11 @@ PLAIN: frozenset[str] = frozenset(
     {
         # reply_text microcopy
         "Let's clarify the requirements.",
-        "Here's the initial plan.",
         "Recommended resources.",
         "No workspace resources matched this plan — continuing without any.",
-        "Plan v2 ready for approval.",
+        "Plan v1 ready for approval.",
         "Workflow built on the canvas.",
-        "Provide test inputs (or use mock data) to run the test.",
+        "I filled in test inputs -- edit them if you like, then run the test.",
         "Tests passed; ready for review.",
         "The run failed on its inputs — provide test data and retry.",
         "Here's the impact of your change.",
@@ -52,6 +51,7 @@ PLAIN: frozenset[str] = frozenset(
         "Test failed — here's a proposed fix to review.",
         "Test failed — no safe automatic fix; edit or keep draft.",
         "No automatic fix found — review the diagnosis and edit the canvas manually, or reject.",
+        "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test.",
         # card titles
         "Test run",
         "Review",
@@ -102,10 +102,8 @@ PLAIN: frozenset[str] = frozenset(
         "Pre-build checkpoint",
         "Pre-edit checkpoint",
         # form chrome / bodies / static summary items
-        "Ask each time",
         "Change",
         "Nodes",
-        "Prefer audited",
         "Status",
         "Workflow",
         "I filled in typical requirements; edit and submit to adjust.",

@@ -48,6 +48,7 @@ from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
     Graph,
+    Inputs,
     NodeEvent,
     NodeOutput,
     Run,
@@ -62,6 +63,7 @@ from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 
 __all__ = [
+    "UNKNOWN_TEST_OUTCOME_NOTICE",
     "action_kind",
     "action_string",
     "append_card",
@@ -87,10 +89,22 @@ __all__ = [
     "merge_known_keys",
     "mint_checkpoint",
     "model_config_error_text",
+    "needs_upload_inputs",
     "perform_revert",
     "start_schema",
     "testdata_form_fields",
+    "upload_variable_names",
+    "without_upload_values",
 ]
+
+
+# Shared by handle_verify (below) and handle_test_and_repair (handlers_build.py,
+# which imports it): the "running"/unknown-outcome branch. A truncated stream
+# means the run's actual pass/fail is genuinely unknown -- not a failure to
+# diagnose or repair against.
+UNKNOWN_TEST_OUTCOME_NOTICE = (
+    "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test."
+)
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -239,6 +253,39 @@ def start_schema(graph: Graph) -> StartSchema:
         if data.get("type") == "start":
             return {"variables": list(data.get("variables") or [])}
     return {"variables": []}
+
+
+_UPLOAD_VARIABLE_TYPES = frozenset({"file", "file-list"})
+
+
+def upload_variable_names(schema: StartSchema) -> set[str]:
+    """Names of the start variables that take a file.
+
+    Nothing can invent an upload, so these are the values a human still has to
+    supply even when every other field is mocked for them.
+    """
+    return {
+        str(v["variable"])
+        for v in schema.get("variables", [])
+        if isinstance(v, dict) and v.get("variable") and str(v.get("type") or "") in _UPLOAD_VARIABLE_TYPES
+    }
+
+
+def needs_upload_inputs(schema: StartSchema) -> bool:
+    """Whether any declared start variable takes a file."""
+    return bool(upload_variable_names(schema))
+
+
+def without_upload_values(schema: StartSchema, inputs: Inputs) -> Inputs:
+    """``inputs`` minus anything bound to an upload variable.
+
+    The mock generator falls back to a plain string for a type it does not
+    know, so it cheerfully produces ``"test"`` for a ``file`` -- pre-filling a
+    file field with a value the run cannot use. Drop those and let the form
+    ask for them instead.
+    """
+    dropped = upload_variable_names(schema)
+    return {key: value for key, value in inputs.items() if key not in dropped}
 
 
 def _string_list(value: object) -> list[str]:
@@ -644,6 +691,25 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    if result.status == "running":
+        # Stream truncated: the run's outcome is genuinely unknown, NOT a
+        # failure. Advancing to fix.await_decision here would let the user
+        # publish (or re-fix) against a run that may still be executing --
+        # surface a neutral notice instead and return to fix.await_testdata
+        # (re-runnable), never diagnosing or staging a repair against an
+        # unknown result.
+        fc.verify_run_id = run.id
+        items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
+        progress.finish()
+        return StepResult(
+            next=PcState.FIX_AWAIT_TESTDATA,
+            context=fc,
+            items=items,
+            run=run,
+            run_id_sink=[run.id],
+        )
+
     if result.status != "succeeded":
         run.culprit_node_id = first_failed_node(result.per_node)
 
@@ -656,6 +722,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             tone=("success" if result.status == "succeeded" else "error"),
             stats=[],
             run_ids=[run.id],
+            dify_run_id=run.dify_run_id,
         ),
     )
     progress.finish()

@@ -146,6 +146,22 @@ class WorkflowInstructionSuggestionsPayload(BaseModel):
     count: int = Field(default=4, ge=1, le=6, description="Number of suggestions to return (1-6)")
 
 
+class WorkflowInstructionImprovePayload(BaseModel):
+    """Payload for the workflow-generator instruction-improvement endpoint.
+
+    Backs the composer's "Add missing details" action. It runs before an app
+    exists and before the user picks a model, so the rewrite comes from the
+    tenant's default model. The underlying generator never raises -- the
+    original text with ``changed: false`` is a valid 200 (soft-fail).
+    """
+
+    instruction: str = Field(..., description="The build instruction to expand")
+    mode: Literal["workflow", "advanced-chat"] = Field(
+        default="workflow", description="Target app mode the instruction is written for"
+    )
+    language: str | None = Field(default=None, description="Optional language to write the rewrite in")
+
+
 class WorkflowGenerateErrorResponse(ResponseModel):
     code: WorkflowGenerateErrorCode
     detail: str
@@ -199,6 +215,17 @@ class WorkflowInstructionSuggestionsResponse(ResponseModel):
     suggestions: list[str]
 
 
+class WorkflowInstructionImproveResponse(ResponseModel):
+    """``instruction`` is always usable: the rewrite, or the caller's own text.
+
+    ``changed`` is what distinguishes the two, so a client can tell an
+    improvement from a soft failure without diffing the strings itself.
+    """
+
+    instruction: str
+    changed: bool
+
+
 class GeneratorResponse(RootModel[Any]):
     root: Any
 
@@ -213,6 +240,7 @@ register_schema_models(
     InstructionTemplatePayload,
     WorkflowGeneratePayload,
     WorkflowInstructionSuggestionsPayload,
+    WorkflowInstructionImprovePayload,
     ModelConfig,
 )
 register_response_schema_models(
@@ -224,6 +252,7 @@ register_response_schema_models(
     WorkflowGenerateResultEventResponse,
     WorkflowGenerateStreamEventResponse,
     WorkflowInstructionSuggestionsResponse,
+    WorkflowInstructionImproveResponse,
 )
 
 
@@ -450,6 +479,32 @@ class InstructionGenerationTemplateApi(Resource):
                 raise ValueError(f"Invalid type: {req_data.type}")
 
 
+def _instruction_text_guard(instruction: str) -> tuple[dict, int] | None:
+    """Reject an empty / oversized instruction with the shared error codes.
+
+    Separate from ``_workflow_instruction_guard`` because the improvement
+    endpoint carries no ``ideal_output`` field, and that guard's wording names
+    both. Rejecting here keeps a whitespace-only or pasted-document input from
+    spending an LLM round-trip.
+    """
+    if not instruction.strip():
+        return {
+            "error": "Instruction is required",
+            "errors": [{"code": WorkflowGenerateErrorCode.EMPTY_INSTRUCTION, "detail": "Instruction is required"}],
+        }, 400
+    if len(instruction) > _MAX_INSTRUCTION_LENGTH:
+        return {
+            "error": "Instruction is too long",
+            "errors": [
+                {
+                    "code": WorkflowGenerateErrorCode.INSTRUCTION_TOO_LONG,
+                    "detail": f"Instruction must be at most {_MAX_INSTRUCTION_LENGTH} characters",
+                }
+            ],
+        }, 400
+    return None
+
+
 def _workflow_instruction_guard(args: WorkflowGeneratePayload) -> tuple[dict, int] | None:
     """Shared boundary guard for the workflow-generate endpoints.
 
@@ -565,6 +620,49 @@ class WorkflowInstructionSuggestionsApi(Resource):
             count=req_data.count,
         )
         return dump_response(WorkflowInstructionSuggestionsResponse, {"suggestions": suggestions})
+
+
+@console_ns.route("/workflow-generate/improve")
+class WorkflowInstructionImproveApi(Resource):
+    """Expand a build instruction with the details it leaves unstated.
+
+    Backs the composer's "Add missing details" action. Runs before an app exists
+    and before a model is selected, so it is tenant-scoped and uses the tenant's
+    default model. The underlying generator never raises: when it cannot improve
+    the text this returns the caller's own instruction with ``changed: false``
+    rather than an error, so the action can never strand what the user typed.
+    """
+
+    @console_ns.doc("improve_workflow_instruction")
+    @console_ns.doc(description="Expand a workflow-generator instruction with the details it leaves unstated")
+    @console_ns.expect(console_ns.models[WorkflowInstructionImprovePayload.__name__])
+    @console_ns.response(
+        200,
+        "Instruction returned successfully",
+        console_ns.models[WorkflowInstructionImproveResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request parameters")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    @model_validate(WorkflowInstructionImprovePayload)
+    def post(self, req_data: WorkflowInstructionImprovePayload, current_tenant_id: str):
+        guard = _instruction_text_guard(req_data.instruction)
+        if guard is not None:
+            return guard
+
+        original = req_data.instruction.strip()
+        improved = LLMGenerator.improve_workflow_instruction(
+            tenant_id=current_tenant_id,
+            instruction=original,
+            mode=req_data.mode,
+            language=req_data.language,
+        )
+        return dump_response(
+            WorkflowInstructionImproveResponse,
+            {"instruction": improved or original, "changed": bool(improved)},
+        )
 
 
 @console_ns.route("/workflow-generate/stream")

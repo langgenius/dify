@@ -186,17 +186,15 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             id="submit_requirements",
             label="Submit requirements",
             kind=ActionKind.PRIMARY,
-            next_state="build.initial_plan",
-        ),
-    ],
-    PcState.BUILD_INITIAL_PLAN: [
-        UiAction(
-            id="find_resources",
-            label="Find resources",
-            kind=ActionKind.PRIMARY,
             next_state="build.resource_recommendation",
         ),
     ],
+    # build.initial_plan offers no UI action: it is a working/pass-through
+    # state now (state.py), not a waiting one -- the straight-through path no
+    # longer stops there (submit_requirements now goes directly to resource
+    # discovery -- see handlers_build.handle_goal_analysis), and the
+    # continue_adjusting/retry_after_revert loop-back that still lands there
+    # runs its handler unconditionally on entry, with no action to gate on.
     PcState.BUILD_RESOURCE_RECOMMENDATION: [
         UiAction(
             id="confirm_resources", label="Confirm resources", kind=ActionKind.PRIMARY, next_state="build.plan_approval"
@@ -477,7 +475,9 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     PcState.CHECKLIST_AWAIT_RECHECK: frozenset({"recheck", "undo"}),
     PcState.BUILD_CAPABILITY_CHECK: frozenset({"send_goal"}),
     PcState.BUILD_GOAL_ANALYSIS: frozenset({"submit_requirements"}),
-    PcState.BUILD_INITIAL_PLAN: frozenset({"find_resources"}),
+    # BUILD_INITIAL_PLAN is a working/pass-through state now (state.py) -- it
+    # no longer gates on any action, so it has no entry here, matching every
+    # other working Build/Edit state (BUILD_TEST_AND_REPAIR, BUILD_PUBLISH, ...).
     PcState.BUILD_RESOURCE_RECOMMENDATION: frozenset({"confirm_resources"}),
     PcState.BUILD_PLAN_APPROVAL: frozenset({"approve_repair"}),
     PcState.BUILD_EXECUTION: frozenset({"run_test", "undo"}),
