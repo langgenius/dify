@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema, field_validator
 from sqlalchemy.orm import sessionmaker
@@ -185,7 +184,8 @@ class ConversationApi(Resource):
         service_api_ns.models[ConversationInfiniteScrollPagination.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    def get(self, app_model: App, end_user: EndUser):
+    @model_validate(ConversationListQuery)
+    def get(self, query_args: ConversationListQuery, app_model: App, end_user: EndUser):
         """List all conversations for the current user.
 
         Supports pagination using last_id and limit parameters.
@@ -194,7 +194,6 @@ class ConversationApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        query_args = ConversationListQuery.model_validate(request.args.to_dict())
         last_id = query_args.last_id or None
 
         try:
@@ -343,7 +342,8 @@ class ConversationVariablesApi(Resource):
         service_api_ns.models[ConversationVariableInfiniteScrollPaginationResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    def get(self, app_model: App, end_user: EndUser, conversation_id: UUID):
+    @model_validate(ConversationVariablesQuery)
+    def get(self, query_args: ConversationVariablesQuery, app_model: App, end_user: EndUser, conversation_id: UUID):
         """List all variables for a conversation.
 
         Conversational variables are only available for chat applications.
@@ -355,7 +355,6 @@ class ConversationVariablesApi(Resource):
 
         conversation_id_str = str(conversation_id)
 
-        query_args = ConversationVariablesQuery.model_validate(request.args.to_dict())
         last_id = query_args.last_id or None
 
         try:

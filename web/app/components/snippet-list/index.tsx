@@ -2,6 +2,15 @@
 
 import type { SnippetPublishStatus } from './components/snippet-publish-status-filter'
 import type { SnippetListItem } from '@/types/snippet'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -146,10 +155,31 @@ const SnippetList = () => {
     () => pages.flatMap(({ data: pageSnippets }) => pageSnippets),
     [pages],
   )
-  const hasAnySnippet = (pages[0]?.total ?? 0) > 0
+  const totalSnippetCount = pages[0]?.total ?? 0
+  const hasAnySnippet = totalSnippetCount > 0
+  const hasInitialQueryError = canQuerySnippetList && Boolean(error) && pages.length === 0
   const showSkeleton =
-    isLoadingCurrentWorkspace ||
-    (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0)))
+    !hasInitialQueryError &&
+    (isLoadingCurrentWorkspace ||
+      (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0))))
+  const isListBusy =
+    isLoadingCurrentWorkspace || (canQuerySnippetList && (isFetching || isFetchingNextPage))
+  const initialQueryErrorMessage = hasInitialQueryError
+    ? t(($) => $['errorBoundary.title'], { ns: 'common' })
+    : ''
+  const listStatus = showSkeleton
+    ? ''
+    : isListBusy
+      ? t(($) => $.loading, { ns: 'common' })
+      : hasInitialQueryError
+        ? initialQueryErrorMessage
+        : hasAnySnippet
+          ? t(($) => $['operation.searchCount'], {
+              ns: 'common',
+              count: totalSnippetCount,
+              content: t(($) => $['tabs.snippets'], { ns: 'workflow' }),
+            })
+          : t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })
 
   return (
     <div
@@ -158,22 +188,27 @@ const SnippetList = () => {
     >
       <StudioListHeader
         title={
-          <>
-            <Link
-              href="/apps"
-              className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            >
-              {t(($) => $['menus.apps'], { ns: 'common' })}
-            </Link>
-            <span className="mx-1.5 shrink-0 font-light text-divider-deep">/</span>
-            <h1 className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-              {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
-            </h1>
-          </>
+          <Breadcrumb aria-label={t(($) => $['tabs.snippets'], { ns: 'workflow' })}>
+            <BreadcrumbList className="text-[18px]/[21.6px] font-semibold">
+              <BreadcrumbItem>
+                <BreadcrumbLink render={<Link href="/apps" />} className="block truncate">
+                  {t(($) => $['menus.apps'], { ns: 'common' })}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="text-base/6 font-light text-divider-deep" />
+              <BreadcrumbItem>
+                <h1 className="min-w-0 truncate">
+                  <BreadcrumbPage>
+                    {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
+                  </BreadcrumbPage>
+                </h1>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
         }
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <CreatorsFilter value={creatorIDs} onChange={setCreatorIDs} />
             <SnippetPublishStatusFilter value={publishStatus} onChange={setPublishStatus} />
             <TagFilter
@@ -184,7 +219,7 @@ const SnippetList = () => {
             />
             <SearchInput
               name="snippet-query"
-              className="w-50"
+              className="w-full sm:w-50"
               value={keywords}
               onValueChange={setKeywords}
               placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
@@ -194,14 +229,25 @@ const SnippetList = () => {
           <SnippetCreateButton />
         </div>
       </StudioListHeader>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {listStatus}
+      </div>
       <div
+        aria-busy={isListBusy}
         className={cn(
-          'relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-4 px-8 pt-2',
+          'relative grid grow grid-cols-1 content-start gap-4 px-4 pt-2 sm:grid-cols-[repeat(auto-fill,minmax(296px,1fr))] sm:px-8',
           !hasAnySnippet && 'overflow-hidden',
         )}
       >
         {showSkeleton ? (
           <SnippetCardSkeleton count={6} />
+        ) : hasInitialQueryError ? (
+          <div className="col-span-full flex min-h-55 flex-col items-center justify-center gap-3 text-center">
+            <p className="system-md-medium text-text-secondary">{initialQueryErrorMessage}</p>
+            <Button variant="secondary" loading={isFetching} onClick={() => refetch()}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
         ) : hasAnySnippet ? (
           snippets.map((snippet) => (
             <SnippetCard

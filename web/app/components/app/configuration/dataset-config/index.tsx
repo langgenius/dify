@@ -294,7 +294,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   return (
     <FeaturePanel
       className="mt-2"
-      title={t(($) => $['feature.dataSet.title'], { ns: 'appDebug' })}
+      title={<h2>{t(($) => $['feature.dataSet.title'], { ns: 'appDebug' })}</h2>}
       headerRight={
         !readonly && (
           <div className="flex items-center gap-1">

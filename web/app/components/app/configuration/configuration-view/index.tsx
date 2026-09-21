@@ -22,6 +22,7 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,10 +32,9 @@ import EditHistoryModal from '@/app/components/app/configuration/config-prompt/c
 import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
-import Divider from '@/app/components/base/divider'
 import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'
@@ -101,7 +101,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   if (showLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -112,12 +112,12 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
         <>
           <div className="flex h-full flex-col">
             <div className="relative flex h-50 grow pt-14">
-              <div className="bg-default-subtle absolute top-0 left-0 h-14 w-full">
+              <div className="absolute top-0 left-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center gap-2">
-                    <div className="system-xl-semibold text-text-primary">
+                    <h1 className="system-xl-semibold text-text-primary">
                       {t(($) => $.orchestrate, { ns: 'appDebug' })}
-                    </div>
+                    </h1>
                     {showLegacyAgentBadge && <LegacyAgentBadge />}
                     {isAdvancedMode && (
                       <div className="flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 system-xs-medium-uppercase text-text-tertiary uppercase">
@@ -149,7 +149,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={onEnableMultipleModelDebug}
                         />
-                        <Divider type="vertical" className="mx-2 h-3.5" />
+                        <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
                       </>
                     )}
                     {isMobile && (
@@ -177,7 +177,6 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 >
                   <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                     <Debug
-                      isAPIKeySet={contextValue.isAPIKeySet}
                       onSetting={onOpenAccountSettings}
                       inputs={contextValue.inputs}
                       modelParameterParams={{
@@ -260,7 +259,6 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                         />
                       </div>
                       <Debug
-                        isAPIKeySet={contextValue.isAPIKeySet}
                         onSetting={onOpenAccountSettings}
                         inputs={contextValue.inputs}
                         modelParameterParams={{

@@ -6,7 +6,7 @@ from unittest.mock import patch
 from uuid import UUID
 
 import pytest
-from flask import Flask
+from flask import Flask, Response
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden, InternalServerError
@@ -14,6 +14,8 @@ from werkzeug.exceptions import Forbidden, InternalServerError
 from controllers.console.app import audio as audio_module
 from controllers.console.app.audio import (
     AgentChatMessageAudioApi,
+    AgentChatMessageTextApi,
+    AgentTextToSpeechVoicesApi,
     ChatMessageAudioApi,
     ChatMessageTextApi,
     TextModesApi,
@@ -38,7 +40,7 @@ from models import Account, App, AppMode
 from models.agent import AgentConfigDraftType
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.composer_service import AgentComposerService
-from services.agent.errors import AgentVersionNotFoundError
+from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
 from services.errors.app_model_config import AppModelConfigBrokenError
@@ -50,6 +52,7 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 def _file_data():
@@ -57,22 +60,11 @@ def _file_data():
 
 
 def _app(*, app_id: str = "a1", tenant_id: str = "tenant-1") -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name="Audio app",
-        description="",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=0,
-    )
+    return make_app(app_id=app_id, tenant_id=tenant_id, name="Audio app", icon_type=None, max_active_requests=0)
 
 
 def _account(account_id: str = "account-1") -> Account:
-    account = Account(name="Audio account", email=f"{account_id}@example.com")
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Audio account", email=f"{account_id}@example.com")
 
 
 def test_console_audio_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -111,11 +103,11 @@ def test_agent_console_audio_api_uses_agent_draft(
         calls["asr"] = kwargs
         return {"text": "agent transcript"}
 
-    def enforce_rbac_access(**kwargs):
+    def enforce_rbac_checks(**kwargs):
         calls["rbac"] = kwargs
 
     monkeypatch.setattr(audio_module, "resolve_agent_runtime_app_model", resolve_agent_runtime_app_model)
-    monkeypatch.setattr(audio_module, "enforce_rbac_access", enforce_rbac_access)
+    monkeypatch.setattr(audio_module, "enforce_rbac_checks", enforce_rbac_checks)
     monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
     monkeypatch.setattr(AudioService, "transcript_agent_asr", transcript_agent_asr)
 
@@ -138,13 +130,13 @@ def test_agent_console_audio_api_uses_agent_draft(
 
     assert response == {"text": "agent transcript"}
     assert calls["resolver"] == {"session": session, "tenant_id": "tenant-1", "agent_id": agent_id}
-    assert calls["rbac"] == {
-        "tenant_id": "tenant-1",
-        "account_id": "account-1",
-        "resource_type": audio_module.RBACResourceScope.APP,
-        "scene": audio_module.RBACPermission.APP_TEST_AND_RUN,
-        "path_args": {"app_id": "backing-app-1"},
-    }
+    rbac_call = calls["rbac"]
+    assert rbac_call["tenant_id"] == "tenant-1"
+    assert rbac_call["account_id"] == "account-1"
+    assert rbac_call["path_args"] == {"app_id": "backing-app-1"}
+    (rbac_check,) = rbac_call["checks"]
+    assert rbac_check.scene is audio_module.RBACPermission.APP_TEST_AND_RUN
+    assert isinstance(rbac_check.locator, audio_module.PlainApp)
     assert calls["draft"] == {
         "tenant_id": "tenant-1",
         "agent_id": str(agent_id),
@@ -216,7 +208,7 @@ def test_agent_console_audio_api_checks_rbac_with_backing_app_id(
         soul_loaded = True
         return AgentSoulConfig()
 
-    monkeypatch.setattr(audio_module, "enforce_rbac_access", deny_access)
+    monkeypatch.setattr(audio_module, "enforce_rbac_checks", deny_access)
     monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
 
     api = AgentChatMessageAudioApi()
@@ -532,3 +524,158 @@ def test_text_to_audio_voices_with_language_filter(app: Flask, monkeypatch: pyte
     ):
         response = method(api, TextToSpeechVoiceQuery(language="en-US"), app_model=app_model)
         assert isinstance(response, list)
+
+
+def test_agent_text_to_speech_voices_uses_backing_app_and_language(app: Flask, unbound_session: Session) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    app_model = _app(app_id="backing-app-1")
+    current_user = _account()
+    voices = [{"name": "Voice 1", "value": "voice-1"}]
+    api = AgentTextToSpeechVoicesApi()
+    with (
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model", return_value=app_model) as resolve_app,
+        patch.object(audio_module, "enforce_rbac_checks") as check_access,
+        patch.object(AudioService, "transcript_tts_voices", return_value=voices) as get_voices,
+        app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio/voices?language=en-US"),
+    ):
+        response = unwrap(api.get)(
+            api,
+            session=unbound_session,
+            current_tenant_id="tenant-1",
+            current_user=current_user,
+            agent_id=agent_id,
+        )
+
+    assert response == voices
+    resolve_app.assert_called_once_with(session=unbound_session, tenant_id="tenant-1", agent_id=agent_id)
+    check_access.assert_called_once()
+    rbac_call = check_access.call_args.kwargs
+    assert rbac_call["tenant_id"] == "tenant-1"
+    assert rbac_call["account_id"] == current_user.id
+    assert rbac_call["path_args"] == {"agent_id": str(agent_id)}
+    (rbac_check,) = rbac_call["checks"]
+    assert rbac_check.scene is audio_module.RBACPermission.AGENT_PREVIEW
+    assert isinstance(rbac_check.locator, audio_module.AgentId)
+    get_voices.assert_called_once_with(tenant_id="tenant-1", language="en-US")
+
+
+def test_agent_text_to_speech_voices_does_not_query_provider_without_permission(
+    app: Flask, unbound_session: Session
+) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    api = AgentTextToSpeechVoicesApi()
+    with (
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model") as resolve_app,
+        patch.object(audio_module, "enforce_rbac_checks", side_effect=Forbidden()),
+        patch.object(AudioService, "transcript_tts_voices") as get_voices,
+        app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio/voices?language=en-US"),
+        pytest.raises(Forbidden),
+    ):
+        unwrap(api.get)(
+            api,
+            session=unbound_session,
+            current_tenant_id="tenant-1",
+            current_user=_account(),
+            agent_id=agent_id,
+        )
+
+    get_voices.assert_not_called()
+    resolve_app.assert_not_called()
+
+
+@pytest.mark.parametrize("message_id", [None, "019ef3d2-b24c-7803-b428-18b5ee8fb854"])
+def test_agent_text_to_speech_returns_audio_with_scoped_message(
+    app: Flask, unbound_session: Session, message_id: str | None
+) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    app_model = _app(app_id="backing-app-1")
+    current_user = _account()
+    payload = TextToSpeechPayload(text="Preview this voice", voice="voice-1", message_id=message_id)
+    audio = Response(b"RIFF\x00\x00\x00\x00WAVE", content_type="audio/wav")
+    api = AgentChatMessageTextApi()
+    with (
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model", return_value=app_model) as resolve_app,
+        patch.object(audio_module, "enforce_rbac_checks") as check_access,
+        patch.object(AudioService, "transcript_tts", return_value=audio) as synthesize,
+        app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio", method="POST"),
+    ):
+        response = unwrap(api.post)(
+            api,
+            req_data=payload,
+            session=unbound_session,
+            current_tenant_id="tenant-1",
+            current_user=current_user,
+            agent_id=agent_id,
+        )
+
+    assert response.get_data() == audio.get_data()
+    assert response.content_type == "audio/wav"
+    resolve_app.assert_called_once_with(session=unbound_session, tenant_id="tenant-1", agent_id=agent_id)
+    check_access.assert_called_once()
+    rbac_call = check_access.call_args.kwargs
+    assert rbac_call["tenant_id"] == "tenant-1"
+    assert rbac_call["account_id"] == current_user.id
+    assert rbac_call["path_args"] == {"agent_id": str(agent_id)}
+    (rbac_check,) = rbac_call["checks"]
+    assert rbac_check.scene is audio_module.RBACPermission.AGENT_TEST_AND_RUN
+    assert isinstance(rbac_check.locator, audio_module.AgentId)
+    synthesize.assert_called_once_with(
+        app_model=app_model,
+        session=unbound_session,
+        text=payload.text,
+        voice=payload.voice,
+        message_ref=MessageRef(AppRef("tenant-1", "backing-app-1"), message_id, account_id=current_user.id)
+        if message_id
+        else None,
+        is_draft=True,
+    )
+
+
+def test_agent_text_to_speech_denies_access_before_resolving_app(app: Flask, unbound_session: Session) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    api = AgentChatMessageTextApi()
+    with (
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model") as resolve_app,
+        patch.object(audio_module, "enforce_rbac_checks", side_effect=Forbidden()),
+        patch.object(AudioService, "transcript_tts") as synthesize,
+        app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio", method="POST"),
+        pytest.raises(Forbidden),
+    ):
+        unwrap(api.post)(
+            api,
+            req_data=TextToSpeechPayload(text="Preview"),
+            session=unbound_session,
+            current_tenant_id="tenant-1",
+            current_user=_account(),
+            agent_id=agent_id,
+        )
+
+    resolve_app.assert_not_called()
+    synthesize.assert_not_called()
+
+
+@pytest.mark.parametrize("voices", [False, True])
+def test_agent_tts_preserves_missing_agent_error(app: Flask, unbound_session: Session, voices: bool) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    api = AgentTextToSpeechVoicesApi() if voices else AgentChatMessageTextApi()
+    handler = unwrap(api.get if isinstance(api, AgentTextToSpeechVoicesApi) else api.post)
+    args: dict[str, object] = {
+        "session": unbound_session,
+        "current_tenant_id": "tenant-1",
+        "current_user": _account(),
+        "agent_id": agent_id,
+    }
+    if not voices:
+        args["req_data"] = TextToSpeechPayload(text="Preview")
+    with (
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model", side_effect=AgentNotFoundError()),
+        patch.object(audio_module, "enforce_rbac_checks"),
+        patch.object(AudioService, "transcript_tts") as synthesize,
+        patch.object(AudioService, "transcript_tts_voices") as get_voices,
+        app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio?language=en-US"),
+        pytest.raises(AgentNotFoundError),
+    ):
+        handler(api, **args)
+
+    synthesize.assert_not_called()
+    get_voices.assert_not_called()

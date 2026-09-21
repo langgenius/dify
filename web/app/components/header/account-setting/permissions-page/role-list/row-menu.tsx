@@ -17,10 +17,10 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
   useCopyWorkspaceRole,
@@ -120,7 +120,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
             </IconButton>
           }
         />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[160px]">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
           {hasViewAction && (
             <DropdownMenuItem
               className="system-sm-semibold text-text-secondary"

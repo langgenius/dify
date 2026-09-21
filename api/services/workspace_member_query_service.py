@@ -67,8 +67,6 @@ class WorkspaceMemberQueryService:
 
     def list_current(self, context: RequestContext) -> tuple[WorkspaceMemberSummary, ...]:
         workspace_id = context.active_workspace_id
-        if workspace_id is None:
-            raise RuntimeError("Console account admission did not resolve an active workspace")
 
         records = tuple(self._members.list_for_workspace(workspace_id))
         role_subjects = tuple(

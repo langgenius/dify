@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 const iconClassNames = {
   question: 'i-ri-question-line',
   information: 'i-ri-information-line',
+  warning: 'i-ri-error-warning-line',
 } as const
 
 const iconSizeClassNames = {

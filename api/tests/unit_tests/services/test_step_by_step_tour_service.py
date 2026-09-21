@@ -12,9 +12,10 @@ from services.account_ports import AccountRepository
 from services.entities.account_entities import AccountSnapshot
 from services.entities.onboarding_entities import StepByStepTourPatch, StepByStepTourResult, StepByStepTourState
 from services.step_by_step_tour_service import StepByStepTourService
+from tests.unit_tests.model_factories import make_account_snapshot
 
 
-def _context(*, workspace_id: str | None = "workspace-1") -> RequestContext:
+def _context(*, workspace_id: str = "workspace-1") -> RequestContext:
     return RequestContext(
         request_id="request-1",
         trace_id="trace-1",
@@ -55,21 +56,7 @@ class StateRepositoryStub:
 
 
 def _account(*, started_at: datetime = datetime(2026, 6, 28)) -> AccountSnapshot:
-    return AccountSnapshot(
-        id="account-1",
-        name="Account",
-        email="account@example.com",
-        avatar=None,
-        is_password_set=False,
-        interface_language="en-US",
-        interface_theme="light",
-        timezone="UTC",
-        last_login_at=None,
-        last_login_ip=None,
-        status="active",
-        initialized_at=started_at,
-        created_at=started_at,
-    )
+    return make_account_snapshot(initialized_at=started_at, created_at=started_at)
 
 
 def _accounts(account: AccountSnapshot | None) -> Mock:
@@ -189,15 +176,6 @@ def test_patch_state_complete_and_uncomplete_task() -> None:
 def test_rejects_unsupported_task_id() -> None:
     with pytest.raises(ValueError, match="Unsupported task_id"):
         StepByStepTourService._require_task_id("unknown")
-
-
-def test_rejects_missing_workspace_before_using_state_repository() -> None:
-    states = StateRepositoryStub()
-
-    with pytest.raises(RuntimeError, match="did not resolve an active workspace"):
-        _service(states=states).patch_state(_context(workspace_id=None), StepByStepTourPatch("skip"))
-
-    assert states.mutation_account_ids == []
 
 
 def test_get_state_rejects_unknown_admitted_account() -> None:

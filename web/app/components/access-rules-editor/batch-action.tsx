@@ -11,9 +11,9 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 
 type AccessRulesBatchActionProps = {
   className?: string
@@ -46,7 +46,7 @@ export default function AccessRulesBatchAction({
   return (
     <div className={cn('pointer-events-none flex w-full justify-center', className)}>
       <div
-        role="toolbar"
+        role="group"
         aria-label={t(($) => $['operation.selectCount'], {
           ns: 'common',
           count: selectedCount,
@@ -61,12 +61,12 @@ export default function AccessRulesBatchAction({
             {t(($) => $['accessRule.selected'], { ns: 'permission' })}
           </span>
         </div>
-        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" tone="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
           <span className="i-ri-delete-bin-line size-4" aria-hidden />
           <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         </Button>
-        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" onClick={onCancel}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>

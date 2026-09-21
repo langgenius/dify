@@ -1,15 +1,16 @@
 from uuid import UUID
 
 from pydantic import TypeAdapter
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
-from extensions.ext_database import db
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
 from models.model import App, EndUser
@@ -36,12 +37,12 @@ class SavedMessageListApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[SavedMessageInfiniteScrollPagination.__name__])
+    @with_session(write=False)
     @model_validate(SavedMessageListQuery)
-    def get(self, query: SavedMessageListQuery, app_model: App, end_user: EndUser):
+    def get(self, query: SavedMessageListQuery, session: Session, app_model: App, end_user: EndUser):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        session = db.session()
         pagination = SavedMessageService.pagination_by_last_id(
             app_model, end_user, query.last_id, query.limit, session=session
         )
@@ -73,13 +74,14 @@ class SavedMessageListApi(WebApiResource):
     )
     @web_ns.response(200, "Message saved successfully", web_ns.models[ResultResponse.__name__])
     @web_ns.expect(web_ns.models[SavedMessageCreatePayload.__name__])
+    @with_session
     @model_validate(SavedMessageCreatePayload)
-    def post(self, payload: SavedMessageCreatePayload, app_model: App, end_user: EndUser):
+    def post(self, payload: SavedMessageCreatePayload, session: Session, app_model: App, end_user: EndUser):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
         try:
-            SavedMessageService.save(app_model, end_user, payload.message_id, session=db.session())
+            SavedMessageService.save(app_model, end_user, payload.message_id, session=session)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
@@ -102,12 +104,13 @@ class SavedMessageApi(WebApiResource):
         }
     )
     @web_ns.response(204, "Message removed successfully")
-    def delete(self, app_model: App, end_user: EndUser, message_id: UUID):
+    @with_session
+    def delete(self, session: Session, app_model: App, end_user: EndUser, message_id: UUID):
         message_id_str = str(message_id)
 
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        SavedMessageService.delete(app_model, end_user, message_id_str, session=db.session())
+        SavedMessageService.delete(app_model, end_user, message_id_str, session=session)
 
         return "", 204

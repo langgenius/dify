@@ -63,6 +63,11 @@ class EndUserService:
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
                     EndUser.session_id == user_id,
+                    # An AppDeploy row is never a legacy row this could upgrade:
+                    # the type was added after the split, and FileGrantService
+                    # reads its rows by type. Retyping one here would hide it
+                    # from that read and strand the files it owns.
+                    EndUser.type != EndUserType.APP_DEPLOY,
                 )
                 .order_by(
                     # Prioritize records with matching type (0 = match, 1 = no match)
@@ -149,6 +154,8 @@ class EndUserService:
             found_app_ids: set[str] = set()
             for eu in existing_end_users:
                 # If duplicates exist due to weak DB constraints, prefer the first
+                if eu.app_id is None:
+                    continue
                 if eu.app_id not in result:
                     result[eu.app_id] = eu
                 found_app_ids.add(eu.app_id)
@@ -174,6 +181,8 @@ class EndUserService:
                 session.add_all(new_end_users)
 
                 for eu in new_end_users:
+                    if eu.app_id is None:
+                        continue
                     result[eu.app_id] = eu
 
         return result

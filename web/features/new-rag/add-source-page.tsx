@@ -14,9 +14,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
 import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import {
@@ -283,6 +284,7 @@ function ConnectionForm({
   provider: Provider
 }) {
   const { t } = useTranslation('dataset')
+  const connectButtonLabelId = useId()
   const supportedAuthKinds = getSupportedAuthKinds(provider)
   const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
   const [configuration, setConfiguration] = useState<Record<string, string>>({})
@@ -413,10 +415,18 @@ function ConnectionForm({
           {t(($) => $['newKnowledge.connectionFailed'])}
         </p>
       )}
-      <Button type="submit" variant="primary" className="mt-4" disabled={pending}>
-        {pending
-          ? t(($) => $['newKnowledge.connectingProvider'])
-          : t(($) => $['newKnowledge.connectProvider'])}
+      <Button
+        type="submit"
+        variant="primary"
+        className="mt-4"
+        loading={pending}
+        aria-labelledby={connectButtonLabelId}
+      >
+        <span id={connectButtonLabelId}>
+          {pending
+            ? t(($) => $['newKnowledge.connectingProvider'])
+            : t(($) => $['newKnowledge.connectProvider'])}
+        </span>
       </Button>
     </form>
   )
@@ -486,6 +496,7 @@ function ConnectionProblem({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const refreshButtonLabelId = useId()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
 
@@ -528,10 +539,17 @@ function ConnectionProblem({
           {t(($) => $['newKnowledge.connectionRefreshFailed'])}
         </p>
       )}
-      <Button className="mt-4" onClick={() => void refresh()} disabled={pending}>
-        {pending
-          ? t(($) => $['newKnowledge.refreshingConnection'])
-          : tCommon(($) => $['operation.retry'])}
+      <Button
+        className="mt-4"
+        onClick={() => void refresh()}
+        loading={pending}
+        aria-labelledby={refreshButtonLabelId}
+      >
+        <span id={refreshButtonLabelId}>
+          {pending
+            ? t(($) => $['newKnowledge.refreshingConnection'])
+            : tCommon(($) => $['operation.retry'])}
+        </span>
       </Button>
     </div>
   )
@@ -570,7 +588,7 @@ function ProvisioningConnection({
           {t(($) => $['newKnowledge.connectionRefreshFailed'])}
         </p>
       )}
-      <Button className="mt-3" loading={pending} onClick={() => void refresh()} disabled={pending}>
+      <Button className="mt-3" loading={pending} onClick={() => void refresh()}>
         {t(($) => $['newKnowledge.refreshConnectionStatus'])}
       </Button>
     </div>
@@ -591,8 +609,9 @@ export function AddSourcePage({
   const { t } = useTranslation('dataset')
   const router = useRouter()
   const queryClient = useQueryClient()
-  const initialDraftRef = useRef<NewKnowledgeSourceDraft>(
-    initialSourceDraft ??
+  const initialDraftRef = useRefWithInit<NewKnowledgeSourceDraft>(
+    () =>
+      initialSourceDraft ??
       createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
   )
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(initialDraftRef.current)
@@ -937,13 +956,13 @@ export function AddSourcePage({
   )
     return (
       <div className="flex min-h-64 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
 
   return (
     <>
-      <main className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
+      <div className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
         <header>
           <h2 className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newKnowledge.addSource'])}
@@ -1017,7 +1036,7 @@ export function AddSourcePage({
                 />
               ) : connection?.status === 'active' ? (
                 <div className="flex min-h-64 items-center justify-center">
-                  <Loading />
+                  <LoadingPlaceholder />
                 </div>
               ) : connection?.status === 'provisioning' ? (
                 <ProvisioningConnection onReconcile={reconcileConnection} />
@@ -1094,7 +1113,7 @@ export function AddSourcePage({
             </p>
           )}
         </div>
-      </main>
+      </div>
       <AddSourceExitDialog
         discarding={discarding}
         error={discardError}

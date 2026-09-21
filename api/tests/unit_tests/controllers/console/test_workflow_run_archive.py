@@ -37,13 +37,11 @@ _ENDPOINTS = [
     WorkflowRunArchiveDownloadFileApi.get,
 ]
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
 
 
 def _account(role: TenantAccountRole) -> Account:
-    account = Account(name="Test User", email="user@example.com")
-    account.id = "account-1"
-    account.role = role
-    return account
+    return make_account(name="Test User", email="user@example.com", role=role)
 
 
 def _original(method):
@@ -128,7 +126,6 @@ def test_workflow_run_archive_endpoint_allows_admitted_role_when_rbac_is_enabled
         assert tenant_id == "tenant-1"
         assert exclude_vector_space
         return {
-            "enabled": True,
             "subscription": {"plan": CloudPlan.TEAM},
         }
 

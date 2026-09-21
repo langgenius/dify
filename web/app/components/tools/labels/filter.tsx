@@ -17,10 +17,7 @@ type LabelFilterProps = {
 }
 const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
   const { tags: labelList } = useTags()
-
   const [keywords, setKeywords] = useState('')
 
   const filteredLabelList = useMemo(() => {
@@ -37,7 +34,7 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <div className="relative">
         <PopoverTrigger
           className={cn(
@@ -72,7 +69,7 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+          className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
           <div className="relative">
             <div className="p-2">

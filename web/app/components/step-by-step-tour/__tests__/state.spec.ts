@@ -84,7 +84,7 @@ vi.mock('@/features/system-features/state', async () => {
   return { deploymentEditionAtom: atom('CLOUD') }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     onboarding: {
       stepByStepTour: {

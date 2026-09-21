@@ -19,3 +19,8 @@ def resolve_agent_runtime_app_model(*, session: Session, tenant_id: str, agent_i
     """
 
     return AgentRosterService(session).get_agent_runtime_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
+
+
+def resolve_existing_agent_runtime_app_model(*, session: Session, tenant_id: str, agent_id: UUID) -> App:
+    """Resolve persisted runtime state for read-only Agent endpoints."""
+    return AgentRosterService(session).get_existing_agent_runtime_app_model(tenant_id=tenant_id, agent_id=str(agent_id))

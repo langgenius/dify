@@ -1,10 +1,9 @@
-/* oxlint-disable typescript/no-explicit-any */
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -12,11 +11,13 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { FlowType } from '@/types/common'
+import { BlockClassification } from '../../block-selector/types'
 import { useAvailableBlocks } from '../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
 import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
 import { NodeActionsDropdownContent } from '../dropdown-content'
+import { NodeActionsDropdown } from '../index'
 
 vi.mock('../../hooks/use-available-blocks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/use-available-blocks')>()
@@ -65,6 +66,22 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
 
 vi.mock('@/service/use-tools', () => ({
   useAllWorkflowTools: vi.fn(),
+  useAllBuiltInTools: () => ({ data: [] }),
+  useAllCustomTools: () => ({ data: [] }),
+  useAllMCPTools: () => ({ data: [] }),
+  useInvalidateAllBuiltInTools: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
+  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
+}))
+vi.mock('@/app/components/plugins/marketplace/query', () => ({
+  useMarketplacePlugins: () => ({ data: undefined }),
+}))
+vi.mock('@/service/use-triggers', () => ({
+  useAllTriggerPlugins: () => ({ data: [] }),
+  useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
@@ -144,12 +161,68 @@ describe('node actions menu details', () => {
       selector({
         configsMap: { flowType: FlowType.appFlow },
         accessControl: { canRun: true },
+        availableNodesMetaData: {
+          nodes: [
+            {
+              metaData: {
+                type: BlockEnum.HttpRequest,
+                title: 'HTTP Request',
+                classification: BlockClassification.Default,
+                sort: 0,
+                author: 'Dify',
+                description: 'Send a request',
+              },
+              defaultValue: {},
+              checkValid: () => ({ isValid: true }),
+            },
+          ],
+        },
       }),
     )
     mockUseNodes.mockReturnValue([
       { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
     ] as any)
     mockUseAllWorkflowTools.mockReturnValue({ data: [] } as any)
+  })
+
+  it('keeps the menu after Escape and closes both surfaces after changing a node', async () => {
+    const user = userEvent.setup()
+    renderWorkflowFlowComponent(
+      <NodeActionsDropdown
+        id="node-1"
+        data={{ type: BlockEnum.Code, title: 'Code Node', desc: '' }}
+      />,
+      {
+        nodes: [],
+        edges: [{ id: 'edge-1', source: 'node-0', target: 'node-1', sourceHandle: 'branch-a' }],
+      },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    const changeNode = screen.getByRole('menuitem', { name: 'workflow.panel.changeBlock' })
+    await user.click(changeNode)
+    const search = screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })
+    await waitFor(() => expect(search).toHaveFocus())
+    await user.keyboard('{ArrowDown}')
+    expect(search).toHaveFocus()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(changeNode).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+    await user.click(await screen.findByRole('button', { name: 'HTTP Request' }))
+
+    expect(handleNodeChange).toHaveBeenCalledExactlyOnceWith(
+      'node-1',
+      BlockEnum.HttpRequest,
+      'branch-a',
+      undefined,
+    )
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
   })
 
   it('should run, copy, duplicate, delete, and expose the help link', async () => {

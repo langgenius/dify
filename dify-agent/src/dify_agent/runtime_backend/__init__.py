@@ -2,6 +2,7 @@
 
 from .errors import (
     BindingAcquireError,
+    BindingCapacityExhaustedError,
     BindingCreateError,
     BindingDestroyError,
     BindingLostError,
@@ -27,6 +28,7 @@ from .protocols import (
 
 __all__ = [
     "BindingAcquireError",
+    "BindingCapacityExhaustedError",
     "BindingCreateError",
     "BindingDestroyError",
     "BindingLostError",

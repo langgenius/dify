@@ -16,10 +16,10 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
 import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
@@ -113,11 +113,7 @@ export default function AddMemberOrGroupDialog({
       ? selectedAccessSubjects.groups.some((group) => group.id === subject.subjectId)
       : selectedAccessSubjects.members.some((member) => member.id === subject.subjectId)
 
-  const statusText = isLoading
-    ? t(($) => $.loading, { ns: 'common' })
-    : hasResults
-      ? null
-      : noResultLabel
+  const statusText = hasResults ? null : noResultLabel
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -137,14 +133,16 @@ export default function AddMemberOrGroupDialog({
       <PopoverContent
         placement="bottom-end"
         alignOffset={300}
-        className="relative flex max-h-[400px] w-[400px] flex-col overflow-hidden bg-components-panel-bg-blur p-0 backdrop-blur-[5px]"
+        className="relative w-100 overflow-hidden bg-components-panel-bg-blur p-0 backdrop-blur-[5px]"
+        onClick={(event) => event.stopPropagation()}
       >
         <PopoverTitle className="sr-only">{searchLabel}</PopoverTitle>
-        <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+        <ScrollArea className="max-h-100 overflow-hidden">
           <ScrollAreaViewport
             ref={scrollRootRef}
             role="region"
             aria-label={searchLabel}
+            className="max-h-100 overscroll-contain"
             style={{ overflowX: 'hidden' }}
           >
             <ScrollAreaContent style={{ minWidth: 0 }}>
@@ -157,12 +155,10 @@ export default function AddMemberOrGroupDialog({
                 />
               </div>
               {shouldShowBreadcrumb && (
-                <div className="flex h-7 items-center px-2 py-0.5">
-                  <SelectedGroupsBreadcrumb
-                    groups={selectedGroupsForBreadcrumb}
-                    onChange={setSelectedGroupsForBreadcrumb}
-                  />
-                </div>
+                <SelectedGroupsBreadcrumb
+                  groups={selectedGroupsForBreadcrumb}
+                  onChange={setSelectedGroupsForBreadcrumb}
+                />
               )}
               {hasResults && (
                 <ul className="p-1">
@@ -184,21 +180,30 @@ export default function AddMemberOrGroupDialog({
                 aria-live="polite"
                 aria-atomic="true"
                 className={
-                  statusText ? 'flex min-h-7 items-center justify-center px-2 py-0.5' : 'h-0'
+                  isLoading || statusText
+                    ? 'flex min-h-7 items-center justify-center px-2 py-0.5 system-sm-regular text-text-tertiary'
+                    : 'h-0'
                 }
               >
                 {isLoading ? (
                   <>
-                    <span className="sr-only">{statusText}</span>
-                    <div className="w-full" aria-hidden="true">
-                      <Loading />
-                    </div>
+                    <SpinnerIcon />
+                    <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
                   </>
                 ) : (
-                  statusText
+                  <>
+                    {statusText}
+                    {isFetchingNextPage && (
+                      <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
+                    )}
+                  </>
                 )}
               </div>
-              {isFetchingNextPage && <Loading />}
+              {isFetchingNextPage && (
+                <div className="flex w-full justify-center">
+                  <SpinnerIcon />
+                </div>
+              )}
               <div ref={anchorRef} className="h-0" />
             </ScrollAreaContent>
           </ScrollAreaViewport>

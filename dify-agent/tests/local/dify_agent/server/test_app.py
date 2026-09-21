@@ -69,6 +69,9 @@ class FakeRunScheduler:
     store: object
     shutdown_grace_seconds: float
     run_timeout_seconds: float
+    stream_text_delta_coalescing_enabled: bool
+    stream_text_delta_flush_interval_seconds: float
+    stream_text_delta_max_chars: int
     layer_providers: tuple[DifyAgentLayerProvider, ...]
     plugin_daemon_http_client: FakePluginDaemonHttpClient
     dify_api_http_client: FakePluginDaemonHttpClient
@@ -82,11 +85,17 @@ class FakeRunScheduler:
         dify_api_http_client: FakePluginDaemonHttpClient,
         shutdown_grace_seconds: float,
         run_timeout_seconds: float,
+        stream_text_delta_coalescing_enabled: bool,
+        stream_text_delta_flush_interval_seconds: float,
+        stream_text_delta_max_chars: int,
         layer_providers: tuple[DifyAgentLayerProvider, ...],
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.run_timeout_seconds = run_timeout_seconds
+        self.stream_text_delta_coalescing_enabled = stream_text_delta_coalescing_enabled
+        self.stream_text_delta_flush_interval_seconds = stream_text_delta_flush_interval_seconds
+        self.stream_text_delta_max_chars = stream_text_delta_max_chars
         self.layer_providers = layer_providers
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
@@ -203,6 +212,10 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         shutdown_grace_seconds=5,
         run_timeout_seconds=17,
         run_retention_seconds=7,
+        run_event_stream_max_length=23,
+        stream_text_delta_coalescing_enabled=False,
+        stream_text_delta_flush_interval_ms=250,
+        stream_text_delta_max_chars=2048,
         plugin_daemon_url="http://plugin-daemon",
         plugin_daemon_api_key="daemon-secret",
         inner_api_url="http://dify-api",
@@ -226,6 +239,9 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         scheduler = FakeRunScheduler.created[0]
         assert scheduler.shutdown_grace_seconds == 5
         assert scheduler.run_timeout_seconds == 17
+        assert scheduler.stream_text_delta_coalescing_enabled is False
+        assert scheduler.stream_text_delta_flush_interval_seconds == 0.25
+        assert scheduler.stream_text_delta_max_chars == 2048
         layer_providers = scheduler.layer_providers
         assert isinstance(layer_providers, tuple)
         execution_context_provider = next(
@@ -284,6 +300,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         store = scheduler.store
         assert isinstance(store, RedisRunStore)
         assert store.run_retention_seconds == 7
+        assert store.run_event_stream_max_length == 23
         assert any(getattr(route, "path", None) == "/agent-stub/connections" for route in create_app(settings).routes)
         assert any(
             getattr(route, "path", None) == "/agent-stub/files/upload-request" for route in create_app(settings).routes
@@ -444,3 +461,35 @@ def test_server_settings_use_generic_outbound_http_args_for_shared_clients() -> 
     assert "outbound_http_max_connections" in model_fields
     assert "outbound_http_max_keepalive_connections" in model_fields
     assert "outbound_http_keepalive_expiry" in model_fields
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_optional_metering_never_starts_a_collector_or_blocks_runtime_startup(
+    monkeypatch: pytest.MonkeyPatch, enabled: bool
+) -> None:
+    import dify_agent.server.routes.e2b_usage as usage_route
+
+    _patch_app_lifecycle(monkeypatch)
+
+    def unexpected_collector(*args: object, **kwargs: object) -> None:
+        raise AssertionError("collector must only be constructed by an explicit scheduled request")
+
+    monkeypatch.setattr(usage_route, "E2BUsageCollector", unexpected_collector)
+    settings = ServerSettings(
+        _env_file=None,
+        sandbox_metering_enabled=enabled,
+        runtime_backend="local",
+        api_token="control-token",
+        e2b_project_id="",
+        e2b_api_key=None,
+        inner_api_key=None,
+    )
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/openapi.json").status_code == 200
+        response = client.post(
+            "/internal/e2b/usage/collect",
+            headers={"Authorization": "Bearer control-token"},
+            json={"project_id": "project"},
+        )
+        assert response.status_code == 503
+    assert FakeRunScheduler.created[-1].shutdown_called

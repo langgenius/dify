@@ -1,10 +1,11 @@
 'use client'
 
+import type * as React from 'react'
 import type { MenuItemVariant } from '../overlay-shared'
 import type { Placement } from '../placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
-import * as React from 'react'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
@@ -45,11 +46,10 @@ function ContextMenuRadioGroup<Value = unknown>(
   return <BaseContextMenu.RadioGroup {...props} />
 }
 
-type ContextMenuContentProps = Omit<BaseContextMenu.Popup.Props, 'children' | 'className'> &
+type ContextMenuContentProps = Omit<BaseContextMenu.Popup.Props, 'children'> &
   Pick<BaseContextMenu.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
     children: React.ReactNode
     placement?: Placement
-    className?: string
   }
 
 function ContextMenuContent({
@@ -72,7 +72,13 @@ function ContextMenuContent({
         className="z-50 outline-hidden"
       >
         <BaseContextMenu.Popup
-          className={cn(menuPopupClassName, floatingPopupAnimationClassName, className)}
+          className={(state) =>
+            cn(
+              menuPopupClassName,
+              floatingPopupAnimationClassName,
+              resolveClassName(className, state),
+            )
+          }
           {...props}
         >
           {children}
@@ -82,24 +88,24 @@ function ContextMenuContent({
   )
 }
 
-type ContextMenuItemProps = Omit<BaseContextMenu.Item.Props, 'className'> & {
+type ContextMenuItemProps = BaseContextMenu.Item.Props & {
   variant?: ContextMenuItemVariant
-  className?: string
 }
 
 function ContextMenuItem({ className, variant = 'default', ...props }: ContextMenuItemProps) {
   return (
     <BaseContextMenu.Item
       data-variant={variant}
-      className={cn(menuItemClassName, menuItemDestructiveClassName, className)}
+      className={(state) =>
+        cn(menuItemClassName, menuItemDestructiveClassName, resolveClassName(className, state))
+      }
       {...props}
     />
   )
 }
 
-type ContextMenuLinkItemProps = Omit<BaseContextMenu.LinkItem.Props, 'className'> & {
+type ContextMenuLinkItemProps = BaseContextMenu.LinkItem.Props & {
   variant?: ContextMenuItemVariant
-  className?: string
 }
 
 function ContextMenuLinkItem({
@@ -111,18 +117,16 @@ function ContextMenuLinkItem({
   return (
     <BaseContextMenu.LinkItem
       data-variant={variant}
-      className={cn(menuItemClassName, menuItemDestructiveClassName, className)}
+      className={(state) =>
+        cn(menuItemClassName, menuItemDestructiveClassName, resolveClassName(className, state))
+      }
       closeOnClick={closeOnClick}
       {...props}
     />
   )
 }
 
-type ContextMenuRadioItemProps<Value = unknown> = Omit<
-  BaseContextMenu.RadioItem.Props,
-  'className' | 'value'
-> & {
-  className?: string
+type ContextMenuRadioItemProps<Value = unknown> = Omit<BaseContextMenu.RadioItem.Props, 'value'> & {
   value: Value
 }
 
@@ -130,16 +134,24 @@ function ContextMenuRadioItem<Value = unknown>({
   className,
   ...props
 }: ContextMenuRadioItemProps<Value>) {
-  return <BaseContextMenu.RadioItem className={cn(menuItemClassName, className)} {...props} />
+  return (
+    <BaseContextMenu.RadioItem
+      className={(state) => cn(menuItemClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
 function ContextMenuCheckboxItem({ className, ...props }: ContextMenuCheckboxItemProps) {
-  return <BaseContextMenu.CheckboxItem className={cn(menuItemClassName, className)} {...props} />
+  return (
+    <BaseContextMenu.CheckboxItem
+      className={(state) => cn(menuItemClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
-type ContextMenuCheckboxItemProps = Omit<BaseContextMenu.CheckboxItem.Props, 'className'> & {
-  className?: string
-}
+type ContextMenuCheckboxItemProps = BaseContextMenu.CheckboxItem.Props
 
 function ContextMenuCheckboxItemIndicator({
   className,
@@ -147,7 +159,7 @@ function ContextMenuCheckboxItemIndicator({
 }: ContextMenuCheckboxItemIndicatorProps) {
   return (
     <BaseContextMenu.CheckboxItemIndicator
-      className={cn(floatingItemIndicatorClassName, className)}
+      className={(state) => cn(floatingItemIndicatorClassName, resolveClassName(className, state))}
       {...props}
     >
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -157,8 +169,8 @@ function ContextMenuCheckboxItemIndicator({
 
 type ContextMenuCheckboxItemIndicatorProps = Omit<
   BaseContextMenu.CheckboxItemIndicator.Props,
-  'children' | 'className'
-> & { className?: string }
+  'children'
+>
 
 function ContextMenuRadioItemIndicator({
   className,
@@ -166,7 +178,7 @@ function ContextMenuRadioItemIndicator({
 }: ContextMenuRadioItemIndicatorProps) {
   return (
     <BaseContextMenu.RadioItemIndicator
-      className={cn(floatingItemIndicatorClassName, className)}
+      className={(state) => cn(floatingItemIndicatorClassName, resolveClassName(className, state))}
       {...props}
     >
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -174,14 +186,10 @@ function ContextMenuRadioItemIndicator({
   )
 }
 
-type ContextMenuRadioItemIndicatorProps = Omit<
-  BaseContextMenu.RadioItemIndicator.Props,
-  'children' | 'className'
-> & { className?: string }
+type ContextMenuRadioItemIndicatorProps = Omit<BaseContextMenu.RadioItemIndicator.Props, 'children'>
 
-type ContextMenuSubTriggerProps = Omit<BaseContextMenu.SubmenuTrigger.Props, 'className'> & {
+type ContextMenuSubTriggerProps = BaseContextMenu.SubmenuTrigger.Props & {
   variant?: ContextMenuItemVariant
-  className?: string
 }
 
 function ContextMenuSubTrigger({
@@ -193,7 +201,9 @@ function ContextMenuSubTrigger({
   return (
     <BaseContextMenu.SubmenuTrigger
       data-variant={variant}
-      className={cn(menuItemClassName, menuItemDestructiveClassName, className)}
+      className={(state) =>
+        cn(menuItemClassName, menuItemDestructiveClassName, resolveClassName(className, state))
+      }
       {...props}
     >
       {children}
@@ -237,23 +247,25 @@ function ContextMenuSubContent({
   )
 }
 
-type ContextMenuLabelProps = Omit<BaseContextMenu.GroupLabel.Props, 'className'> & {
-  className?: string
-}
+type ContextMenuLabelProps = BaseContextMenu.GroupLabel.Props
 
 function ContextMenuLabel({ className, ...props }: ContextMenuLabelProps) {
   return (
-    <BaseContextMenu.GroupLabel className={cn(floatingGroupLabelClassName, className)} {...props} />
+    <BaseContextMenu.GroupLabel
+      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      {...props}
+    />
   )
 }
 
-type ContextMenuSeparatorProps = Omit<BaseContextMenu.Separator.Props, 'className'> & {
-  className?: string
-}
+type ContextMenuSeparatorProps = BaseContextMenu.Separator.Props
 
 function ContextMenuSeparator({ className, ...props }: ContextMenuSeparatorProps) {
   return (
-    <BaseContextMenu.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
+    <BaseContextMenu.Separator
+      className={(state) => cn(floatingSeparatorClassName, resolveClassName(className, state))}
+      {...props}
+    />
   )
 }
 

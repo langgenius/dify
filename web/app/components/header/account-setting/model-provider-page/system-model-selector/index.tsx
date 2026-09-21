@@ -4,20 +4,19 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
-import { updateDefaultModel } from '@/service/common'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import {
   useInvalidateDefaultModel,
-  useModelList,
   useSystemDefaultModelAndModelList,
   useUpdateModelList,
 } from '../hooks'
@@ -66,45 +65,78 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { textGenerationModelList } = useProviderContext()
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
   const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const [activeDialog, setActiveDialog] = useQueryState('dialog', systemModelDialogQueryParser)
   const [manuallyOpen, setManuallyOpen] = useState(false)
   const open = manuallyOpen || activeDialog === 'system-models'
+  const { data: embeddingModelList = [], isPending: isEmbeddingModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
+  )
+  const { data: rerankModelList = [], isPending: isRerankModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
+  )
+  const { data: speech2textModelList = [], isPending: isSpeech2textModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.speech2text } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
+  )
+  const { data: ttsModelList = [], isPending: isTTSModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.tts } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
+  )
+  const [changedModelTypes, setChangedModelTypes] = useState<ModelTypeEnum[]>([])
+  const [
+    currentTextGenerationDefaultModel,
+    changeCurrentTextGenerationDefaultModel,
+    resetTextGenerationDefaultModel,
+  ] = useSystemDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
+  const [
+    currentEmbeddingsDefaultModel,
+    changeCurrentEmbeddingsDefaultModel,
+    resetEmbeddingsDefaultModel,
+  ] = useSystemDefaultModelAndModelList(embeddingsDefaultModel, embeddingModelList)
+  const [currentRerankDefaultModel, changeCurrentRerankDefaultModel, resetRerankDefaultModel] =
+    useSystemDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
+  const [
+    currentSpeech2textDefaultModel,
+    changeCurrentSpeech2textDefaultModel,
+    resetSpeech2textDefaultModel,
+  ] = useSystemDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
+  const [currentTTSDefaultModel, changeCurrentTTSDefaultModel, resetTTSDefaultModel] =
+    useSystemDefaultModelAndModelList(ttsDefaultModel, ttsModelList)
   const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetTextGenerationDefaultModel()
+      resetEmbeddingsDefaultModel()
+      resetRerankDefaultModel()
+      resetSpeech2textDefaultModel()
+      resetTTSDefaultModel()
+      setChangedModelTypes([])
+    }
     setManuallyOpen(nextOpen)
     if (!nextOpen && activeDialog === 'system-models') void setActiveDialog(null)
   }
-  const { data: embeddingModelList, isLoading: isEmbeddingModelListLoading } = useModelList(
-    ModelTypeEnum.textEmbedding,
-    { enabled: open },
-  )
-  const { data: rerankModelList, isLoading: isRerankModelListLoading } = useModelList(
-    ModelTypeEnum.rerank,
-    { enabled: open },
-  )
-  const { data: speech2textModelList, isLoading: isSpeech2textModelListLoading } = useModelList(
-    ModelTypeEnum.speech2text,
-    { enabled: open },
-  )
-  const { data: ttsModelList, isLoading: isTTSModelListLoading } = useModelList(ModelTypeEnum.tts, {
-    enabled: open,
-  })
-  const [changedModelTypes, setChangedModelTypes] = useState<ModelTypeEnum[]>([])
-  const [currentTextGenerationDefaultModel, changeCurrentTextGenerationDefaultModel] =
-    useSystemDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
-  const [currentEmbeddingsDefaultModel, changeCurrentEmbeddingsDefaultModel] =
-    useSystemDefaultModelAndModelList(embeddingsDefaultModel, embeddingModelList)
-  const [currentRerankDefaultModel, changeCurrentRerankDefaultModel] =
-    useSystemDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
-  const [currentSpeech2textDefaultModel, changeCurrentSpeech2textDefaultModel] =
-    useSystemDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
-  const [currentTTSDefaultModel, changeCurrentTTSDefaultModel] = useSystemDefaultModelAndModelList(
-    ttsDefaultModel,
-    ttsModelList,
-  )
   const isSystemModelListLoading =
     open &&
     (isEmbeddingModelListLoading ||
@@ -121,7 +153,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 
     return undefined
   }
-  const handleChangeDefaultModel = (modelType: ModelTypeEnum, model: DefaultModel) => {
+  const handleChangeDefaultModel = (modelType: ModelTypeEnum, model: DefaultModel | undefined) => {
     if (modelType === ModelTypeEnum.textGeneration) changeCurrentTextGenerationDefaultModel(model)
     else if (modelType === ModelTypeEnum.textEmbedding) changeCurrentEmbeddingsDefaultModel(model)
     else if (modelType === ModelTypeEnum.rerank) changeCurrentRerankDefaultModel(model)
@@ -132,10 +164,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       setChangedModelTypes([...changedModelTypes, modelType])
   }
   const handleSave = async () => {
-    if (isSystemModelListLoading) return
+    if (!canManageSystemDefaultModel || isSystemModelListLoading) return
 
-    const res = await updateDefaultModel({
-      url: '/workspaces/current/default-model',
+    const res = await consoleClient.workspaces.current.defaultModel.post({
       body: {
         model_settings: [
           ModelTypeEnum.textGeneration,
@@ -146,15 +177,17 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         ].map((modelType) => {
           return {
             model_type: modelType,
-            provider: getCurrentDefaultModelByModelType(modelType)?.provider,
-            model: getCurrentDefaultModelByModelType(modelType)?.model,
+            provider: getCurrentDefaultModelByModelType(modelType)?.provider ?? null,
+            model: getCurrentDefaultModelByModelType(modelType)?.model ?? null,
           }
         }),
       },
     })
     if (res.result === 'success') {
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      handleOpenChange(false)
+      setManuallyOpen(false)
+      if (activeDialog === 'system-models') void setActiveDialog(null)
+      setChangedModelTypes([])
 
       const allModelTypes = [
         ModelTypeEnum.textGeneration,
@@ -167,6 +200,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       changedModelTypes.forEach((type) => updateModelList(type))
     }
   }
+
+  const getResetProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({
+    onClear: canManageSystemDefaultModel
+      ? () => handleChangeDefaultModel(modelType, undefined)
+      : undefined,
+    clearLabel: `${t(($) => $['operation.reset'], { ns: 'common' })} ${t(($) => $[labelKey], { ns: 'common' })}`,
+  })
 
   const renderModelLabel = (labelKey: SystemModelLabelKey, tipKey: SystemModelTipKey) => {
     const tipText = t(($) => $[tipKey], { ns: 'common' })
@@ -203,6 +243,14 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       </Button>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
+          render={
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleSave()
+              }}
+            />
+          }
           backdropProps={{ forceRender: true }}
           className="flex max-h-[calc(100dvh-2rem)] w-120 max-w-120 flex-col overflow-hidden rounded-2xl p-0"
         >
@@ -246,6 +294,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   )}
                   <div>
                     <ModelSelector
+                      {...getResetProps(
+                        ModelTypeEnum.textGeneration,
+                        'modelProvider.systemReasoningModel.key',
+                      )}
                       value={currentTextGenerationDefaultModel}
                       models={textGenerationModelList}
                       hideProviderSettingsFooter={hideProviderSettingsFooter}
@@ -265,6 +317,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   )}
                   <div>
                     <ModelSelector
+                      {...getResetProps(
+                        ModelTypeEnum.textEmbedding,
+                        'modelProvider.embeddingModel.key',
+                      )}
                       value={currentEmbeddingsDefaultModel}
                       models={embeddingModelList}
                       hideProviderSettingsFooter={hideProviderSettingsFooter}
@@ -284,6 +340,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   )}
                   <div>
                     <ModelSelector
+                      {...getResetProps(ModelTypeEnum.rerank, 'modelProvider.rerankModel.key')}
                       value={currentRerankDefaultModel}
                       models={rerankModelList}
                       hideProviderSettingsFooter={hideProviderSettingsFooter}
@@ -303,6 +360,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   )}
                   <div>
                     <ModelSelector
+                      {...getResetProps(
+                        ModelTypeEnum.speech2text,
+                        'modelProvider.speechToTextModel.key',
+                      )}
                       value={currentSpeech2textDefaultModel}
                       models={speech2textModelList}
                       hideProviderSettingsFooter={hideProviderSettingsFooter}
@@ -319,6 +380,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
                   <div>
                     <ModelSelector
+                      {...getResetProps(ModelTypeEnum.tts, 'modelProvider.ttsModel.key')}
                       value={currentTTSDefaultModel}
                       models={ttsModelList}
                       hideProviderSettingsFooter={hideProviderSettingsFooter}
@@ -339,7 +401,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <Button
               className="min-w-18"
               variant="primary"
-              onClick={handleSave}
+              type="submit"
               disabled={!canManageSystemDefaultModel || isSystemModelListLoading}
             >
               {t(($) => $['operation.save'], { ns: 'common' })}

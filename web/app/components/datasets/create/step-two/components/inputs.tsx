@@ -1,11 +1,12 @@
+import type { InputProps } from '@langgenius/dify-ui/input'
 import type {
   NumberFieldInputProps,
   NumberFieldProps,
   NumberFieldSize,
 } from '@langgenius/dify-ui/number-field'
 import type { FC, PropsWithChildren, ReactNode } from 'react'
-import type { InputProps } from '@/app/components/base/input'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   NumberField,
   NumberFieldControls,
@@ -15,19 +16,10 @@ import {
   NumberFieldInput,
   NumberFieldUnit,
 } from '@langgenius/dify-ui/number-field'
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { env } from '@/env'
-
-const TextLabel: FC<PropsWithChildren> = (props) => {
-  return (
-    <label className="text-xs leading-none font-semibold text-text-secondary">
-      {props.children}
-    </label>
-  )
-}
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
   return (
@@ -37,19 +29,21 @@ const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
     // At/above 552px this restores flex-1 with no cap, so three columns resolve
     // to (container - gaps)/3 — pixel-identical to the stock flex-1 layout.
     <div className="max-w-[288px] space-y-2 @min-[552px]/chunkfields:max-w-none @min-[552px]/chunkfields:flex-1">
-      <TextLabel>{props.label}</TextLabel>
+      <div className="text-xs leading-none font-semibold text-text-secondary">{props.label}</div>
       {props.children}
     </div>
   )
 }
 
-export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
-  tooltip,
-  onChange,
-  value,
-  ...rest
-}) => {
+export const DelimiterInput: FC<
+  Omit<InputProps, 'onChange' | 'onValueChange'> & {
+    tooltip?: string
+    onValueChange?: (value: string) => void
+  }
+> = ({ tooltip, onValueChange, value, ...rest }) => {
   const { t } = useTranslation()
+  const generatedInputId = useId()
+  const inputId = rest.id ?? generatedInputId
   const isComposing = useRef(false)
   const [compositionValue, setCompositionValue] = useState('')
 
@@ -57,9 +51,9 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
     <FormField
       label={
         <div className="mb-1 flex items-center">
-          <span className="mr-0.5 system-sm-semibold">
+          <label htmlFor={inputId} className="mr-0.5 system-sm-semibold">
             {t(($) => $['stepTwo.separator'], { ns: 'datasetCreation' })}
-          </span>
+          </label>
           <Infotip
             aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
             popupClassName="max-w-[200px]"
@@ -70,13 +64,14 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
       }
     >
       <Input
+        id={inputId}
         type="text"
         className="h-9"
         placeholder={t(($) => $['stepTwo.separatorPlaceholder'], { ns: 'datasetCreation' })!}
         value={isComposing.current ? compositionValue : value}
-        onChange={(e) => {
-          if (isComposing.current) setCompositionValue(e.target.value)
-          else onChange?.(e)
+        onValueChange={(value) => {
+          if (isComposing.current) setCompositionValue(value)
+          else onValueChange?.(value)
         }}
         onCompositionStart={() => {
           isComposing.current = true
@@ -86,10 +81,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
           const committed = e.currentTarget.value
           isComposing.current = false
           setCompositionValue('')
-          onChange?.({
-            ...e,
-            target: { ...e.target, value: committed },
-          } as unknown as React.ChangeEvent<HTMLInputElement>)
+          onValueChange?.(committed)
         }}
         {...rest}
       />

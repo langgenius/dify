@@ -28,6 +28,7 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
+  createComboboxItems,
   useComboboxFilter,
   useComboboxFilteredItems,
 } from '.'
@@ -191,6 +192,10 @@ const tagOptions: Option[] = [
   { value: 'finance', label: 'Finance' },
   { value: 'support', label: 'Support' },
 ]
+const tagItems = createComboboxItems(tagOptions, {
+  getValue: (option) => option.value,
+  getLabel: (option) => option.label,
+})
 
 const directoryOptions: Option[] = [
   {
@@ -832,24 +837,31 @@ const MultipleChipsDemo = () => {
       <FieldLabel>Reviewers</FieldLabel>
       <Combobox items={reviewerOptions} multiple value={value} onValueChange={setValue}>
         <ComboboxInputGroup className="h-auto min-h-8 items-start py-1">
-          <ComboboxChips>
-            <ComboboxValue<Option, true>>
-              {(selectedValue) => (
-                <React.Fragment>
-                  {selectedValue?.map((item) => (
-                    <ComboboxChip key={item.value}>
+          <ComboboxValue<Option, true>>
+            {(selectedValue) => {
+              const selectedReviewers = selectedValue ?? []
+
+              return (
+                <ComboboxChips
+                  aria-label={selectedReviewers.length > 0 ? 'Selected reviewers' : undefined}
+                >
+                  {selectedReviewers.map((item) => (
+                    <ComboboxChip
+                      key={item.value}
+                      aria-description="Press Backspace or Delete to remove"
+                    >
                       <span className="max-w-32 truncate">{item.label}</span>
                       <ComboboxChipRemove aria-label={`Remove ${item.label}`} />
                     </ComboboxChip>
                   ))}
                   <ComboboxInput
-                    placeholder={selectedValue?.length ? '' : 'Assign reviewers…'}
+                    placeholder={selectedReviewers.length > 0 ? '' : 'Assign reviewers…'}
                     className="min-w-24 px-1 py-0.5"
                   />
-                </React.Fragment>
-              )}
-            </ComboboxValue>
-          </ComboboxChips>
+                </ComboboxChips>
+              )
+            }}
+          </ComboboxValue>
         </ComboboxInputGroup>
         <ComboboxPortal>
           <ComboboxPositioner>
@@ -861,6 +873,11 @@ const MultipleChipsDemo = () => {
       </Combobox>
       <FieldDescription>
         Selected reviewers wrap inside the input instead of scrolling horizontally.
+        {value.length > 0 && (
+          <span className="sr-only">
+            {` ${value.length} selected. From the start of the input, press Left Arrow to focus the selected items`}
+          </span>
+        )}
       </FieldDescription>
     </Field>
   )
@@ -871,11 +888,25 @@ export const MultipleChips: Story = {
   play: async ({ canvas, userEvent }) => {
     await expect(canvas.getByText('Maya Chen')).toBeVisible()
     await expect(canvas.getByText('Liam Brooks')).toBeVisible()
+    await expect(canvas.getByRole('toolbar', { name: 'Selected reviewers' })).toBeVisible()
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Remove Maya Chen' }))
+    await expect(canvas.getByText('Liam Brooks').parentElement!).toHaveAccessibleDescription(
+      'Press Backspace or Delete to remove',
+    )
 
-    await expect(canvas.queryByText('Maya Chen')).not.toBeInTheDocument()
-    await expect(canvas.getByText('Liam Brooks')).toBeVisible()
+    const input = canvas.getByRole('combobox', { name: 'Reviewers' })
+    await expect(input).toHaveAccessibleDescription(
+      'Selected reviewers wrap inside the input instead of scrolling horizontally. 2 selected. From the start of the input, press Left Arrow to focus the selected items',
+    )
+
+    input.focus()
+    await userEvent.keyboard('{ArrowLeft}{Delete}')
+
+    await expect(canvas.queryByText('Liam Brooks')).not.toBeInTheDocument()
+    await expect(canvas.getByText('Maya Chen')).toBeVisible()
+    await expect(input).toHaveAccessibleDescription(
+      'Selected reviewers wrap inside the input instead of scrolling horizontally. 1 selected. From the start of the input, press Left Arrow to focus the selected items',
+    )
   },
 }
 
@@ -955,15 +986,31 @@ export const ReadOnly: Story = {
       </Combobox>
     </Field>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const input = canvas.getByRole('combobox', { name: 'Read-only source' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(input).toHaveValue('Website crawler')
+    await userEvent.click(input)
+    await waitFor(async () => {
+      await expect(body.getByRole('option', { name: /Notion/ })).toBeVisible()
+    })
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(body.getByRole('option', { name: /S3 bucket/ })).toHaveAttribute(
+      'data-highlighted',
+    )
+    await userEvent.keyboard('{Enter}')
+    await expect(input).toHaveValue('Website crawler')
+  },
 }
 
 const ControlledDemo = () => {
-  const [value, setValue] = React.useState<Option | null>(defaultTag)
+  const [value, setValue] = React.useState<string | null>(defaultTag.value)
 
   return (
     <div className="flex w-80 flex-col items-start gap-3">
       <div className="w-full">
-        <Combobox items={tagOptions} value={value} onValueChange={setValue}>
+        <Combobox<string, false, Option> items={tagItems} value={value} onValueChange={setValue}>
           <ComboboxLabel>Default app tag</ComboboxLabel>
           <ComboboxTrigger>
             <ComboboxValue placeholder="Select tag" />
@@ -972,14 +1019,21 @@ const ControlledDemo = () => {
             <ComboboxPositioner>
               <ComboboxPopup aria-label="Default app tag">
                 <PopupSearchInput label="Search app tags" placeholder="Search tags" />
-                <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
+                <ComboboxList<Option>>
+                  {(option) => (
+                    <ComboboxItem<string> key={option.value} value={option.value}>
+                      <ComboboxItemText>{option.label}</ComboboxItemText>
+                      <ComboboxItemIndicator />
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
               </ComboboxPopup>
             </ComboboxPositioner>
           </ComboboxPortal>
         </Combobox>
       </div>
       <span className="rounded-md border border-divider-subtle bg-components-panel-bg px-2 py-1 system-xs-regular text-text-tertiary">
-        Selected: {value?.label ?? 'None'}
+        Selected ID: {value ?? 'None'}
       </span>
     </div>
   )
@@ -987,16 +1041,24 @@ const ControlledDemo = () => {
 
 export const Controlled: Story = {
   render: () => <ControlledDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Uses `createComboboxItems` so the controlled value is a primitive ID while the list renders complete option records.',
+      },
+    },
+  },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const trigger = canvas.getByRole('combobox', { name: 'Default app tag' })
     const body = within(canvasElement.ownerDocument.body)
 
-    await expect(canvas.getByText('Selected: Production')).toBeVisible()
+    await expect(canvas.getByText('Selected ID: production')).toBeVisible()
     await userEvent.click(trigger)
     await userEvent.click(await body.findByRole('option', { name: 'Finance' }))
 
     await expect(trigger).toHaveTextContent('Finance')
-    await expect(canvas.getByText('Selected: Finance')).toBeVisible()
+    await expect(canvas.getByText('Selected ID: finance')).toBeVisible()
     await waitFor(async () => {
       await expect(body.queryByRole('dialog', { name: 'Default app tag' })).not.toBeInTheDocument()
     })

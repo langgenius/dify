@@ -9,6 +9,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
@@ -58,37 +59,44 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
 
   return (
     <Popover open={open} onOpenChange={(newOpen) => !disabled && setOpen(newOpen)}>
-      <PopoverTrigger
-        disabled={disabled}
-        render={
-          <button
-            type="button"
-            className={cn(
-              'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
-              'data-disabled:cursor-not-allowed data-disabled:opacity-50',
-            )}
-            disabled={disabled || undefined}
-            aria-label={checklistLabel}
-          >
-            <span className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover">
-              <span
-                className="i-ri-list-check-3 size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text"
-                aria-hidden="true"
-              />
-            </span>
-            {!!needWarningNodes.length && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
-                {needWarningNodes.length}
-              </span>
-            )}
-          </button>
-        }
-      />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              disabled={disabled}
+              render={
+                <button
+                  type="button"
+                  className={cn(
+                    'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
+                    'data-disabled:cursor-not-allowed data-disabled:opacity-50',
+                  )}
+                  disabled={disabled || undefined}
+                >
+                  <span className="sr-only">{checklistLabel}</span>
+                  <span className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover">
+                    <span
+                      className="i-ri-list-check-3 size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text"
+                      aria-hidden="true"
+                    />
+                  </span>
+                  {!!needWarningNodes.length && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
+                      {needWarningNodes.length}
+                    </span>
+                  )}
+                </button>
+              }
+            />
+          }
+        />
+        <TooltipContent>{checklistLabel}</TooltipContent>
+      </Tooltip>
       <PopoverContent
         placement="bottom-start"
         sideOffset={12}
         alignOffset={-30}
-        className="w-[420px] rounded-2xl bg-background-default-subtle"
+        className="w-105 rounded-2xl bg-background-default-subtle"
       >
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(2 / 3 * 100vh)' }}>
           <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">

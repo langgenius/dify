@@ -3,7 +3,7 @@ import type { ToolNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
@@ -44,7 +44,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
   if (isLoading) {
     return (
       <div className="flex h-50 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }

@@ -1,6 +1,6 @@
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
@@ -22,6 +22,7 @@ const ConditionVariableSelector = ({
   nodesOutputVars = [],
   onChange,
 }: ConditionVariableSelectorProps) => {
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -36,6 +37,7 @@ const ConditionVariableSelector = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
+        // TODO: Declare non-native button semantics for this div trigger to support keyboard activation.
         render={
           <div className="flex h-6 grow cursor-pointer items-center">
             {!!valueSelector.length && (
@@ -63,12 +65,18 @@ const ConditionVariableSelector = ({
         }
       />
       <PopoverContent
+        initialFocus={searchInputRef}
         placement="bottom-start"
         sideOffset={4}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-74 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
-          <VarReferenceVars vars={nodesOutputVars} isSupportFileVar onChange={handleChange} />
+          <VarReferenceVars
+            searchInputRef={searchInputRef}
+            vars={nodesOutputVars}
+            isSupportFileVar
+            onChange={handleChange}
+          />
         </div>
       </PopoverContent>
     </Popover>

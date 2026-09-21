@@ -8,10 +8,11 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
-import { useLocale } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { BannerItem } from './banner-item'
 import { IndicatorButton } from './indicator-button'
 
@@ -78,7 +79,7 @@ function BannerCarouselContent({
 }: BannerCarouselContentProps) {
   const { t } = useTranslation()
   const { api, selectedIndex } = useCarousel()
-  const trackedBannerKeysRef = useRef(new Set<string>())
+  const trackedBannerKeysRef = useRefWithInit(() => new Set<string>())
   const nextIndex = (selectedIndex + 1) % banners.length
   const activeBanner = banners[selectedIndex]
   const trackingKey = accountId && activeBanner ? `${accountId}:${activeBanner.id}` : null
@@ -107,7 +108,7 @@ function BannerCarouselContent({
       event_time: Date.now(),
     })
     trackedBannerKeysRef.current.add(trackingKey)
-  }, [accountId, activeBanner, language, selectedIndex, trackingKey])
+  }, [accountId, activeBanner, language, selectedIndex, trackingKey, trackedBannerKeysRef])
 
   const controls =
     banners.length > 1 ? (

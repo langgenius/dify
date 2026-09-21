@@ -8,12 +8,12 @@ function environmentHref(path: string, appId: string, environmentId: string) {
 
 export function PublisherEnvironmentActionsSection({
   appId,
-  canAccessPoint = false,
+  canViewAccessPoint,
   deployment,
   environmentId,
 }: {
   appId?: string
-  canAccessPoint?: boolean
+  canViewAccessPoint: boolean
   deployment?: EnvironmentDeployment
   environmentId: string
 }) {
@@ -24,7 +24,7 @@ export function PublisherEnvironmentActionsSection({
 
   return (
     <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
-      {canAccessPoint && (
+      {canViewAccessPoint && (
         <SuggestedAction
           disabled={actionsDisabled}
           description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}

@@ -195,7 +195,7 @@ describe('PluginItem', () => {
       expect(screen.getByTestId('version-badge')).toBeInTheDocument()
     })
 
-    it('should render plugin icon', () => {
+    it('should keep the plugin name visible without exposing a decorative image', () => {
       // Arrange
       const plugin = createPluginDetail()
 
@@ -203,12 +203,8 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
-      expect(img).toHaveAttribute('alt', `plugin-${plugin.plugin_unique_identifier}-logo`)
-      expect(img).toHaveAttribute('loading', 'lazy')
-      expect(img).toHaveAttribute('decoding', 'async')
-      expect(img).toHaveAttribute('width', '40')
-      expect(img).toHaveAttribute('height', '40')
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
+      expect(screen.getByText('Test Plugin')).toBeVisible()
     })
 
     it('should not render category label in corner mark', () => {
@@ -614,7 +610,9 @@ describe('PluginItem', () => {
 
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
-      expect(pluginContainer).toHaveClass('border-components-option-card-option-selected-border')
+      expect(pluginContainer).toHaveClass(
+        'after:inset-ring-components-option-card-option-selected-border',
+      )
     })
 
     it('should not highlight unselected plugin', () => {
@@ -628,7 +626,7 @@ describe('PluginItem', () => {
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
       expect(pluginContainer).not.toHaveClass(
-        'border-components-option-card-option-selected-border',
+        'after:inset-ring-components-option-card-option-selected-border',
       )
     })
 
@@ -654,9 +652,18 @@ describe('PluginItem', () => {
 
       // Assert
       expect(screen.getByTestId('plugin-action').parentElement).toHaveClass(
+        'absolute',
+        'top-1/2',
+        'right-0',
+        '-translate-y-1/2',
+        'pointer-events-none',
         'opacity-0',
+        'group-hover/plugin-item:pointer-events-auto',
         'group-hover/plugin-item:opacity-100',
-        'focus-within:opacity-100',
+        'group-focus-within/plugin-item:pointer-events-auto',
+        'group-focus-within/plugin-item:opacity-100',
+        '[@media(hover:none)]:pointer-events-auto',
+        '[@media(hover:none)]:opacity-100',
       )
     })
   })
@@ -708,7 +715,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img.getAttribute('src')).toContain('dark-icon.png')
     })
 
@@ -726,7 +733,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img.getAttribute('src')).toContain('light-icon.png')
     })
 
@@ -744,7 +751,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img.getAttribute('src')).toContain('light-icon.png')
     })
 
@@ -760,7 +767,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img).toHaveAttribute('src', 'https://example.com/icon.png')
     })
   })
@@ -840,7 +847,7 @@ describe('PluginItem', () => {
       expect(() => render(<PluginItem plugin={plugin} />)).not.toThrow()
 
       // The img element should still be rendered
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img).toBeInTheDocument()
     })
 

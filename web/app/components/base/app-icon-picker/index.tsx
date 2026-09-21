@@ -4,16 +4,21 @@ import type { AppIconType, ImageFile } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { RiImageCircleAiLine } from '@remixicon/react'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
-import Divider from '../divider'
-import { defaultEmojiBackground } from '../emoji-picker/constants'
+import { resolveEmoji } from '@/utils/emoji'
+import {
+  defaultEmojiBackground,
+  getRandomEmoji,
+  getRandomEmojiBackground,
+} from '../emoji-picker/constants'
 import EmojiPickerInner from '../emoji-picker/Inner'
+import { addRecentEmoji, useRecentEmojis } from '../emoji-picker/storage'
 import { useLocalFileUploader } from '../image-uploader/hooks'
 import ImageInput from './ImageInput'
-import s from './style.module.css'
 import getCroppedImg from './utils'
 
 export type AppIconEmojiSelection = {
@@ -90,12 +95,12 @@ function AppIconPickerContent({
     {
       key: 'emoji',
       label: t(($) => $['iconPicker.emoji'], { ns: 'app' }),
-      icon: <span className="text-lg">🤖</span>,
+      icon: <span className="text-base">🤖</span>,
     },
     {
       key: 'image',
       label: t(($) => $['iconPicker.image'], { ns: 'app' }),
-      icon: <RiImageCircleAiLine className="size-4" />,
+      icon: <span className="i-ri-image-circle-ai-line size-4" />,
     },
   ]
   const [activeTab, setActiveTab] = useState<AppIconType>('emoji')
@@ -105,10 +110,12 @@ function AppIconPickerContent({
     if (!initialEmoji?.icon) return undefined
 
     return {
-      emoji: initialEmoji.icon,
+      emoji: resolveEmoji(initialEmoji.icon),
       background: initialEmoji.background ?? defaultEmojiBackground,
     }
   })
+
+  const [, setRecentEmojis] = useRecentEmojis()
 
   const [uploading, setUploading] = useState<boolean>()
 
@@ -153,6 +160,7 @@ function AppIconPickerContent({
   const handleSelect = async () => {
     if (activeTab === 'emoji') {
       if (emoji) {
+        setRecentEmojis((recent) => addRecentEmoji(recent, emoji.emoji))
         onSelect?.({
           type: 'emoji',
           icon: emoji.emoji,
@@ -181,9 +189,8 @@ function AppIconPickerContent({
     <DialogContent
       backdropProps={{ forceRender: true }}
       className={cn(
-        'w-full overflow-hidden! border-none text-left align-middle',
-        s.container,
-        'h-[min(462px,calc(100dvh-2rem))]! max-h-none! w-90.5! p-0!',
+        'flex max-h-[calc(100dvh-2rem)] w-80.5 flex-col overflow-hidden p-0 text-left',
+        activeTab === 'emoji' && 'h-[min(480px,calc(100dvh-2rem))]',
         className,
       )}
     >
@@ -192,55 +199,80 @@ function AppIconPickerContent({
       </DialogTitle>
 
       {showImageUpload && (
-        <div className="w-full p-2 pb-0">
-          <div className="flex items-center justify-center gap-2 rounded-xl bg-background-body p-1 text-text-primary">
+        <div
+          className={cn(
+            'w-full shrink-0 px-3 pt-3 pb-2',
+            activeTab === 'image' && 'border-b border-divider-subtle',
+          )}
+        >
+          <SegmentedControl
+            className="flex w-full"
+            aria-label={t(($) => $['iconPicker.emoji'], { ns: 'app' })}
+            value={activeTab}
+            onValueChange={(value) => {
+              setActiveTab(value)
+              setInputImageInfo(undefined)
+            }}
+          >
             {tabs.map((tab) => (
-              <button
-                type="button"
-                key={tab.key}
-                className={cn(
-                  'flex h-8 flex-1 shrink-0 items-center justify-center rounded-lg p-2 system-sm-medium text-text-tertiary',
-                  activeTab === tab.key &&
-                    'bg-components-main-nav-nav-button-bg-active text-text-accent shadow-md',
-                )}
-                onClick={() => setActiveTab(tab.key as AppIconType)}
-              >
-                {tab.icon} &nbsp;
-                {tab.label}
-              </button>
+              <SegmentedControlItem key={tab.key} value={tab.key} className="flex-1">
+                <span className="flex size-5 items-center justify-center" aria-hidden="true">
+                  {tab.icon}
+                </span>
+                <span className="p-0.5">{tab.label}</span>
+              </SegmentedControlItem>
             ))}
-          </div>
+          </SegmentedControl>
         </div>
       )}
 
       {activeTab === 'emoji' && (
         <EmojiPickerInner
-          className={cn('flex-1 overflow-hidden pt-2')}
-          emoji={initialEmoji?.icon}
-          background={initialEmoji?.background ?? undefined}
+          className={cn('flex-1 overflow-hidden', !showImageUpload && 'pt-3')}
+          emoji={emoji?.emoji}
+          background={emoji?.background}
           onSelect={(emoji, background) => setEmoji({ emoji, background })}
         />
       )}
       {activeTab === 'image' && (
-        <ImageInput className={cn('flex-1 overflow-hidden')} onImageInput={handleImageInput} />
+        <ImageInput className="min-h-0 overflow-y-auto" onImageInput={handleImageInput} />
       )}
 
-      <Divider className="m-0" />
-      <div className="flex w-full items-center justify-center gap-2 p-3">
-        <Button className="w-full" onClick={() => onOpenChange(false)}>
-          {t(($) => $['iconPicker.cancel'], { ns: 'app' })}
-        </Button>
+      {(activeTab === 'emoji' || inputImageInfo) && (
+        <>
+          <Separator decorative className="m-0 h-[0.5px]" />
+          <div className="flex w-full shrink-0 items-center justify-center gap-2 bg-components-panel-bg-blur p-3 backdrop-blur-sm">
+            {activeTab === 'emoji' ? (
+              <Button
+                className="min-w-0 flex-1"
+                onClick={() =>
+                  setEmoji({
+                    emoji: getRandomEmoji(emoji?.emoji),
+                    background: getRandomEmojiBackground(emoji?.background),
+                  })
+                }
+              >
+                <span className="i-ri-dice-line size-4" aria-hidden="true" />
+                {t(($) => $['iconPicker.tryYourLuck'], { ns: 'app' })}
+              </Button>
+            ) : (
+              <Button className="min-w-0 flex-1" onClick={() => onOpenChange(false)}>
+                {t(($) => $['iconPicker.cancel'], { ns: 'app' })}
+              </Button>
+            )}
 
-        <Button
-          variant="primary"
-          className="w-full"
-          disabled={uploading}
-          loading={uploading}
-          onClick={handleSelect}
-        >
-          {t(($) => $['iconPicker.ok'], { ns: 'app' })}
-        </Button>
-      </div>
+            <Button
+              variant="primary"
+              className="min-w-0 flex-1"
+              disabled={activeTab === 'emoji' ? !emoji : !inputImageInfo}
+              loading={uploading}
+              onClick={handleSelect}
+            >
+              {t(($) => $['iconPicker.ok'], { ns: 'app' })}
+            </Button>
+          </div>
+        </>
+      )}
     </DialogContent>
   )
 }

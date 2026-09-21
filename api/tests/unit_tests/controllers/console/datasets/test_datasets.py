@@ -8,10 +8,12 @@ from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
+from controllers.common.rbac import DatasetId, Workspace
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.datasets import (
@@ -37,6 +39,7 @@ from controllers.console.datasets.datasets import (
     _get_retrieval_methods_by_vector_type,
 )
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from controllers.console.wraps import RBACPermission
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.provider_manager import ProviderManager
@@ -44,9 +47,10 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.storage.storage_type import StorageType
+from fields.dataset_fields import build_dataset_detail_prefetch
 from models.account import Account, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery, Document, DocumentSegment
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import ApiToken, App, AppMode, IconType, UploadFile
 from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DatasetPermissionService, DatasetService
@@ -171,16 +175,25 @@ def make_document_status(**overrides) -> Document:
     return Document(**base)
 
 
-def make_document_segment(*, position: int, completed: bool) -> DocumentSegment:
+def make_document_segment(
+    *,
+    position: int,
+    completed: bool,
+    document_id: str = "doc-1",
+    tenant_id: str = "tenant-1",
+    dataset_id: str = "dataset-1",
+    status: SegmentStatus = SegmentStatus.WAITING,
+) -> DocumentSegment:
     return DocumentSegment(
-        tenant_id="tenant-1",
-        dataset_id="dataset-1",
-        document_id="doc-1",
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document_id,
         position=position,
         content=f"segment {position}",
         word_count=2,
         tokens=2,
         created_by="account-1",
+        status=status,
         completed_at=datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC) if completed else None,
     )
 
@@ -219,7 +232,7 @@ class TestDatasetList(_UsesSQLiteSession):
             "icon_url": None,
         }
 
-    def test_get_serializes_database_fields_with_caller_session(self, app: Flask, dataset_model_property_defaults):
+    def test_get_batch_loads_database_fields_with_caller_session(self, app: Flask, dataset_model_property_defaults):
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -229,11 +242,21 @@ class TestDatasetList(_UsesSQLiteSession):
             with (
                 patch.object(DatasetService, "get_datasets", return_value=([dataset], 1)),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
+                patch(
+                    "controllers.console.datasets.datasets.build_dataset_detail_prefetch",
+                    wraps=build_dataset_detail_prefetch,
+                ) as prefetch_mock,
             ):
-                method(api, session, "tenant-1", current_user)
+                resp, status = method(api, session, "tenant-1", current_user)
 
+        assert status == 200
+        prefetch_mock.assert_called_once_with([dataset], session=session)
+        # The page is served from that single batch load, so no field may fall back
+        # to a per-dataset query.
         for getter in dataset_model_property_defaults.values():
-            getter.assert_called_once_with(dataset, session=session)
+            getter.assert_not_called()
+        assert resp["data"][0]["document_count"] == 0
+        assert resp["data"][0]["tags"] == []
 
     def test_get_with_ids_filter(self, app: Flask):
         api = DatasetListApi()
@@ -1096,6 +1119,49 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
             "dataset_id": None,
         }
 
+    @pytest.mark.parametrize(
+        ("dataset_id", "expected_scene", "expected_locator_type", "expected_path_args"),
+        [
+            ("dataset-1", RBACPermission.DATASET_USE, DatasetId, {"dataset_id": "dataset-1"}),
+            (None, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace, None),
+        ],
+    )
+    def test_post_authorizes_existing_and_new_dataset_workflows(
+        self,
+        app: Flask,
+        dataset_id: str | None,
+        expected_scene: RBACPermission,
+        expected_locator_type: type[DatasetId] | type[Workspace],
+        expected_path_args: dict[str, str] | None,
+    ) -> None:
+        api = DatasetIndexingEstimateApi()
+        method = unwrap(api.post)
+        payload = {**self._base_payload(), "dataset_id": dataset_id}
+        session = self.session
+        session.add(self._upload_file())
+        session.flush()
+        current_user = make_account()
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
+            patch(
+                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
+                return_value=IndexingEstimate(total_segments=1, preview=[]),
+            ),
+            patch("controllers.console.datasets.datasets.enforce_rbac_checks", create=True) as enforce_checks,
+        ):
+            method(api, IndexingEstimatePayload(**payload), session, "tenant-1", current_user)
+
+        enforce_checks.assert_called_once()
+        kwargs = enforce_checks.call_args.kwargs
+        assert kwargs["tenant_id"] == "tenant-1"
+        assert kwargs["account_id"] == current_user.id
+        assert kwargs.get("path_args") == expected_path_args
+        [check] = kwargs["checks"]
+        assert check.scene is expected_scene
+        assert isinstance(check.locator, expected_locator_type)
+
     def test_post_success_upload_file(self, app: Flask):
         api = DatasetIndexingEstimateApi()
         method = unwrap(api.post)
@@ -1118,6 +1184,7 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
                 IndexingEstimatePayload(**payload),
                 session,
                 "tenant-1",
+                make_account(),
             )
         assert status == 200
         assert response == {
@@ -1144,6 +1211,7 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
                     IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
+                    make_account(),
                 )
 
     def test_post_llm_bad_request_error(self, app: Flask):
@@ -1169,6 +1237,7 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
                     IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
+                    make_account(),
                 )
 
     def test_post_provider_token_not_init(self, app: Flask):
@@ -1194,6 +1263,7 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
                     IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
+                    make_account(),
                 )
 
     def test_post_generic_exception(self, app: Flask):
@@ -1218,6 +1288,7 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
                     IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
+                    make_account(),
                 )
 
 
@@ -1396,6 +1467,65 @@ class TestDatasetIndexingStatusApi(_UsesSQLiteSession):
         assert item["completed_segments"] == 2
         assert item["total_segments"] == 5
 
+    def test_get_batch_segment_counts_uses_one_aggregate_query(self, app: Flask, sqlite_engine):
+        api = DatasetIndexingStatusApi()
+        method = unwrap(api.get)
+        dataset = make_dataset(id="dataset-1")
+        documents = [make_document_status(id=f"doc-{index}", position=index) for index in range(1, 6)]
+        session = self.session
+        session.add_all(documents)
+        session.add_all(
+            [
+                make_document_segment(
+                    position=position,
+                    completed=position <= 2,
+                    document_id=document.id,
+                )
+                for document in documents
+                for position in range(1, 4)
+            ]
+        )
+        session.add_all(
+            [
+                make_document_segment(
+                    position=4,
+                    completed=True,
+                    document_id=documents[0].id,
+                    status=SegmentStatus.RE_SEGMENT,
+                ),
+                make_document_segment(
+                    position=5,
+                    completed=True,
+                    document_id=documents[0].id,
+                    tenant_id="other-tenant",
+                ),
+            ]
+        )
+        session.flush()
+
+        select_statements: list[str] = []
+
+        def record_select(_connection, _cursor, statement, _parameters, _context, _executemany):
+            if statement.lstrip().upper().startswith("SELECT"):
+                select_statements.append(statement)
+
+        event.listen(sqlite_engine, "before_cursor_execute", record_select)
+        try:
+            with (
+                app.test_request_context("/"),
+                patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+                patch.object(DatasetService, "check_dataset_permission"),
+            ):
+                response, status = method(api, session, "tenant-1", make_account(), "dataset-1")
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", record_select)
+
+        assert status == 200
+        assert len(response["data"]) == 5
+        assert all(item["completed_segments"] == 2 for item in response["data"])
+        assert all(item["total_segments"] == 3 for item in response["data"])
+        assert len(select_statements) == 2
+
 
 class TestDatasetApiKeyApi(_UsesSQLiteSession):
     def test_get_api_keys_success(self, app: Flask):
@@ -1404,14 +1534,14 @@ class TestDatasetApiKeyApi(_UsesSQLiteSession):
         mock_key_1 = ApiToken(
             id="key-1",
             type="dataset",
-            token="ds-abc",
+            token="dataset-aaaa1111bbbb",
             last_used_at=None,
             created_at=None,
         )
         mock_key_2 = ApiToken(
             id="key-2",
             type="dataset",
-            token="ds-def",
+            token="dataset-cccc2222dddd",
             last_used_at=None,
             created_at=None,
         )
@@ -1424,10 +1554,11 @@ class TestDatasetApiKeyApi(_UsesSQLiteSession):
             response = method(api, session, "tenant-1")
         assert "data" in response
         assert len(response["data"]) == 2
+        # reveal-once: the list returns masked tokens, never the full secret
         assert response["data"][0]["id"] == "key-1"
-        assert response["data"][0]["token"] == "ds-abc"
+        assert response["data"][0]["token"] == "datas...bbbb"
         assert response["data"][1]["id"] == "key-2"
-        assert response["data"][1]["token"] == "ds-def"
+        assert response["data"][1]["token"] == "datas...dddd"
 
     def test_post_create_api_key_success(self, app: Flask):
         api = DatasetApiKeyApi()
@@ -1465,6 +1596,72 @@ class TestDatasetApiKeyApi(_UsesSQLiteSession):
             "message": "Cannot create more than 10 API keys for this resource type.",
             "custom": "max_keys_exceeded",
         }
+
+    def test_get_api_keys_include_bound_dataset_ids(self, app: Flask):
+        api = DatasetApiKeyApi()
+        method = unwrap(api.get)
+        mock_key = MagicMock(spec=ApiToken)
+        mock_key.id = "key-1"
+        mock_key.type = "dataset"
+        mock_key.token = "dataset-aaaa1111bbbb"
+        mock_key.last_used_at = None
+        mock_key.created_at = None
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = [mock_key]
+        # Two binding rows for the same key -> the masked list surfaces both dataset ids.
+        session.execute.return_value.all.return_value = [("key-1", "ds-1"), ("key-1", "ds-2")]
+        with app.test_request_context("/"):
+            response = method(api, session, "tenant-1")
+        assert response["data"][0]["dataset_ids"] == ["ds-1", "ds-2"]
+
+    def test_post_create_scoped_key_persists_bindings(self, app: Flask):
+        api = DatasetApiKeyApi()
+        method = unwrap(api.post)
+        mock_token = MagicMock()
+        mock_token.id = "new-key-id"
+        mock_token.last_used_at = None
+        mock_token.created_at = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
+        mock_api_token_cls = MagicMock()
+        mock_api_token_cls.return_value = mock_token
+        mock_api_token_cls.generate_api_key.return_value = "dataset-abc123"
+        session = MagicMock()
+        # Dataset-ownership validation returns exactly the requested ids (all belong to tenant).
+        session.scalars.return_value.all.return_value = ["ds-1", "ds-2"]
+        session.scalar.return_value = 1
+        with (
+            app.test_request_context("/", json={"dataset_ids": ["ds-1", "ds-2", "ds-1"]}),
+            patch("controllers.console.datasets.datasets.ApiToken", mock_api_token_cls),
+        ):
+            response, status = method(api, session, "tenant-1")
+        assert status == 200
+        # Duplicates are collapsed and returned in the reveal-once response.
+        assert response["dataset_ids"] == ["ds-1", "ds-2"]
+        # One binding row is added per unique dataset id (plus the token itself).
+        added = [call.args[0] for call in session.add.call_args_list]
+        binding_dataset_ids = [obj.dataset_id for obj in added if obj.__class__.__name__ == "DatasetApiTokenBinding"]
+        assert binding_dataset_ids == ["ds-1", "ds-2"]
+
+    def test_post_rejects_dataset_ids_from_another_tenant(self, app: Flask):
+        api = DatasetApiKeyApi()
+        method = unwrap(api.post)
+        session = MagicMock()
+        # None of the requested ids belong to this tenant.
+        session.scalars.return_value.all.return_value = []
+        with app.test_request_context("/", json={"dataset_ids": ["foreign-ds"]}):
+            with pytest.raises(BadRequest) as exc_info:
+                method(api, session, "tenant-1")
+        assert exc_info.value.code == 400
+        assert "Unknown knowledge base id(s)" in vars(exc_info.value)["data"]["message"]
+
+    def test_post_rejects_non_list_dataset_ids(self, app: Flask):
+        api = DatasetApiKeyApi()
+        method = unwrap(api.post)
+        session = MagicMock()
+        with app.test_request_context("/", json={"dataset_ids": "not-a-list"}):
+            with pytest.raises(BadRequest) as exc_info:
+                method(api, session, "tenant-1")
+        assert exc_info.value.code == 400
+        assert vars(exc_info.value)["data"]["message"] == "dataset_ids must be a list of strings."
 
 
 class TestDatasetApiDeleteApi(_UsesSQLiteSession):

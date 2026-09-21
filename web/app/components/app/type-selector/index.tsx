@@ -7,7 +7,6 @@ import {
   RiFilter3Line,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   BubbleTextMod,
@@ -31,7 +30,6 @@ const allTypes: AppModeEnum[] = [
 ]
 
 const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
-  const [open, setOpen] = useState(false)
   const { t } = useTranslation()
   const triggerLabel =
     value.length === 0
@@ -39,7 +37,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
       : value.map((type) => getAppTypeLabel(type, t)).join(', ')
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <div className="relative">
         <PopoverTrigger
           aria-label={triggerLabel}
@@ -63,7 +61,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          className="w-[240px] rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+          className="w-60 rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
           <ul className="relative w-full p-1">
             {allTypes.map((mode) => (

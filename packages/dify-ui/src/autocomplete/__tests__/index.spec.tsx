@@ -19,7 +19,19 @@ import {
   AutocompleteSeparator,
   AutocompleteStatus,
   AutocompleteTrigger,
+  useAutocompleteFilteredItems,
 } from '../index'
+
+function AutocompleteTypeExamples() {
+  const filteredItems = useAutocompleteFilteredItems<string>()
+
+  // @ts-expect-error internally filtered items are read-only
+  filteredItems.push('workflow')
+
+  return null
+}
+
+void AutocompleteTypeExamples
 
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)

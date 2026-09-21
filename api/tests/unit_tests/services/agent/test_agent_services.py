@@ -37,9 +37,11 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.enums import AppStatus, ConversationFromSource, ConversationStatus
+from models.enums import ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
-from models.workflow import Workflow, WorkflowType
+from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
+from models.tools import ToolFile
+from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
@@ -64,6 +66,7 @@ from services.entities.agent_entities import (
     ComposerSaveStrategy,
     ComposerVariant,
 )
+from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_workflow
 
 
 def _agent_soul_with_model() -> AgentSoulConfig:
@@ -122,14 +125,13 @@ def _snapshot(
 
 
 def _conversation(*, conversation_id: str = "conversation-1", account_id: str = "account-1") -> Conversation:
-    return Conversation(
-        id=conversation_id,
-        app_id="app-1",
-        override_model_configs="{}",
+    return make_conversation(
+        conversation_id=conversation_id,
         mode=AppMode.AGENT_CHAT,
         name="Debug",
+        inputs={},
+        override_model_configs="{}",
         summary="",
-        _inputs={},
         introduction="",
         system_instruction="",
         status=ConversationStatus.NORMAL,
@@ -140,19 +142,7 @@ def _conversation(*, conversation_id: str = "conversation-1", account_id: str = 
 
 
 def _workflow(*, workflow_id: str = "workflow-1", tenant_id: str = "tenant-1", app_id: str = "app-1") -> Workflow:
-    return Workflow(
-        id=workflow_id,
-        tenant_id=tenant_id,
-        app_id=app_id,
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph='{"nodes": [], "edges": []}',
-        _features="{}",
-        created_by="account-1",
-        _environment_variables="{}",
-        _conversation_variables="{}",
-        _rag_pipeline_variables="{}",
-    )
+    return make_workflow(workflow_id=workflow_id, tenant_id=tenant_id, app_id=app_id)
 
 
 def _app(
@@ -162,27 +152,20 @@ def _app(
     name: str = "Agent App",
     mode: AppMode = AppMode.AGENT_CHAT,
 ) -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name=name,
-        description="",
         mode=mode,
-        icon_type=IconType.EMOJI,
         icon="🤖",
         icon_background="#fff",
-        status=AppStatus.NORMAL,
         enable_site=False,
-        enable_api=True,
-        max_active_requests=None,
         created_by="account-1",
     )
 
 
 def _account(*, account_id: str = "account-1") -> Account:
-    account = Account(name="Agent Tester", email=f"{account_id}@example.com")
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Agent Tester", email=f"{account_id}@example.com")
 
 
 def test_agent_soul_has_model():
@@ -704,7 +687,7 @@ def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.Mon
     draft = AgentConfigDraft(config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "x"}}))
 
     monkeypatch.setattr(AgentComposerService, "_require_agent_app_agent", lambda **kwargs: agent)
-    monkeypatch.setattr(AgentComposerService, "_get_or_create_agent_draft", lambda **kwargs: draft)
+    monkeypatch.setattr(AgentComposerService, "_get_agent_draft", lambda **kwargs: draft)
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: None)
     monkeypatch.setattr(AgentComposerService, "_serialize_agent", lambda _agent: {"id": _agent.id})
     monkeypatch.setattr(AgentComposerService, "_serialize_version", lambda _version: None)
@@ -714,6 +697,133 @@ def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.Mon
 
     assert result["save_options"] == [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value]
     assert result["active_config_is_published"] is True
+
+
+@pytest.mark.parametrize("scope", [AgentScope.ROSTER, AgentScope.WORKFLOW_ONLY])
+@pytest.mark.parametrize("draft_state", ["missing", "current", "stale"])
+def test_load_agent_composer_never_persists_draft_changes(
+    sqlite_session: Session, scope: AgentScope, draft_state: str
+) -> None:
+    session = sqlite_session
+    agent = _agent(scope=scope)
+    agent.active_config_snapshot_id = "snapshot-2"
+    agent.active_config_is_published = True
+    snapshot = _snapshot(
+        snapshot_id="snapshot-2",
+        version=2,
+        agent_soul=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "snapshot"}}),
+    )
+    draft = None
+    session.add_all([agent, snapshot])
+    if draft_state != "missing":
+        draft = AgentConfigDraft(
+            tenant_id=agent.tenant_id,
+            agent_id=agent.id,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            draft_owner_key="",
+            base_snapshot_id="snapshot-1" if draft_state == "stale" else snapshot.id,
+            config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "draft edit"}}),
+            created_by="account-1",
+            updated_by="account-1",
+        )
+        session.add(draft)
+    session.commit()
+    original_draft = AgentComposerService._serialize_draft(draft)
+    original_agent = AgentComposerService._serialize_agent(agent)
+    original_config = draft.config_snapshot_dict if draft is not None else None
+    flushes: list[str] = []
+    event.listen(session, "before_flush", lambda *_args: flushes.append("flush"))
+
+    for _ in range(3):
+        result = AgentComposerService.load_agent_composer(session=session, tenant_id=agent.tenant_id, agent_id=agent.id)
+        expected_prompt = (
+            "snapshot"
+            if draft_state == "missing" or (scope == AgentScope.WORKFLOW_ONLY and draft_state == "stale")
+            else "draft edit"
+        )
+        assert result["agent_soul"]["prompt"]["system_prompt"] == expected_prompt
+        assert result["draft"] == original_draft
+        assert result["agent"] == original_agent
+        assert result["active_config_is_published"] is True
+        assert not session.new
+        assert not session.dirty
+    session.commit()
+    assert flushes == []
+    persisted = session.scalars(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == agent.id)).all()
+    assert len(persisted) == (0 if draft is None else 1)
+    if draft is not None:
+        session.refresh(draft)
+        assert AgentComposerService._serialize_draft(draft) == original_draft
+        assert draft.config_snapshot_dict == original_config
+
+
+@pytest.mark.parametrize("snapshot_state", ["no_pointer", "missing", "wrong_tenant", "wrong_agent"])
+def test_load_agent_composer_requires_owned_snapshot_without_draft(
+    sqlite_session: Session, snapshot_state: str
+) -> None:
+    agent = _agent()
+    agent.active_config_snapshot_id = None if snapshot_state == "no_pointer" else "snapshot-1"
+    sqlite_session.add(agent)
+    if snapshot_state in {"wrong_tenant", "wrong_agent"}:
+        sqlite_session.add(
+            _snapshot(
+                tenant_id="other-tenant" if snapshot_state == "wrong_tenant" else agent.tenant_id,
+                agent_id="other-agent" if snapshot_state == "wrong_agent" else agent.id,
+            )
+        )
+    sqlite_session.commit()
+    with pytest.raises(AgentVersionNotFoundError):
+        AgentComposerService.load_agent_composer(session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id)
+    assert not sqlite_session.new
+    assert not sqlite_session.dirty
+
+
+def test_load_agent_composer_does_not_select_personal_build_draft(sqlite_session: Session) -> None:
+    agent = _agent()
+    snapshot = _snapshot()
+    agent.active_config_snapshot_id = snapshot.id
+    build_draft = AgentConfigDraft(
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id="account-1",
+        draft_owner_key="account-1",
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "private build"}}),
+    )
+    sqlite_session.add_all([agent, snapshot, build_draft])
+    sqlite_session.commit()
+    result = AgentComposerService.load_agent_composer(
+        session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id
+    )
+    assert result["draft"] is None
+    assert result["agent_soul"] == snapshot.config_snapshot_dict
+    assert not sqlite_session.new
+    assert not sqlite_session.dirty
+
+
+def test_prepare_agent_composer_draft_creates_only_for_explicit_write(sqlite_session: Session) -> None:
+    agent = _agent()
+    snapshot = _snapshot()
+    agent.active_config_snapshot_id = snapshot.id
+    sqlite_session.add_all([agent, snapshot])
+    sqlite_session.commit()
+    result = AgentComposerService.load_agent_composer(
+        session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id
+    )
+    assert result["draft"] is None
+    draft = AgentComposerService.prepare_agent_composer_draft(
+        session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id, account_id="account-2"
+    )
+    sqlite_session.commit()
+    assert draft.config_snapshot_dict == snapshot.config_snapshot_dict
+    assert draft.created_by == "account-2"
+    assert (
+        AgentComposerService.prepare_agent_composer_draft(
+            session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id, account_id="account-2"
+        ).id
+        == draft.id
+    )
 
 
 def test_save_agent_app_composer_rejects_version_save_strategy(sqlite_session: Session):
@@ -5089,9 +5199,9 @@ class TestAgentAppBackingAgent:
         )
         monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_kwargs: "Iris copy")
         monkeypatch.setattr(
-            roster_service.FeatureService,
-            "get_system_features",
-            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            roster_service.SystemFeatureService,
+            "is_webapp_auth_enabled",
+            lambda: False,
         )
 
         session.add_all([source_config, target_config, source_app, target_app])
@@ -5177,8 +5287,8 @@ class TestAgentAppBackingAgent:
 
         monkeypatch.setattr(roster_service, "AppService", FakeAppService)
         monkeypatch.setattr(
-            roster_service.FeatureService,
-            "get_system_features",
+            roster_service.SystemFeatureService,
+            "is_webapp_auth_enabled",
             lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True)),
         )
         monkeypatch.setattr(roster_service.EnterpriseService, "WebAppAuth", FakeWebAppAuth)
@@ -5241,8 +5351,8 @@ class TestAgentAppBackingAgent:
 
         monkeypatch.setattr(roster_service, "AppService", FakeAppService)
         monkeypatch.setattr(
-            roster_service.FeatureService,
-            "get_system_features",
+            roster_service.SystemFeatureService,
+            "is_webapp_auth_enabled",
             lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True)),
         )
         monkeypatch.setattr(roster_service.EnterpriseService, "WebAppAuth", FakeWebAppAuth)
@@ -5550,6 +5660,75 @@ class TestWorkflowAgentDraftBindingSync:
                 session=session,
                 draft_workflow=self._agent_workflow(),
             )
+
+    def test_publish_validation_keeps_workspace_skill_refs_when_config_files_are_present(self, sqlite_session: Session):
+        session = sqlite_session
+        binding = self._agent_binding()
+        agent_soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-4o",
+                },
+                "prompt": {"system_prompt": "Use [§skill:research:Research§] and [§file:guide.md:Guide§]."},
+                "config_files": [
+                    {
+                        "name": "guide.md",
+                        "file_kind": "upload_file",
+                        "file_id": "file-1",
+                    }
+                ],
+            }
+        )
+        agent = self._publish_agent()
+        snapshot = self._snapshot(agent_soul)
+        skill = Skill(
+            id="skill-1",
+            tenant_id="tenant-1",
+            name="research",
+            display_name="Research",
+            latest_published_version_id="skill-version-1",
+        )
+        skill_version = SkillVersion(
+            id="skill-version-1",
+            skill_id="skill-1",
+            version_number=1,
+            manifest=SkillVersionManifest(
+                files=[],
+                name="research",
+                display_name="Research",
+                description="",
+            ),
+            archive_tool_file_id="archive-1",
+            hash_code="hash-1",
+            archive_size=1,
+        )
+        skill_binding = AgentSkillBindingSnapshot(
+            id="skill-binding-1",
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            config_snapshot_id="snapshot-1",
+            skill_id="skill-1",
+            priority=0,
+        )
+        archive_file = ToolFile(
+            user_id="account-1",
+            tenant_id="tenant-1",
+            conversation_id=None,
+            file_key="tools/research.zip",
+            mimetype="application/zip",
+            name="research.zip",
+            size=1,
+        )
+        archive_file.id = "archive-1"
+        session.add_all([binding, agent, snapshot, skill, skill_version, skill_binding, archive_file])
+        session.commit()
+
+        WorkflowAgentPublishService.validate_agent_nodes_for_publish(
+            session=session,
+            draft_workflow=self._agent_workflow(),
+        )
 
     def test_publish_validation_rejects_dangling_agent_soul_config_refs(self, sqlite_session: Session):
         session = sqlite_session

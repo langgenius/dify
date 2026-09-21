@@ -3,14 +3,14 @@ import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { uniq } from 'es-toolkit/array'
 import { flatten } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { fetchAgentLogDetail } from '@/service/log'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
@@ -109,7 +109,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
       >
         {loading && (
           <div className="flex h-full items-center justify-center bg-components-panel-bg">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         {!loading && currentTab === 'DETAIL' && runDetail && (

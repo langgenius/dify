@@ -2,13 +2,14 @@
 import type { FC } from 'react'
 import type { ModelConfig, PromptItem, ValueSelector, Var, Variable } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
-import { DragHandle } from '@/app/components/base/icons/src/vender/line/others'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import { useWorkflowStore } from '../../../store'
@@ -54,19 +55,24 @@ const ConfigPrompt: FC<Props> = ({
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const { setControlPromptEditorRerenderKey } = workflowStore.getState()
-  const payloadWithIds =
-    isChatModel && Array.isArray(payload)
-      ? payload.map((item) => {
-          const id = uuid4()
-          return {
-            id: item.id || id,
-            p: {
-              ...item,
-              id: item.id || id,
-            },
-          }
-        })
-      : []
+  const prompts = useMemo(
+    () =>
+      isChatModel && Array.isArray(payload)
+        ? payload.map((item) => ({ ...item, id: item.id || uuid4() }))
+        : [],
+    [isChatModel, payload],
+  )
+  const keyboardSort = useKeyboardSortable({
+    items: prompts,
+    onChange,
+    disabled: readOnly,
+    minIndex: prompts[0]?.role === PromptRole.system ? 1 : 0,
+    getItemLabel: (item) => item.role || '',
+  })
+  const payloadWithIds = useMemo(
+    () => keyboardSort.items.map((item) => ({ id: item.id, p: item })),
+    [keyboardSort.items],
+  )
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar,
@@ -75,7 +81,7 @@ const ConfigPrompt: FC<Props> = ({
   const handleChatModePromptChange = useCallback(
     (index: number) => {
       return (prompt: string) => {
-        const newPrompt = produce(payload as PromptItem[], (draft) => {
+        const newPrompt = produce(prompts, (draft) => {
           draft[index]![
             draft[index]!.edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'
           ] = prompt
@@ -83,35 +89,35 @@ const ConfigPrompt: FC<Props> = ({
         onChange(newPrompt)
       }
     },
-    [onChange, payload],
+    [onChange, prompts],
   )
 
   const handleChatModeEditionTypeChange = useCallback(
     (index: number) => {
       return (editionType: EditionType) => {
-        const newPrompt = produce(payload as PromptItem[], (draft) => {
+        const newPrompt = produce(prompts, (draft) => {
           draft[index]!.edition_type = editionType
         })
         onChange(newPrompt)
       }
     },
-    [onChange, payload],
+    [onChange, prompts],
   )
 
   const handleChatModeMessageRoleChange = useCallback(
     (index: number) => {
       return (role: PromptRole) => {
-        const newPrompt = produce(payload as PromptItem[], (draft) => {
+        const newPrompt = produce(prompts, (draft) => {
           draft[index]!.role = role
         })
         onChange(newPrompt)
       }
     },
-    [onChange, payload],
+    [onChange, prompts],
   )
 
   const handleAddPrompt = useCallback(() => {
-    const newPrompt = produce(payload as PromptItem[], (draft) => {
+    const newPrompt = produce(prompts, (draft) => {
       if (draft.length === 0) {
         draft.push({ role: PromptRole.system, text: '', id: uuid4() })
 
@@ -125,18 +131,18 @@ const ConfigPrompt: FC<Props> = ({
       })
     })
     onChange(newPrompt)
-  }, [onChange, payload])
+  }, [onChange, prompts])
 
   const handleRemove = useCallback(
     (index: number) => {
       return () => {
-        const newPrompt = produce(payload as PromptItem[], (draft) => {
+        const newPrompt = produce(prompts, (draft) => {
           draft.splice(index, 1)
         })
         onChange(newPrompt)
       }
     },
-    [onChange, payload],
+    [onChange, prompts],
   )
 
   const handleCompletionPromptChange = useCallback(
@@ -175,13 +181,21 @@ const ConfigPrompt: FC<Props> = ({
   })()
   return (
     <div>
+      {keyboardSort.announcement}
       {isChatModel && Array.isArray(payload) ? (
         <div>
           <div className="space-y-2">
             <ReactSortable
               className="space-y-1"
               list={payloadWithIds}
+              disabled={readOnly || keyboardSort.isSorting}
               setList={(list) => {
+                if (
+                  keyboardSort.isSorting ||
+                  (list.length === payloadWithIds.length &&
+                    list.every((item, index) => item.id === payloadWithIds[index]?.id))
+                )
+                  return
                 if (
                   (payload as PromptItem[])?.[0]?.role === PromptRole.system &&
                   list[0]!.p?.role !== PromptRole.system
@@ -194,7 +208,7 @@ const ConfigPrompt: FC<Props> = ({
               ghostClass="opacity-50"
               animation={150}
             >
-              {(payload as PromptItem[]).map((item, index) => {
+              {keyboardSort.items.map((item, index) => {
                 const canDrag = (() => {
                   if (readOnly) return false
 
@@ -203,9 +217,17 @@ const ConfigPrompt: FC<Props> = ({
                   return true
                 })()
                 return (
-                  <div key={item.id || index} className="group relative">
+                  <div key={item.id || keyboardSort.getItemKey(index)} className="group relative">
                     {canDrag && (
-                      <DragHandle className="absolute top-2 -left-3.5 hidden h-3.5 w-3.5 text-text-quaternary group-hover:block" />
+                      <IconButton
+                        {...keyboardSort.getHandleProps(index)}
+                        className="handle pointer-events-none absolute top-1 -left-6 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="i-custom-vender-line-others-drag-handle size-3.5"
+                        />
+                      </IconButton>
                     )}
                     <ConfigPromptItem
                       instanceId={
@@ -222,13 +244,17 @@ const ConfigPrompt: FC<Props> = ({
                       readOnly={readOnly}
                       id={item.id!}
                       nodeId={nodeId}
-                      handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(index)}
+                      handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(
+                        keyboardSort.getItemKey(index),
+                      )}
                       isChatModel={isChatModel}
                       isChatApp={isChatApp}
                       payload={item}
-                      onPromptChange={handleChatModePromptChange(index)}
-                      onEditionTypeChange={handleChatModeEditionTypeChange(index)}
-                      onRemove={handleRemove(index)}
+                      onPromptChange={handleChatModePromptChange(keyboardSort.getItemKey(index))}
+                      onEditionTypeChange={handleChatModeEditionTypeChange(
+                        keyboardSort.getItemKey(index),
+                      )}
+                      onRemove={handleRemove(keyboardSort.getItemKey(index))}
                       isShowContext={isShowContext}
                       hasSetBlockStatus={hasSetBlockStatus}
                       availableVars={availableVars}

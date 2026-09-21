@@ -1,7 +1,7 @@
 import type { MockedFunction } from 'vite-plus/test'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailValidity, useSendMail } from '@/service/use-common'
 import CheckCode from '../page'
@@ -20,7 +20,8 @@ vi.mock('@/app/components/signin/countdown', () => ({
   ),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
@@ -75,7 +76,6 @@ describe('Signup Check Code Page', () => {
     const codeInput = screen.getByRole('textbox', {
       name: 'login.checkCode.verificationCode',
     })
-    expect(codeInput).toHaveAttribute('id', 'code')
     expect(codeInput).toHaveAttribute('name', 'code')
     expect(codeInput).toHaveAttribute('inputmode', 'numeric')
     expect(codeInput).toHaveAttribute('autocomplete', 'one-time-code')
@@ -94,5 +94,22 @@ describe('Signup Check Code Page', () => {
       })
     })
     expect(mockVerifyCode).toHaveBeenCalledTimes(1)
+  })
+
+  it('associates one localized error with an incomplete verification code', async () => {
+    const user = userEvent.setup()
+    render(<CheckCode />)
+
+    const codeInput = screen.getByRole('textbox', {
+      name: 'login.checkCode.verificationCode',
+    })
+    await user.type(codeInput, '12345{Enter}')
+
+    const errors = await screen.findAllByText('login.checkCode.invalidCode')
+    expect(errors).toHaveLength(1)
+    expect(codeInput).toHaveAttribute('aria-invalid', 'true')
+    expect(codeInput).toHaveAccessibleDescription('login.checkCode.invalidCode')
+    expect(codeInput).toHaveFocus()
+    expect(mockVerifyCode).not.toHaveBeenCalled()
   })
 })

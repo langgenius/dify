@@ -6,6 +6,7 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getRoot } from 'lexical'
 import { createContext, memo, useEffect, useRef } from 'react'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { createNoteEditorStore } from './store'
 import theme from './theme'
 
@@ -65,9 +66,7 @@ type NoteEditorContextProviderProps = {
 }
 export const NoteEditorContextProvider = memo(
   ({ value, children, editable = true }: NoteEditorContextProviderProps) => {
-    const storeRef = useRef<NoteEditorStore | undefined>(undefined)
-
-    if (!storeRef.current) storeRef.current = createNoteEditorStore()
+    const storeRef = useRefWithInit(createNoteEditorStore)
 
     let initialValue = null
     try {

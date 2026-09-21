@@ -13,6 +13,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { getProviderReference } from '@/utils/provider-reference'
 
 type AgentToolPresentationProvider = Pick<
   AgentProviderTool,
@@ -54,6 +55,9 @@ export function createAgentToolProviderCatalog({
 
   allProviders.forEach((provider) => {
     providers.set(provider.id, provider)
+    // Redundant for every type except MCP, which the saved config references by
+    // server identifier.
+    providers.set(getProviderReference(provider), provider)
     providers.set(provider.name, provider)
     if (provider.plugin_id) {
       providers.set(provider.plugin_id, provider)
@@ -215,11 +219,13 @@ export function getProviderCredentialVariant(
 ) {
   if (!providerCredentialType) return 'none' as const
 
+  // Team-scoped credentials have no credential reference in the saved agent config,
+  // so the current provider authorization must override a reflected unauthorized state.
+  if (tool.credentialId || provider.is_team_authorization) return 'authorized' as const
+
   if (tool.credentialVariant !== 'none') return tool.credentialVariant
 
-  return tool.credentialId || provider.is_team_authorization
-    ? ('authorized' as const)
-    : ('unauthorized' as const)
+  return 'unauthorized' as const
 }
 
 export type AgentToolPublishIssue = {

@@ -4,7 +4,6 @@ import type { PopupProps } from './config-popup'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import { useState } from 'react'
 import ConfigPopup from './config-popup'
 
 type Props = Readonly<{
@@ -16,12 +15,10 @@ type Props = Readonly<{
   PopupProps
 
 const ConfigBtn: FC<Props> = ({ className, hasConfigured, children, ...popupProps }) => {
-  const [open, setOpen] = useState(false)
-
   if (popupProps.readOnly && !hasConfigured) return null
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger render={<div className={cn('select-none', className)}>{children}</div>} />
       <PopoverContent
         placement="bottom-end"

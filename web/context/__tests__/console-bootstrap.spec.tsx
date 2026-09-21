@@ -10,7 +10,7 @@ import { ExternalServiceSync } from '@/app/(commonLayout)/external-service-sync'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
-import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { initialWorkspaceSummary } from '../app-context-defaults'
@@ -24,7 +24,6 @@ import {
   currentWorkspaceAtom,
   currentWorkspaceLoadingAtom,
   isCurrentWorkspaceDatasetOperatorAtom,
-  isCurrentWorkspaceEditorAtom,
   isCurrentWorkspaceManagerAtom,
   isCurrentWorkspaceOwnerAtom,
 } from '../workspace-state'
@@ -96,6 +95,7 @@ vi.mock('@/config', async (importOriginal) => {
   return {
     ...actual,
     ZENDESK_FIELD_IDS: {
+      PLAN: '',
       ENVIRONMENT: 'environment-field',
       VERSION: 'version-field',
       EMAIL: 'email-field',
@@ -111,8 +111,17 @@ vi.mock('@/features/account-profile/client', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
+    features: {
+      get: {
+        queryOptions: (options: object) => ({
+          queryKey: ['features'],
+          queryFn: () => new Promise(() => {}),
+          ...options,
+        }),
+      },
+    },
     systemFeatures: {
       get: {
         queryOptions: () => ({
@@ -190,19 +199,16 @@ vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
   getRegistrationSuccessSnapshot: () => 0,
 }))
 
-vi.mock('@/app/components/base/zendesk/utils', () => ({
-  setZendeskConversationFields: vi.fn(),
-}))
-
-vi.mock('@/app/components/header/maintenance-notice', () => ({
-  default: () => null,
+vi.mock('@/app/components/base/zendesk/runtime', () => ({
+  zendeskRuntime: {
+    setConversationFields: vi.fn(),
+  },
 }))
 
 function ConsoleBootstrapProbe() {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
@@ -245,10 +251,6 @@ function ConsoleBootstrapProbe() {
       <span>
         owner:
         {String(isCurrentWorkspaceOwner)}
-      </span>
-      <span>
-        editor:
-        {String(isCurrentWorkspaceEditor)}
       </span>
       <span>
         dataset operator:
@@ -410,7 +412,6 @@ describe('Console bootstrap', () => {
 
       expect(await screen.findByText('manager:true')).toBeInTheDocument()
       expect(screen.getByText('owner:true')).toBeInTheDocument()
-      expect(screen.getByText('editor:true')).toBeInTheDocument()
       expect(screen.getByText('dataset operator:false')).toBeInTheDocument()
     })
 
@@ -457,7 +458,7 @@ describe('Console bootstrap', () => {
       renderConsoleBootstrap()
 
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
           [
             {
               id: ZENDESK_FIELD_IDS.ENVIRONMENT,
@@ -467,7 +468,7 @@ describe('Console bootstrap', () => {
           'CLOUD',
         )
       })
-      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+      expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
         [
           {
             id: ZENDESK_FIELD_IDS.VERSION,
@@ -476,7 +477,7 @@ describe('Console bootstrap', () => {
         ],
         'CLOUD',
       )
-      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+      expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
         [
           {
             id: ZENDESK_FIELD_IDS.EMAIL,
@@ -486,7 +487,7 @@ describe('Console bootstrap', () => {
         'CLOUD',
       )
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
           [
             {
               id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
@@ -512,6 +513,42 @@ describe('Console bootstrap', () => {
       })
     })
 
+    it('syncs the actual plan only after features arrive and follows plan changes', async () => {
+      ZENDESK_FIELD_IDS.PLAN = 'plan-field'
+      try {
+        const { queryClient } = renderConsoleBootstrap()
+        await waitFor(() => expect(zendeskRuntime.setConversationFields).toHaveBeenCalled())
+        expect(
+          vi
+            .mocked(zendeskRuntime.setConversationFields)
+            .mock.calls.flatMap(([fields]) => fields)
+            .some((field) => field.id === 'plan-field'),
+        ).toBe(false)
+        act(() =>
+          queryClient.setQueryData(['features'], {
+            billing: { subscription: { plan: 'professional' } },
+          }),
+        )
+        await waitFor(() =>
+          expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
+            [{ id: 'plan-field', value: 'professional-plan' }],
+            'CLOUD',
+          ),
+        )
+        act(() =>
+          queryClient.setQueryData(['features'], { billing: { subscription: { plan: 'team' } } }),
+        )
+        await waitFor(() =>
+          expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
+            [{ id: 'plan-field', value: 'team-plan' }],
+            'CLOUD',
+          ),
+        )
+      } finally {
+        ZENDESK_FIELD_IDS.PLAN = ''
+      }
+    })
+
     it('should not sync Zendesk fields outside cloud deployments', async () => {
       mockSystemFeaturesState.data = createSystemFeaturesFixture({
         deployment_edition: 'COMMUNITY',
@@ -520,13 +557,13 @@ describe('Console bootstrap', () => {
       renderConsoleBootstrap()
 
       await screen.findByText('workspace:Workspace')
-      expect(setZendeskConversationFields).not.toHaveBeenCalled()
+      expect(zendeskRuntime.setConversationFields).not.toHaveBeenCalled()
     })
 
     it('should resync only changed Zendesk fields', async () => {
       const { queryClient, rerender } = renderConsoleBootstrap()
 
-      await waitFor(() => expect(setZendeskConversationFields).toHaveBeenCalledTimes(4))
+      await waitFor(() => expect(zendeskRuntime.setConversationFields).toHaveBeenCalledTimes(4))
 
       rerender(
         <JotaiProvider>
@@ -540,7 +577,7 @@ describe('Console bootstrap', () => {
           </QueryClientProvider>
         </JotaiProvider>,
       )
-      expect(setZendeskConversationFields).toHaveBeenCalledTimes(4)
+      expect(zendeskRuntime.setConversationFields).toHaveBeenCalledTimes(4)
 
       act(() => {
         queryClient.setQueryData(['user-profile'], {
@@ -553,8 +590,8 @@ describe('Console bootstrap', () => {
       })
 
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledTimes(5)
-        expect(setZendeskConversationFields).toHaveBeenLastCalledWith(
+        expect(zendeskRuntime.setConversationFields).toHaveBeenCalledTimes(5)
+        expect(zendeskRuntime.setConversationFields).toHaveBeenLastCalledWith(
           [
             {
               id: ZENDESK_FIELD_IDS.EMAIL,

@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -22,7 +21,8 @@ from controllers.console.explore.wraps import (
     trial_feature_enable,
     user_allowed_to_access_app,
 )
-from models import Account, AccountTrialAppRecord, App, AppMode, InstalledApp, TrialApp
+from models import Account, AccountTrialAppRecord, App, InstalledApp, TrialApp
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 def _bind_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
@@ -32,22 +32,11 @@ def _bind_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> 
 
 
 def _account(*, account_id: str | None = None) -> Account:
-    account = Account(name="Explore user", email="user@example.com")
-    if account_id is not None:
-        account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Explore user", email="user@example.com")
 
 
 def _app() -> App:
-    app = App(
-        tenant_id=str(uuid4()),
-        name="Explore App",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-    )
-    app.id = str(uuid4())
-    return app
+    return make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), name="Explore App", icon_type=None)
 
 
 def _installed_app(*, app_id: str, tenant_id: str) -> InstalledApp:
@@ -129,8 +118,9 @@ def test_installed_app_required_success(
         result = view(installed_app.id)
 
     assert result.id == installed_app.id
-    assert result.app is not None
-    assert result.app.id == app.id
+    app_model = result.app_with_session(session=sqlite_session)
+    assert app_model is not None
+    assert app_model.id == app.id
 
 
 def test_user_allowed_to_access_app_denied():
@@ -140,16 +130,14 @@ def test_user_allowed_to_access_app_denied():
     def view(installed_app):
         return "ok"
 
-    feature = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True))
-
     with (
         patch(
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(_account(account_id="user-1"), None),
         ),
         patch(
-            "controllers.console.explore.wraps.FeatureService.get_system_features",
-            return_value=feature,
+            "controllers.console.explore.wraps.SystemFeatureService.is_webapp_auth_enabled",
+            return_value=True,
         ),
         patch(
             "controllers.console.explore.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
@@ -167,16 +155,14 @@ def test_user_allowed_to_access_app_success():
     def view(installed_app):
         return "ok"
 
-    feature = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True))
-
     with (
         patch(
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(_account(account_id="user-1"), None),
         ),
         patch(
-            "controllers.console.explore.wraps.FeatureService.get_system_features",
-            return_value=feature,
+            "controllers.console.explore.wraps.SystemFeatureService.is_webapp_auth_enabled",
+            return_value=True,
         ),
         patch(
             "controllers.console.explore.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",

@@ -30,6 +30,7 @@ from .agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from .agent_sandbox_usage import AgentSandboxExecution, AgentSandboxUsageEvent
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from .comment import (
     WorkflowComment,
@@ -77,6 +78,7 @@ from .model import (
     AppModelConfig,
     AppStar,
     Conversation,
+    DatasetApiTokenBinding,
     DatasetRetrieverResource,
     DifySetup,
     EndUser,
@@ -170,6 +172,8 @@ __all__ = [
     "AgentHomeSnapshot",
     "AgentIconType",
     "AgentKind",
+    "AgentSandboxExecution",
+    "AgentSandboxUsageEvent",
     "AgentScope",
     "AgentSkillBinding",
     "AgentSource",
@@ -204,6 +208,7 @@ __all__ = [
     "DataSourceApiKeyAuthBinding",
     "DataSourceOauthBinding",
     "Dataset",
+    "DatasetApiTokenBinding",
     "DatasetCollectionBinding",
     "DatasetKeywordTable",
     "DatasetPermission",

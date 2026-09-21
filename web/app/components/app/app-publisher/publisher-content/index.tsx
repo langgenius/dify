@@ -2,7 +2,7 @@ import type { AppPublisherProps } from '../types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { toDeploymentVersion } from '@/app/components/app/deploy/version'
+import { toDeploymentVersion } from '@/app/components/app/deploy/utils/version'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -33,14 +33,14 @@ import { useWorkflowLaunch } from './use-workflow-launch'
 import { useWorkflowTool } from './use-workflow-tool'
 
 type PublisherContentProps = AppPublisherProps & {
-  canAccessPoint: boolean
+  canViewAccessPoint: boolean
   open: boolean
   supportsMultiEnvironment: boolean
   onOpenStateChange: (open: boolean) => void
 }
 
 export function PublisherContent({
-  canAccessPoint,
+  canViewAccessPoint,
   crossAxisOffset = 0,
   debugWithMultipleModel = false,
   disabled = false,
@@ -115,6 +115,7 @@ export function PublisherContent({
   const marketplace = useMarketplacePublish(appDetail?.id)
   const versionInfo = useVersionInfo({
     appId: appDetail?.id,
+    appMode: appDetail?.mode,
     publishedWorkflow: publish.publishedWorkflow,
     onClosePublisher: closePublisher,
   })
@@ -132,7 +133,7 @@ export function PublisherContent({
     hasTriggerNode,
     inputs,
     onClosePublisher: closePublisher,
-    onPublish: publish.handlePublish,
+    onPublish: publish.publishWorkflowTool,
     onRefreshData,
     outputs,
     toolPublished,
@@ -214,7 +215,7 @@ export function PublisherContent({
           actions: {
             appDetail,
             appURL,
-            canAccessPoint,
+            canViewAccessPoint,
             disabledFunctionButton,
             disabledFunctionTooltip,
             handleOpenRunConfig: workflowLaunch.openDialog,
@@ -239,7 +240,7 @@ export function PublisherContent({
         disabled={disabled}
         environmentPublisher={{
           appId: appDetail?.id,
-          canAccessPoint,
+          canViewAccessPoint,
           deployment: selectedEnvironmentDeployment,
           environmentId: selectedEnvironmentId,
           environmentName:

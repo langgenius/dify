@@ -47,7 +47,7 @@ class CustomizedSnippet(Base):
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
     # State flags
-    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("1"))
     use_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
 
@@ -65,7 +65,7 @@ class CustomizedSnippet(Base):
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
-    def graph_dict(self, session: Session) -> dict[str, Any]:
+    def get_graph_dict(self, session: Session) -> dict[str, Any]:
         """Get graph from associated workflow."""
         if self.workflow_id:
             from .workflow import Workflow
@@ -80,7 +80,7 @@ class CustomizedSnippet(Base):
         """Parse input_fields JSON to list."""
         return json.loads(self.input_fields) if self.input_fields else []
 
-    def tags(self, session: Session) -> Sequence[Tag]:
+    def get_tags(self, session: Session) -> Sequence[Tag]:
         """Get snippet tags."""
         tags = session.scalars(
             sa.select(Tag)
@@ -95,18 +95,18 @@ class CustomizedSnippet(Base):
 
         return tags or []
 
-    def created_by_account(self, session: Session) -> Account | None:
+    def get_created_by_account(self, session: Session) -> Account | None:
         """Get the account that created this snippet."""
         if self.created_by:
             return session.get(Account, self.created_by)
         return None
 
-    def author_name(self, session: Session) -> str | None:
+    def get_author_name(self, session: Session) -> str | None:
         """Get the creator account name."""
-        account = self.created_by_account(session)
+        account = self.get_created_by_account(session=session)
         return account.name if account else None
 
-    def updated_by_account(self, session: Session) -> Account | None:
+    def get_updated_by_account(self, session: Session) -> Account | None:
         """Get the account that last updated this snippet."""
         if self.updated_by:
             return session.get(Account, self.updated_by)

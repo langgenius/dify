@@ -76,6 +76,13 @@ export type Import = {
   warnings?: Array<DslImportWarning>
 }
 
+export type RosterAgentPackageConflictResponse = {
+  code: string
+  leaked_dependencies?: Array<PluginDependency>
+  message: string
+  status?: 409
+}
+
 export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
 }
@@ -729,18 +736,6 @@ export type ParserEnable = {
   trigger_id: string
 }
 
-export type WorkflowTriggerResponse = {
-  created_at?: string | null
-  icon: string
-  id: string
-  node_id: string
-  provider_name: string
-  status: string
-  title: string
-  trigger_type: string
-  updated_at?: string | null
-}
-
 export type WorkflowTriggerListResponse = {
   data: Array<WorkflowTriggerResponse>
 }
@@ -951,8 +946,8 @@ export type SyncDraftWorkflowResponse = {
   updated_at: number
 }
 
-export type WorkflowDraftVariableList = {
-  items?: Array<WorkflowDraftVariable>
+export type WorkflowDraftVariableListResponse = {
+  items: Array<WorkflowDraftVariableResponse>
 }
 
 export type ConversationVariableUpdatePayload = {
@@ -1125,7 +1120,7 @@ export type OutputPreviewView = {
   value?: unknown
 }
 
-export type DraftWorkflowTriggerRunRequest = {
+export type DraftWorkflowTriggerRunPayload = {
   node_id: string
 }
 
@@ -1133,34 +1128,23 @@ export type DraftWorkflowTriggerRunAllPayload = {
   node_ids: Array<string>
 }
 
-export type WorkflowDraftVariableListWithoutValue = {
-  items?: Array<WorkflowDraftVariableWithoutValue>
-  total?: number
+export type WorkflowDraftVariableListWithoutValueResponse = {
+  items: Array<WorkflowDraftVariableWithoutValueResponse>
+  total: number | null
 }
 
-export type WorkflowDraftVariable = {
-  description?: string
-  edited?: boolean
-  full_content?: {
-    [key: string]: unknown
-  }
-  id?: string
-  is_truncated?: boolean
-  name?: string
-  selector?: Array<string>
-  type?: string
-  value?:
-    | string
-    | number
-    | number
-    | boolean
-    | {
-        [key: string]: unknown
-      }
-    | Array<unknown>
-    | null
-  value_type?: string
-  visible?: boolean
+export type WorkflowDraftVariableResponse = {
+  description: string
+  edited: boolean
+  full_content: WorkflowDraftVariableFullContentResponse | null
+  id: string
+  is_truncated: boolean
+  name: string
+  selector: Array<string>
+  type: string
+  value: JsonValue
+  value_type: string
+  visible: boolean
 }
 
 export type WorkflowDraftVariableUpdatePayload = {
@@ -1207,6 +1191,7 @@ export type ApiKeyList = {
 
 export type ApiKeyItem = {
   created_at?: number | null
+  dataset_ids?: Array<string>
   id: string
   last_used_at?: number | null
   token: string
@@ -1666,6 +1651,18 @@ export type TextToSpeechVoiceResponse = {
   value: string
 }
 
+export type WorkflowTriggerResponse = {
+  created_at?: string | null
+  icon: string
+  id: string
+  node_id: string
+  provider_name: string
+  status: string
+  title: string
+  trigger_type: string
+  updated_at?: string | null
+}
+
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
   created_by_account?: SimpleAccountResponse | null
@@ -2068,16 +2065,23 @@ export type NodeOutputStatus =
 
 export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
-export type WorkflowDraftVariableWithoutValue = {
-  description?: string
-  edited?: boolean
-  id?: string
-  is_truncated?: boolean
-  name?: string
-  selector?: Array<string>
-  type?: string
-  value_type?: string
-  visible?: boolean
+export type WorkflowDraftVariableWithoutValueResponse = {
+  description: string
+  edited: boolean
+  id: string
+  is_truncated: boolean
+  name: string
+  selector: Array<string>
+  type: string
+  value_type: string
+  visible: boolean
+}
+
+export type WorkflowDraftVariableFullContentResponse = {
+  download_url: string
+  length: number | null
+  size_bytes: number | null
+  value_type: string
 }
 
 export type ModelConfigPartial = {
@@ -3150,7 +3154,17 @@ export type PostAppsResponses = {
 export type PostAppsResponse = PostAppsResponses[keyof PostAppsResponses]
 
 export type PostAppsImportsData = {
-  body: AppImportPayload
+  body:
+    | AppImportPayload
+    | {
+        app_id?: string
+        description?: string
+        file: Blob | File
+        icon?: string
+        icon_background?: string
+        icon_type?: string
+        name?: string
+      }
   path?: never
   query?: never
   url: '/apps/imports'
@@ -3158,6 +3172,9 @@ export type PostAppsImportsData = {
 
 export type PostAppsImportsErrors = {
   400: Import
+  403: unknown
+  409: RosterAgentPackageConflictResponse
+  413: unknown
 }
 
 export type PostAppsImportsError = PostAppsImportsErrors[keyof PostAppsImportsErrors]
@@ -3869,7 +3886,9 @@ export type DeleteAppsByAppIdAnnotationsData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsResponses = {
-  204: void
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteAppsByAppIdAnnotationsResponse =
@@ -4010,7 +4029,9 @@ export type DeleteAppsByAppIdAnnotationsByAnnotationIdData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponses = {
-  204: void
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponse =
@@ -4416,7 +4437,9 @@ export type GetAppsByAppIdExportData = {
     app_id: string
   }
   query?: {
+    format?: 'ifpkg' | 'yaml'
     include_secret?: boolean
+    version_id?: string
     workflow_id?: string
   }
   url: '/apps/{app_id}/export'
@@ -4427,7 +4450,7 @@ export type GetAppsByAppIdExportErrors = {
 }
 
 export type GetAppsByAppIdExportResponses = {
-  200: AppExportResponse
+  200: AppExportResponse | Blob | File
 }
 
 export type GetAppsByAppIdExportResponse =
@@ -5002,6 +5025,8 @@ export type DeleteAppsByAppIdTraceConfigData = {
 export type DeleteAppsByAppIdTraceConfigErrors = {
   400: unknown
   403: unknown
+  404: unknown
+  500: unknown
 }
 
 export type DeleteAppsByAppIdTraceConfigResponses = {
@@ -5024,6 +5049,8 @@ export type GetAppsByAppIdTraceConfigData = {
 
 export type GetAppsByAppIdTraceConfigErrors = {
   400: unknown
+  404: unknown
+  500: unknown
 }
 
 export type GetAppsByAppIdTraceConfigResponses = {
@@ -5045,6 +5072,8 @@ export type PatchAppsByAppIdTraceConfigData = {
 export type PatchAppsByAppIdTraceConfigErrors = {
   400: unknown
   403: unknown
+  404: unknown
+  500: unknown
 }
 
 export type PatchAppsByAppIdTraceConfigResponses = {
@@ -5066,6 +5095,9 @@ export type PostAppsByAppIdTraceConfigData = {
 export type PostAppsByAppIdTraceConfigErrors = {
   400: unknown
   403: unknown
+  404: unknown
+  409: unknown
+  500: unknown
 }
 
 export type PostAppsByAppIdTraceConfigResponses = {
@@ -5085,7 +5117,9 @@ export type PostAppsByAppIdTriggerEnableData = {
 }
 
 export type PostAppsByAppIdTriggerEnableResponses = {
-  200: WorkflowTriggerResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdTriggerEnableResponse =
@@ -5666,7 +5700,7 @@ export type GetAppsByAppIdWorkflowsDraftConversationVariablesErrors = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesResponse =
@@ -6050,7 +6084,7 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse =
@@ -6174,14 +6208,14 @@ export type GetAppsByAppIdWorkflowsDraftSystemVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponse =
   GetAppsByAppIdWorkflowsDraftSystemVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftSystemVariablesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
-  body: DraftWorkflowTriggerRunRequest
+  body: DraftWorkflowTriggerRunPayload
   path: {
     app_id: string
   }
@@ -6251,7 +6285,7 @@ export type GetAppsByAppIdWorkflowsDraftVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesResponses = {
-  200: WorkflowDraftVariableListWithoutValue
+  200: WorkflowDraftVariableListWithoutValueResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesResponse =
@@ -6293,7 +6327,7 @@ export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse =
@@ -6314,7 +6348,7 @@ export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
 }
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
 }
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse =
@@ -6335,7 +6369,7 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors = {
 }
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
   204: void
 }
 
@@ -6493,7 +6527,9 @@ export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponses = {
-  204: void
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponse =

@@ -1,6 +1,6 @@
 """Flask adapter for Console API admission."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from functools import wraps
 from typing import Concatenate
 
@@ -8,7 +8,7 @@ from flask import Response, abort, request
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.wraps import enforce_rbac_access
+from controllers.common.rbac import RBAC_CHECKS_ATTR, RBACCheck, enforce_rbac_checks
 from controllers.console.wraps import (
     account_initialization_required,
     enable_change_email,
@@ -16,13 +16,11 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.logging.context import get_request_id, get_trace_id
-from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
-from machinery.errors import AdmissionConfigurationError
 from models.account import TenantAccountRole
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 def console_email_registration_admission[T, **P, R](
@@ -32,8 +30,10 @@ def console_email_registration_admission[T, **P, R](
 
     @wraps(view)
     def check_registration_features(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
-        features = FeatureService.get_system_features()
-        if not features.enable_email_password_login or not features.is_allow_register:
+        if (
+            not SystemFeatureService.is_email_password_login_enabled()
+            or not SystemFeatureService.is_registration_allowed()
+        ):
             abort(403)
         return view(self, *args, **kwargs)
 
@@ -47,9 +47,7 @@ def console_account_admission[T, **P, R](
     require_initialized: bool = True,
     require_valid_enterprise_license: bool = False,
     allowed_roles: frozenset[TenantAccountRole] | None = None,
-    rbac_resource_scope: RBACResourceScope | None = None,
-    rbac_permission: RBACPermission | None = None,
-    rbac_resource_required: bool = True,
+    rbac_checks: Sequence[RBACCheck] | None = None,
 ) -> Callable[
     [Callable[Concatenate[T, RequestContext, P], R]],
     Callable[Concatenate[T, P], R | Response],
@@ -62,26 +60,21 @@ def console_account_admission[T, **P, R](
     context construction.
     """
 
-    if (rbac_resource_scope is None) != (rbac_permission is None):
-        raise AdmissionConfigurationError("RBAC resource scope and permission must be configured together")
-
     def decorator(
         view: Callable[Concatenate[T, RequestContext, P], R],
     ) -> Callable[Concatenate[T, P], R | Response]:
-        @wraps(view)
+        @wraps(view, updated=())
         def inject_request_context(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
             account_with_tenant = current_account_with_tenant()
             account = account_with_tenant.account
             tenant_id = account_with_tenant.tenant_id
             if allowed_roles is not None and not dify_config.RBAC_ENABLED and account.role not in allowed_roles:
                 raise Forbidden()
-            if rbac_resource_scope is not None and rbac_permission is not None:
-                enforce_rbac_access(
+            if rbac_checks is not None:
+                enforce_rbac_checks(
                     tenant_id=tenant_id,
                     account_id=account.id,
-                    resource_type=rbac_resource_scope,
-                    scene=rbac_permission,
-                    resource_required=rbac_resource_required,
+                    checks=rbac_checks,
                     path_args=kwargs,
                 )
             request_context = RequestContext(
@@ -91,6 +84,9 @@ def console_account_admission[T, **P, R](
                 trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
             )
             return view(self, request_context, *args, **kwargs)
+
+        if rbac_checks is not None:
+            setattr(inject_request_context, RBAC_CHECKS_ATTR, rbac_checks)
 
         admitted: Callable[Concatenate[T, P], R | Response] = inject_request_context
         if require_change_email_enabled:

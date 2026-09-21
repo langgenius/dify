@@ -5,7 +5,9 @@ instances for plugin-daemon and Dify API inner calls, route wiring, and a
 process-local scheduler. Run execution happens in background ``asyncio`` tasks
 rather than request handlers, so client disconnects do not cancel the agent
 runtime. Redis persists run records and per-run event streams with configured
-retention only; it is not used as a job queue. Agenton layers and providers
+retention. Optional provider accounting is exposed as a separate one-shot HTTP
+endpoint driven by Celery Beat; it starts no tasks during lifespan startup and
+adds no reporting to business operations. Redis is not used as a run job queue. Agenton layers and providers
 stay state-only: they borrow the lifespan-owned clients through the runner and
 receive runtime-backend and Shell settings through provider construction rather
 than reading environment variables themselves. The standard server mounts the
@@ -16,6 +18,7 @@ environment configuration provides a token.
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing_extensions import cast
 
 import httpx
 from fastapi import APIRouter, FastAPI
@@ -28,6 +31,7 @@ from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.auth import create_bearer_token_dependency
 from dify_agent.server.observability import configure_server_observability
+from dify_agent.server.routes.e2b_usage import create_e2b_usage_router
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.execution_bindings import create_execution_bindings_router
 from dify_agent.server.routes.home_snapshots import create_home_snapshots_router
@@ -105,6 +109,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             redis,
             prefix=resolved_settings.redis_prefix,
             run_retention_seconds=resolved_settings.run_retention_seconds,
+            run_event_stream_max_length=resolved_settings.run_event_stream_max_length,
         )
         scheduler = RunScheduler(
             store=store,
@@ -112,6 +117,9 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             run_timeout_seconds=resolved_settings.run_timeout_seconds,
+            stream_text_delta_coalescing_enabled=resolved_settings.stream_text_delta_coalescing_enabled,
+            stream_text_delta_flush_interval_seconds=(resolved_settings.stream_text_delta_flush_interval_ms / 1000),
+            stream_text_delta_max_chars=resolved_settings.stream_text_delta_max_chars,
             layer_providers=layer_providers,
         )
         state["store"] = store
@@ -128,10 +136,10 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     configure_server_observability(app)
 
     def get_store() -> RedisRunStore:
-        return state["store"]  # pyright: ignore[reportReturnType]
+        return cast(RedisRunStore, state["store"])
 
     def get_scheduler() -> RunScheduler:
-        return state["scheduler"]  # pyright: ignore[reportReturnType]
+        return cast(RunScheduler, state["scheduler"])
 
     control_plane_router = APIRouter(
         dependencies=[create_bearer_token_dependency(resolved_settings.api_token)],
@@ -141,6 +149,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     control_plane_router.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
     control_plane_router.include_router(create_binding_files_router(lambda: binding_file_service))
     app.include_router(control_plane_router)
+    app.include_router(create_e2b_usage_router(resolved_settings))
     app.include_router(
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,

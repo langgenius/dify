@@ -5,6 +5,14 @@ module-local and publish the complete surface through separate `export { ... }` 
 `export type { ... }` manifests at the bottom of the file. Do not mix scattered inline exports
 with the manifest or use wildcard exports.
 
+## React imports
+
+Use React namespace imports throughout this package, including stories and tests. Use
+`import * as React from 'react'` when calling React runtime APIs, and
+`import type * as React from 'react'` when referencing only React types. A runtime namespace
+import also covers React types; do not add separate named type imports. JSX alone does not
+require an explicit React import.
+
 ## Subpaths and names
 
 Every public primitive needs a matching `package.json#exports` subpath. Import relatively between
@@ -49,11 +57,15 @@ State, event details and reasons, actions, controlled-state helpers, context val
 helpers, styling helpers, and upstream passthrough aliases are private by default. Public props
 already provide contextual typing for inline render and event callbacks.
 
-When a wrapper consumes `className` through `cn()`, omit the upstream state-callback form and
-expose `className?: string`. Public types must describe behavior the wrapper actually implements.
+Preserve upstream `className` and `style` callbacks. Resolve `className` with the owning Base UI
+part's state before merging default classes with `cn()`, including through composite wrappers.
+Forward `style` unchanged unless the wrapper needs to merge styles; then resolve its callback first.
+Do not add state callbacks to native DOM props or unrelated custom APIs. See [Styling].
 
 ## Evidence
 
 Use local public-subpath type tests to protect generic inference, required relationships, and
 intentional errors. Read current official Base UI documentation and installed type declarations
 before changing an upstream-derived contract.
+
+[Styling]: ./styling.md

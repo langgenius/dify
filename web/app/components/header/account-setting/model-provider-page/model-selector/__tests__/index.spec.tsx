@@ -1,15 +1,22 @@
-import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  ModelProviderSummaryResponse,
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { Model, ModelItem } from '../../declarations'
+import type { DefaultModelResponse } from '../../declarations'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
+import { useSystemDefaultModelAndModelList } from '../../hooks'
 import { ModelSelector, SplitModelSelector } from '../index'
 
-const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const makeModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'gpt-4',
   label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
   model_type: ModelTypeEnum.textGeneration,
@@ -20,7 +27,7 @@ const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const mockModelProviders = vi.hoisted(() => ({ current: [] as Model[] }))
+const mockModelProviders = vi.hoisted(() => ({ current: [] as ProviderWithModelsResponse[] }))
 const mockSetSettingsDestination = vi.hoisted(() => vi.fn())
 
 vi.mock('nuqs', async (importOriginal) => {
@@ -31,9 +38,6 @@ vi.mock('nuqs', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({ modelProviders: mockModelProviders.current }),
-}))
 vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
   useCredentialPanelState: () => ({
     variant: 'credits-active',
@@ -58,7 +62,7 @@ vi.mock('../popup', () => {
       onConfigureEmptyState?: () => void
       onHide: () => void
       onOpenProviderSettings?: () => void
-      onSelect: (provider: string, model: ModelItem) => void
+      onSelect: (provider: string, model: ProviderModelWithStatusEntity) => void
     }) => (
       <>
         <button type="button" onClick={() => onSelect('openai', makeModelItem())}>
@@ -82,7 +86,10 @@ vi.mock('../popup', () => {
   }
 })
 
-const makeModel = (overrides: Partial<Model> = {}): Model => ({
+const makeModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: { en_US: '', zh_Hans: '' },
   label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -117,7 +124,11 @@ const renderWithQueryClient = (node: ReactNode) => {
       plugins: {},
     },
   )
-  return render(<QueryClientProvider client={queryClient}>{node}</QueryClientProvider>)
+  return render(node, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
 }
 
 describe('ModelSelector', () => {
@@ -212,16 +223,38 @@ describe('ModelSelector', () => {
     expect(trigger).toHaveAttribute('data-shape', 'split')
   })
 
-  it('should render deprecated trigger when value is not in list', () => {
-    renderWithQueryClient(
-      <ModelSelector
-        value={{ provider: 'openai', model: 'missing-model' }}
-        models={[makeModel()]}
-      />,
-    )
+  it.each(['openai', 'uninstalled-provider'])(
+    'should display a loaded default model as incompatible when missing from the list (%s)',
+    (provider) => {
+      const models = [makeModel()]
+      function SystemDefaultSelector({ defaultModel }: { defaultModel?: DefaultModelResponse }) {
+        const [value] = useSystemDefaultModelAndModelList(defaultModel, models)
+        return <ModelSelector value={value} models={models} />
+      }
+      const { rerender } = renderWithQueryClient(<SystemDefaultSelector />)
 
-    expect(screen.getByText('missing-model')).toBeInTheDocument()
-  })
+      expect(
+        screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
+      ).toBeInTheDocument()
+
+      rerender(
+        <SystemDefaultSelector
+          defaultModel={{
+            model: 'missing-model',
+            model_type: ModelTypeEnum.textGeneration,
+            provider: { provider, icon_small: { en_US: '', zh_Hans: '' } },
+          }}
+        />,
+      )
+
+      expect(
+        screen.getByRole('button', {
+          name: 'missing-model common.modelProvider.selector.incompatible',
+        }),
+      ).toBeEnabled()
+      expect(screen.queryByText('plugin.detailPanel.configureModel')).not.toBeInTheDocument()
+    },
+  )
 
   it('should render model trigger when value matches', () => {
     renderWithQueryClient(

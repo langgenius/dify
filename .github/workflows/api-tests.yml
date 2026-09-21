@@ -14,28 +14,79 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  api-unit-plan:
+    name: Plan API unit shards
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.12'
+          enable-cache: false
+      - name: Download shared timing baseline
+        # Public statistics are independent of PR refs and require no credentials.
+        run: |
+          if ! curl --fail --silent --show-error --location \
+            --connect-timeout 5 --max-time 15 --retry 2 --retry-max-time 30 \
+            https://raw.githubusercontent.com/langgenius/dify-test-infra/generated-stats/stats/test-times.json \
+            --output unit-test-durations.json; then
+            rm -f unit-test-durations.json
+            echo '::warning::Timing baseline unavailable; using round-robin file allocation.'
+          fi
+      - name: Freeze file assignments for every shard
+        run: |
+          uv run --project api --no-sync python api/dev/pytest_sharding.py \
+            --shard-index 1 --shard-total 2 \
+            --durations unit-test-durations.json \
+            --write-plan unit-test-plan.json \
+            --split-threshold 60 \
+            --ignore api/tests/unit_tests/controllers \
+            api/tests/unit_tests \
+            api/providers/vdb/*/tests/unit_tests \
+            api/providers/trace/*/tests/unit_tests
+      - name: Upload shared plan
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-unit-plan
+          path: |
+            unit-test-plan.json
+            unit-test-durations.json
+          retention-days: 7
+          if-no-files-found: error
+
   api-unit:
-    name: API Unit Tests
+    needs: api-unit-plan
+    name: API Unit Tests (${{ matrix.python-version }}, shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: depot-ubuntu-24.04
     env:
-      COVERAGE_FILE: coverage-unit
+      PYTHONUNBUFFERED: '1'
+      COVERAGE_FILE: coverage-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
     defaults:
       run:
         shell: bash
     strategy:
+      fail-fast: false
       matrix:
         python-version:
           - '3.12'
+        shardIndex:
+          - 1
+          - 2
+        shardTotal:
+          - 2
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -47,34 +98,116 @@ jobs:
       - name: Install dependencies
         run: uv sync --project api --dev
 
+      - name: Download shared plan
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: api-unit-plan
+
       - name: Run Unit Tests
         run: |
+          uv run --project api python api/dev/pytest_sharding.py \
+            --plan unit-test-plan.json \
+            --shard-index "${{ matrix.shardIndex }}" \
+            --shard-total "${{ matrix.shardTotal }}" \
+            --ignore api/tests/unit_tests/controllers \
+            api/tests/unit_tests \
+            api/providers/vdb/*/tests/unit_tests \
+            api/providers/trace/*/tests/unit_tests > "$RUNNER_TEMP/unit-test-files.txt"
           uv run --project api pytest \
             -p no:benchmark \
             --timeout "${PYTEST_TIMEOUT:-20}" \
             -n auto \
-            api/tests/unit_tests \
-            api/providers/vdb/*/tests/unit_tests \
-            api/providers/trace/*/tests/unit_tests \
-            --ignore=api/tests/unit_tests/controllers
-          # Controller tests register Flask routes at import time, so keep them out of xdist.
-          uv run --project api pytest \
-            --timeout "${PYTEST_TIMEOUT:-20}" \
-            --cov-append \
-            api/tests/unit_tests/controllers
+            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
+            --file-shard-plan unit-test-plan.json \
+            --shard-index "${{ matrix.shardIndex }}" \
+            --shard-total "${{ matrix.shardTotal }}" \
+            --write-test-durations "test-results/durations-${{ matrix.shardIndex }}.json" \
+            --junitxml=test-results/unit.xml \
+            "@$RUNNER_TEMP/unit-test-files.txt"
+
+      - name: Upload unit test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-test-results-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+          path: test-results/*.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload successful timing observations
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-unit-durations-${{ matrix.shardIndex }}
+          path: test-results/durations-*.json
+          retention-days: 7
+          if-no-files-found: error
 
       - name: Upload unit coverage data
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: api-coverage-unit
-          path: coverage-unit
+          name: api-coverage-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+          path: ${{ env.COVERAGE_FILE }}
+          if-no-files-found: error
+          retention-days: 1
+
+  api-controllers:
+    name: API Controller Tests (3.12)
+    runs-on: depot-ubuntu-24.04
+    env:
+      PYTHONUNBUFFERED: '1'
+      COVERAGE_FILE: coverage-controllers-3.12
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+
+      - name: Check UV lockfile
+        run: uv lock --project api --check
+
+      - name: Install dependencies
+        run: uv sync --project api --dev
+
+      - name: Run Controller Tests
+        # Controller tests register Flask routes at import time, so keep them out of xdist.
+        run: |
+          uv run --project api pytest \
+            --timeout "${PYTEST_TIMEOUT:-20}" \
+            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
+            --junitxml=test-results/controllers.xml \
+            api/tests/unit_tests/controllers
+
+      - name: Upload controller test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-test-results-controllers-3.12
+          path: test-results/*.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload controller coverage data
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-coverage-controllers-3.12
+          path: ${{ env.COVERAGE_FILE }}
+          if-no-files-found: error
           retention-days: 1
 
   api-integration:
-    name: API Integration Tests
-    runs-on: depot-ubuntu-24.04
+    name: API Integration Tests (${{ matrix.python-version }})
+    runs-on: depot-ubuntu-24.04-4
     env:
-      COVERAGE_FILE: coverage-integration
+      COVERAGE_FILE: coverage-integration-${{ matrix.python-version }}
       STORAGE_TYPE: opendal
       OPENDAL_SCHEME: fs
       OPENDAL_FS_ROOT: /tmp/dify-storage
@@ -82,6 +215,7 @@ jobs:
       run:
         shell: bash
     strategy:
+      fail-fast: false
       matrix:
         python-version:
           - '3.12'
@@ -90,11 +224,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -111,7 +244,10 @@ jobs:
           uv run --project api pytest \
             -p no:benchmark \
             --start-middleware \
+            --middleware-stop-timeout 2 \
             -n auto \
+            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/integration_tests/workflow \
             api/tests/integration_tests/tools \
@@ -120,8 +256,9 @@ jobs:
       - name: Upload integration coverage data
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: api-coverage-integration
-          path: coverage-integration
+          name: api-coverage-integration-${{ matrix.python-version }}
+          path: ${{ env.COVERAGE_FILE }}
+          if-no-files-found: error
           retention-days: 1
 
   api-coverage:
@@ -129,6 +266,7 @@ jobs:
     runs-on: depot-ubuntu-24.04
     needs:
       - api-unit
+      - api-controllers
       - api-integration
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -141,18 +279,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
-          enable-cache: true
           python-version: '3.12'
-          cache-dependency-glob: api/uv.lock
-
-      - name: Install dependencies
-        run: uv sync --project api --dev
 
       - name: Download coverage data
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -164,20 +296,34 @@ jobs:
       - name: Combine coverage
         run: |
           set -euo pipefail
+          coverage_version=$(python3 -c 'import tomllib; print(next(p["version"] for p in tomllib.load(open("api/uv.lock", "rb"))["package"] if p["name"] == "coverage"))')
 
-          echo "### API Coverage" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Merged backend coverage report generated for Codecov project status." >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### API Coverage"
+            echo ""
+            echo "Merged backend coverage report generated for Codecov project status."
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          unit_coverage="$(find coverage-data -type f -name coverage-unit -print -quit)"
-          integration_coverage="$(find coverage-data -type f -name coverage-integration -print -quit)"
-          : "${unit_coverage:?coverage-unit artifact not found}"
-          : "${integration_coverage:?coverage-integration artifact not found}"
+          mapfile -t unit_coverage < <(find coverage-data -type f -name 'coverage-unit-*' -print | sort)
+          mapfile -t controller_coverage < <(find coverage-data -type f -name 'coverage-controllers-*' -print | sort)
+          mapfile -t integration_coverage < <(find coverage-data -type f -name 'coverage-integration-*' -print | sort)
+          if [[ "${#unit_coverage[@]}" -ne 2 ]]; then
+            echo "expected 2 unit coverage artifacts, found ${#unit_coverage[@]}" >&2
+            exit 1
+          fi
+          if [[ "${#controller_coverage[@]}" -ne 1 ]]; then
+            echo "expected 1 controller coverage artifact, found ${#controller_coverage[@]}" >&2
+            exit 1
+          fi
+          if [[ "${#integration_coverage[@]}" -ne 1 ]]; then
+            echo "expected 1 integration coverage artifact, found ${#integration_coverage[@]}" >&2
+            exit 1
+          fi
 
           report_file="$(mktemp)"
-          uv run --project api coverage combine "$unit_coverage" "$integration_coverage"
-          uv run --project api coverage report --show-missing | tee "$report_file"
+          uvx --from "coverage==$coverage_version" coverage combine "${unit_coverage[@]}" "${controller_coverage[@]}" "${integration_coverage[@]}"
+          uvx --from "coverage==$coverage_version" coverage report --show-missing | tee "$report_file"
           echo "Summary: \`$(tail -n 1 "$report_file")\`" >> "$GITHUB_STEP_SUMMARY"
           {
             echo ""
@@ -188,11 +334,10 @@ jobs:
             echo '```'
             echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
-          uv run --project api coverage xml -o coverage.xml
+          uvx --from "coverage==$coverage_version" coverage xml -o coverage.xml
 
       - name: Report coverage
-        if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml
           disable_search: true
