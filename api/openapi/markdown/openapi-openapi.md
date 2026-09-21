@@ -129,7 +129,7 @@ Machine-readable catalog of every op on this surface
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [AdvancedChatRunPayload](#advancedchatrunpayload)<br> |
+|  Yes | **application/json**: [AdvancedChatRunPayload](#advancedchatrunpayload)<br>**multipart/form-data**: [AdvancedChatRunPayload](#advancedchatrunpayload)<br> | **application/json**: [AdvancedChatRunPayload](#advancedchatrunpayload)<br>**multipart/form-data**: [AdvancedChatRunPayload](#advancedchatrunpayload)<br> |
 
 #### Responses
 
@@ -150,7 +150,7 @@ Machine-readable catalog of every op on this surface
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ChatRunPayload](#chatrunpayload)<br> |
+|  Yes | **application/json**: [ChatRunPayload](#chatrunpayload)<br>**multipart/form-data**: [ChatRunPayload](#chatrunpayload)<br> | **application/json**: [ChatRunPayload](#chatrunpayload)<br>**multipart/form-data**: [ChatRunPayload](#chatrunpayload)<br> |
 
 #### Responses
 
@@ -171,7 +171,7 @@ Machine-readable catalog of every op on this surface
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [CompletionRunPayload](#completionrunpayload)<br> |
+|  Yes | **application/json**: [CompletionRunPayload](#completionrunpayload)<br>**multipart/form-data**: [CompletionRunPayload](#completionrunpayload)<br> | **application/json**: [CompletionRunPayload](#completionrunpayload)<br>**multipart/form-data**: [CompletionRunPayload](#completionrunpayload)<br> |
 
 #### Responses
 
@@ -225,7 +225,7 @@ Upload a file to use as an input variable when running the app
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [FileUploadPayload](#fileuploadpayload)<br> |
+|  Yes | **multipart/form-data**: [FileUploadPayload](#fileuploadpayload)<br> |
 
 #### Responses
 
@@ -266,7 +266,7 @@ Upload a file to use as an input variable when running the app
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [OpenApiFormSubmitPayload](#openapiformsubmitpayload)<br> |
+|  Yes | **application/json**: [OpenApiFormSubmitPayload](#openapiformsubmitpayload)<br>**multipart/form-data**: [OpenApiFormSubmitPayload](#openapiformsubmitpayload)<br> | **application/json**: [OpenApiFormSubmitPayload](#openapiformsubmitpayload)<br>**multipart/form-data**: [OpenApiFormSubmitPayload](#openapiformsubmitpayload)<br> |
 
 #### Responses
 
@@ -320,7 +320,7 @@ Upload a file to use as an input variable when running the app
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br> |
+|  Yes | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br>**multipart/form-data**: [WorkflowRunPayload](#workflowrunpayload)<br> | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br>**multipart/form-data**: [WorkflowRunPayload](#workflowrunpayload)<br> |
 
 #### Responses
 

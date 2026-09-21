@@ -1,8 +1,11 @@
+from typing import override
+
 from flask import Blueprint
 from flask_restx import Namespace
 
 from controllers.openapi._catalog import attach_catalog
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
+from controllers.openapi._upload import describe_multipart_bodies
 from libs.device_flow_security import attach_anti_framing
 from libs.external_api import ExternalApi
 
@@ -10,7 +13,16 @@ bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
 attach_catalog(bp)
 
-api = ExternalApi(
+
+class _OpenApi(ExternalApi):
+    """The surface's document also names the multipart form its file-bearing bodies accept."""
+
+    @override
+    def finish_document(self, document: dict[str, object]) -> dict[str, object]:
+        return describe_multipart_bodies(document)
+
+
+api = _OpenApi(
     bp,
     version="1.0",
     title="OpenAPI",

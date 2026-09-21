@@ -1314,6 +1314,23 @@ def openapi_document(config_overrides: Callable[..., None]) -> dict[str, object]
     return response.get_json()
 
 
+def test_file_bearing_bodies_are_documented_as_multipart(openapi_document: dict[str, object]) -> None:
+    """The exported contract names the wire form `_multipart.py` accepts: a body of only
+    files is multipart alone, a run body is JSON or multipart with its JSON-text parts marked."""
+    paths = openapi_document["paths"]
+    assert isinstance(paths, dict)
+    upload = paths["/apps/{app_id}/files"]["post"]["requestBody"]["content"]
+    assert set(upload) == {"multipart/form-data"}
+    assert "encoding" not in upload["multipart/form-data"]
+    run = paths["/apps/{app_id}/chat:run"]["post"]["requestBody"]["content"]
+    assert set(run) == {"application/json", "multipart/form-data"}
+    assert run["multipart/form-data"]["schema"] == run["application/json"]["schema"]
+    encoding = run["multipart/form-data"]["encoding"]
+    assert {"inputs", "query"} <= set(encoding)
+    assert {"files", "attachments"}.isdisjoint(encoding)
+    assert encoding["inputs"] == {"contentType": "application/json"}
+
+
 def _operations(document: dict[str, object]) -> Iterator[tuple[tuple[str, str], dict[str, object]]]:
     paths = document["paths"]
     assert isinstance(paths, dict)
