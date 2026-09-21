@@ -307,7 +307,10 @@ function renderPublishBar({
     queryClient.setQueryData(composerQueryKey, composerState)
   }
 
-  const renderPublishBarTree = (nextProps?: { isPublishing?: boolean }) => (
+  const renderPublishBarTree = (nextProps?: {
+    isPublishing?: boolean
+    selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  }) => (
     <NuqsWrapper>
       <QueryClientProvider client={queryClient}>
         <JotaiProvider store={store}>
@@ -315,7 +318,11 @@ function renderPublishBar({
             agentId="agent-1"
             agentName="Iris"
             isPublishing={nextProps?.isPublishing ?? isPublishing}
-            selectedVersionSnapshot={selectedVersionSnapshot}
+            selectedVersionSnapshot={
+              nextProps?.selectedVersionSnapshot === undefined
+                ? selectedVersionSnapshot
+                : nextProps.selectedVersionSnapshot
+            }
             onPublish={onPublish}
             onExitVersions={onExitVersions}
             onOpenVersions={vi.fn()}
@@ -458,6 +465,43 @@ describe('AgentConfigurePublishBar', () => {
       onExitVersions.mock.invocationCallOrder[0]!,
     )
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
+  })
+
+  it('starts a fresh restore confirmation after leaving and re-entering version view', async () => {
+    const user = userEvent.setup()
+    const { rerender, rerenderPublishBar } = renderPublishBar({
+      selectedVersionSnapshot: activeConfigSnapshot,
+    })
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+    rerender(rerenderPublishBar({ selectedVersionSnapshot: null }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    rerender(
+      rerenderPublishBar({
+        selectedVersionSnapshot: {
+          ...activeConfigSnapshot,
+          id: 'snapshot-2',
+          version_note: 'Version two',
+        },
+      }),
+    )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(restoreVersionMutation).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    const dialog = await screen.findByRole('alertdialog', { name: /Version two/ })
+    await user.click(within(dialog).getByRole('button', { name: /restore/i }))
+    await waitFor(() =>
+      expect(restoreVersionMutation).toHaveBeenCalledWith(
+        { params: { agent_id: 'agent-1', version_id: 'snapshot-2' } },
+        expect.anything(),
+      ),
+    )
   })
 
   it('shows the agent upgrade dialog before opening pricing on the sandbox plan', async () => {
