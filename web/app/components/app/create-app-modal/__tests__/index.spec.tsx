@@ -405,12 +405,12 @@ describe('CreateAppModal', () => {
     fireEvent.click(screen.getByText('app.types.chatbot'))
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.captionName' }))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
     fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
       target: { value: 'Keyboard App' },
@@ -427,7 +427,7 @@ describe('CreateAppModal', () => {
         description: 'Created from shortcut',
         icon_type: 'emoji',
         icon: '🤖',
-        icon_background: '#E4FBCC',
+        icon_background: '#F3FEE7',
         mode: AppModeEnum.CHAT,
       })
     })
@@ -449,14 +449,14 @@ describe('CreateAppModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.captionName' }))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+    await userEvent.setup().keyboard('{Escape}')
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
 
-    expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
     ahooksMocks.keyPressHandlers.at(-1)?.()
 

@@ -3,7 +3,7 @@
 import type { Resource } from 'i18next'
 import type { Locale } from '@/i18n'
 import type { Namespace } from '@/i18n/resources'
-import { Suspense, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { I18nextProvider, useTranslation } from 'react-i18next'
 import { createI18nextInstance } from '@/i18n/client'
 import { getRouteNamespaces } from '@/i18n/route-namespaces'
@@ -24,14 +24,12 @@ export function I18nClientProvider({
   const defaultNamespace = requiredNamespaces.includes('app') ? 'app' : 'common'
   return (
     <I18nextProvider i18n={i18n} defaultNS={defaultNamespace}>
-      <Suspense fallback={null}>
-        <RouteTranslations
-          key={requiredNamespaces.join(':')}
-          i18n={i18n}
-          requiredNamespaces={requiredNamespaces}
-        />
-        {children}
-      </Suspense>
+      <RouteTranslations
+        key={requiredNamespaces.join(':')}
+        i18n={i18n}
+        requiredNamespaces={requiredNamespaces}
+      />
+      {children}
     </I18nextProvider>
   )
 }
