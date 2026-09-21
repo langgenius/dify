@@ -556,3 +556,92 @@ def test_filter_rejects_insert_between_with_non_dict_edge():
     ok, bad = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
     assert ok == []
     assert len(bad) == 1  # rejected with a reason, not raised
+
+
+def _ifelse_graph():
+    return {
+        "nodes": [
+            {
+                "id": "node5",
+                "data": {
+                    "type": "if-else",
+                    "title": "Review Decision",
+                    "cases": [
+                        {
+                            "case_id": "true",
+                            "conditions": [
+                                {"variable_selector": ["node4", "score"], "comparison_operator": ">", "value": "0"},
+                                {"variable_selector": ["node4", "text"], "comparison_operator": ">", "value": "5"},
+                            ],
+                        }
+                    ],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+
+def test_set_node_config_writes_through_a_dotted_path():
+    graph = _ifelse_graph()
+    out, changed = apply_set_node_config(graph, "node5", "cases.0.conditions.1.comparison_operator", "contains")
+    assert changed == ["node5"]
+    condition = out["nodes"][0]["data"]["cases"][0]["conditions"][1]
+    assert condition["comparison_operator"] == "contains"
+    # the sibling condition is untouched
+    assert out["nodes"][0]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == ">"
+    # and no junk flat key was created
+    assert "cases.0.conditions.1.comparison_operator" not in out["nodes"][0]["data"]
+
+
+def test_set_node_config_still_writes_a_top_level_key():
+    graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
+    out, changed = apply_set_node_config(graph, "n1", "code", "print(1)")
+    assert changed == ["n1"]
+    assert out["nodes"][0]["data"]["code"] == "print(1)"
+
+
+def test_set_node_config_creates_a_missing_top_level_key():
+    """Unchanged behaviour: the LAST segment may be new -- that is the write."""
+    graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
+    out, _changed = apply_set_node_config(graph, "n1", "outputs", {"result": {"type": "string"}})
+    assert out["nodes"][0]["data"]["outputs"] == {"result": {"type": "string"}}
+
+
+def test_set_node_config_rejects_a_missing_intermediate_key():
+    graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
+    with pytest.raises(ValueError, match="no key 'cases'"):
+        apply_set_node_config(graph, "n1", "cases.0.value", "x")
+
+
+def test_set_node_config_rejects_an_out_of_range_index():
+    graph = _ifelse_graph()
+    with pytest.raises(ValueError, match="out of range"):
+        apply_set_node_config(graph, "node5", "cases.0.conditions.7.value", "x")
+
+
+def test_set_node_config_rejects_an_index_into_a_mapping():
+    graph = _ifelse_graph()
+    with pytest.raises(ValueError, match="not a list"):
+        apply_set_node_config(graph, "node5", "cases.0.0", "x")
+
+
+def test_set_node_config_rejects_an_empty_segment():
+    graph = _ifelse_graph()
+    with pytest.raises(ValueError, match="empty segment"):
+        apply_set_node_config(graph, "node5", "cases..0", "x")
+
+
+def test_filter_applicable_rejects_a_bad_path_with_a_reason():
+    """The whole point of raising: the repair agent gets corrective feedback."""
+    from services.dify_builder.graph_ops import filter_applicable
+
+    graph = _ifelse_graph()
+    intent = MutationIntent(
+        op="set_node_config",
+        args={"node_id": "node5", "path": "cases.0.conditions.9.value", "value": "x"},
+    )
+    applicable, rejected = filter_applicable(graph, [intent])
+    assert applicable == []
+    assert len(rejected) == 1
+    assert "out of range" in rejected[0][1]
