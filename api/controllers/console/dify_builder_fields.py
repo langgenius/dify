@@ -21,7 +21,6 @@ from core.dify_builder.contract import (
     ErrorCard,
     ErrorEventData,
     FormCard,
-    NodeEventData,
     NoticeItem,
     Phase,
     PlanCard,
@@ -40,6 +39,7 @@ from core.dify_builder.contract import (
 )
 from core.dify_builder.models import EntryMode
 from fields.base import ResponseModel
+from fields.workflow_stream_fields import WorkflowStreamPayload
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 ClientTurnId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
@@ -297,9 +297,19 @@ class DifyBuilderCommandStartedEventResponse(ResponseModel):
     data: DifyBuilderCommandStartedEventData
 
 
-class DifyBuilderNodeEventResponse(ResponseModel):
-    event: Literal["node"]
-    data: NodeEventData
+class DifyBuilderWorkflowEventData(ResponseModel):
+    session_id: str
+    operation_id: str
+    stage_id: str
+    at_version: int
+    revision: int
+    payload: WorkflowStreamPayload
+    kind: Literal["workflow"] = "workflow"
+
+
+class DifyBuilderWorkflowEventResponse(ResponseModel):
+    event: Literal["workflow"]
+    data: DifyBuilderWorkflowEventData
 
 
 class DifyBuilderCanvasEventResponse(ResponseModel):
@@ -341,7 +351,7 @@ class DifyBuilderStreamEventResponse(
     RootModel[
         Annotated[
             DifyBuilderCommandStartedEventResponse
-            | DifyBuilderNodeEventResponse
+            | DifyBuilderWorkflowEventResponse
             | DifyBuilderCanvasEventResponse
             | DifyBuilderAgentMessageEventResponse
             | DifyBuilderReasoningEventResponse

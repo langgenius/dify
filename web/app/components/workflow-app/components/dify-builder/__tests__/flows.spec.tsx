@@ -27,6 +27,17 @@ const mocks = vi.hoisted(() => ({
   syncDraft: vi.fn(async (): Promise<void> => undefined),
 }))
 
+const runEvents = vi.hoisted(() => ({
+  onWorkflowEvent: vi.fn(),
+  onStreamInterrupted: vi.fn(),
+  onCanvasEvent: vi.fn(),
+  restoreRun: vi.fn(),
+  finishCommand: vi.fn(),
+  reset: vi.fn(),
+  onCanvasRefreshed: vi.fn(),
+}))
+vi.mock('../provider/use-run-events', () => ({ useDifyBuilderRunEvents: () => runEvents }))
+
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
 

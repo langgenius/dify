@@ -30,6 +30,7 @@ from core.dify_builder.contract import (
     TestStat,
 )
 from core.dify_builder.handlers_fix import (
+    UNKNOWN_TEST_OUTCOME_NOTICE,
     action_kind,
     action_string,
     append_card,
@@ -393,11 +394,9 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
 
     def emit(event: NodeEvent) -> None:
         progress.observe_node("edit-run-test", event)
-        if env.emit is not None:
-            env.emit(event)
 
     try:
-        raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
+        raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
         status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, ""
     except Exception as exc:
         # Never crash the advance; capture the launch error (log + store) instead
@@ -459,6 +458,18 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             next=PcState.EDIT_REVIEW,
             context=fc,
             items=[*test_items, *summary_items, *turn_items],
+            run=run,
+            run_id_sink=[run.id],
+        )
+
+    if status == "running":
+        # A truncated stream cannot establish failure or justify another repair.
+        notice_items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
+        progress.finish()
+        return StepResult(
+            next=PcState.EDIT_APPLY_CHANGES,
+            context=fc,
+            items=notice_items,
             run=run,
             run_id_sink=[run.id],
         )
@@ -645,8 +656,8 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
 
 def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Post-failure gate for Edit, mirroring Build's await_repair.
-    approve_repair applies the staged repair and re-runs the affected-path
-    tests (edit.test_affected_paths); keep_draft -> edit.review; undo ->
+    approve_repair applies the staged repair and waits at edit.apply_changes
+    for the client's canvas refresh before testing; keep_draft -> edit.review; undo ->
     edit.reverted. apply_repair runs ONLY here, only on approve."""
     kind = action_kind(turn)
     if kind == "approve_repair":
@@ -710,9 +721,9 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             ),
         )
         progress.activate("edit-prepare-retest")
-        decision_items = append_card(fc, DecisionItem(text="Approved the fix; retesting"))
+        decision_items = append_card(fc, DecisionItem(text="Applied the fix; ready to retest"))
         progress.finish()
-        return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc, items=[*cs_items, *decision_items])
+        return StepResult(next=PcState.EDIT_APPLY_CHANGES, context=fc, items=[*cs_items, *decision_items])
     if kind == "keep_draft":
         items = append_card(fc, DecisionItem(text="Kept the draft despite the failure"))
         return StepResult(next=PcState.EDIT_REVIEW, context=fc, items=items)
