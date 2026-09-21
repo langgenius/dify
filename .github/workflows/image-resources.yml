@@ -1,0 +1,33 @@
+name: Image resource budgets
+
+on:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image-resources:
+    name: Image resource budgets
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Test image checker
+        run: python3 -m unittest discover -s scripts -p 'test_check_image_resources.py'
+
+      - name: Check image budgets
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: |
+          if [ -n "$BASE_SHA" ]; then
+            python3 scripts/check_image_resources.py --base "$BASE_SHA"
+          else
+            python3 scripts/check_image_resources.py --all
+          fi
