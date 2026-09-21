@@ -1,3 +1,4 @@
+import type { useDifyBuilderSessionController } from '@/app/components/workflow-app/components/dify-builder/session/use-session-controller'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
@@ -28,8 +29,18 @@ const mocks = vi.hoisted(() => ({
   setCanvasReadOnly: vi.fn(),
   syncDraft: vi.fn(async () => undefined),
   startBuild: vi.fn(async () => true),
+  useSessionController: vi.fn(),
   fetchDefaultModel: vi.fn(() => new Promise(() => {})),
   updateUrl: vi.fn(),
+  runEvents: {
+    onWorkflowEvent: vi.fn(),
+    onStreamInterrupted: vi.fn(),
+    onCanvasEvent: vi.fn(),
+    restoreRun: vi.fn(),
+    finishCommand: vi.fn(),
+    reset: vi.fn(),
+    onCanvasRefreshed: vi.fn(),
+  },
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -53,6 +64,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       systemFeatures: actual.consoleQuery.systemFeatures,
       workspaces: actual.consoleQuery.workspaces,
       trialModels: actual.consoleQuery.trialModels,
+      workflowGenerate: actual.consoleQuery.workflowGenerate,
       apps: {
         ...actual.consoleQuery.apps,
         post: { mutationOptions: () => ({ mutationFn: mocks.createApp }) },
@@ -72,10 +84,21 @@ vi.mock('@/app/components/workflow/store', () => ({
       setCanvasReadOnly: mocks.setCanvasReadOnly,
     }),
 }))
+vi.mock('@/app/components/workflow-app/components/dify-builder/provider/use-run-events', () => ({
+  useDifyBuilderRunEvents: () => mocks.runEvents,
+}))
 vi.mock(
   '@/app/components/workflow-app/components/dify-builder/session/use-session-controller',
   () => ({
-    useDifyBuilderSessionController: () => ({ startBuild: mocks.startBuild }),
+    useDifyBuilderSessionController: (
+      ...args: Parameters<typeof useDifyBuilderSessionController>
+    ) => {
+      mocks.useSessionController(...args)
+      return {
+        startBuild: mocks.startBuild,
+        onCanvasRefreshed: mocks.runEvents.onCanvasRefreshed,
+      }
+    },
   }),
 )
 
@@ -156,7 +179,11 @@ describe('App Builder creation flow', () => {
     )
     expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow')
     expect(mocks.setShowPanel).toHaveBeenCalledWith(true)
-    expect(mocks.syncDraft).toHaveBeenCalledOnce()
+    expect(mocks.useSessionController).toHaveBeenCalledWith(mocks.syncDraft, {
+      ...mocks.runEvents,
+      onCanvasEvent: expect.any(Function),
+      reset: expect.any(Function),
+    })
     expect(mocks.createApp).toHaveBeenCalledOnce()
     expect(mocks.createApp).toHaveBeenCalledWith(
       { body: expect.objectContaining({ name: 'app.newApp.defaultName', description: '' }) },

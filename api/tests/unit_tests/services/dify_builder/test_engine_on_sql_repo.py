@@ -69,7 +69,7 @@ def _actor() -> Actor:
 
 def _new_env(repo: SqlDifyBuilderRepository) -> tuple[Env, FakeDifyPort]:
     dify = FakeDifyPort()
-    env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min, emit=None)
+    env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min)
     return env, dify
 
 

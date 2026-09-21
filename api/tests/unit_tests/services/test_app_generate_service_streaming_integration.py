@@ -19,10 +19,12 @@ class _FakePubSub:
     def __init__(self, store: dict[str, deque[bytes]]):
         self._store = store
         self._subs: set[str] = set()
+        self._acks: deque[dict[str, object]] = deque()
         self._closed = False
 
     def subscribe(self, topic: str) -> None:
         self._subs.add(topic)
+        self._acks.append({"type": "subscribe", "channel": topic, "data": len(self._subs)})
 
     def unsubscribe(self, topic: str) -> None:
         self._subs.discard(topic)
@@ -34,6 +36,10 @@ class _FakePubSub:
         # simulate a non-blocking poll; return first available
         if self._closed:
             return None
+        while self._acks:
+            acknowledgement = self._acks.popleft()
+            if not ignore_subscribe_messages:
+                return acknowledgement
         for t in list(self._subs):
             q = self._store.get(t)
             if q and len(q) > 0:

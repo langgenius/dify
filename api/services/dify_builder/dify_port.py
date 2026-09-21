@@ -24,12 +24,11 @@ the P2 plan's Global Constraints):
 - ``run_draft`` invokes ``AppGenerateService.generate`` with
   ``invoke_from=InvokeFrom.DEBUGGER`` (runs the *draft*, not the published
   workflow) and ``streaming=True``, so ``on_event`` fires while the run is
-  still going instead of replaying finished rows afterwards. Streaming makes
-  ``AppGenerateService`` hand the execution to the
-  ``workflow_based_app_execution`` Celery queue and hand *us* a Redis-backed
-  event stream; the Builder's own task runs on the separate ``dify_builder``
-  queue, so the two never contend for the same worker slots. If the stream
-  ends WITHOUT a terminal frame (idle timeout, dead publishing worker), the
+  still going instead of replaying finished rows afterwards. It selects
+  ``workflow_execution_mode="in_process"`` so the native generator runs inside
+  the existing Builder task. Enqueuing a child task and waiting for its stream
+  deadlocks a worker that consumes both queues with only one execution slot.
+  If the stream ends WITHOUT a terminal frame, the
   outcome is recovered from the workflow-run row rather than synthesised as a
   failure -- reporting a run that actually succeeded as failed would feed the
   repair loop a lie.
@@ -63,6 +62,7 @@ from core.dify_builder.models import (
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
+from libs.flask_utils import set_login_user
 from models.account import Account
 from models.model import App
 from models.workflow import Workflow
@@ -321,47 +321,41 @@ class WorkflowServiceDifyPort:
             notify_workflow_draft_changed(updated)
             return execution_revision(updated)
 
-    def run_draft(self, app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run:
+    def run_draft(
+        self,
+        app_id: str,
+        actor: Actor,
+        inputs: Inputs,
+        on_event: Callable[[NodeEvent], None],
+        *,
+        on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+    ) -> Run:
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
             tenant_id = app.tenant_id
 
-            # MUST stay blocking. ``run_draft`` executes inside the Celery task
-            # ``dify_builder_advance_task.advance_session``, and streaming mode
-            # does NOT run the workflow here: it enqueues
-            # ``workflow_based_app_execution_task.delay(...)`` on first subscribe
-            # (services/app_generate_service.py:322-324) and hands back a Redis
-            # subscription. This task would then block on events from a task that
-            # needs the very worker slot this task is holding -- a self-deadlock.
-            # Observed live: advance_session "succeeded in 300.59s" (the idle
-            # timeout) four times running, while each workflow_run itself
-            # finished in under 2s. It deadlocks every time at worker
-            # concurrency 1, and as soon as N test runs are in flight at
-            # concurrency N.
-            #
-            # Blocking mode runs the workflow in-process
-            # (``WorkflowAppGenerator().generate(..., streaming=False)``) and
-            # returns a dict, so there is no second task to wait for.
+            # Match the native workflow task's user context before the runtime
+            # copies it into its execution thread/greenlet.
+            set_login_user(account)
+            # The native generator prepares its configuration eagerly and its
+            # execution thread owns its own Session. Consume the event stream
+            # outside this block rather than pinning this DB connection.
             response = AppGenerateService.generate(
                 app_model=app,
                 user=account,
                 args={"inputs": inputs},
                 invoke_from=InvokeFrom.DEBUGGER,
                 session=session,
-                streaming=False,
+                streaming=True,
+                workflow_execution_mode="in_process",
             )
 
         final: dict[str, Any] = {}
         stream_run_id = ""
 
-        # Blocking mode returns a MAPPING ({"task_id", "workflow_run_id",
-        # "data"}), not a stream. Iterating it would walk its KEYS as strings --
-        # which is exactly what happened after the streaming rewrite: no run id
-        # and no terminal frame were ever found, every test run was recorded
-        # status="running" with an empty dify_run_id, and the Builder bounced the
-        # user back to build.execution forever. Handle both shapes so the stream
-        # path stays correct if it is ever reinstated behind a non-worker consumer.
+        # A completed mapping response carries terminal data directly. Iterating
+        # its keys as stream chunks would lose the run ID and final status.
         if isinstance(response, Mapping):
             final = dict(response.get("data") or {})
             if not final.get("id"):
@@ -375,8 +369,10 @@ class WorkflowServiceDifyPort:
                 payload = stream_chunk_as_mapping(chunk)
                 if payload is None:
                     continue
-                # Every non-ping frame stamps the run id, so it is known long
-                # before the terminal frame -- which may never arrive.
+                if on_workflow_event is not None:
+                    on_workflow_event(payload)
+                # Lifecycle events identify the run before its terminal frame
+                # arrives; Chatflow message events may omit the run ID.
                 stream_run_id = stream_run_id or run_id_from_stream_chunk(payload)
                 node_event = node_event_from_stream_chunk(payload)
                 if node_event is not None:
@@ -401,8 +397,8 @@ class WorkflowServiceDifyPort:
         and streaming paths so they can never disagree about the outcome."""
         run_id = str(final.get("id") or stream_run_id or "")
 
-        # The terminal frame carries status, not per-node outputs:
-        # ``map_run_result`` still needs the node-execution rows.
+        # Backend diagnosis still uses persisted node-execution rows to build
+        # ``per_node[].outputs``; the frontend consumes the full event stream.
         node_execs = (
             DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
                 sessionmaker(bind=db.engine)
@@ -414,11 +410,10 @@ class WorkflowServiceDifyPort:
         if final:
             return map_run_result(final, node_execs)
 
-        # No terminal data -- a consumed stream ended without its terminal frame
-        # (idle timeout, or the publishing worker died). The database is now the
-        # authority on how the run went; synthesising "failed" here would report
-        # a run that may well have SUCCEEDED as a failed build and feed the
-        # repair loop a lie.
+        # The stream ended without a terminal frame. The stream is no longer
+        # the authority on how the run went; the database is. Synthesising
+        # "failed" here would report a run that may well have SUCCEEDED as a
+        # failed build and feed the repair loop a lie.
         return self._run_result_without_terminal_frame(tenant_id, app_id, run_id, node_execs)
 
     @staticmethod

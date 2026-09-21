@@ -15,7 +15,6 @@ import {
   difyBuilderConversationHasMoreAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionErrorCodeAtom,
-  difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
 } from '../state'
@@ -232,7 +231,16 @@ describe('useDifyBuilderSessionController lifecycle', () => {
         stateEvent(terminal),
       ),
     )
-    const { result, store } = renderSessionHook()
+    const onCanvasEvent = vi.fn()
+    const { result, store } = renderSessionHook(undefined, {
+      onCanvasEvent,
+      onWorkflowEvent: vi.fn(),
+      onStreamInterrupted: vi.fn(),
+      restoreRun: vi.fn(),
+      finishCommand: vi.fn(),
+      reset: vi.fn(),
+      onCanvasRefreshed: vi.fn(),
+    })
 
     await act(async () => {
       expect(await result.current.startFix('app-1', 'run-1')).toBe(true)
@@ -248,17 +256,15 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       },
       { context: { silent: true }, signal: expect.any(AbortSignal) },
     )
-    expect(store.get(difyBuilderSessionLastCanvasEventAtom)).toEqual({
-      id: 2,
-      data: {
-        kind: 'canvas',
-        session_id: 'session-1',
-        operation_id: 'operation-2',
-        stage_id: 'fix.apply',
-        at_version: 3,
-        revision: 1,
-        event: 'focus_workflow',
-      },
+    expect(onCanvasEvent).toHaveBeenCalledTimes(2)
+    expect(onCanvasEvent).toHaveBeenLastCalledWith({
+      kind: 'canvas',
+      session_id: 'session-1',
+      operation_id: 'operation-2',
+      stage_id: 'fix.apply',
+      at_version: 3,
+      revision: 1,
+      event: 'focus_workflow',
     })
     expect(store.get(difyBuilderSessionViewAtom)).toEqual(terminal)
     expect(store.get(difyBuilderConversationAtom)).toEqual([notice])

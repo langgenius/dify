@@ -19,6 +19,7 @@ import type { RAGPipelineVariables } from '@/models/pipeline'
 import type { AppModeEnum, TransferMethod } from '@/types/app'
 
 export type AgentLogItem = {
+  id?: string
   node_execution_id: string
   message_id: string
   node_id: string

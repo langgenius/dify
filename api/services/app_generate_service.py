@@ -4,7 +4,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy.orm import Session
 
@@ -108,6 +108,7 @@ class AppGenerateService:
         session: Session,
         streaming: bool = True,
         root_node_id: str | None = None,
+        workflow_execution_mode: Literal["celery", "in_process"] = "celery",
     ):
         """
         App Content Generate
@@ -116,6 +117,8 @@ class AppGenerateService:
         :param args: args
         :param invoke_from: invoke from
         :param streaming: streaming
+        :param workflow_execution_mode: Execute workflow streams locally when already
+            inside a worker task, avoiding a synchronous wait for another Celery slot.
         :return:
         """
         return cls._run_with_guardrails(
@@ -131,6 +134,7 @@ class AppGenerateService:
                 session=session,
                 rate_limit=rate_limit,
                 request_id=request_id,
+                workflow_execution_mode=workflow_execution_mode,
             ),
         )
 
@@ -179,6 +183,7 @@ class AppGenerateService:
         session: Session,
         rate_limit: RateLimit,
         request_id: str,
+        workflow_execution_mode: Literal["celery", "in_process"] = "celery",
     ):
         effective_mode = (
             AppMode.AGENT_CHAT
@@ -246,7 +251,7 @@ class AppGenerateService:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
 
-                if streaming:
+                if streaming and workflow_execution_mode == "celery":
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(
@@ -277,8 +282,8 @@ class AppGenerateService:
                         request_id=request_id,
                     )
 
-                # Blocking mode: run synchronously and return JSON instead of SSE
-                # Keep behaviour consistent with WORKFLOW blocking branch.
+                # Reuse the native generator for blocking requests and streams
+                # owned by an existing worker task. Both retain pause persistence.
                 pause_config = PauseStateLayerConfig(
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
@@ -293,7 +298,7 @@ class AppGenerateService:
                             args=args,
                             invoke_from=invoke_from,
                             workflow_run_id=str(uuid.uuid4()),
-                            streaming=False,
+                            streaming=streaming,
                             pause_state_config=pause_config,
                             session=session,
                         )
@@ -304,7 +309,7 @@ class AppGenerateService:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
-                if streaming:
+                if streaming and workflow_execution_mode == "celery":
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(
                             app_model=app_model,
@@ -346,7 +351,7 @@ class AppGenerateService:
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
-                            streaming=False,
+                            streaming=streaming,
                             root_node_id=root_node_id,
                             call_depth=0,
                             pause_state_config=pause_config,

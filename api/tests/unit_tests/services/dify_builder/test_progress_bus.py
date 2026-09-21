@@ -16,7 +16,7 @@ SESSION_ID = "11111111-1111-1111-1111-111111111111"
 
 def test_publish_sends_json_encoded_event_to_the_session_topic() -> None:
     fake_channel = MagicMock()
-    event = {"kind": "node", "node_id": "abc", "status": "succeeded"}
+    event = {"kind": "workflow", "payload": {"event": "workflow_started", "workflow_run_id": "run-1"}}
 
     with patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=fake_channel):
         progress_bus.publish(SESSION_ID, event)

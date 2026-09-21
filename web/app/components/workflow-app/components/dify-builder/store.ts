@@ -47,11 +47,16 @@ export const difyBuilderSelectedModelAtom = atom<SessionModel | null>(null)
 export const difyBuilderDraftAtom = atom('')
 export const difyBuilderDeriveAppNameAtom = atom(false)
 export const difyBuilderLocalErrorAtom = atom('')
+export const difyBuilderRunRestoreErrorAtom = atom('')
 export const difyBuilderChecklistErrorsAtom = atom<ChecklistErrorPayload[]>([])
 export const difyBuilderCanvasRefreshGenerationAtom = atom(0)
 export const difyBuilderCanvasRefreshingAtom = atom(false)
 export const difyBuilderCanvasRefreshFailedAtom = atom(false)
 export const difyBuilderCanvasRefreshRetryRequestAtom = atom(0)
+export const difyBuilderCanvasPendingRefreshAtom = atom<{
+  sessionId: string
+  focusNodeId?: string
+} | null>(null)
 export const difyBuilderCanvasAppliedViewAtom = atom<{ sessionId: string; version: number } | null>(
   null,
 )
@@ -63,11 +68,13 @@ export const difyBuilderScopedAtoms = [
   difyBuilderDraftAtom,
   difyBuilderDeriveAppNameAtom,
   difyBuilderLocalErrorAtom,
+  difyBuilderRunRestoreErrorAtom,
   difyBuilderChecklistErrorsAtom,
   difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshRetryRequestAtom,
+  difyBuilderCanvasPendingRefreshAtom,
   difyBuilderCanvasAppliedViewAtom,
   difyBuilderChecklistEvaluatedGenerationAtom,
 ] as const
@@ -108,6 +115,7 @@ export const DIFY_BUILDER_CANVAS_REFRESH_PHASES = new Set([
 export const difyBuilderCanvasReadyAtom = atom((get) => {
   if (get(difyBuilderCanvasRefreshingAtom) || get(difyBuilderCanvasRefreshFailedAtom)) return false
   const view = get(difyBuilderSessionViewAtom)
+  if (view && get(difyBuilderCanvasPendingRefreshAtom)?.sessionId === view.session_id) return false
   if (!view?.phase || !DIFY_BUILDER_CANVAS_REFRESH_PHASES.has(view.phase)) return true
   const applied = get(difyBuilderCanvasAppliedViewAtom)
   return applied?.sessionId === view.session_id && applied.version === view.version
@@ -169,7 +177,8 @@ export const difyBuilderErrorAtom = atom(
     get(difyBuilderLocalErrorAtom) ||
     (get(difyBuilderSessionErrorCodeAtom) === 'model_unavailable'
       ? ''
-      : get(difyBuilderSessionLastErrorAtom)),
+      : get(difyBuilderSessionLastErrorAtom)) ||
+    get(difyBuilderRunRestoreErrorAtom),
 )
 export const difyBuilderCanStartFixAtom = atom((get) => {
   const runtime = get(difyBuilderRuntimeAtom)
