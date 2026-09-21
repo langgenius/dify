@@ -84,8 +84,8 @@ type _TerminalAgentBackendEvent = (
 class DifyAgentNode(Node[DifyAgentNodeData]):
     """Execute a frozen node job and select one workflow exit on success.
 
-    Enabled routing uses stable route IDs; only multiple routes ask the Agent
-    for a required ``switch`` output. Disabled routing remains executable so
+    Enabled routing selects a stable route ID through the required ``switch``
+    output. Disabled routing remains executable so
     graph-owned default values can continue without a selected route; Graphon
     still promotes nodes that opt into its failure branch.
     """
@@ -114,9 +114,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        if data.agent_output_routes.enabled and self.error_strategy == ErrorStrategy.DEFAULT_VALUE:
+        # The base node parses the factory's serialized payload into node_data.
+        if self.node_data.agent_output_routes.enabled and self.error_strategy == ErrorStrategy.DEFAULT_VALUE:
             raise ValueError("Output routes do not support the node-level default-value error strategy.")
-        if data.agent_output_routes.enabled:
+        if self.node_data.agent_output_routes.enabled:
             self.execution_type = NodeExecutionType.BRANCH
         self._binding_resolver = binding_resolver
         self._runtime_request_builder = runtime_request_builder
@@ -515,19 +516,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             routes = node_job.output_routes
             edge_source_handle = "source"
             if routes.enabled:
-                edge_source_handle = routes.routes[0].id
-                if routes.requires_selection:
-                    selected = success_event.output.get("switch") if isinstance(success_event.output, dict) else None
-                    if not isinstance(selected, str) or selected not in {route.id for route in routes.routes}:
-                        yield self._failure_event(
-                            inputs=inputs,
-                            process_data=process_data,
-                            metadata=metadata,
-                            error="Agent output switch must select one configured output route ID.",
-                            error_type="output_route_selection_failed",
-                        )
-                        return
-                    edge_source_handle = selected
+                selected = success_event.output.get("switch") if isinstance(success_event.output, dict) else None
+                if not isinstance(selected, str) or selected not in {route.id for route in routes.routes}:
+                    yield self._failure_event(
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
+                        error="Agent output switch must select one configured output route ID.",
+                        error_type="output_route_selection_failed",
+                    )
+                    return
+                edge_source_handle = selected
 
             yield StreamCompletedEvent(
                 node_run_result=self._output_adapter.build_success_result(
@@ -855,9 +854,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     ) -> Mapping[str, Sequence[str]]:
         """Reuse frontend workflow-marker parsing for graph variable loading.
 
-        Task mentions use the publish parser. Active multi-route conditions use
+        Task mentions use the publish parser. Enabled route conditions use
         Graphon template selectors, including environment and system variables;
-        single-route and disabled jobs do not load their saved conditions.
+        disabled jobs do not load their saved conditions.
         """
         del graph_config
 
@@ -868,7 +867,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             task = node_data.agent_task
             routes = node_data.agent_output_routes
         selectors = list(extract_workflow_node_output_selectors(task))
-        if routes.requires_selection:
+        if routes.enabled:
             for route in routes.routes:
                 selectors.extend(
                     tuple(selector.value_selector)

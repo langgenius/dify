@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import type { Topic } from './types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -10,10 +10,18 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { useEdgesInteractions } from '../../../../hooks/use-edges-interactions'
 import AddButton from '../add-button'
+import {
+  Collapse,
+  CollapseActions,
+  CollapseContent,
+  CollapseHeader,
+  CollapseIndicator,
+  CollapseTitle,
+  CollapseTrigger,
+} from '../collapse'
 import Item from './class-item'
 import { getDefaultClassLabel, isDefaultClassLabel } from './class-label-utils'
 import { useInlineLabelHintDismissed } from './storage'
@@ -22,6 +30,9 @@ const i18nPrefix = 'nodes.questionClassifiers'
 type Props = Readonly<{
   nodeId: string
   list: Topic[]
+  minItems?: number
+  enabled?: boolean
+  actions?: ReactNode
   onChange: (list: Topic[]) => void
   readonly?: boolean
   filterVar: (payload: Var, valueSelector: ValueSelector) => boolean
@@ -38,6 +49,9 @@ type Props = Readonly<{
 const ClassList: FC<Props> = ({
   nodeId,
   list,
+  minItems = 0,
+  enabled = true,
+  actions,
   onChange,
   readonly,
   filterVar,
@@ -71,12 +85,12 @@ const ClassList: FC<Props> = ({
       })
     })
     onChange(newList)
-    if (collapsed) setCollapsed(false)
-  }, [collapsed, list, onChange, t, labels])
+  }, [list, onChange, t, labels])
 
   const handleRemoveClass = useCallback(
     (index: number) => {
       return () => {
+        if (list.length <= minItems) return
         const newList = produce(list, (draft) => {
           draft.splice(index, 1)
         })
@@ -84,7 +98,7 @@ const ClassList: FC<Props> = ({
         handleEdgeDeleteByDeleteBranch(nodeId, list[index]!.id)
       }
     },
-    [list, onChange, handleEdgeDeleteByDeleteBranch, nodeId],
+    [list, minItems, onChange, handleEdgeDeleteByDeleteBranch, nodeId],
   )
 
   const keyboardSort = useKeyboardSortable({
@@ -99,10 +113,6 @@ const ClassList: FC<Props> = ({
   )
 
   const topicCount = list.length
-
-  const handleCollapse = useCallback(() => {
-    setCollapsed(!collapsed)
-  }, [collapsed])
 
   const dismissRenameHint = useCallback(() => {
     if (isRenameHintDismissed) return
@@ -120,105 +130,101 @@ const ClassList: FC<Props> = ({
     })
 
   return (
-    <>
+    <Collapse collapsed={!enabled || collapsed} onCollapse={setCollapsed} disabled={!enabled}>
       {keyboardSort.announcement}
-      <div className="mb-2 flex items-center justify-between">
-        <button
-          type="button"
-          className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left text-xs font-semibold text-text-secondary uppercase focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={handleCollapse}
-        >
-          {labels?.title ?? t(($) => $[`${i18nPrefix}.class`], { ns: 'workflow' })}{' '}
-          <span className="text-text-destructive">*</span>
-          {list.length > 0 && (
-            <ArrowDownRoundFill
-              className={cn(
-                'size-4 text-text-quaternary transition-transform duration-200',
-                collapsed && '-rotate-90',
-              )}
-              aria-hidden="true"
-            />
-          )}
-        </button>
-      </div>
-      {shouldShowRenameHint && (
-        <div className="mb-2 rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-xs text-text-tertiary">
-          {labels?.renameHint ?? t(($) => $[`${i18nPrefix}.renameHint`], { ns: 'workflow' })}
-        </div>
-      )}
+      <CollapseHeader>
+        <CollapseTrigger className="ml-0">
+          <CollapseTitle>
+            {labels?.title ?? t(($) => $[`${i18nPrefix}.class`], { ns: 'workflow' })}{' '}
+            {enabled && <span className="text-text-destructive">*</span>}
+          </CollapseTitle>
+          {enabled && list.length > 0 && <CollapseIndicator />}
+        </CollapseTrigger>
+        {actions != null && <CollapseActions>{actions}</CollapseActions>}
+      </CollapseHeader>
+      {enabled && (
+        <CollapseContent>
+          <div className="pt-2">
+            {shouldShowRenameHint && (
+              <div className="mb-2 rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-xs text-text-tertiary">
+                {labels?.renameHint ?? t(($) => $[`${i18nPrefix}.renameHint`], { ns: 'workflow' })}
+              </div>
+            )}
 
-      {!collapsed && (
-        <div className="overflow-y-visible pl-3">
-          <ReactSortable
-            list={sortableTopics}
-            setList={(items) => {
-              if (
-                !keyboardSort.isSorting &&
-                items.some((item, index) => item.id !== sortableTopics[index]?.id)
-              )
-                handleSortTopic(items)
-            }}
-            handle=".handle"
-            ghostClass="bg-components-panel-bg"
-            animation={150}
-            disabled={readonly || keyboardSort.isSorting}
-            className="space-y-2"
-          >
-            {keyboardSort.items.map((item, index) => {
-              const canDrag = !readonly && topicCount >= 2
-              return (
-                <div
-                  key={item.id}
-                  className={cn(
-                    'group relative -ml-3 min-h-10 rounded-[10px] bg-components-panel-bg px-0 py-0',
-                  )}
-                  style={{
-                    // Performance hint for browser
-                    contain: 'layout style paint',
-                  }}
-                >
-                  <div>
-                    {canDrag && (
-                      <IconButton
-                        {...keyboardSort.getHandleProps(index)}
-                        className="handle pointer-events-none absolute top-1.5 left-0.5 z-10 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
-                      >
-                        <span aria-hidden="true" className="i-ri-draggable size-3" />
-                      </IconButton>
-                    )}
-                    <Item
-                      className={cn(canDrag && 'handle')}
-                      headerClassName={cn(
-                        canDrag && 'cursor-grab group-focus-within:pl-5 group-hover:pl-5',
-                      )}
-                      nodeId={nodeId}
+            <div className="overflow-y-visible pl-3">
+              <ReactSortable
+                list={sortableTopics}
+                setList={(items) => {
+                  if (
+                    !keyboardSort.isSorting &&
+                    items.some((item, index) => item.id !== sortableTopics[index]?.id)
+                  )
+                    handleSortTopic(items)
+                }}
+                handle=".handle"
+                ghostClass="bg-components-panel-bg"
+                animation={150}
+                disabled={readonly || keyboardSort.isSorting}
+                className="space-y-2"
+              >
+                {keyboardSort.items.map((item, index) => {
+                  const canDrag = !readonly && topicCount >= 2
+                  return (
+                    <div
                       key={item.id}
-                      payload={item}
-                      onChange={handleClassChange(keyboardSort.getItemKey(index))}
-                      onRemove={handleRemoveClass(keyboardSort.getItemKey(index))}
-                      index={index + 1}
-                      readonly={readonly}
-                      filterVar={filterVar}
-                      onLabelEditStart={dismissRenameHint}
-                      placeholder={labels?.placeholder}
-                      defaultLabel={labels?.defaultLabel(index + 1)}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </ReactSortable>
-        </div>
+                      className={cn(
+                        'group relative -ml-3 min-h-10 rounded-[10px] bg-components-panel-bg px-0 py-0',
+                      )}
+                      style={{
+                        // Performance hint for browser
+                        contain: 'layout style paint',
+                      }}
+                    >
+                      <div>
+                        {canDrag && (
+                          <IconButton
+                            {...keyboardSort.getHandleProps(index)}
+                            className="handle pointer-events-none absolute top-1.5 left-0.5 z-10 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                          >
+                            <span aria-hidden="true" className="i-ri-draggable size-3" />
+                          </IconButton>
+                        )}
+                        <Item
+                          className={cn(canDrag && 'handle')}
+                          headerClassName={cn(
+                            canDrag && 'cursor-grab group-focus-within:pl-5 group-hover:pl-5',
+                          )}
+                          nodeId={nodeId}
+                          key={item.id}
+                          payload={item}
+                          onChange={handleClassChange(keyboardSort.getItemKey(index))}
+                          onRemove={handleRemoveClass(keyboardSort.getItemKey(index))}
+                          showRemove={list.length > minItems}
+                          index={index + 1}
+                          readonly={readonly}
+                          filterVar={filterVar}
+                          onLabelEditStart={dismissRenameHint}
+                          placeholder={labels?.placeholder}
+                          defaultLabel={labels?.defaultLabel(index + 1)}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </ReactSortable>
+            </div>
+            {!readonly && (
+              <div className="mt-2">
+                <AddButton
+                  onClick={handleAddClass}
+                  text={labels?.add ?? t(($) => $[`${i18nPrefix}.addClass`], { ns: 'workflow' })}
+                />
+              </div>
+            )}
+          </div>
+        </CollapseContent>
       )}
-      {!readonly && !collapsed && (
-        <div className="mt-2">
-          <AddButton
-            onClick={handleAddClass}
-            text={labels?.add ?? t(($) => $[`${i18nPrefix}.addClass`], { ns: 'workflow' })}
-          />
-        </div>
-      )}
-    </>
+    </Collapse>
   )
 }
 export default React.memo(ClassList)

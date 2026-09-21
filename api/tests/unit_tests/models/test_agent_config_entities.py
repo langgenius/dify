@@ -249,7 +249,8 @@ def test_effective_declared_outputs_prepends_optional_system_text() -> None:
 
 
 @pytest.mark.parametrize(
-    ("enabled", "count", "expected"), [(False, 2, ["text"]), (True, 1, ["text"]), (True, 2, ["text", "switch"])]
+    ("enabled", "count", "expected"),
+    [(False, 0, ["text"]), (False, 1, ["text"]), (False, 2, ["text"]), (True, 2, ["text", "switch"])],
 )
 def test_effective_outputs_follow_route_selection_contract(enabled, count, expected):
     job = WorkflowNodeJobConfig.model_validate(
@@ -261,6 +262,14 @@ def test_effective_outputs_follow_route_selection_contract(enabled, count, expec
         }
     )
     assert [output.name for output in effective_declared_outputs([], job.output_routes)] == expected
+
+
+@pytest.mark.parametrize("count", [0, 1])
+def test_enabled_output_routes_require_at_least_two_routes(count):
+    with pytest.raises(ValueError, match="at least two routes"):
+        WorkflowNodeJobConfig.model_validate(
+            {"output_routes": {"enabled": True, "routes": [{"id": str(index)} for index in range(count)]}}
+        )
 
 
 @pytest.mark.parametrize("ids", [[""], ["source"], ["fail-branch"], ["target"], ["same", "same"]])

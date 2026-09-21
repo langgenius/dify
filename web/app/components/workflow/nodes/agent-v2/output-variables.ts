@@ -53,7 +53,7 @@ export function normalizeAgentV2DeclaredOutputs(
   routes?: WorkflowOutputRoutes,
 ) {
   const systemOutputs: DeclaredOutputConfig[] = [agentV2SystemTextOutput]
-  if (routes?.enabled && (routes.routes?.length ?? 0) > 1)
+  if (routes?.enabled)
     systemOutputs.push({
       name: 'switch',
       type: 'string',

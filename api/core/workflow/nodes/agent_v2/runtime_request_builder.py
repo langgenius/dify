@@ -528,17 +528,16 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> AgentBackendOutputConfig | None:
         """Build the structured-output layer config sent to Agent backend.
 
-        Enabled routing with multiple routes adds a required system ``switch``
+        Enabled routing adds a required system ``switch``
         in the same Agent call. Omit the structured-output layer only when there
-        are no custom outputs and route selection is not required.
+        are no custom outputs and routing is disabled.
         """
-        requires_selection = output_routes is not None and output_routes.requires_selection
-        if not declared_outputs and not requires_selection:
+        if not declared_outputs and (output_routes is None or not output_routes.enabled):
             return None
 
         properties: dict[str, Any] = {"text": {"type": "string"}}
         required: list[str] = []
-        if output_routes is not None and requires_selection:
+        if output_routes is not None and output_routes.enabled:
             if variable_pool is None:
                 raise ValueError("Output route selection requires a workflow variable pool.")
             descriptions = [

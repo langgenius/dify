@@ -44,11 +44,8 @@ export const useWorkflowNodeFinished = () => {
           if (
             hasAgentV2OutputRoutes(currentNode.data) &&
             data.status === NodeRunningStatus.Succeeded
-          ) {
-            const routes = currentNode.data.agent_output_routes?.routes ?? []
-            currentNode.data._runningBranchId =
-              routes.length === 1 ? routes[0]?.id : data.outputs?.switch
-          }
+          )
+            currentNode.data._runningBranchId = data.outputs?.switch
           if (data.node_type === BlockEnum.HumanInput)
             currentNode.data._runningBranchId = data?.outputs?.__action_id
         }

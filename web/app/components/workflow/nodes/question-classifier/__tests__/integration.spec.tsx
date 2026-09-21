@@ -95,15 +95,6 @@ vi.mock(
   }),
 )
 
-vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
-  FieldCollapse: ({ title, children }: any) => (
-    <div>
-      <div>{title}</div>
-      {children}
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
   default: ({ title, operations, children }: any) => (
     <div>

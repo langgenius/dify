@@ -736,8 +736,8 @@ def test_publish_validation_rejects_unauthorized_tool_node_agentic_config(unboun
         )
 
 
-@pytest.mark.parametrize("routes", [[], [{"id": "a", "name": ""}, {"id": "b", "name": ""}]])
-def test_incomplete_routes_can_be_saved_but_not_published(sqlite_session: Session, routes):
+def test_incomplete_route_conditions_can_be_saved_but_not_published(sqlite_session: Session):
+    routes = [{"id": "a", "name": ""}, {"id": "b", "name": ""}]
     job = WorkflowNodeJobConfig.model_validate({"output_routes": {"enabled": True, "routes": routes}})
     _persist_validation_scope(sqlite_session, node_job=job)
     workflow = _workflow(_graph([{"source": "start", "target": "agent-node"}]))
@@ -778,7 +778,7 @@ def test_publishing_routes_rejects_node_level_default_values(sqlite_session: Ses
         {
             "output_routes": {
                 "enabled": True,
-                "routes": [{"id": "accepted", "name": ""}],
+                "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
             }
         }
     )

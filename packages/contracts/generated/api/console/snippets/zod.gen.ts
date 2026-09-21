@@ -941,7 +941,7 @@ export const zWorkflowOutputRoute = z.object({
 /**
  * WorkflowOutputRoutes
  *
- * Node-job routes; drafts may be incomplete until publish or execution.
+ * Enabled routes require at least two exits; drafts may omit conditions.
  */
 export const zWorkflowOutputRoutes = z.object({
   enabled: z.boolean().optional().default(false),

@@ -1072,7 +1072,7 @@ SYSTEM_DECLARED_OUTPUTS: Final[tuple[DeclaredOutputConfig, ...]] = (
         description="Free-form text answer.",
     ),
 )
-# ``switch`` is derived only for multi-route jobs; ``_session`` remains reserved.
+# ``switch`` is derived when routing is enabled; ``_session`` remains reserved.
 RESERVED_DECLARED_OUTPUT_NAMES: Final[frozenset[str]] = frozenset({"text", "switch", "_session"})
 
 
@@ -1094,7 +1094,7 @@ class WorkflowOutputRoute(BaseModel):
 
 
 class WorkflowOutputRoutes(BaseModel):
-    """Node-job routes; drafts may be incomplete until publish or execution."""
+    """Enabled routes require at least two exits; drafts may omit conditions."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -1102,20 +1102,16 @@ class WorkflowOutputRoutes(BaseModel):
     routes: list[WorkflowOutputRoute] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _validate_ids(self) -> Self:
+    def _validate_routes(self) -> Self:
+        if self.enabled and len(self.routes) < 2:
+            raise ValueError("Enabled output routes require at least two routes.")
         if len({route.id for route in self.routes}) != len(self.routes):
             raise ValueError("output route ids must be unique")
         return self
 
-    @property
-    def requires_selection(self) -> bool:
-        return self.enabled and len(self.routes) > 1
-
     def validate_for_execution(self) -> None:
-        if self.enabled and not self.routes:
-            raise ValueError("Output routes require at least one route.")
-        if self.requires_selection and any(not route.name.strip() for route in self.routes):
-            raise ValueError("Each output route requires a selection condition when multiple routes are enabled.")
+        if self.enabled and any(not route.name.strip() for route in self.routes):
+            raise ValueError("Each enabled output route requires a selection condition.")
 
 
 def effective_declared_outputs(
@@ -1125,7 +1121,7 @@ def effective_declared_outputs(
     """Project system outputs for this job before its custom declarations."""
     switch = (
         (DeclaredOutputConfig(name="switch", type=DeclaredOutputType.STRING, description="Selected output route ID."),)
-        if output_routes is not None and output_routes.requires_selection
+        if output_routes is not None and output_routes.enabled
         else ()
     )
     return SYSTEM_DECLARED_OUTPUTS + switch + tuple(declared_outputs)

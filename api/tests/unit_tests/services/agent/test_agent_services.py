@@ -7009,7 +7009,7 @@ def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.Monkey
             "workflow_prompt": "Keep this task",
             "output_routes": {
                 "enabled": True,
-                "routes": [{"id": "accepted", "name": ""}],
+                "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
             },
         }
     )

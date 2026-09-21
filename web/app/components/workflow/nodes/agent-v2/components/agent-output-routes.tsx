@@ -29,8 +29,7 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
     t(($) => $['nodes.agent.outputRoutes.route'], { ns: 'workflow', index })
 
   const update = (next: WorkflowOutputRoutes) => {
-    if (routes?.enabled && list.length > 1 && (!next.enabled || (next.routes?.length ?? 0) < 2))
-      removeUsedVarInNodes([id, 'switch'])
+    if (routes?.enabled && !next.enabled) removeUsedVarInNodes([id, 'switch'])
     handleNodeDataUpdateWithSyncDraft({
       id,
       data: {
@@ -46,10 +45,15 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
     saveStateToHistory(WorkflowHistoryEvent.NodeChange)
   }
   const toggle = (enabled: boolean) => {
-    const nextList =
-      enabled && !list.length
-        ? [1, 2].map((index) => ({ id: crypto.randomUUID(), name: '', label: defaultLabel(index) }))
-        : list
+    const nextList = [...list]
+    if (enabled) {
+      while (nextList.length < 2)
+        nextList.push({
+          id: crypto.randomUUID(),
+          name: '',
+          label: defaultLabel(nextList.length + 1),
+        })
+    }
     // Remove references while downstream nodes are still reachable, then remove
     // success edges. The shared history debounce captures the complete change.
     update({ enabled, routes: nextList })
@@ -59,34 +63,31 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
 
   return (
     <div className="border-b border-divider-subtle px-4 py-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="system-sm-semibold text-text-secondary">
-          {t(($) => $['nodes.agent.outputRoutes.title'], { ns: 'workflow' })}
-        </span>
-        <Switch
-          aria-label={t(($) => $['nodes.agent.outputRoutes.title'], { ns: 'workflow' })}
-          checked={!!routes?.enabled}
-          disabled={nodesReadOnly}
-          onCheckedChange={toggle}
-        />
-      </div>
-      {routes?.enabled && (
-        <BranchList
-          nodeId={id}
-          list={list}
-          onChange={(routes) => update({ enabled: true, routes })}
-          handleSortTopic={(routes) => update({ enabled: true, routes })}
-          readonly={nodesReadOnly}
-          filterVar={filterVar}
-          labels={{
-            title: t(($) => $['nodes.agent.outputRoutes.title'], { ns: 'workflow' }),
-            add: t(($) => $['nodes.agent.outputRoutes.add'], { ns: 'workflow' }),
-            placeholder: t(($) => $['nodes.agent.outputRoutes.placeholder'], { ns: 'workflow' }),
-            renameHint: t(($) => $['nodes.agent.outputRoutes.renameHint'], { ns: 'workflow' }),
-            defaultLabel,
-          }}
-        />
-      )}
+      <BranchList
+        nodeId={id}
+        list={list}
+        minItems={2}
+        enabled={!!routes?.enabled}
+        actions={
+          <Switch
+            aria-label={t(($) => $['nodes.agent.outputRoutes.title'], { ns: 'workflow' })}
+            checked={!!routes?.enabled}
+            disabled={nodesReadOnly}
+            onCheckedChange={toggle}
+          />
+        }
+        onChange={(routes) => update({ enabled: true, routes })}
+        handleSortTopic={(routes) => update({ enabled: true, routes })}
+        readonly={nodesReadOnly}
+        filterVar={filterVar}
+        labels={{
+          title: t(($) => $['nodes.agent.outputRoutes.title'], { ns: 'workflow' }),
+          add: t(($) => $['nodes.agent.outputRoutes.add'], { ns: 'workflow' }),
+          placeholder: t(($) => $['nodes.agent.outputRoutes.placeholder'], { ns: 'workflow' }),
+          renameHint: t(($) => $['nodes.agent.outputRoutes.renameHint'], { ns: 'workflow' }),
+          defaultLabel,
+        }}
+      />
     </div>
   )
 }

@@ -239,7 +239,7 @@ class WorkflowAgentNodeValidator:
             workflow_previous_node_output_refs_from_selectors(
                 extract_workflow_node_output_selectors("\n".join(route.name for route in node_job.output_routes.routes))
             )
-            if node_job.output_routes.requires_selection
+            if node_job.output_routes.enabled
             else []
         )
         for ref in [*node_job.previous_node_output_refs, *route_refs]:

@@ -372,7 +372,7 @@ describe('variable utils', () => {
 
 it.each([
   { enabled: false, count: 2 },
-  { enabled: true, count: 1 },
+  { enabled: true, count: 2 },
 ])(
   'maintains saved route references separately from execution inputs: %j',
   ({ enabled, count }) => {
@@ -392,7 +392,9 @@ it.each([
     })
     const users = findUsedVarNodes(['upstream', 'foo'], [node])
     expect(users).toEqual([node])
-    expect(getNodeUsedVars(node, { forExecution: true })).toEqual([])
+    expect(getNodeUsedVars(node, { forExecution: true })).toEqual(
+      enabled ? [['upstream', 'foo']] : [],
+    )
     const renamed = updateNodeVars(
       users[0]!,
       ['upstream', 'foo'],

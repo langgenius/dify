@@ -24676,7 +24676,7 @@ Stable workflow exit identity and its model-visible selection condition.
 
 #### WorkflowOutputRoutes
 
-Node-job routes; drafts may be incomplete until publish or execution.
+Enabled routes require at least two exits; drafts may omit conditions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

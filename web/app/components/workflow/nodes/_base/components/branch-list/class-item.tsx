@@ -19,6 +19,7 @@ type Props = Readonly<{
   payload: Topic
   onChange: (payload: Topic) => void
   onRemove: () => void
+  showRemove?: boolean
   index: number
   readonly?: boolean
   filterVar: (payload: Var, valueSelector: ValueSelector) => boolean
@@ -34,6 +35,7 @@ const ClassItem: FC<Props> = ({
   payload,
   onChange,
   onRemove,
+  showRemove = true,
   index,
   readonly,
   filterVar,
@@ -159,7 +161,7 @@ const ClassItem: FC<Props> = ({
       }
       value={payload.name}
       onChange={handleNameChange}
-      showRemove
+      showRemove={showRemove}
       onRemove={onRemove}
       nodesOutputVars={availableVars}
       availableNodes={availableNodesWithParent}

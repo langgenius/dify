@@ -1345,9 +1345,7 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
         const payload = data as AgentV2NodeType
         res = matchNotSystemVars([
           payload.agent_task || '',
-          ...(!forExecution ||
-          (payload.agent_output_routes?.enabled &&
-            (payload.agent_output_routes.routes?.length ?? 0) > 1)
+          ...(!forExecution || payload.agent_output_routes?.enabled
             ? (payload.agent_output_routes?.routes?.map((route) => route.name ?? '') ?? [])
             : []),
         ])
@@ -1369,9 +1367,7 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
       const payload = data as AgentV2NodeType
       res = matchNotSystemVars([
         payload.agent_task || '',
-        ...(!forExecution ||
-        (payload.agent_output_routes?.enabled &&
-          (payload.agent_output_routes.routes?.length ?? 0) > 1)
+        ...(!forExecution || payload.agent_output_routes?.enabled
           ? (payload.agent_output_routes?.routes?.map((route) => route.name ?? '') ?? [])
           : []),
       ])

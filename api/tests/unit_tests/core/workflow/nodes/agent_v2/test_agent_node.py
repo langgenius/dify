@@ -55,6 +55,7 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
+    NodeExecutionType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -1135,7 +1136,6 @@ def test_agent_node_records_stream_usage_metadata():
     ("enabled", "count", "output", "expected_handle"),
     [
         (False, 2, "hello", "source"),
-        (True, 1, "hello", "route-0"),
         (True, 2, {"text": "hello", "switch": "route-1"}, "route-1"),
     ],
 )
@@ -1154,6 +1154,45 @@ def test_agent_node_selects_the_configured_success_exit(enabled, count, output, 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.edge_source_handle == expected_handle
     assert result.outputs == (output if isinstance(output, dict) else {"text": output})
+
+
+@pytest.mark.parametrize(
+    ("enabled", "error_strategy", "expected_execution_type"),
+    [
+        (False, None, NodeExecutionType.EXECUTABLE),
+        (True, None, NodeExecutionType.BRANCH),
+        (False, ErrorStrategy.DEFAULT_VALUE, NodeExecutionType.EXECUTABLE),
+        (True, ErrorStrategy.FAIL_BRANCH, NodeExecutionType.BRANCH),
+        (True, ErrorStrategy.DEFAULT_VALUE, None),
+    ],
+)
+def test_agent_routes_initialize_through_workflow_node_factory(
+    enabled, error_strategy, expected_execution_type, config_overrides
+):
+    from core.workflow.node_factory import DifyNodeFactory
+
+    config_overrides(AGENT_BACKEND_USE_FAKE=True)
+    template = _node()
+    factory = DifyNodeFactory(template.graph_init_params, template.graph_runtime_state)
+    node_data = template.node_data.model_dump(mode="python", by_alias=True)
+    node_data.update(
+        agent_output_routes={
+            "enabled": enabled,
+            "routes": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}],
+        },
+        error_strategy=error_strategy,
+    )
+    # Exercise the production factory, which serializes data before construction.
+    node_config = {"id": "agent-node", "data": node_data}
+    if expected_execution_type is None:
+        with pytest.raises(ValueError, match="default-value"):
+            factory.create_node(node_config)
+        return
+
+    node = factory.create_node(node_config)
+    assert isinstance(node, DifyAgentNode)
+    assert node.execution_type == expected_execution_type
+    assert node.node_data.agent_output_routes.enabled is enabled
 
 
 def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branches():
@@ -1246,7 +1285,6 @@ def test_agent_node_rejects_invalid_route_selection_without_custom_outputs(outpu
     ("enabled", "count", "expected"),
     [
         (False, 2, {}),
-        (True, 1, {}),
         (
             True,
             2,
@@ -1257,7 +1295,7 @@ def test_agent_node_rejects_invalid_route_selection_without_custom_outputs(outpu
         ),
     ],
 )
-def test_agent_route_conditions_load_variables_only_when_selection_is_required(enabled, count, expected):
+def test_agent_route_conditions_load_variables_only_when_routing_is_enabled(enabled, count, expected):
     mapping = DifyAgentNode._extract_variable_selector_to_variable_mapping(
         graph_config={},
         node_id="agent-node",
@@ -1307,7 +1345,7 @@ def test_enabled_routes_reject_default_value_before_execution():
         {
             "output_routes": {
                 "enabled": True,
-                "routes": [{"id": "accepted", "name": ""}],
+                "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
             }
         }
     )

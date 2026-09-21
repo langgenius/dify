@@ -4276,7 +4276,7 @@
   },
   "web/app/components/workflow/nodes/question-classifier/__tests__/integration.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "web/app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {

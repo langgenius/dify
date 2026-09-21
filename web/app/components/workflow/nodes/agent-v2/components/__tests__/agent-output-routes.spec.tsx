@@ -42,11 +42,13 @@ vi.mock('../../../_base/components/prompt/editor', () => ({
     value,
     onChange,
     onRemove,
+    showRemove,
   }: {
     title: ReactNode
     value: string
     onChange: (value: string) => void
     onRemove: () => void
+    showRemove?: boolean
   }) => (
     <div>
       {title}
@@ -55,9 +57,11 @@ vi.mock('../../../_base/components/prompt/editor', () => ({
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
-      <button type="button" onClick={onRemove}>
-        Remove route
-      </button>
+      {showRemove && (
+        <button type="button" onClick={onRemove}>
+          Remove route
+        </button>
+      )}
     </div>
   ),
 }))
@@ -121,7 +125,33 @@ it('enables two routes, preserves edited conditions through toggles, and changes
   expect(saveHistory).toHaveBeenCalledWith('NodeChange')
 })
 
-it('removes a route by stable ID and drops switch when only one route remains', async () => {
+it('removes a route by stable ID and keeps at least two routes with switch available', async () => {
+  const user = userEvent.setup()
+  render(
+    <Harness
+      initial={{
+        enabled: true,
+        routes: [
+          { id: 'accepted', name: 'Accept' },
+          { id: 'rejected', name: 'Reject' },
+          { id: 'deferred', name: 'Defer' },
+        ],
+      }}
+    />,
+  )
+  await user.click(screen.getAllByRole('button', { name: 'Remove route' })[0]!)
+  expect(removeEdges).toHaveBeenCalledWith('agent', 'accepted')
+  expect(removeVariable).not.toHaveBeenCalled()
+  expect(update.mock.lastCall![0].data._targetBranches).toEqual([
+    { id: 'rejected', name: 'Reject' },
+    { id: 'deferred', name: 'Defer' },
+  ])
+  expect(screen.getByLabelText('Available outputs').textContent).toBe('text,switch')
+  expect(screen.getAllByRole('textbox', { name: 'Condition' })).toHaveLength(2)
+  expect(screen.queryByRole('button', { name: 'Remove route' })).not.toBeInTheDocument()
+})
+
+it('collapses routes independently of their enabled state and keeps one title', async () => {
   const user = userEvent.setup()
   render(
     <Harness
@@ -134,13 +164,46 @@ it('removes a route by stable ID and drops switch when only one route remains', 
       }}
     />,
   )
-  await user.click(screen.getAllByRole('button', { name: 'Remove route' })[0]!)
-  expect(removeEdges).toHaveBeenCalledWith('agent', 'accepted')
-  expect(removeVariable).toHaveBeenCalledWith(['agent', 'switch'])
-  expect(update.mock.lastCall![0].data._targetBranches).toEqual([
-    { id: 'rejected', name: 'Reject' },
-  ])
-  expect(screen.getByLabelText('Available outputs').textContent).toBe('text')
+  const title = 'workflow.nodes.agent.outputRoutes.title'
+  const disclosure = screen.getByRole('button', { name: new RegExp(title) })
+  const toggle = screen.getByRole('switch', { name: title })
+  expect(screen.getAllByText(title, { exact: true })).toHaveLength(1)
+  expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+
+  await user.click(disclosure)
+  expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('textbox', { name: 'Condition' })).not.toBeInTheDocument()
+  expect(toggle).toBeChecked()
+  expect(update).not.toHaveBeenCalled()
+  expect(removeEdges).not.toHaveBeenCalled()
+
+  await user.click(disclosure)
+  expect(screen.getAllByRole('textbox', { name: 'Condition' })[0]).toHaveValue('Accept')
+  await user.click(toggle)
+  expect(disclosure).toHaveAttribute('aria-disabled', 'true')
+  await user.click(disclosure)
+  expect(screen.queryByRole('textbox', { name: 'Condition' })).not.toBeInTheDocument()
+  expect(screen.queryByText('workflow.nodes.agent.outputRoutes.add')).not.toBeInTheDocument()
+  await user.click(toggle)
+  expect(disclosure).not.toHaveAttribute('aria-disabled', 'true')
+  expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getAllByRole('textbox', { name: 'Condition' })).toHaveLength(2)
+})
+
+it('keeps a saved disabled route and adds only the missing route when enabling', async () => {
+  const user = userEvent.setup()
+  const saved = { id: 'accepted', name: 'Accept', label: 'Accepted' }
+  render(<Harness initial={{ enabled: false, routes: [saved] }} />)
+
+  await user.click(screen.getByRole('switch', { name: 'workflow.nodes.agent.outputRoutes.title' }))
+
+  const routes = update.mock.lastCall![0].data.agent_output_routes.routes
+  expect(routes).toHaveLength(2)
+  expect(routes[0]).toEqual(saved)
+  expect(routes[1]).toMatchObject({ id: expect.any(String), name: '' })
+  expect(routes[1].id).not.toBe(saved.id)
+  expect(screen.getAllByRole('textbox', { name: 'Condition' })[0]).toHaveValue('Accept')
+  expect(screen.queryByRole('button', { name: 'Remove route' })).not.toBeInTheDocument()
 })
 
 it('clears node-level default values when enabling routes', async () => {
