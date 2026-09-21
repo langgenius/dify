@@ -1,4 +1,5 @@
 import type { Logger, Plugin } from 'vite'
+import type { TranslationAdapter } from './i18n-analysis/api'
 import type { ModuleResolutions } from './i18n-analysis/compiler'
 import type { AnalysisEvidence } from './i18n-analysis/graph'
 import type {
@@ -40,6 +41,7 @@ export type AnalysisReport = {
 // completed graph replaces its preceding scan build; only buildApp finalizes it.
 export function i18nAnalysisPlugin(
   options: {
+    adapters?: readonly TranslationAdapter[]
     onAnalysis?: (report: AnalysisReport) => void
     strictNamespaces?: boolean
     getDeclaredNamespaces?: (route: string) => readonly string[] | undefined
@@ -67,7 +69,7 @@ export function i18nAnalysisPlugin(
   const check = async () => {
     const started = performance.now()
     const { checkTranslationGraph, createAnalysisContext } = await import('./i18n-analysis/graph')
-    const context = createAnalysisContext(root)
+    const context = createAnalysisContext(root, options.adapters)
     const setupMs = performance.now() - started
     const environments = new Map<string, EnvironmentUsage>()
     const evidence: AnalysisReport['evidence'] = []

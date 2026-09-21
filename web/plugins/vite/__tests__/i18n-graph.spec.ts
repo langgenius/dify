@@ -1,9 +1,35 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
-import { checkTranslationGraph } from '../i18n-analysis/graph'
+import {
+  checkTranslationGraph as analyzeTranslationGraph,
+  createAnalysisContext,
+} from '../i18n-analysis/graph'
+
+const checkTranslationGraph = (root: string, modules: ReadonlyMap<string, string>) =>
+  analyzeTranslationGraph(
+    root,
+    modules,
+    undefined,
+    createAnalysisContext(root, [
+      { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
+      {
+        module: 'i18n/lib.server.ts',
+        exportName: 'useTranslation',
+        namespaceArgument: 0,
+        implementationFunctions: ['getI18nConfig'],
+      },
+      { module: 'i18n/server.ts', exportName: 'getTranslation', namespaceArgument: 1 },
+      {
+        module: 'app/route-metadata.ts',
+        exportName: 'getRouteMetadata',
+        namespaceArgument: 0,
+        selectorArgument: 1,
+      },
+    ]),
+  )
 
 let webRoot: string
 let modules: Map<string, string>
@@ -30,6 +56,14 @@ describe('translation graph analysis', () => {
     modules = new Map()
     webRoot = mkdtempSync(path.join(tmpdir(), 'dify-i18n-analysis-'))
     writeSource('placeholder.ts', '')
+    writeSource(
+      'i18n/server.ts',
+      'export function getTranslation(locale: string, ns: string) { return {} }',
+    )
+    writeFileSync(
+      path.join(webRoot, 'tsconfig.json'),
+      JSON.stringify({ compilerOptions: { paths: { '@/*': [path.join(webRoot, '*')] } } }),
+    )
   })
 
   afterEach(() => {
@@ -37,6 +71,115 @@ describe('translation graph analysis', () => {
   })
 
   describe('Usage Analysis', () => {
+    it.each(['static', 'dynamic'] as const)(
+      'analyzes repository adapter calls with %s namespaces',
+      (mode) => {
+        writeJson('i18n/locales/en-US/common.json', { used: 'Used', unused: 'Unused' })
+        for (const file of ['i18n/lib.client.ts', 'i18n/lib.server.ts', 'app/route-metadata.ts']) {
+          writeSource(
+            file,
+            readFileSync(path.resolve(import.meta.dirname, '../../..', file), 'utf8'),
+          )
+        }
+        writeSource(
+          'src/page.ts',
+          `
+        import { useTranslation as clientTranslation } from '../i18n/lib.client'
+        import { useTranslation as serverTranslation } from '../i18n/lib.server'
+        import { getRouteMetadata as metadata } from '../app/route-metadata'
+        export function page(ns: string) {
+          clientTranslation(${mode === 'static' ? "'common'" : 'ns'})
+          serverTranslation(${mode === 'static' ? "'common'" : 'ns'})
+          return metadata(${mode === 'static' ? "'common'" : 'ns'}, $ => $.used)
+        }
+      `,
+        )
+        const result = checkTranslationGraph(webRoot, modules)
+        const unknown = result.evidence.filter((item) => item.kind === 'unknown-namespace')
+        expect(unknown).toHaveLength(mode === 'static' ? 0 : 3)
+        expect(unknown.every((item) => item.file === 'src/page.ts')).toBe(true)
+        expect(result.unused).toEqual({ common: ['unused'] })
+        expect(result.protectedNamespaces).toEqual([])
+        for (const file of ['i18n/lib.client.ts', 'i18n/lib.server.ts', 'app/route-metadata.ts']) {
+          expect(result.moduleNamespaces.get(path.join(webRoot, file))).toEqual(new Set())
+        }
+      },
+    )
+
+    it('supports opt-in custom names and argument positions without built-in module rules', () => {
+      writeJson('i18n/locales/en-US/common.json', {
+        used: 'Used',
+        other: 'Other',
+        unused: 'Unused',
+      })
+      writeSource(
+        'custom/labels.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+        export const label = (selector: (source: Record<string, string>) => string, ns: string) => {
+          const { t } = useTranslation(ns)
+          return t(selector)
+        }
+      `,
+      )
+      writeSource(
+        'entry.ts',
+        `
+        import { label as caption } from './custom/labels'
+        import * as labels from './custom/labels'
+        caption($ => $.used, 'common')
+        labels.label($ => $.other, 'common')
+      `,
+      )
+      const unconfigured = analyzeTranslationGraph(webRoot, modules)
+      expect(
+        unconfigured.evidence.some(
+          (item) => item.kind === 'unknown-namespace' && item.file === 'custom/labels.ts',
+        ),
+      ).toBe(true)
+      const configured = analyzeTranslationGraph(
+        webRoot,
+        modules,
+        undefined,
+        createAnalysisContext(webRoot, [
+          {
+            module: 'custom/labels.ts',
+            exportName: 'label',
+            namespaceArgument: 1,
+            selectorArgument: 0,
+          },
+        ]),
+      )
+      expect(configured.evidence.some((item) => item.kind === 'unknown-namespace')).toBe(false)
+      expect(configured.unused).toEqual({ common: ['unused'] })
+      expect(configured.protectedNamespaces).toEqual([])
+    })
+
+    it('does not exempt unrelated functions or all code in an adapter module', () => {
+      writeJson('i18n/locales/en-US/common.json', { unused: 'Unused' })
+      writeSource(
+        'app/route-metadata.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+        export function other(ns: string) { useTranslation(ns) }
+      `,
+      )
+      writeSource(
+        'src/other.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+        export function getRouteMetadata(ns: string) { useTranslation(ns) }
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(
+        result.evidence
+          .filter((item) => item.kind === 'unknown-namespace')
+          .map((item) => item.file)
+          .sort(),
+      ).toEqual(['app/route-metadata.ts', 'src/other.ts'])
+    })
+
     it.each([
       "function load(ns: string) { return useTranslation(ns) }; load('login')",
       "function load(ns = 'login') { return useTranslation(ns) }; load()",

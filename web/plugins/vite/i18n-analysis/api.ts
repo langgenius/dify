@@ -1,17 +1,60 @@
 import path from 'node:path'
 import * as ts from 'typescript'
 
-type TranslationApi = 'useTranslation' | 'getTranslation' | 'Trans'
+export type TranslationAdapter = {
+  /** Source module path, relative to the Vite root. */
+  module: string
+  exportName: string
+  namespaceArgument: number
+  /** Omit for APIs returning a translation object with a t function. */
+  selectorArgument?: number
+  /** Additional private forwarding functions in the same source module. */
+  implementationFunctions?: readonly string[]
+}
 
-export function createTranslationApiResolver(root: string, checker: ts.TypeChecker) {
-  const known = (name: string, module: string): TranslationApi | undefined => {
-    if (module === 'react-i18next' && (name === 'useTranslation' || name === 'Trans')) return name
-    if (
-      (module === '#i18n' || /^@\/i18n\/lib(?:\.client|\.server)?$/.test(module)) &&
-      name === 'useTranslation'
+type TranslationApi =
+  | { kind: 'translation'; namespaceArgument: number; selectorArgument?: number }
+  | { kind: 'trans' }
+
+function declarationIdentity(root: string, node: ts.Node) {
+  if (
+    (!ts.isFunctionDeclaration(node) && !ts.isVariableDeclaration(node)) ||
+    !node.name ||
+    !ts.isIdentifier(node.name)
+  )
+    return
+  return {
+    module: path.relative(root, node.getSourceFile().fileName).replaceAll('\\', '/'),
+    name: node.name.text,
+  }
+}
+
+export function isTranslationAdapter(
+  root: string,
+  node: ts.Node,
+  adapters: readonly TranslationAdapter[],
+) {
+  const identity = declarationIdentity(root, node)
+  return (
+    identity &&
+    adapters.some(
+      (adapter) =>
+        adapter.module === identity.module &&
+        (adapter.exportName === identity.name ||
+          adapter.implementationFunctions?.includes(identity.name)),
     )
-      return name
-    if (module === '@/i18n/server' && name === 'getTranslation') return name
+  )
+}
+
+export function createTranslationApiResolver(
+  root: string,
+  checker: ts.TypeChecker,
+  adapters: readonly TranslationAdapter[],
+) {
+  const known = (name: string, module: string): TranslationApi | undefined => {
+    if (module !== 'react-i18next') return
+    if (name === 'useTranslation') return { kind: 'translation', namespaceArgument: 0 }
+    if (name === 'Trans') return { kind: 'trans' }
   }
   const cache = new Map<ts.Node, TranslationApi | undefined>()
   function resolve(node: ts.Node, seen = new Set<ts.Node>()): TranslationApi | undefined {
@@ -63,22 +106,22 @@ export function createTranslationApiResolver(root: string, checker: ts.TypeCheck
   }
   function resolveDeclaration(declaration: ts.Declaration): TranslationApi | undefined {
     const file = declaration.getSourceFile().fileName.replaceAll('\\', '/')
-    const relative = path.relative(root, file).replaceAll('\\', '/')
-    const name =
-      (ts.isFunctionDeclaration(declaration) || ts.isVariableDeclaration(declaration)) &&
-      declaration.name &&
-      ts.isIdentifier(declaration.name)
-        ? declaration.name.text
-        : undefined
-    if (name === 'useTranslation' && /^i18n\/lib(?:\.client|\.server)?\.tsx?$/.test(relative))
-      return name
-    if (name === 'getTranslation' && relative === 'i18n/server.ts') return name
-    if (
-      file.includes('/node_modules/react-i18next/') &&
-      (name === 'useTranslation' || name === 'Trans')
-    )
-      return name
+    const identity = declarationIdentity(root, declaration)
+    const adapter =
+      identity &&
+      adapters.find(
+        (adapter) => adapter.module === identity.module && adapter.exportName === identity.name,
+      )
+    if (adapter)
+      return {
+        kind: 'translation',
+        namespaceArgument: adapter.namespaceArgument,
+        selectorArgument: adapter.selectorArgument,
+      }
+    if (file.includes('/node_modules/react-i18next/') && identity)
+      return known(identity.name, 'react-i18next')
   }
+
   return (node: ts.Node) => {
     if (!cache.has(node)) cache.set(node, resolve(node))
     return cache.get(node)

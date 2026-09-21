@@ -42,6 +42,22 @@ export default defineConfig(({ command, mode, isPreview }) => {
 
       return [
         i18nAnalysisPlugin({
+          adapters: [
+            { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
+            {
+              module: 'i18n/lib.server.ts',
+              exportName: 'useTranslation',
+              namespaceArgument: 0,
+              implementationFunctions: ['getI18nConfig'],
+            },
+            { module: 'i18n/server.ts', exportName: 'getTranslation', namespaceArgument: 1 },
+            {
+              module: 'app/route-metadata.ts',
+              exportName: 'getRouteMetadata',
+              namespaceArgument: 0,
+              selectorArgument: 1,
+            },
+          ],
           getDeclaredNamespaces: getDeclaredRouteNamespaces,
           // Runtime namespace providers remain unknown; validate detected usage only.
         }),

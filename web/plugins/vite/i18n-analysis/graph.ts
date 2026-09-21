@@ -1,7 +1,8 @@
+import type { TranslationAdapter } from './api'
 import type { ModuleResolutions } from './compiler'
 import path from 'node:path'
 import * as ts from 'typescript'
-import { createTranslationApiResolver } from './api'
+import { createTranslationApiResolver, isTranslationAdapter } from './api'
 import { camelCase, readTranslationCatalog } from './catalog'
 import { createTranslationProgram, readCompilerOptions } from './compiler'
 
@@ -67,8 +68,9 @@ export type AnalysisEvidence = {
   }
 }
 
-export function createAnalysisContext(root: string) {
+export function createAnalysisContext(root: string, adapters: readonly TranslationAdapter[] = []) {
   return {
+    adapters,
     translations: readTranslationCatalog(root),
     compilerOptions: readCompilerOptions(root),
   }
@@ -93,7 +95,7 @@ export function checkTranslationGraph(
   const checker = program.getTypeChecker()
   const programMs = performance.now() - programStarted
   const analysisStarted = performance.now()
-  const translationApi = createTranslationApiResolver(root, checker)
+  const translationApi = createTranslationApiResolver(root, checker, context.adapters)
   const evidence = new Map<string, AnalysisEvidence>()
   let currentModule = ''
   let currentSite: ts.Node | undefined
@@ -266,8 +268,8 @@ export function checkTranslationGraph(
           const call = unwrap(variable.initializer)
           if (ts.isCallExpression(call)) {
             const api = translationApi(call.expression)
-            if (api === 'useTranslation' || api === 'getTranslation') {
-              const nsIndex = api === 'getTranslation' ? 1 : 0
+            if (api?.kind === 'translation' && api.selectorArgument === undefined) {
+              const nsIndex = api.namespaceArgument
               return {
                 namespaces:
                   (call.arguments[nsIndex] && namespaceStrings(call.arguments[nsIndex]!)) ??
@@ -519,6 +521,7 @@ export function checkTranslationGraph(
   }
 
   function visit(node: ts.Node) {
+    if (isTranslationAdapter(root, node, context.adapters)) return
     currentSite = node
     if (ts.isStringLiteralLike(node) && (node.text.includes('.') || node.text.includes(':'))) {
       const contextual = checker.getContextualType(node)
@@ -534,10 +537,10 @@ export function checkTranslationGraph(
     if (ts.isCallExpression(node)) {
       currentSite = node
       const api = translationApi(node.expression)
-      if (api === 'useTranslation' || api === 'getTranslation') {
+      if (api?.kind === 'translation') {
         // Explicit loading requests matter even when their t function is unused.
         // Do not mark translation keys as used merely because a namespace loads.
-        const nsIndex = api === 'getTranslation' ? 1 : 0
+        const nsIndex = api.namespaceArgument
         const argument = node.arguments[nsIndex]
         if (argument && !recordLoadedNamespaces(argument))
           explain(
@@ -546,10 +549,21 @@ export function checkTranslationGraph(
             'Only literal namespaces, inline arrays and const string bindings are resolved; runtime values remain unknown.',
           )
       }
-      const info = translation(node.expression, node)
+      const info =
+        api?.kind === 'translation' && api.selectorArgument !== undefined
+          ? {
+              namespaces: (node.arguments[api.namespaceArgument] &&
+                namespaceStrings(node.arguments[api.namespaceArgument]!)) || [...catalog.keys()],
+              prefix: '',
+              argument: api.selectorArgument,
+            }
+          : translation(node.expression, node)
       const argument = info && node.arguments[info.argument]
       if (info && argument) {
-        const options = node.arguments.at(-1)
+        const options =
+          api?.kind === 'translation' && api.selectorArgument !== undefined
+            ? undefined
+            : node.arguments.at(-1)
         const namespaceOption = property(options, 'ns')
         const namespaces = namespaceOption && namespaceStrings(namespaceOption)
         if (namespaceOption && !namespaces)
@@ -566,7 +580,7 @@ export function checkTranslationGraph(
     }
     if (
       (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) &&
-      translationApi(node.tagName) === 'Trans'
+      translationApi(node.tagName)?.kind === 'trans'
     ) {
       currentSite = node
       const attributes = new Map<string, ts.Expression>()

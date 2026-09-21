@@ -102,6 +102,44 @@ No mutation/escape analysis, cross-function namespace forwarding, JSX prop track
 or route-policy trust exceptions are performed. Prefer a visible unknown result
 over inferring runtime behavior.
 
+## Custom translation APIs
+
+Only official translation API names are built in. Register custom
+wrappers with `adapters`, using source module paths relative to the Vite root and
+zero-based argument indexes:
+
+```ts
+i18nAnalysisPlugin({
+  adapters: [
+    { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
+    {
+      module: 'app/route-metadata.ts',
+      exportName: 'getRouteMetadata',
+      namespaceArgument: 0,
+      selectorArgument: 1,
+    },
+  ],
+})
+```
+
+`selectorArgument` identifies the key/selector argument of a direct translation
+adapter. Omit it for a hook/helper returning an object with a `t` function. Imports
+are matched by resolved declarations, including aliases, namespace imports and
+re-exports, rather than by function name alone. Named functions and function-valued
+variables are supported. A registration is an explicit forwarding contract: the
+registered implementation is not scanned for translation usage. Optional
+`implementationFunctions` lists additional private forwarding functions in the
+same module; other functions remain analyzed. Keep contract tests for registered
+wrappers and update the configuration if their behavior changes.
+
+Dify's registrations live in `web/vite.config.ts`, including the server hook's
+private `getI18nConfig` and the locale-first `getTranslation` helper. The plugin
+contains no Dify wrapper paths or names. Dynamic namespace arguments are diagnosed
+at call sites and fail opted-in strict validation. Runtime route Providers are not
+registered as adapters. This does not infer arbitrary wrapper implementations.
+
+## Key matching
+
 Key matching retains TypeScript selector and finite key types, direct selectors,
 static object-map lookup, and syntactic template-prefix protection. Function bodies
 are not executed to infer call results; keys returned by runtime helpers protect
@@ -150,7 +188,7 @@ arguments are included even when no translation key is consumed.
 The application passes `getDeclaredRouteNamespaces` from
 `i18n/route-namespaces.ts`, sharing declarations with server resource selection
 and client navigation. Currently only `/signin` and its descendants opt in. The
-application uses the default non-strict mode: runtime providers and wrappers emit
+application uses the default non-strict mode: runtime providers emit
 unknown warnings, while statically detected undeclared namespaces still fail.
 No policy callback substitutes configured values for unknown expressions.
 Undeclared routes keep the full catalog and can be migrated independently.

@@ -5,7 +5,28 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { build, createBuilder, createLogger, createServer } from 'vite'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { i18nAnalysisPlugin } from '../i18n-analysis'
+import { i18nAnalysisPlugin as createI18nAnalysisPlugin } from '../i18n-analysis'
+
+const i18nAnalysisPlugin = (options: Parameters<typeof createI18nAnalysisPlugin>[0] = {}) =>
+  createI18nAnalysisPlugin({
+    ...options,
+    adapters: options.adapters ?? [
+      { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
+      {
+        module: 'i18n/lib.server.ts',
+        exportName: 'useTranslation',
+        namespaceArgument: 0,
+        implementationFunctions: ['getI18nConfig'],
+      },
+      { module: 'i18n/server.ts', exportName: 'getTranslation', namespaceArgument: 1 },
+      {
+        module: 'app/route-metadata.ts',
+        exportName: 'getRouteMetadata',
+        namespaceArgument: 0,
+        selectorArgument: 1,
+      },
+    ],
+  })
 
 describe('i18n build check', () => {
   let root: string
@@ -696,6 +717,72 @@ describe('i18n build check', () => {
       expect(
         reports[0]!.routes.find((route) => route.route === '/good')!.unknownNamespaceSources,
       ).toEqual([])
+    },
+  )
+
+  it.each(['static', 'dynamic', 'undeclared'] as const)(
+    'validates %s metadata adapter calls through re-exports',
+    async (mode) => {
+      writeFileSync(localeFile, '{}')
+      writeFileSync(
+        path.join(root, 'i18n/locales/en-US/common.json'),
+        JSON.stringify({ used: 'Used' }),
+      )
+      mkdirSync(path.join(root, 'app'), { recursive: true })
+      writeFileSync(
+        path.join(root, 'i18n/server.ts'),
+        `
+      export function getTranslation(locale: string, ns: string) {
+        return { t: (selector: (source: Record<string, string>) => string, options: { ns: string }) => selector({ used: 'Used' }) }
+      }
+    `,
+      )
+      writeFileSync(
+        path.join(root, 'app/route-metadata.ts'),
+        `
+      import { getTranslation } from '../i18n/server'
+      export async function getRouteMetadata(namespace: string, selector: (source: Record<string, string>) => string) {
+        const { t } = getTranslation('en-US', namespace)
+        return { title: t(selector, { ns: namespace }) }
+      }
+    `,
+      )
+      writeFileSync(
+        path.join(root, 'metadata.ts'),
+        `export { getRouteMetadata as title } from './app/route-metadata'`,
+      )
+      writeFileSync(
+        path.join(root, 'app/page.ts'),
+        `
+      import { title as metadata } from '../metadata'
+      export function page(ns: string) { return metadata(${mode === 'dynamic' ? 'ns' : "'common'"}, $ => $.used) }
+    `,
+      )
+      const reports: AnalysisReport[] = []
+      const result = build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          i18nAnalysisPlugin({
+            strictNamespaces: true,
+            getDeclaredNamespaces: () => (mode === 'undeclared' ? ['app'] : ['common']),
+            onAnalysis: (report) => reports.push(report),
+          }),
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+      })
+      if (mode === 'dynamic')
+        await expect(result).rejects.toThrow('Cannot verify namespace usage: app/page.ts')
+      else if (mode === 'undeclared')
+        await expect(result).rejects.toThrow('Undeclared namespace: common')
+      else await expect(result).resolves.toBeDefined()
+      expect(reports[0]!.routes[0]!.unknownNamespaceSources).toEqual(
+        mode === 'dynamic' ? ['app/page.ts'] : [],
+      )
+      expect(reports[0]!.routes[0]!.namespaces).toEqual(
+        mode === 'dynamic' ? ['app', 'common'] : ['common'],
+      )
     },
   )
 
