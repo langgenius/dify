@@ -80,6 +80,21 @@ describe('http plugin', () => {
     })
   })
 
+  it('a 404 refetches the catalog only when the server catalog moved', async () => {
+    const ctx = new Context()
+    const h = await ctx.get(http)
+    await h.request(account)
+    const gone = () => ({ method: 'GET', path: '/openapi/v1/gone' })
+    const before = (await ctx.get(catalog)).fingerprint
+    await expect(h.request(gone)).rejects.toMatchObject({ httpStatus: 404 })
+    expect(mock.requestCount).toBe(4) // catalog, account, gone, catalog (unchanged, no resend)
+    expect((await ctx.get(catalog)).fingerprint).toBe(before)
+    mock.setScenario('catalog-changed')
+    await expect(h.request(gone)).rejects.toMatchObject({ httpStatus: 404 })
+    expect(mock.requestCount).toBe(7) // + gone, catalog, gone
+    expect((await ctx.get(catalog)).fingerprint).not.toBe(before)
+  })
+
   it('maps 401 to exit 4 and 429 to exit 7 with a retry hint', async () => {
     const h = await new Context().get(http)
     mock.setScenario('auth-expired')

@@ -13,7 +13,7 @@ src/
     argv/       the invocation's tokens as a context input, plus the argv parser (parse.ts, framework shared by global-flags and commands)
     global-flags/ flags any command accepts (`--verbose`), parsed off argv before the command is resolved
     catalog/    the cached catalog document: types, parseCatalog, op lookup
-    http/       the authenticated fetch wrapper with the catalog fingerprint header and 412 refetch
+    http/       the authenticated fetch wrapper with the catalog fingerprint header; refetches on 412, and on 404 when the catalog moved
     ops/        the catalog as the CLI shows it: resolve an op (refetch once on unknown), list rows, describe one op with its pins
     commands/   command pipeline plus the command framework (command.ts, cancel.ts, registry.ts) every command imports
   protocol/     pure catalog-shape logic: kinds, bind, pins, fold — no I/O

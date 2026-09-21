@@ -35,6 +35,10 @@ export type CatalogService = {
   readonly clear: () => Promise<void>
 }
 
+export function fingerprintOf(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex')
+}
+
 function cachePath(cacheDir: string, server: string): string {
   const key = bareHost(server).split(':').join(HOST_SEPARATOR_REPLACEMENT)
   return join(cacheDir, CATALOG_DIR_NAME, `${key}.json`)
@@ -111,7 +115,7 @@ export const catalog = definePlugin({
         return doc !== undefined
       },
       get fingerprint(): string {
-        return bytes === undefined ? '' : createHash('sha256').update(bytes).digest('hex')
+        return bytes === undefined ? '' : fingerprintOf(bytes)
       },
       op: (id: string) => doc?.ops[id],
       opOrThrow: (id: string) => {

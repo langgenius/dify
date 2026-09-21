@@ -7,7 +7,7 @@ import { errorMessage } from '@/errors/message'
 import { definePlugin } from '@/kernel/plugin'
 import { buildFetchInit } from '@/net/fetch-init'
 import { proxyDispatcher } from '@/net/proxy'
-import { catalog, CATALOG_HEADER, CATALOG_PATH } from '@/plugins/catalog'
+import { catalog, CATALOG_HEADER, CATALOG_PATH, fingerprintOf } from '@/plugins/catalog'
 import { config } from '@/plugins/config'
 import { env } from '@/plugins/env'
 import { session } from '@/plugins/session'
@@ -34,6 +34,7 @@ const HttpStatus = {
   Unauthorized: 401,
   Forbidden: 403,
   TooManyRequests: 429,
+  NotFound: 404,
   PreconditionFailed: 412,
 } as const
 
@@ -118,6 +119,12 @@ function isCatalogStale(err: unknown): err is HttpClientError {
     err.httpStatus === HttpStatus.PreconditionFailed &&
     err.serverError?.code === CATALOG_STALE_CODE
   )
+}
+
+// A route the server dropped answers 404 before any catalog guard runs, so a 404 is
+// the one rejection that can hide a stale catalog.
+function isRouteMissing(err: unknown): err is HttpClientError {
+  return err instanceof HttpClientError && err.httpStatus === HttpStatus.NotFound
 }
 
 // Resolves the request to send for a not-yet-loaded catalog: `build` runs once to see
@@ -234,13 +241,25 @@ export const http = definePlugin({
       }
     }
 
+    const catalogMoved = async (): Promise<boolean> => {
+      let bytes: Uint8Array
+      try {
+        bytes = await fetchCatalog()
+      } catch {
+        return false
+      }
+      if (fingerprintOf(bytes) === catalogService.fingerprint) return false
+      await catalogService.replace(bytes)
+      return true
+    }
+
     const request: HttpService['request'] = async (build) => {
       const req = await resolveRequest(build, catalogService, fetchCatalog)
       try {
         return await send(req)
       } catch (err) {
-        if (!isCatalogStale(err)) throw err
-        await catalogService.replace(await fetchCatalog())
+        if (isCatalogStale(err)) await catalogService.replace(await fetchCatalog())
+        else if (!(isRouteMissing(err) && (await catalogMoved()))) throw err
         return await send(await build(catalogService))
       }
     }

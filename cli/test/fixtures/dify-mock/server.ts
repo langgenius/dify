@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
 import { RESPONSE_ALREADY_SENT } from '@hono/node-server/utils/response'
 import { Hono } from 'hono'
+import { matchedRoutes } from 'hono/route'
+import { METHOD_NAME_ALL } from 'hono/router'
 import { CATALOG_HEADER, CATALOG_PATH } from '@/plugins/catalog'
 import { ACCOUNT, APPS, DSL_YAML, SESSIONS, WORKSPACES } from './scenarios.js'
 
@@ -383,6 +385,10 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     c.res.headers.set(CATALOG_HEADER, catalogFingerprintFor(getScenario()))
   })
 
+  app.notFound(() =>
+    errorResponse(ServerErrorCode.NotFound, 'The requested URL was not found on the server.', 404),
+  )
+
   app.get('/healthz', (c) => c.json({ ok: true }))
 
   // A rejection with no body at all: nothing for the client to name it by but the status.
@@ -433,6 +439,11 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       return
     }
     if (path === CATALOG_PATH || path === VERSION_PATH || path.startsWith(OAUTH_PREFIX)) {
+      await next()
+      return
+    }
+    // Flask answers an unknown path 404 before any per-route guard runs.
+    if (!matchedRoutes(c).some((route) => route.method !== METHOD_NAME_ALL)) {
       await next()
       return
     }
