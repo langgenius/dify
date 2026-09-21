@@ -30,20 +30,32 @@ class _BoomInstance:
 
 
 def test_analyze_goal_returns_fields_and_values():
-    m = _FakeInstance([json.dumps({
-        "fields": [{"key": "categories", "label": "Categories", "type": "text"}],
-        "values": {"categories": "billing"},
-    })])
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "categories", "label": "Categories", "type": "text"}],
+                    "values": {"categories": "billing"},
+                }
+            )
+        ]
+    )
     out = build.analyze_goal(m, "triage tickets")
     assert out["fields"][0]["key"] == "categories"
     assert out["values"] == {"categories": "billing"}
 
 
 def test_analyze_goal_reconciles_field_type_with_value():
-    m = _FakeInstance([json.dumps({
-        "fields": [{"key": "max_results", "label": "Max results", "type": "text"}],
-        "values": {"max_results": 5},
-    })])
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "max_results", "label": "Max results", "type": "text"}],
+                    "values": {"max_results": 5},
+                }
+            )
+        ]
+    )
 
     out = build.analyze_goal(m, "limit search results")
 
@@ -83,8 +95,13 @@ def test_propose_plan_v1_degrades_on_boom():
 
 
 def test_discover_resources_grounds_real_ids(monkeypatch):
-    monkeypatch.setattr(build.resources, "list_tenant_resources", lambda t: resources.TenantResources(  # noqa: ARG005
-        models=[], datasets=[resources.ResourceRef(id="kb-1", label="Company KB")], tools=[]))
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[], datasets=[resources.ResourceRef(id="kb-1", label="Company KB")], tools=[]
+        ),
+    )
     m = _FakeInstance([json.dumps({"resource_ids": ["kb-1"]})])
     opts = build.discover_resources(m, "t1", ["Retrieve knowledge"])
     assert opts[0].id == "kb-1"
@@ -223,8 +240,13 @@ def test_assess_capability_gap_shows_the_model_each_option_and_its_readiness(mon
 
 
 def test_bind_resources_names_bound_label(monkeypatch):
-    monkeypatch.setattr(build.resources, "list_tenant_resources", lambda t: resources.TenantResources(  # noqa: ARG005
-        models=[], datasets=[resources.ResourceRef(id="kb-1", label="Company KB")], tools=[]))
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[], datasets=[resources.ResourceRef(id="kb-1", label="Company KB")], tools=[]
+        ),
+    )
     out = build.bind_resources(None, "t1", ["Retrieve knowledge"], ["kb-1"])
     assert any("Company KB" in item for item in out)
 
@@ -238,3 +260,61 @@ def test_learn_from_build_degrades_on_boom():
     out = build.learn_from_build(m, "some goal", {}, ["plan"], ["node1"])
     assert isinstance(out, str)
     assert "1-node workflow" in out
+
+
+def test_plan_prompt_carries_the_node_vocabulary(monkeypatch):
+    """ESQ1-279: the Builder's own planner had NO node vocabulary, so it
+    planned in business language ("Send a Feishu notification") and the
+    generator was then asked to map steps onto nodes that do not exist."""
+    captured = {}
+
+    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+        captured["system"] = system
+        captured["user"] = user
+        return {"plan": ["Start node collects the review list"]}
+
+    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    build.propose_plan_v1(_FakeInstance([]), {"goal": "summarise reviews"})
+
+    system = captured["system"]
+    # the vocabulary is present, and is the shared constant
+    assert build._DIFY_NODE_VOCABULARY in system
+    # a representative spread of node types the planner may use
+    for node_type in ("start", "end", "llm", "iteration", "tool", "if-else", "document-extractor"):
+        assert f'"{node_type}"' in system, f"missing node type {node_type}"
+    # and it is told to plan ONLY in these terms
+    assert "only" in system.lower()
+
+
+def test_plan_prompt_names_capabilities_dify_lacks(monkeypatch):
+    """The failure mode is inventing steps Dify has no node for. Name the
+    common ones explicitly so the model routes them instead of inventing."""
+    captured = {}
+
+    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+        captured["system"] = system
+        return {"plan": ["step"]}
+
+    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    build.propose_plan_v1(_FakeInstance([]), {})
+
+    lowered = captured["system"].lower()
+    assert "schedul" in lowered  # no timer/trigger node exists
+    assert "tool" in lowered  # third-party sends go through a tool node
+
+
+def test_plan_prompt_still_requests_json_and_language(monkeypatch):
+    """Regression guard: the JSON contract and the reply-language instruction
+    must survive the rewrite -- invoke_json parses {"plan": [...]} and the
+    Builder replies in the user's language."""
+    captured = {}
+
+    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+        captured["system"] = system
+        return {"plan": ["step"]}
+
+    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    build.propose_plan_v1(_FakeInstance([]), {})
+
+    assert '{"plan": ["step", ...]}' in captured["system"]
+    assert build.llm.json_language_instruction("plan steps") in captured["system"]
