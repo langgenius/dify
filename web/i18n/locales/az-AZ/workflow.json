@@ -250,6 +250,8 @@
   "common.workflowProcessSucceeded": "İş axını prosesi uğurla tamamlandı",
   "common.workflowSaveStatus": "İş axınının yadda saxlanma vəziyyəti",
   "customWebhook": "Fərdi Webhook",
+  "difyBuilder.resourceNeedsAuthorization": "İcazə tələb olunur",
+  "difyBuilder.resourceReady": "Hazırdır",
   "difyTeam": "Dify komandası",
   "entryNodeStatus.enabled": "Başlanğıc",
   "env.envDescription": "Mühit dəyişənləri məxfi məlumatları və giriş məlumatlarını saxlamaq üçün istifadə edilə bilər. Onların dəyərləri yalnız oxumaq üçündür və ixrac zamanı DSL faylından ayrıla bilər.",
