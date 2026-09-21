@@ -696,6 +696,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             tone=("success" if result.status == "succeeded" else "error"),
             stats=[],
             run_ids=[run.id],
+            dify_run_id=run.dify_run_id,
         ),
     )
     progress.finish()
