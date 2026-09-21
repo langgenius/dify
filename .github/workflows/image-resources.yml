@@ -1,4 +1,4 @@
-name: Image resource budgets
+name: Image optimization
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   image-resources:
-    name: Image resource budgets
+    name: Image optimization
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Checkout code
@@ -19,15 +19,29 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Test image checker
-        run: python3 -m unittest discover -s scripts/image-resources -p 'test_check_image_resources.py'
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: false
+          python-version: '3.12'
 
-      - name: Check image budgets
+      - name: Test image checker
+        run: uv run --with-requirements scripts/image-resources/requirements.txt python -m unittest discover -s scripts/image-resources -p 'test_check_image_resources.py'
+
+      - name: Check image optimization
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
+          args=(--all)
           if [ -n "$BASE_SHA" ]; then
-            python3 scripts/image-resources/check_image_resources.py --base "$BASE_SHA"
-          else
-            python3 scripts/image-resources/check_image_resources.py --all
+            args=(--base "$BASE_SHA")
           fi
+          uv run --with-requirements scripts/image-resources/requirements.txt python scripts/image-resources/check_image_resources.py "${args[@]}" --output-dir "$RUNNER_TEMP/image-optimization-candidates"
+
+      - name: Upload optimization candidates
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: image-optimization-candidates
+          path: ${{ runner.temp }}/image-optimization-candidates
+          if-no-files-found: ignore

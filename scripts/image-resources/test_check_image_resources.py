@@ -1,34 +1,43 @@
 from __future__ import annotations
 
 import base64
-import copy
-import gzip
-import json
+import io
 import os
+import random
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
-from urllib.parse import quote_from_bytes
 
 import check_image_resources as checker
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
 
 
-def svg(*payloads: bytes, href: str = "xlink:href") -> bytes:
-    images = "".join(
-        f'<image {href}="data:image/png;base64,{base64.b64encode(payload).decode()}"/>' for payload in payloads
-    )
-    return f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">{images}</svg>'.encode()
+def png(*, optimized: bool = False) -> bytes:
+    image = Image.new("RGBA", (80, 80), (20, 80, 120, 140))
+    output = io.BytesIO()
+    image.save(output, format="PNG", compress_level=9 if optimized else 0)
+    return output.getvalue()
 
 
-class ImageBudgetTests(unittest.TestCase):
+def svg(data: bytes, href: str = "xlink:href") -> bytes:
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+        'width="80" height="80" viewBox="0 0 80 80">'
+        f'<image width="80" height="80" {href}="data:image/png;base64,{base64.b64encode(data).decode()}"/>'
+        "</svg>"
+    ).encode()
+
+
+class ImageOptimizationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.config = checker.load_config(checker.CONFIG)
 
     def write(self, name: str, data: bytes) -> Path:
         path = self.root / name
@@ -36,80 +45,103 @@ class ImageBudgetTests(unittest.TestCase):
         path.write_bytes(data)
         return path
 
-    def test_embedded_payload_catches_the_original_small_svg_problem(self):
-        name = "web/app/options.svg"
-        self.write(name, svg(b"x" * 27349))
-        failures, _ = checker.inspect_image(name, self.config, self.root)
-        self.assertEqual(len(failures), 1)
-        self.assertIn("embedded-raster-bytes", failures[0])
-        self.write(name, svg(b"x" * 2061))
-        self.assertEqual(checker.inspect_image(name, self.config, self.root), ([], []))
+    def test_threshold_is_strictly_greater_than_25_percent(self):
+        self.assertFalse(checker.exceeds_threshold(100, 75))
+        self.assertTrue(checker.exceeds_threshold(100, 74))
+        self.assertFalse(checker.exceeds_threshold(100, 110))
 
-    def test_embedded_budget_sums_images_and_supports_both_href_forms(self):
+    def test_uncompressed_png_fails_and_candidate_preserves_pixels_and_dimensions(self):
+        original = png()
+        path = self.write("web/public/test.png", original)
+        status, _, candidate = checker.inspect_image("web/public/test.png", self.root)
+        self.assertEqual(status, "error")
+        self.assertIsNotNone(candidate)
+        with Image.open(io.BytesIO(original)) as before, Image.open(io.BytesIO(candidate)) as after:
+            self.assertEqual(before.size, after.size)
+            self.assertEqual(before.convert("RGBA").tobytes(), after.convert("RGBA").tobytes())
+        self.assertEqual(path.read_bytes(), original)
+        path.write_bytes(candidate)
+        self.assertEqual(checker.inspect_image("web/public/test.png", self.root)[0], "passed")
+
+    def test_large_already_optimized_png_passes_without_byte_cap(self):
+        image = Image.frombytes("RGB", (512, 512), random.Random(0).randbytes(512 * 512 * 3))
+        output = io.BytesIO()
+        image.save(output, format="PNG", optimize=True)
+        self.assertGreater(len(output.getvalue()), 512000)
+        self.write("web/public/large.png", output.getvalue())
+        self.assertEqual(checker.inspect_image("web/public/large.png", self.root)[0], "passed")
+
+    def test_png_color_metadata_is_preserved(self):
+        metadata = PngInfo()
+        metadata.add(b"gAMA", (45455).to_bytes(4, "big"))
+        metadata.add(b"sRGB", b"\0")
+        output = io.BytesIO()
+        Image.new("RGB", (20, 20), "red").save(output, format="PNG", pnginfo=metadata)
+        candidate, _ = checker.compress_raster(output.getvalue())
+        with Image.open(io.BytesIO(candidate)) as image:
+            self.assertEqual(image.info["gamma"], 0.45455)
+            self.assertEqual(image.info["srgb"], 0)
+
+    def test_svg_embedded_png_is_actually_compressed_for_both_href_forms(self):
         for href in ["href", "xlink:href"]:
-            path = self.write("web/public/multiple.svg", svg(b"a" * 9000, b"b" * 9000, href=href))
-            self.assertEqual(checker.image_sizes(path)["embedded-raster-bytes"], 18000)
+            self.write("web/public/icon.svg", svg(png(), href))
+            status, message, candidate = checker.inspect_image("web/public/icon.svg", self.root)
+            self.assertEqual(status, "error")
+            self.assertIn("embedded PNG", message)
+            root = ET.fromstring(candidate)
+            self.assertEqual(root.attrib["viewBox"], "0 0 80 80")
+            image = root.find(".//{http://www.w3.org/2000/svg}image")
+            self.assertEqual((image.attrib["width"], image.attrib["height"]), ("80", "80"))
 
-    def test_percent_encoded_raster_is_counted_without_fetching_external_images(self):
-        data = bytes(range(256))
-        path = self.write(
-            "web/public/encoded.svg",
-            f'<svg><image href="data:image/png,{quote_from_bytes(data)}"/>'
-            '<image href="https://example.invalid/image.png"/></svg>'.encode(),
+    def test_svg_external_raster_reference_is_not_fetched_or_embedded(self):
+        data = b'<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.invalid/image.png"/></svg>'
+        result, _ = checker.compress_svg(data)
+        self.assertIn(b"https://example.invalid/image.png", result)
+        self.assertNotIn(b"data:image", result)
+
+    def test_svg_markup_is_optimized(self):
+        data = (
+            b'<svg xmlns="http://www.w3.org/2000/svg">' + b"\n        " * 100 + b'<rect width="10" height="10"/></svg>'
         )
-        self.assertEqual(checker.image_sizes(path)["embedded-raster-bytes"], len(data))
+        candidate, _ = checker.compress_svg(data)
+        self.assertTrue(checker.exceeds_threshold(len(data), len(candidate)))
 
-    def test_repetitive_vector_markup_uses_gzip_instead_of_raw_size(self):
-        path = self.write("web/public/grid.svg", b"<svg>" + b'<rect width="1" height="1"/>' * 10000 + b"</svg>")
-        self.assertGreater(path.stat().st_size, self.config["limits"]["svg-gzip-bytes"])
-        self.assertEqual(checker.inspect_image("web/public/grid.svg", self.config, self.root), ([], []))
+    def test_lossy_trials_are_labelled_and_preserve_dimensions(self):
+        for fmt in ["JPEG", "WEBP"]:
+            output = io.BytesIO()
+            Image.new("RGB", (80, 60), (20, 80, 120)).save(output, format=fmt)
+            candidate, method = checker.compress_raster(output.getvalue())
+            self.assertIn("lossy", method)
+            with Image.open(io.BytesIO(candidate)) as image:
+                self.assertEqual(image.size, (80, 60))
 
-    def test_exact_budget_passes_and_one_byte_over_fails(self):
-        name = "web/public/photo.webp"
-        limit = self.config["limits"]["raster-bytes"]
-        self.write(name, b"x" * limit)
-        self.assertEqual(checker.inspect_image(name, self.config, self.root), ([], []))
-        self.write(name, b"x" * (limit + 1))
-        self.assertEqual(len(checker.inspect_image(name, self.config, self.root)[0]), 1)
+    def test_animated_images_are_reported_as_skipped(self):
+        frames = [Image.new("RGB", (10, 10), color) for color in ["red", "blue"]]
+        output = io.BytesIO()
+        frames[0].save(output, format="GIF", save_all=True, append_images=frames[1:], duration=100, loop=0)
+        self.write("web/public/animated.gif", output.getvalue())
+        status, message, candidate = checker.inspect_image("web/public/animated.gif", self.root)
+        self.assertEqual(status, "skipped")
+        self.assertIn("animated", message)
+        self.assertIsNone(candidate)
 
-    def test_whole_svg_budget_is_independent_of_embedded_budget(self):
-        data = b"<svg><!--" + base64.b64encode(os.urandom(60000)) + b"--></svg>"
-        self.assertGreater(len(gzip.compress(data)), self.config["limits"]["svg-gzip-bytes"])
-        self.write("web/public/large.svg", data)
-        failures, _ = checker.inspect_image("web/public/large.svg", self.config, self.root)
-        self.assertEqual(len(failures), 1)
-        self.assertIn("svg-gzip-bytes", failures[0])
-
-    def test_malformed_svg_or_embedded_base64_fails_inspection(self):
-        for data in [b"<svg>", b'<svg><image href="data:image/png;base64,%%%"/></svg>']:
-            self.write("web/public/bad.svg", data)
-            failures, _ = checker.inspect_image("web/public/bad.svg", self.config, self.root)
-            self.assertIn("Unable to inspect", failures[0])
+    def test_empty_corrupt_and_invalid_embedded_images_fail(self):
+        for name, data in [
+            ("empty.png", b""),
+            ("corrupt.png", b"not a PNG"),
+            ("bad.svg", b"<svg>"),
+            ("bad.svg", b'<svg><image href="data:image/png;base64,%%%"/></svg>'),
+        ]:
+            name = "web/public/" + name
+            self.write(name, data)
+            self.assertEqual(checker.inspect_image(name, self.root)[0], "error")
 
     def test_symlinks_are_not_followed(self):
-        target = self.write("outside.png", b"x")
+        target = self.write("outside.png", png())
         link = self.root / "web/public/link.png"
         link.parent.mkdir(parents=True)
         link.symlink_to(target)
-        self.assertIn("symlinks", checker.inspect_image("web/public/link.png", self.config, self.root)[0][0])
-
-    def test_exemption_applies_only_to_its_file_and_rule(self):
-        name = "web/public/large.svg"
-        self.write(name, svg(os.urandom(70000)))
-        self.config["exceptions"][name] = {"embedded-raster-bytes": "Required detailed illustration"}
-        failures, exemptions = checker.inspect_image(name, self.config, self.root)
-        self.assertEqual(len(failures), 1)
-        self.assertIn("svg-gzip-bytes", failures[0])
-        self.assertEqual(len(exemptions), 1)
-        self.assertIn("Required detailed illustration", exemptions[0])
-
-    def test_invalid_exemption_reasons_and_rules_are_rejected(self):
-        for exemption in [{"raster-bytes": " "}, {"typo": "Needed"}]:
-            config = copy.deepcopy(self.config)
-            config["exceptions"]["web/public/test.png"] = exemption
-            path = self.write("config.json", json.dumps(config).encode())
-            with self.assertRaises(ValueError):
-                checker.load_config(path)
+        self.assertIn("symlinks", checker.inspect_image("web/public/link.png", self.root)[1])
 
     def test_workflow_command_characters_are_escaped(self):
         value = checker.escape_annotation("image,prop:x%\r\n::error::injected")
@@ -119,39 +151,48 @@ class ImageBudgetTests(unittest.TestCase):
     def run_git(self, *args: str) -> str:
         return checker.git(*args, root=self.root).decode().strip()
 
-    def test_changed_files_and_cli_exit_status(self):
+    def test_git_selection_cli_exit_summary_and_candidate_artifact(self):
         self.run_git("init", "-q")
         self.run_git("config", "user.email", "test@example.invalid")
         self.run_git("config", "user.name", "Image checker test")
-        self.write("web/public/untouched.png", b"x" * 600000)
-        self.write("web/public/deleted.png", b"x")
-        self.write("web/public/renamed.png", b"x" * 100)
+        self.write("web/public/untouched.png", png())
+        self.write("web/public/deleted.png", png())
+        self.write("web/public/renamed.png", png(optimized=True))
         self.run_git("add", ".")
         self.run_git("commit", "-qm", "base")
         base = self.run_git("rev-parse", "HEAD")
         self.run_git("rm", "web/public/deleted.png")
         unusual_name = "web/public/renamed , image\n.png"
         self.run_git("mv", "web/public/renamed.png", unusual_name)
-        self.write("web/public/added.svg", svg(b"x" * 27349))
-        self.write("images/docs.png", b"x" * 600000)
+        self.write("web/public/added.svg", svg(png()))
+        self.write("images/docs.png", png())
         self.run_git("add", ".")
         self.run_git("commit", "-qm", "changes")
         self.assertEqual(checker.image_paths(base, self.root), ["web/public/added.svg", unusual_name])
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
-        shutil.copy(checker.CONFIG, scripts / "budgets.json")
         command = [sys.executable, str(scripts / "check_image_resources.py"), "--base", base]
-        result = subprocess.run(command, cwd=self.root, capture_output=True, text=True, check=False)
-        self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertIn("embedded-raster-bytes", result.stdout)
-        self.assertNotIn("untouched.png", result.stdout)
-        self.write("web/public/added.svg", svg(b"x" * 2061))
+        with tempfile.TemporaryDirectory() as output:
+            env = {**os.environ, "GITHUB_ACTIONS": "true", "GITHUB_STEP_SUMMARY": str(Path(output) / "summary.md")}
+            result = subprocess.run(
+                command + ["--output-dir", output], cwd=self.root, env=env, capture_output=True, text=True, check=False
+            )
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn("::error file=web/public/added.svg::", result.stdout)
+            self.assertNotIn("untouched.png", result.stdout)
+            candidate = Path(output) / "web/public/added.svg"
+            self.assertTrue(candidate.exists())
+            self.assertIn("No fixed byte limits", (Path(output) / "summary.md").read_text())
+            shutil.copy(candidate, self.root / "web/public/added.svg")
         result = subprocess.run(command, cwd=self.root, capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
         result = subprocess.run(command[:-2] + ["--all"], cwd=self.root, capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertIn("untouched.png", result.stdout)
+        result = subprocess.run(command + ["--output-dir", str(self.root)], capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("outside the repository", result.stderr)
 
 
 if __name__ == "__main__":
