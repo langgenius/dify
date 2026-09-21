@@ -579,6 +579,7 @@ export function checkTranslationGraph(
       if (index >= 0) return new Set([index])
     }
   }
+  const collectionStarted = performance.now()
   const checkedWrites = new Set<ts.Node>()
   const checkedEscapes = new Set<ts.Node>()
   function markWrites(target: ts.Node, indirect = false) {
@@ -589,8 +590,7 @@ export function checkTranslationGraph(
     if (ts.isIdentifier(target)) {
       for (const declaration of declarations(target)) {
         if (ts.isParameter(declaration)) {
-          if (!indirect || !isPrimitive(checker.getTypeAtLocation(target)))
-            writtenParameters.add(declaration)
+          if (!indirect || !isPrimitive(mutationType(target))) writtenParameters.add(declaration)
         } else if (ts.isVariableDeclaration(declaration) && declaration.initializer)
           markWrites(declaration.initializer, indirect)
       }
@@ -622,6 +622,36 @@ export function checkTranslationGraph(
     }
     collect(source)
   }
+  const collectionMs = performance.now() - collectionStarted
+  const mutationStarted = performance.now()
+  let mutationArguments = 0
+  let mutationCandidates = 0
+  let mutationTypeQueries = 0
+  function mutationType(node: ts.Node) {
+    mutationTypeQueries++
+    return checker.getTypeAtLocation(node)
+  }
+  // Match the same parameter/alias traversal as markWrites before requesting types.
+  const parameterReferences = new Map<ts.Node, boolean>()
+  function referencesParameter(node: ts.Node): boolean {
+    const cached = parameterReferences.get(node)
+    if (cached !== undefined) return cached
+    if (ts.isFunctionLike(node)) return false
+    // Cyclic initializers remain candidates; never prune an uncertain reference.
+    parameterReferences.set(node, true)
+    const result =
+      (ts.isIdentifier(node) &&
+        declarations(node).some(
+          (declaration) =>
+            ts.isParameter(declaration) ||
+            (ts.isVariableDeclaration(declaration) &&
+              !!declaration.initializer &&
+              referencesParameter(declaration.initializer)),
+        )) ||
+      !!ts.forEachChild(node, (child) => referencesParameter(child) || undefined)
+    parameterReferences.set(node, result)
+    return result
+  }
   // Only primitive arguments are immune to mutation by an arbitrary callee.
   function isPrimitive(type: ts.Type): boolean {
     if (type.isUnion()) return type.types.every(isPrimitive)
@@ -643,9 +673,15 @@ export function checkTranslationGraph(
     const api = translationApi(node.expression)
     if (api === 'useTranslation' || api === 'getTranslation') continue
     for (const argument of node.arguments) {
-      if (!isPrimitive(checker.getTypeAtLocation(argument))) markWrites(argument, true)
+      mutationArguments++
+      if (!referencesParameter(argument)) continue
+      mutationCandidates++
+      if (!isPrimitive(mutationType(argument))) markWrites(argument, true)
     }
   }
+  const mutationMs = performance.now() - mutationStarted
+  const forwardingStarted = performance.now()
+  let forwardingVisits = 0
   function forwardedArguments(
     node: ts.CallExpression,
     target: ts.FunctionDeclaration,
@@ -664,32 +700,42 @@ export function checkTranslationGraph(
   const calledFunctions = new Set(
     calls.flatMap(({ node }) => [node.expression, ...node.arguments].flatMap(forwardingTargets)),
   )
-  let changed = true
-  while (changed) {
-    changed = false
-    for (const { node, owner } of calls) {
-      if (!owner || !forwarding.has(owner)) continue
-      const api = translationApi(node.expression)
-      const args =
-        api === 'useTranslation'
-          ? node.arguments.slice(0, 1)
-          : api === 'getTranslation'
-            ? node.arguments.slice(1, 2)
-            : forwardingTargets(node.expression).flatMap((target) =>
-                [...forwarding.get(target)!].flatMap(
-                  (index) => forwardedArguments(node, target, index) ?? [],
-                ),
-              )
-      for (const argument of args) {
-        for (const parameter of forwardedParameters(argument, owner) ?? []) {
-          const summary = forwarding.get(owner)!
-          if (!summary.has(parameter)) {
-            summary.add(parameter)
-            changed = true
-          }
-        }
+  // Revisit only callers whose callee summary gained a namespace parameter.
+  type Call = (typeof calls)[number]
+  const dependents = new Map<ts.FunctionDeclaration, Set<Call>>()
+  const pending = new Set<Call>()
+  for (const call of calls) {
+    if (!call.owner || !forwarding.has(call.owner)) continue
+    const api = translationApi(call.node.expression)
+    if (api === 'useTranslation' || api === 'getTranslation') pending.add(call)
+    else
+      for (const target of forwardingTargets(call.node.expression)) {
+        const callers = dependents.get(target) ?? new Set<Call>()
+        callers.add(call)
+        dependents.set(target, callers)
       }
-    }
+  }
+  for (const call of pending) {
+    pending.delete(call)
+    forwardingVisits++
+    const { node, owner } = call
+    const api = translationApi(node.expression)
+    const args =
+      api === 'useTranslation'
+        ? node.arguments.slice(0, 1)
+        : api === 'getTranslation'
+          ? node.arguments.slice(1, 2)
+          : forwardingTargets(node.expression).flatMap((target) =>
+              [...forwarding.get(target)!].flatMap(
+                (index) => forwardedArguments(node, target, index) ?? [],
+              ),
+            )
+    const summary = forwarding.get(owner!)!
+    const previousSize = summary.size
+    for (const argument of args)
+      for (const parameter of forwardedParameters(argument, owner!) ?? []) summary.add(parameter)
+    if (summary.size !== previousSize)
+      for (const dependent of dependents.get(owner!) ?? []) pending.add(dependent)
   }
   const recursive = new Set<ts.FunctionDeclaration>()
   const adjacency = new Map<ts.FunctionDeclaration, Set<ts.FunctionDeclaration>>()
@@ -742,6 +788,8 @@ export function checkTranslationGraph(
     return !!parameters?.size && [...parameters].every((index) => forwarding.get(owner)?.has(index))
   }
 
+  const forwardingMs = performance.now() - forwardingStarted
+  const usageStarted = performance.now()
   function visit(node: ts.Node) {
     currentSite = node
     if (ts.isStringLiteralLike(node) && (node.text.includes('.') || node.text.includes(':'))) {
@@ -904,7 +952,18 @@ export function checkTranslationGraph(
   return {
     unused,
     evidence: [...evidence.values()],
-    timings: { programMs, analysisMs: performance.now() - analysisStarted },
+    timings: {
+      programMs,
+      analysisMs: performance.now() - analysisStarted,
+      collectionMs,
+      mutationMs,
+      forwardingMs,
+      usageMs: performance.now() - usageStarted,
+      mutationArguments,
+      mutationCandidates,
+      mutationTypeQueries,
+      forwardingVisits,
+    },
     protectedNamespaces: [...protectedNamespaces].sort(),
     moduleCount: modules.size,
     moduleNamespaces,

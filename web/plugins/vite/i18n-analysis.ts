@@ -33,6 +33,14 @@ export type AnalysisReport = {
       resolutionMs: number
       programMs: number
       analysisMs: number
+      collectionMs: number
+      mutationMs: number
+      forwardingMs: number
+      usageMs: number
+      mutationArguments: number
+      mutationCandidates: number
+      mutationTypeQueries: number
+      forwardingVisits: number
     }[]
   }
 }

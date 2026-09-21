@@ -125,7 +125,15 @@ prevent an unused-key conclusion. Unresolved imports make the analysis incomplet
 
 `metrics` records shared setup, per-environment resolution, Program/checker setup,
 semantic analysis and route traversal durations, plus module and resolver-call
-counts. `totalMs` sums work for the final environment graphs and final analysis;
+counts. Semantic analysis is split into `collectionMs`, `mutationMs`,
+`forwardingMs`, and `usageMs`. `mutationArguments` counts non-translation call
+arguments, `mutationCandidates` counts those requiring a mutation type check after
+parameter/alias filtering, and `mutationTypeQueries` counts mutation-related
+`getTypeAtLocation` calls (including references inside candidates).
+`forwardingVisits` counts calls processed by the dependency-driven summary queue;
+only callers of changed summaries are revisited. These counters are per environment
+and do not count type queries from other analysis phases.
+`totalMs` sums work for the final environment graphs and final analysis;
 it excludes superseded scan graphs, output serialization and the rest of the build,
 and is not wall-clock build duration when environments run concurrently.
 
