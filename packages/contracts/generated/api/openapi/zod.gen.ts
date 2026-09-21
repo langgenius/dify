@@ -493,7 +493,7 @@ export const zMemberInviteResponse = z.object({
  * Strict (extra='forbid').
  */
 export const zMemberListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })
 
@@ -651,7 +651,7 @@ export const zServerVersionResponse = z.object({
  * Pagination for GET /account/sessions. Strict (extra='forbid').
  */
 export const zSessionListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(100),
+  limit: z.int().gte(1).lte(100).optional().default(100),
   page: z.int().gte(1).optional().default(1),
 })
 
@@ -721,7 +721,7 @@ export const zSupportedAppType = z.enum([
  * mode is a closed enum of listable app types.
  */
 export const zAppListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
@@ -734,7 +734,7 @@ export const zAppListQuery = z.object({
  * Strict (extra='forbid').
  */
 export const zPermittedExternalAppsListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
@@ -823,7 +823,7 @@ export const zWorkspaceDetailResponse = z.object({
  * Strict (extra='forbid').
  */
 export const zWorkspaceListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })
 
@@ -907,7 +907,7 @@ export const zGetVersionResponse = zServerVersionResponse
 export const zGetAccountResponse = zAccountResponse
 
 export const zGetAccountSessionsQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(100),
+  limit: z.int().gte(1).lte(100).optional().default(100),
   page: z.int().gte(1).optional().default(1),
 })
 
@@ -931,7 +931,7 @@ export const zDeleteAccountSessionsBySessionIdPath = z.object({
 export const zDeleteAccountSessionsBySessionIdResponse = zRevokeResponse
 
 export const zGetAppsQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
@@ -1130,7 +1130,7 @@ export const zPostOauthDeviceTokenBody = zDevicePollRequest
 export const zPostOauthDeviceTokenResponse = zDeviceTokenResponse
 
 export const zGetPermittedExternalAppsQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
@@ -1155,7 +1155,7 @@ export const zGetPermittedExternalAppsByAppIdQuery = z.object({
 export const zGetPermittedExternalAppsByAppIdResponse = zAppDescribeResponse
 
 export const zGetWorkspacesQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })
 
@@ -1199,7 +1199,7 @@ export const zGetWorkspacesByWorkspaceIdMembersPath = z.object({
 })
 
 export const zGetWorkspacesByWorkspaceIdMembersQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })
 
