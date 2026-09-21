@@ -48,7 +48,7 @@ export function AgentPublishSuccess({
         >
           <span className="i-ri-check-line size-4" />
         </span>
-        <div role="status" className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1">
           <p className="system-sm-semibold text-text-primary">
             {kind === 'first'
               ? t(($) => $['agentDetail.configure.publishSuccess.firstTitle'])

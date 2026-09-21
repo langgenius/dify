@@ -313,6 +313,14 @@ export function AgentConfigurePublishBar({
       open={isConfirmingImpact}
       className="group/publish-bar pointer-events-auto w-full overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
     >
+      {/* Mount the live region before its message so assistive technology observes the update. */}
+      <span role="status" aria-atomic="true" className="sr-only">
+        {publishBarMode.status === 'success'
+          ? publishBarMode.kind === 'first'
+            ? t(($) => $['agentDetail.configure.publishSuccess.firstTitle'])
+            : t(($) => $['agentDetail.configure.publishSuccess.updateTitle'])
+          : null}
+      </span>
       {publishBarMode.status === 'success' ? (
         <AgentPublishSuccess
           agentId={agentId}

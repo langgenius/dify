@@ -1165,9 +1165,9 @@ describe('AgentConfigurePublishBar', () => {
           )
           return { kind, draft: view.store.get(agentComposerDraftAtom) }
         })
-        expect(screen.queryByText(successKey + title)).not.toBeInTheDocument()
+        expect(screen.queryByText(successKey + title, { selector: 'p' })).not.toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
-        expect(await screen.findByText(successKey + title)).toBeVisible()
+        expect(await screen.findByText(successKey + title, { selector: 'p' })).toBeVisible()
         const link = screen.getByRole('link', { name: `${successKey}openWebApp` })
         expect(link).toHaveAttribute('href', 'https://apps.example.test/agent/published-token')
         expect(link).toHaveAttribute('target', '_blank')
@@ -1184,9 +1184,11 @@ describe('AgentConfigurePublishBar', () => {
         const user = userEvent.setup()
         renderPublishBar({ agent: readyAgent })
         await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
-        await screen.findByText(`${successKey}updateTitle`)
+        await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })
         const bar = document.activeElement as HTMLElement
-        expect(bar).toContainElement(screen.getByText(`${successKey}updateTitle`))
+        expect(bar).toContainElement(
+          screen.getByText(`${successKey}updateTitle`, { selector: 'p' }),
+        )
         const focus = vi.spyOn(bar, 'focus')
         const control = screen.getByRole(action === 'dismiss' ? 'button' : 'link', {
           name: successKey + action,
@@ -1202,10 +1204,12 @@ describe('AgentConfigurePublishBar', () => {
           expect(focus).toHaveBeenCalledWith({ preventScroll: true })
         }
         focus.mockRestore()
-        expect(screen.queryByText(`${successKey}updateTitle`)).not.toBeInTheDocument()
+        expect(
+          screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+        ).not.toBeInTheDocument()
         expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeVisible()
         await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
-        expect(await screen.findByText(`${successKey}updateTitle`)).toBeVisible()
+        expect(await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })).toBeVisible()
       },
     )
 
@@ -1228,7 +1232,7 @@ describe('AgentConfigurePublishBar', () => {
         deferred.resolve()
         await deferred.promise
       })
-      expect(await screen.findByText(`${successKey}updateTitle`)).toBeVisible()
+      expect(await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })).toBeVisible()
       expect(editor).toHaveFocus()
     })
 
@@ -1236,21 +1240,27 @@ describe('AgentConfigurePublishBar', () => {
       const user = userEvent.setup()
       const { store } = renderPublishBar({ agent: readyAgent })
       await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
-      await screen.findByText(`${successKey}updateTitle`)
+      await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })
       const publishedDraft = store.get(agentComposerDraftAtom)
       act(() => {
         store.set(agentComposerPromptAtom, 'New edit')
       })
-      expect(screen.queryByText(`${successKey}updateTitle`)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
       expect(
         screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges'),
       ).toBeVisible()
       act(() => {
         store.set(agentComposerSavedDraftAtom, store.get(agentComposerDraftAtom))
       })
-      expect(screen.queryByText(`${successKey}updateTitle`)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
       act(() => store.set(agentComposerDraftAtom, publishedDraft))
-      expect(screen.queryByText(`${successKey}updateTitle`)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
     })
 
     it('does not show success when publishing is blocked by validation', async () => {
@@ -1259,7 +1269,9 @@ describe('AgentConfigurePublishBar', () => {
       renderPublishBar({ agent: readyAgent, onPublish })
       await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
       await waitFor(() => expect(onPublish).toHaveBeenCalledOnce())
-      expect(screen.queryByText(`${successKey}updateTitle`)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
     })
 
     it('ignores repeated publication requests while the first request is pending', async () => {
@@ -1280,7 +1292,7 @@ describe('AgentConfigurePublishBar', () => {
         await deferred.promise
       })
 
-      expect(await screen.findByText(`${successKey}updateTitle`)).toBeVisible()
+      expect(await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })).toBeVisible()
       expect(onPublish).toHaveBeenCalledOnce()
     })
 
@@ -1304,7 +1316,9 @@ describe('AgentConfigurePublishBar', () => {
         deferred.resolve()
         await deferred.promise
       })
-      expect(screen.queryByText(`${successKey}updateTitle`)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
       expect(
         screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges'),
       ).toBeVisible()
@@ -1327,7 +1341,9 @@ describe('AgentConfigurePublishBar', () => {
 
     it('does not show guidance just because an existing version is published', () => {
       renderPublishBar({ agent: readyAgent, activeConfigIsPublished: true, activeConfigSnapshot })
-      expect(screen.queryByText(`${successKey}updateTitle`)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeVisible()
     })
 
@@ -1335,10 +1351,12 @@ describe('AgentConfigurePublishBar', () => {
       const user = userEvent.setup()
       const { rerender, rerenderPublishBar } = renderPublishBar({ agent: readyAgent })
       await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
-      await screen.findByText(`${successKey}updateTitle`)
+      await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })
       rerender(rerenderPublishBar({ selectedVersionSnapshot: activeConfigSnapshot }))
       rerender(rerenderPublishBar({ selectedVersionSnapshot: null }))
-      expect(screen.queryByText(`${successKey}updateTitle`)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
     })
   })
 })
