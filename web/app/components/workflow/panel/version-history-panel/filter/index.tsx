@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { WorkflowVersionFilterOptions } from '../../../types'
 import FilterItem from './filter-item'
 import FilterSwitch from './filter-switch'
@@ -23,7 +23,6 @@ const Filter: FC<FilterProps> = ({
   onClickFilterItem,
   handleSwitch,
 }) => {
-  const [open, setOpen] = useState(false)
   const options = useFilterOptions()
 
   const handleOnClick = useCallback(
@@ -36,7 +35,7 @@ const Filter: FC<FilterProps> = ({
   const isFiltering = filterValue !== WorkflowVersionFilterOptions.all || isOnlyShowNamedVersions
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         nativeButton={false}
         render={
