@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -59,6 +59,23 @@ class DslImportWarning(BaseModel):
     path: str
     message: str
     details: dict[str, Any] = Field(default_factory=dict)
+
+
+class AppImportPackage(Protocol):
+    """Validated App archive used by import orchestration and resource materialization."""
+
+    dsl: str
+
+    @property
+    def has_resources(self) -> bool: ...
+
+    def materialize_icons(self, *, data: dict[str, Any], tenant_id: str, account_id: str) -> None: ...
+
+    def materialize_agents(
+        self, *, tenant_id: str, account_id: str
+    ) -> tuple[dict[str, Any], list[DslImportWarning]]: ...
+
+    def close(self) -> None: ...
 
 
 class Import(BaseModel):

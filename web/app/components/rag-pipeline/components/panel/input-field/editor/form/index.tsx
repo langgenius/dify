@@ -1,9 +1,9 @@
 import type { FormData, InputFieldFormProps } from './types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { useAppForm } from '@/app/components/base/form'
 import { ChangeType } from '@/app/components/workflow/types'
@@ -78,7 +78,7 @@ const InputFieldForm = ({
     >
       <div className="flex flex-col gap-4 px-4 py-2">
         <InitialFieldsComp form={inputFieldForm} />
-        <Divider type="horizontal" />
+        <Separator className="my-2 h-[0.5px]" orientation="horizontal" />
         {!showAllSettings && <ShowAllSettingComp form={inputFieldForm} />}
         {showAllSettings && <HiddenFieldsComp form={inputFieldForm} />}
       </div>

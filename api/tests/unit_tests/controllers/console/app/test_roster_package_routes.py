@@ -22,8 +22,8 @@ from services import app_import_source
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.agent.roster_package_importer import RosterAgentPackageImportResult
 from services.app.console_gateway import AppTransferGateway
-from services.app_package_service import AppPackageService
-from services.entities.dsl_entities import AppImportParams, DslImportWarning, Import, ImportStatus
+from services.app_package_service import AppPackageService, PreparedAppPackage
+from services.entities.dsl_entities import AppImportPackage, AppImportParams, DslImportWarning, Import, ImportStatus
 from services.entities.feature_entities import FeatureModel, LimitationModel
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 
@@ -62,13 +62,20 @@ class AgentImportCall:
 class Imports:
     context: RequestContext
     dsl_calls: list[AppImportParams] = field(default_factory=list)
+    packages: list[PreparedAppPackage] = field(default_factory=list)
     agent_calls: list[AgentImportCall] = field(default_factory=list)
     status: ImportStatus = ImportStatus.COMPLETED
     warnings: list[DslImportWarning] = field(default_factory=list)
 
-    def dsl(self, context: RequestContext, params: AppImportParams) -> Import:
+    def dsl(
+        self, context: RequestContext, params: AppImportParams, *, package: AppImportPackage | None = None
+    ) -> Import:
         assert context == self.context
         self.dsl_calls.append(params)
+        if package is not None:
+            assert isinstance(package, PreparedAppPackage)
+            assert not package.archive.closed
+            self.packages.append(package)
         return Import(id="import-1", status=self.status, app_id="app-1")
 
     def agent(self, *, source: BinaryIO, tenant_id: str, account: Account) -> RosterAgentPackageImportResult:
@@ -306,6 +313,8 @@ def test_ordinary_package_import_uses_dsl_permissions_and_confirmation(
         else:
             data, code = _post(app, imports, data=form)
     assert code == {ImportStatus.FAILED: 400, ImportStatus.PENDING: 202}.get(status, 200)
+    assert len(imports.packages) == 1
+    assert imports.packages[0].archive.closed
     assert data["status"] == status
     assert len(imports.dsl_calls) == 1
     assert (

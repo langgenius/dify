@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useRouter } from '@/next/navigation'
@@ -88,7 +88,9 @@ const InfoGroup: FC<Props> = ({
               onCreateMetadata={(data) => onAdd?.(data)}
               onOpenMetadataManagement={handleMangeMetadata}
             />
-            {list.length > 0 && <Divider className="my-3" bgStyle="gradient" />}
+            {list.length > 0 && (
+              <Separator decorative className="my-3 h-[0.5px]" variant="gradient" />
+            )}
           </div>
         )}
         {list.map((item, i) => (

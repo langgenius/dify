@@ -618,7 +618,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                       </IconButton>
                     }
                   />
-                  <TooltipContent className="mr-1">{runThisStepLabel}</TooltipContent>
+                  <TooltipContent>{runThisStepLabel}</TooltipContent>
                 </Tooltip>
               )}
               <HelpLink nodeType={nodeMetaType} />

@@ -4,6 +4,7 @@ import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 import { parsePlacement } from '../placement'
 
 /**
@@ -33,11 +34,10 @@ type TooltipProviderProps = BaseTooltip.Provider.Props
 type TooltipProps<Payload = unknown> = BaseTooltip.Root.Props<Payload>
 type TooltipTriggerProps<Payload = unknown> = BaseTooltip.Trigger.Props<Payload>
 
-type TooltipContentProps = Omit<BaseTooltip.Popup.Props, 'children' | 'className'> &
+type TooltipContentProps = Omit<BaseTooltip.Popup.Props, 'children'> &
   Pick<BaseTooltip.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
     children: React.ReactNode
     placement?: Placement
-    className?: string
   }
 
 function TooltipContent({
@@ -60,11 +60,13 @@ function TooltipContent({
         className="z-50 outline-hidden"
       >
         <BaseTooltip.Popup
-          className={cn(
-            'max-w-75 rounded-md bg-components-panel-bg px-3 py-2 text-start system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
-            'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0 motion-reduce:transition-none',
-            className,
-          )}
+          className={(state) =>
+            cn(
+              'max-w-75 overflow-clip rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 text-start system-xs-medium wrap-break-word text-text-secondary shadow-[0px_12px_16px_-4px_var(--color-shadow-shadow-5),0px_4px_6px_-2px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
+              'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0 motion-reduce:transition-none',
+              resolveClassName(className, state),
+            )
+          }
           {...props}
         >
           {children}

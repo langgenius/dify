@@ -1,8 +1,9 @@
 """Policy and existing DSL adapters retain their domain-specific behavior."""
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator, Iterator
 from typing import cast
 from uuid import uuid4
+from zipfile import ZipFile
 
 import pytest
 import yaml
@@ -16,25 +17,26 @@ from enums import CloudPlan, DeploymentEdition
 from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
 from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
+from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.agent.roster_service import AgentRosterService
 from services.app.console_gateway import AppTransferGateway, EnterpriseConsoleAppAccess
 from services.app.console_service import ConsoleAppNotFoundError, InvalidAppAccessModesError
 from services.app_dsl_service import AppDslService
-from services.app_package_service import AppPackageService
+from services.app_package_service import AppPackageService, PreparedAppPackage
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.entities.app_entities import (
     AppExportOptions,
     CopyAppParams,
 )
-from services.entities.dsl_entities import AppDslExportData, Import, ImportStatus
+from services.entities.dsl_entities import AppDslExportData, AppImportPackage, AppImportParams, Import, ImportStatus
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 
 
 @pytest.fixture
@@ -298,8 +300,6 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(sqlite_engi
     assert calls[0]["workflow_id"] == "workflow"
     with pytest.raises(InvalidRequestError):
         opened[0].execute(select(App))
-    with gateway.export_app_package(dsl=dsl, name="Example") as package:
-        assert AppPackageService().read_dsl(package.archive) == dsl
     with pytest.raises(ConsoleAppNotFoundError):
         gateway.export_dsl(context._replace(active_workspace_id=str(uuid4())), app_id, options)
     assert len(calls) == 1
@@ -384,3 +384,103 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
     finally:
         event.remove(sqlite_engine, "checkout", checkout)
         event.remove(sqlite_engine, "checkin", checkin)
+
+
+def test_console_package_export_preserves_icons_without_holding_database_connections(
+    app_services: AppServices,
+    sqlite_session_factory: sessionmaker[Session],
+    copy_source: tuple[RequestContext, str],
+    copy_connections: set[object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    context, app_id = copy_source
+    payload = b"packaged icon"
+    upload = make_upload_file(
+        tenant_id=context.active_workspace_id,
+        created_by=context.account_id,
+        key="uploads/icon.png",
+        name="icon.png",
+        extension="png",
+        mime_type="image/png",
+        size=len(payload),
+    )
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, app_id)
+        assert app is not None
+        app.icon_type = IconType.IMAGE
+        app.icon = upload.id
+        session.add(upload)
+
+    calls: list[str] = []
+
+    class Storage:
+        def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+            assert not copy_connections, "Archive storage I/O must follow closure of both App read sessions"
+            assert filename == upload.key
+            calls.append("storage")
+            yield payload
+
+    def dependencies(*, tenant_id: str, dependencies: list[str]) -> list[PluginDependency]:
+        assert not copy_connections
+        assert tenant_id == context.active_workspace_id
+        assert dependencies == []
+        calls.append("plugins")
+        return []
+
+    monkeypatch.setattr(
+        "services.app_package_service.AgentPackageResourceExporter",
+        lambda: AgentPackageResourceExporter(storage_backend=Storage()),
+    )
+    monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", dependencies)
+    exported = app_services.console.export(context, app_id, AppExportOptions())
+    assert not isinstance(exported, str)
+    with exported:
+        with ZipFile(exported.archive) as archive:
+            manifest = yaml.safe_load(archive.read("manifest.yaml"))
+            data = yaml.safe_load(archive.read("app.yaml"))
+            icon = manifest["icons"][0]
+            assert data["app"]["icon"] == icon["id"]
+            assert archive.read(icon["path"]) == payload
+    assert calls == ["plugins", "storage"]
+    with sqlite_session_factory() as session:
+        source = session.get(App, app_id)
+        assert source is not None
+        assert source.icon == upload.id
+
+
+@pytest.mark.parametrize("status", list(ImportStatus))
+def test_console_package_import_forwards_archive_and_closes_it(
+    app_services: AppServices,
+    copy_source: tuple[RequestContext, str],
+    copy_connections: set[object],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    status: ImportStatus,
+) -> None:
+    config_overrides(RBAC_ENABLED=False, DEPLOYMENT_EDITION="COMMUNITY")
+    context, _ = copy_source
+    archives: list[PreparedAppPackage] = []
+    dsl = "kind: app\napp: {mode: chat}\n"
+
+    def import_app(
+        _self: AppDslService,
+        *,
+        account: Account,
+        yaml_content: str,
+        package: AppImportPackage | None,
+        **_kwargs: object,
+    ) -> Import:
+        assert not copy_connections
+        assert account.id == context.account_id
+        assert isinstance(package, PreparedAppPackage)
+        assert package.dsl == yaml_content == dsl
+        assert not package.archive.closed
+        archives.append(package)
+        return Import(id="import-1", status=status)
+
+    monkeypatch.setattr(AppDslService, "import_app", import_app)
+    with AppPackageService().export(dsl=dsl, name="Example") as exported:
+        result = app_services.console.import_app(context, AppImportParams(mode="yaml-content"), source=exported.archive)
+    assert result.status == status
+    assert len(archives) == 1
+    assert archives[0].archive.closed

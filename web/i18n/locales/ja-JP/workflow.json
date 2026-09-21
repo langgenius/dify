@@ -247,7 +247,6 @@
   "common.setVarValuePlaceholder": "変数値を設定",
   "common.showRunHistory": "実行履歴を表示",
   "common.syncingData": "データ同期中。。。",
-  "common.tagBound": "このタグを使用しているアプリの数",
   "common.undo": "元に戻す",
   "common.unpublished": "未公開",
   "common.upToDate": "最新です",

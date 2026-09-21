@@ -11,7 +11,7 @@ import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging.version import parse as parse_version
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -49,6 +49,7 @@ from models.model import AppModelConfig, AppModelConfigDict, IconType, load_anno
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService
+from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
@@ -56,6 +57,7 @@ from services.dsl_version import check_version_compatibility
 from services.enterprise.rbac_service import RBACService
 from services.entities.dsl_entities import (
     AppDslExportData,
+    AppImportPackage,
     CheckDependenciesResult,
     DslImportWarning,
     Import,
@@ -92,6 +94,7 @@ class PendingData(PendingImportOwner):
     icon: str | None = None
     icon_background: str | None = None
     app_id: str | None = None
+    warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
 class CheckDependenciesPendingData(BaseModel):
@@ -120,8 +123,9 @@ class AppDslService:
         icon_background: str | None = None,
         app_id: str | None = None,
         import_app_id: str | None = None,
+        package: AppImportPackage | None = None,
     ) -> Import:
-        """Import an app from YAML content or URL."""
+        """Import an App DSL, materializing validated archive resources before database writes."""
         self._warnings = []
         import_id = str(uuid.uuid4())
 
@@ -221,6 +225,24 @@ class AppDslService:
                     error="Missing app data in YAML content",
                 )
 
+            if package is not None and package.has_resources:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
+                # Authorize overwrites in a separate read session before storage I/O.
+                # The normal import below reloads and rechecks the target after upload.
+                if app_id:
+                    with Session(self._session.get_bind()) as authorization_session:
+                        target = AppDslService(authorization_session)._load_app_for_overwrite(account, app_id)
+                        if target is None:
+                            raise ValueError("App not found")
+                        self._validate_workflow_overwrite(target, data)
+                package.materialize_icons(data=data, tenant_id=tenant_id, account_id=account.id)
+                agents, self._warnings = package.materialize_agents(tenant_id=tenant_id, account_id=account.id)
+                if agents:
+                    data["agent_packages"] = agents
+                content = yaml.safe_dump(data, allow_unicode=True)
+
             # If app_id is provided, check if it exists
             app = None
             if app_id:
@@ -257,6 +279,7 @@ class AppDslService:
                     icon=icon,
                     icon_background=icon_background,
                     app_id=app_id,
+                    warnings=self._warnings,
                 )
                 redis_client.setex(
                     f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}",
@@ -364,6 +387,7 @@ class AppDslService:
                     error="Import information expired or does not exist",
                 )
             data = yaml.safe_load(pending_data.yaml_content)
+            self._warnings = list(pending_data.warnings)
 
             app = None
             if pending_data.app_id:
@@ -751,6 +775,7 @@ class AppDslService:
         include_secret: bool = False,
         workflow_id: str | None = None,
         version_id: uuid.UUID | None = None,
+        resource_exporter: AgentPackageResourceExporter | None = None,
     ) -> AppDslExportData:
         """Load portable data using the caller's transaction, without requesting plugin dependencies."""
         app_mode = AppMode.value_of(app_model.mode)
@@ -773,6 +798,7 @@ class AppDslService:
                     include_secret=include_secret,
                     workflow_id=workflow_id,
                     session=session,
+                    resource_exporter=resource_exporter,
                 )
             else:
                 dependencies = cls._append_model_config_export_data(export_data, app_model, session=session)
@@ -798,6 +824,7 @@ class AppDslService:
         include_secret: bool,
         session: Session,
         workflow_id: str | None = None,
+        resource_exporter: AgentPackageResourceExporter | None = None,
     ) -> list[str]:
         """
         Append workflow export data
@@ -816,6 +843,7 @@ class AppDslService:
         graph, agent_packages = AgentDslService(session).export_workflow_packages(
             workflow=workflow,
             graph=workflow_dict.get("graph", {}),
+            resource_exporter=resource_exporter,
         )
         workflow_dict["graph"] = graph
         # TODO: refactor: we need a better way to filter workspace related data from nodes

@@ -168,6 +168,10 @@
     "./spinner": {
       "types": "./src/spinner/index.tsx",
       "import": "./src/spinner/index.tsx"
+    },
+    "./separator": {
+      "types": "./src/separator/index.tsx",
+      "import": "./src/separator/index.tsx"
     }
   },
   "scripts": {

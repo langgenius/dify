@@ -13,7 +13,6 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -39,7 +38,6 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
       select: (response) => response.data,
     }),
   )
-  const [open, setOpen] = useState(false)
 
   const validModelConfigs: (ModelAndParameter & {
     modelItem: ProviderModelWithStatusEntity
@@ -68,7 +66,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
   const triggerDisabled = disabled || !validModelConfigs.length
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
         disabled={triggerDisabled}
         render={<Button variant="primary" disabled={triggerDisabled} className="w-full" />}

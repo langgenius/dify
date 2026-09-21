@@ -114,9 +114,7 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
       <div className="flex flex-col gap-y-5 px-6 py-3">
         <div className="flex items-end gap-x-3 self-stretch">
           <Field className="grow pb-1" name="name">
-            <FieldLabel className="flex h-6 items-center py-0">
-              {t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}
-            </FieldLabel>
+            <FieldLabel>{t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}</FieldLabel>
             <Input
               autoComplete="off"
               onChange={handleAppNameChange}
@@ -141,9 +139,7 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
           </button>
         </div>
         <Field name="description">
-          <FieldLabel className="flex h-6 items-center py-0">
-            {t(($) => $.knowledgeDescription, { ns: 'datasetPipeline' })}
-          </FieldLabel>
+          <FieldLabel>{t(($) => $.knowledgeDescription, { ns: 'datasetPipeline' })}</FieldLabel>
           <Textarea
             autoComplete="off"
             onValueChange={handleDescriptionChange}

@@ -54,7 +54,13 @@ from services.entities.app_entities import (
     CreateAppParams,
     ImportedAppPackage,
 )
-from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
+from services.entities.dsl_entities import (
+    AppImportPackage,
+    AppImportParams,
+    CheckDependenciesResult,
+    Import,
+    ImportStatus,
+)
 from services.errors.account import NoPermissionError
 from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
@@ -217,15 +223,22 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         return try_read_yaml(source)
 
     @override
-    def read_package_dsl(self, source: BinaryIO) -> str | None:
-        return self._packages.read_dsl(source)
+    def read_app_package(self, source: BinaryIO) -> AppImportPackage | None:
+        return self._packages.read_package(source)
 
     def _import_actor(self, context: RequestContext) -> Account:
         with self._session_factory() as session:
             return console_app_actor(session, context)
 
     @override
-    def import_dsl(self, context: RequestContext, params: AppImportParams, *, as_copy: bool = False) -> Import:
+    def import_dsl(
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        *,
+        as_copy: bool = False,
+        package: AppImportPackage | None = None,
+    ) -> Import:
         account = self._import_actor(context)
         with self._session_factory() as session:
             result = self._dsl_factory(session).import_app(
@@ -239,6 +252,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 icon=params.icon,
                 icon_background=params.icon_background,
                 app_id=params.app_id,
+                package=package,
             )
             if result.status == ImportStatus.FAILED or (as_copy and result.status == ImportStatus.PENDING):
                 session.rollback()
@@ -295,8 +309,14 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         return dsl.serialize_export_data(prepared)
 
     @override
-    def export_app_package(self, *, dsl: str, name: str) -> RosterAgentPackageExport:
-        return self._packages.export(dsl=dsl, name=name)
+    def export_app_package(
+        self, context: RequestContext, app_id: str, options: AppExportOptions
+    ) -> RosterAgentPackageExport:
+        with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
+        return self._packages.export_app(
+            app_model=app, include_secret=options.include_secret, workflow_id=options.workflow_id
+        )
 
     @override
     def export_agent_package(

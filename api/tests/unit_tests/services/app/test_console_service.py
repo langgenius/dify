@@ -53,7 +53,13 @@ from services.entities.app_entities import (
     StarredAppListParams,
     UpdateAppParams,
 )
-from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
+from services.entities.dsl_entities import (
+    AppImportPackage,
+    AppImportParams,
+    CheckDependenciesResult,
+    Import,
+    ImportStatus,
+)
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RECORD = AppRecord(id="app", name="Example", mode_compatible_with_agent="chat")
@@ -161,7 +167,7 @@ class Transfers:
         del source
         pytest.fail("Unexpected import content detection")
 
-    def read_package_dsl(self, source: BinaryIO) -> str | None:
+    def read_app_package(self, source: BinaryIO) -> AppImportPackage | None:
         del source
         pytest.fail("Unexpected package read")
 
@@ -177,7 +183,15 @@ class Transfers:
         del context, app_id
         pytest.fail("Unexpected dependency check")
 
-    def import_dsl(self, context: RequestContext, params: AppImportParams, *, as_copy: bool = False) -> Import:
+    def import_dsl(
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        *,
+        as_copy: bool = False,
+        package: AppImportPackage | None = None,
+    ) -> Import:
+        assert package is None
         self.calls.append(("import", context, params, as_copy))
         return Import(id="import", status=self.status, app_id=self.copied_id)
 
@@ -185,8 +199,10 @@ class Transfers:
         self.calls.append(("dsl", context, app_id, options))
         return "app: example"
 
-    def export_app_package(self, *, dsl: str, name: str) -> RosterAgentPackageExport:
-        self.calls.append(("package", dsl, name))
+    def export_app_package(
+        self, context: RequestContext, app_id: str, options: AppExportOptions
+    ) -> RosterAgentPackageExport:
+        self.calls.append(("package", context, app_id, options))
         return RosterAgentPackageExport(archive=BytesIO(b"package"), filename="example.ifpkg", size=7)
 
     def export_agent_package(
@@ -329,7 +345,7 @@ def test_export_routes_yaml_ordinary_package_and_agent_package(ports: Ports) -> 
     assert service.export(CONTEXT, "app", options) == "app: example"
     assert transfers.calls[-1] == ("dsl", CONTEXT, "app", options)
     archive = service.export(CONTEXT, "app", AppExportOptions())
-    assert transfers.calls[-1] == ("package", "app: example", "Example")
+    assert transfers.calls[-1] == ("package", CONTEXT, "app", AppExportOptions())
     assert isinstance(archive, RosterAgentPackageExport)
     archive.close()
     apps.source = replace(apps.source, mode="agent", bound_agent_id="agent")
@@ -683,7 +699,15 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
 
     class CopyTransfer(Transfers):
         @override
-        def import_dsl(self, context: RequestContext, params: AppImportParams, *, as_copy: bool = False) -> Import:
+        def import_dsl(
+            self,
+            context: RequestContext,
+            params: AppImportParams,
+            *,
+            as_copy: bool = False,
+            package: AppImportPackage | None = None,
+        ) -> Import:
+            assert package is None
             assert params.name is None
             assert as_copy
             return Import(id="import", status=ImportStatus.COMPLETED, app_id=app.id)

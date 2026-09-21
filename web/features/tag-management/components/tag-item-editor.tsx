@@ -102,7 +102,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
                   {tag.binding_count}
                 </div>
               </TooltipTrigger>
-              <TooltipContent>{t(($) => $['common.tagBound'], { ns: 'workflow' })}</TooltipContent>
+              <TooltipContent>{t(($) => $['tag.boundItems'], { ns: 'common' })}</TooltipContent>
             </Tooltip>
             <button
               type="button"

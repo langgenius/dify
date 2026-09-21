@@ -134,7 +134,7 @@ const StatusItem = ({
                 </span>
               }
             />
-            <TooltipContent className="system-xs-medium text-text-secondary">
+            <TooltipContent>
               {t(($) => $['list.action.enableWarning'], { ns: 'datasetDocuments' })}
             </TooltipContent>
           </Tooltip>

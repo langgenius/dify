@@ -2,11 +2,11 @@ import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Divider from '../../base/divider'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
 import { useNodesReadOnly } from '../hooks/use-workflow'
@@ -279,7 +279,7 @@ const ViewWorkflowHistory = () => {
           </div>
           {!!calculateChangeList.statesCount && (
             <div className="px-0.5">
-              <Divider className="m-0" />
+              <Separator className="m-0 h-[0.5px]" />
               <button
                 type="button"
                 className={cn(

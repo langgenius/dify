@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, closing
 from dataclasses import replace
 from typing import BinaryIO, Literal, Protocol
 from uuid import UUID, uuid4
@@ -27,7 +27,13 @@ from services.entities.app_entities import (
     StarredAppListParams,
     UpdateAppParams,
 )
-from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
+from services.entities.dsl_entities import (
+    AppImportPackage,
+    AppImportParams,
+    CheckDependenciesResult,
+    Import,
+    ImportStatus,
+)
 
 
 class ConsoleAppNotFoundError(Exception):
@@ -115,9 +121,16 @@ class AppTransfers(Protocol):
 
     def read_import_yaml(self, source: BinaryIO) -> str | None: ...
 
-    def read_package_dsl(self, source: BinaryIO) -> str | None: ...
+    def read_app_package(self, source: BinaryIO) -> AppImportPackage | None: ...
 
-    def import_dsl(self, context: RequestContext, params: AppImportParams, *, as_copy: bool = False) -> Import: ...
+    def import_dsl(
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        *,
+        as_copy: bool = False,
+        package: AppImportPackage | None = None,
+    ) -> Import: ...
 
     def confirm_import(self, context: RequestContext, import_id: str) -> tuple[Import, bool]: ...
 
@@ -127,7 +140,9 @@ class AppTransfers(Protocol):
 
     def export_dsl(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str: ...
 
-    def export_app_package(self, *, dsl: str, name: str) -> RosterAgentPackageExport: ...
+    def export_app_package(
+        self, context: RequestContext, app_id: str, options: AppExportOptions
+    ) -> RosterAgentPackageExport: ...
 
     def export_agent_package(
         self, *, workspace_id: str, agent_id: str, version_id: UUID | None
@@ -195,11 +210,14 @@ class ConsoleAppService:
         return self._import_dsl(context, params)
 
     def _import_package(self, context: RequestContext, params: AppImportParams, source: BinaryIO) -> Import:
-        content = self._transfers.read_package_dsl(source)
-        if content is not None:
-            return self._import_dsl(
-                context, params.model_copy(update={"mode": "yaml-content", "yaml_content": content, "yaml_url": None})
-            )
+        package = self._transfers.read_app_package(source)
+        if package is not None:
+            with closing(package):
+                return self._import_dsl(
+                    context,
+                    params.model_copy(update={"mode": "yaml-content", "yaml_content": package.dsl, "yaml_url": None}),
+                    package=package,
+                )
         self._access.require_import(context, "agent")
         if params.app_id:
             raise InvalidRosterAgentPackageError("Roster Agent package import does not support overwriting an App")
@@ -212,9 +230,11 @@ class ConsoleAppService:
             warnings=result.warnings,
         )
 
-    def _import_dsl(self, context: RequestContext, params: AppImportParams) -> Import:
+    def _import_dsl(
+        self, context: RequestContext, params: AppImportParams, *, package: AppImportPackage | None = None
+    ) -> Import:
         self._access.require_import(context, "dsl")
-        result = self._transfers.import_dsl(context, params)
+        result = self._transfers.import_dsl(context, params, package=package)
         self._set_import_permissions(context, result, created=params.app_id is None)
         if result.app_id:
             self._access.initialize_import_access(result.app_id)
@@ -344,8 +364,7 @@ class ConsoleAppService:
                 agent_id=app.bound_agent_id,
                 version_id=options.version_id,
             )
-        dsl = self._transfers.export_dsl(context, app.id, options)
-        return self._transfers.export_app_package(dsl=dsl, name=app.name)
+        return self._transfers.export_app_package(context, app.id, options)
 
     def publish(self, context: RequestContext, app_id: str) -> str:
         # Validate ownership before producing external effects, including feature rejection.

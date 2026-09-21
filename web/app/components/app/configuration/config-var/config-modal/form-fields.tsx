@@ -409,7 +409,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             </span>
           </label>
           <div className="flex items-center gap-1">
-            <Infotip aria-label={hiddenDescriptionAriaLabel} popupClassName="max-w-[300px]">
+            <Infotip aria-label={hiddenDescriptionAriaLabel}>
               <Trans
                 i18nKey={($) => $['variableConfig.hiddenDescription']}
                 ns="appDebug"
