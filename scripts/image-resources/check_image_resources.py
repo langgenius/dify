@@ -130,7 +130,11 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--base", help="Check images changed between the merge base and HEAD")
     mode.add_argument("--all", action="store_true", help="Audit all tracked frontend images")
-    parser.add_argument("--output-dir", type=Path, help="Save failing compression candidates outside the repository")
+    action = parser.add_mutually_exclusive_group()
+    action.add_argument("--output-dir", type=Path, help="Save failing compression candidates outside the repository")
+    action.add_argument(
+        "--fix", action="store_true", help="Replace images exceeding 25% savings; review visuals afterward"
+    )
     args = parser.parse_args()
     if args.output_dir and args.output_dir.resolve().is_relative_to(ROOT):
         parser.error("--output-dir must be outside the repository to avoid overwriting source images")
@@ -138,6 +142,17 @@ def main() -> int:
     results = []
     for name in paths:
         status, message, candidate = inspect_image(name)
+        if args.fix and candidate is not None:
+            try:
+                (ROOT / name).write_bytes(candidate)
+            except OSError as error:
+                message = f"Unable to write optimized image: {error}"
+            else:
+                status = "fixed"
+                message = message.replace(
+                    "Review the candidate and optimize this image before merging.",
+                    "Applied candidate. Review the image in its rendered context before committing.",
+                )
         results.append((name, status, message))
         print(f"{status}: {name!r}: {message!r}")
         if status == "error" and os.environ.get("GITHUB_ACTIONS") == "true":
@@ -148,8 +163,11 @@ def main() -> int:
             output.write_bytes(candidate)
     failures = sum(status == "error" for _, status, _ in results)
     skipped = sum(status == "skipped" for _, status, _ in results)
-    status_line = f"Checked {len(paths)} images: {failures} failures, {skipped} skipped."
+    fixed = sum(status == "fixed" for _, status, _ in results)
+    status_line = f"Checked {len(paths)} images: {failures} failures, {skipped} skipped, {fixed} fixed."
     print(status_line)
+    if fixed:
+        print("Review all modified images visually before committing; JPEG/WebP compression is lossy.")
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with Path(summary).open("a") as stream:

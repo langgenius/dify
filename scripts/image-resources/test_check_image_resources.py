@@ -151,6 +151,43 @@ class ImageOptimizationTests(unittest.TestCase):
     def run_git(self, *args: str) -> str:
         return checker.git(*args, root=self.root).decode().strip()
 
+    def test_fix_cli_applies_candidates_and_preserves_other_files(self):
+        self.run_git("init", "-q")
+        originals = {
+            "web/public/fix.png": png(),
+            "web/public/fix.svg": svg(png()),
+            "web/public/passed.png": png(optimized=True),
+            "web/public/broken.png": b"invalid image",
+        }
+        for name, data in originals.items():
+            self.write(name, data)
+        self.run_git("add", ".")
+        scripts = self.root / "scripts/image-resources"
+        scripts.mkdir(parents=True)
+        shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        command = [sys.executable, str(scripts / "check_image_resources.py"), "--all"]
+        result = subprocess.run(command + ["--fix"], capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("2 fixed", result.stdout)
+        self.assertIn("Review all modified images visually", result.stdout)
+        for name in ["web/public/fix.png", "web/public/fix.svg"]:
+            self.assertLess((self.root / name).stat().st_size, len(originals[name]))
+            self.assertEqual(checker.inspect_image(name, self.root)[0], "passed")
+        for name in ["web/public/passed.png", "web/public/broken.png"]:
+            self.assertEqual((self.root / name).read_bytes(), originals[name])
+        self.run_git("rm", "-f", "web/public/broken.png")
+        fixed = {name: (self.root / name).read_bytes() for name in originals if "broken" not in name}
+        for arguments in [[], ["--fix"]]:
+            result = subprocess.run(command + arguments, capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("0 fixed", result.stdout)
+            for name, data in fixed.items():
+                self.assertEqual((self.root / name).read_bytes(), data)
+        result = subprocess.run(
+            command + ["--fix", "--output-dir", "/tmp/candidates"], capture_output=True, text=True, check=False
+        )
+        self.assertEqual(result.returncode, 2)
+
     def test_git_selection_cli_exit_summary_and_candidate_artifact(self):
         self.run_git("init", "-q")
         self.run_git("config", "user.email", "test@example.invalid")
