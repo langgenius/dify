@@ -17,6 +17,7 @@ src/
     ops/        the catalog as the CLI shows it: resolve an op (refetch once on unknown), list rows, describe one op with its pins
     commands/   command pipeline plus the command framework (command.ts, cancel.ts, registry.ts) every command imports
   protocol/     pure catalog-shape logic: kinds, bind, pins, fold — no I/O
+  discovery/    pure id tree and ranked search over commands and ops — no I/O
   call/         the `call` flag table; JSON and SSE response decoding; builds a request from a resolved op + validated input; renders the response by kind
   commands/     one folder per command leaf; index.ts is the only file the registry discovers
   net/          fetch init and proxy dispatcher, shared by the http plugin and the pre-login device flow
@@ -44,7 +45,7 @@ A plugin's folder is private. Code outside it imports only the plugin's `index.t
 
 Global flags are one Zod object in `src/plugins/global-flags/index.ts`. The plugin pulls the flags it knows out of the `argv` input, exposes their values as `flags` and the remaining tokens as `rest`; any plugin or command reads a global flag through `ctx.get(globalFlags)`, never by scanning argv. Which flag wins over an env var or a config key is decided in the plugin that owns the setting, not here.
 
-Help is the row: `commandRow(Ctor, path)` (`src/plugins/commands/describe.ts`) is the one function that renders a command's `--help` output and its entry in the root command list — there is no separate help-text template.
+Help is the row: `commandRow(Ctor, path)` (`src/plugins/commands/describe.ts`) is the one function that renders a command's `--help` output and its entry in `help --full` — there is no separate help-text template. Words no command claims go to `discover` in the pipeline: the map, a namespace listing, an op descriptor, or a search, shaped by `plugins/commands/help.ts` over the pure `src/discovery/` module (id tree, BM25 search).
 
 Tests substitute one plugin's service directly: `new Context([[plugin, mockService]])` seeds the cache so `ctx.get(plugin)` returns the mock without building the real one.
 
@@ -91,19 +92,18 @@ New error code: add to `ErrorCode` and map it to an `ExitCode` in `codes.ts`. Ne
 
 ## Output
 
-Everything the CLI prints goes through the `io` plugin's service, never through a stream directly. Four writes cover every case; a new output format or a `--quiet` flag is a change inside this one plugin.
+Everything the CLI prints goes through the `io` plugin's service, never through a stream directly. Three writes cover every case; a new output format or a `--quiet` flag is a change inside this one plugin.
 
 ```typescript
 export type IOService = Readonly<{
-  line: (value: Printable) => Promise<void> // one JSON line on stdout: results, streamed events
-  document: (value: Printable) => Promise<void> // pretty JSON on stdout: help
+  document: (value: Printable) => Promise<void> // indented JSON on stdout: results, help
   notice: (text: string) => void // one text line on stderr: warnings, progress
   raw: (chunk: string | Buffer) => Promise<void> // bytes as given: a text-kind body
   streams: IOStreams // stdin and the TTY flags
 }>
 ```
 
-`Printable` (a JSON primitive, an array, or a plain object) is what a command may return and what `line` accepts. stdout writes use the callback form so a closed pipe reaches `printEnvelope` as a rejection and the run ends at exit 0. `printEnvelope` itself writes the error envelope to the raw stderr stream, since it runs in `main` after the context may have failed to build.
+`Printable` (a JSON primitive, an array, or a plain object) is what a command may return and what `document` accepts. Streamed events go through `raw`, one per line. stdout writes use the callback form so a closed pipe reaches `printEnvelope` as a rejection and the run ends at exit 0. `printEnvelope` itself writes the error envelope to the raw stderr stream, since it runs in `main` after the context may have failed to build.
 
 `IOStreams` is the raw layer underneath: `realStreams()` wraps `process.std*` in production, `bufferStreams()` captures output in tests, and `ioService(streams)` wraps either.
 

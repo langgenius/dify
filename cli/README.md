@@ -35,8 +35,9 @@ Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`i
 ```sh
 difyctl login --server https://dify.example.com                     # opens browser; paste the device code shown
 difyctl workspace list                                               # workspaces visible to this account
-difyctl ops                                                          # every operation the server exposes
-difyctl ops describe console_app.list                                # one operation's input schema and usage
+difyctl help                                                         # the map: every command and operation namespace
+difyctl help chatbot                                                 # search commands and operations by plain words
+difyctl help console_app.list                                        # one operation's input schema and usage
 difyctl call console_app.list --input '{"limit":5}'                  # run it
 difyctl call console_app.workflow.run --input @run.json --stream     # stream a workflow run
 ```
@@ -66,11 +67,11 @@ difyctl has no built-in business commands: `ops` and `call` are the whole surfac
 `--verbose` is global: it may appear on any command, and it keeps the raw server
 response in the error envelope instead of dropping it.
 
-Run `difyctl <cmd> --help` for a command's JSON descriptor, or `difyctl call <op-id> --help` (same as `ops describe <op-id>`) for an operation's. Run `difyctl --help` with no other arguments for every command id and summary, plus — once logged in — every operation id and summary. Add `--full` to get each row's descriptor instead.
+`difyctl help` is the discovery entry for commands and operations together. Bare, it prints the map: each namespace with its verbs, or its operation count and groups. `difyctl help <namespace>` lists everything under one namespace, `difyctl help <words>` searches both by plain words and ranks the matches, and `difyctl help <id>` prints one descriptor (the same as `<cmd> --help`, `ops describe <op-id>` and `call <op-id> --help`). `--all` includes internal operations; `--full` on the bare `help` prints the flat list with every descriptor.
 
 ## Agent skills
 
-difyctl ships a collection of agent skills from [`skills/`] at the repo root. The basic skill, `difyctl`, teaches the discovery flow — `ops` to list operations, `ops describe <op-id>` to inspect one, `call <op-id> --input '<json>'` to run it — so it stays correct as the server's catalog grows. Scenario skills add guidance for one kind of task and open by reading the basic one. The collection is embedded in the binary.
+difyctl ships a collection of agent skills from [`skills/`] at the repo root. The basic skill, `difyctl`, teaches the discovery flow — `help` to see the map or search, `help <id>` to inspect one operation, `call <op-id> --input '<json>'` to run it — so it stays correct as the server's catalog grows. Scenario skills add guidance for one kind of task and open by reading the basic one. The collection is embedded in the binary.
 
 - `difyctl skills list` — the collection: each skill's name and description. Writes nothing.
 - `difyctl skills install <dir>` — write every skill into `<dir>`, the agent's skills root: the folder that holds one subfolder per skill, for example `~/.claude/skills` for Claude Code or `~/.codex/skills` for Codex. Existing copies are overwritten. `--skill <name>` (repeatable) writes only those skills; a scenario skill brings `difyctl` along.

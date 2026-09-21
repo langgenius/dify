@@ -1,17 +1,28 @@
 ---
 name: difyctl
-description: 'Base skill for the difyctl CLI: discover and run any Dify operation through ops and call. Use when the task involves difyctl or a Dify server from the command line.'
+description: 'Base skill for the difyctl CLI: find any command or Dify operation through help and run it through call. Use when the task involves difyctl or a Dify server from the command line.'
 ---
 
 # difyctl
 
 difyctl talks to a Dify server. Business commands are not built in: the server publishes a catalog of operations and you discover them at run time. Every command prints JSON. Help is JSON too.
 
-## The three steps
+## Finding what the CLI can do
 
-1. `difyctl ops` lists every operation id with a one-line summary and kind.
-2. `difyctl ops describe <op-id>` prints the operation: `input` (a JSON Schema), `bind`, `kind`, `examples`, and `pins` (values difyctl fills in for you, currently `workspace_id`). `difyctl call <op-id> --help` prints the same thing.
-3. `difyctl call <op-id> --input '<json>'` runs it. Output is one JSON object on stdout.
+Ids are trees. A static command is `<namespace> <verb>` (`cache refresh`). An operation is `<namespace>.<verb>`, and namespaces nest: `console_app.chat.run` is `run` inside `console_app.chat` inside `console_app`. Namespaces are derived from the ids the server publishes, and the server can add or rename them, so never assume an id: look it up.
+
+Four views, all under `help`, all JSON, all covering static commands and server operations together:
+
+1. `difyctl help` prints the map: each top-level namespace with its verbs (commands) or its operation count and groups (operations). Start here.
+2. `difyctl help <namespace>` lists everything under one namespace, recursively: `id`, `summary`, `type` (`command` or `op`), and `kind` for operations. `difyctl help console_app`, `difyctl help console_app.dsl`.
+3. `difyctl help <words>` searches both sides by plain words and ranks the results: `difyctl help upload file`, `difyctl help chatbot`. Two or three words from the task are enough. The output is the top 20 entries plus `total`; widen the words or read the map when the candidates look wrong. Nothing matched is `{"entries": [], "total": 0}`.
+4. `difyctl help <id>` prints one command's or one operation's descriptor. For an operation that is `input` (a JSON Schema), `bind`, `kind`, `examples`, and `pins` (values difyctl fills in for you, currently `workspace_id`). `difyctl ops describe <op-id>` and `difyctl call <op-id> --help` print the same thing.
+
+Then `difyctl call <op-id> --input '<json>'` runs an operation. Output is one JSON object on stdout.
+
+`--all` on any help view includes operations the server marks internal. `--full` on the bare `help` prints the flat list of everything with each descriptor; it is long and rarely what you want. `difyctl ops` is that flat list for operations only.
+
+Views that need operations fetch the catalog on first use. Not logged in, or the server unreachable, gives the static half plus one line on stderr.
 
 Run an app with the op for its mode: `console_app.workflow.run`, `console_app.chat.run`, `console_app.advanced_chat.run`, `console_app.completion.run`. First `call console_app.describe --input '{"app_id":"..."}'` and read `input_schema`; that is the shape of `inputs`.
 
@@ -29,7 +40,7 @@ Streaming ops fold to `{status, text, outputs?, total_tokens?, message_id?, conv
 
 ## Other skills
 
-This file covers every operation through `ops` and `call`. Scenario skills add guidance for one kind of task. `difyctl skills list` shows them. Install one with `difyctl skills install <skills root> --skill <name>`, where `<skills root>` is the folder this file's parent folder sits in.
+This file covers every operation through `help` and `call`. Scenario skills add guidance for one kind of task. `difyctl skills list` shows them. Install one with `difyctl skills install <skills root> --skill <name>`, where `<skills root>` is the folder this file's parent folder sits in.
 
 ## Errors and exit codes
 
