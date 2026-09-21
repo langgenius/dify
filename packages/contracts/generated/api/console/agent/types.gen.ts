@@ -9,6 +9,7 @@ export type AgentAppPagination = {
   has_more: boolean
   limit: number
   page: number
+  publication_counts: AgentPublicationCountsResponse
   total: number
 }
 
@@ -48,7 +49,7 @@ export type AgentAppDetailWithSite = {
   mode: string
   model_config?: AppModelConfigResponse | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   role?: string | null
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
@@ -106,6 +107,7 @@ export type ApiKeyList = {
 
 export type ApiKeyItem = {
   created_at?: number | null
+  dataset_ids?: Array<string>
   id: string
   last_used_at?: number | null
   token: string
@@ -405,6 +407,15 @@ export type AgentStatisticSummaryEnvelopeResponse = {
   summary: AgentStatisticSummaryResponse
 }
 
+export type TextToSpeechPayload = {
+  message_id?: string | null
+  streaming?: boolean | null
+  text: string
+  voice?: string | null
+}
+
+export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
+
 export type AgentConfigSnapshotListResponse = {
   data: Array<AgentConfigSnapshotSummaryResponse>
 }
@@ -455,7 +466,7 @@ export type AgentAppPartial = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
   reference_count?: number | null
@@ -465,6 +476,11 @@ export type AgentAppPartial = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+}
+
+export type AgentPublicationCountsResponse = {
+  drafts: number
+  published: number
 }
 
 export type IconType = 'emoji' | 'image' | 'link'
@@ -949,6 +965,11 @@ export type AgentStatisticSummaryResponse = {
   total_price: string
   total_tokens: number
   user_satisfaction_rate: number
+}
+
+export type TextToSpeechVoiceResponse = {
+  name: string
+  value: string
 }
 
 export type AgentConfigRevisionResponse = {
@@ -1733,6 +1754,7 @@ export type AgentAppPaginationWritable = {
   has_more: boolean
   limit: number
   page: number
+  publication_counts: AgentPublicationCountsResponse
   total: number
 }
 
@@ -1762,7 +1784,7 @@ export type AgentAppDetailWithSiteWritable = {
   mode: string
   model_config?: AppModelConfigResponse | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   role?: string | null
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
@@ -1797,7 +1819,7 @@ export type AgentAppPartialWritable = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
   reference_count?: number | null
@@ -1854,6 +1876,7 @@ export type GetAgentData = {
       | 'workflow'
     name?: string
     page?: number
+    publication_status?: 'drafts' | 'published'
     sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
     tag_ids?: Array<string>
   }
@@ -2892,6 +2915,51 @@ export type GetAgentByAgentIdStatisticsSummaryResponses = {
 
 export type GetAgentByAgentIdStatisticsSummaryResponse =
   GetAgentByAgentIdStatisticsSummaryResponses[keyof GetAgentByAgentIdStatisticsSummaryResponses]
+
+export type PostAgentByAgentIdTextToAudioData = {
+  body: TextToSpeechPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/text-to-audio'
+}
+
+export type PostAgentByAgentIdTextToAudioErrors = {
+  400: unknown
+  403: unknown
+  404: unknown
+}
+
+export type PostAgentByAgentIdTextToAudioResponses = {
+  200: Blob | File
+}
+
+export type PostAgentByAgentIdTextToAudioResponse =
+  PostAgentByAgentIdTextToAudioResponses[keyof PostAgentByAgentIdTextToAudioResponses]
+
+export type GetAgentByAgentIdTextToAudioVoicesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    language: string
+  }
+  url: '/agent/{agent_id}/text-to-audio/voices'
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesResponses = {
+  200: TextToSpeechVoiceListResponse
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesResponse =
+  GetAgentByAgentIdTextToAudioVoicesResponses[keyof GetAgentByAgentIdTextToAudioVoicesResponses]
 
 export type GetAgentByAgentIdVersionsData = {
   body?: never

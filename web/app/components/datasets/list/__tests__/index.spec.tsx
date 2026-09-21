@@ -36,8 +36,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/console')>()
   return {
     ...original,
     consoleQuery: {
@@ -71,7 +71,6 @@ function NewKnowledgeGuideDismissedProbe() {
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
 let mockConsoleState = {
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
   knowledgeFsEnabled: false,
@@ -247,7 +246,6 @@ describe('List', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockConsoleState = {
-      isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: true,
       knowledgeFsEnabled: false,
@@ -428,7 +426,6 @@ describe('List', () => {
 
     it('should hide external API panel button without dataset.external.connect', () => {
       mockConsoleState = {
-        isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
         knowledgeFsEnabled: false,
@@ -539,9 +536,8 @@ describe('List', () => {
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
     })
 
-    it('should render first empty state when dataset.create_and_management is available without the legacy editor role', async () => {
+    it('should render first empty state when dataset.create_and_management is available', async () => {
       mockConsoleState = {
-        isCurrentWorkspaceEditor: false,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
         knowledgeFsEnabled: false,
@@ -566,7 +562,6 @@ describe('List', () => {
 
     it('should render a permission empty state without dataset creation permissions', async () => {
       mockConsoleState = {
-        isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
         knowledgeFsEnabled: false,
@@ -622,8 +617,56 @@ describe('List', () => {
       fireEvent.click(screen.getByTestId('include-all-checkbox'))
 
       expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
-      expect(screen.getByText('dataset.filterEmpty.noKnowledge')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('dataset.filterEmpty.noKnowledge')
       expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
+    })
+
+    it('announces empty search results only after the current filters finish loading', async () => {
+      const user = userEvent.setup()
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      const result = {
+        data: { pages: [{ data: [], total: 1 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+        isPlaceholderData: false,
+        isError: false,
+      }
+      vi.mocked(useDatasetList).mockImplementation(
+        () => result as unknown as ReturnType<typeof useDatasetList>,
+      )
+      const { rerender } = render(<List />)
+      const status = screen.getByRole('status')
+      const search = screen.getByRole('searchbox')
+      expect(status).toBeEmptyDOMElement()
+
+      await user.type(search, 'missing')
+      expect(status).toBeEmptyDOMElement()
+      await waitFor(() =>
+        expect(useDatasetList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ keyword: 'missing' }),
+        ),
+      )
+
+      result.data.pages = [{ data: [], total: 0 }]
+      result.isFetching = true
+      result.isPlaceholderData = true
+      rerender(<List />)
+      expect(status).toBeEmptyDOMElement()
+
+      result.isPlaceholderData = false
+      rerender(<List />)
+      expect(status).toBeEmptyDOMElement()
+
+      result.isFetching = false
+      rerender(<List />)
+      expect(screen.getByRole('status')).toBe(status)
+      expect(status).toHaveTextContent('dataset.filterEmpty.noKnowledge')
+      expect(search).toHaveFocus()
+
+      await user.type(search, ' again')
+      expect(status).toBeEmptyDOMElement()
     })
   })
 
@@ -676,7 +719,6 @@ describe('List', () => {
 
     it('should not show include all checkbox when not workspace owner', async () => {
       mockConsoleState = {
-        isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         knowledgeFsEnabled: false,

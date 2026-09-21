@@ -1,7 +1,8 @@
 import type { ComponentProps } from 'react'
 import type { InSiteMessageActionItem } from '../index'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { trackEvent } from '@/app/components/base/amplitude'
 import InSiteMessage from '../index'
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -9,19 +10,8 @@ vi.mock('@/app/components/base/amplitude', () => ({
 }))
 
 describe('InSiteMessage', () => {
-  const originalLocation = window.location
-
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('open', vi.fn())
-  })
-
-  afterEach(() => {
-    Object.defineProperty(window, 'location', {
-      value: originalLocation,
-      configurable: true,
-    })
-    vi.unstubAllGlobals()
   })
 
   const renderComponent = (
@@ -59,7 +49,7 @@ describe('InSiteMessage', () => {
 
       const closeButton = screen.getByRole('button', { name: 'Close' })
       const outlineButton = screen.getByRole('button', { name: 'Outline' })
-      const learnMoreButton = screen.getByRole('button', { name: 'Learn more' })
+      const learnMoreLink = screen.getByRole('link', { name: 'Learn more' })
       const panel = closeButton.closest('div.fixed')
       const titleElement = panel?.querySelector('.title-3xl-bold')
       const subtitleElement = panel?.querySelector('.body-md-regular')
@@ -71,7 +61,7 @@ describe('InSiteMessage', () => {
       expect(screen.getByText('Main content')).toBeInTheDocument()
       expect(closeButton).toBeInTheDocument()
       expect(outlineButton).toHaveClass('bg-components-button-secondary-bg')
-      expect(learnMoreButton).toBeInTheDocument()
+      expect(learnMoreLink).toHaveAttribute('href', 'https://example.com')
     })
 
     it('should fallback to default header background when headerBgUrl is empty string', () => {
@@ -103,7 +93,8 @@ describe('InSiteMessage', () => {
       expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
     })
 
-    it('should open a new tab when link action data is a string', () => {
+    it('should render a new-tab link and report its activation', () => {
+      const onAction = vi.fn()
       const linkAction: InSiteMessageActionItem = {
         action: 'link',
         action_name: 'confirm',
@@ -112,26 +103,22 @@ describe('InSiteMessage', () => {
         data: 'https://example.com',
       }
 
-      renderComponent([linkAction])
-      fireEvent.click(screen.getByRole('button', { name: 'Open link' }))
+      renderComponent([linkAction], { onAction })
+      const link = screen.getByRole('link', { name: 'Open link' })
 
-      expect(window.open).toHaveBeenCalledWith(
-        'https://example.com',
-        '_blank',
-        'noopener,noreferrer',
-      )
+      expect(link).toHaveAttribute('href', 'https://example.com')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+      fireEvent.click(link)
+
+      expect(onAction).toHaveBeenCalledWith(linkAction)
+      expect(vi.mocked(trackEvent)).toHaveBeenCalledWith('in_site_message_action', {
+        notification_id: 'test-notification-id',
+        action: 'confirm',
+      })
     })
 
-    it('should navigate with location.assign when link action target is _self', () => {
-      const assignSpy = vi.fn()
-      Object.defineProperty(window, 'location', {
-        value: {
-          ...originalLocation,
-          assign: assignSpy,
-        },
-        configurable: true,
-      })
-
+    it('should render a same-tab link when target is _self', () => {
       const linkAction: InSiteMessageActionItem = {
         action: 'link',
         action_name: 'confirm',
@@ -141,10 +128,10 @@ describe('InSiteMessage', () => {
       }
 
       renderComponent([linkAction])
-      fireEvent.click(screen.getByRole('button', { name: 'Open self' }))
+      const link = screen.getByRole('link', { name: 'Open self' })
 
-      expect(assignSpy).toHaveBeenCalledWith('https://example.com/self')
-      expect(window.open).not.toHaveBeenCalled()
+      expect(link).toHaveAttribute('href', 'https://example.com/self')
+      expect(link).toHaveAttribute('target', '_self')
     })
 
     it('should not trigger navigation when link data is invalid', () => {
@@ -159,7 +146,7 @@ describe('InSiteMessage', () => {
       renderComponent([linkAction])
       fireEvent.click(screen.getByRole('button', { name: 'Broken link' }))
 
-      expect(window.open).not.toHaveBeenCalled()
+      expect(screen.queryByRole('link', { name: 'Broken link' })).not.toBeInTheDocument()
     })
   })
 })

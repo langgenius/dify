@@ -60,14 +60,13 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
             <Popover>
               <PopoverTrigger
                 openOnHover
-                aria-label={data.endpoint}
                 className="flex-1 truncate border-0 bg-transparent p-0 text-left system-xs-regular text-text-tertiary"
               >
                 {data.endpoint}
               </PopoverTrigger>
               <PopoverContent
                 placement="left"
-                popupClassName="max-w-[320px] break-all px-3 py-2 system-xs-regular text-text-tertiary"
+                className="max-w-[320px] px-3 py-2 system-xs-regular break-all text-text-tertiary"
               >
                 {data.endpoint}
               </PopoverContent>

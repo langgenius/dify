@@ -481,6 +481,8 @@ class TestDifyNodeFactoryCreateNode:
             app_id="app-id",
             user_id="user-id",
             invoke_from=InvokeFrom.DEBUGGER,
+            app_type=None,
+            created_by=None,
         )
         factory._code_executor = sentinel.code_executor
         factory._code_limits = sentinel.code_limits

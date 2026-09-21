@@ -349,6 +349,11 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 		lastGrowthAt = &now
 	}
 
+	// Poll with exponential backoff: start tight so short jobs return with low
+	// latency, then grow the interval up to MaxPollInterval so long/idle waits
+	// stop spawning a tmux liveness probe (fork) every few milliseconds.
+	pollInterval := s.config.PollInterval
+
 	for {
 		view, err := s.GetJobStatus(jobID)
 		if err != nil {
@@ -411,7 +416,8 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 			return s.jobResultFromView(view, row, window), nil
 		}
 
-		time.Sleep(s.config.PollInterval)
+		time.Sleep(pollInterval)
+		pollInterval = min(pollInterval*2, s.config.MaxPollInterval)
 	}
 }
 

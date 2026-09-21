@@ -4,16 +4,40 @@ import { registerCommands, unregisterCommands } from './command-bus'
 const NAV_ITEMS = [
   { id: 'apps', label: 'Apps', path: '/apps', iconClassName: 'i-ri-apps-2-line' },
   { id: 'datasets', label: 'Knowledge', path: '/datasets', iconClassName: 'i-ri-book-open-line' },
+  {
+    id: 'agents',
+    label: 'Agents',
+    path: '/agents',
+    iconClassName: 'i-custom-vender-main-nav-roster',
+    availability: 'agents',
+  },
+  {
+    id: 'skills',
+    label: 'Skills',
+    path: '/skills',
+    iconClassName: 'i-custom-vender-main-nav-skill',
+    availability: 'skills',
+  },
   { id: 'plugins', label: 'Plugins', path: '/plugins', iconClassName: 'i-ri-plug-line' },
   { id: 'tools', label: 'Tools', path: '/tools', iconClassName: 'i-ri-tools-line' },
-  { id: 'explore', label: 'Explore', path: '/explore', iconClassName: 'i-ri-compass-line' },
+  { id: 'home', label: 'Home', path: '/', iconClassName: 'i-ri-compass-line' },
   { id: 'account', label: 'Account', path: '/account', iconClassName: 'i-ri-user-line' },
-]
+] as const
+
+type GoDeps = {
+  agentsAvailable: boolean
+  skillsAvailable: boolean
+}
+
+let availability: GoDeps = {
+  agentsAvailable: false,
+  skillsAvailable: true,
+}
 
 /**
  * Go command - Navigate to a top-level section of the app
  */
-export const goCommand: SlashCommandHandler = {
+export const goCommand: SlashCommandHandler<GoDeps> = {
   name: 'go',
   aliases: ['navigate', 'nav'],
   description: 'Navigate to a section',
@@ -21,9 +45,14 @@ export const goCommand: SlashCommandHandler = {
 
   search(args: string, _locale: string = 'en') {
     const query = args.trim().toLowerCase()
-    const items = NAV_ITEMS.filter(
-      (item) => !query || item.id.includes(query) || item.label.toLowerCase().includes(query),
-    )
+    const items = NAV_ITEMS.filter((item) => {
+      if ('availability' in item) {
+        if (item.availability === 'agents' && !availability.agentsAvailable) return false
+        if (item.availability === 'skills' && !availability.skillsAvailable) return false
+      }
+
+      return !query || item.id.includes(query) || item.label.toLowerCase().includes(query)
+    })
     return items.map((item) => ({
       id: `go-${item.id}`,
       title: item.label,
@@ -38,7 +67,8 @@ export const goCommand: SlashCommandHandler = {
     }))
   },
 
-  register() {
+  register(deps: GoDeps) {
+    availability = deps
     registerCommands({
       'navigation.go': async (args) => {
         if (args?.path) window.location.href = args.path
@@ -47,6 +77,10 @@ export const goCommand: SlashCommandHandler = {
   },
 
   unregister() {
+    availability = {
+      agentsAvailable: false,
+      skillsAvailable: true,
+    }
     unregisterCommands(['navigation.go'])
   },
 }

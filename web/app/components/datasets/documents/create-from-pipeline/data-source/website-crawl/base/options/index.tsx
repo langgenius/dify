@@ -1,10 +1,9 @@
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
@@ -14,6 +13,7 @@ import {
   useConfigurations,
   useInitialData,
 } from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import { toast } from '@/app/notifications'
 import { CrawlStep } from '@/models/datasets'
 
 const I18N_PREFIX = 'stepOne.website'
@@ -27,6 +27,7 @@ type OptionsProps = {
 
 const Options = ({ variables, step, runDisabled, onSubmit }: OptionsProps) => {
   const { t } = useTranslation()
+  const runButtonLabelId = useId()
   const initialData = useInitialData(variables)
   const configurations = useConfigurations(variables)
   const schema = useMemo(() => {
@@ -61,7 +62,7 @@ const Options = ({ variables, step, runDisabled, onSubmit }: OptionsProps) => {
     else foldShow()
   }, [step])
 
-  const isRunning = useMemo(() => step === CrawlStep.running, [step])
+  const isRunning = step === CrawlStep.running
 
   return (
     <form
@@ -87,12 +88,13 @@ const Options = ({ variables, step, runDisabled, onSubmit }: OptionsProps) => {
         <Button
           variant="primary"
           onClick={form.handleSubmit}
-          disabled={runDisabled || isRunning}
+          disabled={runDisabled}
           loading={isRunning}
+          aria-labelledby={runButtonLabelId}
           className="shrink-0"
         >
-          <RiPlayLargeLine className="size-4" />
-          <span>
+          <RiPlayLargeLine aria-hidden className="size-4" />
+          <span id={runButtonLabelId}>
             {!isRunning
               ? t(($) => $[`${I18N_PREFIX}.run`], { ns: 'datasetCreation' })
               : t(($) => $[`${I18N_PREFIX}.running`], { ns: 'datasetCreation' })}

@@ -1,9 +1,9 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
-import Divider from '@/app/components/base/divider'
 import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import { useChatWithHistoryContext } from '../context'
 
@@ -85,8 +85,8 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
       </div>
       {collapsed && (
         <div className="flex w-full max-w-180 items-center py-4">
-          <Divider bgStyle="gradient" className="h-px basis-1/2 rotate-180" />
-          <Divider bgStyle="gradient" className="h-px basis-1/2" />
+          <Separator decorative variant="gradient" className="my-2 basis-1/2 rotate-180" />
+          <Separator decorative variant="gradient" className="my-2 basis-1/2" />
         </div>
       )}
     </div>

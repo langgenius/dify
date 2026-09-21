@@ -36,6 +36,10 @@ DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID: Final[str] = "dify.plugin.tools"
 DIFY_PLUGIN_TOOL_FILES_METADATA_KEY: Final[str] = "dify_tool_files"
 
 
+def _default_parameters_json_schema() -> dict[str, JsonValue]:
+    return {"type": "object", "properties": {}, "required": []}
+
+
 class DifyPluginToolOption(BaseModel):
     """Selectable tool option value exposed to the model.
 
@@ -157,9 +161,7 @@ class DifyPluginToolConfig(LayerConfig):
     credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
     runtime_parameters: dict[str, DifyPluginToolValue] = Field(default_factory=dict)
     parameters: list[DifyPluginToolParameter] = Field(default_factory=list)
-    parameters_json_schema: dict[str, JsonValue] = Field(
-        default_factory=lambda: {"type": "object", "properties": {}, "required": []}
-    )
+    parameters_json_schema: dict[str, JsonValue] = Field(default_factory=_default_parameters_json_schema)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 

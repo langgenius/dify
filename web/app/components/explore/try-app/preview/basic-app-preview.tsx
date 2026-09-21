@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 'use client'
 import type { FC } from 'react'
 import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
@@ -13,7 +12,7 @@ import { useMemo, useState } from 'react'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import { FeaturesProvider } from '@/app/components/base/features'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
@@ -32,6 +31,7 @@ import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
 import { AgentStrategy, ModelModeType, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { basePath } from '@/utils/var'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../../header/account-setting/model-provider-page/hooks'
 
@@ -300,7 +300,7 @@ const normalizeAgentTool = (
   const providerName = getString(tool.provider_name)
   const providerType = normalizeCollectionType(tool.provider_type)
   const toolName = getString(tool.tool_name)
-  const toolInCollectionList = collectionList?.find((c) => providerId === c.id)
+  const toolInCollectionList = collectionList?.find((c) => matchesProviderReference(c, providerId))
 
   return {
     ...tool,
@@ -524,14 +524,13 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
   const value = {
     readonly: true,
     appId,
-    isAPIKeySet: true,
     isTrailFinished: false,
     mode,
     modelModeType: '',
@@ -619,7 +618,7 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
               >
                 <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                   <Debug
-                    isAPIKeySet
+                    isPreview
                     onSetting={noop}
                     inputs={inputs}
                     modelParameterParams={{

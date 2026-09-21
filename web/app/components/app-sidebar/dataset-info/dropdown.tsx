@@ -11,16 +11,18 @@ import {
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -183,22 +185,22 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
           </IconButton>
         }
       />
-      <DropdownMenuContent
-        placement={expand ? 'bottom-end' : 'right-start'}
-        sideOffset={4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-      >
-        <Menu
-          showEdit={datasetACLCapabilities.canEdit}
-          showDelete={datasetACLCapabilities.canDelete}
-          showExportPipeline={datasetACLCapabilities.canImportExportDSL}
-          showAccessConfig={datasetACLCapabilities.canAccessConfig}
-          openRenameModal={openRenameModal}
-          handleExportPipeline={handleExportPipeline}
-          detectIsUsedByApp={detectIsUsedByApp}
-          openAccessConfig={openAccessConfig}
-        />
-      </DropdownMenuContent>
+      <DropdownMenuPortal>
+        <DropdownMenuPositioner placement={expand ? 'bottom-end' : 'right-start'} sideOffset={4}>
+          <DropdownMenuPopup>
+            <Menu
+              showEdit={datasetACLCapabilities.canEdit}
+              showDelete={datasetACLCapabilities.canDelete}
+              showExportPipeline={datasetACLCapabilities.canImportExportDSL}
+              showAccessConfig={datasetACLCapabilities.canAccessConfig}
+              openRenameModal={openRenameModal}
+              handleExportPipeline={handleExportPipeline}
+              detectIsUsedByApp={detectIsUsedByApp}
+              openAccessConfig={openAccessConfig}
+            />
+          </DropdownMenuPopup>
+        </DropdownMenuPositioner>
+      </DropdownMenuPortal>
       {showRenameModal && (
         <RenameDatasetModal
           show={showRenameModal}

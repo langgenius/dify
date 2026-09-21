@@ -35,7 +35,7 @@ from dify_agent.runtime.event_sink import (
     terminal_event_status_fields,
 )
 from dify_agent.server.schemas import RunRecord, new_run_id
-from dify_agent.server.settings import DEFAULT_RUN_RETENTION_SECONDS
+from dify_agent.server.settings import DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_record_key
 
 _TERMINAL_RUN_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
@@ -75,7 +75,7 @@ end
 
 local ttl = tonumber(ARGV[8])
 local updated_record_json = cjson.encode(record)
-local event_id = redis.call("XADD", KEYS[2], "*", "payload", ARGV[7])
+local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[9], "*", "payload", ARGV[7])
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("SET", KEYS[1], updated_record_json, "EX", ttl)
 return {1, ARGV[1], event_id}
@@ -100,7 +100,7 @@ if redis.call("EXISTS", KEYS[2]) == 1 then
 end
 
 local ttl = tonumber(ARGV[2])
-redis.call("XADD", KEYS[2], "*", "payload", ARGV[1])
+redis.call("XADD", KEYS[2], "MAXLEN", "1", "*", "payload", ARGV[1])
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("EXPIRE", KEYS[1], ttl)
 redis.call("EXPIRE", KEYS[3], ttl)
@@ -135,7 +135,7 @@ end
 record.error_type = cjson.null
 
 local ttl = tonumber(ARGV[5])
-local event_id = redis.call("XADD", KEYS[3], "*", "payload", ARGV[4])
+local event_id = redis.call("XADD", KEYS[3], "MAXLEN", "~", ARGV[6], "*", "payload", ARGV[4])
 redis.call("DEL", KEYS[2])
 redis.call("EXPIRE", KEYS[3], ttl)
 redis.call("SET", KEYS[1], cjson.encode(record), "EX", ttl)
@@ -147,16 +147,19 @@ class RedisRunStore(RunEventSink):
     """Async Redis implementation for run records and event logs.
 
     ``run_retention_seconds`` is applied to both the run record key and the
-    per-run Redis stream. Event writes run ``XADD`` and both TTL refreshes in one
-    Redis transaction so a newly created stream is not left without expiration if
-    the client is interrupted between commands. Event writes also refresh the
-    record TTL so long-running runs that keep producing events do not lose their
-    status record mid-run.
+    per-run Redis stream. Every public stream write applies an approximate
+    maximum length before refreshing both TTLs, so active runs cannot grow one
+    Redis key without bound without paying the CPU cost of exact per-entry
+    trimming. The transaction also ensures a newly created stream is not left
+    without expiration if the client is interrupted between commands.
+    Event writes refresh the record TTL so long-running runs that keep producing
+    events do not lose their status record mid-run.
     """
 
     redis: Redis
     prefix: str
     run_retention_seconds: int
+    run_event_stream_max_length: int
 
     def __init__(
         self,
@@ -164,12 +167,16 @@ class RedisRunStore(RunEventSink):
         *,
         prefix: str = "dify-agent",
         run_retention_seconds: int = DEFAULT_RUN_RETENTION_SECONDS,
+        run_event_stream_max_length: int = DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH,
     ) -> None:
         if run_retention_seconds <= 0:
             raise ValueError("run_retention_seconds must be positive")
+        if run_event_stream_max_length <= 0:
+            raise ValueError("run_event_stream_max_length must be positive")
         self.redis = redis
         self.prefix = prefix
         self.run_retention_seconds = run_retention_seconds
+        self.run_event_stream_max_length = run_event_stream_max_length
 
     async def create_run(self) -> RunRecord:
         """Persist a running run record without storing the create request."""
@@ -199,6 +206,8 @@ class RedisRunStore(RunEventSink):
             _ = pipeline.xadd(
                 events_key,
                 {"payload": payload},
+                maxlen=self.run_event_stream_max_length,
+                approximate=True,
             )
             _ = pipeline.expire(events_key, self.run_retention_seconds)
             _ = pipeline.expire(run_record_key(self.prefix, event.run_id), self.run_retention_seconds)
@@ -226,6 +235,7 @@ class RedisRunStore(RunEventSink):
                 error_type.value if error_type is not None else "",
                 payload,
                 str(self.run_retention_seconds),
+                str(self.run_event_stream_max_length),
             ),
         )
         raw_result = await evaluation
@@ -316,6 +326,7 @@ class RedisRunStore(RunEventSink):
                 error or "",
                 payload,
                 str(self.run_retention_seconds),
+                str(self.run_event_stream_max_length),
             ),
         )
         result = cast(list[object], await evaluation)
@@ -385,4 +396,9 @@ def _decode_redis_text(value: object) -> str:
     return value.decode() if isinstance(value, bytes) else str(value)
 
 
-__all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "RedisRunStore", "RunNotFoundError"]
+__all__ = [
+    "DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH",
+    "DEFAULT_RUN_RETENTION_SECONDS",
+    "RedisRunStore",
+    "RunNotFoundError",
+]

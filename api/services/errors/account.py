@@ -9,6 +9,14 @@ class AccountRegisterError(BaseServiceError):
     pass
 
 
+class AccountEmailAlreadyInUseError(AccountRegisterError):
+    pass
+
+
+class AccountNormalizedEmailAlreadyInUseError(AccountEmailAlreadyInUseError):
+    pass
+
+
 class EmailDomainSuspendedError(AccountRegisterError):
     def __init__(self, description: str = "This email domain has been suspended."):
         super().__init__(description)
@@ -26,15 +34,7 @@ class RefreshTokenNotFoundError(BaseServiceError):
     pass
 
 
-class RefreshTokenAccountNotFoundError(BaseServiceError):
-    pass
-
-
 class AccountNotLinkTenantError(BaseServiceError):
-    pass
-
-
-class LinkAccountIntegrateError(BaseServiceError):
     pass
 
 

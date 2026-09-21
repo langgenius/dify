@@ -8,8 +8,11 @@ export const floatingItemIndicatorClassName = 'ms-auto flex shrink-0 items-cente
 export const floatingGroupLabelClassName =
   'px-3 pb-0.5 pt-1 text-text-tertiary system-xs-medium-uppercase'
 export const floatingSeparatorClassName = 'my-1 h-px bg-divider-subtle'
-export const menuPopupClassName =
-  'max-h-(--available-height) overflow-y-auto overflow-x-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 text-sm text-text-secondary shadow-lg outline-hidden focus:outline-hidden focus-visible:outline-hidden backdrop-blur-[5px]'
+export const menuPopupBaseClassName =
+  'max-h-(--available-height) overflow-y-auto overflow-x-hidden text-sm text-text-secondary outline-hidden focus:outline-hidden focus-visible:outline-hidden'
+export const menuPopupSurfaceClassName =
+  'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 shadow-lg backdrop-blur-[5px]'
+export const menuPopupClassName = `${menuPopupBaseClassName} ${menuPopupSurfaceClassName}`
 export const floatingPopupAnimationClassName =
   'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-starting-style:scale-95 data-ending-style:opacity-0 data-starting-style:opacity-0 data-instant:transition-none motion-reduce:transition-none'
 export const modalBackdropClassName =

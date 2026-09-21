@@ -10,6 +10,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import {
   RiArchive2Line,
   RiCheckboxCircleLine,
@@ -23,7 +24,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
@@ -31,6 +31,7 @@ const i18nPrefix = 'batchAction'
 type IBatchActionProps = {
   className?: string
   selectedIds: string[]
+  disabled?: boolean
   onBatchEnable?: () => void
   onBatchDisable?: () => void
   onBatchDownload?: () => void
@@ -45,6 +46,7 @@ type IBatchActionProps = {
 const BatchAction: FC<IBatchActionProps> = ({
   className,
   selectedIds,
+  disabled = false,
   onBatchEnable,
   onBatchDisable,
   onBatchSummary,
@@ -83,57 +85,62 @@ const BatchAction: FC<IBatchActionProps> = ({
             {t(($) => $[`${i18nPrefix}.selected`], { ns: 'dataset' })}
           </span>
         </div>
-        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         {onBatchEnable && (
-          <Button variant="ghost" onClick={onBatchEnable}>
+          <Button variant="ghost" disabled={disabled} onClick={onBatchEnable}>
             <RiCheckboxCircleLine className="size-4" />
             <span>{t(($) => $[`${i18nPrefix}.enable`], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onBatchDisable && (
-          <Button variant="ghost" onClick={onBatchDisable}>
+          <Button variant="ghost" disabled={disabled} onClick={onBatchDisable}>
             <RiCloseCircleLine className="size-4" />
             <span>{t(($) => $[`${i18nPrefix}.disable`], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onEditMetadata && (
-          <Button variant="ghost" onClick={onEditMetadata}>
+          <Button variant="ghost" disabled={disabled} onClick={onEditMetadata}>
             <RiDraftLine className="size-4" />
             <span>{t(($) => $['metadata.metadata'], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onBatchSummary && isNonCloudEdition && (
-          <Button variant="ghost" onClick={onBatchSummary}>
+          <Button variant="ghost" disabled={disabled} onClick={onBatchSummary}>
             <SearchLinesSparkle className="size-4" />
             <span>{t(($) => $['list.action.summary'], { ns: 'datasetDocuments' })}</span>
           </Button>
         )}
         {onArchive && (
-          <Button variant="ghost" onClick={onArchive}>
+          <Button variant="ghost" disabled={disabled} onClick={onArchive}>
             <RiArchive2Line className="size-4" />
             <span>{t(($) => $[`${i18nPrefix}.archive`], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onBatchReIndex && (
-          <Button variant="ghost" onClick={onBatchReIndex}>
+          <Button variant="ghost" disabled={disabled} onClick={onBatchReIndex}>
             <RiRefreshLine className="size-4" />
             <span>{t(($) => $[`${i18nPrefix}.reIndex`], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onBatchDownload && (
-          <Button variant="ghost" onClick={onBatchDownload}>
+          <Button variant="ghost" disabled={disabled} onClick={onBatchDownload}>
             <RiDownload2Line className="size-4" />
             <span>{t(($) => $[`${i18nPrefix}.download`], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onBatchDelete && (
-          <Button variant="ghost" tone="destructive" onClick={showDeleteConfirm}>
+          <Button
+            variant="ghost"
+            tone="destructive"
+            disabled={disabled}
+            onClick={showDeleteConfirm}
+          >
             <RiDeleteBinLine className="size-4" />
             <span>{t(($) => $[`${i18nPrefix}.delete`], { ns: 'dataset' })}</span>
           </Button>
         )}
 
-        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" onClick={onCancel}>
           <span>{t(($) => $[`${i18nPrefix}.cancel`], { ns: 'dataset' })}</span>
         </Button>
@@ -157,8 +164,8 @@ const BatchAction: FC<IBatchActionProps> = ({
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton
+                disabled={disabled}
                 loading={isDeleting}
-                disabled={isDeleting}
                 onClick={handleBatchDelete}
               >
                 {t(($) => $['operation.sure'], { ns: 'common' })}

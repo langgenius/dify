@@ -25,6 +25,14 @@ type PopoverCloseProps = BasePopover.Close.Props
 type PopoverTitleProps = BasePopover.Title.Props
 type PopoverDescriptionProps = BasePopover.Description.Props
 
+type PopoverBackdropProps = Omit<BasePopover.Backdrop.Props, 'className'> & {
+  className?: string
+}
+
+function PopoverBackdrop({ className, ...props }: PopoverBackdropProps) {
+  return <BasePopover.Backdrop className={cn('fixed inset-0 z-50', className)} {...props} />
+}
+
 type PopoverPositionerProps = Omit<BasePopover.Positioner.Props, 'className' | 'side' | 'align'> & {
   className?: string
   placement?: Placement
@@ -68,15 +76,11 @@ function PopoverPopup({ className, ...props }: PopoverPopupProps) {
   )
 }
 
-type PopoverContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  className?: string
-  popupClassName?: string
-  popupProps?: Omit<PopoverPopupProps, 'children' | 'className'>
-}
+type PopoverContentProps = Omit<PopoverPopupProps, 'children' | 'className'> &
+  Pick<PopoverPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+    children: React.ReactNode
+    className?: string
+  }
 
 function PopoverContent({
   children,
@@ -84,23 +88,17 @@ function PopoverContent({
   sideOffset = 8,
   alignOffset = 0,
   className,
-  popupClassName,
-  popupProps,
+  ...props
 }: PopoverContentProps) {
   return (
     <PopoverPortal>
-      <PopoverPositioner
-        placement={placement}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        className={className}
-      >
+      <PopoverPositioner placement={placement} sideOffset={sideOffset} alignOffset={alignOffset}>
         <PopoverPopup
           className={cn(
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            popupClassName,
+            className,
           )}
-          {...popupProps}
+          {...props}
         >
           {children}
         </PopoverPopup>
@@ -113,6 +111,7 @@ export {
   createPopoverHandle,
   Popover,
   PopoverArrow,
+  PopoverBackdrop,
   PopoverClose,
   PopoverContent,
   PopoverDescription,
@@ -123,8 +122,8 @@ export {
   PopoverTrigger,
 }
 export type {
-  Placement,
   PopoverArrowProps,
+  PopoverBackdropProps,
   PopoverCloseProps,
   PopoverContentProps,
   PopoverDescriptionProps,

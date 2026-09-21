@@ -7,8 +7,9 @@ from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
 from core.llm_generator.llm_generator import LLMGenerator
+from core.model_context import use_credit_usage_metadata
 from factories import variable_factory
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
@@ -152,7 +153,10 @@ class ConversationService:
             raise MessageNotExistsError()
 
         # generate conversation name
-        with contextlib.suppress(Exception):
+        with (
+            contextlib.suppress(Exception),
+            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}),
+        ):
             name = LLMGenerator.generate_conversation_name(
                 app_model.tenant_id, message.query, conversation.id, app_model.id
             )
@@ -197,7 +201,6 @@ class ConversationService:
         """
         conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
         binding_id = conversation.agent_workspace_binding_id
-        retired_binding_id: str | None = None
         if binding_id is not None:
             owner_scope = WorkspaceOwnerScope(
                 tenant_id=app_model.tenant_id,
@@ -220,23 +223,21 @@ class ConversationService:
                 app_model.name,
                 conversation_id,
             )
-            if binding_id is not None:
-                retired_binding_id = AgentWorkspaceService.retire_binding(
-                    session=session,
-                    tenant_id=app_model.tenant_id,
-                    binding_id=binding_id,
-                )
-                if retired_binding_id is None:
-                    raise AgentWorkspaceNotFoundError("Conversation participant Binding is unavailable")
+            retired_workspace_ids = AgentWorkspaceService.retire_all_for_conversation(
+                session=session,
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                conversation_id=conversation.id,
+            )
             conversation.is_deleted = True
             session.commit()
         except Exception:
             session.rollback()
             raise
-        if retired_binding_id is not None:
+        if retired_workspace_ids:
             enqueue_agent_resource_collection(
                 tenant_id=app_model.tenant_id,
-                binding_ids=(retired_binding_id,),
+                workspace_ids=retired_workspace_ids,
             )
         try:
             delete_conversation_related_data.delay(conversation.id)

@@ -45,6 +45,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowListQuery,
     WorkflowUpdatePayload,
 )
+from fields.workflow_run_fields import node_execution_response_source
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountRole
@@ -254,7 +255,7 @@ def workflow_author(sqlite_database: scoped_session[Session]) -> Account:
 
 
 class TestDraftWorkflowApi:
-    def test_get_draft_success(self, app: Flask, workflow_author: Account) -> None:
+    def test_get_draft_success(self, app: Flask, workflow_author: Account, sqlite_session: Session) -> None:
         api = DraftRagPipelineApi()
         method = unwrap(api.get)
 
@@ -271,7 +272,7 @@ class TestDraftWorkflowApi:
                 return_value=service,
             ),
         ):
-            result = method(api, pipeline)
+            result = method(api, sqlite_session, pipeline)
 
         assert result["id"] == "workflow-1"
         assert result["graph"] == {"nodes": [], "edges": []}
@@ -284,7 +285,7 @@ class TestDraftWorkflowApi:
         }
         assert result["updated_by"] is None
 
-    def test_get_draft_not_exist(self, app: Flask) -> None:
+    def test_get_draft_not_exist(self, app: Flask, sqlite_session: Session) -> None:
         api = DraftRagPipelineApi()
         method = unwrap(api.get)
 
@@ -300,7 +301,7 @@ class TestDraftWorkflowApi:
             ),
         ):
             with pytest.raises(DraftWorkflowNotExist):
-                method(api, pipeline)
+                method(api, sqlite_session, pipeline)
 
     def test_sync_hash_not_match(self, app: Flask) -> None:
         api = DraftRagPipelineApi()
@@ -802,8 +803,12 @@ class TestRagPipelineWorkflowRunNodeExecutionListApi:
         run_id = uuid4()
         node_exec = make_node_execution(workflow_run_id=str(run_id))
 
+        session_stub = MagicMock()
+        session_stub.scalar.return_value = None
         service = MagicMock()
-        service.get_rag_pipeline_workflow_run_node_executions.return_value = [node_exec]
+        service.get_rag_pipeline_workflow_run_node_executions.return_value = [
+            node_execution_response_source(node_exec, session=session_stub)
+        ]
 
         with (
             app.test_request_context("/"),

@@ -280,10 +280,9 @@ Then('I should see the Agent v2 Build mode confirmation state', async function (
 
   await expect(page.getByText('Build mode', { exact: true })).toBeVisible()
   await expect(
-    page.getByText('Configure can only be updated by the agent in this mode.'),
-  ).toBeVisible()
-  await expect(
-    page.getByText('Shape this setup through the chat on the right, then Apply.'),
+    page.getByText(
+      "You're in Build mode. Shape this setup by chatting with the agent, then Apply.",
+    ),
   ).toBeVisible()
 })
 

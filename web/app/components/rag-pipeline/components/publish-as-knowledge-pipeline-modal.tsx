@@ -2,14 +2,15 @@
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { IconInfo } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Input from '@/app/components/base/input'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type PublishAsKnowledgePipelineModalProps = {
@@ -50,33 +51,47 @@ const PublishAsKnowledgePipelineModal = ({
   }, [])
 
   const handleConfirm = () => {
-    if (confirmDisabled) return
+    const name = pipelineName?.trim()
+    if (!name || confirmDisabled) return
 
-    onConfirm(pipelineName?.trim() || '', pipelineIcon, description?.trim())
+    onConfirm(name, pipelineIcon, description?.trim())
   }
 
   return (
-    <>
-      <Dialog open>
-        <DialogContent className="w-full max-w-120! overflow-hidden! border-none p-0! text-left align-middle">
-          <div className="relative flex items-center p-6 pr-14 pb-3 title-2xl-semi-bold text-text-primary">
-            {t(($) => $['common.publishAs'], { ns: 'pipeline' })}
-            <button
-              type="button"
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent className="w-full max-w-120! overflow-hidden! border-none p-0! text-left align-middle">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleConfirm()
+          }}
+        >
+          <div className="relative flex items-center p-6 pr-14 pb-3">
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
+              {t(($) => $['common.publishAs'], { ns: 'pipeline' })}
+            </DialogTitle>
+            <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute top-5 right-5 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-0"
+              size="lg"
+              className="absolute top-5 right-5"
               onClick={onCancel}
             >
-              <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
-            </button>
+              <span aria-hidden="true" className="i-ri-close-line size-4" />
+            </IconButton>
           </div>
           <div className="px-6 py-3">
             <div className="mb-5 flex">
-              <div className="mr-3 grow">
-                <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+              <Field className="mr-3 grow" name="name">
+                <FieldLabel>
                   {t(($) => $['common.publishAsPipeline.name'], { ns: 'pipeline' })}
-                </div>
+                </FieldLabel>
                 <Input
+                  autoComplete="off"
                   value={pipelineName}
                   onChange={(e) => setPipelineName(e.target.value)}
                   placeholder={
@@ -84,26 +99,31 @@ const PublishAsKnowledgePipelineModal = ({
                     ''
                   }
                 />
-              </div>
-              <AppIcon
-                size="xxl"
+              </Field>
+              <button
+                type="button"
+                aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['common.publishAsPipeline.name'], { ns: 'pipeline' })}`}
                 onClick={() => {
                   setShowAppIconPicker(true)
                 }}
-                className="mt-2 shrink-0 cursor-pointer"
-                iconType={pipelineIcon?.icon_type}
-                icon={pipelineIcon?.icon}
-                background={pipelineIcon?.icon_background}
-                imageUrl={pipelineIcon?.icon_url}
-              />
+                className="mt-2 shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              >
+                <AppIcon
+                  size="xxl"
+                  iconType={pipelineIcon?.icon_type}
+                  icon={pipelineIcon?.icon}
+                  background={pipelineIcon?.icon_background}
+                  imageUrl={pipelineIcon?.icon_url}
+                />
+              </button>
             </div>
-            <div>
-              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+            <Field name="description">
+              <FieldLabel>
                 {t(($) => $['common.publishAsPipeline.description'], { ns: 'pipeline' })}
-              </div>
+              </FieldLabel>
               <Textarea
+                autoComplete="off"
                 className="resize-none"
-                aria-label={t(($) => $['common.publishAsPipeline.description'], { ns: 'pipeline' })}
                 placeholder={
                   t(($) => $['common.publishAsPipeline.descriptionPlaceholder'], {
                     ns: 'pipeline',
@@ -112,16 +132,16 @@ const PublishAsKnowledgePipelineModal = ({
                 value={description}
                 onValueChange={(value) => setDescription(value)}
               />
-            </div>
+            </Field>
           </div>
-          <div className="flex items-center justify-end px-6 py-5">
-            <Button className="mr-2" onClick={onCancel}>
+          <div className="flex items-center justify-end gap-2 px-6 py-5">
+            <Button type="button" onClick={onCancel}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
+              type="submit"
               disabled={!pipelineName?.trim() || confirmDisabled}
               variant="primary"
-              onClick={() => handleConfirm()}
             >
               {t(($) => $['common.publish'], { ns: 'workflow' })}
             </Button>
@@ -138,9 +158,9 @@ const PublishAsKnowledgePipelineModal = ({
               onSelect={handleSelectIcon}
             />
           )}
-        </DialogContent>
-      </Dialog>
-    </>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 

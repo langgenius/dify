@@ -1,12 +1,12 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
-import Input from '@/app/components/base/input'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
+import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
-import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode } from '@/service/common'
 import { getClientLoginFallback } from '@/utils/login-redirect'
@@ -82,14 +82,14 @@ export default function MailAndCodeAuth() {
             spellCheck={false}
             value={email}
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
-            onChange={(e) => setEmail(e.target.value)}
+            onValueChange={setEmail}
           />
         </div>
         <div className="mt-3">
           <Button
             type="submit"
             loading={loading}
-            disabled={loading || !email}
+            disabled={!email}
             variant="primary"
             className="w-full"
           >

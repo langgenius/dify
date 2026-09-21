@@ -343,7 +343,8 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
 
     for part in message.parts:
         if isinstance(part, SystemPromptPart):
-            prompt_messages.append(SystemPromptMessage(content=part.content))
+            if part.content.strip():
+                prompt_messages.append(SystemPromptMessage(content=part.content))
         elif isinstance(part, UserPromptPart):
             prompt_messages.append(UserPromptMessage(content=_map_user_prompt_content(part.content)))
         elif isinstance(part, ToolReturnPart):

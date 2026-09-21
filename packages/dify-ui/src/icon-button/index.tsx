@@ -47,6 +47,6 @@ function IconButton({
   )
 }
 
-export { IconButton }
+export { IconButton, iconButtonVariants }
 
 export type { IconButtonProps }

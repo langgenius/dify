@@ -42,6 +42,23 @@
 
   /* Custom animations. */
   --animate-spin-slow: spin 2s linear infinite;
+
+  /* Own --font-sans without the emoji families.
+   *
+   * Digits 0-9 carry the Unicode Emoji=Yes property (they are the base
+   * characters for keycap sequences), so Noto Color Emoji has glyphs for them.
+   * When an emoji font is named explicitly in font-family, Chromium routes
+   * those characters to it even when an earlier family covers them, and on
+   * Linux the digits end up rendered as wide, heavy emoji glyphs.
+   *
+   * Tailwind's default stack (changed in 4.3.3, see
+   * tailwindlabs/tailwindcss#20348) lists the emoji families at the end.
+   * Reordering does not help — what matters is that they are named at all.
+   * Real emoji still render through per-character fallback.
+   */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans', Arial,
+    sans-serif;
 }
 
 /* Background-image / gradient utilities. Values resolve at runtime from

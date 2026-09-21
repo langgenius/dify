@@ -95,7 +95,7 @@ export const buildUsedOutVars = ({
       return {
         label: {
           nodeType: varInfo?.data.type,
-          nodeName: varInfo?.data.title || canChooseVarNodes[0]?.data.title!,
+          nodeName: varInfo?.data.title || canChooseVarNodes[0]?.data.title || '',
           variable: isSystemVar(valueSelector)
             ? valueSelector.join('.')
             : valueSelector[valueSelector.length - 1]!,

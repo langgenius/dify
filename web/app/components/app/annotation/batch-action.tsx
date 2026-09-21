@@ -9,10 +9,10 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 
 const i18nPrefix = 'batchAction'
 
@@ -51,13 +51,13 @@ const BatchAction: FC<IBatchActionProps> = ({
             {t(($) => $[`${i18nPrefix}.selected`], { ns: 'appAnnotation' })}
           </span>
         </div>
-        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" tone="destructive" onClick={showDeleteConfirm}>
           <span aria-hidden className="i-ri-delete-bin-line size-4" />
           <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         </Button>
 
-        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" onClick={() => onSelectedIdsChange([])}>
           <span>{t(($) => $['operation.cancel'], { ns: 'common' })}</span>
         </Button>
@@ -73,11 +73,7 @@ const BatchAction: FC<IBatchActionProps> = ({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={isDeleting}
-              disabled={isDeleting}
-              onClick={handleBatchDelete}
-            >
+            <AlertDialogConfirmButton loading={isDeleting} onClick={handleBatchDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

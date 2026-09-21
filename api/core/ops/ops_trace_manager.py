@@ -1188,7 +1188,7 @@ class TraceTask:
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            inputs=message_data.query or message_data.inputs,
+            inputs=message_data.query or message_data.inputs_with_session(session=db.session()),
             documents=doc_list,
             start_time=timer.get("start"),
             end_time=timer.get("end"),
@@ -1212,7 +1212,7 @@ class TraceTask:
         tool_parameters = {}
         created_time = message_data.created_at
         end_time = message_data.updated_at
-        agent_thoughts = message_data.agent_thoughts
+        agent_thoughts = message_data.agent_thoughts_with_session(session=db.session())
         for agent_thought in agent_thoughts:
             if tool_name in agent_thought.tools:
                 created_time = agent_thought.created_at
@@ -1573,10 +1573,6 @@ class TraceQueueManager:
         return None
 
     def persist_trace_task(self, task: TraceTask, *, file_id: str | None = None) -> dict[str, str] | None:
-        if not (self._enterprise_telemetry_enabled or self.trace_instance):
-            return None
-
-        task.app_id = self.app_id
         storage_id = self._resolve_storage_id(task)
         if storage_id is None:
             return None

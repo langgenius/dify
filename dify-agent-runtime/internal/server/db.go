@@ -68,7 +68,14 @@ type DB struct {
 
 // OpenDB opens (or creates) the shellctl SQLite database.
 func OpenDB(dbPath string, busyTimeoutMs int) (*DB, error) {
-	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(%d)&_pragma=journal_mode(WAL)", dbPath, busyTimeoutMs)
+	// synchronous=NORMAL is durable and crash-safe under WAL: it only fsyncs on
+	// checkpoint rather than on every commit, which removes the per-write fsync
+	// on the job-creation path. Worst case on power loss is losing the last few
+	// transactions of ephemeral job state, never DB corruption.
+	dsn := fmt.Sprintf(
+		"file:%s?_pragma=busy_timeout(%d)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)",
+		dbPath, busyTimeoutMs,
+	)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)

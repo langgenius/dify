@@ -1,10 +1,7 @@
 'use client'
-
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
 import {
   AlertDialog,
@@ -16,9 +13,9 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import {
   MultimodalRetrievalGuidance,
@@ -40,7 +37,7 @@ type IndexingModeSectionProps = {
   hasSetIndexType: boolean
   docForm: ChunkingMode
   embeddingModel: DefaultModel
-  embeddingModelList?: Model[]
+  embeddingModelList?: ProviderWithModelsResponse[]
   retrievalConfig: RetrievalConfig
   showMultiModalTip: boolean
   // Flags
@@ -170,7 +167,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
         <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
           <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40"></div>
           <div className="p-1">
-            <span className="i-custom-vender-solid-alertsandfeedback-alert-triangle size-4 text-text-warning-secondary" />
+            <span className="size-4 text-text-warning-secondary" />
           </div>
           <span className="system-xs-medium text-text-primary">
             {t(($) => $['stepTwo.highQualityTip'], { ns: 'datasetCreation' })}
@@ -223,7 +220,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
         </div>
       )}
 
-      <Divider className="my-5" />
+      <Separator className="my-5 h-[0.5px]" />
 
       {/* Retrieval Method Config */}
       <div>

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants.languages import languages
 from extensions.ext_redis import RedisClientWrapper
-from models.model import App, RecommendedApp
+from models.model import App, RecommendedApp, Site
 from services.app_dsl_service import AppDslService
 from services.recommended_app_query_service import (
     RecommendedAppCatalogPage,
@@ -117,14 +117,23 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
         *,
         session: Session,
     ) -> tuple[tuple[RecommendedAppRecord, ...], set[str]]:
+        if not recommended_apps:
+            return (), set()
+
+        app_ids = [recommended_app.app_id for recommended_app in recommended_apps]
+        apps_by_id = {app.id: app for app in session.scalars(select(App).where(App.id.in_(app_ids))).all()}
+        sites_by_app_id = {
+            site.app_id: site for site in session.scalars(select(Site).where(Site.app_id.in_(app_ids))).all()
+        }
+
         categories: set[str] = set()
         records: list[RecommendedAppRecord] = []
         for recommended_app in recommended_apps:
-            app = session.get(App, recommended_app.app_id)
+            app = apps_by_id.get(recommended_app.app_id)
             if app is None or not app.is_public:
                 continue
 
-            site = app.site_with_session(session=session)
+            site = sites_by_app_id.get(app.id)
             if site is None:
                 continue
 
@@ -140,9 +149,9 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
                         icon_background=app.icon_background,
                     ),
                     app_id=recommended_app.app_id,
-                    description=cast(str | None, site.description),
-                    copyright=cast(str | None, site.copyright),
-                    privacy_policy=cast(str | None, site.privacy_policy),
+                    description=site.description,
+                    copyright=site.copyright,
+                    privacy_policy=site.privacy_policy,
                     custom_disclaimer=cast(str | None, site.custom_disclaimer),
                     categories=app_categories,
                     position=recommended_app.position,

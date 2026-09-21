@@ -245,6 +245,19 @@ describe('TagFilter', () => {
   })
 
   describe('Search', () => {
+    it('should filter tags without matching letter case', async () => {
+      const user = userEvent.setup()
+
+      render(<TagFilter {...defaultProps} />)
+
+      await user.click(screen.getByText(i18n.placeholder))
+
+      const searchInput = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
+      await user.type(searchInput, 'frontend')
+
+      expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
+    })
+
     it('should filter tags by search keywords', async () => {
       const user = userEvent.setup()
 
@@ -324,9 +337,20 @@ describe('TagFilter', () => {
       expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
     })
 
-    it('should handle value with non-existent tag ids gracefully', () => {
-      render(<TagFilter {...defaultProps} value={['non-existent-id']} />)
-      expect(screen.queryByText(i18n.placeholder)).not.toBeInTheDocument()
+    it('should name and preserve selected tag ids outside the current result set', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      const selectedCountLabel = 'common.dynamicSelect.selected:{"count":1}'
+
+      render(<TagFilter {...defaultProps} value={['non-existent-id']} onChange={onChange} />)
+
+      const trigger = screen.getByRole('combobox', { name: selectedCountLabel })
+      expect(trigger).toHaveTextContent(selectedCountLabel)
+
+      await user.click(trigger)
+      await user.click(screen.getByRole('option', { name: /Frontend/i }))
+
+      expect(onChange).toHaveBeenCalledWith(['non-existent-id', 'tag-1'])
     })
 
     it('should not show count badge when only one tag is selected', () => {

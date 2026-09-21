@@ -22,7 +22,6 @@ from controllers.web.error import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from models.enums import EndUserType
 from models.model import App, AppMode, EndUser, IconType
 from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import (
@@ -32,6 +31,7 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _app_model() -> App:
@@ -51,15 +51,7 @@ def _app_model() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=EndUserType.BROWSER,
-        external_user_id="ext-1",
-        name="Web User",
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1", app_id="app-1", external_user_id="ext-1", name="Web User")
 
 
 # ---------------------------------------------------------------------------
@@ -146,24 +138,21 @@ class TestAudioApi:
 # ---------------------------------------------------------------------------
 class TestTextApi:
     @patch("controllers.web.audio.AudioService.transcript_tts", return_value="audio-bytes")
-    @patch("controllers.web.audio.web_ns")
-    def test_happy_path(self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"text": "hello", "voice": "alloy"}
-
-        with app.test_request_context("/text-to-audio", method="POST"):
+    def test_happy_path(self, mock_tts: MagicMock, app: Flask) -> None:
+        with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello", "voice": "alloy"}):
             result = TextApi().post(_app_model(), _end_user())
 
         assert result == "audio-bytes"
         mock_tts.assert_called_once()
 
     @patch("controllers.web.audio.AudioService.transcript_tts", return_value="audio-bytes")
-    @patch("controllers.web.audio.web_ns")
-    def test_happy_path_with_message_ref(self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask) -> None:
+    def test_happy_path_with_message_ref(self, mock_tts: MagicMock, app: Flask) -> None:
         message_id = "550e8400-e29b-41d4-a716-446655440000"
-        mock_ns.payload = {"text": "hello", "message_id": message_id}
         app_model = _app_model()
 
-        with app.test_request_context("/text-to-audio", method="POST"):
+        with app.test_request_context(
+            "/text-to-audio", method="POST", json={"text": "hello", "message_id": message_id}
+        ):
             result = TextApi().post(app_model, _end_user())
 
         assert result == "audio-bytes"
@@ -177,10 +166,7 @@ class TestTextApi:
         "controllers.web.audio.AudioService.transcript_tts",
         side_effect=InvokeError(description="invoke failed"),
     )
-    @patch("controllers.web.audio.web_ns")
-    def test_invoke_error_mapped(self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"text": "hello"}
-
-        with app.test_request_context("/text-to-audio", method="POST"):
+    def test_invoke_error_mapped(self, mock_tts: MagicMock, app: Flask) -> None:
+        with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
             with pytest.raises(CompletionRequestError):
                 TextApi().post(_app_model(), _end_user())

@@ -79,7 +79,7 @@ const VarPicker: FC<Props> = ({
       <PopoverContent
         placement="bottom-end"
         sideOffset={8}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         {options.length > 0 ? (
           <div className="max-h-[50vh] w-60 overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">

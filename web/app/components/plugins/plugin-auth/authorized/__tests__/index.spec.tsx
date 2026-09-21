@@ -59,7 +59,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -1382,26 +1382,6 @@ describe('Authorized Component', () => {
 
   // ==================== Props Tests ====================
   describe('Props', () => {
-    it('should pass placement to Popover', () => {
-      const pluginPayload = createPluginPayload()
-      const credentials = [createCredential()]
-
-      // Default placement is bottom-start
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-          placement="top-end"
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      // Component should render without error
-      // Component should render without error
-      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-    })
-
     it('should allow credential.use to set default when credential.manage is missing', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential({ is_default: false })]

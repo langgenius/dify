@@ -1,17 +1,18 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
 
@@ -182,16 +183,13 @@ const ChangePasswordForm = () => {
             </h1>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button
-              variant="primary"
-              className="w-full"
-              onClick={() => {
-                setLeftTime(undefined)
-                router.replace(getSignInUrl())
-              }}
+            <Link
+              href={getSignInUrl()}
+              replace
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}
             >
               {t(($) => $.passwordChanged, { ns: 'login' })} ({Math.round(countdown / 1000)}){' '}
-            </Button>
+            </Link>
           </div>
         </div>
       )}

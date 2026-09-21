@@ -35,6 +35,7 @@ export const zAgentApiStatusPayload = z.object({
  */
 export const zApiKeyItem = z.object({
   created_at: z.int().nullish(),
+  dataset_ids: z.array(z.string()).optional().default([]),
   id: z.string(),
   last_used_at: z.int().nullish(),
   token: z.string(),
@@ -195,6 +196,16 @@ export const zSandboxReadResponse = z.object({
 })
 
 /**
+ * TextToSpeechPayload
+ */
+export const zTextToSpeechPayload = z.object({
+  message_id: z.string().nullish(),
+  streaming: z.boolean().nullish(),
+  text: z.string(),
+  voice: z.string().nullish(),
+})
+
+/**
  * AgentConfigSnapshotRestoreResponse
  */
 export const zAgentConfigSnapshotRestoreResponse = z.object({
@@ -202,6 +213,14 @@ export const zAgentConfigSnapshotRestoreResponse = z.object({
   draft_config_id: z.string().nullish(),
   restored_version_id: z.string().nullish(),
   result: z.literal('success'),
+})
+
+/**
+ * AgentPublicationCountsResponse
+ */
+export const zAgentPublicationCountsResponse = z.object({
+  drafts: z.int().gte(0),
+  published: z.int().gte(0),
 })
 
 /**
@@ -367,7 +386,7 @@ export const zAgentAppDetailWithSite = z.object({
   mode: z.string(),
   model_config: zAppModelConfigResponse.nullish(),
   name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
+  permission_keys: z.array(z.string()),
   role: z.string().nullish(),
   site: zAppDetailSiteResponse.nullish(),
   tags: z.array(zTag).optional(),
@@ -733,12 +752,12 @@ export const zAgentThought = z.object({
 export const zMessageFile = z.object({
   belongs_to: z.string().nullish(),
   filename: z.string(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   size: z.int().nullish(),
   transfer_method: z.string(),
   type: z.string(),
-  upload_file_id: z.string().nullish(),
+  upload_file_id: z.uuid().nullish(),
   url: z.string().nullish(),
 })
 
@@ -801,6 +820,21 @@ export const zAgentStatisticSummaryResponse = z.object({
 })
 
 /**
+ * TextToSpeechVoiceResponse
+ */
+export const zTextToSpeechVoiceResponse = z.object({
+  name: z.string(),
+  value: z.string(),
+})
+
+/**
+ * TextToSpeechVoiceListResponse
+ *
+ * Available voices
+ */
+export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
+
+/**
  * ModelConfigPartial
  */
 export const zModelConfigPartial = z.object({
@@ -851,7 +885,7 @@ export const zAgentAppPartial = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
+  permission_keys: z.array(z.string()),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
   reference_count: z.int().nullish(),
@@ -871,6 +905,7 @@ export const zAgentAppPagination = z.object({
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
+  publication_counts: zAgentPublicationCountsResponse,
   total: z.int(),
 })
 
@@ -2042,7 +2077,10 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
  */
 export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional().default('default'),
-  id: z.string().max(20),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   title: z.string().max(100),
 })
 
@@ -2470,7 +2508,7 @@ export const zAgentAppPartialWritable = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
+  permission_keys: z.array(z.string()),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
   reference_count: z.int().nullish(),
@@ -2490,6 +2528,7 @@ export const zAgentAppPaginationWritable = z.object({
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
+  publication_counts: zAgentPublicationCountsResponse,
   total: z.int(),
 })
 
@@ -2552,7 +2591,7 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   mode: z.string(),
   model_config: zAppModelConfigResponse.nullish(),
   name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
+  permission_keys: z.array(z.string()),
   role: z.string().nullish(),
   site: zAppDetailSiteResponseWritable.nullish(),
   tags: z.array(zTag).optional(),
@@ -2582,6 +2621,7 @@ export const zGetAgentQuery = z.object({
     .default('all'),
   name: z.string().optional(),
   page: z.int().gte(1).lte(99999).optional().default(1),
+  publication_status: z.enum(['drafts', 'published']).optional(),
   sort_by: z
     .enum(['earliest_created', 'last_modified', 'recently_created'])
     .optional()
@@ -3249,6 +3289,32 @@ export const zGetAgentByAgentIdStatisticsSummaryQuery = z.object({
  * Agent monitoring summary and chart data
  */
 export const zGetAgentByAgentIdStatisticsSummaryResponse = zAgentStatisticSummaryEnvelopeResponse
+
+export const zPostAgentByAgentIdTextToAudioBody = zTextToSpeechPayload
+
+export const zPostAgentByAgentIdTextToAudioPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Generated audio bytes in the provider audio format
+ */
+export const zPostAgentByAgentIdTextToAudioResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+export const zGetAgentByAgentIdTextToAudioVoicesPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdTextToAudioVoicesQuery = z.object({
+  language: z.string(),
+})
+
+/**
+ * TTS voices retrieved successfully
+ */
+export const zGetAgentByAgentIdTextToAudioVoicesResponse = zTextToSpeechVoiceListResponse
 
 export const zGetAgentByAgentIdVersionsPath = z.object({
   agent_id: z.uuid(),

@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AgentFileTree } from '../files/tree'
 
 type AgentSkillFileNode = AgentFileNode
@@ -109,7 +109,7 @@ function AgentSkillFileList({
           </h3>
         )}
         <div className="flex min-h-0 flex-1 items-center justify-center">
-          <Loading type="area" />
+          <LoadingPlaceholder />
         </div>
       </div>
     )
@@ -233,7 +233,7 @@ function AgentFilePreviewContent({
   if (isLoading || isDownloadLoading) {
     return (
       <div className="flex min-h-40 flex-1 items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -350,8 +350,7 @@ export function AgentSkillDetailDialog({
 
   return (
     <DialogContent
-      backdropProps={{ forceRender: true }}
-      backdropClassName="fixed"
+      backdropProps={{ forceRender: true, className: 'fixed' }}
       className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0"
     >
       <div
@@ -426,10 +425,10 @@ export function AgentSkillDetailDialog({
             />
           </div>
         </div>
-        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid">
+        <ScrollArea className="min-h-0 flex-1 overflow-hidden rounded-br-2xl">
           <ScrollAreaViewport
             aria-labelledby={dialogTitleId}
-            className="overscroll-contain outline-none focus-visible:outline-none"
+            className="overscroll-contain"
             role="region"
           >
             <ScrollAreaContent

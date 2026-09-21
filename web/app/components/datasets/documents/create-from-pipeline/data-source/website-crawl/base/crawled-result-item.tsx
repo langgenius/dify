@@ -3,7 +3,7 @@ import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Radio } from '@langgenius/dify-ui/radio'
+import { Radio } from '@langgenius/dify-ui/radio-group'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 

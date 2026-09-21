@@ -104,7 +104,9 @@ def _build_local_file_mapping(record_id: str, *, tenant_id: str | None = None) -
 
 
 @pytest.mark.parametrize("owner_cls", [Conversation, Message])
-def test_inputs_restore_external_remote_url_file_mappings(owner_cls: type[Conversation] | type[Message]) -> None:
+def test_inputs_restore_external_remote_url_file_mappings(
+    owner_cls: type[Conversation] | type[Message], sqlite_session: Session
+) -> None:
     owner = owner_cls(app_id="app-1")
     owner.inputs = {
         "file": {
@@ -119,7 +121,7 @@ def test_inputs_restore_external_remote_url_file_mappings(owner_cls: type[Conver
         }
     }
 
-    restored_file = owner.inputs["file"]
+    restored_file = owner.inputs_with_session(session=sqlite_session)["file"]
 
     assert restored_file.transfer_method == FileTransferMethod.REMOTE_URL
     assert restored_file.remote_url == "https://example.com/report.pdf"
@@ -165,3 +167,55 @@ def test_message_inputs_resolve_file_tenant_with_caller_session(sqlite_session: 
         inputs = message.inputs_with_session(session=sqlite_session)
 
     assert inputs["file"] == "tenant-1"
+    # session.scalar.assert_called_once()  # removed: see #40799 conftest note
+
+
+def test_file_url_bare_url_re_signed():
+    """#40788: bare tool file URL (no markdown wrapping) must be re-signed.
+
+    Bare URLs are produced by the agent runtime when the model returns a
+    non-linkified file reference. The previous regex only matched
+    [text](url) markdown form, so the bare URL kept INTERNAL_FILES_URL.
+    """
+    upload_id = "bare-1"
+    url = f"/files/{upload_id}/file-preview?timestamp=1&nonce=2&sign=3"
+    msg = Message(answer=url)  # bare, no markdown wrapping
+
+    out = msg.re_sign_file_url_answer
+    assert f"https://signed.example/{upload_id}" in out
+    assert url not in out
+
+
+def test_file_url_backticked_url_re_signed():
+    """#40788: backticked tool file URL must be re-signed.
+
+    Backticks are used by the runtime to quote file references inline.
+    The previous regex only matched [text](url), so backticked URLs
+    stayed on INTERNAL_FILES_URL.
+    """
+    upload_id = "tick-2"
+    url = f"/files/{upload_id}/file-preview?timestamp=10&nonce=20&sign=30"
+    msg = Message(answer=f"see `{url}` for details")
+
+    out = msg.re_sign_file_url_answer
+    assert f"https://signed.example/{upload_id}" in out
+    assert url not in out
+
+
+def test_file_url_mixed_formats_all_re_signed():
+    """#40788: all three URL shapes in the same answer are re-signed.
+
+    Sanity check that the three patterns cooperate — bare, backticked,
+    and markdown — without double-signing or skipping any.
+    """
+    upload_ids = ["mix-a", "mix-b", "mix-c"]
+    bare = f"/files/{upload_ids[0]}/file-preview?timestamp=1&nonce=2&sign=3"
+    tick = f"/files/{upload_ids[1]}/file-preview?timestamp=10&nonce=20&sign=30"
+    md = f"/files/{upload_ids[2]}/file-preview?timestamp=100&nonce=200&sign=300"
+    msg = Message(answer=f"raw {bare} ` {tick} ` and [file]({md})")
+
+    out = msg.re_sign_file_url_answer
+    for uid in upload_ids:
+        assert f"https://signed.example/{uid}" in out
+    for url in (bare, tick, md):
+        assert url not in out

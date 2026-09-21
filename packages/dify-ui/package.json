@@ -21,6 +21,10 @@
       "types": "./src/avatar/index.tsx",
       "import": "./src/avatar/index.tsx"
     },
+    "./breadcrumb": {
+      "types": "./src/breadcrumb/index.tsx",
+      "import": "./src/breadcrumb/index.tsx"
+    },
     "./button": {
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
@@ -109,9 +113,9 @@
       "types": "./src/pagination/index.tsx",
       "import": "./src/pagination/index.tsx"
     },
-    "./radio": {
-      "types": "./src/radio/index.tsx",
-      "import": "./src/radio/index.tsx"
+    "./radio-group": {
+      "types": "./src/radio-group/index.tsx",
+      "import": "./src/radio-group/index.tsx"
     },
     "./popover": {
       "types": "./src/popover/index.tsx",
@@ -160,6 +164,14 @@
     "./tooltip": {
       "types": "./src/tooltip/index.tsx",
       "import": "./src/tooltip/index.tsx"
+    },
+    "./spinner": {
+      "types": "./src/spinner/index.tsx",
+      "import": "./src/spinner/index.tsx"
+    },
+    "./separator": {
+      "types": "./src/separator/index.tsx",
+      "import": "./src/separator/index.tsx"
     }
   },
   "scripts": {
@@ -171,8 +183,7 @@
     "type-check": "tsc"
   },
   "dependencies": {
-    "clsx": "catalog:",
-    "tailwind-merge": "catalog:"
+    "cn": "catalog:"
   },
   "devDependencies": {
     "@base-ui/react": "catalog:",

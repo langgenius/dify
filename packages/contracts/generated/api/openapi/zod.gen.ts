@@ -253,12 +253,12 @@ export const zEventStreamResponse = z.string()
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.string().nullish(),
+  conversation_id: z.uuid().nullish(),
   created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
+  created_by: z.uuid().nullish(),
   extension: z.string().nullish(),
   file_key: z.string().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   name: z.string(),
   original_url: z.string().nullish(),
@@ -266,8 +266,8 @@ export const zFileResponse = z.object({
   reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
-  tenant_id: z.string().nullish(),
-  user_id: z.string().nullish(),
+  tenant_id: z.uuid().nullish(),
+  user_id: z.uuid().nullish(),
 })
 
 /**
@@ -446,6 +446,7 @@ export const zOpenApiErrorCode = z.enum([
   'request_entity_too_large',
   'too_many_files',
   'too_many_requests',
+  'trigger_workflow_service_mode_unavailable',
   'unauthorized',
   'unknown',
   'unsupported_file_type',
@@ -550,6 +551,11 @@ export const zSessionListResponse = z.object({
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * SubjectType
+ */
+export const zSubjectType = z.enum(['account', 'external_sso'])
 
 /**
  * SupportedAppType
@@ -672,7 +678,7 @@ export const zAccountResponse = z.object({
   default_workspace_id: z.string().nullish(),
   subject_email: z.string().nullish(),
   subject_issuer: z.string().nullish(),
-  subject_type: z.string(),
+  subject_type: zSubjectType,
   workspaces: z.array(zWorkspacePayload).optional().default([]),
 })
 
@@ -685,7 +691,7 @@ export const zDeviceTokenResponse = z.object({
   expires_at: z.string(),
   subject_email: z.string().nullish(),
   subject_issuer: z.string().nullish(),
-  subject_type: z.enum(['account', 'external_sso']),
+  subject_type: zSubjectType,
   token: z.string(),
   token_id: z.string(),
   workspaces: z.array(zWorkspacePayload).optional().default([]),
