@@ -1,3 +1,4 @@
+import type { AnalysisReport } from '../i18n-analysis'
 // @vitest-environment node
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -102,20 +103,20 @@ describe('i18n build check', () => {
       readFileSync(path.join(root, 'dist/i18n-routes.json'), 'utf8'),
     )
     expect(artifact).toMatchObject({
-      version: 1,
+      version: 3,
       routes: expect.arrayContaining([
         expect.objectContaining({
           route: '/items/[id]',
           groups: {
             page: [
-              { namespace: 'client', sources: ['component.ts'] },
-              { namespace: 'ssr', sources: ['component.ts'] },
+              expect.objectContaining({ namespace: 'client', sources: ['component.ts'] }),
+              expect.objectContaining({ namespace: 'ssr', sources: ['component.ts'] }),
             ],
             shared: [
-              { namespace: 'common', sources: ['app/layout.ts'] },
-              { namespace: 'group', sources: ['app/(group)/layout.ts'] },
+              expect.objectContaining({ namespace: 'common', sources: ['app/layout.ts'] }),
+              expect.objectContaining({ namespace: 'group', sources: ['app/(group)/layout.ts'] }),
             ],
-            lazy: [{ namespace: 'lazy', sources: ['lazy.ts'] }],
+            lazy: [expect.objectContaining({ namespace: 'lazy', sources: ['lazy.ts'] })],
             slots: [],
           },
         }),
@@ -353,6 +354,357 @@ describe('i18n build check', () => {
     await expect(builder.buildApp()).rejects.toThrow(
       /Found 1 potentially unused i18n keys[\s\S]*app:unused/,
     )
+  })
+
+  it('uses Vite aliases for imported namespace values', async () => {
+    writeFileSync(localeFile, '{}')
+    mkdirSync(path.join(root, 'app'), { recursive: true })
+    writeFileSync(
+      path.join(root, 'i18n/lib.client.ts'),
+      `export function useTranslation(namespace: string) { return namespace }`,
+    )
+    writeFileSync(path.join(root, 'app/ns.ts'), `export const ns = 'old'`)
+    writeFileSync(path.join(root, 'app/actual.ts'), `export const ns = 'actual'`)
+    writeFileSync(
+      path.join(root, 'app/page.ts'),
+      `
+      import { ns } from './ns'
+      import { useTranslation } from '../i18n/lib.client'
+      export const page = useTranslation(ns)
+    `,
+    )
+    const run = (declared: string[]) =>
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        resolve: { alias: [{ find: './ns', replacement: path.join(root, 'app/actual.ts') }] },
+        plugins: [i18nAnalysisPlugin({ getDeclaredNamespaces: () => declared })],
+        build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+      })
+    await expect(run(['actual'])).resolves.toBeDefined()
+    await expect(run(['old'])).rejects.toThrow('Undeclared namespace: actual')
+  })
+
+  it('preserves query variants and resolves their imported selectors independently', async () => {
+    writeFileSync(localeFile, JSON.stringify({ a: 'A', b: 'B' }))
+    mkdirSync(path.join(root, 'app'), { recursive: true })
+    writeFileSync(
+      path.join(root, 'app/page.ts'),
+      `
+      import { selector as a } from './selector.ts?a'
+      import { selector as b } from './selector.ts?b'
+      export function page(t: (selector: (source: Record<string, string>) => string) => string) {
+        return [t(a), t(b)]
+      }
+    `,
+    )
+    writeFileSync(
+      path.join(root, 'app/selector.ts'),
+      `
+      export const selector = ($: Record<string, string>) => $.placeholder
+    `,
+    )
+    const run = () =>
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          {
+            name: 'query-selectors',
+            enforce: 'pre',
+            transform(code, id) {
+              if (id.includes('/selector.ts?'))
+                return code.replace('$.placeholder', id.endsWith('?a') ? '$.a' : '$.b')
+            },
+          },
+          i18nAnalysisPlugin(),
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+      })
+    await expect(run()).resolves.toBeDefined()
+    writeFileSync(localeFile, JSON.stringify({ a: 'A', b: 'B', unused: 'Unused' }))
+    await expect(run()).rejects.toThrow(/Found 1 potentially unused i18n keys[\s\S]*app:unused/)
+  })
+
+  it('keeps route dependencies separate for query variants of the same module', async () => {
+    writeFileSync(localeFile, '{}')
+    for (const namespace of ['a', 'b']) {
+      mkdirSync(path.join(root, `app/${namespace}`), { recursive: true })
+      writeFileSync(
+        path.join(root, `i18n/locales/en-US/${namespace}.json`),
+        JSON.stringify({ title: namespace }),
+      )
+      writeFileSync(
+        path.join(root, `app/${namespace}/page.ts`),
+        `export { label as page } from '../../label.ts?${namespace}'`,
+      )
+    }
+    writeFileSync(
+      path.join(root, 'entry.ts'),
+      `
+      export { page as a } from './app/a/page'
+      export { page as b } from './app/b/page'
+    `,
+    )
+    writeFileSync(
+      path.join(root, 'label.ts'),
+      `
+      export function label(t: (key: string) => string) { return t('placeholder:title') }
+    `,
+    )
+    await expect(
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          {
+            name: 'query-labels',
+            enforce: 'pre',
+            transform(code, id) {
+              if (id.includes('/label.ts?'))
+                return code.replace('placeholder:title', id.endsWith('?a') ? 'a:title' : 'b:title')
+            },
+          },
+          i18nAnalysisPlugin({ getDeclaredNamespaces: (route) => [route.slice(1)] }),
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
+      }),
+    ).resolves.toBeDefined()
+  })
+
+  it('leaves erased type-only packages to TypeScript resolution', async () => {
+    writeFileSync(localeFile, JSON.stringify({ used: 'Used', unused: 'Unused' }))
+    mkdirSync(path.join(root, 'node_modules/labels'), { recursive: true })
+    writeFileSync(
+      path.join(root, 'node_modules/labels/package.json'),
+      JSON.stringify({ name: 'labels', types: './index.d.ts' }),
+    )
+    writeFileSync(path.join(root, 'node_modules/labels/index.d.ts'), `export type Label = 'used'`)
+    writeFileSync(
+      path.join(root, 'entry.ts'),
+      `
+      import type { Label } from 'labels'
+      export function label(t: (key: string) => string, key: Label) { return t(key) }
+    `,
+    )
+    await expect(buildFixture()).rejects.toThrow(
+      /Found 1 potentially unused i18n keys[\s\S]*app:unused/,
+    )
+  })
+
+  it('tracks rewritten imports and analyzes multiple output formats only once', async () => {
+    writeFileSync(localeFile, JSON.stringify({ actual: 'Actual' }))
+    writeFileSync(
+      path.join(root, 'old.ts'),
+      `export const selector = ($: Record<string, string>) => $.old`,
+    )
+    writeFileSync(
+      path.join(root, 'actual.ts'),
+      `export const selector = ($: Record<string, string>) => $.actual`,
+    )
+    writeFileSync(
+      path.join(root, 'entry.ts'),
+      `
+      import { selector } from './old'
+      export function label(t: (selector: (value: Record<string, string>) => string) => string) { return t(selector) }
+    `,
+    )
+    const reports: AnalysisReport[] = []
+    await expect(
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          i18nAnalysisPlugin({ onAnalysis: (report) => reports.push(report) }),
+          {
+            name: 'rewrite-import',
+            transform(code, id) {
+              if (id.endsWith('/entry.ts')) return code.replace('./old', './actual')
+            },
+          },
+        ],
+        build: {
+          write: false,
+          lib: { entry: path.join(root, 'entry.ts'), formats: ['es', 'cjs'] },
+        },
+      }),
+    ).resolves.toBeDefined()
+    expect(reports).toHaveLength(1)
+    expect(reports[0]!.metrics.environments).toEqual([
+      expect.objectContaining({ modules: 2, resolveCalls: 1 }),
+    ])
+    expect(reports[0]!.evidence.some((item) => item.kind === 'unresolved-import')).toBe(false)
+    expect(reports[0]!.metrics.totalMs).toBeGreaterThan(0)
+  })
+
+  it('reports untraceable rewrites instead of reading the old runtime module', async () => {
+    writeFileSync(localeFile, '{}')
+    writeFileSync(path.join(root, 'old.ts'), `export const value = 'old'`)
+    writeFileSync(
+      path.join(root, 'entry.ts'),
+      `import { value } from './old'; export const label = value`,
+    )
+    const reports: AnalysisReport[] = []
+    await build({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      plugins: [
+        i18nAnalysisPlugin({ onAnalysis: (report) => reports.push(report) }),
+        {
+          name: 'inline-import',
+          transform(code, id) {
+            if (id.endsWith('/entry.ts')) return `export const label = 'actual'`
+          },
+        },
+      ],
+      build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
+    })
+    expect(reports[0]!.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'unresolved-import',
+          file: 'entry.ts',
+          line: 1,
+          environment: 'client',
+        }),
+      ]),
+    )
+  })
+
+  it('connects RSC client stubs to implementation dependencies without scanning their removed bodies', async () => {
+    writeFileSync(localeFile, JSON.stringify({ used: 'Used' }))
+    mkdirSync(path.join(root, 'app'), { recursive: true })
+    writeFileSync(path.join(root, 'app/page.ts'), `export { widget as page } from '../widget'`)
+    writeFileSync(
+      path.join(root, 'widget.ts'),
+      `
+      'use strict'; 'use client';
+      export { label as widget } from './label'
+    `,
+    )
+    writeFileSync(
+      path.join(root, 'label.ts'),
+      `export function label(t: (key: string) => string) { return t('app:used') }`,
+    )
+    const reports: AnalysisReport[] = []
+    const builder = await createBuilder({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      plugins: [
+        i18nAnalysisPlugin({ onAnalysis: (report) => reports.push(report) }),
+        {
+          name: 'client-reference-stub',
+          transform(code, id) {
+            if (this.environment.name === 'rsc' && id.endsWith('/widget.ts'))
+              return `export const widget = 'client reference'`
+          },
+        },
+      ],
+      environments: Object.fromEntries(
+        ['rsc', 'ssr', 'client'].map((name) => [
+          name,
+          {
+            build: {
+              write: false,
+              lib: {
+                entry: path.join(root, name === 'rsc' ? 'app/page.ts' : 'widget.ts'),
+                formats: ['es'],
+              },
+            },
+          },
+        ]),
+      ),
+    })
+    await builder.buildApp()
+    expect(reports).toHaveLength(1)
+    expect(reports[0]!.routes).toMatchObject([{ route: '/', namespaces: ['app'] }])
+    expect(reports[0]!.evidence.some((item) => item.kind === 'unresolved-import')).toBe(false)
+    const report = reports[0]!
+    const paths = report.routes[0]!.groups.page[0]!.dependencyPaths!.map((index) => {
+      const chain: AnalysisReport['modules'] = []
+      let current: number | null = index
+      while (current !== null) {
+        const [module, parent]: [number, number | null] = report.paths[current]!
+        chain.unshift(report.modules[module]!)
+        current = parent
+      }
+      return chain
+    })
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        [
+          { environment: 'rsc', moduleId: path.join(root, 'app/page.ts') },
+          { environment: 'rsc', moduleId: path.join(root, 'widget.ts') },
+          { environment: 'client', moduleId: path.join(root, 'widget.ts') },
+          { environment: 'client', moduleId: path.join(root, 'label.ts') },
+        ],
+      ]),
+    )
+  })
+
+  it('preserves package declarations after split imports and ignores Vite asset rewrites', async () => {
+    writeFileSync(localeFile, JSON.stringify({ used: 'Used', unused: 'Unused' }))
+    const directory = path.join(root, 'node_modules/test-hooks')
+    mkdirSync(directory, { recursive: true })
+    writeFileSync(
+      path.join(directory, 'package.json'),
+      JSON.stringify({
+        name: 'test-hooks',
+        type: 'module',
+        types: './index.d.ts',
+        exports: { '.': './index.js', './identity': './identity.js' },
+      }),
+    )
+    writeFileSync(
+      path.join(directory, 'index.js'),
+      `export { default as identity } from './identity.js'`,
+    )
+    writeFileSync(path.join(directory, 'identity.js'), `export default value => value`)
+    writeFileSync(
+      path.join(directory, 'index.d.ts'),
+      `export declare function identity(value: string): 'used'`,
+    )
+    writeFileSync(path.join(root, 'icon.svg'), '<svg/>')
+    writeFileSync(
+      path.join(root, 'entry.ts'),
+      `
+      import { identity } from 'test-hooks'
+      import icon from './icon.svg'
+      export function label(t: (key: string) => string) { return t(identity(icon)) }
+    `,
+    )
+    const reports: AnalysisReport[] = []
+    await expect(
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          i18nAnalysisPlugin({ onAnalysis: (report) => reports.push(report) }),
+          {
+            name: 'optimize-fixture-imports',
+            enforce: 'pre',
+            transform(code, id) {
+              if (id.endsWith('/entry.ts'))
+                return code
+                  .replace(
+                    "import { identity } from 'test-hooks'",
+                    "import identity from 'test-hooks/identity'",
+                  )
+                  .replace("import icon from './icon.svg'", "const icon = 'data:image/svg+xml,svg'")
+            },
+          },
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
+      }),
+    ).rejects.toThrow(/Found 1 potentially unused i18n keys[\s\S]*app:unused/)
+    expect(reports[0]!.evidence.some((item) => item.kind === 'unresolved-import')).toBe(false)
   })
 
   it('does not block development when unused translations exist', async () => {

@@ -42,8 +42,8 @@ describe('translation graph analysis', () => {
       writeSource(
         'src/page.ts',
         `
-        declare function useTranslation(ns: string[]): unknown
-        declare function getTranslation(locale: string, ns: string): unknown
+        import { useTranslation } from 'react-i18next'
+        import { getTranslation } from '@/i18n/server'
         useTranslation(['app', 'common'])
         getTranslation('en-US', 'login')
         export function boundary(requiredNamespaces: ('workflow' | 'dataset')[]) {
@@ -73,8 +73,8 @@ describe('translation graph analysis', () => {
         'src/page.ts',
         `
         import { workflow, extras } from './namespaces'
-        declare function useTranslation(ns: readonly string[]): unknown
-        declare function getTranslation(locale: string, ns: string): unknown
+        import { useTranslation } from 'react-i18next'
+        import { getTranslation } from '@/i18n/server'
         const shared = ['common', ...extras] as const
         useTranslation([workflow, ...shared])
         const cyclic = [cyclic]
@@ -88,6 +88,70 @@ describe('translation graph analysis', () => {
         'workflow',
       ])
       expect(result.unused).toEqual({ workflow: ['unused'] })
+    })
+
+    it('recognizes imported aliases and ignores unrelated same-name functions', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'Used', unused: 'Unused' })
+      writeSource(
+        'src/aliases.tsx',
+        `
+        import { useTranslation as useT, Trans as Translation } from 'react-i18next'
+        const load = useT
+        load('common')
+        export function View() { return <Translation ns="app" i18nKey="used" /> }
+        function useTranslation(value: string) { return value }
+        function getTranslation(locale: string, value: string) { return value }
+        useTranslation('unrelated')
+        getTranslation('en-US', 'also-unrelated')
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(
+        [...result.moduleNamespaces.get(path.join(webRoot, 'src/aliases.tsx'))!].sort(),
+      ).toEqual(['app', 'common'])
+      expect(result.unused).toEqual({ app: ['unused'] })
+    })
+
+    it('follows API re-exports and namespace imports through their declarations', () => {
+      writeJson('i18n/locales/en-US/app.json', { unused: 'Unused' })
+      writeSource('i18n/lib.client.ts', `export function useTranslation(ns: string) { return ns }`)
+      writeSource('src/barrel.ts', `export { useTranslation as useT } from '../i18n/lib.client'`)
+      writeSource(
+        'src/page.ts',
+        `
+        import { useT } from './barrel'
+        import * as reactI18n from 'react-i18next'
+        useT('login')
+        reactI18n.useTranslation('common')
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect([...result.moduleNamespaces.get(path.join(webRoot, 'src/page.ts'))!].sort()).toEqual([
+        'common',
+        'login',
+      ])
+    })
+
+    it('reports dynamic protection with the originating module and line', () => {
+      writeJson('i18n/locales/en-US/app.json', { dynamic: 'Dynamic' })
+      writeSource(
+        'src/dynamic.ts',
+        `export function label(t: (key: string) => string, key: string) {
+  return t(key)
+}`,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.evidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'dynamic-key',
+            file: 'src/dynamic.ts',
+            line: 2,
+            namespaces: ['app'],
+          }),
+        ]),
+      )
+      expect(result.unused).toEqual({})
     })
 
     it('resolves generic metadata selectors using the namespace at each call site', () => {

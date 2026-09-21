@@ -1,11 +1,11 @@
-import fs from 'node:fs'
+import type { ModuleResolutions } from './compiler'
 import path from 'node:path'
 import * as ts from 'typescript'
+import { createTranslationApiResolver } from './api'
+import { camelCase, readTranslationCatalog } from './catalog'
+import { createTranslationProgram, readCompilerOptions } from './compiler'
 
-const PLURAL = /_(?:zero|one|two|few|many|other)$/
 const MAX_VALUES = 200
-const camelCase = (name: string) =>
-  name.replace(/[-_]+([a-z0-9])/gi, (_, char: string) => char.toUpperCase())
 const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 type Translation = { namespaces: string[]; prefix: string; argument: number }
@@ -52,53 +52,59 @@ function initializer(node: ts.Node): Value | undefined {
   if (ts.isFunctionDeclaration(node) && node.body) return node
 }
 
+export type AnalysisEvidence = {
+  kind: 'usage' | 'dynamic-key' | 'unresolved-import'
+  moduleId: string
+  file: string
+  line: number
+  column: number
+  namespaces: string[]
+  message: string
+}
+
+export function createAnalysisContext(root: string) {
+  return { translations: readTranslationCatalog(root), compilerOptions: readCompilerOptions(root) }
+}
+
 // Only module IDs supplied by Vite are visited. Type dependencies inform static
 // expressions but never contribute usage merely by existing on disk.
-export function checkTranslationGraph(root: string, modules: ReadonlyMap<string, string>) {
-  const catalog = new Map<string, Set<string>>()
-  const directory = path.join(root, 'i18n/locales/en-US')
-  for (const file of fs
-    .readdirSync(directory)
-    .filter((file) => file.endsWith('.json'))
-    .sort()) {
-    const content: unknown = JSON.parse(fs.readFileSync(path.join(directory, file), 'utf8'))
-    if (!content || typeof content !== 'object' || Array.isArray(content))
-      throw new Error(`Invalid translation catalog: ${file}`)
-    catalog.set(camelCase(file.slice(0, -5)), new Set(Object.keys(content)))
-  }
-  const configPath = ts.findConfigFile(root, ts.sys.fileExists)
-  const config = configPath ? ts.readConfigFile(configPath, ts.sys.readFile) : undefined
-  if (config?.error)
-    throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'))
-  const options =
-    configPath && config
-      ? ts.parseJsonConfigFileContent(
-          config.config,
-          { ...ts.sys, readDirectory: () => [] },
-          path.dirname(configPath),
-        ).options
-      : {}
-  const compilerOptions: ts.CompilerOptions = {
-    ...options,
-    allowJs: true,
-    jsx: ts.JsxEmit.ReactJSX,
-    noEmit: true,
-    skipLibCheck: true,
-  }
-  const host = ts.createCompilerHost(compilerOptions)
-  const readFile = host.readFile.bind(host)
-  host.readFile = (file) => modules.get(file) ?? readFile(file)
-  const fileExists = host.fileExists.bind(host)
-  host.fileExists = (file) => modules.has(file) || fileExists(file)
-  const getSourceFile = host.getSourceFile.bind(host)
-  host.getSourceFile = (file, languageVersion, onError, shouldCreateNewSourceFile) => {
-    const source = modules.get(file)
-    return source === undefined
-      ? getSourceFile(file, languageVersion, onError, shouldCreateNewSourceFile)
-      : ts.createSourceFile(file, source, languageVersion, true)
-  }
-  const program = ts.createProgram([...modules.keys()], compilerOptions, host)
+export function checkTranslationGraph(
+  root: string,
+  modules: ReadonlyMap<string, string>,
+  resolutions: ModuleResolutions = new Map(),
+  context = createAnalysisContext(root),
+) {
+  const { catalog } = context.translations
+  const programStarted = performance.now()
+  const { program, fileNames } = createTranslationProgram(
+    root,
+    modules,
+    resolutions,
+    context.compilerOptions,
+  )
   const checker = program.getTypeChecker()
+  const programMs = performance.now() - programStarted
+  const analysisStarted = performance.now()
+  const translationApi = createTranslationApiResolver(root, checker)
+  const evidence = new Map<string, AnalysisEvidence>()
+  let currentModule = ''
+  let currentSite: ts.Node | undefined
+  function explain(kind: AnalysisEvidence['kind'], namespaces: string[], message: string) {
+    if (!currentSite) return
+    const location = currentSite
+      .getSourceFile()
+      .getLineAndCharacterOfPosition(currentSite.getStart())
+    const item = {
+      kind,
+      moduleId: currentModule,
+      file: path.relative(root, currentModule.split('?')[0]!).replaceAll('\\', '/'),
+      line: location.line + 1,
+      column: location.character + 1,
+      namespaces: [...namespaces].sort(),
+      message,
+    }
+    evidence.set(JSON.stringify(item), item)
+  }
   const used = new Map<string, Set<string>>()
   const protectedNamespaces = new Set<string>()
   const moduleNamespaces = new Map<string, Set<string>>()
@@ -268,9 +274,9 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
         if (ts.isVariableDeclaration(variable) && variable.initializer) {
           const call = unwrap(variable.initializer)
           if (ts.isCallExpression(call)) {
-            const name = call.expression.getText()
-            if (/(?:^|\.)(?:useTranslation|getTranslation)$/.test(name)) {
-              const nsIndex = name.endsWith('getTranslation') ? 1 : 0
+            const api = translationApi(call.expression)
+            if (api === 'useTranslation' || api === 'getTranslation') {
+              const nsIndex = api === 'getTranslation' ? 1 : 0
               return {
                 namespaces:
                   strings(call.arguments[nsIndex]) ??
@@ -424,16 +430,26 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
         if (!catalog.has(namespace)) continue
         if (key.wildcard && text === '.*' && !info.prefix) {
           protectedNamespaces.add(namespace)
+          explain(
+            'dynamic-key',
+            [namespace],
+            'The key cannot be narrowed; every key in this namespace is protected.',
+          )
           continue
         }
         const prefix = info.prefix ? `${info.prefix}.` : ''
-        const pattern = key.wildcard ? new RegExp(`^${escapeRegex(prefix)}${text}$`) : undefined
-        const matches = (candidate: string) =>
-          pattern ? pattern.test(candidate) : candidate === prefix + text
         const kept = used.get(namespace) ?? new Set<string>()
-        for (const candidate of catalog.get(namespace)!) {
-          if (matches(candidate) || matches(candidate.replace(PLURAL, ''))) kept.add(candidate)
-        }
+        const matches = context.translations.match(
+          namespace,
+          key.wildcard ? `${escapeRegex(prefix)}${text}` : prefix + text,
+          !!key.wildcard,
+        )
+        for (const candidate of matches) kept.add(candidate)
+        explain(
+          'usage',
+          [namespace],
+          key.wildcard ? `Static key pattern: ${prefix}${text}` : `Static key: ${prefix}${text}`,
+        )
         used.set(namespace, kept)
       }
     }
@@ -470,8 +486,10 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     const node = unwrap(expression)
     if (seen.has(node)) return
     const next = new Set(seen).add(node)
-    if (ts.isStringLiteralLike(node)) currentNamespaces.add(node.text)
-    else if (ts.isArrayLiteralExpression(node))
+    if (ts.isStringLiteralLike(node)) {
+      currentNamespaces.add(node.text)
+      explain('usage', [node.text], 'Explicit namespace load.')
+    } else if (ts.isArrayLiteralExpression(node))
       node.elements.forEach((element) => recordLoadedNamespaces(element, next))
     else if (ts.isSpreadElement(node)) recordLoadedNamespaces(node.expression, next)
     else {
@@ -484,6 +502,7 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
   }
 
   function visit(node: ts.Node) {
+    currentSite = node
     if (ts.isStringLiteralLike(node) && (node.text.includes('.') || node.text.includes(':'))) {
       const contextual = checker.getContextualType(node)
       const values = contextual && literalTypes(contextual)
@@ -496,11 +515,12 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
       }
     }
     if (ts.isCallExpression(node)) {
-      const name = node.expression.getText()
-      if (/(?:^|\.)(?:useTranslation|getTranslation)$/.test(name)) {
+      currentSite = node
+      const api = translationApi(node.expression)
+      if (api === 'useTranslation' || api === 'getTranslation') {
         // Explicit loading requests matter even when their t function is unused.
         // Do not mark translation keys as used merely because a namespace loads.
-        const nsIndex = name.endsWith('getTranslation') ? 1 : 0
+        const nsIndex = api === 'getTranslation' ? 1 : 0
         const argument = node.arguments[nsIndex]
         if (argument) recordLoadedNamespaces(argument)
       }
@@ -518,8 +538,9 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     }
     if (
       (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) &&
-      node.tagName.getText() === 'Trans'
+      translationApi(node.tagName) === 'Trans'
     ) {
+      currentSite = node
       const attributes = new Map<string, ts.Expression>()
       for (const attribute of node.attributes.properties) {
         if (!ts.isJsxAttribute(attribute) || !attribute.initializer) continue
@@ -540,10 +561,28 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     ts.forEachChild(node, visit)
   }
   for (const id of modules.keys()) {
-    const source = program.getSourceFile(id)
+    currentModule = id
+    const source = program.getSourceFile(fileNames.get(id)!)
     currentNamespaces = new Set<string>()
     moduleNamespaces.set(id, currentNamespaces)
-    if (source) visit(source)
+    if (source) {
+      for (const [specifier, resolved] of resolutions.get(id) ?? []) {
+        if (resolved !== null) continue
+        currentSite =
+          source.statements.find(
+            (statement) =>
+              ts.isImportDeclaration(statement) &&
+              ts.isStringLiteral(statement.moduleSpecifier) &&
+              statement.moduleSpecifier.text === specifier,
+          ) ?? source
+        explain(
+          'unresolved-import',
+          [],
+          `Cannot trace runtime import ${specifier} after transforms; the original file was not used as a fallback.`,
+        )
+      }
+      visit(source)
+    }
   }
   const unused: Record<string, string[]> = {}
   for (const [namespace, keys] of catalog) {
@@ -553,6 +592,8 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
   }
   return {
     unused,
+    evidence: [...evidence.values()],
+    timings: { programMs, analysisMs: performance.now() - analysisStarted },
     protectedNamespaces: [...protectedNamespaces].sort(),
     moduleCount: modules.size,
     moduleNamespaces,
