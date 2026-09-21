@@ -240,7 +240,7 @@ class AgentDslService:
             tenant_id=app.tenant_id,
             account_id=account.id,
             app_id=app.id,
-            name=self._unique_roster_name(tenant_id=app.tenant_id, requested=app.name or metadata.name),
+            name=self.unique_roster_name(tenant_id=app.tenant_id, requested=app.name or metadata.name),
             description=app.description or metadata.description,
             role=metadata.role,
             icon_type=self._agent_icon_type(metadata.icon_type),
@@ -716,7 +716,7 @@ class AgentDslService:
         self.session.flush()
         return snapshot
 
-    def _unique_roster_name(self, *, tenant_id: str, requested: str) -> str:
+    def unique_roster_name(self, *, tenant_id: str, requested: str) -> str:
         candidates = [requested]
         for index in range(1, 100):
             suffix = " import" if index == 1 else f" import {index}"

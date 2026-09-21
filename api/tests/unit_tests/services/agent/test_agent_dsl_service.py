@@ -415,7 +415,7 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(
     soul = AgentSoulConfig(config_note="portable")
     warning = DslImportWarning(code="setup", path="agent.soul", message="setup required")
     service.resolve_package_soul = Mock(return_value=(soul, [warning]))
-    service._unique_roster_name = Mock(return_value="Portable Agent import")
+    service.unique_roster_name = Mock(return_value="Portable Agent import")
     agent = _agent()
     agent.active_config_snapshot_id = "snapshot-1"
     agent.active_config_is_published = True
@@ -946,7 +946,7 @@ def test_unique_roster_name_uses_first_available_suffix(sqlite_session: Session)
     )
     sqlite_session.commit()
 
-    result = AgentDslService(sqlite_session)._unique_roster_name(tenant_id="tenant-1", requested="Agent")
+    result = AgentDslService(sqlite_session).unique_roster_name(tenant_id="tenant-1", requested="Agent")
 
     assert result == "Agent import 2"
 
