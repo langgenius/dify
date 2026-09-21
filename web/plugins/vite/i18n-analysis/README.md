@@ -100,9 +100,20 @@ dependencies were understood.
 Direct function declarations forwarding namespace parameters are summarized and
 checked at their concrete call sites, including aliases and multi-hop forwarding.
 Parameter assignments and method calls on parameters prevent passthrough summaries.
-Uncalled entry functions remain unknown; passing a forwarding function as a call
+Defaults are evaluated at the call site, including explicit `undefined`. Recursive
+forwarding, captured parameters in closures, and callbacks escaping through objects
+or arrays retain unknown diagnostics. Uncalled entry functions remain unknown; passing a forwarding function as a call
 argument reports an escape instead of assuming its future arguments. Runtime
-route-dependent provider props are not inferred from the route catalog.
+route-dependent provider props require an explicit `routeNamespacePolicy` contract
+with `module`, `exportedName`, and `getNamespaces(route)`. The analyzer recognizes
+the configured function called with `usePathname()` and follows immutable local
+variables and direct props into a local, unexported JSX component. Spread props,
+arbitrary pathname expressions, writes, and escaping components remain unknown.
+The callback supplies reviewed route values; the analyzer verifies this restricted
+dataflow, not the arbitrary implementation of the configured policy or router.
+An undefined callback result leaves that route unknown. `routePolicySources` records
+the provenance and `route-namespace-load` evidence distinguishes policy-backed loads
+from independently inferred namespace values.
 Unresolved import evidence includes the specifier, a syntactic kind (style, asset,
 package, virtual, or source), and whether the import appears in source or was
 introduced by transforms. These labels do not prove relevance or suppress checks.
@@ -138,7 +149,9 @@ arguments are included even when no translation key is consumed.
 
 The application passes `getDeclaredRouteNamespaces` from
 `i18n/route-namespaces.ts`, sharing declarations with server resource selection
-and client navigation. Currently only `/signin` and its descendants opt in.
+and client navigation. Currently only `/signin` and its descendants opt in. The application enables
+strict validation for these declared routes and configures its route namespace
+policy explicitly; routes without declarations retain unknown policy loads.
 Undeclared routes keep the full catalog and can be migrated independently.
 
 This validates statically detected usage, with the recognition and conservative

@@ -73,6 +73,37 @@ describe('translation graph analysis', () => {
       },
     )
 
+    it.each(['', 'undefined', "'other'"])(
+      'resolves wrapper defaults at the call site: %s',
+      (argument) => {
+        writeJson('i18n/locales/en-US/login.json', {})
+        writeSource(
+          'wrapper.ts',
+          `import { useTranslation } from 'react-i18next'; export function forward(ns = 'login') { return useTranslation(ns) }`,
+        )
+        writeSource('page.ts', `import { forward } from './wrapper'; forward(${argument})`)
+        const result = checkTranslationGraph(webRoot, modules)
+        expect(result.moduleNamespaces.get(path.join(webRoot, 'wrapper.ts'))).toEqual(new Set())
+        expect(result.moduleNamespaces.get(path.join(webRoot, 'page.ts'))).toEqual(
+          new Set([argument === "'other'" ? 'other' : 'login']),
+        )
+      },
+    )
+
+    it.each([
+      `function forward(ns: string) { if (Math.random()) return forward(ns); return useTranslation(ns) }; forward('login')`,
+      `function forward(ns: string) { return () => useTranslation(ns) }; forward('login')`,
+      `function forward(ns: string) { return useTranslation(ns) }; forward('login'); declare function register(value: unknown): void; register({ callback: forward })`,
+    ])('keeps unsupported recursive, closure or object escapes unknown', (body) => {
+      writeJson('i18n/locales/en-US/login.json', {})
+      writeSource('page.ts', `import { useTranslation } from 'react-i18next'; ${body}`)
+      expect(
+        checkTranslationGraph(webRoot, modules).evidence.some(
+          (item) => item.kind === 'unknown-namespace',
+        ),
+      ).toBe(true)
+    })
+
     it('does not summarize a reassigned namespace parameter as a passthrough', () => {
       writeJson('i18n/locales/en-US/login.json', {})
       writeSource(

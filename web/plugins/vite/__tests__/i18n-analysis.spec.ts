@@ -664,6 +664,81 @@ describe('i18n build check', () => {
     },
   )
 
+  it.each(['current', 'arbitrary', 'spread'] as const)(
+    'applies route namespace policy only to proven %s props',
+    async (mode) => {
+      writeFileSync(localeFile, '{}')
+      writeFileSync(
+        path.join(root, 'i18n/lib.client.ts'),
+        `export function useTranslation(ns: string[]) { return ns }`,
+      )
+      writeFileSync(
+        path.join(root, 'i18n/policy.ts'),
+        `export function getRouteNamespaces(path: string) { return ['login'] }`,
+      )
+      writeFileSync(
+        path.join(root, 'navigation.ts'),
+        `export function usePathname() { return '/known' }`,
+      )
+      writeFileSync(
+        path.join(root, 'provider.tsx'),
+        `
+      import { useTranslation } from './i18n/lib.client'
+      import { getRouteNamespaces } from './i18n/policy'
+      import { usePathname } from 'next/navigation'
+      function Loader({ required }: { required: string[] }) { useTranslation([...required]); return null }
+      export function Provider() {
+        const required = getRouteNamespaces(${mode === 'arbitrary' ? "'/other'" : 'usePathname()'})
+        return <Loader ${mode === 'spread' ? '{...{ required }}' : 'required={required}'} />
+      }
+    `,
+      )
+      for (const route of ['known', 'other']) {
+        mkdirSync(path.join(root, `app/${route}`), { recursive: true })
+        writeFileSync(
+          path.join(root, `app/${route}/page.ts`),
+          `export { Provider as page } from '../../provider'`,
+        )
+      }
+      writeFileSync(
+        path.join(root, 'entry.ts'),
+        `export { page as known } from './app/known/page'; export { page as other } from './app/other/page'`,
+      )
+      const reports: AnalysisReport[] = []
+      const result = build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        resolve: { alias: { 'next/navigation': path.join(root, 'navigation.ts') } },
+        plugins: [
+          i18nAnalysisPlugin({
+            strictNamespaces: true,
+            onAnalysis: (report) => reports.push(report),
+            getDeclaredNamespaces: (route) => (route === '/known' ? ['login'] : undefined),
+            routeNamespacePolicy: {
+              module: 'i18n/policy.ts',
+              exportedName: 'getRouteNamespaces',
+              getNamespaces: (route) => (route === '/known' ? ['login'] : undefined),
+            },
+          }),
+        ],
+        build: {
+          write: false,
+          lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] },
+          rollupOptions: { external: ['react/jsx-runtime', 'react/jsx-dev-runtime'] },
+        },
+      })
+      if (mode === 'current') await expect(result).resolves.toBeDefined()
+      else await expect(result).rejects.toThrow('Cannot verify namespace usage')
+      const known = reports[0]!.routes.find((route) => route.route === '/known')!
+      expect(known.unknownNamespaceSources).toEqual(mode === 'current' ? [] : ['provider.tsx'])
+      if (mode === 'current') expect(known.namespaces).toEqual(['login'])
+      expect(
+        reports[0]!.routes.find((route) => route.route === '/other')!.unknownNamespaceSources,
+      ).toEqual(['provider.tsx'])
+    },
+  )
+
   it('tracks rewritten imports and analyzes multiple output formats only once', async () => {
     writeFileSync(localeFile, JSON.stringify({ actual: 'Actual' }))
     writeFileSync(

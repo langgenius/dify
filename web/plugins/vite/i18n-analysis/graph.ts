@@ -1,9 +1,11 @@
 import type { ModuleResolutions } from './compiler'
+import type { RouteNamespacePolicy } from './route-policy'
 import path from 'node:path'
 import * as ts from 'typescript'
 import { createTranslationApiResolver } from './api'
 import { camelCase, readTranslationCatalog } from './catalog'
 import { createTranslationProgram, readCompilerOptions } from './compiler'
+import { createRoutePolicyMatcher } from './route-policy'
 
 const MAX_VALUES = 200
 const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -53,7 +55,7 @@ function initializer(node: ts.Node): Value | undefined {
 }
 
 export type AnalysisEvidence = {
-  kind: 'usage' | 'dynamic-key' | 'unresolved-import' | 'unknown-namespace'
+  kind: 'usage' | 'dynamic-key' | 'unresolved-import' | 'unknown-namespace' | 'route-namespace-load'
   moduleId: string
   file: string
   line: number
@@ -67,8 +69,12 @@ export type AnalysisEvidence = {
   }
 }
 
-export function createAnalysisContext(root: string) {
-  return { translations: readTranslationCatalog(root), compilerOptions: readCompilerOptions(root) }
+export function createAnalysisContext(root: string, routeNamespacePolicy?: RouteNamespacePolicy) {
+  return {
+    translations: readTranslationCatalog(root),
+    compilerOptions: readCompilerOptions(root),
+    routeNamespacePolicy,
+  }
 }
 
 // Only module IDs supplied by Vite are visited. Type dependencies inform static
@@ -91,6 +97,7 @@ export function checkTranslationGraph(
   const programMs = performance.now() - programStarted
   const analysisStarted = performance.now()
   const translationApi = createTranslationApiResolver(root, checker)
+  const routePolicy = createRoutePolicyMatcher(root, checker, context.routeNamespacePolicy)
   const evidence = new Map<string, AnalysisEvidence>()
   let currentModule = ''
   let currentSite: ts.Node | undefined
@@ -626,9 +633,52 @@ export function checkTranslationGraph(
       }
     }
   }
+  const recursive = new Set<ts.FunctionDeclaration>()
+  const adjacency = new Map<ts.FunctionDeclaration, Set<ts.FunctionDeclaration>>()
+  for (const { node, owner } of calls) {
+    if (!owner) continue
+    const targets = adjacency.get(owner) ?? new Set<ts.FunctionDeclaration>()
+    for (const target of forwardingTargets(node.expression)) targets.add(target)
+    adjacency.set(owner, targets)
+  }
+  const finished = new Set<ts.FunctionDeclaration>()
+  function findCycles(node: ts.FunctionDeclaration, stack: ts.FunctionDeclaration[]) {
+    const index = stack.indexOf(node)
+    if (index >= 0) {
+      for (const item of stack.slice(index)) recursive.add(item)
+      return
+    }
+    if (finished.has(node)) return
+    if (stack.length >= 100) {
+      for (const item of [...stack, node]) recursive.add(item)
+      return
+    }
+    for (const target of adjacency.get(node) ?? []) findCycles(target, [...stack, node])
+    finished.add(node)
+  }
+  for (const target of forwarding.keys()) findCycles(target, [])
+  function escapedForwarders(expression: ts.Expression): boolean {
+    if (forwardingTargets(expression).some((target) => forwarding.get(target)!.size)) return true
+    const node = unwrap(expression)
+    if (ts.isObjectLiteralExpression(node))
+      return node.properties.some((member) =>
+        ts.isSpreadAssignment(member)
+          ? escapedForwarders(member.expression)
+          : ts.isPropertyAssignment(member)
+            ? escapedForwarders(member.initializer)
+            : ts.isShorthandPropertyAssignment(member) && escapedForwarders(member.name),
+      )
+    if (ts.isArrayLiteralExpression(node)) return node.elements.some(escapedForwarders)
+    if (ts.isSpreadElement(node)) return escapedForwarders(node.expression)
+    return false
+  }
   function isForwarded(expression: ts.Expression) {
     const owner = enclosingFunction(expression)
-    if (!owner || (!calledFunctions.has(owner) && !(owner.name && translationApi(owner.name))))
+    if (
+      !owner ||
+      recursive.has(owner) ||
+      (!calledFunctions.has(owner) && !(owner.name && translationApi(owner.name)))
+    )
       return false
     const parameters = forwardedParameters(expression, owner)
     return !!parameters?.size && [...parameters].every((index) => forwarding.get(owner)?.has(index))
@@ -655,14 +705,30 @@ export function checkTranslationGraph(
         // Do not mark translation keys as used merely because a namespace loads.
         const nsIndex = api === 'getTranslation' ? 1 : 0
         const argument = node.arguments[nsIndex]
-        if (argument && !recordLoadedNamespaces(argument) && !isForwarded(argument))
-          explain('unknown-namespace', [], 'The explicit namespace load cannot be fully resolved.')
+        if (argument && !isForwarded(argument) && !recordLoadedNamespaces(argument)) {
+          if (routePolicy(argument))
+            explain(
+              'route-namespace-load',
+              [],
+              'Namespace load follows the configured current-route policy.',
+            )
+          else
+            explain(
+              'unknown-namespace',
+              [],
+              'The explicit namespace load cannot be fully resolved.',
+            )
+        }
       }
       if (api !== 'useTranslation' && api !== 'getTranslation') {
         for (const target of forwardingTargets(node.expression)) {
           for (const index of forwarding.get(target)!) {
-            const argument = node.arguments[index] ?? target.parameters[index]?.initializer
-            if (argument && !recordLoadedNamespaces(argument) && !isForwarded(argument))
+            const supplied = node.arguments[index]
+            const defaultValue = target.parameters[index]?.initializer
+            const undefinedValue =
+              supplied && checker.getTypeAtLocation(supplied).flags & ts.TypeFlags.Undefined
+            const argument = !supplied || undefinedValue ? defaultValue : supplied
+            if (argument && !isForwarded(argument) && !recordLoadedNamespaces(argument))
               explain(
                 'unknown-namespace',
                 [],
@@ -672,7 +738,7 @@ export function checkTranslationGraph(
         }
       }
       for (const argument of node.arguments) {
-        if (forwardingTargets(argument).some((target) => forwarding.get(target)!.size))
+        if (escapedForwarders(argument))
           explain(
             'unknown-namespace',
             [],

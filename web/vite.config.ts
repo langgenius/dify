@@ -41,7 +41,15 @@ export default defineConfig(({ command, mode, isPreview }) => {
           : undefined
 
       return [
-        i18nAnalysisPlugin({ getDeclaredNamespaces: getDeclaredRouteNamespaces }),
+        i18nAnalysisPlugin({
+          getDeclaredNamespaces: getDeclaredRouteNamespaces,
+          strictNamespaces: true,
+          routeNamespacePolicy: {
+            module: 'i18n/route-namespaces.ts',
+            exportedName: 'getRouteNamespaces',
+            getNamespaces: getDeclaredRouteNamespaces,
+          },
+        }),
         Inspect(),
         inspector,
         tailwindcss(),
