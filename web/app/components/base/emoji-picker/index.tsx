@@ -2,9 +2,9 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import EmojiPickerInner from './Inner'
 
 type EmojiPickerProps = {
@@ -54,7 +54,7 @@ function EmojiPickerContent({ className, onOpenChange, onSelect }: EmojiPickerCo
           setSelectedBackground(background)
         }}
       />
-      <Divider className="mt-3 mb-0" />
+      <Separator decorative className="mt-3 mb-0 h-[0.5px]" />
       <div className="flex w-full items-center justify-center gap-2 p-3">
         <Button className="w-full" onClick={() => onOpenChange(false)}>
           {t(($) => $['iconPicker.cancel'], { ns: 'app' })}

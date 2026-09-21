@@ -1,6 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
-import Divider from '@/app/components/base/divider'
 
 type Step = {
   label: string
@@ -31,7 +31,11 @@ const StepIndicator = ({ currentStep, steps }: StepIndicatorProps) => {
             </div>
             {!isLastStep && (
               <div className="flex items-center">
-                <Divider type="horizontal" className="h-px w-3 bg-divider-deep" />
+                <Separator
+                  decorative
+                  orientation="horizontal"
+                  className="my-2 w-3 bg-divider-deep"
+                />
               </div>
             )}
           </div>

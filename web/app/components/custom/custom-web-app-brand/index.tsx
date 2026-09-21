@@ -1,8 +1,8 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import ChatPreviewCard from './components/chat-preview-card'
 import WorkflowPreviewCard from './components/workflow-preview-card'
 import useWebAppBrand from './hooks/use-web-app-brand'
@@ -128,7 +128,7 @@ const CustomWebAppBrand = () => {
         <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['overview.appInfo.preview'], { ns: 'appOverview' })}
         </div>
-        <Divider bgStyle="gradient" className="grow" />
+        <Separator decorative variant="gradient" className="my-2 h-[0.5px] grow" />
       </div>
       <div className="relative mb-2 flex items-center gap-3">
         <ChatPreviewCard
