@@ -1936,3 +1936,22 @@ def test_a_missing_config_tool_still_lets_the_gap_agent_report_a_gap():
 
     notice = next(i for i in res.items if i.kind == "notice")
     assert notice.payload["text"] == "Nothing installed can send a Slack message."
+
+
+def test_the_test_result_card_names_the_dify_run_so_the_canvas_is_reachable_later():
+    """``run_ids`` holds BUILDER run ids, which resolve to nothing outside the
+    engine. Reopening the run on the canvas needs the DIFY run id, and it has
+    to ride the persisted card: the SSE frames that also carry it are gone
+    after a page reload."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+
+    env, _ = _new_env()  # default FakeDifyPort; verify_pass=True
+    s_ = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s_, fc)
+
+    card = next(i for i in result.items if i.kind == "test_result")
+    assert card.payload["dify_run_id"] == "dify-run-1"
+    # and it is NOT the Builder run id the card already carried
+    assert card.payload["dify_run_id"] not in card.payload["run_ids"]
