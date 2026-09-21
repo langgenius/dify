@@ -119,6 +119,10 @@ class LLMNodeOTelParser:
 
         if model_name:
             span.set_attribute(LLMAttributes.REQUEST_MODEL, model_name)
+            # Dify does not surface the provider-returned model separately, so
+            # response.model is set on the instrumentation's best knowledge,
+            # as permitted by the GenAI semantic conventions.
+            span.set_attribute(LLMAttributes.RESPONSE_MODEL, model_name)
         if model_provider:
             span.set_attribute(LLMAttributes.PROVIDER_NAME, model_provider)
 

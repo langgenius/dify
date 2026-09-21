@@ -68,7 +68,10 @@ class LLMAttributes:
     """LLM operation attribute keys."""
 
     REQUEST_MODEL = "gen_ai.request.model"
-    """Model identifier."""
+    """Model identifier requested by the caller."""
+
+    RESPONSE_MODEL = "gen_ai.response.model"
+    """Model identifier that generated the response."""
 
     PROVIDER_NAME = "gen_ai.provider.name"
     """Provider name."""
