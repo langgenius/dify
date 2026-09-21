@@ -207,7 +207,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
                   <TooltipContent
                     placement="bottom"
                     sideOffset={4}
-                    className="rounded-md border border-components-panel-border bg-components-tooltip-bg px-1.5 py-1 system-xs-regular text-text-primary shadow-lg backdrop-blur-xs"
+                    className="py-1 system-xs-regular text-text-primary"
                   >
                     {debugUrlCopied
                       ? t(($) => $[`${i18nPrefix}.debugUrlCopied`], { ns: 'workflow' })

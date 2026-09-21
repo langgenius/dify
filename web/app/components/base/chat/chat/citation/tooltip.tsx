@@ -21,7 +21,7 @@ const CitationTooltip: FC<CitationTooltipProps> = ({ data, text, icon }) => {
       <TooltipContent
         data-testid="tooltip-popup"
         placement="top-start"
-        className="rounded-lg bg-components-tooltip-bg p-3 system-xs-medium text-text-quaternary shadow-lg"
+        className="p-3 text-text-quaternary"
       >
         {text} {data}
       </TooltipContent>

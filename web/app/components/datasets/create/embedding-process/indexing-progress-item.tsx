@@ -33,10 +33,7 @@ const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) =
           <RiErrorWarningFill aria-hidden className="size-4 shrink-0 text-text-destructive" />
           <span className="sr-only">{errorLabel}</span>
         </TooltipTrigger>
-        <TooltipContent
-          sideOffset={4}
-          className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-3.5 body-xs-regular text-text-secondary"
-        >
+        <TooltipContent sideOffset={4} className="max-w-60 rounded-xl px-4 py-3.5 body-xs-regular">
           {errorLabel}
         </TooltipContent>
       </Tooltip>

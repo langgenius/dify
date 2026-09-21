@@ -1259,12 +1259,11 @@ export function FileTree({
                   />
                 }
               />
-              <TooltipContent
-                placement="bottom"
-                className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
-              >
-                <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
-                <KbdGroup>
+              <TooltipContent placement="bottom" className="flex items-start gap-1">
+                <span className="min-w-0 flex-1 px-0.5">
+                  {tApp(($) => $['gotoAnything.quickAction'])}
+                </span>
+                <KbdGroup className="shrink-0">
                   {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
                     <Kbd key={key}>{formatForDisplay(key)}</Kbd>
                   ))}

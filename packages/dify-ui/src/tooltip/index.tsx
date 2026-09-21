@@ -62,7 +62,7 @@ function TooltipContent({
         <BaseTooltip.Popup
           className={(state) =>
             cn(
-              'max-w-75 rounded-md bg-components-panel-bg px-3 py-2 text-start system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
+              'max-w-75 overflow-clip rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 text-start system-xs-medium wrap-break-word text-text-secondary shadow-[0px_12px_16px_-4px_var(--color-shadow-shadow-5),0px_4px_6px_-2px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
               'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0 motion-reduce:transition-none',
               resolveClassName(className, state),
             )
