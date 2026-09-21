@@ -541,6 +541,51 @@ describe('i18n build check', () => {
     expect(reports[0]!.metrics.totalMs).toBeGreaterThan(0)
   })
 
+  it('does not read a disk namespace when Vite resolves the unchanged import to a virtual module', async () => {
+    writeFileSync(localeFile, '{}')
+    for (const namespace of ['old', 'actual'])
+      writeFileSync(
+        path.join(root, `i18n/locales/en-US/${namespace}.json`),
+        JSON.stringify({ title: namespace }),
+      )
+    mkdirSync(path.join(root, 'app'), { recursive: true })
+    writeFileSync(path.join(root, 'app/ns.ts'), `export const ns = 'old'`)
+    writeFileSync(
+      path.join(root, 'app/page.ts'),
+      `import { ns } from './ns'; export function page(t: (key: string, options: { ns: string }) => string) { return t('title', { ns: ns }) }`,
+    )
+    const reports: AnalysisReport[] = []
+    await expect(
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          i18nAnalysisPlugin({
+            onAnalysis: (report) => reports.push(report),
+            getDeclaredNamespaces: () => ['old'],
+          }),
+          {
+            name: 'virtual-namespace',
+            enforce: 'pre',
+            resolveId(id) {
+              if (id === './ns') return '\0namespace'
+            },
+            load(id) {
+              if (id === '\0namespace') return `export const ns = 'actual'`
+            },
+          },
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+      }),
+    ).rejects.toThrow(/Undeclared namespace: actual/)
+    expect(reports[0]!.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'unresolved-import', file: 'app/page.ts' }),
+      ]),
+    )
+  })
+
   it('reports untraceable rewrites instead of reading the old runtime module', async () => {
     writeFileSync(localeFile, '{}')
     writeFileSync(path.join(root, 'old.ts'), `export const value = 'old'`)

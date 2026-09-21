@@ -260,7 +260,9 @@ export function i18nAnalysisPlugin(
           compiledModules,
           async (specifier, importer) => {
             const resolved = await this.resolve(specifier, importer)
-            return resolved && !resolved.external ? moduleId(resolved.id) : undefined
+            return resolved
+              ? { id: moduleId(resolved.id), external: !!resolved.external }
+              : undefined
           },
           (specifier) =>
             !specifier.includes('?') && this.environment.config.assetsInclude(specifier),

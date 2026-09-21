@@ -26,7 +26,8 @@ Vite owns module identity and runtime import resolution. Each completed environm
 retains original source in module metadata and resolves surviving imports through
 that environment's plugin resolver. When a transform changes an import specifier,
 matching import/export bindings connect it back to the original source. Ambiguous
-or removed value imports are reported as unresolved instead of silently reading
+or removed value imports, including unchanged imports resolved to unanalyzed virtual
+modules, are reported as unresolved instead of silently reading
 the old runtime module from disk. Explicit type-only imports and package declarations
 continue to use TypeScript resolution. Package barrel rewrites retain declaration
 resolution only when every imported local binding is traced to the same external

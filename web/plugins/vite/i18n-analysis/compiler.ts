@@ -93,7 +93,10 @@ export function hasClientDirective(code: string) {
 export async function resolveTranslationImports(
   modules: ReadonlyMap<string, string>,
   compiled: ReadonlyMap<string, string>,
-  resolve: (specifier: string, importer: string) => Promise<string | undefined>,
+  resolve: (
+    specifier: string,
+    importer: string,
+  ) => Promise<{ id: string; external?: boolean } | undefined>,
   isAsset: (specifier: string) => boolean = () => false,
 ) {
   const resolutions = new Map<string, Map<string, string | null>>()
@@ -106,14 +109,30 @@ export async function resolveTranslationImports(
         ts.preProcessFile(code, true, true).importedFiles.map((file) => file.fileName),
       )
       const targets = new Map<string, string | undefined>()
+      const declarationImports = new Set<string>()
       await Promise.all(
         [...surviving].map(async (specifier) => {
           resolveCalls++
-          targets.set(specifier, await resolve(specifier, id))
+          const resolved = await resolve(specifier, id)
+          targets.set(specifier, resolved?.id)
+          const packageName = specifier.startsWith('@')
+            ? specifier.split('/').slice(0, 2).join('/')
+            : specifier.split('/')[0]!
+          // A bare external package or its resolved node_modules implementation
+          // may use TS declarations. Virtual/local replacements must not fall back.
+          if (
+            !/^[.#/]/.test(specifier) &&
+            !specifier.startsWith('@/') &&
+            (resolved?.id.includes(`/node_modules/${packageName}/`) ||
+              (resolved?.external && resolved.id === specifier))
+          )
+            declarationImports.add(specifier)
         }),
       )
       for (const [specifier, target] of targets) {
         if (target && modules.has(target)) imports.set(specifier, target)
+        else if (!declarationImports.has(specifier) && !isAsset(specifier))
+          imports.set(specifier, null)
       }
       const original = ts.preProcessFile(source, true, true).importedFiles
       if (original.some((file) => !surviving.has(file.fileName))) {
