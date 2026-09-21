@@ -54,21 +54,6 @@ class RerankModelRunner(BaseRerankRunner):
                 query, documents, score_threshold, top_n, query_type
             )
 
-        return self._format_rerank_documents(rerank_result, unique_documents, score_threshold, top_n)
-
-    def _check_model_support_vision(self) -> bool:
-        """Check capabilities on the model instance already resolved for this run."""
-        model_schema = self.rerank_model_instance.get_model_schema()
-        return ModelFeature.VISION in (model_schema.features or [])
-
-    def _format_rerank_documents(
-        self,
-        rerank_result: RerankResult,
-        unique_documents: list[Document],
-        score_threshold: float | None,
-        top_n: int | None,
-    ) -> list[Document]:
-        """Build and sort reranked documents in an independently timed span."""
         rerank_documents = []
         for result in rerank_result.docs:
             if score_threshold is None or result.score >= score_threshold:
@@ -84,6 +69,11 @@ class RerankModelRunner(BaseRerankRunner):
 
         rerank_documents.sort(key=lambda x: x.metadata.get("score", 0.0), reverse=True)
         return rerank_documents[:top_n] if top_n else rerank_documents
+
+    def _check_model_support_vision(self) -> bool:
+        """Check capabilities on the model instance already resolved for this run."""
+        model_schema = self.rerank_model_instance.get_model_schema()
+        return ModelFeature.VISION in (model_schema.features or [])
 
     @trace_span()
     def fetch_text_rerank(
