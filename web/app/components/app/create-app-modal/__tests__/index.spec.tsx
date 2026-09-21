@@ -4,11 +4,13 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter } from '@/next/navigation'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { promptDefaultModel, promptModelProviders } from '../../__tests__/prompt-model-fixtures'
 import CreateAppModal from '../index'
 
 const ahooksMocks = vi.hoisted(() => ({
@@ -59,6 +61,8 @@ vi.mock('@/service/console', async (importOriginal) => {
         },
       },
       systemFeatures: actual.consoleQuery.systemFeatures,
+      workflowGenerate: actual.consoleQuery.workflowGenerate,
+      workspaces: actual.consoleQuery.workspaces,
       apps: {
         ...actual.consoleQuery.apps,
         post: {
@@ -123,7 +127,21 @@ const renderModal = () => {
 }
 
 function render(ui: ReactElement) {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'llm' } },
+    }),
+    { data: promptDefaultModel },
+  )
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: { params: { model_type: 'llm' } },
+    }),
+    { data: promptModelProviders },
+  )
   return renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { apps: appQuota, dify_builder_enabled: appBuilderEnabled },
   })

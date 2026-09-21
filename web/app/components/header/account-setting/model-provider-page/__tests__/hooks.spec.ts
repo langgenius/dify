@@ -675,35 +675,28 @@ describe('hooks', () => {
   })
 
   describe('useInvalidateDefaultModel', () => {
-    it('should invalidate default model queries', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+    it.each([ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank])(
+      'invalidates both default model query consumers for %s',
+      (type) => {
+        const invalidateQueries = vi.fn()
+        ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
 
-      const { result } = renderHook(() => useInvalidateDefaultModel())
+        const { result } = renderHook(() => useInvalidateDefaultModel())
 
-      act(() => {
-        result.current(ModelTypeEnum.textGeneration)
-      })
+        act(() => {
+          result.current(type)
+        })
 
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['default-model', ModelTypeEnum.textGeneration],
-      })
-    })
-
-    it('should handle multiple model types', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
-
-      const { result } = renderHook(() => useInvalidateDefaultModel())
-
-      act(() => {
-        result.current(ModelTypeEnum.textGeneration)
-        result.current(ModelTypeEnum.textEmbedding)
-        result.current(ModelTypeEnum.rerank)
-      })
-
-      expect(invalidateQueries).toHaveBeenCalledTimes(3)
-    })
+        expect(invalidateQueries).toHaveBeenCalledWith({
+          queryKey: ['default-model', type],
+        })
+        expect(invalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
+            input: { query: { model_type: type } },
+          }),
+        })
+      },
+    )
   })
 
   describe('useUpdateModelProviders', () => {

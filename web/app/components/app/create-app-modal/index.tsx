@@ -229,8 +229,10 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
               <Divider style={{ margin: 0 }} />
               {isBuilder ? (
                 <AppBuilderInput
+                  key={builderAppMode}
                   titleId={titleId}
                   prompt={builderPrompt}
+                  mode={builderAppMode === AppModeEnum.WORKFLOW ? 'workflow' : 'advanced-chat'}
                   onPromptChange={setBuilderPrompt}
                   isCreating={isCreating}
                   createDisabled={isAppQuotaUnavailable || !canCreateApp || isAppsFull}
