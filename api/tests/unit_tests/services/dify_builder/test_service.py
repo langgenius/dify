@@ -1238,6 +1238,9 @@ def test_create_build_session_stream_subscribes_before_dispatch(inmemory_service
 
     assert order == ["subscribe", "enqueue"]
     assert _business_event(frames[0]) == "command_started"
+    command_started = json.loads(frames[0].split("data: ", 1)[1])["data"]
+    assert command_started["actions"] == []
+    assert command_started["decision"] is None
 
 
 def test_invalid_create_streams_raise_before_subscribe(inmemory_service_factory_raw) -> None:
@@ -1436,6 +1439,18 @@ def test_initial_plan_state_offers_no_actions() -> None:
     assert service_module._actions_for(PcState.BUILD_INITIAL_PLAN) == []
 
 
+def test_capability_check_hides_redundant_send_goal_after_goal_is_seeded() -> None:
+    seeded = DifyBuilderContext(goal_text="Build a report workflow")
+    assert service_module._actions_for(PcState.BUILD_CAPABILITY_CHECK, seeded) == []
+
+    # Preserve the explicit create-from-blank fallback: only a genuinely
+    # goal-less context still needs a send_goal interaction.
+    goal_less = DifyBuilderContext()
+    assert [action.id for action in service_module._actions_for(PcState.BUILD_CAPABILITY_CHECK, goal_less)] == [
+        "send_goal"
+    ]
+
+
 def test_create_build_session_stamps_policy(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1463,6 +1478,8 @@ def test_create_build_session_bootstraps_at_capability_check_and_dispatches_send
     assert view.state == "build.capability_check"
     assert view.entry_mode == EntryMode.BUILD
     assert view.version == 1
+    assert view.actions == []
+    assert view.decision is None
     assert len(enqueued) == 1
     _sid, action, _actor2, _token = enqueued[0]
     assert action.kind == "send_goal"
