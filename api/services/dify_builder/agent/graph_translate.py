@@ -43,16 +43,21 @@ def to_intents(graph: dict[str, Any]) -> list[MutationIntent]:
         if not node_type or not node_id:
             continue
         config = {k: v for k, v in data.items() if k != "type" and k not in _FRONTEND_OWNED_KEYS}
-        creates.append(
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": str(node_type),
-                    "config": config,
-                    "node_id": str(node_id),
-                },
-            )
-        )
+        args: dict[str, Any] = {
+            "node_type": str(node_type),
+            "config": config,
+            "node_id": str(node_id),
+        }
+        # The ReactFlow wrapper carries nesting and layout OUTSIDE `data`, so
+        # reading only id+data dropped them on every build: children landed
+        # un-nested and the generator's layout was replaced by defaults.
+        parent_id = node.get("parentId")
+        if parent_id:
+            args["parent_id"] = str(parent_id)
+        position = node.get("position")
+        if isinstance(position, dict):
+            args["position"] = dict(position)
+        creates.append(MutationIntent(op="create_node", args=args))
 
     connects: list[MutationIntent] = []
     for edge in edges:
