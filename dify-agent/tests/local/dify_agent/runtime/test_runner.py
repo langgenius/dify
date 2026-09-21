@@ -69,6 +69,8 @@ from dify_agent.protocol.schemas import (
     RunLayerSpec,
     RunSucceededEvent,
 )
+
+from dify_agent.runtime.observability import AgentObservability
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import (
@@ -737,6 +739,46 @@ def test_runner_passes_context_compaction(monkeypatch: pytest.MonkeyPatch) -> No
     asyncio.run(scenario())
 
     assert sink.statuses["run-compaction"] == "succeeded"
+
+
+def test_runner_instruments_agent_with_injected_observability(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeAgentObservability:
+        def __init__(self) -> None:
+            self.instrumented: list[object] = []
+
+        def instrument(self, agent: object) -> None:
+            self.instrumented.append(agent)
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            return FakeAgentRunResult("done")
+
+    observability = FakeAgentObservability()
+    created_agent = FakeAgent()
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: created_agent)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-observed",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                agent_observability=cast(AgentObservability, observability),
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert sink.statuses["run-observed"] == "succeeded"
+    assert observability.instrumented == [created_agent]
 
 
 def test_runner_rejects_compaction_budget_before_model_resolution_or_invocation(

@@ -14,7 +14,7 @@ import httpx
 
 from typing import ClassVar, Literal, cast
 
-from pydantic import AliasChoices, AnyHttpUrl, Field, TypeAdapter, field_validator, model_validator
+from pydantic import AliasChoices, AnyHttpUrl, Field, SecretStr, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url
@@ -117,6 +117,16 @@ class ServerSettings(BaseSettings):
     binding_file_download_command_timeout_seconds: float = Field(default=210.0, gt=0)
     server_secret_key: str | None = None
     api_token: str | None = None
+    trajectory_enabled: bool = False
+    trajectory_otlp_traces_endpoint: AnyHttpUrl | None = None
+    trajectory_otlp_headers: dict[str, SecretStr] = Field(default_factory=dict, repr=False)
+    trajectory_service_name: str = Field(default="dify-agent-trajectory", min_length=1)
+    trajectory_include_content: bool = False
+    trajectory_trace_context_mode: Literal["isolated", "shared"] = "isolated"
+    trajectory_max_queue_size: int = Field(default=2048, gt=0)
+    trajectory_max_export_batch_size: int = Field(default=512, gt=0)
+    trajectory_schedule_delay_ms: int = Field(default=5000, gt=0)
+    trajectory_export_timeout_ms: int = Field(default=5000, gt=0)
     shell_redact_patterns: str = ""
     outbound_http_connect_timeout: float = Field(default=10.0, ge=0)
     outbound_http_read_timeout: float = Field(default=600.0, ge=0)
@@ -188,6 +198,16 @@ class ServerSettings(BaseSettings):
             raise ValueError("DIFY_AGENT_INNER_API_URL must not include a query string or fragment")
         return parsed
 
+    @field_validator("trajectory_otlp_traces_endpoint")
+    @classmethod
+    def validate_trajectory_otlp_traces_endpoint(cls, value: AnyHttpUrl | None) -> AnyHttpUrl | None:
+        """Reject embedded credentials or fragments in the Agent OTLP endpoint."""
+        if value is None:
+            return None
+        if value.username is not None or value.password is not None or value.fragment is not None:
+            raise ValueError("DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT must not include credentials or a fragment")
+        return value
+
     @field_validator("inner_api_key", "api_token")
     @classmethod
     def normalize_optional_api_token(cls, value: str | None) -> str | None:
@@ -221,6 +241,15 @@ class ServerSettings(BaseSettings):
             raise ValueError(
                 "DIFY_AGENT_SANDBOX_FILES_BASE_URL is required for Agent Stub file transfers and Config downloads."
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_trajectory_requirements(self) -> "ServerSettings":
+        """Validate the Agent endpoint and batch processor limits."""
+        if self.trajectory_enabled and self.trajectory_otlp_traces_endpoint is None:
+            raise ValueError("trajectory_otlp_traces_endpoint is required when trajectory_enabled is true")
+        if self.trajectory_max_export_batch_size > self.trajectory_max_queue_size:
+            raise ValueError("trajectory_max_export_batch_size must not exceed trajectory_max_queue_size")
         return self
 
     def build_runtime_backend_profile(self) -> RuntimeBackendProfile | None:

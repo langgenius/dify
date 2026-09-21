@@ -24,6 +24,11 @@ from dify_agent.runtime_backend.openshell import (
 )
 
 
+@pytest.fixture(autouse=True)
+def isolate_settings_dotenv(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+
+
 def _base64url_secret(value: bytes) -> str:
     import base64
 
@@ -524,3 +529,201 @@ def test_server_settings_rejects_non_array_shell_redact_patterns(monkeypatch: py
 
     with pytest.raises(ValueError, match="must be a JSON array"):
         _ = settings.get_shell_redact_patterns()
+
+
+def _isolate_trajectory_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+    for key in (
+        "DIFY_AGENT_TRAJECTORY_ENABLED",
+        "DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT",
+        "DIFY_AGENT_TRAJECTORY_OTLP_HEADERS",
+        "DIFY_AGENT_TRAJECTORY_SERVICE_NAME",
+        "DIFY_AGENT_TRAJECTORY_INCLUDE_CONTENT",
+        "DIFY_AGENT_TRAJECTORY_MAX_QUEUE_SIZE",
+        "DIFY_AGENT_TRAJECTORY_MAX_EXPORT_BATCH_SIZE",
+        "DIFY_AGENT_TRAJECTORY_SCHEDULE_DELAY_MS",
+        "DIFY_AGENT_TRAJECTORY_EXPORT_TIMEOUT_MS",
+        "DIFY_AGENT_TRAJECTORY_TRACE_CONTEXT_MODE",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+
+def test_server_settings_trajectory_defaults_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+
+    settings = ServerSettings()
+
+    assert settings.trajectory_enabled is False
+    assert settings.trajectory_otlp_traces_endpoint is None
+    assert settings.trajectory_otlp_headers == {}
+    assert settings.trajectory_service_name == "dify-agent-trajectory"
+    assert settings.trajectory_include_content is False
+    assert settings.trajectory_max_queue_size == 2048
+    assert settings.trajectory_max_export_batch_size == 512
+    assert settings.trajectory_schedule_delay_ms == 5000
+    assert settings.trajectory_export_timeout_ms == 5000
+    assert settings.trajectory_trace_context_mode == "isolated"
+
+
+def test_server_settings_reads_trajectory_opt_in_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_TRAJECTORY_ENABLED", "true")
+    monkeypatch.setenv("DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT", "http://127.0.0.1:4318/v1/traces")
+    monkeypatch.setenv("DIFY_AGENT_TRAJECTORY_OTLP_HEADERS", '{"Authorization": "Bearer test-only"}')
+    monkeypatch.setenv("DIFY_AGENT_TRAJECTORY_SERVICE_NAME", "custom-trajectory")
+    monkeypatch.setenv("DIFY_AGENT_TRAJECTORY_INCLUDE_CONTENT", "true")
+
+    settings = ServerSettings()
+
+    assert settings.trajectory_enabled is True
+    assert str(settings.trajectory_otlp_traces_endpoint) == "http://127.0.0.1:4318/v1/traces"
+    assert settings.trajectory_otlp_headers["Authorization"].get_secret_value() == "Bearer test-only"
+    assert "test-only" not in repr(settings.trajectory_otlp_headers)
+    assert settings.trajectory_service_name == "custom-trajectory"
+    assert settings.trajectory_include_content is True
+
+
+def test_server_settings_trajectory_enabled_requires_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+
+    with pytest.raises(ValidationError, match="trajectory_otlp_traces_endpoint"):
+        _ = ServerSettings(trajectory_enabled=True)
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://user:pass@collector.example/v1/traces",
+        "http://collector.example/v1/traces#frag",
+    ],
+)
+def test_server_settings_rejects_trajectory_endpoint_with_credentials_or_fragment(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    endpoint: str,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+
+    with pytest.raises(ValidationError, match="credentials or a fragment"):
+        _ = ServerSettings(trajectory_enabled=True, trajectory_otlp_traces_endpoint=endpoint)
+
+
+def test_server_settings_reads_trajectory_batch_processor_limits_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+    monkeypatch.setenv("DIFY_AGENT_TRAJECTORY_MAX_QUEUE_SIZE", "1024")
+    monkeypatch.setenv("DIFY_AGENT_TRAJECTORY_MAX_EXPORT_BATCH_SIZE", "128")
+    monkeypatch.setenv("DIFY_AGENT_TRAJECTORY_SCHEDULE_DELAY_MS", "250")
+    monkeypatch.setenv("DIFY_AGENT_TRAJECTORY_EXPORT_TIMEOUT_MS", "1500")
+
+    settings = ServerSettings()
+
+    assert settings.trajectory_max_queue_size == 1024
+    assert settings.trajectory_max_export_batch_size == 128
+    assert settings.trajectory_schedule_delay_ms == 250
+    assert settings.trajectory_export_timeout_ms == 1500
+
+
+def test_server_settings_reads_trajectory_batch_processor_limits_from_dotenv(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+    (tmp_path / ".env").write_text(
+        "DIFY_AGENT_TRAJECTORY_MAX_QUEUE_SIZE=1024\n"
+        "DIFY_AGENT_TRAJECTORY_MAX_EXPORT_BATCH_SIZE=128\n"
+        "DIFY_AGENT_TRAJECTORY_SCHEDULE_DELAY_MS=250\n"
+        "DIFY_AGENT_TRAJECTORY_EXPORT_TIMEOUT_MS=1500\n"
+    )
+
+    settings = ServerSettings()
+
+    assert settings.trajectory_max_queue_size == 1024
+    assert settings.trajectory_max_export_batch_size == 128
+    assert settings.trajectory_schedule_delay_ms == 250
+    assert settings.trajectory_export_timeout_ms == 1500
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "trajectory_max_queue_size",
+        "trajectory_max_export_batch_size",
+        "trajectory_schedule_delay_ms",
+        "trajectory_export_timeout_ms",
+    ],
+)
+@pytest.mark.parametrize("bad_value", [0, -1])
+def test_server_settings_rejects_non_positive_trajectory_batch_processor_limits(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    field: str,
+    bad_value: int,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+
+    with pytest.raises(ValidationError, match=field):
+        _ = ServerSettings.model_validate({field: bad_value})
+
+
+def test_server_settings_rejects_trajectory_batch_size_above_queue_size(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+
+    with pytest.raises(ValidationError, match="must not exceed"):
+        _ = ServerSettings(trajectory_max_queue_size=1024, trajectory_max_export_batch_size=1025)
+
+
+def test_server_settings_accepts_equal_trajectory_batch_and_queue_size(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+
+    settings = ServerSettings(trajectory_max_queue_size=64, trajectory_max_export_batch_size=64)
+
+    assert settings.trajectory_max_queue_size == 64
+    assert settings.trajectory_max_export_batch_size == 64
+
+
+@pytest.mark.parametrize("mode", ["isolated", "shared"])
+def test_server_settings_reads_trajectory_trace_context_mode_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    mode: str,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+    monkeypatch.setenv("DIFY_AGENT_TRAJECTORY_TRACE_CONTEXT_MODE", mode)
+
+    assert ServerSettings().trajectory_trace_context_mode == mode
+
+
+def test_server_settings_reads_trajectory_trace_context_mode_from_dotenv(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+    (tmp_path / ".env").write_text("DIFY_AGENT_TRAJECTORY_TRACE_CONTEXT_MODE=shared\n")
+
+    assert ServerSettings().trajectory_trace_context_mode == "shared"
+
+
+@pytest.mark.parametrize("bad_mode", ["auto", "SHARED", ""])
+def test_server_settings_rejects_unknown_trajectory_trace_context_mode(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    bad_mode: str,
+) -> None:
+    _isolate_trajectory_env(monkeypatch, tmp_path)
+
+    with pytest.raises(ValidationError, match="trajectory_trace_context_mode"):
+        _ = ServerSettings.model_validate({"trajectory_trace_context_mode": bad_mode})

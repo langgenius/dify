@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import ClassVar
 
 import httpx
@@ -89,6 +91,7 @@ class FakeRunScheduler:
         stream_text_delta_flush_interval_seconds: float,
         stream_text_delta_max_chars: int,
         layer_providers: tuple[DifyAgentLayerProvider, ...],
+        agent_observability: object | None = None,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
@@ -99,6 +102,7 @@ class FakeRunScheduler:
         self.layer_providers = layer_providers
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
+        self.agent_observability = agent_observability
         self.shutdown_called = False
         self.created.append(self)
 
@@ -447,6 +451,79 @@ def test_create_dify_api_inner_http_client_uses_generic_outbound_httpx_construct
     assert client.limits.max_keepalive_connections == 3
     assert client.limits.keepalive_expiry == 6
     assert client.trust_env is False
+
+
+def test_create_app_lifecycle_owns_agent_observability_instance(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    events: list[str] = []
+    sentinel = object()
+
+    @asynccontextmanager
+    async def fake_agent_observability_context(_settings: ServerSettings) -> AsyncIterator[object]:
+        events.append("agent-observability-enter")
+        yield sentinel
+        events.append("agent-observability-exit")
+
+    async def recording_shutdown(self: FakeRunScheduler) -> None:
+        self.shutdown_called = True
+        events.append("scheduler-shutdown")
+
+    monkeypatch.setattr(app_module, "agent_observability_context", fake_agent_observability_context)
+    monkeypatch.setattr(FakeRunScheduler, "shutdown", recording_shutdown)
+    FakeRunScheduler.created.clear()
+
+    app = create_app(ServerSettings(redis_url="redis://example.invalid/0"))
+    with TestClient(app):
+        assert app.state.agent_observability is sentinel
+        assert FakeRunScheduler.created[0].agent_observability is sentinel
+        assert events == ["agent-observability-enter"]
+
+    assert events == ["agent-observability-enter", "scheduler-shutdown", "agent-observability-exit"]
+
+
+def test_create_app_defaults_agent_observability_to_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    FakeRunScheduler.created.clear()
+    settings = ServerSettings(redis_url="redis://example.invalid/0", trajectory_enabled=False)
+    created: list[ServerSettings] = []
+    real_context = app_module.agent_observability_context
+
+    def recording_context(settings: ServerSettings):
+        created.append(settings)
+        return real_context(settings)
+
+    monkeypatch.setattr(app_module, "agent_observability_context", recording_context)
+    app = create_app(settings)
+    with TestClient(app):
+        assert app.state.agent_observability is None
+        assert FakeRunScheduler.created[0].agent_observability is None
+
+    assert created == [settings]
+    assert app.state.platform_observability is not None
+
+
+def test_create_app_passes_settings_to_server_observability(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    captured: dict[str, object] = {}
+    sentinel = object()
+
+    def fake_configure(app, *, settings=None):
+        captured["app"] = app
+        captured["settings"] = settings
+        return sentinel
+
+    monkeypatch.setattr(app_module, "configure_server_observability", fake_configure)
+    settings = ServerSettings(
+        _env_file=None,
+        redis_url="redis://example.invalid/0",
+        trajectory_trace_context_mode="shared",
+    )
+
+    app = create_app(settings)
+
+    assert captured["app"] is app
+    assert captured["settings"] is settings
+    assert app.state.platform_observability is sentinel
 
 
 def test_server_settings_use_generic_outbound_http_args_for_shared_clients() -> None:
