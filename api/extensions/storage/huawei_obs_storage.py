@@ -14,12 +14,19 @@ class HuaweiObsStorage(BaseStorage):
         super().__init__()
 
         self.bucket_name = dify_config.HUAWEI_OBS_BUCKET_NAME
-        self.client = ObsClient(
-            access_key_id=dify_config.HUAWEI_OBS_ACCESS_KEY,
-            secret_access_key=dify_config.HUAWEI_OBS_SECRET_KEY,
-            server=dify_config.HUAWEI_OBS_SERVER,
-            path_style=dify_config.HUAWEI_OBS_PATH_STYLE,
-        )
+        if dify_config.HUAWEI_OBS_USE_OIDC:
+            self.client = ObsClient(
+                server=dify_config.HUAWEI_OBS_SERVER,
+                path_style=dify_config.HUAWEI_OBS_PATH_STYLE,
+                security_provider_policy="OIDC",
+            )
+        else:
+            self.client = ObsClient(
+                access_key_id=dify_config.HUAWEI_OBS_ACCESS_KEY,
+                secret_access_key=dify_config.HUAWEI_OBS_SECRET_KEY,
+                server=dify_config.HUAWEI_OBS_SERVER,
+                path_style=dify_config.HUAWEI_OBS_PATH_STYLE,
+            )
 
     @override
     def save(self, filename, data):

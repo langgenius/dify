@@ -31,3 +31,8 @@ class HuaweiCloudOBSStorageConfig(BaseSettings):
         description="Flag to indicate whether to use path-style URLs for OBS requests",
         default=False,
     )
+
+    HUAWEI_OBS_USE_OIDC: bool = Field(
+        description="Use the OBS SDK OIDC credential provider instead of static access keys",
+        default=False,
+    )
