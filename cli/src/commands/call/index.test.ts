@@ -69,12 +69,12 @@ it('refuses --only without --stream, exit 2, before any op request', async () =>
 it('warns once on stderr for a deprecated op and still runs it', async () => {
   const w = await world([
     'call',
-    'console_app.run',
+    'console_app.legacy_run',
     '--input',
     '{"app_id":"app-1","inputs":{},"query":"hi"}',
   ])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(w.io.errBuf().trim()).toBe('deprecated: console_app.run')
+  expect(w.io.errBuf().trim()).toBe('deprecated: console_app.legacy_run')
   expect(JSON.parse(w.io.outBuf())).toMatchObject({
     status: 'ended',
     text: { answer: 'echo: hi' },

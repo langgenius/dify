@@ -773,7 +773,7 @@
       "summary": "List apps in a workspace",
       "tags": ["console_app"]
     },
-    "console_app.run": {
+    "console_app.legacy_run": {
       "bind": {
         "app_id": "path",
         "attachments": "file",
@@ -907,7 +907,7 @@
       "internal": false,
       "kind": "sse",
       "method": "POST",
-      "path": "/openapi/v1/apps/{app_id}:run",
+      "path": "/openapi/v1/apps/{app_id}:legacy_run",
       "summary": "Deprecated: use console_app.<mode>.run for the app's mode",
       "tags": ["console_app"]
     },
@@ -1122,7 +1122,7 @@
               }
             ],
             "default": null,
-            "description": "Local files keyed by the form's file input name, same convention as console_app.run",
+            "description": "Local files keyed by the form's file input name, same convention as the run ops' `files`",
             "title": "Files"
           },
           "form_token": {

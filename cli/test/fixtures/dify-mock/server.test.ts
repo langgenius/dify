@@ -155,8 +155,8 @@ describe('dify-mock fixture server', () => {
     expect(body.info.id).toBe('app-1')
   })
 
-  it('POST /openapi/v1/apps/:id:run returns SSE stream for chat app', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1:run`, {
+  it('POST /openapi/v1/apps/:id:legacy_run returns SSE stream for chat app', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1:legacy_run`, {
       method: 'POST',
       headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: 'hi', inputs: {} }),
@@ -168,8 +168,8 @@ describe('dify-mock fixture server', () => {
     expect(text).toContain('"op":"console_app.chat.run"')
   })
 
-  it('POST /openapi/v1/apps/:id:run returns SSE stream for workflow app', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-2:run`, {
+  it('POST /openapi/v1/apps/:id:legacy_run returns SSE stream for workflow app', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-2:legacy_run`, {
       method: 'POST',
       headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
       body: JSON.stringify({ inputs: { x: 1 } }),

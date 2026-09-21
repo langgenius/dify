@@ -359,8 +359,8 @@ async function handleRun(
 }
 
 function recoverLegacyRunId(c: HonoContext): string {
-  // Hono drops the param adjacent to the `:run` literal; recover the app id from the path.
-  return c.req.path.replace(/^.*\/apps\//, '').replace(/:run$/, '')
+  // Hono drops the param adjacent to the `:legacy_run` literal; recover the app id from the path.
+  return c.req.path.replace(/^.*\/apps\//, '').replace(/:legacy_run$/, '')
 }
 
 export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
@@ -695,7 +695,8 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     )
   })
 
-  app.post('/openapi/v1/apps/:id:run', (c) =>
+  // A deprecated op the fixture catalogs keep so the deprecation notice stays tested.
+  app.post('/openapi/v1/apps/:id:legacy_run', (c) =>
     handleRun(c, recoverLegacyRunId(c), state, getScenario),
   )
   app.post('/openapi/v1/apps/:id/workflow:run', (c) =>

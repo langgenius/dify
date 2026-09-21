@@ -10,7 +10,7 @@ it('parses the real catalog and defaults examples to []', () => {
   expect(Object.keys(doc.ops).length).toBeGreaterThan(20)
   expect(doc.ops['console_app.workflow.run']?.kind).toBe('sse')
   expect(doc.ops['console_app.workflow.run']?.examples).toEqual([])
-  expect(doc.ops['console_app.run']?.deprecated).toBe(true)
+  expect(doc.ops['console_app.legacy_run']?.deprecated).toBe(true)
   expect(doc.ops['workspace.switch']?.internal).toBe(true)
 })
 
