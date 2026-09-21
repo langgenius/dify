@@ -409,6 +409,26 @@ def test_invalid_activation_configuration_cannot_create_ledger_scope(configured_
         assert result.value.status_code == 503
 
 
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("dify.usage_allocation_id", 42),
+        ("dify.usage_allocation_id", "invalid-uuid"),
+        ("dify.binding_id", 42),
+        ("dify.binding_id", "invalid-uuid"),
+    ],
+)
+def test_invalid_owner_metadata_does_not_discard_metered_usage(
+    key: str, value: JsonValue, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    assert ingest(provider_event(metadata={key: value}))["accepted"] == 1
+    row = execution(sqlite_session_factory)
+    assert row.quality == "metered"
+    assert row.metered_duration_ms == 12345
+    assert row.tenant_id is None
+    assert row.attribution_status == "unresolved"
+
+
 @pytest.mark.parametrize("change", ["sandbox", "started_at", "resources"])
 def test_execution_identity_and_resource_conflicts_preserve_original_usage(
     change: str, sqlite_session_factory: sessionmaker[Session]

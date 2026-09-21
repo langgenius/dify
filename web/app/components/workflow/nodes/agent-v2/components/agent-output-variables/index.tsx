@@ -7,9 +7,9 @@ import type {
   EditingState,
 } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import OutputVars from '../../../_base/components/output-vars'
 import { AGENT_V2_RESERVED_OUTPUT_NAMES } from '../../output-variables'
 import { OutputEditCard } from './edit-card'
@@ -312,7 +312,7 @@ export function AgentOutputVariables({
             )
           })}
           <div className="py-1">
-            <Divider type="horizontal" className="h-px bg-divider-subtle" />
+            <Separator decorative orientation="horizontal" className="my-2 bg-divider-subtle" />
           </div>
           {editingState && editingState.outputIndex == null ? (
             <OutputEditCard

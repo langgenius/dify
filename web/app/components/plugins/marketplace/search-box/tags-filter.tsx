@@ -18,7 +18,6 @@ type TagsFilterProps = {
 }
 function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilterProps) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const { tags: options, tagsMap } = useTags()
   const filteredOptions = options.filter((option) =>
@@ -38,7 +37,7 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       {usedInMarketplace && (
         <MarketplaceTrigger
           selectedTagsLength={selectedTagsLength}

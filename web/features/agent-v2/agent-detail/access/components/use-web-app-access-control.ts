@@ -35,7 +35,7 @@ export function useWebAppAccessControl(
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.webapp_auth.enabled,
   })
-  const { canReleaseAndVersion: canManage } = getAgentACLCapabilities(agent?.permission_keys)
+  const { canManageAccessPoint: canManage } = getAgentACLCapabilities(agent?.permission_keys)
   const hasAccessControl = Boolean(webAppAuthEnabled && appId && accessMode)
   const accessPermission = useWebAppAccessPermission(agent)
   const { data: accessSubjects } = useAppWhiteListSubjects(

@@ -848,8 +848,12 @@ def test_import_succeeds_when_post_commit_initialization_fails(
 
 
 @pytest.mark.parametrize("shared_icon", [False, True])
+@pytest.mark.parametrize("duplicate_name", [False, True])
 def test_import_restores_app_and_agent_image_icons(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session], shared_icon: bool
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    shared_icon: bool,
+    duplicate_name: bool,
 ) -> None:
     with zipfile.ZipFile(io.BytesIO(_package())) as archive:
         members = {name: archive.read(name) for name in archive.namelist()}
@@ -875,9 +879,10 @@ def test_import_restores_app_and_agent_image_icons(
     members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
     storage = _MemoryStorage()
     monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
-    result = RosterAgentPackageImporter(storage_backend=storage).import_package(
-        source=io.BytesIO(_zip(members)), tenant_id="destination", account=_account()
-    )
+    importer = RosterAgentPackageImporter(storage_backend=storage)
+    if duplicate_name:
+        importer.import_package(source=io.BytesIO(_zip(members)), tenant_id="destination", account=_account())
+    result = importer.import_package(source=io.BytesIO(_zip(members)), tenant_id="destination", account=_account())
     with sqlite_session_factory() as session:
         imported_app = session.get(App, result.app_id)
         agent = session.get(Agent, result.agent_id)
@@ -890,4 +895,5 @@ def test_import_restores_app_and_agent_image_icons(
             assert upload.tenant_id == "destination"
             assert upload.created_by == _account().id
             assert storage.files[upload.key] == members[f"{original_id}.png"]
+        assert imported_app.name == agent.name == ("Imported Agent import" if duplicate_name else "Imported Agent")
         assert (imported_app.icon == agent.icon) is shared_icon

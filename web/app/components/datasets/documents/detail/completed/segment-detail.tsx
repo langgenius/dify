@@ -1,11 +1,11 @@
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import Divider from '@/app/components/base/divider'
 import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -159,7 +159,7 @@ export function SegmentDetail({
                 loading={loading}
                 showRegenerationButton={runtimeMode === 'general'}
               />
-              <Divider type="vertical" className="mr-2 ml-4 h-3.5 bg-divider-regular" />
+              <Separator orientation="vertical" className="mr-2 ml-4 h-3.5" />
             </>
           )}
           <button

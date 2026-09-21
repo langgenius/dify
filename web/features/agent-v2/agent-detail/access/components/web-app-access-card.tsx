@@ -51,9 +51,7 @@ export function WebAppAccessCard({
     site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
   const webAppUrl = getAgentWebAppUrl(agent)
   const accessReady = Boolean(agent?.access_ready)
-  const { canManageAccessPoint, canReleaseAndVersion } = getAgentACLCapabilities(
-    agent?.permission_keys,
-  )
+  const { canManageAccessPoint } = getAgentACLCapabilities(agent?.permission_keys)
   const canManageWebApp = canManageAccessPoint && Boolean(appId && accessReady)
   const embeddedConfig =
     appId && accessToken
@@ -362,7 +360,7 @@ export function WebAppAccessCard({
           webAppRoute="agent"
         />
       )}
-      {canReleaseAndVersion && showAccessControl && accessControl.state === 'ready' && (
+      {canManageAccessPoint && showAccessControl && accessControl.state === 'ready' && (
         <AccessControl
           app={accessControl.app}
           onClose={() => setShowAccessControl(false)}

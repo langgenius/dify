@@ -13,9 +13,9 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import {
   MultimodalRetrievalGuidance,
@@ -220,7 +220,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
         </div>
       )}
 
-      <Divider className="my-5" />
+      <Separator className="my-5 h-[0.5px]" />
 
       {/* Retrieval Method Config */}
       <div>
