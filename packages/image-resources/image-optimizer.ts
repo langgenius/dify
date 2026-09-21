@@ -5,6 +5,13 @@ import { DOMParser, XMLSerializer } from '@xmldom/xmldom'
 import sharp from 'sharp'
 import { optimize } from 'svgo'
 
+type Optimization = { data: Buffer; method: string; skipped: boolean }
+const skipped = (data: Buffer, reason: string): Optimization => ({
+  data,
+  method: `skipped: ${reason}`,
+  skipped: true,
+})
+
 const pngSignature = Buffer.from('89504e470d0a1a0a', 'hex')
 const xmlNamespace = 'http://www.w3.org/XML/1998/namespace'
 const xlinkNamespace = 'http://www.w3.org/1999/xlink'
@@ -49,47 +56,49 @@ function pngChunk(type: string, data: Buffer) {
   return chunk
 }
 
-export async function compressRaster(data: Buffer) {
-  if (data.subarray(0, 8).equals(pngSignature)) {
-    const chunks = pngChunks(data)
-    if (chunks.some((chunk) => chunk.type === 'acTL'))
-      return { data, method: 'skipped: animated/multi-frame image' }
-    if (chunks[0]!.data[8] === 16)
-      return { data, method: 'skipped: 16-bit PNG (preserve source precision)' }
-    // Decode for validation only. Never re-encode pixels or colour metadata.
-    const input = sharp(data, { failOn: 'warning' })
-    const metadata = await input.metadata()
-    await input.stats()
-    const stream = Buffer.concat(
-      chunks.filter((chunk) => chunk.type === 'IDAT').map((chunk) => chunk.data),
-    )
-    const raw = inflateSync(stream, {
-      maxOutputLength: metadata.width * metadata.height * 8 + 1024,
-    })
-    const compressed = deflateSync(raw, { level: 9 })
-    let inserted = false
-    const output = chunks.flatMap((chunk) => {
-      if (chunk.type !== 'IDAT') return [chunk.bytes]
-      if (inserted) return []
-      inserted = true
-      return [pngChunk('IDAT', compressed)]
-    })
-    return {
-      data: Buffer.concat([pngSignature, ...output]),
-      method: 'PNG lossless IDAT recompression',
-    }
+async function compressPng(data: Buffer): Promise<Optimization> {
+  const chunks = pngChunks(data)
+  if (chunks.some((chunk) => chunk.type === 'acTL'))
+    return skipped(data, 'animated/multi-frame image')
+  if (chunks[0]!.data[8] === 16) return skipped(data, '16-bit PNG (preserve source precision)')
+  // Decode for validation only. Never re-encode pixels or colour metadata.
+  const input = sharp(data, { failOn: 'warning' })
+  const metadata = await input.metadata()
+  await input.stats()
+  const stream = Buffer.concat(
+    chunks.filter((chunk) => chunk.type === 'IDAT').map((chunk) => chunk.data),
+  )
+  const raw = inflateSync(stream, {
+    maxOutputLength: metadata.width * metadata.height * 8 + 1024,
+  })
+  const compressed = deflateSync(raw, { level: 9 })
+  let inserted = false
+  const output = chunks.flatMap((chunk) => {
+    if (chunk.type !== 'IDAT') return [chunk.bytes]
+    if (inserted) return []
+    inserted = true
+    return [pngChunk('IDAT', compressed)]
+  })
+  return {
+    data: Buffer.concat([pngSignature, ...output]),
+    method: 'PNG lossless IDAT recompression',
+    skipped: false,
   }
+}
+
+export async function compressRaster(data: Buffer): Promise<Optimization> {
+  if (data.subarray(0, 8).equals(pngSignature)) return compressPng(data)
   // libvips does not decode these legacy formats; leave them explicitly skipped.
   if (
     data.subarray(0, 2).toString() === 'BM' ||
     data.subarray(0, 4).equals(Buffer.from([0, 0, 1, 0]))
   )
-    return { data, method: 'skipped: no optimizer for BMP/ICO' }
+    return skipped(data, 'no optimizer for BMP/ICO')
   const input = sharp(data, { failOn: 'warning' })
   const metadata = await input.metadata()
-  if ((metadata.pages ?? 1) !== 1) return { data, method: 'skipped: animated/multi-frame image' }
+  if ((metadata.pages ?? 1) !== 1) return skipped(data, 'animated/multi-frame image')
   if (!['jpeg', 'webp'].includes(metadata.format))
-    return { data, method: `skipped: no optimizer for ${metadata.format}` }
+    return skipped(data, `no optimizer for ${metadata.format}`)
   // Preserve ICC/EXIF (including orientation), XMP, and density. Do not auto-rotate.
   let pipeline = input.keepMetadata()
   if (metadata.density) pipeline = pipeline.withDensity(metadata.density)
@@ -100,6 +109,7 @@ export async function compressRaster(data: Buffer) {
   return {
     data: candidate,
     method: `${metadata.format.toUpperCase()} quality 90 (lossy; visual review required)`,
+    skipped: false,
   }
 }
 
@@ -135,7 +145,7 @@ function decodePayload(header: string, payload: string) {
   return Buffer.from(text, 'base64')
 }
 
-export async function compressSvg(data: Buffer) {
+export async function compressSvg(data: Buffer): Promise<Optimization> {
   const document = parseSvg(data)
   const elements = Array.from(document.getElementsByTagName('*'))
   // Guard before SVGO parsing: its whitespace trimming is not plugin-controlled.
@@ -146,10 +156,7 @@ export async function compressSvg(data: Buffer) {
         element.getAttributeNS(xmlNamespace, 'space') === 'preserve',
     )
   ) {
-    return {
-      data,
-      method: 'skipped: SVG contains whitespace-sensitive content; preserve original bytes',
-    }
+    return skipped(data, 'SVG contains whitespace-sensitive content; preserve original bytes')
   }
   const methods = ['SVGO conservative optimization']
   for (const element of elements) {
@@ -167,7 +174,7 @@ export async function compressSvg(data: Buffer) {
       continue
     const original = decodePayload(header, attribute.value.slice(comma + 1))
     const candidate = await compressRaster(original)
-    if (candidate.method.startsWith('skipped:')) methods.push(`embedded ${candidate.method}`)
+    if (candidate.skipped) methods.push(`embedded ${candidate.method}`)
     if (candidate.data.length < original.length) {
       // Attribute updates handle XML entities and normalized Base64 line breaks.
       attribute.value = `${header.split(';')[0]};base64,${candidate.data.toString('base64')}`
@@ -178,5 +185,6 @@ export async function compressSvg(data: Buffer) {
   return {
     data: Buffer.from(optimize(serialized, svgConfig).data),
     method: [...new Set(methods)].join('; '),
+    skipped: false,
   }
 }

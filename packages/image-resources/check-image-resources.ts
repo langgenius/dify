@@ -10,7 +10,8 @@ import { compressRaster, compressSvg } from './image-optimizer.ts'
 
 type IgnoreRule = { pattern: string; reason: string }
 type Status = 'passed' | 'skipped' | 'error' | 'ignored' | 'fixed'
-type Inspection = { status: Status; message: string; candidate?: Buffer }
+type Report = { status: Status; message: string }
+type Inspection = Report & { candidate?: Buffer }
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -59,7 +60,7 @@ export async function loadIgnoreRules(root = ROOT): Promise<IgnoreRule[]> {
   )
   if (!Array.isArray(rules))
     throw new Error('ignore.json must contain an array of pattern/reason objects')
-  for (const rule of rules as unknown[]) {
+  return (rules as unknown[]).map((rule): IgnoreRule => {
     if (
       !rule ||
       typeof rule !== 'object' ||
@@ -81,8 +82,8 @@ export async function loadIgnoreRules(root = ROOT): Promise<IgnoreRule[]> {
       rule.pattern.split('/').some((part) => ['.', '..'].includes(part))
     )
       throw new Error('Ignore patterns must be repository-relative paths using forward slashes')
-  }
-  return rules as IgnoreRule[]
+    return { pattern: rule.pattern, reason: rule.reason }
+  })
 }
 
 export function ignoredReason(name: string, rules: IgnoreRule[]) {
@@ -118,14 +119,14 @@ export async function inspectImage(name: string, root = ROOT): Promise<Inspectio
     const trial = await (path.extname(name).toLowerCase() === '.svg'
       ? compressSvg(data)
       : compressRaster(data))
-    if (trial.method.startsWith('skipped:')) return { status: 'skipped', message: trial.method }
+    if (trial.skipped) return { status: 'skipped', message: trial.method }
     const after = Math.min(data.length, trial.data.length)
     const savings = (100 * (data.length - after)) / data.length
     const message = `${data.length.toLocaleString('en-US')} B → ${after.toLocaleString('en-US')} B (${savings.toFixed(1)}% smaller); ${trial.method}`
     if (exceedsThreshold(data.length, after))
       return {
         status: 'error',
-        message: `${message}. Review the candidate and optimize this image before merging.`,
+        message,
         candidate: trial.data,
       }
     return { status: 'passed', message }
@@ -179,6 +180,43 @@ async function replaceImage(filename: string, candidate: Buffer) {
   }
 }
 
+async function processImage(
+  name: string,
+  root: string,
+  fix: boolean,
+  outputDir?: string,
+): Promise<Report> {
+  const { candidate, status, message } = await inspectImage(name, root)
+  if (!candidate) return { status, message }
+  if (fix) {
+    try {
+      await replaceImage(path.join(root, name), candidate)
+      return {
+        status: 'fixed',
+        message: `${message}. Applied candidate. Review the image in its rendered context before committing.`,
+      }
+    } catch (error) {
+      return { status: 'error', message: `Unable to write optimized image: ${errorMessage(error)}` }
+    }
+  }
+  const reviewMessage = `${message}. Review the candidate and optimize this image before merging.`
+  if (outputDir) {
+    try {
+      const output = await resolveDestination(path.join(outputDir, name))
+      if (inside(await fs.realpath(root), output))
+        throw new Error('Candidate output must be outside the repository')
+      await fs.mkdir(path.dirname(output), { recursive: true })
+      await fs.writeFile(output, candidate)
+    } catch (error) {
+      return {
+        status: 'error',
+        message: `${reviewMessage}. Unable to export candidate: ${errorMessage(error)}`,
+      }
+    }
+  }
+  return { status, message: reviewMessage }
+}
+
 /* oxlint-disable no-console -- CLI output includes reports and GitHub Actions annotations. */
 export async function main(args = process.argv.slice(2), root = ROOT) {
   let options
@@ -219,35 +257,12 @@ export async function main(args = process.argv.slice(2), root = ROOT) {
     console.error(errorMessage(error))
     return 2
   }
-  const results: (Inspection & { name: string })[] = []
+  const results: (Report & { name: string })[] = []
   for (const name of imagePaths(options.base, root)) {
     const reason = ignoredReason(name, rules)
-    const result: Inspection = reason
+    const result: Report = reason
       ? { status: 'ignored', message: reason }
-      : await inspectImage(name, root)
-    if (result.candidate && options.fix) {
-      try {
-        await replaceImage(path.join(root, name), result.candidate)
-        result.status = 'fixed'
-        result.message = result.message.replace(
-          'Review the candidate and optimize this image before merging.',
-          'Applied candidate. Review the image in its rendered context before committing.',
-        )
-      } catch (error) {
-        result.message = `Unable to write optimized image: ${errorMessage(error)}`
-      }
-    }
-    if (result.candidate && outputDir) {
-      try {
-        const output = await resolveDestination(path.join(outputDir, name))
-        if (inside(await fs.realpath(root), output))
-          throw new Error('Candidate output must be outside the repository')
-        await fs.mkdir(path.dirname(output), { recursive: true })
-        await fs.writeFile(output, result.candidate)
-      } catch (error) {
-        result.message += `. Unable to export candidate: ${errorMessage(error)}`
-      }
-    }
+      : await processImage(name, root, options.fix ?? false, outputDir)
     results.push({ name, ...result })
     console.log(`${result.status}: ${JSON.stringify(name)}: ${JSON.stringify(result.message)}`)
     if (result.status === 'error' && process.env.GITHUB_ACTIONS === 'true')
