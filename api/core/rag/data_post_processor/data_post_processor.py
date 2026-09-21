@@ -71,7 +71,6 @@ class DataPostProcessor:
 
         return documents
 
-    @trace_span()
     def _get_rerank_runner(
         self,
         reranking_mode: str,

@@ -217,7 +217,6 @@ class PluginService:
         return cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zstandard.compress(payload, level=1)
 
     @classmethod
-    @trace_span()
     def _decode_plugin_model_providers_cache_payload(cls, payload: bytes | bytearray | str) -> bytes | bytearray | str:
         if isinstance(payload, str):
             return payload
@@ -237,7 +236,6 @@ class PluginService:
         return len(payload_bytes), sha256(payload_bytes).digest()
 
     @classmethod
-    @trace_span()
     def _get_parsed_plugin_model_providers_from_local_cache(
         cls, payload: bytes | bytearray | str
     ) -> tuple[PluginModelProviderDeclaration, ...] | None:
@@ -246,11 +244,6 @@ class PluginService:
             providers = cls._parsed_plugin_model_providers_cache.pop(cache_key, None)
             if providers is not None:
                 cls._parsed_plugin_model_providers_cache[cache_key] = providers
-            cache_entries = len(cls._parsed_plugin_model_providers_cache)
-
-        span = get_current_span()
-        span.set_attribute("dify.plugin.model_providers.local_cache.hit", providers is not None)
-        span.set_attribute("dify.plugin.model_providers.local_cache.entries", cache_entries)
         return providers
 
     @classmethod
@@ -286,6 +279,7 @@ class PluginService:
         cls, payload: bytes | bytearray | str
     ) -> tuple[PluginModelProviderDeclaration, ...]:
         providers = cls._get_parsed_plugin_model_providers_from_local_cache(payload)
+        get_current_span().set_attribute("dify.plugin.model_providers.local_cache.hit", providers is not None)
         if providers is not None:
             return providers
 
@@ -293,15 +287,7 @@ class PluginService:
         cls._store_parsed_plugin_model_providers_in_local_cache(payload, providers)
         return providers
 
-    @staticmethod
-    @trace_span()
-    def _read_plugin_model_providers_cache_entries(
-        cache_keys: Sequence[str],
-    ) -> list[bytes | bytearray | str | None]:
-        return redis_client.mget(cache_keys)
-
     @classmethod
-    @trace_span()
     def _load_plugin_model_providers_generation(cls, tenant_id: str) -> int | None:
         cache_key = cls._get_plugin_model_providers_generation_cache_key(tenant_id)
         try:
@@ -346,7 +332,7 @@ class PluginService:
         cache_keys = [cls._get_plugin_model_providers_cache_key(tenant_id, generation)]
 
         try:
-            cached_provider_entries = cls._read_plugin_model_providers_cache_entries(cache_keys)
+            cached_provider_entries = redis_client.mget(cache_keys)
         except (LockError, RedisError, RuntimeError):
             span.set_attribute("dify.plugin.model_providers.cache.available", False)
             logger.warning("Failed to read cached plugin model providers for tenant %s.", tenant_id, exc_info=True)
@@ -592,7 +578,6 @@ class PluginService:
         )
 
     @classmethod
-    @trace_span()
     def _fetch_and_cache_plugin_model_providers(
         cls, tenant_id: str, client: PluginModelClient | None, *, refresh_generation: int | None
     ) -> tuple[PluginModelProviderDeclaration, ...]:

@@ -849,7 +849,6 @@ class ModelManager:
         self._request_metadata = dict(request_metadata) if request_metadata else None
 
     @classmethod
-    @trace_span()
     def for_tenant(
         cls,
         tenant_id: str,

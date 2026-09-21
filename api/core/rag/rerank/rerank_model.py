@@ -56,13 +56,11 @@ class RerankModelRunner(BaseRerankRunner):
 
         return self._format_rerank_documents(rerank_result, unique_documents, score_threshold, top_n)
 
-    @trace_span()
     def _check_model_support_vision(self) -> bool:
         """Check capabilities on the model instance already resolved for this run."""
         model_schema = self.rerank_model_instance.get_model_schema()
         return ModelFeature.VISION in (model_schema.features or [])
 
-    @trace_span()
     def _format_rerank_documents(
         self,
         rerank_result: RerankResult,

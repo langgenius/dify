@@ -136,7 +136,6 @@ class Vector:
         self._vector_processor = self._init_vector(session=session)
 
     @staticmethod
-    @trace_span()
     def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
         vector_type = dify_config.VECTOR_STORE
 
@@ -163,7 +162,6 @@ class Vector:
         return self._create_vector_processor(vector_factory_cls)
 
     @staticmethod
-    @trace_span()
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
         return get_vector_factory_class(vector_type)
 
