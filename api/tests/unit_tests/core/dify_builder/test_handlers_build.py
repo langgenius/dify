@@ -2256,3 +2256,78 @@ def test_breaker_restarts_when_the_engine_failure_actually_changes():
     _note_repair_error(fc, _failed_run("node3", "Invalid actual value type: number"))
     assert fc.repair_attempts == 0
     assert _repair_is_repeating(fc) is False
+
+
+# --- a first build that applies nothing must not claim success --------------
+#
+# Found live 2026-09-21: starting a NEW Build session on an app whose draft
+# already holds a previous build's graph silently did nothing and still
+# reported "graph built". _already_present matches a create_node by node id
+# ALONE, and the generator always emits node1, node2, ... -- so a new plan
+# whose node2 is a parameter-extractor was filtered out against an existing
+# node2 that is an llm. to_apply became empty, apply_repair([]) no-oped, and
+# change_set fell back to "graph built" over an untouched canvas.
+#
+# The id filter itself is deliberate and must stay: it is what makes a
+# loop-back re-approve (continue_adjusting / revert) idempotent instead of
+# raising on a colliding id. Only the FIRST build of a session is affected,
+# which is exactly what this guard keys on.
+
+
+def _graph_with(*nodes) -> dict:
+    return {"nodes": [{"id": nid, "data": {"type": ntype}} for nid, ntype in nodes], "edges": []}
+
+
+def _stub_agent_building(intents):
+    from tests.unit_tests.core.dify_builder.fakes import StubAgent
+
+    class _Agent(StubAgent):
+        def build_nodes(self, _plan_items, _resource_ids=None):
+            return BuildNodesResult(intents=list(intents))
+
+    return _Agent()
+
+
+def _create(node_id: str, node_type: str):
+    from core.dify_builder.models import MutationIntent
+
+    return MutationIntent(op="create_node", args={"node_id": node_id, "node_type": node_type, "config": {}})
+
+
+def test_first_build_that_applies_nothing_reports_honestly():
+    """A new session over an app that already holds node1/node2 from an earlier
+    build must NOT say "graph built" while leaving the canvas untouched."""
+    from core.dify_builder.handlers_build import handle_plan_approval
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env(agent=_stub_agent_building([_create("node1", "start"), _create("node2", "llm")]))
+    env.dify = FakeBuildDifyPort()
+    # the app already carries a PREVIOUS build under the same generated ids
+    env.dify.graph = _graph_with(("node1", "start"), ("node2", "parameter-extractor"))
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
+    fc = DifyBuilderContext(plan_items=["x"])  # built_node_ids empty -> FIRST build
+
+    result = handle_plan_approval(env, Turn(action=Action(kind="approve_repair"), actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_PLAN_APPROVAL  # not advanced to execution
+    error = next(i for i in result.items if i.kind == "error")
+    assert "already" in error.payload["body"].lower()
+    assert not any(i.kind == "change_set" for i in result.items)  # no "graph built" claim
+
+
+def test_loop_back_reapprove_is_still_idempotent():
+    """The guard must NOT fire on the loop-back it exists to protect: a
+    re-approve after continue_adjusting has built_node_ids set, so applying
+    nothing is correct and must still advance."""
+    from core.dify_builder.handlers_build import handle_plan_approval
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env(agent=_stub_agent_building([_create("node1", "start"), _create("node2", "llm")]))
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = _graph_with(("node1", "start"), ("node2", "llm"))
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
+    fc = DifyBuilderContext(plan_items=["x"], built_node_ids=["node1", "node2"])  # THIS session built them
+
+    result = handle_plan_approval(env, Turn(action=Action(kind="approve_repair"), actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_EXECUTION

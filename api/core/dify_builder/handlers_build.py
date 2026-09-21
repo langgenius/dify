@@ -507,6 +507,52 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
     to_apply = delete_intents + [intent for intent in intents if not _already_present(intent)]
 
+    # A FIRST build of this session that would apply no node at all has not
+    # built anything. The draft already carries a PREVIOUS graph under the same
+    # generated ids -- the generator always emits node1, node2, ... -- so
+    # _already_present filtered every create against nodes this session never
+    # built, matching on id alone (an existing node2:llm swallows a planned
+    # node2:parameter-extractor). Reporting "graph built" here would claim a
+    # canvas the user never got: the empty-build false-success failure, one
+    # level further in than the zero-create-intents guard above.
+    #
+    # The loop-back re-approve this filter exists for is the opposite case and
+    # must still no-op silently -- there ``built_node_ids`` names the nodes
+    # this session built, so it never reaches this branch.
+    if not fc.built_node_ids and not any(intent.op == "create_node" for intent in to_apply):
+        progress.fail_step("build-validate-graph")
+        execution = progress.finish(status="error")
+        error_items = append_card(
+            fc,
+            ErrorCard(
+                title="Nothing was applied to the canvas",
+                body=(
+                    "This app's canvas already contains nodes with the same ids as the ones this "
+                    "plan would create, so applying it would have changed nothing and I've stopped "
+                    "rather than report a build that did not happen. Clear the canvas (or start "
+                    "from a new app) and approve again."
+                ),
+            ),
+        )
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                execution=execution,
+                reply_text=(
+                    "I didn't apply anything: the canvas already has nodes with these ids. "
+                    "Clear it or start from a new app, then approve again."
+                ),
+                cards=["error"],
+            ),
+        )
+        return StepResult(
+            next=PcState.BUILD_PLAN_APPROVAL,
+            context=fc,
+            items=[*error_items, *turn_items],
+        )
+
     progress.activate("build-apply-graph")
     result = env.dify.apply_repair(
         s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
