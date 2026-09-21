@@ -10,7 +10,9 @@ import { RETRIEVE_METHOD } from '@/types/app'
  * model is displayed in the UI. In Hybrid Search a chosen rerank model is exactly what
  * `isReRankModelSelected` already validates, so derive the flag from the selection on save.
  */
-export const normalizeRetrievalConfigForSave = (retrievalConfig: RetrievalConfig): RetrievalConfig => {
+export const normalizeRetrievalConfigForSave = (
+  retrievalConfig: RetrievalConfig,
+): RetrievalConfig => {
   if (
     retrievalConfig.search_method === RETRIEVE_METHOD.hybrid &&
     retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel &&
