@@ -5,11 +5,13 @@ import io
 import os
 import random
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
+import zlib
 from pathlib import Path
 
 import check_image_resources as checker
@@ -22,6 +24,18 @@ def png(*, optimized: bool = False) -> bytes:
     output = io.BytesIO()
     image.save(output, format="PNG", compress_level=9 if optimized else 0)
     return output.getvalue()
+
+
+def png16(color_type: int) -> bytes:
+    def chunk(kind: bytes, payload: bytes) -> bytes:
+        return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload))
+
+    channels = {0: 1, 2: 3, 4: 2, 6: 4}[color_type]
+    header = struct.pack(">IIBBBBB", 80, 80, 16, color_type, 0, 0, 0)
+    pixels = (b"\0" + b"\x12\x34" * channels * 80) * 80
+    return (
+        b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(pixels, 0)) + chunk(b"IEND", b"")
+    )
 
 
 def svg(data: bytes, href: str = "xlink:href") -> bytes:
@@ -93,6 +107,49 @@ class ImageOptimizationTests(unittest.TestCase):
             image = root.find(".//{http://www.w3.org/2000/svg}image")
             self.assertEqual((image.attrib["width"], image.attrib["height"]), ("80", "80"))
 
+    def test_16_bit_pngs_are_skipped_and_embedded_payloads_preserved(self):
+        for color_type in [0, 2, 4, 6]:
+            with self.subTest(color_type=color_type):
+                original = png16(color_type)
+                candidate, method = checker.compress_raster(original)
+                self.assertEqual(candidate, original)
+                self.assertIn("skipped: 16-bit PNG", method)
+                self.write("web/public/high-depth.png", original)
+                status, _, candidate = checker.inspect_image("web/public/high-depth.png", self.root)
+                self.assertEqual(status, "skipped")
+                self.assertIsNone(candidate)
+                candidate, method = checker.compress_svg(svg(original))
+                self.assertIn("embedded skipped: 16-bit PNG", method)
+                element = ET.fromstring(candidate).find(".//{http://www.w3.org/2000/svg}image")
+                href = element.get("href", element.get("{http://www.w3.org/1999/xlink}href"))
+                self.assertEqual(base64.b64decode(href.split(",", 1)[1]), original)
+
+    def test_embedded_base64_whitespace_and_xml_entities_are_optimized(self):
+        original = png()
+        encoded = base64.b64encode(original).decode()
+        payloads = [
+            "\n".join(encoded[i : i + 64] for i in range(0, len(encoded), 64)),
+            "\r\n\t".join(encoded[i : i + 64] for i in range(0, len(encoded), 64)),
+            "&#10;".join(encoded[i : i + 64] for i in range(0, len(encoded), 64)),
+            "&#105;" + encoded[1:],
+        ]
+        for href_name in ["href", "xlink:href"]:
+            for payload in payloads:
+                with self.subTest(href=href_name, payload_prefix=payload[:80]):
+                    source = svg(original, href_name).replace(encoded.encode(), payload.encode())
+                    self.write("web/public/wrapped.svg", source)
+                    status, message, candidate = checker.inspect_image("web/public/wrapped.svg", self.root)
+                    self.assertEqual(status, "error")
+                    self.assertIn("embedded PNG", message)
+                    element = ET.fromstring(candidate).find(".//{http://www.w3.org/2000/svg}image")
+                    href = element.get("href", element.get("{http://www.w3.org/1999/xlink}href"))
+                    compressed = base64.b64decode(href.split(",", 1)[1])
+                    self.assertLess(len(compressed), len(original) / 4)
+                    with Image.open(io.BytesIO(compressed)) as after, Image.open(io.BytesIO(original)) as before:
+                        self.assertEqual(after.tobytes(), before.tobytes())
+                    self.write("web/public/wrapped.svg", candidate)
+                    self.assertEqual(checker.inspect_image("web/public/wrapped.svg", self.root)[0], "passed")
+
     def test_svg_external_raster_reference_is_not_fetched_or_embedded(self):
         data = b'<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.invalid/image.png"/></svg>'
         result, _ = checker.compress_svg(data)
@@ -158,6 +215,7 @@ class ImageOptimizationTests(unittest.TestCase):
             "web/public/fix.svg": svg(png()),
             "web/public/passed.png": png(optimized=True),
             "web/public/broken.png": b"invalid image",
+            "web/public/high-depth.png": png16(6),
         }
         for name, data in originals.items():
             self.write(name, data)
@@ -173,7 +231,7 @@ class ImageOptimizationTests(unittest.TestCase):
         for name in ["web/public/fix.png", "web/public/fix.svg"]:
             self.assertLess((self.root / name).stat().st_size, len(originals[name]))
             self.assertEqual(checker.inspect_image(name, self.root)[0], "passed")
-        for name in ["web/public/passed.png", "web/public/broken.png"]:
+        for name in ["web/public/passed.png", "web/public/broken.png", "web/public/high-depth.png"]:
             self.assertEqual((self.root / name).read_bytes(), originals[name])
         self.run_git("rm", "-f", "web/public/broken.png")
         fixed = {name: (self.root / name).read_bytes() for name in originals if "broken" not in name}

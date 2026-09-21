@@ -8,9 +8,10 @@ import html
 import io
 import os
 import subprocess
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import unquote_to_bytes
+from xml.dom import minidom
+from xml.parsers.expat import ExpatError
 
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
@@ -45,6 +46,9 @@ def compress_raster(data: bytes) -> tuple[bytes, str]:
             return data, "skipped: animated/multi-frame image"
         if image.format not in {"PNG", "JPEG", "WEBP"}:
             return data, f"skipped: no optimizer for {image.format}"
+        # Read the source IHDR: Pillow exposes 16-bit RGB/RGBA as 8-bit modes.
+        if image.format == "PNG" and data[24] == 16:
+            return data, "skipped: 16-bit PNG (preserve source precision)"
         options = {key: image.info[key] for key in ("icc_profile", "exif", "dpi") if key in image.info}
         output = io.BytesIO()
         if image.format == "PNG":
@@ -69,15 +73,20 @@ def compress_raster(data: bytes) -> tuple[bytes, str]:
 
 
 def compress_svg(data: bytes) -> tuple[bytes, str]:
-    root = ET.fromstring(data)
-    if root.tag.rsplit("}", 1)[-1] != "svg":
+    document = minidom.parseString(data)
+    root = document.documentElement
+    if root.localName != "svg":
         raise ValueError("Expected an SVG root element")
-    source = data.decode("utf-8")
     methods = ["Scour SVG optimization"]
-    for element in root.iter():
-        if element.tag.rsplit("}", 1)[-1] != "image":
+    for element in root.getElementsByTagName("*"):
+        if element.localName != "image":
             continue
-        href = element.get("href", element.get("{http://www.w3.org/1999/xlink}href", ""))
+        attribute = element.getAttributeNode("href") or element.getAttributeNodeNS(
+            "http://www.w3.org/1999/xlink", "href"
+        )
+        if attribute is None:
+            continue
+        href = attribute.value
         header, separator, payload = href.partition(",")
         if not separator or not header.lower().startswith("data:image/"):
             continue
@@ -87,13 +96,15 @@ def compress_svg(data: bytes) -> tuple[bytes, str]:
         if ";base64" in header.lower():
             raw = base64.b64decode(b"".join(raw.split()), validate=True)
         candidate, method = compress_raster(raw)
+        if method.startswith("skipped:"):
+            methods.append(f"embedded {method}")
         if len(candidate) < len(raw):
-            # Preserve the original SVG serialization and all image dimensions/transforms.
-            replacement = header.split(";", 1)[0] + ";base64," + base64.b64encode(candidate).decode()
-            source = source.replace(href, replacement)
+            # Update the parsed attribute, including normalized whitespace/entities.
+            # DOM serialization retains namespace prefixes used by SVG/CSS references.
+            attribute.value = header.split(";", 1)[0] + ";base64," + base64.b64encode(candidate).decode()
             methods.append(f"embedded {method}")
     options = scour.parse_args(["--disable-embed-rasters", "--strip-xml-prolog", "--indent=none", "--no-line-breaks"])
-    return scour.scourString(source, options).encode(), "; ".join(dict.fromkeys(methods))
+    return scour.scourString(document.toxml(), options).encode(), "; ".join(dict.fromkeys(methods))
 
 
 def exceeds_threshold(before: int, after: int) -> bool:
@@ -109,7 +120,7 @@ def inspect_image(name: str, root: Path = ROOT) -> tuple[str, str, bytes | None]
         if not data:
             raise ValueError("Image is empty")
         candidate, method = compress_svg(data) if path.suffix.lower() == ".svg" else compress_raster(data)
-    except (OSError, ET.ParseError, ValueError, SyntaxError, Image.DecompressionBombError) as error:
+    except (OSError, ExpatError, ValueError, SyntaxError, Image.DecompressionBombError) as error:
         return "error", f"Unable to inspect image: {error}", None
     if method.startswith("skipped:"):
         return "skipped", method, None
