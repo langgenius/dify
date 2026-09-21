@@ -564,7 +564,7 @@
   "agentDetail.configure.skills.workspaceSelector.removeSuccess": "Çalışma alanı becerisi kaldırıldı.",
   "agentDetail.configure.skills.workspaceSelector.saveFailed": "Çalışma alanı becerileri güncellenemedi.",
   "agentDetail.configure.skills.workspaceSelector.search": "Beceri ara...",
-  "skillManagement.deleteDialog.referencedDescription": "Bu beceri {{count}} Agent, Workflow veya Chatflow öğesi tarafından kullanılıyor. Silmek, beceriyi çalışma alanından kaldırır ve bu bağlantıları temizler.",
+  "skillManagement.deleteDialog.referencedDescription": "Bu beceri {{count}} Ajan, İş Akışı veya Sohbet Akışı öğesi tarafından kullanılıyor. Silmek, beceriyi çalışma alanından kaldırır ve bu bağlantıları temizler.",
   "skillManagement.detail.builder.attach": "Dosya ekle",
   "skillManagement.detail.builder.attachFailed": "Dosya eklenemedi.",
   "skillManagement.detail.builder.attachUnsupported": "Yalnızca metin ve doküman dosyaları eklenebilir.",
