@@ -1,6 +1,5 @@
 import type { BuilderErrorCode } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type {
-  CanvasEventData,
   ConversationItem,
   DifyBuilderExecutionProgress,
   DifyBuilderReasoning,
@@ -30,10 +29,6 @@ export const difyBuilderRetryableMessageAtom = atom<DifyBuilderRetryableMessage 
 export const difyBuilderExecutionProgressAtom = atom<DifyBuilderExecutionProgress | null>(null)
 export const difyBuilderReasoningAtom = atom<DifyBuilderReasoning | null>(null)
 export const difyBuilderStreamingTurnAtom = atom<DifyBuilderStreamingTurn | null>(null)
-export const difyBuilderSessionLastCanvasEventAtom = atom<{
-  id: number
-  data: CanvasEventData
-} | null>(null)
 
 export const difyBuilderSessionScopedAtoms = [
   difyBuilderSessionViewAtom,
@@ -48,5 +43,4 @@ export const difyBuilderSessionScopedAtoms = [
   difyBuilderExecutionProgressAtom,
   difyBuilderReasoningAtom,
   difyBuilderStreamingTurnAtom,
-  difyBuilderSessionLastCanvasEventAtom,
 ] as const

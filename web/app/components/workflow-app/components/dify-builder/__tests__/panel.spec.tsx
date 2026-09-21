@@ -115,6 +115,7 @@ const renderPanel = (
     enabled: true,
     getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
     session: {
+      onCanvasRefreshed: vi.fn(),
       refresh: vi.fn(async () => true),
       getTrace: vi.fn(() => ({ entries: [], truncated: false })),
       loadOlderConversation: vi.fn(async () => true),

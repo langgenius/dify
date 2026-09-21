@@ -793,19 +793,16 @@ class CommandStartedEventData(SessionView, _SseEventData):
 
 
 @dataclass
-class NodeEventData(_SseEventData):
-    sse_event: ClassVar[str] = "node"
+class WorkflowEventData(_SseEventData):
+    sse_event: ClassVar[str] = "workflow"
 
     session_id: str
     operation_id: str
     stage_id: str
     at_version: int
     revision: int
-    node_id: str
-    title: str
-    status: str
-    error: str
-    kind: Literal["node"] = "node"
+    payload: dict[str, object]
+    kind: Literal["workflow"] = "workflow"
 
 
 @dataclass
@@ -827,6 +824,7 @@ class CanvasEventData(_SseEventData):
     kind: Literal["canvas"] = "canvas"
     node_id: str | None = None
     edge: CanvasEdge | None = None
+    dify_run_id: str = ""
 
 
 @dataclass

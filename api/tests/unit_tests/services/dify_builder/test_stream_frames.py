@@ -45,7 +45,7 @@ def test_stream_advance_frames_closes_subscription_when_never_iterated():
 
 def test_stream_advance_frames_relays_typed_envelopes_until_terminal_state():
     view = {"session_id": "s1", "state": "fix.diagnose"}
-    node = {"kind": "node", "node_id": "n1", "status": "running"}
+    node = {"kind": "workflow", "payload": {"event": "node_started", "data": {"node_id": "n1"}}}
     commit = {
         "kind": "commit",
         "session_id": "s1",
@@ -55,7 +55,7 @@ def test_stream_advance_frames_relays_typed_envelopes_until_terminal_state():
         "items": [],
     }
     state = {"kind": "state", "version": 7, "session_id": "s1"}
-    extra = {"kind": "node", "node_id": "n2"}
+    extra = {"kind": "workflow", "payload": {"event": "node_started", "data": {"node_id": "n2"}}}
     subscription = _FakeSubscription(
         [
             json.dumps(node).encode(),
@@ -72,7 +72,7 @@ def test_stream_advance_frames_relays_typed_envelopes_until_terminal_state():
         "event": "command_started",
         "data": {"kind": "command_started", **view},
     }
-    assert _event(frames[1]) == {"event": "node", "data": node}
+    assert _event(frames[1]) == {"event": "workflow", "data": node}
     assert frames[2] == ": keep-alive\n\n"
     assert _event(frames[3]) == {"event": "commit", "data": commit}
     assert _event(frames[4]) == {"event": "state", "data": state}
@@ -109,6 +109,19 @@ def test_stream_advance_frames_closes_on_error_event():
 
     assert _event(frames[-1]) == {"event": "error", "data": error}
     assert subscription.closed is True
+
+
+@pytest.mark.parametrize("event", ["workflow_finished", "workflow_paused", "error"])
+def test_native_workflow_terminal_event_does_not_end_the_builder_command(event):
+    workflow = {"kind": "workflow", "payload": {"event": event, "workflow_run_id": "run-1"}}
+    commit = {"kind": "commit", "session_id": "s1", "version": 2, "items": []}
+    state = {"kind": "state", "session_id": "s1", "version": 2}
+    subscription = _FakeSubscription([json.dumps(item).encode() for item in (workflow, commit, state)])
+
+    frames = list(wiring.stream_advance_frames({"session_id": "s1"}, subscription, expect_advance=True))
+
+    assert [_event(frame)["event"] for frame in frames] == ["command_started", "workflow", "commit", "state"]
+    assert _event(frames[1])["data"]["payload"] == workflow["payload"]
 
 
 def test_stream_advance_frames_settled_call_yields_command_handshake_only():

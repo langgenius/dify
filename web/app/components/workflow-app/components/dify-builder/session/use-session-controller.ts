@@ -11,13 +11,14 @@ import type {
   SessionModel,
   SessionView,
 } from '../types'
-import type { SessionCommandOptions, SessionStreamOutcome } from './types'
+import type { SessionCommandOptions, SessionRunEvents, SessionStreamOutcome } from './types'
 import { useSetAtom, useStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
+import { difyBuilderCanvasReadyAtom } from '../store'
 import {
   createBuildSession,
   createChecklistFixSession,
@@ -45,7 +46,6 @@ import {
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionErrorCodeAtom,
-  difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
 } from './state'
@@ -66,6 +66,7 @@ const isActiveView = (view: SessionView) => isActiveRunStatus(view.run_status) &
  */
 export function useDifyBuilderSessionController(
   prepareCommand?: (saveDraft: boolean, signal: AbortSignal) => Promise<void>,
+  runEvents?: SessionRunEvents,
 ): DifyBuilderSessionController {
   const store = useStore()
   const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
@@ -75,26 +76,34 @@ export function useDifyBuilderSessionController(
   const setRetryableMessage = useSetAtom(difyBuilderRetryableMessageAtom)
   const setView = useSetAtom(difyBuilderSessionViewAtom)
   const setLastError = useSetAtom(difyBuilderSessionLastErrorAtom)
-  const setLastCanvasEvent = useSetAtom(difyBuilderSessionLastCanvasEventAtom)
   const setIsBusy = useSetAtom(difyBuilderSessionBusyAtom)
   const executionProgress = useDifyBuilderExecutionProgress()
   const reasoningBuffer = useDifyBuilderReasoningBuffer()
   const streamingTurnBuffer = useDifyBuilderStreamingTurnBuffer()
   const abortRef = useRef<AbortController | null>(null)
-  const canvasEventIdRef = useRef(0)
   const canvasCursorRef = useRef<
     Pick<CanvasEventData, 'at_version' | 'operation_id' | 'revision' | 'session_id'> | undefined
   >(undefined)
   const pendingMessageRef = useRef<{ sessionId: string; text: string; turnId: string } | null>(null)
+  const pendingRetestRef = useRef<{
+    sessionId: string
+    version: number
+    appRevision: string
+    state: string
+    actionId: string
+  } | null>(null)
   const traceRef = useRef(createTraceBuffer())
+  const resetRunOnUnmount = useEffectEvent(() => runEvents?.reset())
 
   useEffect(() => {
     return () => {
       abortRef.current?.abort()
       abortRef.current = null
+      pendingRetestRef.current = null
       // Clearing the request ref prevents its finally block from releasing loading state.
       setIsBusy(false)
       setConversationLoading(false)
+      resetRunOnUnmount()
     }
   }, [setConversationLoading, setIsBusy])
 
@@ -168,9 +177,10 @@ export function useDifyBuilderSessionController(
         setConversation(items)
         if (!page.has_more) break
       }
+      if (lastSeq >= targetLastSeq) runEvents?.restoreRun(sessionId, items)
       return lastSeq >= targetLastSeq
     },
-    [setConversation, setConversationHasMore, store],
+    [runEvents, setConversation, setConversationHasMore, store],
   )
 
   const applyCommit = useCallback(
@@ -194,7 +204,11 @@ export function useDifyBuilderSessionController(
         return hasGap
       })
       setView(projected)
-      if (!hasConversationGap) setConversation(mergeConversation(conversation, commit.items))
+      if (!hasConversationGap) {
+        const items = mergeConversation(conversation, commit.items)
+        setConversation(items)
+        runEvents?.restoreRun(commit.session_id, items)
+      }
       if (
         canvasCursorRef.current?.session_id === commit.session_id &&
         canvasCursorRef.current.at_version <= commit.version
@@ -205,7 +219,15 @@ export function useDifyBuilderSessionController(
       streamingTurnBuffer.clearThroughVersion(commit.session_id, commit.version)
       return hasConversationGap ? newSequences.at(-1) : undefined
     },
-    [executionProgress, reasoningBuffer, setConversation, setView, store, streamingTurnBuffer],
+    [
+      executionProgress,
+      reasoningBuffer,
+      runEvents,
+      setConversation,
+      setView,
+      store,
+      streamingTurnBuffer,
+    ],
   )
 
   const clearSession = useCallback(
@@ -218,10 +240,12 @@ export function useDifyBuilderSessionController(
       executionProgress.clear()
       reasoningBuffer.clear()
       streamingTurnBuffer.clear()
+      runEvents?.reset()
     },
     [
       executionProgress,
       reasoningBuffer,
+      runEvents,
       setActiveSessionId,
       setConversation,
       setConversationHasMore,
@@ -281,7 +305,7 @@ export function useDifyBuilderSessionController(
           return false
         }
 
-        if (event.event === 'canvas') {
+        if (event.event === 'canvas' || event.event === 'workflow') {
           const view = store.get(difyBuilderSessionViewAtom)
           const cursor = canvasCursorRef.current
           if (
@@ -297,12 +321,11 @@ export function useDifyBuilderSessionController(
             return false
 
           canvasCursorRef.current = event.data
-          canvasEventIdRef.current += 1
-          setLastCanvasEvent({ id: canvasEventIdRef.current, data: event.data })
-          return false
-        }
-
-        if (event.event === 'node') {
+          if (event.event === 'canvas') {
+            runEvents?.onCanvasEvent(event.data)
+          } else {
+            runEvents?.onWorkflowEvent(event.data)
+          }
           return false
         }
 
@@ -385,6 +408,7 @@ export function useDifyBuilderSessionController(
         }
       }
 
+      if (!controller.signal.aborted && !outcome.terminalEvent) runEvents?.onStreamInterrupted()
       return outcome
     },
     [
@@ -392,7 +416,7 @@ export function useDifyBuilderSessionController(
       applySessionView,
       executionProgress,
       reasoningBuffer,
-      setLastCanvasEvent,
+      runEvents,
       setLastError,
       store,
       syncConversation,
@@ -464,6 +488,7 @@ export function useDifyBuilderSessionController(
           ? startingView.version
           : undefined
       abortRef.current?.abort()
+      pendingRetestRef.current = null
       executionProgress.clear()
       reasoningBuffer.clear()
       streamingTurnBuffer.clear()
@@ -487,7 +512,7 @@ export function useDifyBuilderSessionController(
           setConversationHasMore(false)
           setConversationLoading(false)
           setRetryableMessage(null)
-          setLastCanvasEvent(null)
+          runEvents?.reset()
           canvasCursorRef.current = undefined
           pendingMessageRef.current = null
           // A new session boundary must start with a fresh trace buffer; clear
@@ -599,6 +624,7 @@ export function useDifyBuilderSessionController(
       } finally {
         if (abortRef.current === controller) {
           abortRef.current = null
+          runEvents?.finishCommand()
           setIsBusy(false)
         }
       }
@@ -609,11 +635,11 @@ export function useDifyBuilderSessionController(
       executionProgress,
       reasoningBuffer,
       reconcileSession,
+      runEvents,
       setActiveSessionId,
       setConversation,
       setConversationHasMore,
       setIsBusy,
-      setLastCanvasEvent,
       setLastError,
       setRetryableMessage,
       setConversationLoading,
@@ -701,6 +727,7 @@ export function useDifyBuilderSessionController(
       if (!normalizedSessionId || store.get(difyBuilderSessionBusyAtom)) return false
 
       abortRef.current?.abort()
+      pendingRetestRef.current = null
       executionProgress.clear()
       reasoningBuffer.clear()
       streamingTurnBuffer.clear()
@@ -717,6 +744,8 @@ export function useDifyBuilderSessionController(
         await preparation
         if (controller.signal.aborted) return false
         setActiveSessionId(normalizedSessionId)
+        if (store.get(difyBuilderSessionViewAtom)?.session_id !== normalizedSessionId)
+          runEvents?.reset()
         const outcome = await reconcileSession(normalizedSessionId, controller, true)
         if (controller.signal.aborted) return false
         if (outcome?.terminalEvent === 'state') return outcome.stateApplied === true
@@ -739,6 +768,7 @@ export function useDifyBuilderSessionController(
       } finally {
         if (abortRef.current === controller) {
           abortRef.current = null
+          runEvents?.finishCommand()
           setIsBusy(false)
         }
       }
@@ -749,6 +779,7 @@ export function useDifyBuilderSessionController(
       executionProgress,
       reasoningBuffer,
       reconcileSession,
+      runEvents,
       setActiveSessionId,
       setIsBusy,
       setLastError,
@@ -786,7 +817,9 @@ export function useDifyBuilderSessionController(
         store.get(difyBuilderSessionViewAtom)?.session_id !== view.session_id
       )
         return false
-      setConversation((current) => mergeConversation(page.data, current))
+      const merged = mergeConversation(page.data, store.get(difyBuilderConversationAtom))
+      setConversation(merged)
+      runEvents?.restoreRun(view.session_id, merged)
       setConversationHasMore(page.has_more)
       return page.data.length > 0
     } catch (error) {
@@ -797,7 +830,14 @@ export function useDifyBuilderSessionController(
       if (abortRef.current === controller) abortRef.current = null
       setConversationLoading(false)
     }
-  }, [setConversation, setConversationHasMore, setConversationLoading, setLastError, store])
+  }, [
+    runEvents,
+    setConversation,
+    setConversationHasMore,
+    setConversationLoading,
+    setLastError,
+    store,
+  ])
 
   const refresh = useCallback(() => {
     const sessionId =
@@ -805,11 +845,62 @@ export function useDifyBuilderSessionController(
     return sessionId ? restore(sessionId) : Promise.resolve(false)
   }, [restore, store])
 
+  const continueRetest = useCallback(() => {
+    const pending = pendingRetestRef.current
+    if (!pending) return
+    const view = store.get(difyBuilderSessionViewAtom)
+    if (
+      !view ||
+      view.session_id !== pending.sessionId ||
+      view.version !== pending.version ||
+      view.state !== pending.state ||
+      view.app_revision?.current !== pending.appRevision ||
+      view.app_revision.conflicted
+    ) {
+      pendingRetestRef.current = null
+      return
+    }
+    if (store.get(difyBuilderSessionBusyAtom) || !store.get(difyBuilderCanvasReadyAtom)) return
+    // Consume before dispatch: duplicate refresh callbacks cannot start a second run.
+    pendingRetestRef.current = null
+    void runCommand({
+      knownSessionId: pending.sessionId,
+      expectTerminalEvent: true,
+      openStream: (signal) =>
+        runSessionAction(
+          pending.sessionId,
+          pending.actionId,
+          {},
+          pending.version,
+          pending.appRevision,
+          signal,
+        ),
+      trace: {
+        kind: 'action',
+        payload: { action_id: pending.actionId, payload: {}, base_version: pending.version },
+      },
+    })
+  }, [runCommand, store])
+
+  const onCanvasRefreshed = useCallback(() => {
+    runEvents?.onCanvasRefreshed()
+    continueRetest()
+  }, [continueRetest, runEvents])
+
   const runAction = useCallback(
-    (actionId: string, payload: Record<string, unknown> = {}) => {
+    async (actionId: string, payload: Record<string, unknown> = {}) => {
       const view = store.get(difyBuilderSessionViewAtom)
-      if (!view || store.get(difyBuilderSessionBusyAtom)) return Promise.resolve(false)
-      return runCommand({
+      if (!view || store.get(difyBuilderSessionBusyAtom)) return false
+      const selectedAction = actionId === 'confirm' ? payload.option_id : actionId
+      const approvesRepair =
+        selectedAction === 'approve_plan' || selectedAction === 'approve_repair'
+      const retest =
+        approvesRepair && view.state === 'build.await_repair'
+          ? { state: 'build.execution', actionId: 'run_test' }
+          : approvesRepair && view.state === 'edit.await_repair'
+            ? { state: 'edit.apply_changes', actionId: 'run_affected_tests' }
+            : null
+      const succeeded = await runCommand({
         knownSessionId: view.session_id,
         expectTerminalEvent: actionId !== 'update_model',
         openStream: (signal) =>
@@ -826,8 +917,27 @@ export function useDifyBuilderSessionController(
           payload: { action_id: actionId, payload, base_version: view.version },
         },
       })
+      const applied = store.get(difyBuilderSessionViewAtom)
+      if (
+        succeeded &&
+        retest &&
+        applied?.session_id === view.session_id &&
+        applied.version === view.version + 1 &&
+        applied.state === retest.state &&
+        applied.app_revision
+      ) {
+        pendingRetestRef.current = {
+          ...retest,
+          sessionId: applied.session_id,
+          version: applied.version,
+          appRevision: applied.app_revision.current,
+        }
+        // Also handles a refresh that completed before this command promise resumed.
+        continueRetest()
+      }
+      return succeeded
     },
-    [runCommand, store],
+    [continueRetest, runCommand, store],
   )
 
   const sendMessage = useCallback(
@@ -890,6 +1000,7 @@ export function useDifyBuilderSessionController(
   const reset = useCallback(() => {
     abortRef.current?.abort()
     abortRef.current = null
+    pendingRetestRef.current = null
     executionProgress.clear()
     reasoningBuffer.clear()
     streamingTurnBuffer.clear()
@@ -902,19 +1013,19 @@ export function useDifyBuilderSessionController(
     setView(null)
     setLastError('')
     store.set(difyBuilderSessionErrorCodeAtom, null)
-    setLastCanvasEvent(null)
+    runEvents?.reset()
     canvasCursorRef.current = undefined
     traceRef.current.clear()
     setIsBusy(false)
   }, [
     executionProgress,
     reasoningBuffer,
+    runEvents,
     setActiveSessionId,
     setConversation,
     setConversationHasMore,
     setConversationLoading,
     setIsBusy,
-    setLastCanvasEvent,
     setLastError,
     setRetryableMessage,
     setView,
@@ -938,6 +1049,7 @@ export function useDifyBuilderSessionController(
       updateModel,
       reset,
       getTrace,
+      onCanvasRefreshed,
     }),
     [
       refresh,
@@ -952,6 +1064,7 @@ export function useDifyBuilderSessionController(
       startFix,
       updateModel,
       getTrace,
+      onCanvasRefreshed,
     ],
   )
 }

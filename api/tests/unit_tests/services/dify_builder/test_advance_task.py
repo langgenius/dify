@@ -83,7 +83,16 @@ def wired(monkeypatch, repo: SqlDifyBuilderRepository):
     place of the real Dify adapter, and event-capturing stand-ins for
     ``progress_bus.publish``/``session_lock.release``."""
     monkeypatch.setattr(mod, "_build_repo", lambda: repo)
-    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    port = FakeDifyPort()
+    port.workflow_events = [
+        {
+            "event": "workflow_started",
+            "task_id": "task-1",
+            "workflow_run_id": "dify-run-1",
+            "data": {"id": "dify-run-1", "workflow_id": "workflow-1", "inputs": {}, "created_at": 1},
+        }
+    ]
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
     monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
 
     events: list[tuple[str, dict]] = []
@@ -159,9 +168,11 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
     stored, _fc = repo.get_session(s.id)
     assert stored.current_state == PcState.FIX_AWAIT_DECISION
 
-    node_events = [ev for _sid, ev in events if ev["kind"] == "node"]
-    assert node_events, "FakeDifyPort.run_draft's on_event callback must reach progress_bus as node events"
-    assert all(event["session_id"] == s.id and event["operation_id"] for event in node_events)
+    workflow_events = [ev for _sid, ev in events if ev["kind"] == "workflow"]
+    assert workflow_events, "native run callbacks must reach progress_bus unchanged"
+    assert all(event["session_id"] == s.id and event["operation_id"] for event in workflow_events)
+    assert workflow_events[0]["payload"]["event"] == "workflow_started"
+    assert workflow_events[0]["payload"]["data"]["inputs"] == {}
 
     assert (s.id, "tok-2") in released
     assert (s.id, "tok-3") in released

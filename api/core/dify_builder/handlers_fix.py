@@ -700,10 +700,8 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 
     def emit(event: NodeEvent) -> None:
         progress.observe_node("fix-run-validation", event)
-        if env.emit is not None:
-            env.emit(event)
 
-    result = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
+    result = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
     if result.status == "succeeded":
         progress.complete("fix-run-validation")
     else:

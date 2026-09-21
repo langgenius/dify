@@ -1,5 +1,6 @@
 import type { ConversationItem } from '../../types'
 import { act, waitFor } from '@testing-library/react'
+import { nodeStarted, workflowEvent } from '../../__tests__/workflow-fixtures'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
@@ -7,7 +8,6 @@ import {
   difyBuilderReasoningAtom,
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
-  difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
   difyBuilderStreamingTurnAtom,
@@ -430,7 +430,6 @@ describe('useDifyBuilderSessionController streaming', () => {
     })
     expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
     expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('')
-    expect(store.get(difyBuilderSessionLastCanvasEventAtom)).toBeNull()
   })
 
   it('projects authoritative progress snapshots without merging raw node events', async () => {
@@ -462,19 +461,18 @@ describe('useDifyBuilderSessionController streaming', () => {
 
     act(() => {
       stream.push({
-        event: 'node',
-        data: {
-          kind: 'node',
-          session_id: 'session-1',
-          operation_id: 'other-operation',
-          stage_id: 'fix.verify',
-          at_version: 2,
-          revision: 1,
-          node_id: 'stale-node',
-          title: 'Stale node',
-          status: 'running',
-          error: '',
-        },
+        event: 'workflow',
+        data: workflowEvent(
+          {
+            ...nodeStarted(),
+            data: { ...nodeStarted().data, node_id: 'stale-node', title: 'Stale node' },
+          },
+          {
+            operation_id: 'other-operation',
+            stage_id: 'fix.verify',
+            revision: 1,
+          },
+        ),
       })
       stream.push(
         progressEvent({
@@ -499,19 +497,17 @@ describe('useDifyBuilderSessionController streaming', () => {
 
     act(() => {
       stream.push({
-        event: 'node',
-        data: {
-          kind: 'node',
-          session_id: 'session-1',
-          operation_id: 'operation-1',
-          stage_id: 'fix.verify',
-          at_version: 2,
-          revision: 2,
-          node_id: 'llm-node',
-          title: 'Generate answer',
-          status: 'running',
-          error: '',
-        },
+        event: 'workflow',
+        data: workflowEvent(
+          {
+            ...nodeStarted(),
+            data: { ...nodeStarted().data, node_id: 'llm-node', title: 'Generate answer' },
+          },
+          {
+            stage_id: 'fix.verify',
+            revision: 2,
+          },
+        ),
       })
     })
     await waitFor(() => expect(store.get(difyBuilderExecutionProgressAtom)?.revision).toBe(2))

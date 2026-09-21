@@ -73,6 +73,7 @@ export type DifyBuilderSessionController = {
   updateModel: (modelConfig: SessionModel) => Promise<boolean>
   reset: () => void
   getTrace: () => TraceSnapshot
+  onCanvasRefreshed: () => void
 }
 
 export type DifyBuilderActionPayloadChange = (

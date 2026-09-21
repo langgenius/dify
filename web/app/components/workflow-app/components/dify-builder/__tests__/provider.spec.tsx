@@ -1,3 +1,4 @@
+import type { SessionRunEvents } from '../session/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
@@ -8,7 +9,6 @@ import { DifyBuilderProvider } from '../provider'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderSessionBusyAtom,
-  difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionViewAtom,
 } from '../session/state'
 import {
@@ -26,7 +26,8 @@ import {
 import { builderModel, createBuilderQueryClient } from './model-fixtures'
 
 const mocks = vi.hoisted(() => ({
-  controllerHook: vi.fn(),
+  controllerHook:
+    vi.fn<(prepare: (saveDraft: boolean) => Promise<void>, events: SessionRunEvents) => void>(),
   focusCanvas: vi.fn(),
   refreshCanvas: vi.fn<(shouldApply: () => boolean) => Promise<boolean>>(async () => true),
   reset: vi.fn(),
@@ -48,9 +49,23 @@ vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
   selectWorkflowNode: mocks.selectWorkflowNode,
 }))
 
+const runEvents = vi.hoisted(() => ({
+  onWorkflowEvent: vi.fn(),
+  onStreamInterrupted: vi.fn(),
+  onCanvasEvent: vi.fn(),
+  restoreRun: vi.fn(),
+  finishCommand: vi.fn(),
+  reset: vi.fn(),
+  onCanvasRefreshed: vi.fn(),
+}))
+vi.mock('../provider/use-run-events', () => ({ useDifyBuilderRunEvents: () => runEvents }))
+
 vi.mock('../session/use-session-controller', () => ({
-  useDifyBuilderSessionController: (prepareCommand: (saveDraft: boolean) => Promise<void>) => {
-    mocks.controllerHook(prepareCommand)
+  useDifyBuilderSessionController: (
+    prepareCommand: (saveDraft: boolean) => Promise<void>,
+    events: SessionRunEvents,
+  ) => {
+    mocks.controllerHook(prepareCommand, events)
     return {
       refresh: vi.fn(),
       loadOlderConversation: vi.fn(async () => true),
@@ -63,6 +78,7 @@ vi.mock('../session/use-session-controller', () => ({
       startEdit: mocks.startEdit,
       startFix: mocks.startFix,
       updateModel: mocks.updateModel,
+      onCanvasRefreshed: runEvents.onCanvasRefreshed,
     }
   },
 }))
@@ -88,7 +104,6 @@ const Probe = () => {
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
   const registerChecklistErrors = useSetAtom(difyBuilderRegisterChecklistErrorsAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
-  const setLastCanvasEvent = useSetAtom(difyBuilderSessionLastCanvasEventAtom)
   const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
   const setBusy = useSetAtom(difyBuilderSessionBusyAtom)
   const setSessionView = useSetAtom(difyBuilderSessionViewAtom)
@@ -167,17 +182,14 @@ const Probe = () => {
       <button
         type="button"
         onClick={() =>
-          setLastCanvasEvent({
-            id: 1,
-            data: {
-              at_version: 2,
-              event: 'highlight_edit_target',
-              node_id: 'llm-1',
-              operation_id: 'operation-1',
-              revision: 1,
-              session_id: 'session-1',
-              stage_id: 'fix.diagnose',
-            },
+          mocks.controllerHook.mock.lastCall![1].onCanvasEvent({
+            at_version: 2,
+            event: 'highlight_edit_target',
+            node_id: 'llm-1',
+            operation_id: 'operation-1',
+            revision: 1,
+            session_id: 'session-1',
+            stage_id: 'fix.diagnose',
           })
         }
       >
@@ -186,16 +198,13 @@ const Probe = () => {
       <button
         type="button"
         onClick={() =>
-          setLastCanvasEvent({
-            id: 2,
-            data: {
-              at_version: 2,
-              event: 'focus_workflow',
-              operation_id: 'operation-1',
-              revision: 2,
-              session_id: 'session-1',
-              stage_id: 'fix.diagnose',
-            },
+          mocks.controllerHook.mock.lastCall![1].onCanvasEvent({
+            at_version: 2,
+            event: 'focus_workflow',
+            operation_id: 'operation-1',
+            revision: 2,
+            session_id: 'session-1',
+            stage_id: 'fix.diagnose',
           })
         }
       >
@@ -359,7 +368,12 @@ describe('DifyBuilderProvider', () => {
 
   it('passes the editor draft coordinator to the session controller', () => {
     renderProvider()
-    expect(mocks.controllerHook).toHaveBeenCalledWith(mocks.syncDraft)
+    expect(mocks.controllerHook).toHaveBeenCalledWith(
+      mocks.syncDraft,
+      expect.objectContaining({
+        onCanvasEvent: expect.any(Function),
+      }),
+    )
   })
 
   it('restores the creation prompt when starting the Builder throws', async () => {

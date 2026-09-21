@@ -6,7 +6,7 @@ The usecase's ``dispatch`` (Task 3) acquires the cross-process advance lock
 this task; this task runs the actual engine step in the Celery process and
 releases the lock in ``finally`` -- regardless of whether the step succeeded,
 lost a version-CAS race, or raised. Progress (curated phase snapshots,
-per-node events during a working step, plus the settled terminal state) is
+native workflow events during test runs, plus the settled terminal state) is
 forwarded to the session's progress bus
 (``services.dify_builder.progress_bus``) for the P3c SSE endpoint to relay.
 
@@ -24,6 +24,7 @@ the current waiting gate. The client can then retry with the same
 
 import logging
 import uuid
+from collections.abc import Mapping
 from dataclasses import asdict, replace
 
 from celery import shared_task
@@ -36,12 +37,13 @@ from core.dify_builder.contract import (
     ExecutionProgress,
     ProgressEventData,
     ReasoningEventData,
+    WorkflowEventData,
 )
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.handlers_build import build_registry
 from core.dify_builder.handlers_edit import edit_registry
 from core.dify_builder.handlers_fix import fix_registry
-from core.dify_builder.models import Action, Actor, NodeEvent, Session, Turn
+from core.dify_builder.models import Action, Actor, Session, Turn
 from core.dify_builder.runner import CommittedTransition, Env, Runner
 from core.dify_builder.state import PcState, is_terminal
 from extensions.ext_database import db
@@ -126,27 +128,24 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         loaded_session, _fc = repo.get_session(session_id)
         agent = build_dify_builder_agent(tenant_id=actor.tenant_id, model_config=_fc.model_config)
 
-        def emit(ne: NodeEvent) -> None:
+        def emit_workflow(payload: Mapping[str, object]) -> None:
             assert env is not None
             try:
                 progress_bus.publish(
                     session_id,
-                    {
-                        "kind": "node",
-                        "session_id": session_id,
-                        "operation_id": env.operation_id,
-                        "stage_id": env.stage_id,
-                        "at_version": env.at_version,
-                        "revision": env.next_event_revision(),
-                        "node_id": ne.node_id,
-                        "title": ne.title,
-                        "status": ne.status,
-                        "error": ne.error,
-                        "run_id": ne.run_id,
-                    },
+                    asdict(
+                        WorkflowEventData(
+                            session_id=session_id,
+                            operation_id=env.operation_id,
+                            stage_id=env.stage_id,
+                            at_version=env.at_version,
+                            revision=env.next_event_revision(),
+                            payload=dict(payload),
+                        )
+                    ),
                 )
             except Exception:
-                logger.exception("dify_builder node event publish failed for session %s", session_id)
+                logger.exception("dify_builder workflow event publish failed for session %s", session_id)
 
         def emit_canvas(event: dict) -> None:
             assert env is not None
@@ -234,7 +233,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             agent=agent,
             repo=repo,
             now=naive_utc_now,
-            emit=emit,
+            emit_workflow=emit_workflow,
             emit_canvas=emit_canvas,
             emit_commit=emit_commit,
             emit_message=emit_message,

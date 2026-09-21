@@ -1,11 +1,39 @@
 """Contract-level checks for typed Dify Builder SSE envelopes."""
 
 import json
+import operator
 from collections.abc import Iterator
 
 import pytest
 
+from controllers.console.dify_builder_fields import DifyBuilderStreamEventResponse
 from services.dify_builder import wiring
+from tests.unit_tests.services.dify_builder.workflow_stream_fixtures import (
+    native_chatflow_payloads,
+    native_workflow_payloads,
+)
+
+
+@pytest.mark.parametrize(
+    "payload", native_workflow_payloads() + native_chatflow_payloads(), ids=operator.itemgetter("event")
+)
+def test_workflow_envelope_preserves_the_native_debugger_contract(payload):
+    frame = {
+        "event": "workflow",
+        "data": {
+            "kind": "workflow",
+            "session_id": "session-1",
+            "operation_id": "operation-1",
+            "stage_id": "build.test_and_repair",
+            "at_version": 2,
+            "revision": 1,
+            "payload": payload,
+        },
+    }
+
+    parsed = DifyBuilderStreamEventResponse.model_validate(frame)
+
+    assert parsed.model_dump(mode="json", exclude_unset=True) == frame
 
 
 class _FakeSubscription:
