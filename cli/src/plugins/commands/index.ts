@@ -1,8 +1,10 @@
 import type { CommandContext } from '@/plugins/base'
 import type { CommandConstructor } from '@/plugins/commands/command'
-import type { HelpRow } from '@/plugins/commands/describe'
-import type { CommandNode, CommandTree } from '@/plugins/commands/registry'
+import type { CommandRow } from '@/plugins/commands/describe'
+import type { HelpSources } from '@/plugins/commands/help'
+import type { CommandTree } from '@/plugins/commands/registry'
 import type { IOService } from '@/plugins/io'
+import type { OpListRow, OpsService } from '@/plugins/ops'
 import { validateInput } from '@/call/validate'
 import { commandTree } from '@/commands/tree'
 import { BaseError } from '@/errors/base'
@@ -12,7 +14,8 @@ import { definePlugin } from '@/kernel/plugin'
 import { inputSchema, parseArgv } from '@/plugins/argv/parse'
 import { BASE_PLUGINS } from '@/plugins/base'
 import { Outcome } from '@/plugins/commands/command'
-import { briefRows, treeRows } from '@/plugins/commands/describe'
+import { treeRows } from '@/plugins/commands/describe'
+import { helpListing, helpMap, helpSearch, isOpId } from '@/plugins/commands/help'
 import { findSuggestions, resolveCommand } from '@/plugins/commands/registry'
 import { globalFlags } from '@/plugins/global-flags'
 import { io } from '@/plugins/io'
@@ -27,17 +30,14 @@ export type CommandsService = {
 const HELP_WORD = 'help'
 const HELP_FLAGS: readonly string[] = ['--help', '-h']
 const FULL_FLAG = '--full'
+const ALL_FLAG = '--all'
 const FLAG_PREFIX = '-'
 const NO_SERVER_NOTICE = 'log in to list server operations'
 const OPS_UNAVAILABLE_PREFIX = 'could not list server operations: '
+const NO_MATCH_NOTICE = `nothing matched; run ${BINARY} ${HELP_WORD} for the map`
 
-type HelpOptions = Readonly<{ full: boolean }>
-type RootHelp = { commands: HelpRow[]; ops?: HelpRow[] }
-
-// Lists name what exists; `--full` adds each row's descriptor.
-function shown(rows: readonly HelpRow[], opts: HelpOptions): HelpRow[] {
-  return opts.full ? [...rows] : briefRows(rows)
-}
+type HelpOptions = Readonly<{ full: boolean; all: boolean }>
+type FullHelp = { commands: CommandRow[]; ops?: OpListRow[] }
 
 function isWord(token: string): boolean {
   return !token.startsWith(FLAG_PREFIX)
@@ -60,30 +60,65 @@ function restAfterPath(tokens: readonly string[], pathLength: number): readonly 
   return []
 }
 
-async function rootHelp(
+// An unreachable server must not cost the caller the static half of help.
+async function fromOps<T>(
+  ctx: CommandContext,
+  streams: IOService,
+  load: (service: OpsService) => Promise<T>,
+): Promise<T | undefined> {
+  const login = await (await ctx.get(session)).current()
+  if (login === null) {
+    streams.notice(NO_SERVER_NOTICE)
+    return undefined
+  }
+  try {
+    return await load(await ctx.get(ops))
+  } catch (err) {
+    streams.notice(`${OPS_UNAVAILABLE_PREFIX}${errorMessage(err)}`)
+    return undefined
+  }
+}
+
+async function discover(
   tree: CommandTree,
+  words: readonly string[],
   opts: HelpOptions,
   ctx: CommandContext,
   streams: IOService,
 ): Promise<number> {
-  const body: RootHelp = { commands: shown(treeRows(tree), opts) }
-  const login = await (await ctx.get(session)).current()
-  if (login === null) {
-    streams.notice(NO_SERVER_NOTICE)
-  } else {
-    // An unreachable server must not cost the caller the static command list.
-    try {
-      body.ops = shown(await (await ctx.get(ops)).list({ includeInternal: false }), opts)
-    } catch (err) {
-      streams.notice(`${OPS_UNAVAILABLE_PREFIX}${errorMessage(err)}`)
+  const commands = treeRows(tree)
+  const listOptions = { includeInternal: opts.all }
+  if (words.length === 0 && opts.full) {
+    const body: FullHelp = { commands }
+    body.ops = await fromOps(ctx, streams, (service) => service.list(listOptions))
+    await streams.document(body)
+    return ExitCode.Success
+  }
+
+  const sources: HelpSources = {
+    commands,
+    ops: await fromOps(ctx, streams, (service) => service.catalog(listOptions)),
+  }
+  const [word] = words
+  if (word === undefined) {
+    await streams.document(helpMap(sources))
+    return ExitCode.Success
+  }
+  if (words.length === 1) {
+    if (isOpId(word, sources)) {
+      await streams.document(await (await ctx.get(ops)).describe(word))
+      return ExitCode.Success
+    }
+    const listing = helpListing(word, sources)
+    if (listing !== undefined) {
+      await streams.document(listing)
+      return ExitCode.Success
     }
   }
-  await streams.document(body)
+  const found = helpSearch(words, sources)
+  if (found.total === 0) streams.notice(NO_MATCH_NOTICE)
+  await streams.document(found)
   return ExitCode.Success
-}
-
-function namespaceRows(name: string, node: CommandNode, opts: HelpOptions): RootHelp {
-  return { commands: shown(treeRows({ [name]: node }), opts) }
 }
 
 function unknownCommand(tree: CommandTree, words: readonly string[]): BaseError {
@@ -96,25 +131,6 @@ function unknownCommand(tree: CommandTree, words: readonly string[]): BaseError 
         ? `did you mean: ${suggestions.join(', ')}`
         : `run ${BINARY} ${HELP_WORD}`,
   })
-}
-
-async function noCommand(
-  tree: CommandTree,
-  words: readonly string[],
-  wantsHelp: boolean,
-  opts: HelpOptions,
-  ctx: CommandContext,
-  streams: IOService,
-): Promise<number> {
-  const head = words[0]
-  if (head === undefined) return rootHelp(tree, opts, ctx, streams)
-
-  const node = tree[head]
-  if (wantsHelp && node !== undefined && Object.keys(node.subcommands).length > 0) {
-    await streams.document(namespaceRows(head, node, opts))
-    return ExitCode.Success
-  }
-  throw unknownCommand(tree, words)
 }
 
 // parseArgv only coerces what was typed; zod owns the declared defaults. Reaching here
@@ -142,11 +158,17 @@ export async function runPipeline(tree: CommandTree, ctx: CommandContext): Promi
   const tokens = byHelpWord ? withoutHelpWord(argv) : argv
   const path = byHelpWord ? words.slice(1) : words
   const wantsHelp =
-    argv.length === 0 || byHelpWord || argv.some((token) => HELP_FLAGS.includes(token))
-  const helpOptions: HelpOptions = { full: argv.includes(FULL_FLAG) }
+    words.length === 0 || byHelpWord || argv.some((token) => HELP_FLAGS.includes(token))
 
   const resolved = resolveCommand(tree, path)
-  if (resolved === undefined) return noCommand(tree, path, wantsHelp, helpOptions, ctx, streams)
+  if (resolved === undefined) {
+    if (!wantsHelp) throw unknownCommand(tree, path)
+    const helpOptions: HelpOptions = {
+      full: argv.includes(FULL_FLAG),
+      all: argv.includes(ALL_FLAG),
+    }
+    return discover(tree, path, helpOptions, ctx, streams)
+  }
 
   const Ctor = resolved.command
   const rest = restAfterPath(tokens, resolved.path.length)

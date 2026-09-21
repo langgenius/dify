@@ -38,6 +38,6 @@ it('root help reuses a cached catalog instead of fetching again', async () => {
   const w2 = await testContext({ login: true, argv: ['--help'], reuseDirOf: w })
   worlds.push(w2)
   await (await w2.ctx.get(commands)).run()
-  expect(JSON.parse(w2.io.outBuf()).ops.length).toBeGreaterThan(20)
+  expect(Object.keys(JSON.parse(w2.io.outBuf()).ops).length).toBeGreaterThan(2)
   expect(w2.mock.requestCount).toBe(1)
 })

@@ -24,6 +24,7 @@ export type ListOptions = Readonly<{ includeInternal: boolean }>
 
 export type OpsService = {
   readonly resolve: (id: string) => Promise<CatalogOp>
+  readonly catalog: (opts: ListOptions) => Promise<Readonly<Record<string, CatalogOp>>>
   readonly list: (opts: ListOptions) => Promise<OpListRow[]>
   readonly describe: (id: string) => Promise<OpRow>
 }
@@ -37,9 +38,17 @@ function byId(a: string, b: string): number {
   return 0
 }
 
-function listRows(ops: Readonly<Record<string, CatalogOp>>, opts: ListOptions): OpListRow[] {
+function shown(
+  ops: Readonly<Record<string, CatalogOp>>,
+  opts: ListOptions,
+): Readonly<Record<string, CatalogOp>> {
+  return Object.fromEntries(
+    Object.entries(ops).filter(([, op]) => opts.includeInternal || !op.internal),
+  )
+}
+
+function listRows(ops: Readonly<Record<string, CatalogOp>>): OpListRow[] {
   return Object.entries(ops)
-    .filter(([, op]) => opts.includeInternal || !op.internal)
     .sort(([a], [b]) => byId(a, b))
     .map(([id, op]) => ({
       id,
@@ -74,7 +83,9 @@ export const ops = definePlugin({
       return catalogService.opOrThrow(id)
     }
 
-    const list: OpsService['list'] = async (opts) => listRows((await loaded()).ops(), opts)
+    const catalogOps: OpsService['catalog'] = async (opts) => shown((await loaded()).ops(), opts)
+
+    const list: OpsService['list'] = async (opts) => listRows(await catalogOps(opts))
 
     const describe: OpsService['describe'] = async (id) => {
       const op = await resolve(id)
@@ -87,6 +98,6 @@ export const ops = definePlugin({
       return { ...row, pins: { [PIN.Workspace]: workspaceId } }
     }
 
-    return { resolve, list, describe }
+    return { resolve, catalog: catalogOps, list, describe }
   },
 })
