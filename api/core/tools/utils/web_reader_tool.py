@@ -38,6 +38,11 @@ def get_url(url: str, user_agent: str | None = None) -> str:
     main_content_type = None
     supported_content_types = extract_processor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
     response = remote_fetcher.make_request("HEAD", url, headers=headers, follow_redirects=True, timeout=(5, 10))
+    response_from_get = False
+
+    if response.status_code in (405, 501):
+        response = remote_fetcher.make_request("GET", url, headers=headers, follow_redirects=True, timeout=(120, 300))
+        response_from_get = True
 
     if response.status_code == 200:
         # check content-type
@@ -59,7 +64,8 @@ def get_url(url: str, user_agent: str | None = None) -> str:
         if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
             return ExtractProcessor.load_from_url(url, return_text=True)
 
-        response = remote_fetcher.make_request("GET", url, headers=headers, follow_redirects=True, timeout=(120, 300))
+        if not response_from_get:
+            response = remote_fetcher.make_request("GET", url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
         object.__setattr__(scraper, "perform_request", remote_fetcher.make_request)
