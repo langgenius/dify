@@ -463,59 +463,33 @@ def test_server_settings_use_generic_outbound_http_args_for_shared_clients() -> 
     assert "outbound_http_keepalive_expiry" in model_fields
 
 
-def test_metering_only_starts_collector_and_keeps_clients_open_for_run_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
-    import asyncio
-    from typing import Any
-
-    from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend
+@pytest.mark.parametrize("enabled", [False, True])
+def test_optional_metering_never_starts_a_collector_or_blocks_runtime_startup(
+    monkeypatch: pytest.MonkeyPatch, enabled: bool
+) -> None:
+    import dify_agent.server.routes.e2b_usage as usage_route
 
     _patch_app_lifecycle(monkeypatch)
-    observers: list[DirectObserver] = []
-    collectors: list[Collector] = []
 
-    class DirectObserver:
-        # Deliberately has no run or flush method: the lifespan must not create
-        # a diagnostic worker or depend on draining an observation buffer.
-        def __init__(self, **kwargs: Any) -> None:
-            self.kwargs = kwargs
-            observers.append(self)
+    def unexpected_collector(*args: object, **kwargs: object) -> None:
+        raise AssertionError("collector must only be constructed by an explicit scheduled request")
 
-    class Collector:
-        def __init__(self, **kwargs: Any) -> None:
-            self.kwargs = kwargs
-            self.stopped = False
-            collectors.append(self)
-
-        async def run(self) -> None:
-            try:
-                await asyncio.Event().wait()
-            finally:
-                assert FakeRunScheduler.created[-1].shutdown_called
-                assert not self.kwargs["provider_client"].is_closed
-                self.stopped = True
-
-    monkeypatch.setattr(app_module, "DirectRuntimeUsageObserver", DirectObserver)
-    monkeypatch.setattr(app_module, "E2BUsageCollector", Collector)
+    monkeypatch.setattr(usage_route, "E2BUsageCollector", unexpected_collector)
     settings = ServerSettings(
         _env_file=None,
-        sandbox_metering_enabled=True,
-        runtime_backend="e2b",
-        e2b_api_key="provider-key",
-        e2b_project_id="project",
-        inner_api_key="inner-key",
+        sandbox_metering_enabled=enabled,
+        runtime_backend="local",
+        api_token="control-token",
+        e2b_project_id="",
+        e2b_api_key=None,
+        inner_api_key=None,
     )
-    profile = settings.build_runtime_backend_profile()
-    assert profile is not None
-    assert isinstance(profile.execution_bindings, E2BExecutionBindingBackend)
-    monkeypatch.setattr(ServerSettings, "build_runtime_backend_profile", lambda self: profile)
-    with TestClient(create_app(settings)):
-        assert len(observers) == len(collectors) == 1
-        assert profile.execution_bindings.usage_observer is observers[0]
-        assert set(observers[0].kwargs) == {"client"}
-        provider_client = collectors[0].kwargs["provider_client"]
-        assert "X-Inner-Api-Key" not in provider_client.headers
-        assert collectors[0].kwargs["usage_client"].api_key == "inner-key"
-        assert collectors[0].kwargs["api_key"] == "provider-key"
-        assert collectors[0].kwargs["redis"] is FakeRedisModule.fake_redis
-    assert collectors[0].stopped
-    assert provider_client.is_closed
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/openapi.json").status_code == 200
+        response = client.post(
+            "/internal/e2b/usage/collect",
+            headers={"Authorization": "Bearer control-token"},
+            json={"project_id": "project"},
+        )
+        assert response.status_code == 503
+    assert FakeRunScheduler.created[-1].shutdown_called

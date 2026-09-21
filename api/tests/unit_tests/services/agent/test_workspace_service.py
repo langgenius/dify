@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from dify_agent.protocol.execution_binding import CreateExecutionBindingRequest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -640,31 +639,17 @@ def test_workspace_collection_final_delete_failure_propagates(
     client.destroy_execution_binding_sync.assert_called_once()
 
 
-def test_metering_owner_registration_precedes_billable_creation(
+def test_binding_creation_ignores_unavailable_metering_configuration(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    from services.agent.runtime_usage_service import SandboxUsageService
-
-    apply_config_overrides(monkeypatch, AGENT_SANDBOX_METERING_ENABLED=True)
-    calls: list[tuple[str, str]] = []
-    owner: dict[str, str] = {}
-
-    def register(**values: str) -> None:
-        owner.update(values)
-        calls.append(("owner", values["allocation_id"]))
-
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_SANDBOX_METERING_ENABLED=True,
+        AGENT_SANDBOX_METERING_PROJECT_ID="",
+        AGENT_SANDBOX_METERING_START_AT="invalid",
+    )
     client = _backend_client()
-
-    def create(request: CreateExecutionBindingRequest) -> SimpleNamespace:
-        calls.append(("create", request.binding_id))
-        assert owner["workspace_id"] == request.workspace_id
-        assert owner["tenant_id"] == request.tenant_id
-        return SimpleNamespace(binding_ref="binding-ref", workspace_ref="workspace-ref")
-
-    client.create_execution_binding_sync.side_effect = create
-    monkeypatch.setattr(SandboxUsageService, "register_allocation", staticmethod(register))
     monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
-
     binding = AgentWorkspaceService.create_binding(
         session=sqlite_session,
         scope=_scope(),
@@ -673,52 +658,23 @@ def test_metering_owner_registration_precedes_billable_creation(
         agent_config_version_id="config-1",
         agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
     )
-    assert calls == [("owner", binding.id), ("create", binding.id)]
-    assert owner["app_id"] == _scope().app_id
+    sqlite_session.commit()
+    assert binding.backend_binding_ref == "binding-ref"
+    client.create_execution_binding_sync.assert_called_once()
 
 
-def test_metering_registration_failure_does_not_allocate_remote_resource(
+def test_binding_lookups_ignore_bad_metering_configuration_and_remain_tenant_scoped(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    from services.agent.runtime_usage_service import SandboxUsageService
-
-    apply_config_overrides(monkeypatch, AGENT_SANDBOX_METERING_ENABLED=True)
-    client = _backend_client()
-    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
-    monkeypatch.setattr(SandboxUsageService, "register_allocation", MagicMock(side_effect=RuntimeError("ledger down")))
-    with pytest.raises(RuntimeError, match="ledger down"):
-        AgentWorkspaceService.create_binding(
-            session=sqlite_session,
-            scope=_scope(),
-            agent_id="agent-1",
-            base_home_snapshot_id=None,
-            agent_config_version_id="config-1",
-            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-        )
-    client.create_execution_binding_sync.assert_not_called()
-
-
-def test_metering_existing_binding_registration_follows_owner_validation(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    from services.agent.runtime_usage_service import SandboxUsageService
-
-    apply_config_overrides(monkeypatch, AGENT_SANDBOX_METERING_ENABLED=True)
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_SANDBOX_METERING_ENABLED=True,
+        AGENT_SANDBOX_METERING_PROJECT_ID="",
+        AGENT_SANDBOX_METERING_START_AT="invalid",
+    )
     workspace, binding = _workspace(), _binding()
     sqlite_session.add_all([workspace, binding])
     sqlite_session.commit()
-    register = MagicMock()
-    monkeypatch.setattr(SandboxUsageService, "register_allocation", register)
-    assert (
-        AgentWorkspaceService.get_active_binding(
-            session=sqlite_session,
-            tenant_id="other-tenant",
-            binding_id=binding.id,
-            expected_owner_scope=_scope(),
-        )
-        is None
-    )
-    register.assert_not_called()
     assert (
         AgentWorkspaceService.get_active_binding(
             session=sqlite_session,
@@ -728,12 +684,20 @@ def test_metering_existing_binding_registration_follows_owner_validation(
         )
         is binding
     )
-    register.assert_called_once_with(
-        allocation_id=binding.id,
-        tenant_id=binding.tenant_id,
-        app_id=binding.app_id,
-        agent_id=binding.agent_id,
-        binding_id=binding.id,
-        workspace_id=binding.workspace_id,
-        sandbox_id=binding.backend_binding_ref,
+    assert (
+        AgentWorkspaceService.resolve_active_binding_for_scope(
+            session=sqlite_session,
+            scope=_scope(),
+            agent_id=binding.agent_id,
+        )
+        is binding
+    )
+    assert (
+        AgentWorkspaceService.get_active_binding(
+            session=sqlite_session,
+            tenant_id="another-tenant",
+            binding_id=binding.id,
+            expected_owner_scope=_scope(),
+        )
+        is None
     )

@@ -12,6 +12,7 @@ from pydantic import JsonValue
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.inner_api import bp as inner_api_bp
+from controllers.inner_api import inner_api_ns
 from models.agent_sandbox_usage import AgentSandboxUsageEvent
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -47,15 +48,32 @@ def client() -> Iterator[FlaskClient]:
 
 
 def payload() -> _BatchPayload:
+    event_id = str(uuid4())
     return {
         "project_id": PROJECT,
         "events": [
             {
-                "id": str(uuid4()),
-                "source": "application",
-                "type": "operation_observed",
+                "id": event_id,
+                "source": "provider",
+                "type": "sandbox.lifecycle.paused",
                 "timestamp": "2026-09-20T00:01:00Z",
-                "payload": {"operation": "pause", "result": True},
+                "payload": {
+                    "id": event_id,
+                    "version": "v2",
+                    "type": "sandbox.lifecycle.paused",
+                    "timestamp": "2026-09-20T00:01:00Z",
+                    "sandboxId": "sandbox-test",
+                    "sandboxExecutionId": "execution-test",
+                    "sandboxTeamId": PROJECT,
+                    "eventData": {
+                        "execution": {
+                            "started_at": "2026-09-20T00:00:02Z",
+                            "execution_time": 12345,
+                            "memory_mb": 1024,
+                            "vcpu_count": 2,
+                        }
+                    },
+                },
             }
         ],
     }
@@ -186,3 +204,16 @@ def test_ingestion_payload_limit(client: FlaskClient) -> None:
         "/inner/api/agent/sandbox-usage/events", json=body, headers={"X-Inner-Api-Key": "test-inner"}
     )
     assert response.status_code == 413
+
+
+def test_schema_and_http_exclude_business_operation_envelope_fields(client: FlaskClient) -> None:
+    schema = inner_api_ns.models["SandboxUsageEvent"].__schema__
+    assert set(schema["properties"]) == {"id", "source", "type", "timestamp", "sandbox_id", "execution_id", "payload"}
+    assert schema["additionalProperties"] is False
+    body = payload()
+    response = client.post(
+        "/inner/api/agent/sandbox-usage/events",
+        json={**body, "events": [{**body["events"][0], "allocation_id": str(uuid4())}]},
+        headers={"X-Inner-Api-Key": "test-inner"},
+    )
+    assert response.status_code == 400

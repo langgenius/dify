@@ -1,95 +1,26 @@
-"""Read-only, forward-only E2B lifecycle polling with commit-based checkpoints.
+"""A single bounded E2B event scan, invoked by the existing Celery Beat schedule.
 
 Offsets are used within one bounded scan only. Every scan starts at zero, with
 an overlap window and periodic rescan of the provider retention window. Neither
-HTTP retries nor multiple collector instances can inflate the API's idempotent
+redelivery nor overlapping scheduled scans can inflate the API's idempotent
 execution ledger. A partial scan never advances coverage.
 """
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Awaitable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
-from typing import Any, Callable, cast
+from typing import Any, Callable
 from uuid import uuid4
 
 import httpx
-from redis.asyncio import Redis
 
-from dify_agent.server.runtime_usage import RuntimeUsageClient, utc_now
+from dify_agent.server.e2b_usage_client import E2BUsageApiClient, utc_now
 
 logger = logging.getLogger(__name__)
 _PROVIDER_RETENTION = timedelta(days=7)
 _EVENTS_URL = "https://api.e2b.app/events/sandboxes"
-_RENEW_LEASE = """
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-    return redis.call('PEXPIRE', KEYS[1], ARGV[2])
-end
-return 0
-"""
-_RELEASE_LEASE = """
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-    return redis.call('DEL', KEYS[1])
-end
-return 0
-"""
-
-
-@dataclass(slots=True)
-class _CollectorLease:
-    """Reduce duplicate polling only; SQL event IDs still provide correctness."""
-
-    redis: Redis
-    key: str
-    ttl_seconds: float = 60.0
-    renewal_interval_seconds: float = 20.0
-    io_timeout_seconds: float = 5.0
-    token: str = field(default_factory=lambda: uuid4().hex)
-    lost: asyncio.Event = field(default_factory=asyncio.Event)
-
-    async def acquire(self) -> bool:
-        async with asyncio.timeout(self.io_timeout_seconds):
-            return bool(await self.redis.set(self.key, self.token, nx=True, px=int(self.ttl_seconds * 1000)))
-
-    async def is_owner(self) -> bool:
-        if self.lost.is_set():
-            return False
-        try:
-            async with asyncio.timeout(self.io_timeout_seconds):
-                current = await self.redis.get(self.key)
-            owner = current in (self.token, self.token.encode())
-            if not owner:
-                self.lost.set()
-            return owner
-        except Exception:
-            self.lost.set()
-            raise
-
-    async def renew(self) -> None:
-        while True:
-            await asyncio.sleep(self.renewal_interval_seconds)
-            try:
-                async with asyncio.timeout(self.io_timeout_seconds):
-                    renewed = await cast(
-                        Awaitable[object],
-                        self.redis.eval(_RENEW_LEASE, 1, self.key, self.token, int(self.ttl_seconds * 1000)),
-                    )
-                if not renewed:
-                    raise RuntimeError("sandbox usage collector leadership lost")
-            except Exception:
-                self.lost.set()
-                raise
-
-    async def release(self) -> None:
-        try:
-            async with asyncio.timeout(self.io_timeout_seconds):
-                await cast(Awaitable[object], self.redis.eval(_RELEASE_LEASE, 1, self.key, self.token))
-        except Exception as exc:
-            # TTL will release a disconnected owner; never delete a successor.
-            logger.warning("sandbox usage collector lease release failed", extra={"error_type": type(exc).__name__})
 
 
 def _field(event: dict[str, Any], camel: str, snake: str) -> Any:
@@ -131,18 +62,15 @@ def provider_event(raw: dict[str, Any], *, project_id: str) -> dict[str, Any]:
 @dataclass(slots=True)
 class E2BUsageCollector:
     provider_client: httpx.AsyncClient
-    usage_client: RuntimeUsageClient
+    usage_client: E2BUsageApiClient
     api_key: str
     project_id: str
-    poll_interval_seconds: float = 60.0
     overlap_seconds: int = 900
     full_scan_interval_seconds: int = 3600
     max_pages: int = 1000
     clock: Callable[[], datetime] = utc_now
-    redis: Redis | None = None
-    redis_prefix: str = "dify-agent"
 
-    async def collect_once(self, *, lease: _CollectorLease | None = None) -> bool:
+    async def collect_once(self) -> bool:
         state = await self.usage_client.get_state()
         if not state.enabled:
             return False
@@ -180,8 +108,6 @@ class E2BUsageCollector:
         complete = False
         pages = 0
         for page in range(self.max_pages):
-            if lease is not None and lease.lost.is_set():
-                return False
             response = await self.provider_client.get(
                 _EVENTS_URL,
                 headers={"X-API-Key": self.api_key},
@@ -212,9 +138,6 @@ class E2BUsageCollector:
         if not complete:
             logger.warning("sandbox usage scan reached page bound; checkpoint unchanged", extra={"pages": pages})
             return False
-        if lease is not None and not await lease.is_owner():
-            logger.warning("sandbox usage collector lost leadership; checkpoint unchanged")
-            return False
         await self.usage_client.post_events(
             [
                 {
@@ -235,47 +158,3 @@ class E2BUsageCollector:
             ]
         )
         return True
-
-    async def _poll(self, lease: _CollectorLease) -> None:
-        while True:
-            try:
-                await self.collect_once(lease=lease)
-            except Exception as exc:
-                logger.warning(
-                    "sandbox usage collection failed; checkpoint unchanged", extra={"error_type": type(exc).__name__}
-                )
-            if lease.lost.is_set():
-                return
-            await asyncio.sleep(self.poll_interval_seconds)
-
-    async def _run_as_leader(self, lease: _CollectorLease) -> None:
-        polling = asyncio.create_task(self._poll(lease), name="sandbox-usage-leader-poll")
-        renewal = asyncio.create_task(lease.renew(), name="sandbox-usage-leader-renew")
-        try:
-            done, _ = await asyncio.wait((polling, renewal), return_when=asyncio.FIRST_COMPLETED)
-            for task in done:
-                await task
-        finally:
-            for task in (polling, renewal):
-                task.cancel()
-            await asyncio.gather(polling, renewal, return_exceptions=True)
-
-    async def run(self) -> None:
-        if self.redis is None:
-            raise ValueError("sandbox usage collector worker requires Redis leadership")
-        while True:
-            lease = _CollectorLease(
-                redis=self.redis,
-                key=f"{self.redis_prefix}:sandbox-usage:{self.project_id}:collector-lease",
-            )
-            try:
-                if await lease.acquire():
-                    try:
-                        await self._run_as_leader(lease)
-                    finally:
-                        await lease.release()
-            except Exception as exc:
-                logger.warning(
-                    "sandbox usage collector leadership unavailable", extra={"error_type": type(exc).__name__}
-                )
-            await asyncio.sleep(self.poll_interval_seconds)

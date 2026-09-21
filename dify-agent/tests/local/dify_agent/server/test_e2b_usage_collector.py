@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from dify_agent.server.e2b_usage_collector import E2BUsageCollector, provider_event
-from dify_agent.server.runtime_usage import RuntimeUsageClient
+from dify_agent.server.e2b_usage_client import E2BUsageApiClient
 
 NOW = datetime(2026, 9, 20, 1, tzinfo=UTC)
 T0 = NOW - timedelta(hours=1)
@@ -74,7 +74,7 @@ def test_complete_scan_acks_all_pages_before_checkpoint_and_resets_offset() -> N
         ):
             collector = E2BUsageCollector(
                 p,
-                RuntimeUsageClient(i, "http://inner", "inner", "project"),
+                E2BUsageApiClient(i, "http://inner", "inner", "project"),
                 "provider-only",
                 "project",
                 clock=lambda: NOW,
@@ -118,7 +118,7 @@ def test_incomplete_scan_never_advances_checkpoint(failure: str) -> None:
         ):
             collector = E2BUsageCollector(
                 p,
-                RuntimeUsageClient(i, "http://inner", "inner", "project"),
+                E2BUsageApiClient(i, "http://inner", "inner", "project"),
                 "provider",
                 "project",
                 max_pages=1,
@@ -157,7 +157,7 @@ def test_incremental_overlap_and_retention_gap_are_explicit() -> None:
             httpx.AsyncClient(transport=httpx.MockTransport(inner)) as i,
         ):
             collector = E2BUsageCollector(
-                p, RuntimeUsageClient(i, "http://inner", "inner", "project"), "provider", "project", clock=lambda: NOW
+                p, E2BUsageApiClient(i, "http://inner", "inner", "project"), "provider", "project", clock=lambda: NOW
             )
             await collector.collect_once()
             assert sent[-1]["payload"]["window_start"] == (NOW - timedelta(minutes=20)).isoformat()
@@ -184,181 +184,10 @@ def test_disabled_or_future_activation_does_not_contact_e2b() -> None:
             httpx.AsyncClient(transport=httpx.MockTransport(inner)) as i,
         ):
             collector = E2BUsageCollector(
-                p, RuntimeUsageClient(i, "http://inner", "inner", "project"), "provider", "project", clock=lambda: NOW
+                p, E2BUsageApiClient(i, "http://inner", "inner", "project"), "provider", "project", clock=lambda: NOW
             )
             assert not await collector.collect_once()
             state.update(enabled=True, started_at=(NOW + timedelta(hours=1)).isoformat())
             assert not await collector.collect_once()
-
-    asyncio.run(scenario())
-
-
-@pytest.fixture
-def collector_redis_socket():
-    import shutil
-    import subprocess
-    import tempfile
-    from pathlib import Path
-
-    executable = shutil.which("redis-server")
-    if executable is None:
-        pytest.skip("requires local redis-server executable")
-    with tempfile.TemporaryDirectory(prefix="usage-leader-", dir="/tmp") as directory:
-        socket = str(Path(directory) / "redis.sock")
-        process = subprocess.Popen(
-            [executable, "--port", "0", "--unixsocket", socket, "--dir", directory, "--save", "", "--appendonly", "no"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        try:
-            yield socket
-        finally:
-            process.terminate()
-            process.wait(timeout=5)
-
-
-async def _leader_test_redis(socket: str):
-    from redis.asyncio import Redis
-    from redis.exceptions import ConnectionError as RedisConnectionError
-
-    redis = Redis(unix_socket_path=socket)
-    async with asyncio.timeout(5):
-        while True:
-            try:
-                await redis.ping()
-                return redis
-            except RedisConnectionError:
-                await asyncio.sleep(0.01)
-
-
-@pytest.mark.integration
-def test_leader_renew_and_release_cannot_modify_successor(collector_redis_socket: str) -> None:
-    from dify_agent.server.e2b_usage_collector import _CollectorLease
-
-    async def scenario() -> None:
-        redis = await _leader_test_redis(collector_redis_socket)
-        try:
-            old = _CollectorLease(redis, "leader", renewal_interval_seconds=0.01)
-            assert await old.acquire()
-            assert not await _CollectorLease(redis, "leader").acquire()
-            # Model expiry/takeover deterministically without a test relying on wall-clock expiry.
-            await redis.set("leader", "successor", px=10000)
-            with pytest.raises(RuntimeError, match="leadership lost"):
-                await old.renew()
-            assert old.lost.is_set()
-            assert not await old.is_owner()
-            await old.release()
-            assert await redis.get("leader") == b"successor"
-            assert await redis.pttl("leader") <= 10000
-        finally:
-            await redis.aclose()
-
-    asyncio.run(scenario())
-
-
-@pytest.mark.integration
-def test_only_one_collector_polls_same_project_and_shutdown_releases_lease(collector_redis_socket: str) -> None:
-    async def scenario() -> None:
-        redis = await _leader_test_redis(collector_redis_socket)
-        calls = 0
-        entered = asyncio.Event()
-        tasks: list[asyncio.Task[None]] = []
-
-        async def provider(request: httpx.Request) -> httpx.Response:
-            nonlocal calls
-            calls += 1
-            entered.set()
-            await asyncio.Event().wait()
-            return httpx.Response(200, json=[])
-
-        async def inner(request: httpx.Request) -> httpx.Response:
-            assert request.method == "GET"  # blocked page can never produce a checkpoint
-            return httpx.Response(200, json=_state())
-
-        try:
-            async with (
-                httpx.AsyncClient(transport=httpx.MockTransport(provider)) as p,
-                httpx.AsyncClient(transport=httpx.MockTransport(inner)) as i,
-            ):
-                client = RuntimeUsageClient(i, "http://inner", "inner", "project")
-                collectors = [
-                    E2BUsageCollector(p, client, "provider", "project", redis=redis, clock=lambda: NOW)
-                    for _ in range(2)
-                ]
-                tasks = [asyncio.create_task(collector.run()) for collector in collectors]
-                async with asyncio.timeout(2):
-                    await entered.wait()
-                await asyncio.sleep(0.05)
-                assert calls == 1
-                assert await redis.pttl("dify-agent:sandbox-usage:project:collector-lease") > 0
-                for task in tasks:
-                    task.cancel()
-                await asyncio.gather(*tasks, return_exceptions=True)
-                assert await redis.get("dify-agent:sandbox-usage:project:collector-lease") is None
-        finally:
-            for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
-            await redis.aclose()
-
-    asyncio.run(scenario())
-
-
-@pytest.mark.integration
-def test_lost_renewal_cancels_incomplete_scan_without_checkpoint(
-    collector_redis_socket: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import dify_agent.server.e2b_usage_collector as module
-
-    lease_class = module._CollectorLease
-    monkeypatch.setattr(
-        module, "_CollectorLease", lambda **kwargs: lease_class(**kwargs, renewal_interval_seconds=0.01)
-    )
-
-    async def scenario() -> None:
-        redis = await _leader_test_redis(collector_redis_socket)
-        entered = asyncio.Event()
-        cancelled = asyncio.Event()
-        posts: list[dict[str, Any]] = []
-        task = None
-
-        async def provider(request: httpx.Request) -> httpx.Response:
-            entered.set()
-            try:
-                await asyncio.Event().wait()
-            finally:
-                cancelled.set()
-            return httpx.Response(200, json=[])
-
-        async def inner(request: httpx.Request) -> httpx.Response:
-            if request.method == "POST":
-                posts.append(json.loads(request.content))
-            return httpx.Response(200, json=_state())
-
-        try:
-            async with (
-                httpx.AsyncClient(transport=httpx.MockTransport(provider)) as p,
-                httpx.AsyncClient(transport=httpx.MockTransport(inner)) as i,
-            ):
-                collector = E2BUsageCollector(
-                    p,
-                    RuntimeUsageClient(i, "http://inner", "inner", "project"),
-                    "provider",
-                    "project",
-                    redis=redis,
-                    clock=lambda: NOW,
-                )
-                task = asyncio.create_task(collector.run())
-                async with asyncio.timeout(2):
-                    await entered.wait()
-                    await redis.set("dify-agent:sandbox-usage:project:collector-lease", "successor", px=10000)
-                    await cancelled.wait()
-                assert posts == []
-                assert await redis.get("dify-agent:sandbox-usage:project:collector-lease") == b"successor"
-        finally:
-            if task is not None:
-                task.cancel()
-                await asyncio.gather(task, return_exceptions=True)
-            await redis.aclose()
 
     asyncio.run(scenario())

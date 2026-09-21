@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import posixpath
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 import logging
-from typing import Any, cast
+from typing import cast
 
 import httpx as e2b_httpx
 import httpx2 as httpx
@@ -33,7 +33,6 @@ from dify_agent.runtime_backend.e2b import (
     E2BSDKControlPlane,
 )
 from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease
-from dify_agent.runtime_backend.usage import runtime_usage_context
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,7 +191,7 @@ class _ControlPlane:
 
 def _mock_http(
     monkeypatch: pytest.MonkeyPatch,
-    handler: Callable[[httpx.Request], httpx.Response],
+    handler: Callable[[httpx.Request], httpx.Response | Awaitable[httpx.Response]],
 ) -> list[httpx.AsyncClient]:
     original_async_client = httpx.AsyncClient
     transport = httpx.MockTransport(handler)
@@ -1085,23 +1084,22 @@ async def test_e2b_acquire_preserves_health_failure_when_close_and_pause_fail(
     assert sandbox.pauses == [True]
 
 
-@dataclass
-class _UsageObserver:
-    events: list[dict[str, Any]] = field(default_factory=list)
-
-    async def observe_safely(self, event: dict[str, Any]) -> None:
-        self.events.append(event)
-
-
 @pytest.mark.anyio
-async def test_usage_preserves_created_resource_and_compensation_evidence() -> None:
-    control = _ControlPlane(file_make_dir_errors=[RuntimeError("initialization failed")])
-    backend = _binding_backend(control)
-    observer = _UsageObserver()
-    backend.usage_observer = observer
+async def test_create_task_cancellation_during_initialization_kills_sandbox(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entered = asyncio.Event()
 
-    with pytest.raises(BindingCreateError, match="initialization failed"):
-        await backend.create_binding(
+    async def blocked_make_dir(_self: _Files, _path: str) -> bool:
+        entered.set()
+        await asyncio.Event().wait()
+        return True
+
+    monkeypatch.setattr(_Files, "make_dir", blocked_make_dir)
+    control = _ControlPlane()
+    backend = _binding_backend(control)
+    task = asyncio.create_task(
+        backend.create_binding(
             ExecutionBindingCreateSpec(
                 tenant_id="tenant",
                 agent_id="agent",
@@ -1110,273 +1108,91 @@ async def test_usage_preserves_created_resource_and_compensation_evidence() -> N
                 existing_workspace_ref=None,
             )
         )
-
-    observed = [event for event in observer.events if event["type"] == "operation_observed"]
-    assert [(event["payload"]["operation"], event["payload"]["outcome"]) for event in observed] == [
-        ("create", "success"),
-        ("kill", "success"),
-    ]
-    assert all(event["sandbox_id"] == "sandbox-1" for event in observed)
-    assert all(event["allocation_id"] == "binding" for event in observed)
-    assert all(event["purpose"] == "binding_init" for event in observer.events)
+    )
+    async with asyncio.timeout(2):
+        await entered.wait()
+        task.cancel("cancel initialization")
+        with pytest.raises(asyncio.CancelledError, match="cancel initialization"):
+            await task
+    assert len(control.created) == 1
     assert control.sandboxes["sandbox-1"].killed == 1
 
 
 @pytest.mark.anyio
-async def test_usage_create_timeout_is_unknown_and_never_retried() -> None:
-    control = _ControlPlane(create_errors=[_transport_error(e2b_httpx.ReadTimeout)])
-    backend = _binding_backend(control)
-    observer = _UsageObserver()
-    backend.usage_observer = observer
-    with pytest.raises(BindingCreateError):
-        await backend.create_binding(
-            ExecutionBindingCreateSpec(
-                tenant_id="tenant",
-                agent_id="agent",
-                binding_id="binding",
-                workspace_id="workspace",
-                existing_workspace_ref=None,
-            )
-        )
-    assert len(control.created) == 1
-    assert observer.events[-1]["payload"]["outcome"] == "unknown"
-    assert observer.events[-1]["sandbox_id"] is None
+async def test_acquire_task_cancellation_during_health_closes_transport_and_pauses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entered = asyncio.Event()
 
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        entered.set()
+        await asyncio.Event().wait()
+        return httpx.Response(200, json={"status": "ok"})
 
-@pytest.mark.anyio
-async def test_usage_retry_shares_operation_id_and_keeps_lease_context(sleep_delays: list[float]) -> None:
+    clients = _mock_http(monkeypatch, handler)
     backend, sandbox = _connected_backend()
-    sandbox.pause_errors = [_transport_error(e2b_httpx.ReadTimeout)]
-    observer = _UsageObserver()
-    backend.usage_observer = observer
-    data_plane = _ReleaseDataPlane()
-    with runtime_usage_context(purpose="file_read", lease_id="lease", correlation={"run_id": "run"}):
-        lease = E2BRuntimeLease(
-            sandbox=sandbox,  # pyright: ignore[reportArgumentType]
-            data_plane=cast(ShellctlRuntimeLease, cast(object, data_plane)),
-        )
-    await backend.release(lease)
-    assert len({event["operation_id"] for event in observer.events}) == 1
-    assert len({event["id"] for event in observer.events}) == 4
-    observed = [event for event in observer.events if event["type"] == "operation_observed"]
-    assert [(event["attempt"], event["payload"]["outcome"]) for event in observed] == [(1, "unknown"), (2, "success")]
-    assert all(event["purpose"] == "file_read" and event["lease_id"] == "lease" for event in observed)
-    assert all(event["correlation"] == {"run_id": "run"} for event in observed)
-    assert sandbox.pauses == [True, True]
-
-
-@pytest.mark.anyio
-async def test_usage_cancellation_still_attempts_pause_and_preserves_cancel() -> None:
-    backend, sandbox = _connected_backend()
-    observer = _UsageObserver()
-    backend.usage_observer = observer
-    data_plane = _ReleaseDataPlane(close_error=asyncio.CancelledError())
-    lease = E2BRuntimeLease(
-        sandbox=sandbox,  # pyright: ignore[reportArgumentType]
-        data_plane=cast(ShellctlRuntimeLease, cast(object, data_plane)),
-    )
-    with pytest.raises(asyncio.CancelledError):
-        await backend.release(lease)
+    task = asyncio.create_task(backend.acquire(sandbox.sandbox_id))
+    async with asyncio.timeout(2):
+        await entered.wait()
+        task.cancel("cancel acquisition")
+        with pytest.raises(asyncio.CancelledError, match="cancel acquisition"):
+            await task
+    assert clients[0].is_closed
     assert sandbox.pauses == [True]
-    assert observer.events[-1]["payload"]["operation"] == "pause"
-    assert observer.events[-1]["payload"]["outcome"] == "success"
 
 
-@dataclass(slots=True)
-class _BlockingUsageObserver:
-    operation: str
-    phase: str
-    entered: asyncio.Event = field(default_factory=asyncio.Event)
-    blocked: bool = False
+@pytest.mark.anyio
+async def test_release_task_cancellation_keeps_pause_retries_and_original_cancel(
+    sleep_delays: list[float],
+) -> None:
+    entered = asyncio.Event()
 
-    async def observe_safely(self, event: dict[str, Any]) -> None:
-        if (
-            not self.blocked
-            and event["payload"]["operation"] == self.operation
-            and event["type"] == f"operation_{self.phase}"
-        ):
-            self.blocked = True
-            self.entered.set()
+    class BlockingCloseDataPlane:
+        async def close(self) -> None:
+            entered.set()
             await asyncio.Event().wait()
 
-
-async def _cancel_reporting_task(task: asyncio.Task[Any], observer: _BlockingUsageObserver) -> asyncio.CancelledError:
+    backend, sandbox = _connected_backend()
+    sandbox.pause_errors = [_transport_error(e2b_httpx.ReadTimeout), _transport_error(e2b_httpx.ReadTimeout)]
+    lease = E2BRuntimeLease(
+        sandbox=sandbox,  # pyright: ignore[reportArgumentType]
+        data_plane=cast(ShellctlRuntimeLease, cast(object, BlockingCloseDataPlane())),
+    )
+    task = asyncio.create_task(backend.release(lease))
     async with asyncio.timeout(2):
-        await observer.entered.wait()
-    task.cancel("cancel-during-report")
-    with pytest.raises(asyncio.CancelledError) as error:
-        await task
-    assert error.value.args == ("cancel-during-report",)
-    return error.value
-
-
-def _usage_create_spec() -> ExecutionBindingCreateSpec:
-    return ExecutionBindingCreateSpec(
-        tenant_id="tenant",
-        agent_id="agent",
-        binding_id="binding",
-        workspace_id="workspace",
-        existing_workspace_ref=None,
-    )
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize(
-    "cleanup_error", [None, RuntimeError("cleanup failure"), asyncio.CancelledError("second cancel")]
-)
-async def test_cancel_during_post_create_reporting_kills_owned_sandbox(cleanup_error: BaseException | None) -> None:
-    control = _ControlPlane(sandbox_kill_errors=[cleanup_error] if cleanup_error is not None else [])
-    backend = _binding_backend(control)
-    observer = _BlockingUsageObserver("create", "observed")
-    backend.usage_observer = observer
-    task = asyncio.create_task(backend.create_binding(_usage_create_spec()))
-    await _cancel_reporting_task(task, observer)
-    assert len(control.created) == 1
-    assert control.sandboxes["sandbox-1"].killed == 1
-    assert control.sandboxes["sandbox-1"].files.make_dir_calls == 0
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize(
-    "cleanup_error", [None, RuntimeError("cleanup failure"), asyncio.CancelledError("second cancel")]
-)
-async def test_cancel_during_post_connect_reporting_pauses_owned_sandbox(cleanup_error: BaseException | None) -> None:
-    backend, sandbox = _connected_backend()
-    if cleanup_error is not None:
-        sandbox.pause_errors = [cleanup_error]
-    observer = _BlockingUsageObserver("connect", "observed")
-    backend.usage_observer = observer
-    task = asyncio.create_task(backend.acquire(sandbox.sandbox_id))
-    await _cancel_reporting_task(task, observer)
-    assert sandbox.pauses == [True]
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize(
-    "cleanup_error", [None, RuntimeError("cleanup failure"), asyncio.CancelledError("second cancel")]
-)
-async def test_cancel_during_pre_pause_reporting_still_pauses_then_preserves_cancel(
-    cleanup_error: BaseException | None,
-) -> None:
-    backend, sandbox = _connected_backend()
-    if cleanup_error is not None:
-        sandbox.pause_errors = [cleanup_error]
-    observer = _BlockingUsageObserver("pause", "requested")
-    backend.usage_observer = observer
-    data_plane = _ReleaseDataPlane()
-    lease = E2BRuntimeLease(
-        sandbox=sandbox,  # pyright: ignore[reportArgumentType]
-        data_plane=cast(ShellctlRuntimeLease, cast(object, data_plane)),
-    )
-    task = asyncio.create_task(backend.release(lease))
-    error = await _cancel_reporting_task(task, observer)
-    assert data_plane.close_calls == 1
-    assert sandbox.pauses == [True]
-    if cleanup_error is not None:
-        assert error.__cause__ is cleanup_error
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize(
-    "cleanup_error", [None, RuntimeError("cleanup failure"), asyncio.CancelledError("second cancel")]
-)
-async def test_cancel_during_pre_kill_reporting_still_kills_then_preserves_cancel(
-    cleanup_error: BaseException | None,
-) -> None:
-    control = _ControlPlane(kill_errors=[cleanup_error] if cleanup_error is not None else [])
-    backend = _binding_backend(control)
-    observer = _BlockingUsageObserver("kill", "requested")
-    backend.usage_observer = observer
-    task = asyncio.create_task(
-        backend.destroy_binding(
-            ExecutionBindingDestroySpec(
-                binding_ref="sandbox-1",
-                workspace_ref="sandbox-1",
-                destroy_workspace=True,
-            )
-        )
-    )
-    error = await _cancel_reporting_task(task, observer)
-    assert control.killed == ["sandbox-1"]
-    if cleanup_error is not None:
-        assert error.__cause__ is cleanup_error
-
-
-@pytest.mark.anyio
-async def test_first_cancel_during_create_compensation_reporting_overrides_ordinary_error() -> None:
-    control = _ControlPlane(file_make_dir_errors=[RuntimeError("initialization failed")])
-    backend = _binding_backend(control)
-    observer = _BlockingUsageObserver("kill", "requested")
-    backend.usage_observer = observer
-    task = asyncio.create_task(backend.create_binding(_usage_create_spec()))
-    await _cancel_reporting_task(task, observer)
-    assert control.sandboxes["sandbox-1"].killed == 1
-
-
-@pytest.mark.anyio
-async def test_first_cancel_during_acquire_compensation_reporting_is_not_swallowed() -> None:
-    backend, sandbox = _connected_backend()
-    sandbox.files.paths.clear()
-    observer = _BlockingUsageObserver("pause", "requested")
-    backend.usage_observer = observer
-    task = asyncio.create_task(backend.acquire(sandbox.sandbox_id))
-    await _cancel_reporting_task(task, observer)
-    assert sandbox.pauses == [True]
-
-
-@pytest.mark.anyio
-async def test_reporting_transport_errors_do_not_retry_successful_sdk_actions() -> None:
-    class BrokenObserver:
-        async def observe_safely(self, event: dict[str, Any]) -> None:
-            raise _transport_error(e2b_httpx.ReadTimeout)
-
-    backend, sandbox = _connected_backend()
-    backend.usage_observer = BrokenObserver()
-    lease = E2BRuntimeLease(
-        sandbox=sandbox,  # pyright: ignore[reportArgumentType]
-        data_plane=cast(ShellctlRuntimeLease, cast(object, _ReleaseDataPlane())),
-    )
-    await backend.release(lease)
-    assert sandbox.pauses == [True]
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize("exhausted", [False, True])
-async def test_cancelled_cleanup_reporting_keeps_bounded_sdk_retries(
-    exhausted: bool, sleep_delays: list[float]
-) -> None:
-    backend, sandbox = _connected_backend()
-    sandbox.pause_errors = [_transport_error(e2b_httpx.ReadTimeout)] * (2 if exhausted else 1)
-    observer = _BlockingUsageObserver("pause", "requested")
-    backend.usage_observer = observer
-    lease = E2BRuntimeLease(
-        sandbox=sandbox,  # pyright: ignore[reportArgumentType]
-        data_plane=cast(ShellctlRuntimeLease, cast(object, _ReleaseDataPlane())),
-    )
-    task = asyncio.create_task(backend.release(lease))
-    await _cancel_reporting_task(task, observer)
+        await entered.wait()
+        task.cancel("cancel release")
+        with pytest.raises(asyncio.CancelledError, match="cancel release"):
+            await task
     assert sandbox.pauses == [True, True]
     assert sleep_delays == [0.25]
 
 
 @pytest.mark.anyio
-async def test_cancel_during_pre_create_reporting_does_not_create_a_sandbox() -> None:
-    control = _ControlPlane()
-    backend = _binding_backend(control)
-    observer = _BlockingUsageObserver("create", "requested")
-    backend.usage_observer = observer
-    task = asyncio.create_task(backend.create_binding(_usage_create_spec()))
-    await _cancel_reporting_task(task, observer)
-    assert control.created == []
-    assert control.sandboxes == {}
+async def test_acquire_primary_health_error_survives_task_cancel_during_compensation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Preserve the pre-metering best-effort compensation contract: a failure in
+    # cleanup must not replace the primary acquisition error.
+    entered = asyncio.Event()
 
+    async def blocked_pause(sandbox: _Sandbox, keep_memory: bool = True) -> bool:
+        sandbox.pauses.append(keep_memory)
+        entered.set()
+        await asyncio.Event().wait()
+        return True
 
-@pytest.mark.anyio
-async def test_cancel_during_pre_connect_reporting_does_not_resume_a_sandbox() -> None:
-    control = _ControlPlane()
-    backend = _binding_backend(control)
-    observer = _BlockingUsageObserver("connect", "requested")
-    backend.usage_observer = observer
-    task = asyncio.create_task(backend.acquire("sandbox-1"))
-    await _cancel_reporting_task(task, observer)
-    assert control.connect_attempts == []
+    monkeypatch.setattr(_Sandbox, "pause", blocked_pause)
+    clients = _mock_http(
+        monkeypatch,
+        lambda _request: httpx.Response(401, json={"error": {"code": "unauthorized", "message": "bad token"}}),
+    )
+    backend, sandbox = _connected_backend()
+    task = asyncio.create_task(backend.acquire(sandbox.sandbox_id))
+    async with asyncio.timeout(2):
+        await entered.wait()
+        task.cancel("cancel compensation")
+        with pytest.raises(BindingAcquireError, match="bad token"):
+            await task
+    assert clients[0].is_closed
+    assert sandbox.pauses == [True]

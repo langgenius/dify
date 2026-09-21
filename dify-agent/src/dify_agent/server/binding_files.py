@@ -164,11 +164,7 @@ class BindingFileService:
 
     async def list_files(self, request: BindingFileListRequest) -> BindingFileListResponse:
         try:
-            async with open_runtime_lease(
-                self.execution_bindings,
-                request.backend_binding_ref,
-                purpose="file_list",
-            ) as lease:
+            async with open_runtime_lease(self.execution_bindings, request.backend_binding_ref) as lease:
                 resolved_path = resolve_binding_path(request.path, lease.layout)
                 result = await execute_complete_with_commands(
                     lease.commands,
@@ -196,11 +192,7 @@ class BindingFileService:
 
     async def read_file(self, request: BindingFileReadRequest) -> BindingFileReadResponse:
         try:
-            async with open_runtime_lease(
-                self.execution_bindings,
-                request.backend_binding_ref,
-                purpose="file_read",
-            ) as lease:
+            async with open_runtime_lease(self.execution_bindings, request.backend_binding_ref) as lease:
                 resolved_path = resolve_binding_path(request.path, lease.layout)
                 result = await execute_complete_with_commands(
                     lease.commands,
@@ -254,11 +246,7 @@ class BindingFileService:
                     "Agent Stub file upload is not configured",
                     status_code=503,
                 )
-            async with open_runtime_lease(
-                self.execution_bindings,
-                request.backend_binding_ref,
-                purpose="file_download",
-            ) as lease:
+            async with open_runtime_lease(self.execution_bindings, request.backend_binding_ref) as lease:
                 resolved_path = resolve_binding_path(request.path, lease.layout)
                 env = {"HOME": lease.layout.home_dir, **agent_stub_env}
                 try:

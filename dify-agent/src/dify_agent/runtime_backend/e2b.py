@@ -13,7 +13,6 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 import logging
 from typing import TYPE_CHECKING, Literal, Protocol, TypeVar, cast
-from uuid import uuid4
 
 import httpx as e2b_httpx
 import httpx2 as httpx
@@ -40,13 +39,6 @@ from dify_agent.runtime_backend.protocols import (
     RuntimeLease,
 )
 from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease, create_owned_shellctl_lease
-from dify_agent.runtime_backend.usage import (
-    RuntimeUsageContext,
-    RuntimeUsageObserver,
-    current_runtime_usage_context,
-    observe_runtime_operation,
-    runtime_usage_context,
-)
 
 if TYPE_CHECKING:
     from e2b.connection_config import ApiParams
@@ -255,141 +247,72 @@ class E2BExecutionBindingBackend:
     layout: RuntimeLayout = field(
         default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace")
     )
-    usage_observer: RuntimeUsageObserver | None = None
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
-        """Create one paused E2B resource and observe its complete physical lifecycle."""
-        with runtime_usage_context(purpose="binding_init"):
-            if spec.existing_workspace_ref is not None:
-                raise SharedWorkspaceUnsupportedError("current E2B backend cannot attach to an existing Workspace")
-            sandbox: _E2BSandbox | None = None
-            operation_id = str(uuid4())
-            metadata = {
-                "dify.resource": "runtime-sandbox",
-                "dify.binding_id": spec.binding_id,
-                "dify.workspace_id": spec.workspace_id,
-                "dify.tenant_id": spec.tenant_id,
-                "dify.agent_id": spec.agent_id,
-            }
-            if self.usage_observer is not None:
-                # Binding IDs already exist before the remote allocation. Reuse
-                # that UUID rather than changing the private create wire contract.
-                metadata["dify.usage_allocation_id"] = spec.binding_id
-            try:
-                await observe_runtime_operation(
-                    self.usage_observer,
-                    operation_id=operation_id,
-                    attempt=1,
-                    phase="requested",
-                    operation="create",
-                    cleanup_stage="binding_create",
-                    allocation_id=spec.binding_id,
-                )
-                sandbox = await self.control_plane.create(
-                    self.template if spec.home_snapshot_ref is None else spec.home_snapshot_ref,
-                    timeout=self.active_timeout_seconds,
-                    metadata=metadata,
-                    on_timeout="pause",
-                )
-                # Record the handle before workspace setup can fail and kill it.
-                await observe_runtime_operation(
-                    self.usage_observer,
-                    operation_id=operation_id,
-                    attempt=1,
-                    phase="observed",
-                    operation="create",
-                    cleanup_stage="binding_create",
-                    sandbox_id=sandbox.sandbox_id,
-                    allocation_id=spec.binding_id,
-                    outcome="success",
-                )
-                _ = await sandbox.files.make_dir(self.layout.workspace_dir)
-                for entry in await sandbox.files.list(self.layout.workspace_dir):
-                    await sandbox.files.remove(entry.path)
-                sandbox_id = sandbox.sandbox_id
-                _ = await _run_e2b_idempotent_operation(
-                    operation="pause",
-                    sandbox_id=sandbox_id,
-                    cleanup_stage="binding_create",
-                    action=lambda: sandbox.pause(keep_memory=True),
-                    observer=self.usage_observer,
-                    allocation_id=spec.binding_id,
-                )
-                return ExecutionBindingAllocation(binding_ref=sandbox_id, workspace_ref=sandbox_id)
-            except _E2BControlPlaneCapacityExhaustedError as exc:
-                await self._observe_create_failure(operation_id, spec.binding_id, exc)
-                raise BindingCapacityExhaustedError(str(exc)) from exc
-            except BaseException as exc:
-                if sandbox is None:
-                    await self._observe_create_failure(operation_id, spec.binding_id, exc)
-                if sandbox is not None:
-                    try:
-                        _ = await _run_e2b_idempotent_operation(
-                            operation="kill",
-                            sandbox_id=sandbox.sandbox_id,
-                            cleanup_stage="binding_create_compensation",
-                            action=sandbox.kill,
-                            observer=self.usage_observer,
-                            allocation_id=spec.binding_id,
-                        )
-                    except asyncio.CancelledError as cleanup_exc:
-                        if isinstance(exc, asyncio.CancelledError):
-                            raise exc from cleanup_exc
-                        raise
-                    except Exception as cleanup_exc:
-                        _log_e2b_cleanup_warning(
-                            "failed to remove partial E2B Binding",
-                            operation="kill",
-                            sandbox_id=sandbox.sandbox_id,
-                            attempt=_e2b_failure_attempt(cleanup_exc),
-                            cleanup_stage="binding_create_compensation",
-                            exception=cleanup_exc,
-                        )
-                if isinstance(exc, Exception):
-                    if isinstance(exc, BindingCreateError):
-                        raise
-                    raise BindingCreateError(str(exc)) from exc
-                raise
-
-    async def _observe_create_failure(self, operation_id: str, allocation_id: str, error: BaseException) -> None:
-        await observe_runtime_operation(
-            self.usage_observer,
-            operation_id=operation_id,
-            attempt=1,
-            phase="observed",
-            operation="create",
-            cleanup_stage="binding_create",
-            allocation_id=allocation_id,
-            outcome="unknown"
-            if isinstance(error, (*_RETRYABLE_E2B_TRANSPORT_ERRORS, asyncio.CancelledError))
-            else "failed",
-            error_type=type(error).__name__,
-        )
+        """Create one paused E2B resource from a snapshot or deployment template."""
+        if spec.existing_workspace_ref is not None:
+            raise SharedWorkspaceUnsupportedError("current E2B backend cannot attach to an existing Workspace")
+        sandbox: _E2BSandbox | None = None
+        try:
+            sandbox = await self.control_plane.create(
+                self.template if spec.home_snapshot_ref is None else spec.home_snapshot_ref,
+                timeout=self.active_timeout_seconds,
+                metadata={
+                    "dify.resource": "runtime-sandbox",
+                    "dify.binding_id": spec.binding_id,
+                    "dify.workspace_id": spec.workspace_id,
+                    "dify.tenant_id": spec.tenant_id,
+                    "dify.agent_id": spec.agent_id,
+                },
+                on_timeout="pause",
+            )
+            _ = await sandbox.files.make_dir(self.layout.workspace_dir)
+            for entry in await sandbox.files.list(self.layout.workspace_dir):
+                await sandbox.files.remove(entry.path)
+            sandbox_id = sandbox.sandbox_id
+            _ = await _run_e2b_idempotent_operation(
+                operation="pause",
+                sandbox_id=sandbox_id,
+                cleanup_stage="binding_create",
+                action=lambda: sandbox.pause(keep_memory=True),
+            )
+            return ExecutionBindingAllocation(binding_ref=sandbox_id, workspace_ref=sandbox_id)
+        except _E2BControlPlaneCapacityExhaustedError as exc:
+            raise BindingCapacityExhaustedError(str(exc)) from exc
+        except BaseException as exc:
+            if sandbox is not None:
+                try:
+                    _ = await _run_e2b_idempotent_operation(
+                        operation="kill",
+                        sandbox_id=sandbox.sandbox_id,
+                        cleanup_stage="binding_create_compensation",
+                        action=sandbox.kill,
+                    )
+                except Exception as cleanup_exc:
+                    _log_e2b_cleanup_warning(
+                        "failed to remove partial E2B Binding",
+                        operation="kill",
+                        sandbox_id=sandbox.sandbox_id,
+                        attempt=_e2b_failure_attempt(cleanup_exc),
+                        cleanup_stage="binding_create_compensation",
+                        exception=cleanup_exc,
+                    )
+            if isinstance(exc, Exception):
+                if isinstance(exc, BindingCreateError):
+                    raise
+                raise BindingCreateError(str(exc)) from exc
+            raise
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
         """Acquire operation-scoped shellctl access for an opaque Binding ref."""
-        current = current_runtime_usage_context()
-        with runtime_usage_context(lease_id=current.lease_id or str(uuid4())):
-            return await self._acquire(binding_ref)
-
-    async def _acquire(self, binding_ref: str) -> RuntimeLease:
         sandbox: _E2BSandbox | None = None
         lease: E2BRuntimeLease | None = None
-
-        async def connect() -> _E2BSandbox:
-            nonlocal sandbox
-            # Own the handle before the helper awaits success reporting, so a
-            # cancellation in that HTTP call can still pause the resumed sandbox.
-            sandbox = await self.control_plane.connect(binding_ref, timeout=self.active_timeout_seconds)
-            return sandbox
-
         try:
             sandbox = await _run_e2b_idempotent_operation(
                 operation="connect",
                 sandbox_id=binding_ref,
                 cleanup_stage="binding_acquire",
-                action=connect,
-                observer=self.usage_observer,
+                action=lambda: self.control_plane.connect(binding_ref, timeout=self.active_timeout_seconds),
             )
             if not await sandbox.files.exists(self.layout.workspace_dir):
                 raise BindingLostError(f"E2B Binding {binding_ref!r} no longer contains its Workspace")
@@ -398,19 +321,12 @@ class E2BExecutionBindingBackend:
             return lease
         except _E2BControlPlaneNotFoundError as exc:
             raise BindingLostError(f"E2B Binding {binding_ref!r} no longer exists") from exc
-        except BindingLostError as exc:
-            await _best_effort_pause(sandbox, observer=self.usage_observer, primary_error=exc)
+        except BindingLostError:
+            await _best_effort_pause(sandbox)
             raise
         except BaseException as exc:
-            primary_error = exc
-            try:
-                await _best_effort_close_data_plane(lease)
-            except asyncio.CancelledError as cleanup_exc:
-                if not isinstance(primary_error, asyncio.CancelledError):
-                    primary_error = cleanup_exc
-            await _best_effort_pause(sandbox, observer=self.usage_observer, primary_error=primary_error)
-            if isinstance(primary_error, asyncio.CancelledError):
-                raise primary_error
+            await _best_effort_close_data_plane(lease)
+            await _best_effort_pause(sandbox)
             if isinstance(exc, Exception):
                 raise BindingAcquireError(str(exc)) from exc
             raise
@@ -419,10 +335,6 @@ class E2BExecutionBindingBackend:
         """Close operation-local transports and best-effort pause the E2B resource."""
         if not isinstance(lease, E2BRuntimeLease):
             raise TypeError("E2BExecutionBindingBackend can only release its own RuntimeLease")
-        with runtime_usage_context(context=lease.usage_context):
-            await self._release(lease)
-
-    async def _release(self, lease: E2BRuntimeLease) -> None:
         close_base_error: BaseException | None = None
         try:
             await lease.data_plane.close()
@@ -444,7 +356,6 @@ class E2BExecutionBindingBackend:
                 sandbox_id=lease.sandbox.sandbox_id,
                 cleanup_stage="binding_release",
                 action=lambda: lease.sandbox.pause(keep_memory=True),
-                observer=self.usage_observer,
             )
         except Exception as exc:
             _log_e2b_cleanup_warning(
@@ -478,7 +389,6 @@ class E2BExecutionBindingBackend:
                 sandbox_id=spec.binding_ref,
                 cleanup_stage="binding_destroy",
                 action=lambda: self.control_plane.kill(spec.binding_ref),
-                observer=self.usage_observer,
             )
         except _E2BControlPlaneNotFoundError:
             return
@@ -527,7 +437,6 @@ class E2BRuntimeLease:
 
     sandbox: _E2BSandbox
     data_plane: ShellctlRuntimeLease
-    usage_context: RuntimeUsageContext = field(default_factory=current_runtime_usage_context)
 
     @property
     def handle(self) -> str:
@@ -562,52 +471,12 @@ async def _run_e2b_idempotent_operation(
     sandbox_id: str,
     cleanup_stage: str,
     action: Callable[[], Awaitable[_ResultT]],
-    observer: RuntimeUsageObserver | None = None,
-    allocation_id: str | None = None,
 ) -> _ResultT:
-    """Retry SDK transport failures, while reporting cannot prevent cleanup."""
-    operation_id = str(uuid4())
-    reporting_cancel: asyncio.CancelledError | None = None
-
-    async def report(
-        attempt: int,
-        phase: str,
-        *,
-        outcome: str | None = None,
-        changed: bool | None = None,
-        error_type: str | None = None,
-    ) -> None:
-        nonlocal reporting_cancel
-        if reporting_cancel is not None:
-            return
-        try:
-            await observe_runtime_operation(
-                observer,
-                operation_id=operation_id,
-                attempt=attempt,
-                phase=phase,
-                operation=operation,
-                cleanup_stage=cleanup_stage,
-                sandbox_id=sandbox_id,
-                allocation_id=allocation_id,
-                outcome=outcome,
-                changed=changed,
-                error_type=error_type,
-            )
-        except asyncio.CancelledError as exc:
-            if operation not in {"pause", "kill"}:
-                raise
-            # Keep the cancellation until actual cleanup (including its existing
-            # bounded SDK retries) has been attempted. Do not report again while
-            # cancelling, spawn a task, shield, or consume the cancellation count.
-            reporting_cancel = exc
-
+    """Retry one idempotent E2B lifecycle operation after a transport failure."""
     for attempt in range(1, _E2B_CONTROL_PLANE_MAX_ATTEMPTS + 1):
-        await report(attempt, "requested")
         try:
-            result = await action()
+            return await action()
         except _RETRYABLE_E2B_TRANSPORT_ERRORS as exc:
-            await report(attempt, "observed", outcome="unknown", error_type=type(exc).__name__)
             exhausted = attempt == _E2B_CONTROL_PLANE_MAX_ATTEMPTS
             logger.warning(
                 "E2B lifecycle operation exhausted retries" if exhausted else "retrying E2B lifecycle operation",
@@ -622,30 +491,8 @@ async def _run_e2b_idempotent_operation(
                 ),
             )
             if exhausted:
-                if reporting_cancel is not None:
-                    raise reporting_cancel from exc
                 raise
-            try:
-                await asyncio.sleep(_E2B_CONTROL_PLANE_RETRY_INTERVAL_SECONDS)
-            except asyncio.CancelledError as exc:
-                if reporting_cancel is not None:
-                    raise reporting_cancel from exc
-                raise
-        except BaseException as exc:
-            await report(
-                attempt,
-                "observed",
-                outcome="unknown" if isinstance(exc, asyncio.CancelledError) else "failed",
-                error_type=type(exc).__name__,
-            )
-            if reporting_cancel is not None:
-                raise reporting_cancel from exc
-            raise
-        else:
-            await report(attempt, "observed", outcome="success", changed=result if isinstance(result, bool) else None)
-            if reporting_cancel is not None:
-                raise reporting_cancel
-            return result
+            await asyncio.sleep(_E2B_CONTROL_PLANE_RETRY_INTERVAL_SECONDS)
     raise AssertionError("unreachable")
 
 
@@ -703,8 +550,6 @@ async def _best_effort_close_data_plane(lease: E2BRuntimeLease | None) -> None:
         return
     try:
         await lease.data_plane.close()
-    except asyncio.CancelledError:
-        raise
     except BaseException as exc:
         _log_e2b_cleanup_warning(
             "failed to close E2B RuntimeLease data plane after acquire failure",
@@ -716,12 +561,7 @@ async def _best_effort_close_data_plane(lease: E2BRuntimeLease | None) -> None:
         )
 
 
-async def _best_effort_pause(
-    sandbox: _E2BSandbox | None,
-    *,
-    observer: RuntimeUsageObserver | None = None,
-    primary_error: BaseException | None = None,
-) -> None:
+async def _best_effort_pause(sandbox: _E2BSandbox | None) -> None:
     if sandbox is None:
         return
     try:
@@ -730,12 +570,7 @@ async def _best_effort_pause(
             sandbox_id=sandbox.sandbox_id,
             cleanup_stage="binding_acquire_compensation",
             action=lambda: sandbox.pause(keep_memory=True),
-            observer=observer,
         )
-    except asyncio.CancelledError as exc:
-        if isinstance(primary_error, asyncio.CancelledError):
-            raise primary_error from exc
-        raise
     except BaseException as exc:
         _log_e2b_cleanup_warning(
             "failed to pause E2B Binding after acquire failure",

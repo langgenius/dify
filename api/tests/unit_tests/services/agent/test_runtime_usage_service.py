@@ -8,9 +8,23 @@ from uuid import uuid4
 import pytest
 import sqlalchemy as sa
 from pydantic import JsonValue
+from sqlalchemy import event as sqlalchemy_event
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.sql import ClauseElement
 
+from models.agent import (
+    Agent,
+    AgentConfigVersionKind,
+    AgentScope,
+    AgentSource,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
+)
 from models.agent_sandbox_usage import AgentSandboxExecution, AgentSandboxUsageEvent
+from models.model import App
 from services.agent.runtime_usage_service import SandboxUsageError, SandboxUsageEvent, SandboxUsageService
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -27,11 +41,6 @@ def metering_config(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         AGENT_SANDBOX_METERING_START_AT=START,
     ):
         yield
-
-
-def owner() -> dict[str, str]:
-    result = {key: str(uuid4()) for key in ("tenant_id", "app_id", "agent_id", "binding_id", "workspace_id")}
-    return {**result, "allocation_id": result["binding_id"]}
 
 
 def provider_event(
@@ -113,68 +122,6 @@ def test_same_sandbox_resume_is_a_new_execution(sqlite_session_factory: sessionm
         assert session.scalar(sa.select(sa.func.count()).select_from(AgentSandboxExecution)) == 2
 
 
-def test_registration_precedes_business_rows_and_survives_without_them(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    registered = owner()
-    SandboxUsageService.register_allocation(**registered)
-    SandboxUsageService.register_allocation(**registered, sandbox_id="sandbox-1")
-    SandboxUsageService.register_allocation(**registered, sandbox_id="sandbox-1")
-    ingest(provider_event(metadata={"dify.usage_allocation_id": registered["allocation_id"]}))
-    row = execution(sqlite_session_factory)
-    assert row.tenant_id == registered["tenant_id"]
-    assert row.app_id == registered["app_id"]
-    assert row.attribution_status == "resolved"
-    with pytest.raises(SandboxUsageError, match="allocation_owner_conflict"):
-        SandboxUsageService.register_allocation(**{**registered, "tenant_id": str(uuid4())})
-    with pytest.raises(SandboxUsageError, match="allocation_sandbox_conflict"):
-        SandboxUsageService.register_allocation(**registered, sandbox_id="wrong-sandbox")
-
-
-def test_late_registration_resolves_orphan_execution(sqlite_session_factory: sessionmaker[Session]) -> None:
-    registered = owner()
-    ingest(provider_event(metadata={"dify.usage_allocation_id": registered["allocation_id"]}))
-    assert execution(sqlite_session_factory).attribution_status == "unresolved"
-    SandboxUsageService.register_allocation(**registered, sandbox_id="sandbox-1")
-    assert execution(sqlite_session_factory).attribution_status == "resolved"
-
-
-def test_unregistered_allocation_cannot_steal_resolved_execution(sqlite_session_factory: sessionmaker[Session]) -> None:
-    first, second = owner(), owner()
-    SandboxUsageService.register_allocation(**first, sandbox_id="sandbox-1")
-    ingest(provider_event(metadata={"dify.usage_allocation_id": first["allocation_id"]}))
-    assert (
-        ingest(
-            provider_event(event_id="different-owner", metadata={"dify.usage_allocation_id": second["allocation_id"]})
-        )["conflicts"]
-        == 1
-    )
-    with pytest.raises(SandboxUsageError, match="sandbox_owner_conflict"):
-        SandboxUsageService.register_allocation(**second, sandbox_id="sandbox-1")
-    SandboxUsageService.register_allocation(**first, sandbox_id="sandbox-1")
-    row = execution(sqlite_session_factory)
-    assert row.allocation_id == first["allocation_id"]
-    assert row.tenant_id == first["tenant_id"]
-    assert row.attribution_status == "conflict"
-    assert row.quality == "conflict"
-
-
-def test_two_allocations_cannot_register_same_physical_sandbox() -> None:
-    SandboxUsageService.register_allocation(**owner(), sandbox_id="sandbox-1")
-    with pytest.raises(SandboxUsageError, match="sandbox_owner_conflict"):
-        SandboxUsageService.register_allocation(**owner(), sandbox_id="sandbox-1")
-
-
-def test_provider_cannot_reassign_same_sandbox_on_another_execution(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    first, second = owner(), owner()
-    SandboxUsageService.register_allocation(**first, sandbox_id="sandbox-1")
-    SandboxUsageService.register_allocation(**second)
-    assert ingest(provider_event(metadata={"dify.usage_allocation_id": second["allocation_id"]}))["conflicts"] == 1
-    assert execution(sqlite_session_factory).attribution_status == "conflict"
-
-
 def test_state_reports_pending_and_conflict_counts_without_owner_ids() -> None:
     created = provider_event(event_id="created", kind="created", duration=None, started_at=None)
     created.payload["eventData"] = dict[str, JsonValue]()
@@ -194,15 +141,6 @@ def test_state_reports_pending_and_conflict_counts_without_owner_ids() -> None:
         "open_executions": 0,
         "unattributed_executions": 1,
     }
-
-
-def test_existing_sandbox_registered_at_first_use_counts_only_new_execution(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    SandboxUsageService.register_allocation(**owner(), sandbox_id="sandbox-1")
-    assert ingest(provider_event(started_at="2026-09-19T23:59:59Z"))["ignored"] == 1
-    ingest(provider_event(event_id="resume", execution_id="new-execution"))
-    assert execution(sqlite_session_factory).attribution_status == "resolved"
 
 
 def test_unknown_duration_stays_null_and_enrichment_is_replayable(
@@ -400,11 +338,10 @@ def test_provider_team_must_match_configured_project() -> None:
         ingest(event)
 
 
-def test_disabled_registration_is_noop_and_ingestion_does_not_ack(
+def test_disabled_ingestion_does_not_ack(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with config_overrides_context(AGENT_SANDBOX_METERING_ENABLED=False):
-        SandboxUsageService.register_allocation(**owner())
         assert SandboxUsageService.get_state(project_id=PROJECT)["enabled"] is False
         with pytest.raises(SandboxUsageError, match="disabled"):
             ingest(provider_event())
@@ -492,70 +429,6 @@ def test_invalid_owner_metadata_does_not_discard_metered_usage(
     assert row.attribution_status == "unresolved"
 
 
-def test_existing_sandbox_binding_metadata_resolves_registered_owner(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    registered = owner()
-    SandboxUsageService.register_allocation(**registered)
-    ingest(provider_event(metadata={"dify.binding_id": registered["binding_id"]}))
-    row = execution(sqlite_session_factory)
-    assert row.allocation_id == registered["allocation_id"]
-    assert row.app_id == registered["app_id"]
-    assert row.attribution_status == "resolved"
-
-
-def test_local_create_observation_resolves_provider_event_that_arrived_first(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    registered = owner()
-    SandboxUsageService.register_allocation(**registered)
-    ingest(provider_event())
-    assert execution(sqlite_session_factory).attribution_status == "unresolved"
-    observed = SandboxUsageEvent.model_validate(
-        {
-            "id": "create-observed",
-            "source": "application",
-            "type": "operation_observed",
-            "timestamp": START,
-            "allocation_id": registered["allocation_id"],
-            "sandbox_id": "sandbox-1",
-            "payload": {"operation": "create", "outcome": "success"},
-        }
-    )
-    assert ingest(observed)["accepted"] == 1
-    row = execution(sqlite_session_factory)
-    assert row.app_id == registered["app_id"]
-    assert row.attribution_status == "resolved"
-    assert row.metered_duration_ms == 12345
-
-
-def test_local_observation_cannot_claim_another_allocations_sandbox(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    first, second = owner(), owner()
-    SandboxUsageService.register_allocation(**first, sandbox_id="sandbox-1")
-    SandboxUsageService.register_allocation(**second)
-    observed = SandboxUsageEvent.model_validate(
-        {
-            "id": "wrong-create",
-            "source": "application",
-            "type": "operation_observed",
-            "timestamp": START,
-            "allocation_id": second["allocation_id"],
-            "sandbox_id": "sandbox-1",
-            "payload": {"operation": "create", "outcome": "success"},
-        }
-    )
-    assert ingest(observed)["conflicts"] == 1
-    with sqlite_session_factory() as session:
-        registration = session.scalars(
-            sa.select(AgentSandboxUsageEvent).where(
-                AgentSandboxUsageEvent.source_event_id == f"allocation:{second['allocation_id']}"
-            )
-        ).one()
-        assert registration.sandbox_id is None
-
-
 @pytest.mark.parametrize("change", ["sandbox", "started_at", "resources"])
 def test_execution_identity_and_resource_conflicts_preserve_original_usage(
     change: str, sqlite_session_factory: sessionmaker[Session]
@@ -593,3 +466,255 @@ def test_unsupported_provider_contract_is_visible_without_fabricated_execution(
         ).one()
         assert row.projection_status == "unresolved"
         assert row.projection_error_code == "incomplete_provider_execution"
+
+
+def business_owner(
+    session: Session,
+    *,
+    binding_id: str | None = None,
+    tenant_id: str | None = None,
+    sandbox_id: str = "sandbox-1",
+) -> AgentWorkspaceBinding:
+    tenant_id = tenant_id or str(uuid4())
+    app_id, agent_id, workspace_id = (str(uuid4()) for _ in range(3))
+    session.add_all(
+        [
+            App(
+                id=app_id,
+                tenant_id=tenant_id,
+                name="Metering test",
+                description="",
+                mode="agent",
+                enable_site=False,
+                enable_api=False,
+                max_active_requests=None,
+            ),
+            Agent(
+                id=agent_id, tenant_id=tenant_id, name=str(uuid4()), scope=AgentScope.ROSTER, source=AgentSource.ROSTER
+            ),
+            AgentWorkspace(
+                id=workspace_id,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                owner_id=str(uuid4()),
+                owner_scope_key="root",
+                backend_workspace_ref=sandbox_id,
+            ),
+        ]
+    )
+    binding = AgentWorkspaceBinding(
+        id=binding_id or str(uuid4()),
+        tenant_id=tenant_id,
+        app_id=app_id,
+        agent_id=agent_id,
+        workspace_id=workspace_id,
+        agent_config_version_id=str(uuid4()),
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        backend_binding_ref=sandbox_id,
+    )
+    session.add(binding)
+    session.commit()
+    return binding
+
+
+def owner_metadata(binding: AgentWorkspaceBinding) -> dict[str, JsonValue]:
+    return {
+        "dify.binding_id": binding.id,
+        "dify.tenant_id": binding.tenant_id,
+        "dify.agent_id": binding.agent_id,
+        "dify.workspace_id": binding.workspace_id,
+    }
+
+
+def test_provider_usage_without_business_rows_remains_metered(sqlite_session_factory: sessionmaker[Session]) -> None:
+    ingest(provider_event(metadata={"dify.binding_id": str(uuid4()), "dify.tenant_id": str(uuid4())}))
+    row = execution(sqlite_session_factory)
+    assert row.quality == "metered"
+    assert row.metered_duration_ms == 12345
+    assert row.attribution_status == "unresolved"
+    assert row.tenant_id is None
+    assert row.allocation_id is None
+
+
+def test_background_attribution_uses_verified_business_chain(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    binding = business_owner(sqlite_session)
+    ingest(provider_event(metadata=owner_metadata(binding)))
+    row = execution(sqlite_session_factory)
+    assert (row.tenant_id, row.app_id, row.agent_id, row.binding_id, row.workspace_id) == (
+        binding.tenant_id,
+        binding.app_id,
+        binding.agent_id,
+        binding.id,
+        binding.workspace_id,
+    )
+    assert row.attribution_status == "resolved"
+    assert row.allocation_id is None
+    with sqlite_session_factory() as session:
+        assert (
+            session.scalar(
+                sa.select(sa.func.count())
+                .select_from(AgentSandboxUsageEvent)
+                .where(AgentSandboxUsageEvent.event_type == "allocation_registered")
+            )
+            == 0
+        )
+
+
+def test_duplicate_provider_replay_can_resolve_business_rows_committed_later(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    binding_id, tenant_id = str(uuid4()), str(uuid4())
+    event = provider_event(metadata={"dify.binding_id": binding_id, "dify.tenant_id": tenant_id})
+    ingest(event)
+    assert execution(sqlite_session_factory).attribution_status == "unresolved"
+    binding = business_owner(sqlite_session, binding_id=binding_id, tenant_id=tenant_id)
+    assert ingest(event)["duplicates"] == 1
+    row = execution(sqlite_session_factory)
+    assert row.binding_id == binding.id
+    assert row.attribution_status == "resolved"
+    assert row.metered_duration_ms == 12345
+
+
+@pytest.mark.parametrize("missing", ["binding", "workspace", "app", "agent"])
+def test_deleted_business_rows_do_not_erase_retained_owner_or_usage(
+    missing: str, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    binding = business_owner(sqlite_session)
+    event = provider_event(metadata=owner_metadata(binding))
+    ingest(event)
+    if missing == "binding":
+        sqlite_session.delete(binding)
+    elif missing == "workspace":
+        sqlite_session.execute(sa.delete(AgentWorkspace).where(AgentWorkspace.id == binding.workspace_id))
+    elif missing == "app":
+        sqlite_session.execute(sa.delete(App).where(App.id == binding.app_id))
+    else:
+        sqlite_session.execute(sa.delete(Agent).where(Agent.id == binding.agent_id))
+    sqlite_session.commit()
+    assert ingest(event)["duplicates"] == 1
+    row = execution(sqlite_session_factory)
+    assert (row.binding_id, row.tenant_id) == (binding.id, binding.tenant_id)
+    assert row.attribution_status == "resolved"
+    assert row.metered_duration_ms == 12345
+
+
+@pytest.mark.parametrize(
+    "broken_link",
+    [
+        "tenant_metadata",
+        "agent_metadata",
+        "workspace_metadata",
+        "binding_sandbox",
+        "workspace_sandbox",
+        "app_tenant",
+        "agent_tenant",
+    ],
+)
+def test_unverified_business_chain_never_guesses_an_owner(
+    broken_link: str, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    binding = business_owner(sqlite_session)
+    metadata = owner_metadata(binding)
+    if broken_link == "tenant_metadata":
+        metadata["dify.tenant_id"] = str(uuid4())
+    elif broken_link in {"agent_metadata", "workspace_metadata"}:
+        metadata[f"dify.{broken_link.removesuffix('_metadata')}_id"] = str(uuid4())
+    elif broken_link == "binding_sandbox":
+        binding.backend_binding_ref = "different-sandbox"
+    elif broken_link == "workspace_sandbox":
+        sqlite_session.execute(
+            sa.update(AgentWorkspace)
+            .where(AgentWorkspace.id == binding.workspace_id)
+            .values(backend_workspace_ref="different-sandbox")
+        )
+    elif broken_link == "app_tenant":
+        sqlite_session.execute(sa.update(App).where(App.id == binding.app_id).values(tenant_id=str(uuid4())))
+    else:
+        sqlite_session.execute(sa.update(Agent).where(Agent.id == binding.agent_id).values(tenant_id=str(uuid4())))
+    sqlite_session.commit()
+    ingest(provider_event(metadata=metadata))
+    row = execution(sqlite_session_factory)
+    assert row.quality == "metered"
+    assert row.tenant_id is None
+    assert row.attribution_status == "unresolved"
+
+
+@pytest.mark.parametrize("bad_value", [None, 42, "invalid-uuid"])
+def test_bad_attribution_labels_do_not_invalidate_measured_runtime(
+    bad_value: JsonValue, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    binding = business_owner(sqlite_session)
+    ingest(provider_event(metadata=owner_metadata(binding)))
+    changed = owner_metadata(binding)
+    changed["dify.tenant_id"] = bad_value
+    assert ingest(provider_event(metadata=changed))["accepted"] == 1
+    row = execution(sqlite_session_factory)
+    assert row.quality == "metered"
+    assert row.attribution_status == "resolved"
+    assert row.tenant_id == binding.tenant_id
+    assert row.metered_duration_ms == 12345
+
+
+def test_owner_conflict_does_not_reassign_history_or_discard_project_usage(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    first, second = business_owner(sqlite_session), business_owner(sqlite_session)
+    ingest(provider_event(metadata=owner_metadata(first)))
+    ingest(provider_event(event_id="other-owner", metadata=owner_metadata(second)))
+    row = execution(sqlite_session_factory)
+    assert row.attribution_status == "conflict"
+    assert row.binding_id == first.id
+    assert row.tenant_id == first.tenant_id
+    assert row.quality == "metered"
+    assert row.metered_duration_ms == 12345
+
+
+def test_same_sandbox_cannot_change_owner_across_executions(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    first, second = business_owner(sqlite_session), business_owner(sqlite_session)
+    ingest(provider_event(metadata=owner_metadata(first)))
+    resumed = provider_event(event_id="new-execution", execution_id="execution-2", metadata=owner_metadata(second))
+    ingest(resumed)
+    # A subsequent replay with the original owner cannot erase the conflicting
+    # association. Both physical executions remain counted at project level.
+    ingest(provider_event(event_id="later-event", execution_id="execution-2", metadata=owner_metadata(first)))
+    with sqlite_session_factory() as session:
+        rows = list(
+            session.scalars(sa.select(AgentSandboxExecution).order_by(AgentSandboxExecution.provider_execution_id))
+        )
+    assert [(row.attribution_status, row.binding_id) for row in rows] == [
+        ("resolved", first.id),
+        ("conflict", None),
+    ]
+    assert [row.quality for row in rows] == ["metered", "metered"]
+    assert sum(row.metered_duration_ms or 0 for row in rows) == 24690
+
+
+@pytest.mark.parametrize("event_type", ["operation_requested", "operation_observed", "allocation_registered"])
+def test_application_operations_are_no_longer_accepted(event_type: str) -> None:
+    event = SandboxUsageEvent(id="legacy-operation", source="application", type=event_type, payload={})
+    with pytest.raises(SandboxUsageError, match="unsupported_application_event"):
+        ingest(event)
+
+
+def test_steady_state_lookup_only_selects_without_locking_activation(sqlite_session: Session) -> None:
+    engine = sqlite_session.get_bind()
+    assert isinstance(engine, Engine)
+    initial = SandboxUsageService.get_state(project_id=PROJECT)
+    statements: list[str] = []
+
+    def observe(_connection: Connection, statement: ClauseElement, *_args: object) -> None:
+        statements.append(str(statement.compile(dialect=postgresql.dialect())))
+
+    sqlalchemy_event.listen(engine, "before_execute", observe)
+    try:
+        assert SandboxUsageService.get_state(project_id=PROJECT) == initial
+    finally:
+        sqlalchemy_event.remove(engine, "before_execute", observe)
+    assert statements
+    assert all(statement.lstrip().startswith("SELECT") for statement in statements)
+    assert all("FOR UPDATE" not in statement for statement in statements)

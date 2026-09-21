@@ -1,30 +1,25 @@
-"""Best-effort lifecycle diagnostics and the shared usage ingestion client.
+"""Provider-specific client for E2B usage facts and completed-scan checkpoints.
 
-Each application observation directly awaits one bounded HTTP request. Failed
-requests are logged and discarded without a queue, worker or retry. Business
-cancellation propagates; E2B callers retain ownership of resource cleanup.
-Provider execution events are collected separately.
+Only the scheduled collector uses this client. Business operations do not report
+accounting events or borrow this connection pool.
 """
 
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
 import logging
-import math
 from typing import Any
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
-_MAX_EVENT_BYTES = 64 * 1024
 _MAX_BATCH_BYTES = 1024 * 1024
 
 
-class UsageState(BaseModel):
+class E2BUsageState(BaseModel):
     enabled: bool
     project_id: str
     started_at: datetime | None = None
@@ -42,15 +37,15 @@ class _IngestResult(BaseModel):
 
 
 @dataclass(slots=True)
-class RuntimeUsageClient:
-    """Borrow the lifespan-owned inner client; credentials never reach E2B."""
+class E2BUsageApiClient:
+    """Use a collection-scoped inner client; credentials never reach E2B."""
 
     client: httpx.AsyncClient
     base_url: str
     api_key: str
     project_id: str
 
-    async def get_state(self) -> UsageState:
+    async def get_state(self) -> E2BUsageState:
         response = await self.client.get(
             f"{self.base_url.rstrip('/')}/inner/api/agent/sandbox-usage/state",
             params={"project_id": self.project_id},
@@ -58,7 +53,7 @@ class RuntimeUsageClient:
             timeout=15.0,
         )
         response.raise_for_status()
-        state = UsageState.model_validate(response.json())
+        state = E2BUsageState.model_validate(response.json())
         if state.project_id != self.project_id:
             raise ValueError("sandbox usage state project mismatch")
         for value in (state.started_at, state.checkpoint_at, state.full_scan_at):
@@ -72,8 +67,8 @@ class RuntimeUsageClient:
         if not events or len(events) > 100:
             raise ValueError("sandbox usage batches require 1 to 100 events")
         # The API limits the whole HTTP body, not just its event count. Splitting
-        # here covers provider pages and application observations. The collector
-        # retries stable provider IDs; direct observations are attempted once.
+        # here covers provider pages. Repeated scheduled scans use stable
+        # provider IDs, so partial success cannot multiply execution usage.
         batch: list[dict[str, Any]] = []
         for event in events:
             candidate = [*batch, event]
@@ -111,37 +106,6 @@ class RuntimeUsageClient:
             raise ValueError("sandbox usage acknowledgement does not cover the entire batch")
         if result.conflicts:
             logger.error("sandbox usage ingestion reported conflicts", extra={"conflicts": result.conflicts})
-
-
-@dataclass(slots=True)
-class DirectRuntimeUsageObserver:
-    """Await one diagnostic request, without buffering or background delivery."""
-
-    client: RuntimeUsageClient
-    timeout_seconds: float = 1.0
-
-    def __post_init__(self) -> None:
-        if not math.isfinite(self.timeout_seconds) or self.timeout_seconds <= 0:
-            raise ValueError("sandbox usage timeout must be finite and positive")
-
-    async def observe_safely(self, event: dict[str, Any]) -> None:
-        # Cancellation cleanup takes priority over optional diagnostics. Do not
-        # consume or clear the task's cancellation: callers still own it.
-        task = asyncio.current_task()
-        if task is not None and task.cancelling():
-            return
-        try:
-            payload = json.dumps(event, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
-            if not isinstance(event.get("id"), str) or not event["id"]:
-                raise ValueError("sandbox usage event requires stable id")
-            if len(payload.encode()) > _MAX_EVENT_BYTES:
-                raise ValueError("sandbox usage event exceeds size limit")
-            async with asyncio.timeout(self.timeout_seconds):
-                await self.client.post_events([event])
-        except Exception as exc:
-            # No retry or retained copy. Avoid contents and exception messages,
-            # which may include credentials. Business cancellation propagates.
-            logger.warning("sandbox usage observation dropped", extra={"error_type": type(exc).__name__})
 
 
 def utc_now() -> datetime:

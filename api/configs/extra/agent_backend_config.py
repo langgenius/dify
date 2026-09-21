@@ -14,6 +14,10 @@ class AgentBackendConfig(BaseSettings):
     AGENT_SANDBOX_METERING_START_AT: str = Field(
         default="", description="Immutable UTC activation instant, aligned to a whole second; required when enabled."
     )
+    AGENT_SANDBOX_METERING_INTERVAL_SECONDS: int | str = Field(
+        default=60,
+        description="Celery Beat interval in seconds; validated only when registering optional usage collection.",
+    )
 
     AGENT_BACKEND_BASE_URL: str | None = Field(
         description="Base URL for the Dify Agent backend service.",
