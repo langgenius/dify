@@ -44,7 +44,6 @@ type EnvironmentWebAppCardProps = {
   appId: string
   environmentId: string
   canManageAccessPoint: boolean
-  canReleaseAndVersion: boolean
   highlighted?: boolean
 }
 
@@ -52,7 +51,6 @@ export function EnvironmentWebAppCard({
   appId,
   environmentId,
   canManageAccessPoint,
-  canReleaseAndVersion,
   highlighted,
 }: EnvironmentWebAppCardProps) {
   const { t } = useTranslation()
@@ -89,7 +87,7 @@ export function EnvironmentWebAppCard({
     ...subjectsQueryOptions,
     enabled:
       siteQuery.isSuccess &&
-      canReleaseAndVersion &&
+      canManageAccessPoint &&
       (showAccess || accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS),
   })
   const accessConfigured =
@@ -235,7 +233,7 @@ export function EnvironmentWebAppCard({
               accessConfigured={accessConfigured}
               accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
               accessLabel={accessLabel}
-              disabled={!canReleaseAndVersion}
+              disabled={!canManageAccessPoint}
               onClick={() => setShowAccess(true)}
             />
           ) : (
@@ -265,7 +263,7 @@ export function EnvironmentWebAppCard({
           appId={appId}
           environmentId={environmentId}
           accessMode={accessMode}
-          canManage={canReleaseAndVersion}
+          canManage={canManageAccessPoint}
           onClose={() => setShowAccess(false)}
           onConfirm={() => setShowAccess(false)}
         />

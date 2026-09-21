@@ -1174,7 +1174,7 @@ describe('Agent access surface cards', () => {
       createAgent({
         access_mode: 'private_all',
         maintainer: 'user-2',
-        permission_keys: [AgentPermission.ReleaseAndVersion],
+        permission_keys: [AgentPermission.AccessPointManage],
       })
 
     const organizationAccessLabel = 'app.accessControlDialog.accessItems.organization'
@@ -1228,13 +1228,13 @@ describe('Agent access surface cards', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should disable the access mode entry when the user cannot manage access control', () => {
+    it('should not grant access control management from release permission', () => {
       renderWithQueryClient(
         <WebAppAccessCard
           agent={createAgent({
             access_mode: 'private_all',
             maintainer: 'user-2',
-            permission_keys: [AgentPermission.AccessPointManage],
+            permission_keys: [AgentPermission.ReleaseAndVersion],
           })}
           agentId="agent-1"
           isLoading={false}
@@ -1271,7 +1271,7 @@ describe('Agent access surface cards', () => {
             app_id: 'source-app-1',
             backing_app_id: 'backing-app-1',
             maintainer: 'user-2',
-            permission_keys: [AgentPermission.ReleaseAndVersion],
+            permission_keys: [AgentPermission.AccessPointManage],
           })}
           agentId="agent-1"
           isLoading={false}
