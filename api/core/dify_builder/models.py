@@ -255,6 +255,9 @@ class DifyBuilderContext:
     # that changed nothing could be approved forever (ESQ1-291) and a repair
     # aimed at the wrong field could thrash indefinitely (ESQ1-285/290).
     repair_attempts: int = 0
+    # The ENGINE failure signature of the last diagnosed run (see
+    # handlers_build._failure_signature), NOT human-readable prose -- it is
+    # compared for equality to detect a repair loop and is never displayed.
     last_repair_error: str = ""
     risk: Risk | None = None
     change_set: ChangeSet | None = None
