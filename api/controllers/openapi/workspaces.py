@@ -98,14 +98,7 @@ class WorkspacesApi(Resource):
     )
     def get(self, ctx: Context, *, query: WorkspaceListQuery):
         rows = TenantService.get_workspaces_for_account(str(ctx.subject.account_id), session=ctx.session)
-        items = list(starmap(_workspace_summary, rows))
-        start = (query.page - 1) * query.limit
-        return WorkspaceListResponse.build(
-            page=query.page,
-            limit=query.limit,
-            total=len(items),
-            items=items[start : start + query.limit],
-        )
+        return WorkspaceListResponse.page_of(list(starmap(_workspace_summary, rows)), query=query)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>")
@@ -182,15 +175,7 @@ class WorkspaceMembersApi(Resource):
     )
     def get(self, ctx: Context, workspace_id: str, *, query: MemberListQuery):
         members = TenantService.get_tenant_members(ctx.workspace, session=ctx.session)
-        total = len(members)
-        start = (query.page - 1) * query.limit
-        page_items = members[start : start + query.limit]
-        return MemberListResponse.build(
-            page=query.page,
-            limit=query.limit,
-            total=total,
-            items=[_member_response(m) for m in page_items],
-        )
+        return MemberListResponse.page_of([_member_response(m) for m in members], query=query)
 
     @endpoint(
         op="workspace.members.invite",

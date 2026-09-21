@@ -91,6 +91,12 @@ class PaginationEnvelope[T](Hinted):
     def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> Self:
         return cls(page=page, limit=limit, total=total, has_more=page * limit < total, data=items)
 
+    @classmethod
+    def page_of(cls, items: list[T], *, query: PageQuery) -> Self:
+        """The page `query` asks for, cut from a list the service returned whole."""
+        start = (query.page - 1) * query.limit
+        return cls.build(page=query.page, limit=query.limit, total=len(items), items=items[start : start + query.limit])
+
 
 class AppListRow(BaseModel):
     id: str

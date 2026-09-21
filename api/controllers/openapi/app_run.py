@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Collection, Generator, Iterable, Mapping
+from collections.abc import Callable, Collection, Generator, Iterable, Mapping
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any, Final
 
 from flask_restx import Resource
@@ -23,7 +24,7 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
-from controllers.openapi._contract import Kind, endpoint, op_of
+from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._files import materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
@@ -202,69 +203,93 @@ def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generato
     return attach_stream_hints(events, event=StreamEvent.MESSAGE_END.value, build=build)
 
 
-@openapi_ns.route("/apps/<string:app_id>/workflow:run")
-class WorkflowRunApi(Resource):
-    @endpoint(
+HintLayer = Callable[[Iterable[str], str, str], Generator[str, None, None]]
+
+
+def _reply_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str, None, None]:
+    return with_reply_hints(events, op=op, app_id=app_id)
+
+
+def _form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str, None, None]:
+    return with_form_hints(events, app_id=app_id)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class _RunRoute:
+    """What differs between the per-mode run routes; `_run_api` builds the Resource from it.
+
+    `hints` apply innermost first, so a stream wrapped in (reply, form) has form hints outermost.
+    """
+
+    resource: str
+    segment: str
+    op: str
+    summary: str
+    payload: type[RunPayloadBase]
+    modes: tuple[AppMode, ...]
+    hints: tuple[HintLayer, ...] = ()
+
+
+_RUN_ROUTES: Final = (
+    _RunRoute(
+        resource="WorkflowRunApi",
+        segment="workflow",
         op="console_app.workflow.run",
-        kind=Kind.SSE,
         summary="Run a workflow app; streams workflow events",
-        requirements=_RUN_GUARDS,
-        body=WorkflowRunPayload,
-        returns=_STREAM_RESULT,
-    )
-    def post(self, ctx: Context, app_id: str, *, body: WorkflowRunPayload):
-        _require_mode(ctx.app, AppMode.WORKFLOW)
-        stream = _stream(ctx, _generate_args(ctx.caller, body))
-        return _respond(ctx, with_form_hints(stream, app_id=ctx.app.id))
-
-
-@openapi_ns.route("/apps/<string:app_id>/chat:run")
-class ChatRunApi(Resource):
-    @endpoint(
+        payload=WorkflowRunPayload,
+        modes=(AppMode.WORKFLOW,),
+        hints=(_form_layer,),
+    ),
+    _RunRoute(
+        resource="ChatRunApi",
+        segment="chat",
         op="console_app.chat.run",
-        kind=Kind.SSE,
         summary="Run a chat or agent app; streams message events",
-        requirements=_RUN_GUARDS,
-        body=ChatRunPayload,
-        returns=_STREAM_RESULT,
-    )
-    def post(self, ctx: Context, app_id: str, *, body: ChatRunPayload):
-        _require_mode(ctx.app, AppMode.CHAT, AppMode.AGENT_CHAT)
-        stream = _stream(ctx, _generate_args(ctx.caller, body))
-        return _respond(ctx, with_reply_hints(stream, op=op_of(type(self).post), app_id=ctx.app.id))
-
-
-@openapi_ns.route("/apps/<string:app_id>/advanced-chat:run")
-class AdvancedChatRunApi(Resource):
-    @endpoint(
+        payload=ChatRunPayload,
+        modes=(AppMode.CHAT, AppMode.AGENT_CHAT),
+        hints=(_reply_layer,),
+    ),
+    _RunRoute(
+        resource="AdvancedChatRunApi",
+        segment="advanced-chat",
         op="console_app.advanced_chat.run",
-        kind=Kind.SSE,
         summary="Run an advanced-chat (chatflow) app; streams message and workflow events",
-        requirements=_RUN_GUARDS,
-        body=AdvancedChatRunPayload,
-        returns=_STREAM_RESULT,
-    )
-    def post(self, ctx: Context, app_id: str, *, body: AdvancedChatRunPayload):
-        _require_mode(ctx.app, AppMode.ADVANCED_CHAT)
-        stream = with_reply_hints(
-            _stream(ctx, _generate_args(ctx.caller, body)), op=op_of(type(self).post), app_id=ctx.app.id
-        )
-        return _respond(ctx, with_form_hints(stream, app_id=ctx.app.id))
-
-
-@openapi_ns.route("/apps/<string:app_id>/completion:run")
-class CompletionRunApi(Resource):
-    @endpoint(
+        payload=AdvancedChatRunPayload,
+        modes=(AppMode.ADVANCED_CHAT,),
+        hints=(_reply_layer, _form_layer),
+    ),
+    _RunRoute(
+        resource="CompletionRunApi",
+        segment="completion",
         op="console_app.completion.run",
-        kind=Kind.SSE,
         summary="Run a completion app; streams message events",
+        payload=CompletionRunPayload,
+        modes=(AppMode.COMPLETION,),
+    ),
+)
+
+
+def _run_api(route: _RunRoute) -> type[Resource]:
+    @endpoint(
+        op=route.op,
+        kind=Kind.SSE,
+        summary=route.summary,
         requirements=_RUN_GUARDS,
-        body=CompletionRunPayload,
+        body=route.payload,
         returns=_STREAM_RESULT,
     )
-    def post(self, ctx: Context, app_id: str, *, body: CompletionRunPayload):
-        _require_mode(ctx.app, AppMode.COMPLETION)
-        return _respond(ctx, _stream(ctx, _generate_args(ctx.caller, body)))
+    def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
+        _require_mode(ctx.app, *route.modes)
+        stream = _stream(ctx, _generate_args(ctx.caller, body))
+        for layer in route.hints:
+            stream = layer(stream, route.op, ctx.app.id)
+        return _respond(ctx, stream)
+
+    resource = type(route.resource, (Resource,), {"post": post, "__module__": __name__})
+    return openapi_ns.route(f"/apps/<string:app_id>/{route.segment}:run")(resource)
+
+
+WorkflowRunApi, ChatRunApi, AdvancedChatRunApi, CompletionRunApi = (_run_api(route) for route in _RUN_ROUTES)
 
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
