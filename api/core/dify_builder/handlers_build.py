@@ -909,6 +909,30 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
     progress.activate("build-diagnose-failure")
     diagnosis = env.agent.diagnose(run, graph, per_node)
+    if _repair_is_repeating(fc, diagnosis.root_cause):
+        # The same failure has now survived _MAX_REPEATED_REPAIRS repairs, so
+        # another round would aim at the same wrong thing. Stop spending runs
+        # and hand the decision back (ESQ1-285 burned nine approvals this way,
+        # ESQ1-290 six). Clearing staged_repair also engages the empty-repair
+        # guard above, so "Apply the fix" cannot be approved into a no-op.
+        fc.diagnosis = diagnosis
+        fc.staged_repair = []
+        progress.finish()
+        stuck_items = append_card(
+            fc,
+            ErrorCard(
+                title="Repeated failure",
+                body=(
+                    f"{diagnosis.root_cause or 'The run failed.'}\n\n"
+                    "The same error survived the last repairs, so I've stopped retrying. "
+                    "Edit the node directly and test again, or revert."
+                ),
+                tone="danger",
+                node_id=diagnosis.culprit_node_id,
+            ),
+        )
+        return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=stuck_items)
+    fc.last_repair_error = diagnosis.root_cause
     progress.activate("build-prepare-repair")
     intents, risk = env.agent.propose_repair(diagnosis, graph)
     fc.diagnosis = diagnosis
@@ -972,6 +996,19 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
 
 
+_MAX_REPEATED_REPAIRS = 2
+
+
+def _repair_is_repeating(fc: DifyBuilderContext, error: str) -> bool:
+    """Has the SAME error now survived ``_MAX_REPEATED_REPAIRS`` repairs?
+
+    A different error means the loop is still making progress, however
+    slowly; the identical error twice over means the repair agent is aiming
+    at something that isn't the cause, and another round will not find it.
+    """
+    return bool(error) and error == fc.last_repair_error and fc.repair_attempts >= _MAX_REPEATED_REPAIRS
+
+
 def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Post-failure gate mirroring fix.await_decision. approve_repair
     applies the staged repair and re-runs the test (build.test_and_repair);
@@ -979,6 +1016,15 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     here, only on approve."""
     kind = action_kind(turn)
     if kind == "approve_repair":
+        if not fc.staged_repair:
+            # Nothing staged: applying would change nothing and the retest
+            # would fail identically. Don't spend a run on it (ESQ1-291).
+            items = append_card(
+                fc,
+                NoticeItem(text="No fix is staged for this failure -- keep the draft or revert."),
+            )
+            return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items)
+        fc.repair_attempts += 1
         progress = ProgressReporter.for_session(
             emit=env.emit_progress,
             operation_id=env.operation_id,
