@@ -1,7 +1,8 @@
 import io
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from datetime import timedelta
 from numbers import Real
 from typing import Any, cast
 
@@ -53,6 +54,10 @@ class EvaluationRunCancelledError(Exception):
     """Raised when cooperative cancellation stops an evaluation task."""
 
 
+def _workflow_task_id(evaluation_run_id: str, phase: str, position: int) -> str:
+    return EvaluationService.workflow_task_id(evaluation_run_id, phase, position)
+
+
 @shared_task(queue="evaluation", acks_late=True, reject_on_worker_lost=True)
 def run_evaluation(run_data_dict: dict[str, Any]) -> None:
     """Execute one evaluation run while preserving terminal state transitions."""
@@ -67,6 +72,68 @@ def run_evaluation(run_data_dict: dict[str, Any]) -> None:
             _mark_run_failed(session, run_data.evaluation_run_id, str(exc))
 
 
+@shared_task(queue="evaluation")
+def reconcile_stale_evaluation_runs() -> int:
+    """Fail running evaluations that outlive the Celery hard limit.
+
+    The compare-and-set update makes the sweep idempotent and lets a normal
+    completion or cancellation win if it races with the reconciler.
+    """
+    cutoff = naive_utc_now() - timedelta(seconds=max(dify_config.EVALUATION_TASK_TIMEOUT, 1) + 60)
+    stale_runs: list[tuple[str, str | None, str, int]] = []
+    with session_factory.create_session() as session:
+        candidates = list(
+            session.scalars(
+                select(EvaluationRun)
+                .where(
+                    EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                    EvaluationRun.started_at.is_not(None),
+                    EvaluationRun.started_at < cutoff,
+                )
+                .limit(100)
+            ).all()
+        )
+        for run in candidates:
+            result = cast(
+                CursorResult[Any],
+                session.execute(
+                    update(EvaluationRun)
+                    .where(
+                        EvaluationRun.id == run.id,
+                        EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                        EvaluationRun.started_at.is_not(None),
+                        EvaluationRun.started_at < cutoff,
+                    )
+                    .values(
+                        status=EvaluationRunStatus.FAILED,
+                        completed_at=naive_utc_now(),
+                        error="Evaluation run exceeded the configured task timeout.",
+                    )
+                ),
+            )
+            if result.rowcount == 1:
+                stale_runs.append(
+                    (run.id, run.celery_task_id, EvaluationTargetType(run.target_type).value, run.total_items)
+                )
+        session.commit()
+
+    if not stale_runs:
+        return 0
+
+    from celery import current_app as celery_app
+
+    for run_id, celery_task_id, target_type, total_items in stale_runs:
+        if target_type in {EvaluationTargetType.APPS.value, EvaluationTargetType.SNIPPETS.value}:
+            EvaluationService._stop_workflow_tasks(run_id, total_items)
+        if celery_task_id:
+            try:
+                celery_app.control.revoke(celery_task_id, terminate=False)
+            except Exception:
+                logger.exception("Failed to revoke stale evaluation task %s", celery_task_id)
+    logger.warning("Marked %d stale evaluation runs as failed", len(stale_runs))
+    return len(stale_runs)
+
+
 def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
     evaluation_run = session.scalar(
         select(EvaluationRun).where(EvaluationRun.id == run_data.evaluation_run_id).with_for_update()
@@ -76,10 +143,13 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
         return
     if (
         evaluation_run.tenant_id != run_data.tenant_id
-        or evaluation_run.target_type.value != run_data.target_type
+        or EvaluationTargetType(evaluation_run.target_type).value != run_data.target_type
         or evaluation_run.target_id != run_data.target_id
+        or evaluation_run.target_workflow_version_id != run_data.target_workflow_version_id
     ):
         raise ValueError("Evaluation task payload does not match the persisted run.")
+    if run_data.target_type != EvaluationTargetType.KNOWLEDGE_BASE.value and not run_data.target_workflow_version_id:
+        raise ValueError("Evaluation task payload is missing target_workflow_version_id.")
     if evaluation_run.status in {
         EvaluationRunStatus.COMPLETED,
         EvaluationRunStatus.FAILED,
@@ -99,6 +169,7 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
     evaluation_run.completed_at = None
     evaluation_run.completed_items = 0
     evaluation_run.failed_items = 0
+    evaluation_run.progress_rate = 0.01
     evaluation_run.error = None
     session.commit()
 
@@ -110,11 +181,19 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
             evaluation_instance=evaluation_instance,
         )
     else:
-        node_results, workflow_run_ids = EvaluationService.execute_targets(
+        node_results, workflow_run_ids, target_errors = EvaluationService.execute_targets(
+            evaluation_run_id=run_data.evaluation_run_id,
             tenant_id=run_data.tenant_id,
             target_type=run_data.target_type,
             target_id=run_data.target_id,
+            target_workflow_version_id=run_data.target_workflow_version_id or "",
             input_list=run_data.input_list,
+            cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
+            progress_callback=lambda completed, total: _update_run_progress(
+                session,
+                run_data.evaluation_run_id,
+                0.05 + 0.55 * completed / max(total, 1),
+            ),
         )
         _raise_if_cancelled(session, run_data.evaluation_run_id)
         workflow_run_id_map = {
@@ -128,6 +207,7 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
             evaluation_instance=evaluation_instance,
             node_run_result_mapping_list=node_results,
             workflow_run_id_map=workflow_run_id_map,
+            target_errors=target_errors,
         )
 
     _raise_if_cancelled(session, run_data.evaluation_run_id)
@@ -137,6 +217,8 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
     session.rollback()
     metrics_summary = _compute_metrics_summary(results, run_data.judgment_config)
     result_xlsx = _generate_result_xlsx(run_data.input_list, results)
+    _update_run_progress(session, run_data.evaluation_run_id, 0.98)
+    session.rollback()
     result_file = _store_result_file(
         run_data.tenant_id,
         run_data.evaluation_run_id,
@@ -160,6 +242,7 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
             failed_items=failed_items,
             metrics_summary=json.dumps(metrics_summary, ensure_ascii=False),
             result_file_id=result_file.id,
+            progress_rate=1.0,
         )
     )
     try:
@@ -182,15 +265,22 @@ def _execute_evaluation_runner(
     evaluation_instance: BaseEvaluationInstance,
     node_run_result_mapping_list: list[dict[str, NodeRunResult]],
     workflow_run_id_map: dict[int, str] | None = None,
+    target_errors: Sequence[str | None] | None = None,
 ) -> list[EvaluationItemResult]:
     """Evaluate configured node/metric pairs and persist one result per row."""
     results_by_index: dict[int, EvaluationItemResult] = {}
 
+    total_steps = sum(len(metric.node_info_list) for metric in run_data.default_metrics) + bool(
+        run_data.customized_metrics
+    )
+    completed_steps = 0
     for default_metric in run_data.default_metrics:
         for node_info in default_metric.node_info_list:
+            _cooperative_checkpoint(session, run_data.evaluation_run_id)
             node_run_results: list[NodeRunResult] = []
             dataset_items: list[EvaluationDatasetInput] = []
             dataset_indices: list[int] = []
+            context_list: list[list[str] | None] = []
             for position, mapping in enumerate(node_run_result_mapping_list):
                 node_result = mapping.get(node_info.node_id)
                 if node_result is None:
@@ -198,6 +288,12 @@ def _execute_evaluation_runner(
                 node_run_results.append(node_result)
                 dataset_items.append(run_data.input_list[position])
                 dataset_indices.append(run_data.input_list[position].index)
+                context_list.append(
+                    _collect_retrieval_contexts(
+                        mapping,
+                        run_data.llm_context_node_mapping.get(node_info.node_id, []),
+                    )
+                )
 
             if not node_run_results:
                 continue
@@ -212,6 +308,7 @@ def _execute_evaluation_runner(
                     tenant_id=run_data.tenant_id,
                     dataset_items=dataset_items,
                     node_info=node_info,
+                    context_list=context_list,
                 )
                 _stamp_and_merge(evaluated, dataset_indices, node_info, results_by_index)
             except Exception as exc:
@@ -225,8 +322,15 @@ def _execute_evaluation_runner(
                             error=f"Metric '{default_metric.metric}' failed on node '{node_info.title}': {exc}",
                         ),
                     )
+            completed_steps += 1
+            _update_run_progress(
+                session,
+                run_data.evaluation_run_id,
+                0.6 + 0.25 * completed_steps / max(total_steps, 1),
+            )
 
     if run_data.customized_metrics:
+        _cooperative_checkpoint(session, run_data.evaluation_run_id)
         successful_positions = [
             position for position, node_results in enumerate(node_run_result_mapping_list) if node_results
         ]
@@ -238,6 +342,12 @@ def _execute_evaluation_runner(
                     node_run_result_mapping_list=customized_node_results,
                     customized_metrics=run_data.customized_metrics,
                     tenant_id=run_data.tenant_id,
+                    cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
+                    task_id_factory=lambda position: _workflow_task_id(
+                        run_data.evaluation_run_id,
+                        "evaluator",
+                        successful_positions[position],
+                    ),
                 )
                 _merge_customized_results(results_by_index, customized_results, customized_input_items)
         except Exception as exc:
@@ -248,11 +358,21 @@ def _execute_evaluation_runner(
                     item.index,
                     EvaluationItemResult(index=item.index, error=f"Customized evaluation failed: {exc}"),
                 )
+        completed_steps += 1
+        _update_run_progress(
+            session,
+            run_data.evaluation_run_id,
+            0.6 + 0.25 * completed_steps / max(total_steps, 1),
+        )
 
     results = _finalize_results(
         input_list=run_data.input_list,
         results_by_index=results_by_index,
-        missing_errors=_build_missing_result_errors(run_data.input_list, node_run_result_mapping_list),
+        missing_errors=_build_missing_result_errors(
+            run_data.input_list,
+            node_run_result_mapping_list,
+            target_errors,
+        ),
     )
     if run_data.judgment_config:
         results = _apply_judgment(results, run_data.judgment_config)
@@ -273,11 +393,17 @@ def _execute_retrieval_test(
     run_data: EvaluationRunData,
     evaluation_instance: BaseEvaluationInstance,
 ) -> list[EvaluationItemResult]:
-    node_run_results = EvaluationService.execute_retrieval_test_targets(
+    node_run_results, retrieval_errors = EvaluationService.execute_retrieval_test_targets(
         tenant_id=run_data.tenant_id,
         dataset_id=run_data.target_id,
         account_id=account_id,
         input_list=run_data.input_list,
+        cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
+        progress_callback=lambda completed, total: _update_run_progress(
+            session,
+            run_data.evaluation_run_id,
+            0.05 + 0.45 * completed / max(total, 1),
+        ),
     )
     _raise_if_cancelled(session, run_data.evaluation_run_id)
 
@@ -288,16 +414,21 @@ def _execute_retrieval_test(
         type="knowledge-retrieval",
         title="Knowledge Retrieval",
     )
-    dataset_indices = [item.index for item in run_data.input_list]
-    for default_metric in run_data.default_metrics:
+    successful_positions = [position for position, result in enumerate(node_run_results) if result is not None]
+    successful_results = [node_run_results[position] for position in successful_positions]
+    typed_successful_results = [result for result in successful_results if result is not None]
+    successful_items = [run_data.input_list[position] for position in successful_positions]
+    dataset_indices = [item.index for item in successful_items]
+    for metric_position, default_metric in enumerate(run_data.default_metrics, start=1):
+        _cooperative_checkpoint(session, run_data.evaluation_run_id)
         try:
             evaluated = runner.evaluate_metrics(
-                node_run_result_list=node_run_results,
+                node_run_result_list=typed_successful_results,
                 default_metric=default_metric,
                 model_provider=run_data.evaluation_model_provider,
                 model_name=run_data.evaluation_model,
                 tenant_id=run_data.tenant_id,
-                dataset_items=run_data.input_list,
+                dataset_items=successful_items,
                 node_info=node_info,
             )
             _stamp_and_merge(evaluated, dataset_indices, node_info, results_by_index)
@@ -312,10 +443,23 @@ def _execute_retrieval_test(
                         error=f"Retrieval metric '{default_metric.metric}' failed: {exc}",
                     ),
                 )
+        _update_run_progress(
+            session,
+            run_data.evaluation_run_id,
+            0.5 + 0.35 * metric_position / max(len(run_data.default_metrics), 1),
+        )
 
     results = _finalize_results(
         input_list=run_data.input_list,
         results_by_index=results_by_index,
+        missing_errors={
+            item.index: (
+                f"Retrieval failed: {retrieval_errors[position]}"
+                if retrieval_errors[position]
+                else "No evaluation metrics were generated for this row."
+            )
+            for position, item in enumerate(run_data.input_list)
+        },
     )
     if run_data.judgment_config:
         results = _apply_judgment(results, run_data.judgment_config)
@@ -339,6 +483,26 @@ def _stamp_and_merge(
             for metric in result.metrics:
                 metric.node_info = node_info
         _merge_result(results_by_index, dataset_index, result)
+
+
+def _collect_retrieval_contexts(
+    node_results: dict[str, NodeRunResult],
+    retrieval_node_ids: Sequence[str],
+) -> list[str] | None:
+    if not retrieval_node_ids:
+        return None
+    contexts: list[str] = []
+    for node_id in retrieval_node_ids:
+        node_result = node_results.get(node_id)
+        if node_result is None:
+            continue
+        raw_results = node_result.outputs.get("result", [])
+        if not isinstance(raw_results, list):
+            continue
+        for result in raw_results:
+            if isinstance(result, Mapping) and result.get("content"):
+                contexts.append(str(result["content"]))
+    return contexts
 
 
 def _merge_result(
@@ -375,13 +539,19 @@ def _merge_customized_results(
 def _build_missing_result_errors(
     input_list: Sequence[EvaluationDatasetInput],
     node_run_result_mapping_list: Sequence[dict[str, NodeRunResult]],
+    target_errors: Sequence[str | None] | None = None,
 ) -> dict[int, str]:
     errors: dict[int, str] = {}
-    for item, node_results in zip(input_list, node_run_result_mapping_list):
+    for position, (item, node_results) in enumerate(zip(input_list, node_run_result_mapping_list)):
+        target_error = target_errors[position] if target_errors and position < len(target_errors) else None
         errors[item.index] = (
-            "No evaluation metrics were generated for this row."
-            if node_results
-            else "Target execution produced no successful node results for this row."
+            f"Target execution failed: {target_error}"
+            if target_error
+            else (
+                "No evaluation metrics were generated for this row."
+                if node_results
+                else "Target execution produced no successful node results for this row."
+            )
         )
     return errors
 
@@ -497,7 +667,11 @@ def _persist_results(
                     EvaluationRun.id == evaluation_run_id,
                     EvaluationRun.status == EvaluationRunStatus.RUNNING,
                 )
-                .values(completed_items=completed, failed_items=failed)
+                .values(
+                    completed_items=completed,
+                    failed_items=failed,
+                    progress_rate=0.86 + 0.1 * position / max(len(input_list), 1),
+                )
             )
             update_result = cast(CursorResult[Any], session.execute(progress_update))
             if update_result.rowcount != 1:
@@ -513,6 +687,30 @@ def _raise_if_cancelled(session: Session, evaluation_run_id: str) -> None:
         raise EvaluationRunCancelledError()
     if status != EvaluationRunStatus.RUNNING:
         raise RuntimeError(f"Evaluation run is no longer executable: {status}")
+
+
+def _cooperative_checkpoint(session: Session, evaluation_run_id: str) -> None:
+    """Check status and close the read transaction before external work."""
+    _raise_if_cancelled(session, evaluation_run_id)
+    session.rollback()
+
+
+def _update_run_progress(session: Session, evaluation_run_id: str, progress_rate: float) -> None:
+    result = cast(
+        CursorResult[Any],
+        session.execute(
+            update(EvaluationRun)
+            .where(
+                EvaluationRun.id == evaluation_run_id,
+                EvaluationRun.status == EvaluationRunStatus.RUNNING,
+            )
+            .values(progress_rate=min(max(progress_rate, 0.0), 0.99))
+        ),
+    )
+    if result.rowcount != 1:
+        session.rollback()
+        raise EvaluationRunCancelledError()
+    session.commit()
 
 
 def _create_runner(
@@ -662,7 +860,7 @@ def _generate_result_xlsx(
     result_by_index = {r.index: r for r in results}
 
     for row_idx, item in enumerate(input_list, start=2):
-        result = result_by_index.get(item.index)
+        row_result = result_by_index.get(item.index)
 
         col = 1
         ws.cell(row=row_idx, column=col, value=item.index).border = thin_border
@@ -677,24 +875,26 @@ def _generate_result_xlsx(
             ws.cell(row=row_idx, column=col, value=_get_expected_output_cell_value(item, header)).border = thin_border
             col += 1
 
-        ws.cell(row=row_idx, column=col, value=result.actual_output if result else "").border = thin_border
+        ws.cell(row=row_idx, column=col, value=row_result.actual_output if row_result else "").border = thin_border
         col += 1
 
-        metric_scores = {_metric_column_name(metric): metric.value for metric in result.metrics} if result else {}
+        metric_scores = (
+            {_metric_column_name(metric): metric.value for metric in row_result.metrics} if row_result else {}
+        )
         for metric_name in metric_columns:
             score = metric_scores.get(metric_name)
             ws.cell(row=row_idx, column=col, value=score if score is not None else "").border = thin_border
             col += 1
 
         if has_judgment:
-            if result and result.judgment.condition_results:
-                judgment_value = "Pass" if result.judgment.passed else "Fail"
+            if row_result and row_result.judgment.condition_results:
+                judgment_value = "Pass" if row_result.judgment.passed else "Fail"
             else:
                 judgment_value = ""
             ws.cell(row=row_idx, column=col, value=judgment_value).border = thin_border
             col += 1
 
-        ws.cell(row=row_idx, column=col, value=result.error if result else "").border = thin_border
+        ws.cell(row=row_idx, column=col, value=row_result.error if row_result else "").border = thin_border
 
     output = io.BytesIO()
     wb.save(output)

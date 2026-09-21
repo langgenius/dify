@@ -404,6 +404,33 @@ def test_run_published_delegates_to_workflow_generator_non_streaming(
     assert kwargs["call_depth"] == 0
 
 
+def test_run_published_loads_requested_workflow_snapshot(monkeypatch: pytest.MonkeyPatch):
+    workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
+    snippet = _snippet()
+    user = _account()
+    snippet_service = SimpleNamespace(
+        get_published_workflow=Mock(),
+        get_published_workflow_by_id=Mock(return_value=workflow),
+    )
+    generator = SimpleNamespace(generate=Mock(return_value={"data": {"outputs": {"answer": "ok"}}}))
+    monkeypatch.setattr("services.snippet_generate_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
+    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", Mock(return_value=workflow))
+    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", Mock(return_value=generator))
+
+    SnippetGenerateService.run_published(
+        snippet=snippet,
+        user=user,
+        args={"inputs": {"query": "hello"}},
+        invoke_from="service-api",
+        workflow_id="workflow-version-7",
+        task_id="evaluation-task-1",
+    )
+
+    snippet_service.get_published_workflow_by_id.assert_called_once_with(snippet, "workflow-version-7")
+    snippet_service.get_published_workflow.assert_not_called()
+    assert generator.generate.call_args.kwargs["task_id"] == "evaluation-task-1"
+
+
 def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [], "edges": []})
     snippet = _snippet()

@@ -119,6 +119,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         # can still locate files. External I/O runs outside DB transactions.
         cleanup_app_storage(tenant_id, app_id)
         # Delete related data
+        _delete_app_evaluation_data(tenant_id, app_id)
         _delete_app_model_configs(tenant_id, app_id)
         _delete_app_site(tenant_id, app_id)
         _delete_app_mcp_servers(tenant_id, app_id)
@@ -158,6 +159,20 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     except Exception as e:
         logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
         raise self.retry(exc=e, countdown=60) from e  # Retry after 60 seconds
+
+
+def _delete_app_evaluation_data(tenant_id: str, app_id: str) -> None:
+    from models.evaluation import EvaluationTargetType
+    from services.evaluation_service import EvaluationService
+
+    with session_factory.create_session() as session:
+        EvaluationService.stage_target_evaluation_cleanup(
+            session=session,
+            tenant_id=tenant_id,
+            target_type=EvaluationTargetType.APPS.value,
+            target_id=app_id,
+        )
+        session.commit()
 
 
 def _delete_app_model_configs(tenant_id: str, app_id: str):

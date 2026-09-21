@@ -191,6 +191,8 @@ class SnippetGenerateService:
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         session_maker: sessionmaker[Session] | None = None,
+        workflow_id: str | None = None,
+        task_id: str | None = None,
     ) -> Mapping[str, Any]:
         """
         Run a snippet's published workflow in non-streaming (blocking) mode.
@@ -207,7 +209,11 @@ class SnippetGenerateService:
         :raises ValueError: If the snippet has no published workflow
         """
         snippet_service = SnippetService(session_maker)
-        workflow = snippet_service.get_published_workflow(snippet)
+        workflow = (
+            snippet_service.get_published_workflow_by_id(snippet, workflow_id)
+            if workflow_id
+            else snippet_service.get_published_workflow(snippet)
+        )
         if not workflow:
             raise ValueError("No published workflow found for snippet")
 
@@ -225,6 +231,7 @@ class SnippetGenerateService:
             invoke_from=invoke_from,
             streaming=False,
             call_depth=0,
+            task_id=task_id,
         )
         return response
 

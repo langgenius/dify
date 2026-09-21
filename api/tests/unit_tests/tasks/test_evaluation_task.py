@@ -1,6 +1,8 @@
 """Unit tests for evaluation task result helpers."""
 
 import io
+from contextlib import contextmanager
+from datetime import timedelta
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,6 +19,9 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig, JudgmentResult
 from graphon.node_events import NodeRunResult
+from libs.datetime_utils import naive_utc_now
+from models.evaluation import EvaluationRun, EvaluationRunStatus
+from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
     _apply_judgment,
     _build_missing_result_errors,
@@ -27,6 +32,8 @@ from tasks.evaluation_task import (
     _merge_customized_results,
     _merge_result,
     _stamp_and_merge,
+    _workflow_task_id,
+    reconcile_stale_evaluation_runs,
 )
 
 _NODE_INFO = NodeInfo(node_id="llm-1", type="llm", title="Answer")
@@ -78,6 +85,8 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
     ]
     persist_results = MagicMock()
     monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", MagicMock())
+    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", MagicMock())
     successful_node_result = NodeRunResult(outputs={"text": "answer"})
     run_data = EvaluationRunData(
         evaluation_run_id="run-1",
@@ -108,11 +117,13 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
     assert results[0].error == "Target execution produced no successful node results for this row."
     assert results[1].index == 20
     assert results[1].metrics[0].name == "score"
-    evaluation_instance.evaluate_with_customized_workflow.assert_called_once_with(
-        node_run_result_mapping_list=[{"llm-1": successful_node_result}],
-        customized_metrics=run_data.customized_metrics,
-        tenant_id="tenant-1",
-    )
+    evaluation_instance.evaluate_with_customized_workflow.assert_called_once()
+    call_kwargs = evaluation_instance.evaluate_with_customized_workflow.call_args.kwargs
+    assert call_kwargs["node_run_result_mapping_list"] == [{"llm-1": successful_node_result}]
+    assert call_kwargs["customized_metrics"] == run_data.customized_metrics
+    assert call_kwargs["tenant_id"] == "tenant-1"
+    assert callable(call_kwargs["cancellation_check"])
+    assert callable(call_kwargs["task_id_factory"])
     persist_results.assert_called_once()
 
 
@@ -130,6 +141,104 @@ def test_missing_target_rows_are_materialized_as_errors() -> None:
 
     assert results[0].error == "Target execution produced no successful node results for this row."
     assert results[1].error == "No evaluation metrics were generated for this row."
+
+
+def test_missing_target_rows_preserve_execution_error() -> None:
+    input_list = [EvaluationDatasetInput(index=7, inputs={"query": "first"})]
+
+    missing_errors = _build_missing_result_errors(input_list, [{}], ["provider timed out"])
+
+    assert missing_errors == {7: "Target execution failed: provider timed out"}
+
+
+def test_workflow_task_ids_are_deterministic_per_run_phase_and_position() -> None:
+    assert _workflow_task_id("run-1", "target", 3) == "evaluation:run-1:target:3"
+    assert _workflow_task_id("run-1", "evaluator", 3) == "evaluation:run-1:evaluator:3"
+
+
+def test_reconcile_stale_evaluation_runs_uses_running_started_at(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory,
+) -> None:
+    now = naive_utc_now()
+    with sqlite_session_factory() as session:
+        session.add_all(
+            [
+                EvaluationRun(
+                    id="30000000-0000-0000-0000-000000000001",
+                    tenant_id="30000000-0000-0000-0000-000000000002",
+                    target_type="apps",
+                    target_id="30000000-0000-0000-0000-000000000003",
+                    target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.RUNNING,
+                    total_items=2,
+                    celery_task_id="celery-1",
+                    created_by="30000000-0000-0000-0000-000000000006",
+                    created_at=now,
+                    started_at=now - timedelta(hours=2),
+                ),
+                EvaluationRun(
+                    id="30000000-0000-0000-0000-000000000011",
+                    tenant_id="30000000-0000-0000-0000-000000000002",
+                    target_type="apps",
+                    target_id="30000000-0000-0000-0000-000000000003",
+                    target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.PENDING,
+                    total_items=2,
+                    celery_task_id="celery-2",
+                    created_by="30000000-0000-0000-0000-000000000006",
+                    created_at=now - timedelta(hours=2),
+                ),
+                EvaluationRun(
+                    id="30000000-0000-0000-0000-000000000021",
+                    tenant_id="30000000-0000-0000-0000-000000000002",
+                    target_type="apps",
+                    target_id="30000000-0000-0000-0000-000000000003",
+                    target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.RUNNING,
+                    total_items=2,
+                    celery_task_id="celery-3",
+                    created_by="30000000-0000-0000-0000-000000000006",
+                    created_at=now - timedelta(hours=2),
+                    started_at=now,
+                ),
+            ]
+        )
+        session.commit()
+
+    @contextmanager
+    def create_session():
+        with sqlite_session_factory() as session:
+            yield session
+
+    monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
+    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_TASK_TIMEOUT", 60)
+    stop_tasks = MagicMock()
+    monkeypatch.setattr(EvaluationService, "_stop_workflow_tasks", stop_tasks)
+    celery_control = MagicMock()
+    monkeypatch.setattr("celery.current_app.control", celery_control)
+
+    assert reconcile_stale_evaluation_runs.run() == 1
+
+    with sqlite_session_factory() as session:
+        run = session.get(EvaluationRun, "30000000-0000-0000-0000-000000000001")
+        assert run is not None
+        assert run.status == EvaluationRunStatus.FAILED
+        assert "timeout" in (run.error or "")
+        pending_run = session.get(EvaluationRun, "30000000-0000-0000-0000-000000000011")
+        assert pending_run is not None
+        assert pending_run.status == EvaluationRunStatus.PENDING
+        recently_started_run = session.get(EvaluationRun, "30000000-0000-0000-0000-000000000021")
+        assert recently_started_run is not None
+        assert recently_started_run.status == EvaluationRunStatus.RUNNING
+    stop_tasks.assert_called_once_with("30000000-0000-0000-0000-000000000001", 2)
+    celery_control.revoke.assert_called_once_with("celery-1", terminate=False)
 
 
 def test_judgment_summary_ignores_errored_items() -> None:
