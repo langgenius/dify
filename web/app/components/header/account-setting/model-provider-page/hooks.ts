@@ -212,6 +212,11 @@ export const useInvalidateDefaultModel = () => {
   return useCallback(
     (type: ModelTypeEnum) => {
       queryClient.invalidateQueries({ queryKey: commonQueryKeys.defaultModel(type) })
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
+          input: { query: { model_type: type } },
+        }),
+      })
     },
     [queryClient],
   )

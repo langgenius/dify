@@ -5,6 +5,7 @@ import type {
 import type { QueryClient } from '@tanstack/react-query'
 import type { SessionModel } from '../types'
 import type { consoleClient } from '@/service/console'
+import { zDefaultModelDataResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
@@ -67,10 +68,20 @@ export const createBuilderQueryClient = ({
   modelsLoading?: boolean
 } = {}): QueryClient => {
   const client = createConsoleQueryClient()
-  if (!defaultLoading)
+  const defaultModelQueryKey = consoleQuery.workspaces.current.defaultModel.get.queryKey({
+    input: { query: { model_type: ModelTypeEnum.textGeneration } },
+  })
+  if (defaultLoading) {
+    void client.query({ queryKey: defaultModelQueryKey, queryFn: () => new Promise(() => {}) })
+  } else {
     client.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
       data: defaultModel,
     })
+    client.setQueryData(
+      defaultModelQueryKey,
+      zDefaultModelDataResponse.parse({ data: defaultModel }),
+    )
+  }
   if (modelsLoading)
     void client.query({ queryKey: builderModelListQueryKey, queryFn: () => new Promise(() => {}) })
   else client.setQueryData(builderModelListQueryKey, { data: models })
