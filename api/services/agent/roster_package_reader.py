@@ -21,6 +21,7 @@ from services.agent.dsl_entities import AgentAppDsl
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES,
+    PackageIcon,
     PreparedPackageArchive,
     PreparedRosterAgentPackage,
     RosterAgentPackageApp,
@@ -131,6 +132,7 @@ class RosterAgentPackageReader:
                     *(item.path for item in manifest.apps),
                     *(item.path for item in manifest.skills),
                     *(item.path for item in manifest.files),
+                    *(item.path for item in manifest.icons),
                 }
                 actual_paths = set(info_by_path)
                 if "signature.sig" in actual_paths:
@@ -156,7 +158,7 @@ class RosterAgentPackageReader:
                 self._validate_resource_members(
                     archive,
                     info_by_path,
-                    [*manifest.skills, *manifest.files],
+                    [*manifest.skills, *manifest.files, *manifest.icons],
                     members=members,
                     invalid_skills=invalid_skills,
                     streamed_size=streamed_size,
@@ -171,7 +173,7 @@ class RosterAgentPackageReader:
         self,
         archive: zipfile.ZipFile,
         info_by_path: dict[str, zipfile.ZipInfo],
-        resources: Sequence[RosterAgentPackageSkill | RosterAgentPackageFile],
+        resources: Sequence[RosterAgentPackageSkill | RosterAgentPackageFile | PackageIcon],
         *,
         members: dict[str, RosterAgentPackageMember],
         invalid_skills: dict[str, str],
@@ -180,6 +182,11 @@ class RosterAgentPackageReader:
         nested_uncompressed_size = 0
         for resource in resources:
             info = info_by_path[resource.path]
+            if (
+                isinstance(resource, PackageIcon)
+                and resource.size > dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+            ):
+                raise RosterAgentPackageTooLargeError("Packaged icon exceeds the image size limit")
             payload = b""
             remaining_package_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - streamed_size
             if isinstance(resource, RosterAgentPackageSkill):

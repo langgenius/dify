@@ -135,6 +135,7 @@ class RosterAgentPackageExporter:
                 include_draft=draft is not None,
             )
             app = make_agent_app_dsl(app_model, package_ref="agent_1", packages={"agent_1": package}, dependencies=[])
+            resources.collect_icon(session=session, tenant_id=tenant_id, metadata=app.app)
             audit = RosterAgentPackageAudit(ref=agent.id)
             dependency_ids = extract_agent_soul_dependencies(package.soul)
 
@@ -162,6 +163,7 @@ class RosterAgentPackageExporter:
             with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
                 groups, total_size = resources.write_resources(archive)
                 group = groups[app.agent.package_ref]
+                icons, total_size = resources.write_icons(archive, total_size=total_size)
                 app_bytes = yaml.safe_dump(
                     app.model_dump(mode="json", exclude_none=True), allow_unicode=True, sort_keys=False
                 ).encode("utf-8")
@@ -174,12 +176,15 @@ class RosterAgentPackageExporter:
                             path="app.yaml", size=len(app_bytes), sha256=hashlib.sha256(app_bytes).hexdigest()
                         )
                     ],
+                    icons=icons,
                     skills=group.skills,
                     files=group.files,
                 )
                 manifest.validate_apps({"app.yaml": app})
                 manifest_bytes = yaml.safe_dump(
-                    manifest.model_dump(mode="json", exclude_none=True), allow_unicode=True, sort_keys=False
+                    manifest.model_dump(mode="json", exclude_none=True, exclude={"icons"} if not icons else set()),
+                    allow_unicode=True,
+                    sort_keys=False,
                 ).encode("utf-8")
                 for path, document_bytes in (("app.yaml", app_bytes), ("manifest.yaml", manifest_bytes)):
                     if len(document_bytes) > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:

@@ -815,3 +815,49 @@ def test_import_succeeds_when_post_commit_initialization_fails(
         uploaded = session.scalar(select(UploadFile))
         assert uploaded is not None
         assert uploaded.used is True
+
+
+@pytest.mark.parametrize("shared_icon", [False, True])
+def test_import_restores_app_and_agent_image_icons(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session], shared_icon: bool
+) -> None:
+    with zipfile.ZipFile(io.BytesIO(_package())) as archive:
+        members = {name: archive.read(name) for name in archive.namelist()}
+    manifest = yaml.safe_load(members["manifest.yaml"])
+    app = yaml.safe_load(members["app.yaml"])
+    app["app"].update(icon_type="image", icon="i_000001")
+    agent_icon = "i_000001" if shared_icon else "i_000002"
+    app["agent_packages"]["agent_1"]["metadata"].update(icon_type="image", icon=agent_icon)
+    manifest["icons"] = []
+    for icon_id in sorted({"i_000001", agent_icon}):
+        payload = f"image-{icon_id}".encode()
+        members[f"{icon_id}.png"] = payload
+        manifest["icons"].append(
+            {
+                "id": icon_id,
+                "path": f"{icon_id}.png",
+                "size": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            }
+        )
+    members["app.yaml"] = yaml.safe_dump(app).encode()
+    manifest["apps"][0].update(size=len(members["app.yaml"]), sha256=hashlib.sha256(members["app.yaml"]).hexdigest())
+    members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
+    storage = _MemoryStorage()
+    monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
+    result = RosterAgentPackageImporter(storage_backend=storage).import_package(
+        source=io.BytesIO(_zip(members)), tenant_id="destination", account=_account()
+    )
+    with sqlite_session_factory() as session:
+        imported_app = session.get(App, result.app_id)
+        agent = session.get(Agent, result.agent_id)
+        assert imported_app is not None
+        assert agent is not None
+        for owner, original_id in [(imported_app, "i_000001"), (agent, agent_icon)]:
+            assert owner.icon_type == "image"
+            upload = session.get(UploadFile, owner.icon)
+            assert upload is not None
+            assert upload.tenant_id == "destination"
+            assert upload.created_by == _account().id
+            assert storage.files[upload.key] == members[f"{original_id}.png"]
+        assert (imported_app.icon == agent.icon) is shared_icon
