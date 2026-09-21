@@ -1695,7 +1695,7 @@ requires-dist = [
     { name = "dify-agent", editable = "../dify-agent" },
     { name = "fastopenapi", extras = ["flask"], specifier = "==0.7.0" },
     { name = "flask", specifier = ">=3.1.3,<4.0.0" },
-    { name = "flask-compress", specifier = ">=1.24,<2.0.0" },
+    { name = "flask-compress", specifier = ">=1.25,<2.0.0" },
     { name = "flask-cors", specifier = ">=6.0.5,<7.0.0" },
     { name = "flask-login", specifier = "==0.6.3" },
     { name = "flask-migrate", specifier = ">=4.1.0,<5.0.0" },
@@ -2577,7 +2577,7 @@ wheels = [
 
 [[package]]
 name = "flask-compress"
-version = "1.24"
+version = "1.25"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backports-zstd" },
@@ -2585,9 +2585,9 @@ dependencies = [
     { name = "brotlicffi", marker = "platform_python_implementation == 'PyPy'" },
     { name = "flask" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/de/2ae0118051b38ab53437328074a696f3ee7d61e15bf7454b78a3088e5bc3/flask_compress-1.24.tar.gz", hash = "sha256:14097cefe59ecb3e466d52a6aeb62f34f125a9f7dadf1f33a53e430ce4a50f31", size = 21089, upload-time = "2026-03-31T15:01:39.005Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bb/96/ac77047588935c4ec96a087830f817b5e0730c4ab2d5717203f0731140e2/flask_compress-1.25.tar.gz", hash = "sha256:802954fb3af048cf4ca2a3b414393bf2b98466ae8067e6654ea0aa34ba34aff5", size = 21719, upload-time = "2026-09-15T09:53:05.798Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/0f/fe51e0b2301bbd429af44273a923ff92127b18d13abba5ae5a1d60e8e497/flask_compress-1.24-py3-none-any.whl", hash = "sha256:1e63668eb6e3242bd4f6ad98825a924e3984409be90c125477893d586007d00c", size = 11033, upload-time = "2026-03-31T15:01:37.302Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/b0/5f5ab470c3d3b31da361c63974ec70598cd50c9e4d2819641c1cf9988b1a/flask_compress-1.25-py3-none-any.whl", hash = "sha256:6ca78e29728525e575a9e76e0e8e7acc6e0bf1421e0cbfd452bca0a68626166f", size = 11069, upload-time = "2026-09-15T09:53:04.65Z" },
 ]
 
 [[package]]
