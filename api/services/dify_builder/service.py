@@ -393,6 +393,13 @@ def _actions_for(
     if app_revision_conflicted:
         return [UiAction(id="check_recovery", label="Review draft changes", kind=ActionKind.PRIMARY)]
 
+    # Build creation already persists the user's opening goal and dispatches
+    # send_goal internally. Projecting the same action back to the client asks
+    # the user to submit an intent they have just supplied. Keep the action only
+    # for the intentionally supported goal-less/create-from-blank state.
+    if state == PcState.BUILD_CAPABILITY_CHECK and fc is not None and fc.goal_text:
+        return []
+
     return list(_ACTIONS_FOR.get(state, []))
 
 
