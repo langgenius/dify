@@ -1417,11 +1417,11 @@ class ToolProviderMCPApi(Resource):
             # Update just-created provider with authed/tools in a new short transaction
             with session_factory.create_session() as session, session.begin():
                 service = MCPToolManageService(session=session)
-                db_provider = service.get_provider(provider_id=result.id, tenant_id=tenant_id)
+                db_provider = service.get_provider_by_id(provider_id=result.id, tenant_id=tenant_id)
                 db_provider.authed = reconnect.authed
                 db_provider.tools = reconnect.tools
 
-                result = ToolTransformService.mcp_provider_to_user_provider(db_provider, for_list=True)
+                result = ToolTransformService.mcp_provider_to_user_provider(db_provider)
         except Exception:
             # Best-effort: if initial fetch fails (e.g., auth required), return created provider as-is
             logger.warning("Failed to fetch MCP tools after creation", exc_info=True)
@@ -1462,7 +1462,7 @@ class ToolProviderMCPApi(Resource):
             # Resolve "leave unchanged" (None) against the stored value, and gate
             # the result on the Enterprise edition — both are API-layer concerns, so
             # the service receives a concrete IdentityMode.
-            existing = service.get_provider(provider_id=req_data.provider_id, tenant_id=current_tenant_id)
+            existing = service.get_provider_by_id(provider_id=req_data.provider_id, tenant_id=current_tenant_id)
             identity_mode = _resolve_identity_mode(req_data.identity_mode, current=IdentityMode(existing.identity_mode))
             service.update_provider(
                 tenant_id=current_tenant_id,
@@ -1513,7 +1513,7 @@ class ToolMCPAuthApi(Resource):
 
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
-            db_provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+            db_provider = service.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
             if not db_provider:
                 raise ValueError("provider not found")
 
@@ -1587,10 +1587,8 @@ class ToolMCPDetailApi(Resource):
     def get(self, tenant_id: str, provider_id: str):
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
-            provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
-            return _dump_tool_provider_payload(
-                ToolTransformService.mcp_provider_to_user_provider(provider, for_list=True).to_dict()
-            )
+            provider = service.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
+            return _dump_tool_provider_payload(ToolTransformService.mcp_provider_to_user_provider(provider).to_dict())
 
 
 @console_ns.route("/workspaces/current/tools/mcp")

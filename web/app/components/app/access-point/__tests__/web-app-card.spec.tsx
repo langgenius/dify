@@ -1,11 +1,11 @@
 import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
 import type { InputVar, Node } from '@/app/components/workflow/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
@@ -14,11 +14,12 @@ import { basePath } from '@/utils/var'
 import { WebAppAccessPointCard } from '../built-in-access-points/web-app-card'
 
 const mocks = vi.hoisted(() => ({
+  getUserCanAccess: vi.fn<() => Promise<{ result: boolean }>>(),
   siteEnable: vi.fn(),
   resetSiteAccessToken: vi.fn().mockResolvedValue({}),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
@@ -52,9 +53,24 @@ vi.mock('@/service/console', () => ({
   },
 }))
 
-vi.mock('@/service/access-control/use-app-access-control', () => ({
-  useAppWhiteListSubjects: () => ({
-    data: undefined,
+vi.mock('@/service/access-control/use-app-access-control', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/service/access-control/use-app-access-control')>()
+  return {
+    ...actual,
+    useAppWhiteListSubjects: () => ({
+      data: undefined,
+    }),
+  }
+})
+
+vi.mock('@/service/share', () => ({
+  getUserCanAccess: mocks.getUserCanAccess,
+}))
+
+vi.mock('@/features/system-features/client', () => ({
+  systemFeaturesQueryOptions: () => ({
+    queryKey: ['system-features'],
   }),
 }))
 
@@ -63,7 +79,11 @@ vi.mock('@/app/components/base/app-icon', () => ({
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
-  default: () => null,
+  default: ({ onConfirm }: { onConfirm: () => Promise<void> }) => (
+    <button type="button" onClick={() => void onConfirm()}>
+      Save access control
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/app/overview/customize', () => ({
@@ -112,15 +132,22 @@ function renderCard(
   availability: 'available' | 'loading' | 'unavailable' = 'available',
   workflow?: PublishedWorkflow,
   {
+    accessMode = AccessMode.PUBLIC,
     canManageAccessPoint = true,
     onRefreshApp = vi.fn().mockResolvedValue(undefined),
+    showAccessControl = true,
   }: {
+    accessMode?: AccessMode
     canManageAccessPoint?: boolean
     onRefreshApp?: () => Promise<void>
+    showAccessControl?: boolean
   } = {},
 ) {
-  useAppStore.setState({ appDetail: createAppInfo(mode) })
+  useAppStore.setState({ appDetail: { ...createAppInfo(mode), access_mode: accessMode } })
   const queryClient = createTestQueryClient()
+  queryClient.setQueryData(['system-features'], {
+    webapp_auth: { enabled: showAccessControl },
+  })
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -128,6 +155,7 @@ function renderCard(
         availability={availability}
         canManageAccessPoint={canManageAccessPoint}
         onRefreshApp={onRefreshApp}
+        showAccessControl={showAccessControl}
         workflow={workflow}
       />
     </QueryClientProvider>,
@@ -138,11 +166,13 @@ function StoreConnectedWebAppCard({
   availability,
   canManageAccessPoint,
   onRefreshApp,
+  showAccessControl,
   workflow,
 }: {
   availability: 'available' | 'loading' | 'unavailable'
   canManageAccessPoint: boolean
   onRefreshApp: () => Promise<void>
+  showAccessControl: boolean
   workflow?: PublishedWorkflow
 }) {
   const appInfo = useAppStore((state) => state.appDetail)
@@ -155,7 +185,7 @@ function StoreConnectedWebAppCard({
       canDeploy
       canManageAccess
       canManageAccessPoint={canManageAccessPoint}
-      showAccessControl
+      showAccessControl={showAccessControl}
       onRefreshApp={onRefreshApp}
       onSaveSiteConfig={vi.fn().mockResolvedValue(undefined)}
       workflow={workflow}
@@ -218,6 +248,7 @@ const workflowWithHiddenInput: NonNullable<PublishedWorkflow> = {
 describe('WebAppAccessPointCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getUserCanAccess.mockResolvedValue({ result: true })
     mocks.siteEnable.mockResolvedValue({
       enable_site: true,
     })
@@ -235,6 +266,91 @@ describe('WebAppAccessPointCard', () => {
     expect(
       screen.getByRole('button', { name: /accessControlDialog\.accessItems\.anyone/ }),
     ).toBeEnabled()
+  })
+
+  it('disables Open and explains when the user cannot access the Web App', async () => {
+    const user = userEvent.setup()
+    mocks.getUserCanAccess.mockResolvedValue({ result: false })
+    renderCard(AppModeEnum.WORKFLOW, 'available', undefined, {
+      accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+    })
+
+    const openButton = screen.getByRole('button', { name: /studio\.accessPoint\.open/ })
+    await user.hover(openButton)
+
+    expect(await screen.findByText('app.noAccessPermission')).toBeVisible()
+    expect(openButton).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+    ).toBeEnabled()
+    expect(
+      screen.queryByRole('link', { name: /studio\.accessPoint\.open/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps Open disabled until access is granted', async () => {
+    const permission = createDeferredPromise<{ result: boolean }>()
+    mocks.getUserCanAccess.mockReturnValueOnce(permission.promise)
+    renderCard(AppModeEnum.WORKFLOW)
+
+    expect(screen.getByRole('button', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+
+    permission.resolve({ result: true })
+
+    expect(await screen.findByRole('link', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
+      'href',
+      `https://site.example.test${basePath}/workflow/site-code`,
+    )
+  })
+
+  it('allows opening external-member Web Apps independently of platform access', () => {
+    mocks.getUserCanAccess.mockResolvedValue({ result: false })
+    renderCard(AppModeEnum.WORKFLOW, 'available', undefined, {
+      accessMode: AccessMode.EXTERNAL_MEMBERS,
+    })
+
+    expect(screen.getByRole('link', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
+      'href',
+      `https://site.example.test${basePath}/workflow/site-code`,
+    )
+  })
+
+  it('allows opening Web Apps without querying permissions when access control is disabled', () => {
+    renderCard(AppModeEnum.CHAT, 'available', undefined, { showAccessControl: false })
+
+    expect(screen.getByRole('link', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
+      'href',
+      `https://site.example.test${basePath}/chat/site-code`,
+    )
+    expect(mocks.getUserCanAccess).not.toHaveBeenCalled()
+  })
+
+  it('updates Open after saving Web App access permissions', async () => {
+    const user = userEvent.setup()
+    mocks.getUserCanAccess.mockResolvedValue({ result: false })
+    renderCard(AppModeEnum.CHAT, 'available', undefined, {
+      accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+    })
+
+    await user.click(
+      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
+    )
+    expect(screen.getByRole('button', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+
+    mocks.getUserCanAccess.mockResolvedValue({ result: true })
+    await user.click(screen.getByRole('button', { name: 'Save access control' }))
+
+    expect(await screen.findByRole('link', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
+      'href',
+      `https://site.example.test${basePath}/chat/site-code`,
+    )
   })
 
   it.each([AppModeEnum.WORKFLOW, AppModeEnum.COMPLETION])(
@@ -335,6 +451,27 @@ describe('WebAppAccessPointCard', () => {
     })
   })
 
+  it('allows configuring workflow inputs but prevents launching without Web App access', async () => {
+    const user = userEvent.setup()
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    mocks.getUserCanAccess.mockResolvedValue({ result: false })
+    renderCard(AppModeEnum.WORKFLOW, 'available', workflowWithHiddenInput, {
+      accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+    })
+
+    const configButton = screen.getByRole('button', { name: /operation\.config/ })
+    expect(configButton).toBeEnabled()
+    await user.click(configButton)
+    await user.type(screen.getByLabelText('Secret'), 'top-secret')
+
+    const launchButton = screen.getByRole('button', { name: /overview\.appInfo\.launch/ })
+    expect(launchButton).toBeDisabled()
+    await user.click(launchButton)
+    await user.keyboard('{Enter}')
+
+    expect(openSpy).not.toHaveBeenCalled()
+  })
+
   it('shows loading without reporting an environment failure', () => {
     renderCard(AppModeEnum.WORKFLOW, 'loading')
 
@@ -393,7 +530,7 @@ describe('WebAppAccessPointCard', () => {
     expect(toast.success).not.toHaveBeenCalled()
   })
 
-  it('disables Web App management actions without Access Point management', () => {
+  it('disables Web App management actions without Access Point management', async () => {
     renderCard(AppModeEnum.CHAT, 'available', undefined, { canManageAccessPoint: false })
 
     expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
@@ -401,7 +538,10 @@ describe('WebAppAccessPointCard', () => {
     expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: /regenerate/ })).toBeDisabled()
-    expect(screen.getByRole('link', { name: /studio\.accessPoint\.open/ })).toBeEnabled()
+    expect(await screen.findByRole('link', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
+      'href',
+      `https://site.example.test${basePath}/chat/site-code`,
+    )
     expect(
       screen.getByRole('button', { name: /accessControlDialog\.accessItems\.anyone/ }),
     ).toBeEnabled()

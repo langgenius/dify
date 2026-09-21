@@ -3157,7 +3157,13 @@ export type PostAppsImportsData = {
   body:
     | AppImportPayload
     | {
+        app_id?: string
+        description?: string
         file: Blob | File
+        icon?: string
+        icon_background?: string
+        icon_type?: string
+        name?: string
       }
   path?: never
   query?: never
@@ -4433,6 +4439,7 @@ export type GetAppsByAppIdExportData = {
   query?: {
     format?: 'ifpkg' | 'yaml'
     include_secret?: boolean
+    version_id?: string
     workflow_id?: string
   }
   url: '/apps/{app_id}/export'

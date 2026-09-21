@@ -9,10 +9,10 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { importSchemaFromURL } from '@/service/tools'
 import examples from './examples'
 

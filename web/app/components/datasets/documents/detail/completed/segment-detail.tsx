@@ -42,13 +42,13 @@ export function SegmentDetail({
   segInfo,
   onUpdate,
   onCancel,
-  isEditMode,
+  isEditMode: requestedEditMode,
   docForm,
 }: ISegmentDetailProps) {
   const { t } = useTranslation()
-  const [question, setQuestion] = useState(
-    isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '',
-  )
+  const canEdit = useDocumentContext((s) => s.canEdit)
+  const isEditMode = requestedEditMode && canEdit
+  const [question, setQuestion] = useState(segInfo?.content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
   const [summary, setSummary] = useState(segInfo?.summary || '')
   const [attachments, setAttachments] = useState<FileEntity[]>(() => {
@@ -192,7 +192,6 @@ export function SegmentDetail({
           fullScreen
             ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6'
             : 'flex-col gap-y-1 px-4 py-3',
-          !isEditMode && 'pb-0',
         )}
       >
         <div
@@ -203,7 +202,7 @@ export function SegmentDetail({
         >
           <ChunkContent
             docForm={docForm}
-            question={question}
+            question={isEditMode ? question : segInfo?.sign_content || segInfo?.content || ''}
             answer={answer}
             onQuestionChange={(question) => setQuestion(question)}
             onAnswerChange={(answer) => setAnswer(answer)}
@@ -250,7 +249,7 @@ export function SegmentDetail({
           />
         </div>
       )}
-      {showRegenerationModal && (
+      {isEditMode && showRegenerationModal && (
         <RegenerationModal
           isShow={showRegenerationModal}
           onConfirm={onConfirmRegeneration}

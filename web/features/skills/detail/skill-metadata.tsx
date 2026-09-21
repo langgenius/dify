@@ -17,12 +17,12 @@ import {
   ComboboxTrigger,
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { toast } from '@/app/notifications'
 import { isCreateTagOption } from '@/features/tag-management/components/tag-combobox-item'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import { TagSearchContentView } from '@/features/tag-management/components/tag-search-content'

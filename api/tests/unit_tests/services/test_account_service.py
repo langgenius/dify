@@ -20,6 +20,7 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
+from services.account_email import normalize_email
 from services.account_service import (
     AccountService,
     EnterpriseWorkspaceMemberAccountNotFoundError,
@@ -37,6 +38,7 @@ from services.errors.account import (
     NoPermissionError,
 )
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_tenant
 
 type _MockDependencies = dict[str, MagicMock]
 
@@ -75,7 +77,7 @@ class TestAccountAssociatedDataFactory:
 
 
 def _tenant(session: Session | None = None) -> Tenant:
-    tenant = Tenant(name="Test Workspace")
+    tenant = make_tenant(tenant_id=None, name="Test Workspace")
     if session is not None:
         session.add(tenant)
     return tenant
@@ -3000,13 +3002,47 @@ class TestSessionInjectedGetters:
 
 
 def test_get_account_by_email_with_case_fallback_uses_lowercase(sqlite_session: Session) -> None:
-    account = Account(name="Case User", email="case@test.com")
+    account = Account(name="Case User", email="case@test.com", normalized_email=normalize_email("case@test.com"))
     sqlite_session.add(account)
     sqlite_session.commit()
 
     result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=sqlite_session)
 
     assert result is account
+
+
+def test_get_account_by_email_with_case_fallback_finds_uppercase_row_from_lowercase_input(
+    sqlite_session: Session,
+) -> None:
+    """Regression test for CUS-1658: an SSO-provisioned account keeps the IdP's original casing
+    (e.g. `User@Example.com`), but the workspace invite flow always looks it up with an
+    already-lowercased email. The lookup must still find that account.
+    """
+    account = Account(name="SSO User", email="User@Example.com", normalized_email=normalize_email("User@Example.com"))
+    sqlite_session.add(account)
+    sqlite_session.commit()
+
+    result = AccountService.get_account_by_email_with_case_fallback("user@example.com", session=sqlite_session)
+
+    assert result is account
+
+
+def test_get_account_by_email_with_case_fallback_returns_oldest_when_normalized_email_is_duplicated(
+    sqlite_session: Session,
+) -> None:
+    """normalized_email is indexed but not unique, so installations can already hold equivalent
+    accounts. The fallback must not raise and must resolve to the same (oldest) account every time.
+    """
+    newer = Account(name="Newer", email="user@example.com", normalized_email=normalize_email("user@example.com"))
+    newer.created_at = datetime(2026, 9, 2)
+    older = Account(name="Older", email="User@Example.com", normalized_email=normalize_email("User@Example.com"))
+    older.created_at = datetime(2026, 9, 1)
+    sqlite_session.add_all([newer, older])
+    sqlite_session.commit()
+
+    result = AccountService.get_account_by_email_with_case_fallback("USER@EXAMPLE.COM", session=sqlite_session)
+
+    assert result is older
 
 
 class TestIsEmailSendIpLimit:

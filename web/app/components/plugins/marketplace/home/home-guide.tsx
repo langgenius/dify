@@ -7,7 +7,7 @@ import {
   SubmitRequestDropdownMenu,
 } from '@/app/components/plugins/plugin-page/nav-operations'
 import { defaultDocBaseUrl } from '@/context/i18n'
-import { getDocLanguage } from '@/i18n-config/language'
+import { getDocLanguage } from '@/i18n/language'
 
 function MarketplaceGuide() {
   const { i18n } = useTranslation()

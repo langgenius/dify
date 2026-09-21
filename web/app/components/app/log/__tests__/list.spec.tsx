@@ -74,8 +74,8 @@ vi.mock('@/app/components/app/store', () => ({
     }),
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div>loading</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div>loading</div>,
 }))
 
 vi.mock('@/app/components/app/log/model-info', () => ({

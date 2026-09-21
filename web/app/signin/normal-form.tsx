@@ -1,10 +1,11 @@
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -12,7 +13,6 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
-import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
@@ -116,7 +116,7 @@ function NormalForm() {
       <div
         className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
       >
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }

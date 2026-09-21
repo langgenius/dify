@@ -3,7 +3,6 @@
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAccountCircleLine,
   RiGlobalLine,
@@ -14,8 +13,9 @@ import {
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
@@ -161,7 +161,7 @@ export default function OAuthAuthorize() {
   if (isProfileLoading || isOAuthLoading || isAutoAuthorizing) {
     return (
       <div className="bg-background-default-subtle">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }

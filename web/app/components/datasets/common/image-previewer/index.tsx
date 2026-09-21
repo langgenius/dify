@@ -4,7 +4,7 @@ import { Kbd } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { formatFileSize } from '@/utils/format'
 
 type CachedImage = {
@@ -168,7 +168,9 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
           </IconButton>
           <Kbd>{formatForDisplay('Escape')}</Kbd>
         </div>
-        {cachedImages[currentImage!.url]!.status === 'loading' && <Loading type="app" />}
+        {cachedImages[currentImage!.url]!.status === 'loading' && (
+          <LoadingPlaceholder className="h-full" />
+        )}
         {cachedImages[currentImage!.url]!.status === 'error' && (
           <div className="flex max-w-sm flex-col items-center gap-y-2 system-sm-regular text-text-tertiary">
             <span>{`Failed to load image: ${currentImage!.url}. Please try again.`}</span>

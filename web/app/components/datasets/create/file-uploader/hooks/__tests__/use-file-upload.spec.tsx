@@ -10,7 +10,7 @@ import { useFileUpload } from '../use-file-upload'
 // Mock notify function
 const mockNotify = vi.fn()
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockNotify({ type: 'error', message }),
   },
@@ -38,7 +38,7 @@ vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({ data: mockFileUploadConfig }),
   useFileSupportTypes: () => ({ data: mockSupportTypes }),
 }))
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
 

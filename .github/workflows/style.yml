@@ -143,6 +143,11 @@ jobs:
         working-directory: .
         run: vp run knip
 
+      - name: Web build and unused translations check
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: vp run build:vinext
+
       - name: Web dead code check production
         working-directory: .
         run: vp run knip:production

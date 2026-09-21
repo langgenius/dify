@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { DEFAULT_ACCESS_POLICY_ID } from './constants'
 
@@ -93,9 +93,7 @@ function AddAccessSubjectPopoverContent({
           </Button>
         </div>
       ) : isLoading ? (
-        <div className="flex h-20 items-center justify-center p-1">
-          <Loading type="app" />
-        </div>
+        <LoadingPlaceholder className="h-20 p-1" />
       ) : availableMembers.length === 0 ? (
         <div className="px-3 py-6 text-center system-xs-regular text-text-tertiary">
           {t(($) => $['accessRule.noAvailableMembers'], { ns: 'permission' })}

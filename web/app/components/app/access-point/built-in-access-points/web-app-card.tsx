@@ -14,7 +14,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,8 +27,12 @@ import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
+import {
+  useAppWhiteListSubjects,
+  useGetUserCanAccessApp,
+} from '@/service/access-control/use-app-access-control'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
@@ -141,6 +144,14 @@ export function WebAppAccessPointCard({
     !accessSubjects ||
     appInfo.access_mode !== AccessMode.SPECIFIC_GROUPS_MEMBERS ||
     Boolean(accessSubjects?.groups?.length || accessSubjects?.members?.length)
+  const { data: userCanAccessApp, refetch: refetchUserCanAccessApp } = useGetUserCanAccessApp({
+    appId: appInfo.id,
+    enabled: showAccessControl,
+  })
+  const noAccessPermission =
+    showAccessControl &&
+    appInfo.access_mode !== AccessMode.EXTERNAL_MEMBERS &&
+    !userCanAccessApp?.result
 
   const handleRegenerate = () => {
     if (!canManageAccessPoint || resetSiteAccessToken.isPending) return
@@ -246,7 +257,10 @@ export function WebAppAccessPointCard({
           showQrCode
           showRegenerate
           openLabel={t(($) => $['studio.accessPoint.open'], { ns: 'deployments' })}
-          openUrl={appInfo.enable_site && !toggleSiteMutation.isPending ? webAppUrl : undefined}
+          openDisabledReason={
+            noAccessPermission ? t(($) => $.noAccessPermission, { ns: 'app' }) : undefined
+          }
+          openUrl={actionsAvailable && !noAccessPermission ? webAppUrl : undefined}
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
@@ -298,13 +312,14 @@ export function WebAppAccessPointCard({
           app={appInfo}
           onClose={() => setShowAccess(false)}
           onConfirm={async () => {
-            await onRefreshApp()
+            await Promise.all([onRefreshApp(), refetchUserCanAccessApp()])
             setShowAccess(false)
           }}
         />
       )}
       <WorkflowLaunchDialog
         hiddenVariables={hiddenLaunchVariables}
+        launchDisabled={noAccessPermission}
         open={showWorkflowLaunch}
         targetUrl={webAppUrl}
         onOpenChange={setShowWorkflowLaunch}

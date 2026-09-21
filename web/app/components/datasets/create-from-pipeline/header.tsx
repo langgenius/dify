@@ -1,5 +1,5 @@
-import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { iconButtonVariants } from '@langgenius/dify-ui/icon-button'
 import { RiArrowLeftLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,14 +12,15 @@ const Header = () => {
     <div className="relative flex px-16 pt-5 pb-2 system-md-semibold text-text-primary">
       <span>{t(($) => $['creation.backToKnowledge'], { ns: 'datasetPipeline' })}</span>
       <Link
+        aria-label={t(($) => $['creation.backToKnowledge'], { ns: 'datasetPipeline' })}
         className={cn(
-          buttonVariants({ variant: 'secondary-accent' }),
-          'absolute bottom-0 left-5 size-9 rounded-full p-0',
+          iconButtonVariants({ variant: 'secondary-accent', size: 'xl' }),
+          'absolute bottom-0 left-5 rounded-full',
         )}
         href="/datasets"
         replace
       >
-        <RiArrowLeftLine className="size-5" />
+        <RiArrowLeftLine aria-hidden className="size-5" />
       </Link>
     </div>
   )

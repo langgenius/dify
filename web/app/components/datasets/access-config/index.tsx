@@ -5,14 +5,14 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import {
   useDatasetAccessRules,
@@ -219,7 +219,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
     ],
   )
 
-  if (!canAccessConfig) return <Loading type="app" />
+  if (!canAccessConfig) return <LoadingPlaceholder className="h-full" />
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background-default-subtle">
