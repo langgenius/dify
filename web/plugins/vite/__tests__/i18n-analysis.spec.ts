@@ -617,7 +617,7 @@ describe('i18n build check', () => {
     )
   })
 
-  it.each(['rewrite', 'inline'] as const)(
+  it.each(['rewrite', 'inline', 'retained static import', 'retained dynamic import'] as const)(
     'blocks disk fallback after a dynamic import %s',
     async (mode) => {
       writeFileSync(localeFile, '{}')
@@ -628,10 +628,12 @@ describe('i18n build check', () => {
       writeFileSync(path.join(root, 'app/actual.ts'), `export const ns = 'actual'`)
       writeFileSync(
         path.join(root, 'app/page.ts'),
-        `export async function page(t: (key: string, options: { ns: string }) => string) {
+        `${mode === 'retained static import' ? "import { ns } from './old'; export const keep = ns;" : ''}
+      export async function page(t: (key: string, options: { ns: string }) => string) {
       const resource = await import('./old')
       return t('title', { ns: resource.ns })
-    }`,
+    }
+    ${mode === 'retained dynamic import' ? "export const keep = () => import('./old')" : ''}`,
       )
       const reports: AnalysisReport[] = []
       await expect(
@@ -651,7 +653,7 @@ describe('i18n build check', () => {
                 if (id.endsWith('/app/page.ts'))
                   return code.replace(
                     "import('./old')",
-                    mode === 'rewrite' ? "import('./actual')" : "Promise.resolve({ ns: 'actual' })",
+                    mode === 'inline' ? "Promise.resolve({ ns: 'actual' })" : "import('./actual')",
                   )
               },
             },

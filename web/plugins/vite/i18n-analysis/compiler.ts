@@ -161,42 +161,67 @@ export async function resolveTranslationImports(
         else if (!declarationImports.has(specifier) && !isAsset(specifier))
           imports.set(specifier, null)
       }
-      const original = ts.preProcessFile(source, true, true).importedFiles
-      if (original.some((file) => !surviving.has(file.fileName))) {
-        const before = importBindings(source)
-        const after = importBindings(code)
-        for (const binding of before) {
-          if (binding.typeOnly || surviving.has(binding.specifier) || isAsset(binding.specifier))
-            continue
-          // Barrel optimizers may split named imports into per-binding default
-          // imports. Preserve TS declarations only if every binding still comes
-          // from the same external package; local rewrites remain strict.
-          const packageName = binding.specifier.startsWith('@')
-            ? binding.specifier.split('/').slice(0, 2).join('/')
-            : binding.specifier.split('/')[0]!
-          const externalBindings =
-            !/^[.#/]/.test(binding.specifier) &&
-            !binding.specifier.startsWith('@/') &&
-            binding.locals.length > 0 &&
-            binding.locals.every((local) =>
-              after.some((candidate) => {
-                const target = targets.get(candidate.specifier)
-                return (
-                  candidate.locals.includes(local) &&
-                  target?.includes(`/node_modules/${packageName}/`) &&
-                  !modules.has(target)
-                )
-              }),
-            )
-          if (externalBindings) continue
-          const candidates = after.filter((candidate) => candidate.signature === binding.signature)
-          const replacement =
-            candidates.length === 1 ? targets.get(candidates[0]!.specifier) : undefined
-          // Never read the old runtime module from disk after an untraceable rewrite.
-          imports.set(
-            binding.specifier,
-            replacement && modules.has(replacement) ? replacement : null,
+      const before = importBindings(source)
+      const after = importBindings(code)
+      const proposals = new Map<string, Set<string | null | undefined>>()
+      const record = (specifier: string, target: string | null | undefined) => {
+        const values = proposals.get(specifier) ?? new Set<string | null | undefined>()
+        values.add(target)
+        proposals.set(specifier, values)
+      }
+      for (const binding of before) {
+        if (binding.typeOnly || isAsset(binding.specifier)) continue
+        const sameBinding = (candidate: ImportBinding) =>
+          !candidate.typeOnly &&
+          candidate.specifier === binding.specifier &&
+          candidate.signature === binding.signature
+        const originalCount = before.filter(sameBinding).length
+        const survivingCount = after.filter(sameBinding).length
+        if (originalCount === survivingCount) {
+          record(binding.specifier, imports.get(binding.specifier))
+          continue
+        }
+        // Barrel optimizers may split named imports into per-binding default
+        // imports. Preserve TS declarations only if every binding still comes
+        // from the same external package; local rewrites remain strict.
+        const packageName = binding.specifier.startsWith('@')
+          ? binding.specifier.split('/').slice(0, 2).join('/')
+          : binding.specifier.split('/')[0]!
+        const externalBindings =
+          !/^[.#/]/.test(binding.specifier) &&
+          !binding.specifier.startsWith('@/') &&
+          binding.locals.length > 0 &&
+          binding.locals.every((local) =>
+            after.some((candidate) => {
+              const target = targets.get(candidate.specifier)
+              return (
+                candidate.locals.includes(local) &&
+                target?.includes(`/node_modules/${packageName}/`) &&
+                !modules.has(target)
+              )
+            }),
           )
+        if (externalBindings) {
+          record(binding.specifier, undefined)
+          continue
+        }
+        const candidates = after.filter(
+          (candidate) => !candidate.typeOnly && candidate.signature === binding.signature,
+        )
+        const replacement =
+          originalCount === 1 && candidates.length === 1
+            ? targets.get(candidates[0]!.specifier)
+            : undefined
+        record(binding.specifier, replacement && modules.has(replacement) ? replacement : null)
+      }
+      // The TS host resolves by module specifier, not by import occurrence. If
+      // bindings using one specifier diverge, block all rather than use a stale target.
+      for (const [specifier, values] of proposals) {
+        if (values.size > 1 || values.has(null)) imports.set(specifier, null)
+        else {
+          const [target] = values
+          if (target !== undefined) imports.set(specifier, target)
+          else imports.delete(specifier)
         }
       }
       resolutions.set(id, imports)

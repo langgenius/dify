@@ -30,7 +30,10 @@ or removed value imports, including unchanged imports resolved to unanalyzed vir
 modules, are reported as unresolved instead of silently reading
 the old runtime module from disk. Rewritten or removed literal dynamic imports
 are also blocked: without a stable binding, their replacement cannot be inferred
-from call order. Explicit type-only imports and package declarations
+from call order. Matching checks binding signatures and occurrence counts rather
+than merely whether a specifier survives. If uses of one specifier disagree, the
+TypeScript host blocks that specifier as a whole because its resolution is shared
+across import occurrences. Explicit type-only imports and package declarations
 continue to use TypeScript resolution. Package barrel rewrites retain declaration
 resolution only when every imported local binding is traced to the same external
 package. Vite-recognized asset imports without queries are excluded from missing
