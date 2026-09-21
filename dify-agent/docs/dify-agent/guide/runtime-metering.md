@@ -26,7 +26,11 @@ Metering misconfiguration is checked when collection is invoked, rather than
 becoming a prerequisite for business runtime startup or binding operations.
 
 The endpoint has a 240-second deadline. The scheduled HTTP caller has a
-260-second timeout, and the Celery task has 270/300-second soft/hard limits.
+260-second timeout, and the Celery task configures 270/300-second soft/hard limits.
+Pool support differs: gevent workers do not implement soft time limits, and
+blocking work cannot rely on their hard limit. The collection and HTTP deadlines
+are the primary bounds; verify the deployed worker pool before relying on Celery
+limits. See the [Celery time-limit documentation](https://docs.celeryq.dev/en/stable/userguide/workers.html#time-limits).
 Scheduled messages expire after one collection interval to avoid stale backlog.
 There is no automatic HTTP retry; future scheduled scans can redeliver provider
 IDs safely. Overlapping tasks may duplicate reads, but cannot multiply usage.
