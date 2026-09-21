@@ -247,7 +247,6 @@
   "common.setVarValuePlaceholder": "Установить значение переменной",
   "common.showRunHistory": "Показать историю запусков",
   "common.syncingData": "Синхронизация данных, всего несколько секунд.",
-  "common.tagBound": "Количество приложений, использующих этот тег",
   "common.undo": "Отменить",
   "common.unpublished": "Не опубликовано",
   "common.upToDate": "Актуально",

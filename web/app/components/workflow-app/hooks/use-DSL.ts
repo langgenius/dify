@@ -2,13 +2,12 @@ import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { exportAppDslFile } from '@/app/components/app/use-export-app-dsl'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { exportAppConfig } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import { downloadBlob } from '@/utils/download'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
@@ -31,13 +30,12 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         setExporting(true)
         await doSyncWorkflowDraft()
         if (workflowStore.getState().hasWorkflowDraftConflict) return
-        const { data } = await exportAppConfig({
-          appID: appDetail.id,
-          include,
-          workflowID: workflowId,
+        await exportAppDslFile({
+          appId: appDetail.id,
+          appName: appDetail.name,
+          includeSecret: include,
+          workflowId,
         })
-        const file = new Blob([data], { type: 'application/yaml' })
-        downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
       } catch {
         toast.error(t(($) => $.exportFailed, { ns: 'app' }))
       } finally {

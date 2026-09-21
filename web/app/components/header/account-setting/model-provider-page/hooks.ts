@@ -32,7 +32,7 @@ import { CustomConfigurationStatusEnum, ModelStatusEnum, ModelTypeEnum } from '.
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
   modelList: ProviderWithModelsResponse[],
-) => [DefaultModel | undefined, (model: DefaultModel) => void]
+) => [DefaultModel | undefined, (model: DefaultModel | undefined) => void, () => void]
 export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
   defaultModel,
   modelList,
@@ -68,14 +68,18 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
     defaultModelSourceKey === currentDefaultModelKey ? defaultModelState : currentDefaultModel
 
   const handleDefaultModelChange = useCallback(
-    (model: DefaultModel) => {
+    (model: DefaultModel | undefined) => {
       setDefaultModelSourceKey(currentDefaultModelKey)
       setDefaultModelState(model)
     },
     [currentDefaultModelKey],
   )
 
-  return [selectedDefaultModel, handleDefaultModelChange]
+  return [
+    selectedDefaultModel,
+    handleDefaultModelChange,
+    () => handleDefaultModelChange(currentDefaultModel),
+  ]
 }
 
 export const useLanguage = () => {

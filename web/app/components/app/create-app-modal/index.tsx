@@ -6,13 +6,13 @@ import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { difyBuilderPendingCreationAtom } from '@/app/components/workflow-app/components/dify-builder/creation'
 import { toast } from '@/app/notifications'
@@ -226,7 +226,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                 isBuilder={isBuilder}
                 defaultAppMode={defaultAppMode}
               />
-              <Divider style={{ margin: 0 }} />
+              <Separator />
               {isBuilder ? (
                 <AppBuilderInput
                   key={builderAppMode}

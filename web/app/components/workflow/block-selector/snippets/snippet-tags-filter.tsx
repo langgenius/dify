@@ -17,7 +17,6 @@ type SnippetTagsFilterProps = {
 
 const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFilterProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
 
   const { data: tagList = [] } = useQuery(
@@ -46,12 +45,11 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
     ? selectedTags.map((tag) => tag.name).join(', ')
     : t(($) => $['tag.placeholder'], { ns: 'common' })
   const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
     if (!nextOpen) setSearchText('')
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
           <Button

@@ -9,6 +9,40 @@ export type RouteNamespaceReport = {
   groups: Record<'page' | 'shared' | 'lazy' | 'slots', NamespaceSources[]>
 }
 
+export function validateRouteNamespaces(
+  routes: readonly RouteNamespaceReport[],
+  getDeclaredNamespaces: (route: string) => readonly string[] | undefined,
+) {
+  const violations: string[] = []
+  for (const report of routes) {
+    const declared = getDeclaredNamespaces(report.route)
+    if (declared === undefined) continue
+    const missing = report.namespaces.filter((namespace) => !declared.includes(namespace))
+    if (!missing.length) continue
+    violations.push(
+      `  ${report.route} (${report.page})`,
+      `    Declared: ${declared.join(', ') || '(none)'}`,
+    )
+    for (const namespace of missing) {
+      violations.push(`    Undeclared namespace: ${namespace}`)
+      for (const [group, entries] of Object.entries(report.groups)) {
+        for (const source of entries.find((entry) => entry.namespace === namespace)?.sources ?? [])
+          violations.push(`      [${group}] ${source}`)
+      }
+    }
+  }
+  if (violations.length) {
+    throw new Error(
+      [
+        'Route namespace declarations do not cover statically detected usage:',
+        ...violations,
+        'Remove the dependency or update the route namespace declaration after reviewing its usage.',
+        'Includes shared boundaries, dynamic imports and conservative parallel-slot additions; inspect the reported sources before changing declarations.',
+      ].join('\n'),
+    )
+  }
+}
+
 // Use resolved build edges (including virtual modules), not an independent
 // resolver which could disagree with aliases, exports or environment conditions.
 export function analyzeRouteNamespaces(

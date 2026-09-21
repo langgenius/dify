@@ -31,6 +31,8 @@ type ModelSelectorBaseProps = {
   className?: string
   popupClassName?: string
   onValueChange?: (model: ModelSelectorValue) => void
+  onClear?: () => void
+  clearLabel?: string
   onHide?: () => void
   disabled?: boolean
   loading?: boolean
@@ -57,6 +59,8 @@ function ModelSelectorRoot({
   className,
   popupClassName,
   onValueChange,
+  onClear,
+  clearLabel,
   onHide,
   disabled,
   loading,
@@ -142,6 +146,8 @@ function ModelSelectorRoot({
         currentProvider={currentProvider}
         currentModel={currentModel}
         defaultModel={value}
+        onClear={onClear}
+        clearLabel={clearLabel}
         disabled={disabled || loading}
         loading={loading}
         size={size}

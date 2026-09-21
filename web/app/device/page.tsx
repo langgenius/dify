@@ -2,10 +2,10 @@
 
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -214,7 +214,7 @@ export default function DevicePage() {
             {t(($) => $['success.title'])}
           </h1>
           <p className="text-sm text-text-secondary">{t(($) => $['success.subtitle'])}</p>
-          <Divider className="my-3" />
+          <Separator decorative className="my-3 h-[0.5px]" />
           <Link href="/" className={cn(buttonVariants({ variant: 'ghost' }), 'w-full')}>
             {t(($) => $['success.goToConsole'])}
           </Link>
@@ -238,7 +238,7 @@ export default function DevicePage() {
               }}
             />
           </p>
-          <Divider className="my-3" />
+          <Separator decorative className="my-3 h-[0.5px]" />
           <Button
             variant="ghost"
             className="w-full"
@@ -261,7 +261,7 @@ export default function DevicePage() {
             {t(($) => $['errorRateLimited.title'])}
           </h1>
           <p className="text-sm text-text-secondary">{t(($) => $['errorRateLimited.body'])}</p>
-          <Divider className="my-3" />
+          <Separator decorative className="my-3 h-[0.5px]" />
           <Button
             variant="ghost"
             className="w-full"
@@ -284,7 +284,7 @@ export default function DevicePage() {
             {t(($) => $['errorLookupFailed.title'])}
           </h1>
           <p className="text-sm text-text-secondary">{t(($) => $['errorLookupFailed.body'])}</p>
-          <Divider className="my-3" />
+          <Separator decorative className="my-3 h-[0.5px]" />
           <Button
             variant="ghost"
             className="w-full"
@@ -310,7 +310,7 @@ export default function DevicePage() {
             {t(($) => $['errorSso.title'])}
           </h1>
           <p className="text-sm text-text-secondary">{ssoErrorCopy(view.code, t)}</p>
-          <Divider className="my-3" />
+          <Separator decorative className="my-3 h-[0.5px]" />
           <Button
             variant="primary"
             size="large"

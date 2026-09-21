@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { SearchInput } from '@/app/components/base/search-input'
 import { formatNumber } from '@/utils/format'
 import { EditSlice } from '../../../formatted-text/flavours/edit-slice'
@@ -170,7 +170,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         isFullDocMode && isLoading && 'overflow-y-hidden',
       )}
     >
-      {isFullDocMode && <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />}
+      {isFullDocMode && <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />}
       <div
         className={cn(
           'flex items-center justify-between',
@@ -227,7 +227,11 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         <div className={cn('flex gap-x-0.5', isFullDocMode ? 'mb-6 grow' : 'items-center')}>
           {isParagraphMode && (
             <div className="self-stretch">
-              <Divider type="vertical" className="mx-1.75 w-0.5 bg-text-accent-secondary" />
+              <Separator
+                decorative
+                orientation="vertical"
+                className="mx-1.75 w-0.5 bg-text-accent-secondary"
+              />
             </div>
           )}
           {renderContent()}

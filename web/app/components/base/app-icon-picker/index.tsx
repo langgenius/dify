@@ -4,11 +4,11 @@ import type { AppIconType, ImageFile } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiImageCircleAiLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
-import Divider from '../divider'
 import { defaultEmojiBackground } from '../emoji-picker/constants'
 import EmojiPickerInner from '../emoji-picker/Inner'
 import { useLocalFileUploader } from '../image-uploader/hooks'
@@ -225,7 +225,7 @@ function AppIconPickerContent({
         <ImageInput className={cn('flex-1 overflow-hidden')} onImageInput={handleImageInput} />
       )}
 
-      <Divider className="m-0" />
+      <Separator decorative className="m-0 h-[0.5px]" />
       <div className="flex w-full items-center justify-center gap-2 p-3">
         <Button className="w-full" onClick={() => onOpenChange(false)}>
           {t(($) => $['iconPicker.cancel'], { ns: 'app' })}
