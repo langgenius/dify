@@ -318,3 +318,63 @@ def test_plan_prompt_still_requests_json_and_language(monkeypatch):
 
     assert '{"plan": ["step", ...]}' in captured["system"]
     assert build.llm.json_language_instruction("plan steps") in captured["system"]
+
+
+def test_topology_directive_keeps_the_workflow_rules():
+    """Regression guard: the original topology contract must survive. This
+    directive is why workflow mode never gets 'answer' nodes."""
+    d = build._WORKFLOW_TOPOLOGY_DIRECTIVE
+    assert "'start'" in d
+    assert "'end'" in d
+    assert "answer" in d
+
+
+def test_topology_directive_carries_node_usage_guidance():
+    """Meeting item 9, tier 2: usage detail rides the Builder-only prepend."""
+    d = build._WORKFLOW_TOPOLOGY_DIRECTIVE
+    lowered = d.lower()
+    # the config mistakes that actually broke real builds
+    assert "document-extractor" in lowered  # needs a file input
+    assert "iteration" in lowered  # children belong inside the container
+    assert "variable" in lowered  # reference only declared outputs
+
+
+def test_topology_directive_does_not_restate_the_whitelist():
+    """The generator's SHARED system prompt already lists every node type.
+    Restating it here burns planner output budget for nothing (see ESQ1-300)."""
+    assert build._DIFY_NODE_VOCABULARY not in build._WORKFLOW_TOPOLOGY_DIRECTIVE
+
+
+def test_build_nodes_sends_the_directive_to_the_generator(monkeypatch):
+    """The directive is only worth anything if it actually reaches the
+    generator ahead of the plan items."""
+    seen = {}
+
+    class _FakeGen:
+        @staticmethod
+        def generate_workflow_graph(
+            *,
+            tenant_id,
+            mode,
+            instruction,
+            model_config,
+            current_graph,  # noqa: ARG004
+        ):
+            seen["instruction"] = instruction
+            return {
+                "graph": {
+                    "nodes": [{"id": "node1", "data": {"type": "start", "title": "Start"}}],
+                    "edges": [],
+                }
+            }
+
+    # Patch the module-level reference (build.py:21 imports the class), NOT the
+    # shared class object itself.
+    monkeypatch.setattr(build, "WorkflowGeneratorService", _FakeGen)
+    monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: {})  # noqa: ARG005
+
+    build.build_nodes(tenant_id="t1", model_config={}, plan_items=["llm node drafts a reply"])
+
+    instruction = seen["instruction"]
+    assert instruction.startswith(build._WORKFLOW_TOPOLOGY_DIRECTIVE)
+    assert "llm node drafts a reply" in instruction
