@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import os
 import random
 import shutil
@@ -185,6 +186,7 @@ class ImageOptimizationTests(unittest.TestCase):
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        (scripts / "ignore.json").write_text("[]")
         result = subprocess.run(
             [sys.executable, str(scripts / "check_image_resources.py"), "--all", "--fix"],
             capture_output=True,
@@ -254,6 +256,63 @@ class ImageOptimizationTests(unittest.TestCase):
     def run_git(self, *args: str) -> str:
         return checker.git(*args, root=self.root).decode().strip()
 
+    def test_ignore_rules_validate_and_match_repository_relative_globs(self):
+        config = self.write("scripts/image-resources/ignore.json", b"[]")
+        self.assertEqual(checker.load_ignore_rules(self.root), [])
+        rules = [
+            {"pattern": "logo.png", "reason": "Keep upstream original"},
+            {"pattern": "fixtures/*.png", "reason": "Encoding test fixtures"},
+        ]
+        config.write_text(json.dumps(rules))
+        loaded = checker.load_ignore_rules(self.root)
+        for name in ["logo.png", "fixtures/test.png", "fixtures/nested/test.png"]:
+            self.assertIsNotNone(checker.ignored_reason(name, loaded))
+        for name in ["other/logo.png", "logo.PNG", "fixtures/test.svg"]:
+            self.assertIsNone(checker.ignored_reason(name, loaded))
+        for invalid in [
+            {},
+            ["*.png"],
+            [{"pattern": "*.png"}],
+            [{"pattern": "*.png", "reason": " "}],
+            [{"pattern": "/logo.png", "reason": "test"}],
+            [{"pattern": "../logo.png", "reason": "test"}],
+        ]:
+            config.write_text(json.dumps(invalid))
+            with self.assertRaises(ValueError):
+                checker.load_ignore_rules(self.root)
+
+    def test_ignore_applies_to_check_fix_and_candidate_export(self):
+        self.run_git("init", "-q")
+        original = png()
+        path = self.write("fixtures/keep.png", original)
+        self.run_git("add", ".")
+        scripts = self.root / "scripts/image-resources"
+        scripts.mkdir(parents=True)
+        shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        config = scripts / "ignore.json"
+        config.write_text(json.dumps([{"pattern": "fixtures/*.png", "reason": "Preserve encoding fixture"}]))
+        command = [sys.executable, str(scripts / "check_image_resources.py"), "--all"]
+        with tempfile.TemporaryDirectory() as output:
+            summary = Path(output) / "summary.md"
+            env = {**os.environ, "GITHUB_ACTIONS": "true", "GITHUB_STEP_SUMMARY": str(summary)}
+            for args in [[], ["--fix"], ["--output-dir", output]]:
+                result = subprocess.run(command + args, env=env, capture_output=True, text=True, check=False)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("1 ignored", result.stdout)
+                self.assertIn("Preserve encoding fixture", result.stdout)
+                self.assertEqual(path.read_bytes(), original)
+                self.assertFalse((Path(output) / "fixtures/keep.png").exists())
+            self.assertIn("**ignored**", summary.read_text())
+            self.assertIn("Preserve encoding fixture", summary.read_text())
+        config.write_text("[]")
+        result = subprocess.run(command, capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 1)
+        config.write_text("invalid json")
+        result = subprocess.run(command + ["--fix"], capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Invalid image ignore configuration", result.stderr)
+        self.assertEqual(path.read_bytes(), original)
+
     def test_fix_cli_applies_candidates_and_preserves_other_files(self):
         self.run_git("init", "-q")
         originals = {
@@ -269,6 +328,7 @@ class ImageOptimizationTests(unittest.TestCase):
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        (scripts / "ignore.json").write_text("[]")
         command = [sys.executable, str(scripts / "check_image_resources.py"), "--all"]
         result = subprocess.run(command + ["--fix"], capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 1, result.stderr)
@@ -319,6 +379,7 @@ class ImageOptimizationTests(unittest.TestCase):
         scripts = self.root / "scripts/image-resources"
         scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        (scripts / "ignore.json").write_text("[]")
         command = [sys.executable, str(scripts / "check_image_resources.py"), "--base", base]
         with tempfile.TemporaryDirectory() as output:
             env = {**os.environ, "GITHUB_ACTIONS": "true", "GITHUB_STEP_SUMMARY": str(Path(output) / "summary.md")}

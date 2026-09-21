@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import base64
+import fnmatch
 import html
 import io
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -33,6 +35,29 @@ def image_paths(base: str | None, root: Path = ROOT) -> list[str]:
         ancestor = git("merge-base", base, "HEAD", root=root).decode().strip()
         output = git("diff", "--name-only", "--diff-filter=ACMRT", "-z", ancestor, "HEAD", "--", root=root)
     return sorted(path for path in output.decode().split("\0") if Path(path).suffix.lower() in IMAGE_EXTENSIONS)
+
+
+def load_ignore_rules(root: Path = ROOT) -> list[dict[str, str]]:
+    path = root / "scripts/image-resources/ignore.json"
+    rules = json.loads(path.read_text())
+    if not isinstance(rules, list):
+        raise ValueError("ignore.json must contain an array of pattern/reason objects")  # noqa: TRY004
+    for rule in rules:
+        if not isinstance(rule, dict) or set(rule) != {"pattern", "reason"}:
+            raise ValueError("Each ignore rule must contain only pattern and reason")
+        if not all(isinstance(value, str) and value.strip() for value in rule.values()):
+            raise ValueError("Ignore pattern and reason must be nonempty strings")
+        pattern = rule["pattern"]
+        if pattern.startswith("/") or "\\" in pattern or any(part in {".", ".."} for part in pattern.split("/")):
+            raise ValueError("Ignore patterns must be repository-relative paths using forward slashes")
+    return rules
+
+
+def ignored_reason(name: str, rules: list[dict[str, str]]) -> str | None:
+    for rule in rules:
+        if fnmatch.fnmatchcase(name, rule["pattern"]):
+            return f"{rule['reason']} (pattern: {rule['pattern']})"
+    return None
 
 
 def compress_raster(data: bytes) -> tuple[bytes, str]:
@@ -155,10 +180,18 @@ def main() -> int:
     args = parser.parse_args()
     if args.output_dir and args.output_dir.resolve().is_relative_to(ROOT):
         parser.error("--output-dir must be outside the repository to avoid overwriting source images")
+    try:
+        ignore_rules = load_ignore_rules()
+    except (OSError, ValueError) as error:
+        parser.error(f"Invalid image ignore configuration: {error}")
     paths = image_paths(args.base)
     results = []
     for name in paths:
-        status, message, candidate = inspect_image(name)
+        reason = ignored_reason(name, ignore_rules)
+        if reason is not None:
+            status, message, candidate = "ignored", reason, None
+        else:
+            status, message, candidate = inspect_image(name)
         if args.fix and candidate is not None:
             try:
                 (ROOT / name).write_bytes(candidate)
@@ -181,7 +214,10 @@ def main() -> int:
     failures = sum(status == "error" for _, status, _ in results)
     skipped = sum(status == "skipped" for _, status, _ in results)
     fixed = sum(status == "fixed" for _, status, _ in results)
-    status_line = f"Checked {len(paths)} images: {failures} failures, {skipped} skipped, {fixed} fixed."
+    ignored = sum(status == "ignored" for _, status, _ in results)
+    status_line = (
+        f"Checked {len(paths)} images: {failures} failures, {skipped} skipped, {ignored} ignored, {fixed} fixed."
+    )
     print(status_line)
     if fixed:
         print("Review all modified images visually before committing; JPEG/WebP compression is lossy.")

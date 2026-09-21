@@ -1,6 +1,6 @@
 # Image optimization checks
 
-The `Image optimization` workflow trial-compresses added or modified images in pull requests. It fails when the candidate is **more than 25% smaller** than the original, or an image cannot be inspected. There are no fixed file-size limits, gzip budgets, or per-file budget exceptions.
+The `Image optimization` workflow trial-compresses added or modified images in pull requests. It fails when the candidate is **more than 25% smaller** than the original, or an image cannot be inspected. There are no fixed file-size limits or gzip budgets. Explicit ignore rules require a reason.
 
 The checker and tests are maintained in this directory. Pillow and Scour are pinned in `requirements.txt`; CI needs no external image service or repository write permission.
 
@@ -23,6 +23,21 @@ For SVGs, the percentage compares the complete original and optimized file sizes
 Tracked image files anywhere in the repository are inspected, including documentation and backend assets. Selection uses image filename extensions, with no directory allowlist. Remote images, generated icon JSON, and data URLs inside application code are outside the scope. The checker does not determine whether an asset is used at runtime.
 
 The workflow runs only on pull requests and checks out the PR head commit. Checks compare the merge base of the target branch and PR head through `HEAD`, covering the entire PR diff across all commits, selecting added/modified/renamed destinations and excluding deletions. Uncommitted changes do not add paths to this selection, but selected images are read from the working tree, so local fixes can be rechecked before committing. Use `--all` to include other tracked images. Untracked images must first be added with `git add`. Full audits remain available locally with `--all`; CI never falls back to a full audit.
+
+## Ignore rules
+
+`ignore.json` is an array of rules, empty by default. Each rule requires a repository-relative `pattern` and a nonempty `reason`, for example:
+
+```json
+[
+  {"pattern": "docs/images/upstream-logo.png", "reason": "Keep the upstream brand asset unchanged"},
+  {"pattern": "api/tests/fixtures/images/*.png", "reason": "Tests require the original encoded bytes"}
+]
+```
+
+Matching is case-sensitive against the complete path using Python `fnmatchcase`: `*` matches any characters **including `/`**, `?` matches one character, and `[abc]` matches a character set. `**` has no special meaning beyond `*`. Use forward slashes; absolute paths and `.`/`..` segments are rejected. This is not gitignore syntax: there are no negation rules, comments, or directory-only patterns. The first matching rule supplies the reported reason.
+
+Check mode, `--fix`, and `--output-dir` all honor the same rules. Ignored images are not decoded, modified, or exported; logs and the CI summary report each ignored path, pattern, reason, and the total ignored count. Invalid or missing configuration fails the command before any images are modified. Keep patterns narrow so unrelated images remain checked.
 
 ## Local use
 
