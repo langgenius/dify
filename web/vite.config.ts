@@ -66,6 +66,16 @@ export default defineConfig(({ command, mode, isPreview }) => {
         tailwindcss(),
         react(),
         vinext({ react: false }),
+        {
+          name: 'dify-css-asset-alias',
+          enforce: 'post',
+          // Prepend after Vinext's tsconfig aliases, which skip CSS resolution.
+          config: () => ({
+            resolve: {
+              alias: [{ find: '~@', replacement: projectRoot }],
+            },
+          }),
+        },
         customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
         // reactGrabOpenFilePlugin({
         //   injectTarget: rootClientInjectTarget,
