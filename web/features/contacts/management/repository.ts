@@ -4,6 +4,7 @@ import type {
   AddPlatformContactsResult,
   AvailablePlatformContact,
   AvailablePlatformContactsQuery,
+  ContactIMChannel,
   ContactIMIdentity,
   ContactPage,
   ContactsFeatureContextValue,
@@ -37,6 +38,7 @@ export type ContactsManagementRepository = {
   supportsPlatformImport?: boolean
   supportsExternalContactUpgrade?: boolean
   getContact: (contactId: string) => Promise<ContactView | null>
+  listIMChannels?: () => Promise<ContactIMChannel[]>
   listIMIdentities: (query: {
     search: string
     page: number
@@ -130,6 +132,16 @@ export function createContactsApiRepository(
     supportsMemberManagement: false,
     supportsPlatformImport: canImportPlatformContacts,
     supportsExternalContactUpgrade: false,
+    async listIMChannels() {
+      const { channels } = await requestContactIM(() =>
+        consoleClient.workspace.current.humanInput.v2.channels.get(undefined, {
+          context: { silent: true },
+        }),
+      )
+      return channels
+        .filter((channel) => channel.kind === 'im')
+        .map(({ id, provider }) => ({ id, provider }))
+    },
     async listAvailablePlatformContacts(query) {
       if (!canImportPlatformContacts) throw new Error('Platform contact import is not available')
       const result = await client.organizationCandidates.get(

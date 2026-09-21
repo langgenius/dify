@@ -8,6 +8,11 @@ import { createContactsApiRepository } from '../repository'
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
+    workspace: {
+      current: {
+        humanInput: { v2: { channels: { get: vi.fn() } } },
+      },
+    },
     workspaces: {
       current: {
         humanInput: {
@@ -618,6 +623,32 @@ describe('contacts IM API repository', () => {
     im_bindings: [{ id: 'binding-1', provider: 'feishu' as const, scope: 'organization' as const }],
   }
   beforeEach(() => vi.resetAllMocks())
+
+  it('reads configured IM channels without exposing email channels or application identifiers as identities', async () => {
+    const channelClient = consoleClient.workspace.current.humanInput.v2.channels
+    const base = {
+      config_version: 'version-1',
+      created_at: 1,
+      display_identifier: 'app-identifier',
+      status: 'configured' as const,
+      status_description: '',
+      updated_at: 1,
+      webhook_url: null,
+    }
+    vi.mocked(channelClient.get).mockResolvedValue({
+      channels: [
+        { ...base, id: 'email-channel', kind: 'email', provider: 'resend' },
+        { ...base, id: 'slack-channel', kind: 'im', provider: 'slack' },
+      ],
+    })
+
+    const repository = createContactsApiRepository()
+
+    await expect(repository.listIMChannels?.()).resolves.toEqual([
+      { id: 'slack-channel', provider: 'slack' },
+    ])
+    expect(channelClient.get).toHaveBeenCalledWith(undefined, { context: { silent: true } })
+  })
 
   it('searches synced identities with server pagination and preserves binding status', async () => {
     const identity = {

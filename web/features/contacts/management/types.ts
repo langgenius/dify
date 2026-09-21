@@ -1,3 +1,4 @@
+import type { ChannelSummary } from '@dify/contracts/api/console/workspace/types.gen'
 import type {
   ExternalContactCreateRequest,
   HumanInputContact,
@@ -25,6 +26,7 @@ export type ContactTypeFilter = 'all' | ContactType
 
 export type ContactIMBinding = ImBinding
 export type ContactIMIdentity = ImIdentity
+export type ContactIMChannel = Pick<ChannelSummary, 'id' | 'provider'>
 
 export type SetContactIMBindingCommand = {
   contactId: string

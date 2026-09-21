@@ -3,6 +3,7 @@
 import type {
   AddPlatformContactsCommand,
   AvailablePlatformContactsQuery,
+  ContactIMChannel,
   ContactsListQuery,
   ContactView,
   CreateExternalContactCommand,
@@ -252,6 +253,39 @@ export function useRemoveContactMember() {
       },
     }),
   )
+}
+
+const emptyIMChannels: ContactIMChannel[] = []
+
+export function useContactIMChannels(enabled = true) {
+  const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
+  const listIMChannels = repository.listIMChannels
+  const query = useQuery(
+    queryOptions({
+      queryKey: [
+        ...contactsManagementQueryKeys.all(context.workspaceId),
+        'im-channels',
+        context.deployment,
+        repository,
+      ],
+      queryFn: listIMChannels ? () => listIMChannels() : skipToken,
+      enabled:
+        enabled &&
+        Boolean(context.workspaceId) &&
+        context.permissions.canManageContacts &&
+        context.deployment !== 'ee',
+      retry: false,
+    }),
+  )
+  return {
+    data: query.data ?? emptyIMChannels,
+    error: query.error,
+    isError: query.isError,
+    isFetching: query.isFetching,
+    isPending: query.isPending,
+    refetch: query.refetch,
+  }
 }
 
 export function useContactIMIdentities(search: string) {
