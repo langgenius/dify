@@ -126,11 +126,11 @@ function decodePayload(header: string, payload: string) {
   }
   const data = Buffer.from(bytes)
   if (!header.toLowerCase().includes(';base64')) return data
-  const text = data.toString('ascii').replace(/\s/g, '')
-  if (
-    data.some((byte) => byte > 127) ||
-    !/^(?:[A-Z\d+/]{4})*(?:[A-Z\d+/]{2}==|[A-Z\d+/]{3}=)?$/i.test(text)
-  )
+  // WHATWG forgiving-base64: strip ASCII whitespace, then optional padding
+  // only when the length is a multiple of four. Buffer alone is too permissive.
+  let text = data.toString('latin1').replace(/[\t\n\f\r ]/g, '')
+  if (text.length % 4 === 0) text = text.replace(/={1,2}$/, '')
+  if (text.length % 4 === 1 || /[^A-Z\d+/]/i.test(text))
     throw new Error('Invalid embedded Base64 image')
   return Buffer.from(text, 'base64')
 }

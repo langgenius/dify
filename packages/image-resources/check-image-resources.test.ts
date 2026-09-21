@@ -252,6 +252,70 @@ it('embedded Base64 handles both href forms, whitespace and XML entities', async
   }
 })
 
+it('unpadded embedded Base64 preserves pixels and works through CLI check and fix', async (t) => {
+  const { root, cli } = repository(t)
+  const source = await png()
+  const padding = new Set<number>()
+  for (const length of [0, 1, 2]) {
+    const original = Buffer.concat([
+      source.subarray(0, 33),
+      chunk('tEXt', Buffer.from(`Comment\0${'x'.repeat(length)}`)),
+      source.subarray(33),
+    ])
+    const encoded = original.toString('base64')
+    padding.add(encoded.length - encoded.replace(/=+$/, '').length)
+    for (const attribute of ['href', 'xlink:href']) {
+      // Percent-encoded ASCII whitespace is permitted too, including form feed.
+      const payload = encoded
+        .replace(/=+$/, '')
+        .match(/.{1,64}/g)!
+        .join('%09%0A%0C%0D%20')
+      const svg = Buffer.from(embedded(original, attribute).toString().replace(encoded, payload))
+      const trial = await compressSvg(svg)
+      assert.match(trial.method, /embedded PNG/)
+      const href = parseSvg(trial.data).getElementsByTagName('image')[0]!.getAttribute(attribute)!
+      const candidate = Buffer.from(href.split(',')[1]!, 'base64')
+      assert.deepEqual(
+        await sharp(candidate).raw().toBuffer(),
+        await sharp(original).raw().toBuffer(),
+      )
+      write(root, `${length}-${attribute.replace(':', '-')}.svg`, svg)
+    }
+  }
+  assert.deepEqual([...padding].sort(), [0, 1, 2])
+  git(['add', '*.svg'], root)
+  const checked = cli(['--all'])
+  assert.equal(checked.status, 1, checked.stderr)
+  assert.match(checked.stdout, /6 failures/)
+  assert.ok(!checked.stdout.includes('Unable to inspect'))
+  const fixed = cli(['--all', '--fix'])
+  assert.equal(fixed.status, 0, fixed.stderr)
+  assert.match(fixed.stdout, /6 fixed/)
+  assert.equal(cli(['--all']).status, 0)
+})
+
+it('embedded Base64 rejects invalid alphabet, lengths, padding and non-ASCII whitespace', async () => {
+  for (const payload of [
+    'A',
+    'AAAAA',
+    'AA=',
+    'AAA==',
+    'AAAA=',
+    'AA===',
+    'A=AA',
+    'AA-_',
+    'AA%0B',
+    'AA%C2%A0',
+    'AA%FF',
+  ]) {
+    await assert.rejects(
+      compressSvg(wrap(`<image href="data:image/png;base64,${payload}"/>`)),
+      /Invalid embedded Base64 image/,
+      payload,
+    )
+  }
+})
+
 it('percent-encoded binary data URLs are recompressed without UTF-8 corruption', async () => {
   const source = await png()
   const url = [...source].map((byte) => `%${byte.toString(16).padStart(2, '0')}`).join('')
