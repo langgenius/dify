@@ -570,6 +570,100 @@ describe('i18n build check', () => {
     },
   )
 
+  it.each(['type', 'prefix'] as const)(
+    'uses transformed JSON for %s key analysis',
+    async (mode) => {
+      writeFileSync(localeFile, JSON.stringify({ 'category.used': 'Used', unused: 'Unused' }))
+      writeFileSync(path.join(root, 'labels.json'), JSON.stringify({ old: 'Old' }))
+      writeFileSync(
+        path.join(root, 'entry.ts'),
+        mode === 'type'
+          ? `
+      import labels from './labels.json'
+      export function label(t: (key: string) => string, key: keyof typeof labels) { return [labels, t(key)] }
+    `
+          : `
+      import labels from './labels.json'
+      export function label(t: (selector: (value: Record<string, string>) => string) => string, name: string) {
+        const key = \`category.\${name}\` as keyof typeof labels
+        return [labels, t($ => $[key])]
+      }
+    `,
+      )
+      const reports: AnalysisReport[] = []
+      await expect(
+        build({
+          root,
+          configFile: false,
+          logLevel: 'silent',
+          plugins: [
+            i18nAnalysisPlugin({ onAnalysis: (report) => reports.push(report) }),
+            {
+              name: 'replace-json-data',
+              transform(_code, id) {
+                if (id.endsWith('/labels.json')) return 'export default { "category.used": "Used" }'
+              },
+            },
+          ],
+          build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
+        }),
+      ).rejects.toThrow(/Found 1 potentially unused i18n keys[\s\S]*app:unused/)
+      expect(
+        reports[0]!.evidence.some(
+          (item) => item.kind === 'unresolved-import' || item.kind === 'dynamic-key',
+        ),
+      ).toBe(false)
+    },
+  )
+
+  it.each(['broken', 'good'] as const)(
+    'limits strict unknown namespace validation to the %s route',
+    async (selected) => {
+      writeFileSync(localeFile, '{}')
+      writeFileSync(
+        path.join(root, 'i18n/lib.client.ts'),
+        `export function useTranslation(ns: string) { return ns }`,
+      )
+      for (const route of ['broken', 'good']) {
+        mkdirSync(path.join(root, `app/${route}`), { recursive: true })
+        writeFileSync(
+          path.join(root, `app/${route}/page.ts`),
+          `
+        import { useTranslation } from '../../i18n/lib.client'
+        export function page(ns: string) { return useTranslation(${route === 'broken' ? 'ns' : "'app'"}) }
+      `,
+        )
+      }
+      writeFileSync(
+        path.join(root, 'entry.ts'),
+        `export { page as broken } from './app/broken/page'; export { page as good } from './app/good/page'`,
+      )
+      const reports: AnalysisReport[] = []
+      const result = build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          i18nAnalysisPlugin({
+            strictNamespaces: true,
+            onAnalysis: (report) => reports.push(report),
+            getDeclaredNamespaces: (route) => (route === `/${selected}` ? ['app'] : undefined),
+          }),
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
+      })
+      if (selected === 'broken')
+        await expect(result).rejects.toThrow(/Cannot verify namespace usage: app\/broken\/page.ts/)
+      else await expect(result).resolves.toBeDefined()
+      expect(
+        reports[0]!.routes.find((route) => route.route === '/broken')!.unknownNamespaceSources,
+      ).toEqual(['app/broken/page.ts'])
+      expect(
+        reports[0]!.routes.find((route) => route.route === '/good')!.unknownNamespaceSources,
+      ).toEqual([])
+    },
+  )
+
   it('tracks rewritten imports and analyzes multiple output formats only once', async () => {
     writeFileSync(localeFile, JSON.stringify({ actual: 'Actual' }))
     writeFileSync(

@@ -189,6 +189,7 @@ describe('environment route boundaries', () => {
           ]),
           dependencies: new Map([['/web/widget.tsx', edge(['/web/server-label.ts'])]]),
           clientReferences: new Set<string>(),
+          unknownNamespaces: new Set(['/web/server-label.ts']),
         },
       ],
       [
@@ -204,7 +205,11 @@ describe('environment route boundaries', () => {
       ],
     ])
     expect(analyzeEnvironmentRoutes('/web', graphs).routes).toMatchObject([
-      { route: '/', namespaces: ['browser', 'server'] },
+      {
+        route: '/',
+        namespaces: ['browser', 'server'],
+        unknownNamespaceSources: ['server-label.ts'],
+      },
     ])
   })
 })

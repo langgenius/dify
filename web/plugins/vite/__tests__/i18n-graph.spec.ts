@@ -37,6 +37,39 @@ describe('translation graph analysis', () => {
   })
 
   describe('Usage Analysis', () => {
+    it('preserves a finite key type when an initializer cannot be evaluated', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'Used', unused: 'Unused' })
+      writeSource(
+        'entry.ts',
+        `
+        declare function remote(): any
+        export function label(t: (selector: (value: Record<string, string>) => string) => string) {
+          const key: 'used' = remote()
+          return t($ => $[key])
+        }
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.unused.app).toEqual(['unused'])
+      expect(result.protectedNamespaces).toEqual([])
+    })
+
+    it('reports unknown namespaces in shorthand options and Trans attributes', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'Used' })
+      writeSource(
+        'entry.tsx',
+        `
+        import { Trans } from 'react-i18next'
+        export function label(t: (key: string, options: { ns: string }) => string, ns: string) {
+          t('used', { ns })
+          return <Trans ns={ns} i18nKey="used" />
+        }
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toHaveLength(2)
+    })
+
     it('reports explicit namespace loads even when no translation key is consumed', () => {
       writeJson('i18n/locales/en-US/app.json', { unused: 'Unused' })
       writeSource(

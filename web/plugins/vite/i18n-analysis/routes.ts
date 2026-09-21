@@ -11,23 +11,27 @@ export type RouteNamespaceReport = {
   route: string
   page: string
   namespaces: string[]
+  unknownNamespaceSources?: string[]
   groups: Record<'page' | 'shared' | 'lazy' | 'slots', NamespaceSources[]>
 }
 
 export function validateRouteNamespaces(
   routes: readonly RouteNamespaceReport[],
   getDeclaredNamespaces: (route: string) => readonly string[] | undefined,
+  strictNamespaces = false,
 ) {
   const violations: string[] = []
   for (const report of routes) {
     const declared = getDeclaredNamespaces(report.route)
     if (declared === undefined) continue
     const missing = report.namespaces.filter((namespace) => !declared.includes(namespace))
-    if (!missing.length) continue
+    const unknown = strictNamespaces ? (report.unknownNamespaceSources ?? []) : []
+    if (!missing.length && !unknown.length) continue
     violations.push(
       `  ${report.route} (${report.page})`,
       `    Declared: ${declared.join(', ') || '(none)'}`,
     )
+    for (const source of unknown) violations.push(`    Cannot verify namespace usage: ${source}`)
     for (const namespace of missing) {
       violations.push(`    Undeclared namespace: ${namespace}`)
       for (const [group, entries] of Object.entries(report.groups)) {
@@ -57,6 +61,7 @@ export function analyzeRouteNamespaces(
   options: {
     sourcePath?: (id: string) => string
     entries?: ReadonlySet<string>
+    unknownNamespaces?: ReadonlySet<string>
     recordPath?: (id: string, parent: number | null) => number
   } = {},
 ): RouteNamespaceReport[] {
@@ -180,6 +185,17 @@ export function analyzeRouteNamespaces(
         page: sourcePath(page).slice(root.replaceAll('\\', '/').length + 1),
         namespaces: [...namespaces].sort(),
         groups,
+        ...(options.unknownNamespaces
+          ? {
+              unknownNamespaceSources: [
+                ...new Set(
+                  [...mainModules.modules, ...slotModules]
+                    .filter((id) => options.unknownNamespaces!.has(id))
+                    .map((id) => path.posix.relative(root.replaceAll('\\', '/'), sourcePath(id))),
+                ),
+              ].sort(),
+            }
+          : {}),
       }
     })
 }
@@ -188,6 +204,7 @@ export type EnvironmentUsage = {
   dependencies: ReadonlyMap<string, ModuleDependencies>
   usage: ReadonlyMap<string, ReadonlySet<string>>
   clientReferences: ReadonlySet<string>
+  unknownNamespaces?: ReadonlySet<string>
 }
 
 export function analyzeEnvironmentRoutes(
@@ -219,7 +236,9 @@ export function analyzeEnvironmentRoutes(
   const sourcePaths = new Map<string, string>()
   const dependencies = new Map<string, ModuleDependencies>()
   const usage = new Map<string, ReadonlySet<string>>()
+  const unknownNamespaces = new Set<string>()
   for (const [environment, graph] of environments) {
+    for (const id of graph.unknownNamespaces ?? []) unknownNamespaces.add(key(environment, id))
     for (const [id, namespaces] of graph.usage) {
       const identity = key(environment, id)
       usage.set(identity, namespaces)
@@ -249,12 +268,19 @@ export function analyzeEnvironmentRoutes(
       entries,
       sourcePath: (id) => sourcePaths.get(id) ?? id,
       recordPath,
+      unknownNamespaces,
     })) {
       const previous = reports.get(report.page)
       if (!previous) {
         reports.set(report.page, report)
         continue
       }
+      previous.unknownNamespaceSources = [
+        ...new Set([
+          ...(previous.unknownNamespaceSources ?? []),
+          ...(report.unknownNamespaceSources ?? []),
+        ]),
+      ].sort()
       previous.namespaces = [...new Set([...previous.namespaces, ...report.namespaces])].sort()
       for (const group of ['page', 'shared', 'lazy', 'slots'] as const) {
         const byNamespace = new Map<string, Set<string>>()

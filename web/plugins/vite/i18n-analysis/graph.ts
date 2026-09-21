@@ -53,7 +53,7 @@ function initializer(node: ts.Node): Value | undefined {
 }
 
 export type AnalysisEvidence = {
-  kind: 'usage' | 'dynamic-key' | 'unresolved-import'
+  kind: 'usage' | 'dynamic-key' | 'unresolved-import' | 'unknown-namespace'
   moduleId: string
   file: string
   line: number
@@ -218,6 +218,7 @@ export function checkTranslationGraph(
     const node = unwrap(expression)
     if (!ts.isObjectLiteralExpression(node)) return
     for (const member of node.properties) {
+      if (ts.isShorthandPropertyAssignment(member) && member.name.text === name) return member.name
       if (
         ts.isPropertyAssignment(member) &&
         member.name.getText().replace(/^['"]|['"]$/g, '') === name
@@ -321,9 +322,16 @@ export function checkTranslationGraph(
 
   function keyPatterns(expression: ts.Expression): Key[] {
     const node = unwrap(expression)
-    if (ts.isCallExpression(node)) {
+    if (ts.isCallExpression(node) || ts.isIdentifier(node)) {
       const values = alternatives(node)
-      if (values.some((value) => value !== node)) {
+      if (
+        values.some((value) => value !== node) &&
+        (ts.isCallExpression(node) ||
+          values.some(
+            (value) =>
+              value && !ts.isFunctionDeclaration(value) && ts.isTemplateExpression(unwrap(value)),
+          ))
+      ) {
         return values.flatMap((value) =>
           value && !ts.isFunctionDeclaration(value)
             ? keyPatterns(value)
@@ -331,7 +339,7 @@ export function checkTranslationGraph(
         )
       }
     }
-    const values = strings(expression)
+    const values = ts.isTemplateExpression(node) ? undefined : strings(expression)
     if (values) return values.map((text) => ({ text }))
     if (
       (ts.isAsExpression(expression) || ts.isTypeAssertionExpression(expression)) &&
@@ -482,23 +490,29 @@ export function checkTranslationGraph(
     }
   }
 
-  function recordLoadedNamespaces(expression: ts.Expression, seen = new Set<ts.Node>()) {
+  function recordLoadedNamespaces(expression: ts.Expression, seen = new Set<ts.Node>()): boolean {
     const node = unwrap(expression)
-    if (seen.has(node)) return
+    if (seen.has(node)) return false
     const next = new Set(seen).add(node)
     if (ts.isStringLiteralLike(node)) {
       currentNamespaces.add(node.text)
       explain('usage', [node.text], 'Explicit namespace load.')
-    } else if (ts.isArrayLiteralExpression(node))
-      node.elements.forEach((element) => recordLoadedNamespaces(element, next))
-    else if (ts.isSpreadElement(node)) recordLoadedNamespaces(node.expression, next)
-    else {
-      // Resolve values, not type unions: a route parameter's type lists possible
-      // namespaces rather than requests made on every route by a shared provider.
-      for (const value of alternatives(node)) {
-        if (value && !ts.isFunctionDeclaration(value)) recordLoadedNamespaces(value, next)
-      }
+      return true
     }
+    if (ts.isArrayLiteralExpression(node))
+      return node.elements.map((element) => recordLoadedNamespaces(element, next)).every(Boolean)
+    if (ts.isSpreadElement(node)) return recordLoadedNamespaces(node.expression, next)
+    const values = alternatives(node)
+    // A finite type describes possibilities, not necessarily a concrete load.
+    return (
+      values.length > 0 &&
+      values
+        .map(
+          (value) =>
+            !!value && !ts.isFunctionDeclaration(value) && recordLoadedNamespaces(value, next),
+        )
+        .every(Boolean)
+    )
   }
 
   function visit(node: ts.Node) {
@@ -522,7 +536,8 @@ export function checkTranslationGraph(
         // Do not mark translation keys as used merely because a namespace loads.
         const nsIndex = api === 'getTranslation' ? 1 : 0
         const argument = node.arguments[nsIndex]
-        if (argument) recordLoadedNamespaces(argument)
+        if (argument && !recordLoadedNamespaces(argument))
+          explain('unknown-namespace', [], 'The explicit namespace load cannot be fully resolved.')
       }
       const info = translation(node.expression, node)
       const argument = info && node.arguments[info.argument]
@@ -530,6 +545,12 @@ export function checkTranslationGraph(
         const options = node.arguments.at(-1)
         const namespaceOption = property(options, 'ns')
         const namespaces = strings(namespaceOption)
+        if (namespaceOption && !namespaces)
+          explain(
+            'unknown-namespace',
+            [],
+            'The translation namespace cannot be narrowed to finite values.',
+          )
         consume(argument, {
           ...info,
           namespaces: namespaces ?? (namespaceOption ? [...catalog.keys()] : info.namespaces),
@@ -550,6 +571,8 @@ export function checkTranslationGraph(
         if (value) attributes.set(attribute.name.getText(), value)
       }
       const key = attributes.get('i18nKey')
+      if (attributes.has('ns') && !strings(attributes.get('ns')))
+        explain('unknown-namespace', [], 'The Trans namespace cannot be narrowed to finite values.')
       if (key)
         consume(key, {
           namespaces:
@@ -561,6 +584,7 @@ export function checkTranslationGraph(
     ts.forEachChild(node, visit)
   }
   for (const id of modules.keys()) {
+    if (id.endsWith('.json')) continue
     currentModule = id
     const source = program.getSourceFile(fileNames.get(id)!)
     currentNamespaces = new Set<string>()

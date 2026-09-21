@@ -38,7 +38,10 @@ continue to use TypeScript resolution. Package barrel rewrites retain declaratio
 resolution only when every imported local binding is traced to the same external
 package. Vite-recognized asset imports without queries are excluded from missing
 source-import diagnostics; query variants remain eligible for diagnostics. Query variants remain distinct throughout dependency and
-usage analysis, with separate in-memory compiler filenames. Reports display their
+usage analysis, with separate in-memory compiler filenames. Built JSON modules use
+Vite-transformed JavaScript under synthetic compiler filenames, preserving inferred
+object keys without loading a different JSON file from disk. JSON data modules inform
+types but are not scanned as translation call sites. Reports display their
 underlying source paths.
 
 This is a conservative module-level estimate, not a runtime loading manifest.
@@ -89,6 +92,11 @@ The optional `onAnalysis(report)` callback receives the same report before valid
 
 `evidence` records recognized usage, dynamic-key protection and unresolved imports,
 with environment, full module ID, relative file path and one-based line/column.
+`unknown-namespace` records explicit namespace expressions that cannot be fully
+resolved. Each route includes `unknownNamespaceSources` for reachable affected
+modules, including shared boundaries, lazy dependencies, slots, and client bridges.
+An empty list means no unknown expression was detected, not proof that all APIs or
+dependencies were understood.
 A dynamic key can protect an entire namespace; these records explain which calls
 prevent an unused-key conclusion. Unresolved imports make the analysis incomplete.
 
@@ -99,7 +107,8 @@ it excludes superseded scan graphs, output serialization and the rest of the bui
 and is not wall-clock build duration when environments run concurrently.
 
 Catalog, exact-key/plural indexes, wildcard matches and compiler options are shared
-within one analysis. Identical multi-format builds in the same open bundle reuse
+within one analysis. Runtime template prefixes are retained even when an assertion
+widens the key to every property of a JSON catalog. Identical multi-format builds in the same open bundle reuse
 analysis; changes to source, transformed code or graph edges invalidate that reuse.
 Closing the bundle or starting a watch rebuild clears it. Programs and type state
 are not cached across environments or independent builds.
@@ -111,6 +120,10 @@ subtrees. Returning `undefined` skips validation for that route; an empty array
 means no namespaces are allowed. Any detected namespace outside the declaration
 fails the production build, with the route, namespace, group and source file.
 All four groups are checked, including lazy dependencies and parallel slots.
+Set `strictNamespaces: true` to also fail declared routes whose
+`unknownNamespaceSources` is nonempty. By default these routes emit an incomplete
+analysis warning; unrelated unresolved imports do not automatically fail route
+validation. Undeclared routes remain exempt from strict validation.
 Explicit, statically resolved `useTranslation` / `getTranslation` namespace
 arguments are included even when no translation key is consumed.
 

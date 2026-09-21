@@ -41,6 +41,7 @@ export type AnalysisReport = {
 export function i18nAnalysisPlugin(
   options: {
     onAnalysis?: (report: AnalysisReport) => void
+    strictNamespaces?: boolean
     getDeclaredNamespaces?: (route: string) => readonly string[] | undefined
   } = {},
 ): Plugin[] {
@@ -84,6 +85,11 @@ export function i18nAnalysisPlugin(
         dependencies: edges.get(environment) ?? new Map(),
         usage: result.moduleNamespaces,
         clientReferences: graph.clientReferences,
+        unknownNamespaces: new Set(
+          result.evidence
+            .filter((item) => item.kind === 'unknown-namespace')
+            .map((item) => item.moduleId),
+        ),
       })
       evidence.push(...result.evidence.map((item) => ({ ...item, environment })))
       metrics.environments.push({
@@ -122,6 +128,11 @@ export function i18nAnalysisPlugin(
       logger.warn(
         `[i18n] ${unresolved.length} runtime imports could not be traced; inspect the report before trusting unused-key findings.`,
       )
+    const incomplete = routes.filter((route) => route.unknownNamespaceSources?.length)
+    if (incomplete.length)
+      logger.warn(
+        `[i18n] Namespace analysis is incomplete for ${incomplete.length} routes; inspect unknownNamespaceSources before treating validation as complete.`,
+      )
     if (routes.length) {
       logger.info(
         [
@@ -143,7 +154,7 @@ export function i18nAnalysisPlugin(
       logger.info(`[i18n] Full namespace sources: ${reportPath}`)
     }
     if (options.getDeclaredNamespaces)
-      validateRouteNamespaces(routes, options.getDeclaredNamespaces)
+      validateRouteNamespaces(routes, options.getDeclaredNamespaces, options.strictNamespaces)
     const keys = Object.entries(unused ?? {}).flatMap(([namespace, unused]) =>
       unused.map((key) => `${namespace}:${key}`),
     )
@@ -222,6 +233,11 @@ export function i18nAnalysisPlugin(
             for (const dependency of info.dynamicallyImportedIds)
               imports.dynamic.add(moduleId(dependency))
             dependencies.set(moduleId(id), imports)
+          }
+          // Analyze the actual JSON module produced by Vite, never the raw disk file.
+          if (id.endsWith('.json') && info?.code) {
+            graph.set(moduleId(id), info.code)
+            compiledModules.set(moduleId(id), info.code)
           }
           const source: unknown = info?.meta[SOURCE_META]
           if (typeof source === 'string') {

@@ -283,7 +283,7 @@ export function createTranslationProgram(
   const sources = new Map<string, string>()
   for (const [id, source] of modules) {
     const file = id.split('?')[0]!
-    let fileName = id
+    let fileName = id.endsWith('.json') ? `${id}.__dify_i18n.ts` : id
     if (id !== file) {
       fileName = `${file}.__dify_i18n_${fileNames.size}${path.extname(file)}`
       while (modules.has(fileName) || moduleIds.has(fileName))
@@ -334,6 +334,7 @@ export function createTranslationProgram(
         ts.getModeForUsageLocation(containingSourceFile, literal, options),
       )
     })
-  const program = ts.createProgram([...sources.keys()], compilerOptions, host)
+  const roots = [...fileNames].filter(([id]) => !id.endsWith('.json')).map(([, file]) => file)
+  const program = ts.createProgram(roots, compilerOptions, host)
   return { program, fileNames }
 }
