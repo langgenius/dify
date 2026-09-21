@@ -499,7 +499,7 @@ it('ignore validation and matching preserve full-path case-sensitive patterns', 
   }
 })
 
-it('ignore consistently controls check, fix, export, and summaries', async (t) => {
+it('ignore consistently controls check, fix, and summaries', async (t) => {
   const { root, cli } = repository(t)
   const original = await png()
   write(root, 'fixtures/keep.png', original)
@@ -509,16 +509,13 @@ it('ignore consistently controls check, fix, export, and summaries', async (t) =
     'packages/image-resources/ignore.json',
     JSON.stringify([{ pattern: 'fixtures/*.png', reason: 'Preserve encoding fixture' }]),
   )
-  const output = fs.mkdtempSync(path.join(os.tmpdir(), 'image-output-'))
-  t.onTestFinished(() => fs.rmSync(output, { recursive: true, force: true }))
-  const env = { GITHUB_ACTIONS: 'true', GITHUB_STEP_SUMMARY: path.join(output, 'summary.md') }
-  for (const args of [[], ['--fix'], ['--output-dir', output]]) {
+  const env = { GITHUB_ACTIONS: 'true', GITHUB_STEP_SUMMARY: path.join(root, 'summary.md') }
+  for (const args of [[], ['--fix']]) {
     const result = cli(['--all', ...args], env)
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /1 ignored/)
     assert.match(result.stdout, /Preserve encoding fixture/)
     assert.deepEqual(fs.readFileSync(path.join(root, 'fixtures/keep.png')), original)
-    assert.equal(fs.existsSync(path.join(output, 'fixtures/keep.png')), false)
   }
   assert.match(fs.readFileSync(env.GITHUB_STEP_SUMMARY, 'utf8'), /\*\*ignored\*\*/)
   write(root, 'packages/image-resources/ignore.json', '[]')
@@ -557,11 +554,10 @@ it('fix applies candidates, preserves skipped/invalid files and is repeatable', 
     assert.match(repeat.stdout, /0 fixed/)
     assert.deepEqual(fs.readFileSync(path.join(root, 'fix.png')), before)
   }
-  assert.equal(cli(['--all', '--fix', '--output-dir', os.tmpdir()]).status, 2)
   assert.equal(cli([]).status, 2)
 })
 
-it('full PR diff selects all directories, renames and earlier commits; exports candidates', async (t) => {
+it('full PR diff selects all directories, renames and earlier commits; fixes selected images', async (t) => {
   const { root, cli } = repository(t)
   write(root, 'untouched.png', await png())
   write(root, 'deleted.png', await png())
@@ -589,21 +585,17 @@ it('full PR diff selects all directories, renames and earlier commits; exports c
     'web/app/added.svg',
     unusual,
   ])
-  const output = fs.mkdtempSync(path.join(os.tmpdir(), 'image-output-'))
-  t.onTestFinished(() => fs.rmSync(output, { recursive: true, force: true }))
-  const env = { GITHUB_ACTIONS: 'true', GITHUB_STEP_SUMMARY: path.join(output, 'summary.md') }
-  const result = cli(['--base', base, '--output-dir', output], env)
+  const env = { GITHUB_ACTIONS: 'true', GITHUB_STEP_SUMMARY: path.join(root, 'summary.md') }
+  const result = cli(['--base', base], env)
   assert.equal(result.status, 1, result.stderr)
   assert.match(result.stdout, /::error file=images\/docs.png::/)
   assert.ok(!result.stdout.includes('untouched.png'))
   assert.match(fs.readFileSync(env.GITHUB_STEP_SUMMARY, 'utf8'), /No fixed byte limits/)
-  for (const name of ['images/docs.png', 'web/app/added.svg'])
-    fs.copyFileSync(path.join(output, name), path.join(root, name))
+  const fixed = cli(['--base', base, '--fix'])
+  assert.equal(fixed.status, 0, fixed.stderr)
+  assert.match(fixed.stdout, /2 fixed/)
   assert.equal(cli(['--base', base]).status, 0)
   assert.equal(cli(['--all']).status, 1)
-  assert.equal(cli(['--base', base, '--output-dir', root]).status, 2)
-  fs.symlinkSync(root, path.join(output, 'alias'), 'dir')
-  assert.equal(cli(['--base', base, '--output-dir', path.join(output, 'alias/new')]).status, 2)
 })
 
 it('failed atomic replacement retains source bytes and cleans temporary output', async (t) => {

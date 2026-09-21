@@ -151,23 +151,6 @@ const escapeHtml = (value: string) =>
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;')
-const inside = (parent: string, child: string) => {
-  const relative = path.relative(parent, child)
-  return (
-    relative === '' ||
-    (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))
-  )
-}
-
-// Resolve existing ancestors too, so a symlink cannot turn an outside output path into the source tree.
-async function resolveDestination(filename: string): Promise<string> {
-  try {
-    return await fs.realpath(filename)
-  } catch (error) {
-    if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error
-    return path.join(await resolveDestination(path.dirname(filename)), path.basename(filename))
-  }
-}
 
 async function replaceImage(filename: string, candidate: Buffer) {
   const temporary = `${filename}.${randomUUID()}.tmp`
@@ -180,12 +163,7 @@ async function replaceImage(filename: string, candidate: Buffer) {
   }
 }
 
-async function processImage(
-  name: string,
-  root: string,
-  fix: boolean,
-  outputDir?: string,
-): Promise<Report> {
+async function processImage(name: string, root: string, fix: boolean): Promise<Report> {
   const { candidate, status, message } = await inspectImage(name, root)
   if (!candidate) return { status, message }
   if (fix) {
@@ -199,29 +177,13 @@ async function processImage(
       return { status: 'error', message: `Unable to write optimized image: ${errorMessage(error)}` }
     }
   }
-  const reviewMessage = `${message}. Review the candidate and optimize this image before merging.`
-  if (outputDir) {
-    try {
-      const output = await resolveDestination(path.join(outputDir, name))
-      if (inside(await fs.realpath(root), output))
-        throw new Error('Candidate output must be outside the repository')
-      await fs.mkdir(path.dirname(output), { recursive: true })
-      await fs.writeFile(output, candidate)
-    } catch (error) {
-      return {
-        status: 'error',
-        message: `${reviewMessage}. Unable to export candidate: ${errorMessage(error)}`,
-      }
-    }
-  }
-  return { status, message: reviewMessage }
+  return { status, message: `${message}. Run with --fix and review the image before committing.` }
 }
 
 /* oxlint-disable no-console -- CLI output includes reports and GitHub Actions annotations. */
 export async function main(args = process.argv.slice(2), root = ROOT) {
   let options
   let rules: IgnoreRule[]
-  let outputDir: string | undefined
   try {
     options = parseArgs({
       args,
@@ -229,25 +191,17 @@ export async function main(args = process.argv.slice(2), root = ROOT) {
         base: { type: 'string' },
         all: { type: 'boolean' },
         fix: { type: 'boolean' },
-        'output-dir': { type: 'string' },
         help: { type: 'boolean' },
       },
     }).values
     if (options.help) {
       console.log(
-        'Usage: node packages/image-resources/check-image-resources.ts (--base REF | --all) [--fix | --output-dir DIR]',
+        'Usage: node packages/image-resources/check-image-resources.ts (--base REF | --all) [--fix]',
       )
       return 0
     }
     if (Boolean(options.base) === Boolean(options.all))
       throw new Error('Choose exactly one of --base REF or --all')
-    if (options.fix && options['output-dir'])
-      throw new Error('--fix and --output-dir are mutually exclusive')
-    if (options['output-dir']) {
-      outputDir = await resolveDestination(path.resolve(options['output-dir']))
-      if (inside(await fs.realpath(root), outputDir))
-        throw new Error('--output-dir must be outside the repository')
-    }
     try {
       rules = await loadIgnoreRules(root)
     } catch (error) {
@@ -262,7 +216,7 @@ export async function main(args = process.argv.slice(2), root = ROOT) {
     const reason = ignoredReason(name, rules)
     const result: Report = reason
       ? { status: 'ignored', message: reason }
-      : await processImage(name, root, options.fix ?? false, outputDir)
+      : await processImage(name, root, options.fix ?? false)
     results.push({ name, ...result })
     console.log(`${result.status}: ${JSON.stringify(name)}: ${JSON.stringify(result.message)}`)
     if (result.status === 'error' && process.env.GITHUB_ACTIONS === 'true')

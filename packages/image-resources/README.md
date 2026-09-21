@@ -16,7 +16,7 @@ The TypeScript checker and Vitest regression tests are maintained in this direct
 
 PNG trials recompress the existing IDAT stream without changing scanline filters, palette, transparency, or metadata chunks. Sharp validates PNG decoding but does not produce its output pixels. This is deliberately more conservative than re-encoding with a different PNG encoder. JPEG/WebP trials retain ICC/EXIF (including orientation), XMP, and density.
 
-JPEG/WebP trials are **lossy**: savings are evidence of an optimization opportunity, not proof of identical quality. Review candidates before using them. Check mode never overwrites source images. Explicit `--fix` mode applies candidates exceeding the same 25% threshold. Neither mode resizes images or fetches/inlines external SVG images. It cannot detect excessive pixel dimensions relative to CSS display size, so oversized rasters displayed in small UI elements still require visual/contextual review.
+JPEG/WebP trials are **lossy**: savings are evidence of an optimization opportunity, not proof of identical quality. Review changes in their rendered context before committing. Check mode never overwrites source images. Explicit `--fix` mode applies candidates exceeding the same 25% threshold. Neither mode resizes images or fetches/inlines external SVG images. It cannot detect excessive pixel dimensions relative to CSS display size, so oversized rasters displayed in small UI elements still require visual/contextual review.
 
 `image-optimizer.ts` uses only SVGO's `removeComments` (preserving protected `<!--! ... -->` comments) and `sortAttrs` plugins, with compact XML serialization. It does **not** enable `preset-default`. Groups, styles, IDs, definitions, geometry, namespaces, and references are retained; CSS-bearing SVGs, SVG 2 `href`, legacy `xlink:href`, and externally referenced sprites are supported. This deliberately trades compression opportunities from structural rewrites for a smaller set of transformations. Keep the CSS/reference regression tests when changing this policy.
 
@@ -49,7 +49,7 @@ The workflow runs only on pull requests and checks out the PR head commit. Check
 
 Matching is case-sensitive against the complete path using Picomatch in Bash-compatible mode: `*` matches any characters **including `/`**, `?` matches one character, and `[abc]` matches a character set. `**` has no special meaning beyond `*`. Use forward slashes; absolute paths and `.`/`..` segments are rejected. This is not gitignore syntax: there are no negation rules, comments, or directory-only patterns. The first matching rule supplies the reported reason.
 
-Check mode, `--fix`, and `--output-dir` all honor the same rules. Ignored images are not decoded, modified, or exported; logs and the CI summary report each ignored path, pattern, reason, and the total ignored count. Invalid or missing configuration fails the command before any images are modified. Keep patterns narrow so unrelated images remain checked.
+Check mode and `--fix` honor the same rules. Ignored images are not decoded or modified; logs and the CI summary report each ignored path, pattern, reason, and the total ignored count. Invalid or missing configuration fails the command before any images are modified. Keep patterns narrow so unrelated images remain checked.
 
 ## Local use
 
@@ -67,13 +67,11 @@ pnpm --filter @dify/image-resources type-check
 pnpm --filter @dify/image-resources test
 ```
 
-To audit everything and save candidates for review:
+To audit all tracked images:
 
 ```sh
-pnpm --filter @dify/image-resources check:images --all --output-dir /tmp/dify-image-candidates
+pnpm --filter @dify/image-resources check:images --all
 ```
-
-The output directory must be outside the repository. Only candidates exceeding the savings threshold are saved, preserving repository-relative paths. Compare them in their actual display context, including dark mode and high-DPI displays, before manually applying any candidate.
 
 To apply fixes locally using the same compression policy:
 
@@ -83,6 +81,6 @@ pnpm --filter @dify/image-resources check:images --base origin/main --fix
 pnpm --filter @dify/image-resources check:images --base origin/main
 ```
 
-Use `--all --fix` to optimize all tracked images in scope. `--fix` and `--output-dir` are mutually exclusive. Fix mode overwrites only images exceeding the 25% savings threshold, reports each modified file and its savings, and leaves passing/skipped/invalid images untouched. It exits successfully when all detected opportunities are fixed; inspection or write errors still return a failure, even if other files were fixed. Each replacement is written to a temporary file in the same directory and renamed only after writing succeeds. Changes are not staged or committed. Review them in their actual display context, especially JPEG/WebP candidates (including embedded rasters), because these are lossy. Subsequent checks read the updated files.
+Use `--all --fix` to optimize all tracked images in scope. Fix mode overwrites only images exceeding the 25% savings threshold, reports each modified file and its savings, and leaves passing/skipped/invalid images untouched. It exits successfully when all detected opportunities are fixed; inspection or write errors still return a failure, even if other files were fixed. Each replacement is written to a temporary file in the same directory and renamed only after writing succeeds. Changes are not staged or committed. Review them in their actual display context, especially JPEG/WebP candidates (including embedded rasters), because these are lossy. Subsequent checks read the updated files.
 
-CI continues to run check mode only. CI emits file annotations and a summary of sizes, savings, methods, and skipped resources. CI does not export or upload candidates, post PR comments, or create source commits. Use local `--output-dir` or `--fix` to review optimization candidates. To make failures block merging, require the `Image optimization` status check in the repository branch rules.
+CI continues to run check mode only. CI emits file annotations and a summary of sizes, savings, methods, and skipped resources. CI does not export or upload candidates, post PR comments, or create source commits. Use local `--fix`, then review the changes before committing. To make failures block merging, require the `Image optimization` status check in the repository branch rules.
