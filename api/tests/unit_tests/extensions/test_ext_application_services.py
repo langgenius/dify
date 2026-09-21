@@ -64,6 +64,7 @@ from services.account_oauth_adapters import (
     RedisOAuthAccountClaimLock,
 )
 from services.app_generate_service import AppGenerateService
+from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
 from services.app_site_service import AppSiteService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
@@ -735,6 +736,33 @@ def test_trial_generation_uses_configured_access_runtime_and_usage(
         )
         assert record is not None
         assert record.count == 1
+
+
+def test_app_previews_use_the_configured_catalog_and_app_owner(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="builtin")
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, other_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                App(id=app_id, tenant_id=tenant_id, name="Preview", mode="chat", enable_site=False, enable_api=False),
+                App(id=other_id, tenant_id=tenant_id, name="Private", mode="chat", enable_site=False, enable_api=False),
+            ]
+        )
+
+    # Catalog-only previews must work without a Trial registration or account.
+    payload = json.dumps({"app_details": {app_id: {"id": app_id}}})
+    with patch.object(recommended_app_catalog_gateway.Path, "read_text", return_value=payload):
+        assert services.app_previews.get_access(app_id=app_id) == AppPreviewRef(app_id=app_id, tenant_id=tenant_id)
+        with pytest.raises(AppPreviewUnavailableError, match=other_id):
+            services.app_previews.get_access(app_id=other_id)
 
 
 def test_build_application_services_adapts_enterprise_webapp_access_mode(

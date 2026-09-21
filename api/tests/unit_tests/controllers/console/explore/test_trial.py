@@ -5,16 +5,13 @@ from io import BytesIO
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 from flask import Flask, request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
 import controllers.console.explore.trial as module
 from controllers.console.app.error import (
-    AppUnavailableError,
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
@@ -22,7 +19,6 @@ from controllers.console.app.error import (
     SpeechToTextDisabledError,
 )
 from controllers.console.explore.trial import TextToSpeechRequest
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
@@ -32,10 +28,8 @@ from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, StringVariable
-from models import Account, Tenant
-from models.account import TenantStatus
-from models.dataset import Dataset
-from models.model import App, AppMode, Site
+from models import Account
+from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.app_ref_service import AppRef, MessageRef
@@ -79,18 +73,6 @@ def _file_data() -> Any:
     return file_data
 
 
-def _persist_site(sqlite_session: Session, app_id: str) -> Site:
-    site = Site(
-        app_id=app_id,
-        title="Trial Site",
-        default_language="en-US",
-        customize_token_strategy="uuid",
-    )
-    sqlite_session.add(site)
-    sqlite_session.commit()
-    return site
-
-
 @pytest.fixture
 def trial_app_chat() -> App:
     return _app(app_id="a-chat", mode=AppMode.CHAT)
@@ -101,57 +83,9 @@ def test_trial_workflow_uses_trial_scoped_simple_account_model() -> None:
     assert module.simple_account_model.__schema__["properties"].keys() >= {"id", "name", "email"}
 
 
-def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask, unbound_session: Session):
-    api = module.DatasetListApi()
-    method = unwrap(api.get)
-    app_model = _app(app_id="app-1", mode=AppMode.CHAT)
-    dataset = Dataset(
-        id="dataset-1",
-        tenant_id=app_model.tenant_id,
-        name="Dataset",
-        description="description",
-        permission="only_me",
-        data_source_type="upload_file",
-        indexing_technique="high_quality",
-        created_by="user-1",
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
-    )
-    dataset.permission_keys = ["dataset.acl.readonly"]  # type: ignore[attr-defined]
-    with (
-        app.test_request_context("/?page=1&limit=20&ids=dataset-1"),
-        patch.object(
-            module.DatasetService,
-            "get_datasets_by_ids",
-            return_value=([dataset], 1),
-        ) as get_datasets,
-    ):
-        result = method(api, unbound_session, app_model)
-
-    get_datasets.assert_called_once_with(["dataset-1"], "tenant-1", session=unbound_session)
-    assert result == {
-        "data": [
-            {
-                "id": "dataset-1",
-                "name": "Dataset",
-                "description": "description",
-                "permission": "only_me",
-                "data_source_type": "upload_file",
-                "indexing_technique": "high_quality",
-                "created_by": "user-1",
-                "created_at": 1704067200,
-                "permission_keys": ["dataset.acl.readonly"],
-            }
-        ],
-        "has_more": False,
-        "limit": 20,
-        "total": 1,
-        "page": 1,
-    }
-
-
 @pytest.mark.parametrize(
     "api_type",
-    [module.TrialSitApi, module.TrialAppParameterApi, module.AppApi, module.AppWorkflowApi, module.DatasetListApi],
+    [module.AppApi, module.AppWorkflowApi],
 )
 def test_preview_handlers_use_explicit_read_session(api_type: type) -> None:
     source = getsource(api_type.get)
@@ -180,43 +114,6 @@ def test_trial_app_detail_serializes_with_explicit_session(
     get_app.assert_called_once_with(app_model, session=unbound_session)
     build_view.assert_called_once_with(app_model, session=unbound_session)
     module.TrialAppDetailResponse.model_validate.assert_called_once_with(response_view, from_attributes=True)
-
-
-class TestTrialAppParameterApi:
-    def test_app_unavailable(self, unbound_session: Session) -> None:
-        api = module.TrialAppParameterApi()
-        method = unwrap(api.get)
-
-        with pytest.raises(AppUnavailableError):
-            method(api, unbound_session, None)
-
-    def test_success(self, unbound_session: Session) -> None:
-        api = module.TrialAppParameterApi()
-        method = unwrap(api.get)
-        parameters = get_parameters_from_feature_dict(features_dict={}, user_input_form=[])
-        expected = module.ParametersResponse.model_validate(parameters).model_dump(mode="json")
-        app_definitions = MagicMock()
-        app_definitions.get_parameters.return_value = parameters
-        services = SimpleNamespace(app_definitions=app_definitions)
-
-        with patch.object(module, "application_services", return_value=services):
-            result = method(api, unbound_session, _app(app_id="app-1", mode=AppMode.CHAT))
-
-        assert result == expected
-        app_definitions.get_parameters.assert_called_once_with("app-1")
-
-    def test_unavailable_parameters(self, unbound_session: Session) -> None:
-        api = module.TrialAppParameterApi()
-        method = unwrap(api.get)
-        app_definitions = MagicMock()
-        app_definitions.get_parameters.side_effect = module.AppDefinitionUnavailableError
-        services = SimpleNamespace(app_definitions=app_definitions)
-
-        with (
-            patch.object(module, "application_services", return_value=services),
-            pytest.raises(AppUnavailableError),
-        ):
-            method(api, unbound_session, _app(app_id="app-1", mode=AppMode.CHAT))
 
 
 class TestTrialChatAudioApi:
@@ -639,70 +536,6 @@ class TestTrialChatTextApi:
                     account,
                     trial_app_chat,
                 )
-
-
-class TestTrialSitApi:
-    def test_no_site(
-        self,
-        app: Flask,
-        sqlite_session: Session,
-    ) -> None:
-        api = module.TrialSitApi()
-        method = unwrap(api.get)
-        app_model = _app(app_id=str(uuid4()), mode=AppMode.CHAT)
-
-        with app.test_request_context("/"):
-            with pytest.raises(Forbidden):
-                method(api, sqlite_session, app_model)
-
-    def test_archived_tenant(
-        self,
-        app: Flask,
-        sqlite_session: Session,
-    ) -> None:
-        api = module.TrialSitApi()
-        method = unwrap(api.get)
-
-        app_model = _app(app_id=str(uuid4()), mode=AppMode.CHAT)
-        tenant = Tenant(name="Archived Tenant", status=TenantStatus.ARCHIVE)
-        tenant.id = app_model.tenant_id
-        _persist_site(sqlite_session, app_model.id)
-
-        with (
-            app.test_request_context("/"),
-            patch.object(module.TenantService, "get_tenant_by_id", return_value=tenant) as get_tenant_by_id,
-        ):
-            with pytest.raises(Forbidden):
-                method(api, sqlite_session, app_model)
-
-        get_tenant_by_id.assert_called_once_with("tenant-1", session=sqlite_session)
-
-    def test_success(
-        self,
-        app: Flask,
-        sqlite_session: Session,
-    ) -> None:
-        api = module.TrialSitApi()
-        method = unwrap(api.get)
-
-        app_model = _app(app_id=str(uuid4()), mode=AppMode.CHAT)
-        tenant = Tenant(name="Active Tenant", status=TenantStatus.NORMAL)
-        tenant.id = app_model.tenant_id
-        site = _persist_site(sqlite_session, app_model.id)
-
-        with (
-            app.test_request_context("/"),
-            patch.object(module.TenantService, "get_tenant_by_id", return_value=tenant) as get_tenant_by_id,
-            patch.object(module.SiteResponse, "model_validate") as mock_validate,
-        ):
-            mock_validate_result = MagicMock()
-            mock_validate_result.model_dump.return_value = {"name": "test", "icon": "icon"}
-            mock_validate.return_value = mock_validate_result
-            result = method(api, sqlite_session, app_model)
-
-        assert result == {"name": "test", "icon": "icon"}
-        get_tenant_by_id.assert_called_once_with("tenant-1", session=sqlite_session)
-        mock_validate.assert_called_once_with(site)
 
 
 class TestAppWorkflowApi:
