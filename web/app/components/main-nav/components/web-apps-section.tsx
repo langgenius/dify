@@ -24,19 +24,19 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue } from 'jotai'
 import { use, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { browser } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { SearchInput } from '@/app/components/base/search-input'
 import AppNavItem from '@/app/components/explore/installed-app-navigation/app-nav-item'
 import { InstalledAppPaginationSkeleton } from '@/app/components/explore/installed-app-navigation/pagination-skeleton'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -325,7 +325,7 @@ const WebAppsSectionContent = () => {
                       >
                         {row.kind === 'separator' ? (
                           <div className="flex h-3 items-center px-1">
-                            <Divider className="m-0 h-px bg-divider-subtle" />
+                            <Separator decorative className="m-0 bg-divider-subtle" />
                           </div>
                         ) : (
                           <AppNavItem

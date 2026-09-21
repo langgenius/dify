@@ -1,7 +1,9 @@
 import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
+import { getDeclaredRouteNamespaces } from './i18n/route-namespaces.ts'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
+import { i18nAnalysisPlugin } from './plugins/vite/i18n-analysis.ts'
 import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
 import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test.ts'
 
@@ -39,6 +41,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
           : undefined
 
       return [
+        i18nAnalysisPlugin({ getDeclaredNamespaces: getDeclaredRouteNamespaces }),
         Inspect(),
         inspector,
         tailwindcss(),
@@ -67,10 +70,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
           },
           server: {
             port: 3000,
-          },
-          ssr: {
-            // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
-            noExternal: ['emoji-mart'],
           },
         }
       : {}),

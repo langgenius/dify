@@ -60,7 +60,7 @@ describe('ImagePreviewer', () => {
     render(<ImagePreviewer images={images} onClose={vi.fn()} />)
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.getByText('Esc')).toBeInTheDocument()
   })
 

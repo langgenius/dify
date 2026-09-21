@@ -26,6 +26,7 @@ from services.vector_space_admission_service import (
     get_vector_space_admission_error_fields,
     parse_vector_space_estimate_limits,
 )
+from tests.unit_tests.model_factories import make_dataset
 
 _MEBIBYTE = 1024 * 1024
 _ESTIMATE_LIMITS = "sandbox:60,professional:6400,team:25600"
@@ -74,10 +75,8 @@ class _FakeRedis:
 
 
 def _dataset(session: Session) -> Dataset:
-    dataset = Dataset(
-        id=str(uuid4()),
-        tenant_id="tenant-1",
-        name="Dataset",
+    dataset = make_dataset(
+        dataset_id=str(uuid4()),
         created_by=str(uuid4()),
         indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider="provider",

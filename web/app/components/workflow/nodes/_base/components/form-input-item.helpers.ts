@@ -27,7 +27,7 @@ type ShowOnCondition = {
   variable: string
 }
 
-type OptionLabel = string | TypeWithI18N
+type OptionLabel = string | Record<string, string>
 
 type SelectableOption = {
   icon?: string

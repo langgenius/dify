@@ -6,6 +6,7 @@ import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
 import * as React from 'react'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 import { useIsoLayoutEffect } from '../internals/use-iso-layout-effect'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '../number-field'
 import { SegmentedControl, SegmentedControlItem } from '../segmented-control'
@@ -208,14 +209,12 @@ function PaginationNavigation({ render, className, ...props }: PaginationNavigat
   })
 }
 
-type PaginationPreviousProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
+type PaginationPreviousProps = Omit<BaseButtonNS.Props, 'children'> & {
   children?: React.ReactNode
-  className?: string
 }
 
-type PaginationNextProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
+type PaginationNextProps = Omit<BaseButtonNS.Props, 'children'> & {
   children?: React.ReactNode
-  className?: string
 }
 
 const paginationArrowButtonClassName = [
@@ -243,7 +242,7 @@ function PaginationPrevious({
       {...props}
       type="button"
       aria-label={ariaLabel ?? 'Previous page'}
-      className={cn(paginationArrowButtonClassName, className)}
+      className={(state) => cn(paginationArrowButtonClassName, resolveClassName(className, state))}
       disabled={disabled}
       onClick={(event) => {
         props.onClick?.(event)
@@ -273,7 +272,7 @@ function PaginationNext({
       {...props}
       type="button"
       aria-label={ariaLabel ?? 'Next page'}
-      className={cn(paginationArrowButtonClassName, className)}
+      className={(state) => cn(paginationArrowButtonClassName, resolveClassName(className, state))}
       disabled={disabled}
       onClick={(event) => {
         props.onClick?.(event)
@@ -286,10 +285,9 @@ function PaginationNext({
   )
 }
 
-type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
+type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children'> & {
   inputLabel?: string
   children?: React.ReactNode
-  className?: string
 }
 
 function PaginationPageJump({
@@ -378,10 +376,12 @@ function PaginationPageJump({
       aria-label={
         ariaLabel ?? `Edit page number, current page ${pagination.page} of ${pagination.totalPages}`
       }
-      className={cn(
-        'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium text-text-secondary tabular-nums outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium text-text-secondary tabular-nums outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none',
+          resolveClassName(className, state),
+        )
+      }
       onClick={(event) => {
         props.onClick?.(event)
 
@@ -424,10 +424,9 @@ function PaginationPageList({ render, className, ...props }: PaginationPageListP
   })
 }
 
-type PaginationPageProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
+type PaginationPageProps = Omit<BaseButtonNS.Props, 'children'> & {
   page: number
   children?: React.ReactNode
-  className?: string
 }
 
 function PaginationPage({
@@ -446,12 +445,14 @@ function PaginationPage({
       type="button"
       aria-current={current ? 'page' : undefined}
       aria-label={ariaLabel ?? (current ? `Page ${page}, current page` : `Go to page ${page}`)}
-      className={cn(
-        'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium text-text-tertiary tabular-nums outline-hidden hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-        current &&
-          'bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium text-text-tertiary tabular-nums outline-hidden hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          current &&
+            'bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover',
+          resolveClassName(className, state),
+        )
+      }
       onClick={(event) => {
         props.onClick?.(event)
 

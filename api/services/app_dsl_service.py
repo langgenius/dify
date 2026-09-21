@@ -49,8 +49,10 @@ from models.model import AppModelConfig, AppModelConfigDict, IconType, load_anno
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService
+from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.app_package_service import PreparedAppPackage
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.enterprise.enterprise_service import EnterpriseService
@@ -104,6 +106,7 @@ class PendingData(PendingImportOwner):
     icon: str | None = None
     icon_background: str | None = None
     app_id: str | None = None
+    warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
 class CheckDependenciesPendingData(BaseModel):
@@ -181,8 +184,9 @@ class AppDslService:
         icon_background: str | None = None,
         app_id: str | None = None,
         import_app_id: str | None = None,
+        package: PreparedAppPackage | None = None,
     ) -> Import:
-        """Import an app from YAML content or URL."""
+        """Import an App DSL, materializing validated archive resources before database writes."""
         self._warnings = []
         import_id = str(uuid.uuid4())
 
@@ -282,6 +286,25 @@ class AppDslService:
                     error="Missing app data in YAML content",
                 )
 
+            if package is not None and (package.agent_resources or package.icons):
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
+                # Authorize overwrites in a separate read session before storage I/O.
+                # The normal import below reloads and rechecks the target after upload.
+                if app_id:
+                    with Session(self._session.get_bind()) as authorization_session:
+                        target = AppDslService(authorization_session)._load_app_for_overwrite(account, app_id)
+                        if target is None:
+                            raise ValueError("App not found")
+                        self._validate_workflow_overwrite(target, data)
+                package.materialize_icons(data=data, tenant_id=tenant_id, account_id=account.id)
+                if package.agent_resources:
+                    data["agent_packages"], self._warnings = package.materialize_agents(
+                        tenant_id=tenant_id, account_id=account.id
+                    )
+                content = yaml.safe_dump(data, allow_unicode=True)
+
             # If app_id is provided, check if it exists
             app = None
             if app_id:
@@ -300,6 +323,8 @@ class AppDslService:
                         error="Only workflow or advanced chat apps can be overwritten",
                     )
 
+                self._validate_workflow_overwrite(app, data)
+
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
                 tenant_id = account.current_tenant_id
@@ -316,6 +341,7 @@ class AppDslService:
                     icon=icon,
                     icon_background=icon_background,
                     app_id=app_id,
+                    warnings=self._warnings,
                 )
                 redis_client.setex(
                     f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}",
@@ -423,6 +449,7 @@ class AppDslService:
                     error="Import information expired or does not exist",
                 )
             data = yaml.safe_load(pending_data.yaml_content)
+            self._warnings = list(pending_data.warnings)
 
             app = None
             if pending_data.app_id:
@@ -433,6 +460,9 @@ class AppDslService:
                         status=ImportStatus.FAILED,
                         error="App not found",
                     )
+
+            if app is not None:
+                self._validate_workflow_overwrite(app, data)
 
             # Create or update app
             app = self._create_or_update_app(
@@ -539,6 +569,25 @@ class AppDslService:
         )
         if not allowed:
             raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
+
+    @staticmethod
+    def _validate_workflow_overwrite(app: App, data: dict[str, Any]) -> None:
+        """Apply editor compatibility checks to both YAML and package imports."""
+        app_mode = data.get("app", {}).get("mode")
+        if app.mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT} or app_mode not in {
+            AppMode.WORKFLOW,
+            AppMode.ADVANCED_CHAT,
+        }:
+            raise ValueError("Only workflow or advanced chat DSLs can overwrite workflow Apps")
+        # Package uploads cannot run the editor's YAML node checks before import.
+        invalid_types = (
+            {BuiltinNodeTypes.END, "trigger-webhook", "trigger-schedule", "trigger-plugin"}
+            if app.mode == AppMode.ADVANCED_CHAT
+            else {BuiltinNodeTypes.ANSWER}
+        )
+        nodes = data.get("workflow", {}).get("graph", {}).get("nodes", [])
+        if any(node.get("data", {}).get("type") in invalid_types for node in nodes):
+            raise ValueError("Workflow contains node types incompatible with the target App")
 
     def _create_or_update_app(
         self,
@@ -751,13 +800,39 @@ class AppDslService:
         session: Session,
         include_secret: bool = False,
         workflow_id: str | None = None,
+        version_id: uuid.UUID | None = None,
     ) -> str:
+        return yaml.dump(
+            cls.export_data(
+                app_model,
+                session=session,
+                include_secret=include_secret,
+                workflow_id=workflow_id,
+                version_id=version_id,
+            ),
+            allow_unicode=True,
+        )
+
+    @classmethod
+    def export_data(
+        cls,
+        app_model: App,
+        *,
+        session: Session,
+        include_secret: bool = False,
+        workflow_id: str | None = None,
+        version_id: uuid.UUID | None = None,
+        resource_exporter: AgentPackageResourceExporter | None = None,
+    ) -> dict[str, Any]:
         """
-        Export app
+        Build the App definition before serializing it as YAML or a resource archive.
         :param app_model: App instance
         :param session: Database session used to load export data
         :param include_secret: Whether include secret variable
         :param workflow_id: Optional published workflow version to export
+        :param version_id: Optional published Agent version to export
+        :param resource_exporter: Optional collector for workflow Agent assets in App archives
+        :raises AgentVersionNotFoundError: If the selected Agent version is unavailable or not visible in history
         :raises WorkflowNotFoundError: If the selected workflow version does not exist
         :raises IsDraftWorkflowError: If the selected workflow is a draft
         :return:
@@ -765,7 +840,7 @@ class AppDslService:
         app_mode = AppMode.value_of(app_model.mode)
 
         if app_mode == AppMode.AGENT:
-            package_ref, packages = AgentDslService(session).export_agent_app(app=app_model)
+            package_ref, packages = AgentDslService(session).export_agent_app(app=app_model, version_id=version_id)
             dependencies = AgentDslService(session).extract_package_dependencies(packages)
             export_data = make_agent_app_dsl(
                 app_model,
@@ -784,11 +859,12 @@ class AppDslService:
                     include_secret=include_secret,
                     workflow_id=workflow_id,
                     session=session,
+                    resource_exporter=resource_exporter,
                 )
             else:
                 cls._append_model_config_export_data(export_data, app_model, session=session)
 
-        return yaml.dump(export_data, allow_unicode=True)
+        return export_data
 
     @classmethod
     def _append_workflow_export_data(
@@ -799,6 +875,7 @@ class AppDslService:
         include_secret: bool,
         session: Session,
         workflow_id: str | None = None,
+        resource_exporter: AgentPackageResourceExporter | None = None,
     ):
         """
         Append workflow export data
@@ -817,6 +894,7 @@ class AppDslService:
         graph, agent_packages = AgentDslService(session).export_workflow_packages(
             workflow=workflow,
             graph=workflow_dict.get("graph", {}),
+            resource_exporter=resource_exporter,
         )
         workflow_dict["graph"] = graph
         # TODO: refactor: we need a better way to filter workspace related data from nodes

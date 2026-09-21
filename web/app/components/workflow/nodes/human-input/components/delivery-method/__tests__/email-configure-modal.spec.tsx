@@ -17,7 +17,7 @@ const render = (ui: ReactElement) =>
     wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
   })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockToastError(message),
   },

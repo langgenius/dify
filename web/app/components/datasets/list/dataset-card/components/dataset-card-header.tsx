@@ -13,6 +13,7 @@ const docModeInfoClassName =
 
 type DatasetCardHeaderProps = {
   dataset: DataSet
+  nameId?: string
 }
 
 // DocModeInfo component - placed before usage
@@ -80,7 +81,7 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
 }
 
 // Main DatasetCardHeader component
-const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
+const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
   const isExternalProvider = dataset.provider === EXTERNAL_PROVIDER
 
   const isShowChunkingModeIcon =
@@ -111,7 +112,7 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
   return (
     <div
       className={cn(
-        'flex items-center gap-x-3 px-4 pt-4 pb-2',
+        'flex items-center gap-x-3 pt-4 pr-14 pb-2 pl-4',
         !dataset.embedding_available && 'opacity-30',
       )}
     >
@@ -130,7 +131,11 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
         )}
       </div>
       <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
-        <div className="truncate system-md-semibold text-text-secondary" title={dataset.name}>
+        <div
+          id={nameId}
+          className="truncate system-md-semibold text-text-secondary"
+          title={dataset.name}
+        >
           {dataset.name}
         </div>
         <DocModeInfo

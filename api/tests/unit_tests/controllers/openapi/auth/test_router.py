@@ -1,0 +1,364 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
+from typing import NoReturn
+from unittest.mock import MagicMock
+
+import pytest
+from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
+
+import libs.rate_limit as rate_limit_module
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.requirements import Requirement
+from controllers.openapi.auth.router import subject_router
+from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.auth.subjects import AccountSubject
+from enums import DeploymentEdition
+from libs.oauth_bearer import (
+    AuthContext,
+    BearerAuthenticator,
+    OAuthAccessTokenResolver,
+    Resolver,
+    TokenType,
+)
+from models import Account
+from models.oauth import OAuthAccessToken
+from services.entities.feature_entities import (
+    LicenseStatus,
+)
+
+from ._world import (
+    ACCOUNT_ID,
+    TOKEN_ID,
+    make_account,
+    make_auth,
+    persist,
+    system_features,
+)
+
+ROUTER = "controllers.openapi.auth.router"
+FEATURES = "controllers.openapi.auth.requirements.SystemFeatureService.get_public_system_features"
+MOUNT = "controllers.openapi.auth.pipelines._mount_flask_login"
+ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
+
+
+def never_reached(*_args: object, **_kwargs: object) -> NoReturn:
+    raise AssertionError("reached a step the router should have answered before")
+
+
+def _authenticates(monkeypatch: pytest.MonkeyPatch, auth: AuthContext) -> None:
+    authenticator = SimpleNamespace(authenticate=lambda _token: auth)
+    monkeypatch.setattr(f"{ROUTER}.get_authenticator", lambda: authenticator)
+
+
+def _guard(
+    view: Callable[..., object],
+    *,
+    requirements: tuple[Requirement, ...] = (),
+    edition: frozenset[DeploymentEdition] | None = None,
+) -> Callable[..., object]:
+    return subject_router.guard(EndpointSpec(requirements=requirements, edition=edition))(view)
+
+
+def _nothing(**_kwargs: object) -> None:
+    return None
+
+
+def test_endpoint_edition_gate_404s_before_the_bearer_is_read(
+    app: Flask,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
+    view = _guard(_nothing, edition=ENTERPRISE_ONLY)
+
+    with app.test_request_context("/openapi/v1/permitted-external-apps"):
+        with pytest.raises(NotFound):
+            view()
+
+
+def test_a_dead_licence_403s_an_unauthenticated_caller_on_every_route_in_enterprise(
+    app: Flask,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The licence is a fact about the deployment, so the router checks it once,
+    for every route, before `extract_bearer` - a caller with no bearer at all
+    sees 403, not 401.
+    """
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    monkeypatch.setattr(FEATURES, lambda: system_features(license_status=LicenseStatus.EXPIRED))
+    monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
+    view = _guard(_nothing)
+
+    with app.test_request_context("/openapi/v1/account"):
+        with pytest.raises(Forbidden, match="license_invalid"):
+            view()
+
+
+def test_a_disabled_bearer_feature_503s_before_the_bearer_is_read(
+    app: Flask,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Off means no authenticator is bound, so the router answers the same 503
+    the device endpoints do instead of a 500 from the unbound authenticator.
+    """
+    config_overrides(ENABLE_OAUTH_BEARER=False)
+    monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
+    view = _guard(_nothing)
+
+    with app.test_request_context("/openapi/v1/account"):
+        with pytest.raises(ServiceUnavailable, match="bearer_auth_disabled"):
+            view()
+
+
+INVALID_BEARER = "invalid bearer"
+"""The one answer the router gives a bearer it will not accept.
+
+`InvalidBearerError` is a plain `Exception`, so uncaught at this seam it reaches
+`errorhandler(Exception)` and answers 500 — telling a caller whose token expired
+that the server broke, when difyctl maps only 401/403 to re-authenticate. Every
+rejection reason shares this one message: a caller that can tell them apart can
+probe which tokens ever existed, the same reasoning as the 404-not-403 elsewhere
+on this surface.
+"""
+
+
+_ResolverAndUpdates = tuple[Resolver, list[object]]
+"""A resolver plus the row updates it issued while refusing."""
+
+
+def _resolver_never_asked() -> _ResolverAndUpdates:
+    """An unknown prefix is refused by the registry, before any resolver runs."""
+    resolver = MagicMock()
+    resolver.resolve.side_effect = AssertionError("an unknown prefix must not reach a resolver")
+    return resolver, []
+
+
+def _resolver_with_no_live_row() -> _ResolverAndUpdates:
+    """`None` is what the shipped resolver answers for a token with no usable row —
+    never minted, revoked, or minted under the other variant's prefix.
+    """
+    resolver = MagicMock()
+    resolver.resolve.return_value = None
+    return resolver, []
+
+
+class _FakeRedis:
+    def __init__(self) -> None:
+        self.store: dict[str, object] = {}
+
+    def get(self, key: str) -> object | None:
+        return self.store.get(key)
+
+    def setex(self, key: str, _ttl: int, value: object) -> None:
+        self.store[key] = value
+
+    def delete(self, key: str) -> None:
+        self.store.pop(key, None)
+
+
+class _OneRowSession:
+    """Enough `Session` for `_TokenTypeResolver` to read one row and expire it.
+
+    SQLite hands `expires_at` back naive while the resolver compares it against
+    an aware `now`, so the expiry branch cannot be driven through the real
+    sqlite fixture — same reason `test_auth_matrix._MemoryResolver` exists.
+    """
+
+    def __init__(self, row: OAuthAccessToken) -> None:
+        self._row = row
+        self.updates: list[object] = []
+
+    def query(self, _model: object) -> _OneRowSession:
+        return self
+
+    def filter(self, *_criteria: object) -> _OneRowSession:
+        return self
+
+    def one_or_none(self) -> OAuthAccessToken:
+        return self._row
+
+    def execute(self, statement: object) -> SimpleNamespace:
+        self.updates.append(statement)
+        return SimpleNamespace(rowcount=1)
+
+    def commit(self) -> None:
+        return None
+
+
+def _expired_row() -> OAuthAccessToken:
+    """Live in every respect but its expiry, so expiry is the only refusal."""
+    row = OAuthAccessToken(
+        subject_email="account@example.com",
+        client_id="openapi-client",
+        device_label="laptop",
+        prefix=TokenType.OAUTH_ACCOUNT.prefix,
+        expires_at=datetime.now(UTC) - timedelta(seconds=1),
+        subject_issuer="dify:account",
+        account_id=ACCOUNT_ID,
+        token_hash="deadbeef",
+    )
+    row.id = TOKEN_ID
+    return row
+
+
+def _resolver_for_an_expired_row() -> _ResolverAndUpdates:
+    """The shipped resolver, over a row whose expiry has passed."""
+    session = _OneRowSession(_expired_row())
+    resolver = OAuthAccessTokenResolver(lambda: session, _FakeRedis())
+    return resolver.for_token_type(TokenType.OAUTH_ACCOUNT), session.updates
+
+
+def _authenticates_for_real(
+    monkeypatch: pytest.MonkeyPatch, resolver: Resolver, *, token_type: TokenType = TokenType.OAUTH_ACCOUNT
+) -> None:
+    """The real `BearerAuthenticator`, so the refusals are its own, not a stub's."""
+    monkeypatch.setattr(
+        rate_limit_module,
+        "LIMIT_BEARER_PER_TOKEN",
+        rate_limit_module.RateLimit(
+            0,
+            rate_limit_module.LIMIT_BEARER_PER_TOKEN.window,
+            rate_limit_module.LIMIT_BEARER_PER_TOKEN.scopes,
+        ),
+    )
+    authenticator = BearerAuthenticator({token_type: resolver})
+    monkeypatch.setattr(f"{ROUTER}.get_authenticator", lambda: authenticator)
+
+
+def _refuse(app: Flask, token: str) -> Unauthorized:
+    view = _guard(_nothing)
+    with app.test_request_context("/openapi/v1/account", headers={"Authorization": f"Bearer {token}"}):
+        with pytest.raises(Unauthorized) as raised:
+            view()
+    return raised.value
+
+
+@pytest.mark.parametrize(
+    ("resolver_factory", "token", "rows_expired"),
+    [
+        (_resolver_never_asked, "zzz_notatokenkind", 0),
+        (_resolver_with_no_live_row, f"{TokenType.OAUTH_ACCOUNT.prefix}revoked", 0),
+        (_resolver_for_an_expired_row, f"{TokenType.OAUTH_ACCOUNT.prefix}stale", 1),
+    ],
+    ids=["unknown prefix", "no live row", "expired"],
+)
+def test_every_way_authenticate_rejects_a_bearer_answers_the_same_401(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    resolver_factory: Callable[[], _ResolverAndUpdates],
+    token: str,
+    rows_expired: int,
+) -> None:
+    """`rows_expired` pins that the expired row really took the expiry branch,
+    rather than reaching the same answer as a token that was never minted.
+    """
+    resolver, updates = resolver_factory()
+    _authenticates_for_real(monkeypatch, resolver)
+
+    refusal = _refuse(app, token)
+
+    assert (refusal.code, refusal.description) == (401, INVALID_BEARER)
+    assert len(updates) == rows_expired
+
+
+def test_an_unresolvable_external_bearer_on_community_is_refused_as_a_bearer_not_an_edition(
+    app: Flask, config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`_RequiresEnterprise` runs after `authenticate`. A `dfoe_` string with no
+    live row must hear the same 401 as any bad bearer; a 403
+    `external_sso_requires_ee` first would let an unauthenticated caller
+    learn the deployment edition.
+    """
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    resolver, _ = _resolver_with_no_live_row()
+    _authenticates_for_real(monkeypatch, resolver, token_type=TokenType.OAUTH_EXTERNAL_SSO)
+
+    refusal = _refuse(app, f"{TokenType.OAUTH_EXTERNAL_SSO.prefix}garbage")
+
+    assert (refusal.code, refusal.description) == (401, INVALID_BEARER)
+
+
+def test_an_account_token_reaches_the_view_with_a_resolved_context(
+    app: Flask,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persist(sqlite_session, make_account())
+    _authenticates(monkeypatch, make_auth(TokenType.OAUTH_ACCOUNT))
+    mounted: list[object] = []
+    monkeypatch.setattr(MOUNT, mounted.append)
+    seen: dict[str, object] = {}
+
+    def handler(resource: str, *, ctx: Context) -> str:
+        seen.update(resource=resource, ctx=ctx)
+        return "answered"
+
+    view = _guard(handler)
+
+    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
+        result = view("self")
+
+    assert result == "answered"
+    assert isinstance(seen["ctx"], Context)
+    assert isinstance(seen["ctx"].subject, AccountSubject)
+    assert seen["resource"] == "self"
+    assert [type(user) for user in mounted] == [Account]
+
+
+def _rename_handler(*, ctx: Context) -> str:
+    ctx.caller.name = "renamed"
+    return "ok"
+
+
+def test_a_mutation_is_committed_when_the_view_returns(
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persist(sqlite_session, make_account())
+    _authenticates(monkeypatch, make_auth(TokenType.OAUTH_ACCOUNT))
+    monkeypatch.setattr(MOUNT, lambda _user: None)
+    view = _guard(_rename_handler)
+
+    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
+        view()
+
+    with sqlite_session_factory() as verify:
+        renamed = verify.get(Account, ACCOUNT_ID)
+        assert renamed is not None
+        assert renamed.name == "renamed"
+
+
+def _rename_then_fail(*, ctx: Context) -> str:
+    _rename_handler(ctx=ctx)
+    raise RuntimeError("after the write")
+
+
+def test_a_mutation_is_rolled_back_when_the_view_raises(
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persist(sqlite_session, make_account())
+    _authenticates(monkeypatch, make_auth(TokenType.OAUTH_ACCOUNT))
+    monkeypatch.setattr(MOUNT, lambda _user: None)
+    view = _guard(_rename_then_fail)
+
+    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
+        with pytest.raises(RuntimeError, match="after the write"):
+            view()
+
+    with sqlite_session_factory() as verify:
+        unchanged = verify.get(Account, ACCOUNT_ID)
+        assert unchanged is not None
+        assert unchanged.name == "OpenAPI account"

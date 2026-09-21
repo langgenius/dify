@@ -769,12 +769,6 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/header-in-mobile.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 4
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -5088,11 +5082,6 @@
       "count": 4
     }
   },
-  "web/features/agent-v2/agent-detail/configure/use-agent-configure-build-draft.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    }
-  },
   "web/features/agent-v2/agent-detail/logs/__tests__/page.spec.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 1
@@ -5169,12 +5158,7 @@
       "count": 4
     }
   },
-  "web/i18n-config/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
-  "web/i18n-config/lib.client.ts": {
+  "web/i18n/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
     }
@@ -5319,7 +5303,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "web/service/datasets.ts": {

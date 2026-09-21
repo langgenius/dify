@@ -160,7 +160,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
     success: (...args: unknown[]) => mockToastSuccess(...args),
@@ -632,7 +632,7 @@ describe('AppPublisher', () => {
       expect(environmentDeploymentListRequests.length).toBeGreaterThan(0)
     })
     expect(environmentDeploymentDetailRequests).toHaveLength(0)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText(/studio\.accessPoint\.noPublishedTitle/)).not.toBeInTheDocument()
     expect(screen.queryByText(/studio\.publisher\.notDeployedYet/)).not.toBeInTheDocument()
 

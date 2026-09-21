@@ -9,7 +9,7 @@ const { mockFetchPluginBanners, mockGetLocaleOnServer } = vi.hoisted(() => ({
   mockGetLocaleOnServer: vi.fn(),
 }))
 
-vi.mock('@/i18n-config/server', () => ({
+vi.mock('@/i18n/server', () => ({
   getLocaleOnServer: mockGetLocaleOnServer,
 }))
 

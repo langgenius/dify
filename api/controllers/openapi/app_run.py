@@ -21,13 +21,20 @@ from werkzeug.exceptions import (
 import services
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
-from controllers.console.app.wraps import with_session
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
-from controllers.openapi._contract import accepts, returns
+from controllers.openapi._contract import endpoint
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.requirements import (
+    CheckAppAccess,
+    CheckAppApiEnabled,
+    CheckRBACPermission,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
+)
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from controllers.service_api.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -146,22 +153,28 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, Session], Any]] = {
 
 @openapi_ns.route("/apps/<string:app_id>:run")
 class AppRunApi(Resource):
-    @auth_router.guard(
-        scope=Scope.APPS_RUN,
-        rbac=RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_RUN),
+            CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
+            CheckAppAccess(),
+        ),
+        body=AppRunRequest,
+        returns=(200, EventStreamResponse, "Run result (SSE stream)"),
     )
-    @openapi_ns.response(200, "Run result (SSE stream)", openapi_ns.models[EventStreamResponse.__name__])
-    @accepts(body=AppRunRequest)
-    @with_session
-    def post(self, session: Session, app_id: str, *, auth_data: AuthData, body: AppRunRequest):
-        app_model, caller, caller_kind = auth_data.require_app_context()
+    def post(self, ctx: Context, app_id: str, *, body: AppRunRequest):
+        app_model = ctx.app
+        caller = ctx.caller
 
         handler = _DISPATCH.get(app_model.mode)
         if handler is None:
             raise UnprocessableEntity("mode_not_runnable")
 
         try:
-            stream_obj = handler(app_model, caller, body, session)
+            stream_obj = handler(app_model, caller, body, ctx.session)
         except HTTPException:
             raise
         except Exception:
@@ -171,7 +184,7 @@ class AppRunApi(Resource):
         emit_app_run(
             app_id=app_model.id,
             tenant_id=app_model.tenant_id,
-            caller_kind=caller_kind,
+            caller_kind=ctx.subject.caller_role,
             mode=str(app_model.mode),
             surface="apps",
         )
@@ -182,13 +195,18 @@ class AppRunApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
 class AppRunTaskStopApi(Resource):
-    @auth_router.guard(
-        scope=Scope.APPS_RUN,
-        rbac=RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()),
+    @endpoint(
+        requirements=(
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckAppApiEnabled(),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.APPS_RUN),
+            CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
+            CheckAppAccess(),
+        ),
+        returns=(200, TaskStopResponse, "Task stopped"),
     )
-    @returns(200, TaskStopResponse, description="Task stopped")
-    def post(self, app_id: str, task_id: str, *, auth_data: AuthData):
-        app_model, caller, caller_kind = auth_data.require_app_context()
+    def post(self, ctx: Context, app_id: str, task_id: str):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
         GraphEngineManager(redis_client).send_stop_command(task_id)
         return TaskStopResponse(result="success")

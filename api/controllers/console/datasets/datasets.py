@@ -13,7 +13,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from configs import dify_config
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
-from controllers.common.rbac import DatasetId, RBACCheck, Workspace
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
@@ -906,11 +906,31 @@ class DatasetIndexingEstimateApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.expect(console_ns.models[IndexingEstimatePayload.__name__])
+    @with_current_user
     @with_current_tenant_id
     @with_session
     @model_validate(IndexingEstimatePayload)
-    def post(self, req_data: IndexingEstimatePayload, session: Session, current_tenant_id: str):
+    def post(
+        self,
+        req_data: IndexingEstimatePayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+    ):
         args = req_data.model_dump()
+        dataset_id = req_data.dataset_id
+        if dataset_id:
+            checks = [RBACCheck(RBACPermission.DATASET_USE, DatasetId())]
+            path_args = {"dataset_id": dataset_id}
+        else:
+            checks = [RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace())]
+            path_args = None
+        enforce_rbac_checks(
+            tenant_id=current_tenant_id,
+            account_id=current_user.id,
+            checks=checks,
+            path_args=path_args,
+        )
         # validate args
         DocumentService.estimate_args_validate(args)
         extract_settings = []
