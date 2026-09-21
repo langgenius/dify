@@ -33,7 +33,7 @@ Deltas from the Go source:
 import copy
 import threading
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 
 from core.dify_builder.contract import ConversationPage
 from core.dify_builder.errors import ConflictError, NotFoundError
@@ -312,6 +312,7 @@ class FakeDifyPort:
         # so a passing run_draft has something for a caller (e.g. the test
         # result card) to show. Empty by default -- most tests don't care.
         self.run_outputs: Inputs = {}
+        self.workflow_events: list[dict[str, object]] = []
 
     def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
         return copy.deepcopy(self.graph), self.hash
@@ -347,8 +348,13 @@ class FakeDifyPort:
         _actor: Actor,
         inputs: Inputs,
         on_event: Callable[[NodeEvent], None],
+        *,
+        on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
     ) -> Run:
         self.run_draft_inputs = copy.deepcopy(inputs)
+        if on_workflow_event is not None:
+            for event in self.workflow_events:
+                on_workflow_event(event)
         on_event(NodeEvent(node_id="output", status="running"))
         if self.verify_pass:
             on_event(NodeEvent(node_id="output", status="success"))
@@ -502,6 +508,7 @@ class FakeBuildDifyPort:
     tests can assert the graph was actually built and the reveal fired."""
 
     def __init__(self) -> None:
+        self.workflow_events: list[dict[str, object]] = []
         self.graph: Graph = {"nodes": [], "edges": []}
         self.hash: str = "h0"
         self.applied: list[MutationIntent] = []
@@ -556,8 +563,19 @@ class FakeBuildDifyPort:
             structure_fingerprint=_structural_fingerprint(self.graph),
         )
 
-    def run_draft(self, _app_id: str, _actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run:
+    def run_draft(
+        self,
+        _app_id: str,
+        _actor: Actor,
+        inputs: Inputs,
+        on_event: Callable[[NodeEvent], None],
+        *,
+        on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+    ) -> Run:
         self.run_draft_inputs = copy.deepcopy(inputs)
+        if on_workflow_event is not None:
+            for event in self.workflow_events:
+                on_workflow_event(event)
         on_event(NodeEvent(node_id="llm", status="running"))
         if self.verify_pass:
             on_event(NodeEvent(node_id="llm", status="success"))

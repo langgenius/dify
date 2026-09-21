@@ -588,7 +588,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
     assert res2.context.verify_run_id == ""
 
 
-def test_edit_await_repair_approve_applies_and_retests():
+def test_edit_await_repair_approve_applies_and_waits_for_retest():
     from core.dify_builder.handlers_edit import handle_await_repair
 
     env, _ = _new_env()
@@ -603,7 +603,7 @@ def test_edit_await_repair_approve_applies_and_retests():
         test_input_ref="ti-1",
     )
     result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
-    assert result.next == PcState.EDIT_TEST_AFFECTED_PATHS
+    assert result.next == PcState.EDIT_APPLY_CHANGES
     assert result.context.staged_repair == []
 
 

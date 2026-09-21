@@ -909,7 +909,7 @@ def test_test_and_repair_run_draft_raises_input_error_routes_to_testdata_gate():
     assert "in input form" in (result.run.error or "")
 
 
-def test_await_repair_approve_applies_and_retests():
+def test_await_repair_approve_applies_and_waits_for_retest():
     from core.dify_builder.handlers_build import handle_await_repair
     from core.dify_builder.models import MutationIntent
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
@@ -925,7 +925,7 @@ def test_await_repair_approve_applies_and_retests():
         test_input_ref="ti-1",
     )
     result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
-    assert result.next == PcState.BUILD_TEST_AND_REPAIR
+    assert result.next == PcState.BUILD_EXECUTION
     assert env.dify.applied  # the staged repair was applied
     assert result.context.staged_repair == []  # cleared after apply
 

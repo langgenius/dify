@@ -110,6 +110,7 @@ const renderChecklist = (
     enabled,
     getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
     session: {
+      onCanvasRefreshed: vi.fn(),
       getTrace: vi.fn(() => ({ entries: [], truncated: false })),
       loadOlderConversation: vi.fn(async () => true),
       refresh: vi.fn(async () => true),

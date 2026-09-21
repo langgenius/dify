@@ -156,9 +156,10 @@ export const createControlledEventStream = () => {
 
 export const renderSessionHook = (
   prepareCommand?: Parameters<typeof useDifyBuilderSessionController>[0],
+  runEvents?: Parameters<typeof useDifyBuilderSessionController>[1],
 ) => {
   const store = createStore()
-  const rendered = renderHook(() => useDifyBuilderSessionController(prepareCommand), {
+  const rendered = renderHook(() => useDifyBuilderSessionController(prepareCommand, runEvents), {
     wrapper: ({ children }: { children: ReactNode }) => (
       <Provider store={store}>{children}</Provider>
     ),

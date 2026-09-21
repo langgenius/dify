@@ -693,11 +693,9 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 
     def emit(event: NodeEvent) -> None:
         progress.observe_node("build-run-test", event)
-        if env.emit is not None:
-            env.emit(event)
 
     try:
-        raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
+        raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
         status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, ""
     except Exception as exc:
         # Never crash the advance; capture the launch error (log + store) instead
@@ -1033,7 +1031,8 @@ def _repair_is_repeating(fc: DifyBuilderContext) -> bool:
 
 def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Post-failure gate mirroring fix.await_decision. approve_repair
-    applies the staged repair and re-runs the test (build.test_and_repair);
+    applies the staged repair and waits at build.execution. The client resumes
+    testing only after applying the committed graph to its canvas;
     keep_draft -> build.review; undo -> build.reverted. apply_repair runs ONLY
     here, only on approve."""
     kind = action_kind(turn)
@@ -1097,9 +1096,9 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             ),
         )
         progress.activate("build-prepare-retest")
-        decision_items = append_card(fc, DecisionItem(text="Approved the fix; retesting"))
+        decision_items = append_card(fc, DecisionItem(text="Applied the fix; ready to retest"))
         progress.finish()
-        return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc, items=[*cs_items, *decision_items])
+        return StepResult(next=PcState.BUILD_EXECUTION, context=fc, items=[*cs_items, *decision_items])
     if kind == "keep_draft":
         items = append_card(fc, DecisionItem(text="Kept the draft despite the failure"))
         return StepResult(next=PcState.BUILD_REVIEW, context=fc, items=items)
