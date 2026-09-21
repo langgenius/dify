@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
+from celery.contrib.testing.app import setup_default_app
 
 from configs.extra.agent_backend_config import AgentBackendConfig
 from dify_app import DifyApp
@@ -14,6 +15,14 @@ from schedule.collect_agent_sandbox_usage import collect_agent_sandbox_usage
 from tests.unit_tests.config_override import config_overrides_context
 
 PROJECT = "431de237-596f-4d59-8a85-20a9846bf243"
+
+
+@pytest.fixture(autouse=True)
+def restore_celery_app_state() -> Iterator[None]:
+    # init_app changes Celery's process-wide current/default app; close() alone
+    # leaves later shared tasks pointing at the now-unregistered test app.
+    with setup_default_app(collect_agent_sandbox_usage.app):
+        yield
 
 
 @pytest.fixture(autouse=True)
