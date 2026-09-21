@@ -37,8 +37,58 @@ def validate_intent_args(intent: MutationIntent) -> None:
         raise ValueError(f"missing required arg(s) {missing} for op {intent.op!r}")
 
 
+def _resolve_path(container: dict[str, Any], path: str) -> tuple[Any, str | int]:
+    """Walk ``path``'s parent segments and return ``(parent, last_key)``.
+
+    Segments are dot-separated; an all-digit segment indexes a list, any
+    other segment is a mapping key. Only the FINAL segment may be absent --
+    that is the key being written. Every intermediate segment must already
+    resolve, and a segment that cannot be walked raises ``ValueError``.
+
+    Raising is the point. ``filter_applicable`` dry-runs each intent through
+    this function and turns the exception into a rejection reason the repair
+    agent sees on its next attempt. Before this existed, a dotted path wrote
+    one flat junk key that the workflow engine ignored, so every nested
+    repair silently did nothing (ESQ1-285, ESQ1-290).
+    """
+    segments = path.split(".")
+    if not path or any(segment == "" for segment in segments):
+        raise ValueError(f"empty segment in path: {path!r}")
+
+    cursor: Any = container
+    for depth, segment in enumerate(segments[:-1]):
+        walked = ".".join(segments[: depth + 1])
+        if segment.isdigit():
+            if not isinstance(cursor, list):
+                raise ValueError(f"path {path!r}: {walked} indexes a {type(cursor).__name__}, not a list")
+            index = int(segment)
+            if index >= len(cursor):
+                raise ValueError(f"path {path!r}: index {index} out of range at {walked} (len {len(cursor)})")
+            cursor = cursor[index]
+            continue
+        if not isinstance(cursor, dict):
+            raise ValueError(f"path {path!r}: {walked} is not a mapping")
+        if segment not in cursor:
+            raise ValueError(f"path {path!r}: no key {segment!r} at {walked}")
+        cursor = cursor[segment]
+
+    last = segments[-1]
+    if last.isdigit():
+        if not isinstance(cursor, list):
+            raise ValueError(f"path {path!r}: final segment indexes a {type(cursor).__name__}, not a list")
+        index = int(last)
+        if index >= len(cursor):
+            raise ValueError(f"path {path!r}: index {index} out of range (len {len(cursor)})")
+        return cursor, index
+    if not isinstance(cursor, dict):
+        raise ValueError(f"path {path!r}: final container is a {type(cursor).__name__}, not a mapping")
+    return cursor, last
+
+
 def apply_set_node_config(graph: Graph, node_id: str, path: str, value: Any) -> tuple[Graph, list[str]]:
-    """Set ``node["data"][path] = value`` for the node whose ``id == node_id``.
+    """Set the value at ``path`` inside ``node["data"]`` for the node whose
+    ``id == node_id``. ``path`` is dot-separated (``"code"``,
+    ``"cases.0.conditions.1.value"``); see ``_resolve_path``.
 
     The placeholder agent emits intents shaped ``{node_id, path, value}``
     (e.g. ``path="code"`` to rewrite a Code node's ``data["code"]``); this is
@@ -52,7 +102,8 @@ def apply_set_node_config(graph: Graph, node_id: str, path: str, value: Any) -> 
 
     for node in new_graph.get("nodes", []):
         if node.get("id") == node_id:
-            node.setdefault("data", {})[path] = value
+            parent, key = _resolve_path(node.setdefault("data", {}), path)
+            parent[key] = value
             return new_graph, [node_id]
 
     raise ValueError(f"node not found: {node_id}")
