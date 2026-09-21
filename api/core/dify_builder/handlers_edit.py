@@ -21,6 +21,7 @@ from core.dify_builder.contract import (
     ErrorCard,
     ExecutionProgress,
     FormCard,
+    NoticeItem,
     PlanCard,
     PublishCard,
     SummaryCard,
@@ -649,6 +650,17 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     edit.reverted. apply_repair runs ONLY here, only on approve."""
     kind = action_kind(turn)
     if kind == "approve_repair":
+        if not fc.staged_repair:
+            # Nothing staged: applying would change nothing and the retest
+            # would fail identically. Don't spend a run on it (ESQ1-291).
+            # Reachable on the most common Edit failure there is -- the
+            # model-config branch above stages NO repair and still routes
+            # here.
+            items = append_card(
+                fc,
+                NoticeItem(text="No fix is staged for this failure -- keep the draft or revert."),
+            )
+            return StepResult(next=PcState.EDIT_AWAIT_REPAIR, context=fc, items=items)
         progress = ProgressReporter.for_session(
             emit=env.emit_progress,
             operation_id=env.operation_id,
@@ -660,13 +672,30 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             ],
         )
         progress.activate("edit-apply-repair")
-        result = env.dify.apply_repair(
-            s.app_id,
-            turn.actor,
-            list(fc.staged_repair),
-            on_canvas=env.emit_canvas,
-            expected_revision=fc.last_snapshot_hash,
-        )
+        try:
+            result = env.dify.apply_repair(
+                s.app_id,
+                turn.actor,
+                list(fc.staged_repair),
+                on_canvas=env.emit_canvas,
+                expected_revision=fc.last_snapshot_hash,
+            )
+        except ValueError as exc:
+            # Same stale-intent window as Build's gate: apply_repair
+            # re-validates against the draft as it is NOW, and a bad intent
+            # must not kill the session (ESQ1-271).
+            logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
+            fc.staged_repair = []
+            progress.finish()
+            items = append_card(
+                fc,
+                ErrorCard(
+                    title="Couldn't apply the fix",
+                    body=f"The proposed fix no longer applies to the current draft: {exc}",
+                    tone="danger",
+                ),
+            )
+            return StepResult(next=PcState.EDIT_AWAIT_REPAIR, context=fc, items=items)
         fc.last_snapshot_hash = result.new_hash
         fc.last_structure_fingerprint = result.structure_fingerprint
         fc.staged_repair = []

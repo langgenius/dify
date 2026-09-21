@@ -909,7 +909,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
     progress.activate("build-diagnose-failure")
     diagnosis = env.agent.diagnose(run, graph, per_node)
-    if _repair_is_repeating(fc, diagnosis.root_cause):
+    _note_repair_error(fc, diagnosis.root_cause)
+    if _repair_is_repeating(fc):
         # The same failure has now survived _MAX_REPEATED_REPAIRS repairs, so
         # another round would aim at the same wrong thing. Stop spending runs
         # and hand the decision back (ESQ1-285 burned nine approvals this way,
@@ -931,8 +932,13 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 node_id=diagnosis.culprit_node_id,
             ),
         )
-        return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=stuck_items)
-    fc.last_repair_error = diagnosis.root_cause
+        return StepResult(
+            next=PcState.BUILD_AWAIT_REPAIR,
+            context=fc,
+            items=stuck_items,
+            run=run,
+            run_id_sink=[run.id],
+        )
     progress.activate("build-prepare-repair")
     intents, risk = env.agent.propose_repair(diagnosis, graph)
     fc.diagnosis = diagnosis
@@ -999,14 +1005,30 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 _MAX_REPEATED_REPAIRS = 2
 
 
-def _repair_is_repeating(fc: DifyBuilderContext, error: str) -> bool:
+def _note_repair_error(fc: DifyBuilderContext, error: str) -> None:
+    """Record this failure's root cause and count CONSECUTIVE repeats of it.
+
+    ``repair_attempts`` is not a global budget: a different error means the
+    loop is still making progress, however slowly, so the count restarts.
+    The same error again means the repair that just ran did not address the
+    cause, so the count advances. Call this once per diagnosis, before
+    ``_repair_is_repeating``.
+    """
+    if error and error == fc.last_repair_error:
+        fc.repair_attempts += 1
+    else:
+        fc.repair_attempts = 0
+    fc.last_repair_error = error
+
+
+def _repair_is_repeating(fc: DifyBuilderContext) -> bool:
     """Has the SAME error now survived ``_MAX_REPEATED_REPAIRS`` repairs?
 
-    A different error means the loop is still making progress, however
-    slowly; the identical error twice over means the repair agent is aiming
-    at something that isn't the cause, and another round will not find it.
+    Reads the counter ``_note_repair_error`` maintains; the identical error
+    that many times over means the repair agent is aiming at something that
+    isn't the cause, and another round will not find it.
     """
-    return bool(error) and error == fc.last_repair_error and fc.repair_attempts >= _MAX_REPEATED_REPAIRS
+    return fc.repair_attempts >= _MAX_REPEATED_REPAIRS
 
 
 def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -1024,7 +1046,6 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 NoticeItem(text="No fix is staged for this failure -- keep the draft or revert."),
             )
             return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items)
-        fc.repair_attempts += 1
         progress = ProgressReporter.for_session(
             emit=env.emit_progress,
             operation_id=env.operation_id,
@@ -1036,13 +1057,32 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             ],
         )
         progress.activate("build-apply-repair")
-        result = env.dify.apply_repair(
-            s.app_id,
-            turn.actor,
-            list(fc.staged_repair),
-            on_canvas=env.emit_canvas,
-            expected_revision=fc.last_snapshot_hash,
-        )
+        try:
+            result = env.dify.apply_repair(
+                s.app_id,
+                turn.actor,
+                list(fc.staged_repair),
+                on_canvas=env.emit_canvas,
+                expected_revision=fc.last_snapshot_hash,
+            )
+        except ValueError as exc:
+            # The repair was validated against the graph as it stood at
+            # propose time; apply_repair re-validates against the draft as it
+            # is NOW, so a node deleted or a path removed in between makes an
+            # intent stale. A bad intent must not kill the session (ESQ1-271)
+            # -- degrade to the no-safe-fix surface and let the user decide.
+            logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
+            fc.staged_repair = []
+            progress.finish()
+            items = append_card(
+                fc,
+                ErrorCard(
+                    title="Couldn't apply the fix",
+                    body=f"The proposed fix no longer applies to the current draft: {exc}",
+                    tone="danger",
+                ),
+            )
+            return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items)
         fc.last_snapshot_hash = result.new_hash
         fc.last_structure_fingerprint = result.structure_fingerprint
         fc.staged_repair = []
@@ -1104,6 +1144,8 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         fc.plan_version_tag = "v1"
         fc.test_input_ref = ""
         fc.verify_run_id = ""
+        fc.repair_attempts = 0
+        fc.last_repair_error = ""
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
         execution = progress.finish()
         turn_items = append_card(
@@ -1226,6 +1268,8 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     fc.plan_version_tag = "v1"
     fc.test_input_ref = ""
     fc.verify_run_id = ""
+    fc.repair_attempts = 0
+    fc.last_repair_error = ""
     execution = progress.finish()
     turn_items = append_card(
         fc,
