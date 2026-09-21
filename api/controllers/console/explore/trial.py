@@ -19,6 +19,7 @@ from controllers.common.fields import (
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import (
+    JsonResponseWithStatus,
     query_params_from_model,
     register_response_schema_models,
     register_schema_models,
@@ -47,7 +48,7 @@ from controllers.console.explore.error import (
 )
 from controllers.console.explore.trial_app_admission import get_trial_app
 from controllers.console.explore.wraps import TrialAppResource
-from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
+from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request_context
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
@@ -72,8 +73,9 @@ from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
 from machinery.context import RequestContext
-from models import Account, App
+from models import Account
 from models.account import TenantStatus
+from models.enums import CreatorUserRole
 from models.model import AppMode, Site
 from models.workflow import Workflow
 from services.account_errors import AccountNotFoundError
@@ -96,6 +98,7 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
+from services.file_service import FileUploadActor
 from services.message_service import MessageService
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_service import (
@@ -460,32 +463,36 @@ register_response_schema_models(
 simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
 
-class TrialAppFileUploadApi(TrialAppResource):
-    @cloud_edition_billing_resource_check("documents")
+class TrialAppFileUploadApi(Resource):
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account, app_model: App):
+    @console_account_admission()
+    @get_trial_app
+    @cloud_edition_billing_resource_check("documents")
+    def post(self, request_context: RequestContext, trial_app: TrialAppRef) -> JsonResponseWithStatus:
         """Upload a file into the tenant that owns the trial app."""
-        upload_file = upload_file_from_request(
-            current_user=current_user,
-            resource_tenant_id=app_model.tenant_id,
+        upload_file = upload_file_from_request_context(
+            request_context=request_context,
+            resource_tenant_id=trial_app.tenant_id,
         )
         return dump_response(FileResponse, upload_file), 201
 
 
-class TrialAppRemoteFileUploadApi(TrialAppResource):
-    @cloud_edition_billing_resource_check("documents")
+class TrialAppRemoteFileUploadApi(Resource):
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
-    @with_current_user
+    @console_account_admission()
+    @get_trial_app
+    @cloud_edition_billing_resource_check("documents")
     @model_validate(RemoteFileUploadPayload)
-    def post(self, payload: RemoteFileUploadPayload, current_user: Account, app_model: App):
+    def post(
+        self, payload: RemoteFileUploadPayload, request_context: RequestContext, trial_app: TrialAppRef
+    ) -> JsonResponseWithStatus:
         """Upload a remote file into the tenant that owns the trial app."""
         remote_file = upload_remote_file(
             url=payload.url,
-            current_user=current_user,
-            resource_tenant_id=app_model.tenant_id,
+            current_user=FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=trial_app.tenant_id,
         )
         return dump_response(FileWithSignedUrl, remote_file), 201
 

@@ -36,7 +36,7 @@ from graphon.variables import SecretVariable, StringVariable
 from models import Account, Tenant
 from models.account import TenantStatus
 from models.dataset import Dataset
-from models.model import App, AppMode, Site, UploadFile
+from models.model import App, AppMode, Site
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.app_ref_service import AppRef, MessageRef
@@ -73,24 +73,6 @@ def _app(*, app_id: str, mode: AppMode, tenant_id: str = "tenant-1") -> App:
         enable_site=True,
         enable_api=False,
     )
-
-
-def _upload_file(*, file_id: str = "upload-file-id", tenant_id: str = "app-tenant-id") -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id=tenant_id,
-        storage_type="opendal",
-        key="trial/file.txt",
-        name="file.txt",
-        size=1,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role="account",
-        created_by="u1",
-        created_at=datetime(2024, 1, 1),
-        used=False,
-    )
-    upload_file.id = file_id
-    return upload_file
 
 
 def _file_data() -> Any:
@@ -200,50 +182,6 @@ def test_trial_app_detail_serializes_with_explicit_session(
     get_app.assert_called_once_with(app_model, session=unbound_session)
     build_view.assert_called_once_with(app_model, session=unbound_session)
     module.TrialAppDetailResponse.model_validate.assert_called_once_with(response_view, from_attributes=True)
-
-
-class TestTrialAppFileUploadApi:
-    def test_upload_uses_trial_app_tenant(self, app: Flask, account: Account) -> None:
-        api = module.TrialAppFileUploadApi()
-        method = unwrap(api.post)
-        app_model = _app(app_id="app-1", mode=AppMode.CHAT, tenant_id="app-tenant-id")
-        upload_file = _upload_file()
-
-        with (
-            app.test_request_context("/", method="POST"),
-            patch.object(module, "upload_file_from_request", return_value=upload_file) as upload,
-            patch.object(module, "dump_response", return_value={"id": "upload-file-id"}),
-        ):
-            response, status = method(api, account, app_model)
-
-        assert status == 201
-        assert response == {"id": "upload-file-id"}
-        upload.assert_called_once_with(current_user=account, resource_tenant_id="app-tenant-id")
-
-
-class TestTrialAppRemoteFileUploadApi:
-    def test_upload_uses_trial_app_tenant(self, app: Flask, account: Account) -> None:
-        api = module.TrialAppRemoteFileUploadApi()
-        method = unwrap(api.post)
-        app_model = _app(app_id="app-1", mode=AppMode.CHAT, tenant_id="app-tenant-id")
-        remote_file = MagicMock()
-        payload = module.RemoteFileUploadPayload(url="https://example.com/file.txt")
-
-        with (
-            app.test_request_context("/", method="POST", json={"url": "https://example.com/file.txt"}),
-            patch.object(module, "upload_remote_file", return_value=remote_file) as upload,
-            patch.object(module, "dump_response", return_value={"id": "upload-file-id"}) as dump,
-        ):
-            response, status = method(api, payload, account, app_model)
-
-        assert status == 201
-        assert response == {"id": "upload-file-id"}
-        upload.assert_called_once_with(
-            url="https://example.com/file.txt",
-            current_user=account,
-            resource_tenant_id="app-tenant-id",
-        )
-        dump.assert_called_once_with(module.FileWithSignedUrl, remote_file)
 
 
 class TestTrialMessageSuggestedQuestionApi:

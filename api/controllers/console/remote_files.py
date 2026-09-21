@@ -25,6 +25,7 @@ from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
 from models import Account
+from services.file_service import FileUploadActor
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
 )
@@ -87,7 +88,7 @@ class GetRemoteFileInfo(Resource):
 def upload_remote_file(
     *,
     url: str,
-    current_user: Account,
+    current_user: Account | FileUploadActor,
     resource_tenant_id: str | None = None,
 ) -> RemoteFileUploadResult:
     """Fetch a remote file and persist it under the requested tenant."""
