@@ -2043,18 +2043,18 @@ def test_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session():
 
 
 def test_repair_counter_tracks_consecutive_repeats_of_the_same_error():
-    """The counter is per-error, not a global budget: an interleaved
+    """The counter is per-failure, not a global budget: an interleaved
     A -> B -> B must NOT trip the guard, because B has survived one repair."""
     from core.dify_builder.handlers_build import _note_repair_error, _repair_is_repeating
 
     fc = DifyBuilderContext()
-    _note_repair_error(fc, "Invalid actual value type: number")
+    _note_repair_error(fc, _failed_run("node1", "Invalid actual value type: number"))
     assert fc.repair_attempts == 0
     assert _repair_is_repeating(fc) is False
 
-    _note_repair_error(fc, "Variable ['node2','result'] not found")  # progress -> restart
+    _note_repair_error(fc, _failed_run("node2", "Variable not found"))  # progress -> restart
     assert fc.repair_attempts == 0
-    _note_repair_error(fc, "Variable ['node2','result'] not found")
+    _note_repair_error(fc, _failed_run("node2", "Variable not found"))
     assert fc.repair_attempts == 1
     assert _repair_is_repeating(fc) is False  # survived ONE repair, not two
 
@@ -2065,14 +2065,14 @@ def test_repeated_failure_stops_offering_a_repair():
     from core.dify_builder.handlers_build import _MAX_REPEATED_REPAIRS, _note_repair_error, _repair_is_repeating
 
     fc = DifyBuilderContext()
-    error = "Invalid actual value type: number"
+    failure = _failed_run("node1", "Invalid actual value type: number")
     for _ in range(_MAX_REPEATED_REPAIRS + 1):
-        _note_repair_error(fc, error)
+        _note_repair_error(fc, failure)
     assert fc.repair_attempts == _MAX_REPEATED_REPAIRS
     assert _repair_is_repeating(fc) is True
 
-    # a NEW error means progress -- keep repairing
-    _note_repair_error(fc, "Variable not found")
+    # a NEW failure means progress -- keep repairing
+    _note_repair_error(fc, _failed_run("node1", "Variable not found"))
     assert _repair_is_repeating(fc) is False
 
 
@@ -2105,7 +2105,9 @@ def test_test_and_repair_stops_offering_a_repair_through_the_handler():
     env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
     fc = DifyBuilderContext(
         test_input_ref="ti-1",
-        last_repair_error="Output node requires 'metrics'",  # matches StubAgent's diagnosis
+        # The ENGINE signature FakeBuildDifyPort's failing run produces, NOT the
+        # agent's prose -- the guard keys on the engine (see _failure_signature).
+        last_repair_error="llm|boom",
         repair_attempts=_MAX_REPEATED_REPAIRS,
     )
 
@@ -2120,3 +2122,137 @@ def test_test_and_repair_stops_offering_a_repair_through_the_handler():
     assert result.run is not None
     assert result.run_id_sink == [result.run.id]
     assert result.context.verify_run_id == result.run.id
+
+
+# --- the repeated-repair breaker keys on ENGINE output, not LLM prose --------
+#
+# Production bug found live 2026-09-21: the breaker keyed on
+# ``diagnosis.root_cause``, which is LLM prose regenerated on every diagnosis
+# call -- observed rewording across four turns of one session, one of them
+# switching to Chinese. Exact string equality therefore never held, the counter
+# reset forever, and the guard was unreachable. A session burned 9 failed runs
+# and 8 repair approvals with the guard in place.
+#
+# The pre-existing tests all fed the SAME literal string twice, so they encoded
+# the very premise that is false in production. Every test below instead varies
+# the wording while holding the engine failure fixed.
+
+
+def _failed_run(node_id: str, error: str, launch_error: str = ""):
+    from core.dify_builder.models import NodeOutput, Run
+
+    return Run(
+        id="r-1",
+        status="failed",
+        per_node=[NodeOutput(node_id=node_id, status="failed", error=error)] if node_id else [],
+        error=launch_error,
+    )
+
+
+def test_failure_signature_is_stable_across_reworded_diagnoses():
+    """Two runs that failed the SAME way must produce the SAME signature,
+    whatever the diagnosing LLM happens to call it this turn."""
+    from core.dify_builder.handlers_build import _failure_signature
+
+    a = _failed_run("node3", "Variable #node3.output# not found")
+    b = _failed_run("node3", "Variable #node3.output# not found")
+    assert _failure_signature(a) == _failure_signature(b)
+    assert _failure_signature(a) != ""
+
+
+def test_failure_signature_separates_different_errors_on_one_node():
+    """Same culprit node is NOT enough: two different faults on one node are
+    real progress, and must restart the count rather than trip the guard."""
+    from core.dify_builder.handlers_build import _failure_signature
+
+    a = _failed_run("node3", "Variable #node3.output# not found")
+    b = _failed_run("node3", "Invalid actual value type: number")
+    assert _failure_signature(a) != _failure_signature(b)
+
+
+def test_failure_signature_separates_the_same_error_on_different_nodes():
+    from core.dify_builder.handlers_build import _failure_signature
+
+    a = _failed_run("node3", "Variable not found")
+    b = _failed_run("node7", "Variable not found")
+    assert _failure_signature(a) != _failure_signature(b)
+
+
+def test_failure_signature_falls_back_to_the_launch_error():
+    """A run that threw before any node executed has no per_node rows; the
+    engine's launch error is then the only stable thing available."""
+    from core.dify_builder.handlers_build import _failure_signature
+
+    a = _failed_run("", "", launch_error="draft has no start node")
+    b = _failed_run("", "", launch_error="draft has no start node")
+    assert _failure_signature(a) == _failure_signature(b)
+    assert _failure_signature(a) != ""
+    assert _failure_signature(_failed_run("", "", launch_error="something else")) != _failure_signature(a)
+
+
+def test_failure_signature_is_whitespace_insensitive():
+    from core.dify_builder.handlers_build import _failure_signature
+
+    a = _failed_run("node3", "Variable  #node3.output#\n not found")
+    b = _failed_run("node3", "Variable #node3.output# not found")
+    assert _failure_signature(a) == _failure_signature(b)
+
+
+def test_breaker_fires_through_the_handler_although_diagnoses_are_reworded():
+    """THE regression test for the live bug, driven through the real handler.
+
+    The engine fails identically every turn while the diagnosing agent rewords
+    its root_cause each call -- exactly what production does, including the
+    mid-session switch to Chinese. Against the prose-keyed implementation the
+    counter never increments and this never trips, which is precisely how a
+    real session burned 9 runs and 8 approvals."""
+    from core.dify_builder.handlers_build import _MAX_REPEATED_REPAIRS, handle_test_and_repair
+    from core.dify_builder.models import Diagnosis, TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    wordings = [
+        "The output node references a variable that does not exist yet.",
+        "The 'Output' node is misconfigured: it requires 'metrics' before it is produced.",
+        "输出节点引用的变量不存在，导致运行失败。",
+    ]
+
+    class RewordingAgent(StubAgent):
+        def __init__(self) -> None:
+            super().__init__()
+            self.calls = 0
+
+        def diagnose(self, _failed_run, _graph, _node_outputs) -> Diagnosis:
+            wording = wordings[min(self.calls, len(wordings) - 1)]
+            self.calls += 1
+            return Diagnosis(culprit_node_id="output", root_cause=wording, severity="high")
+
+    env, _ = _new_env(agent=RewordingAgent())
+    env.dify = FakeBuildDifyPort()
+    env.dify.verify_pass = False  # the engine fails the same way every time
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(test_input_ref="ti-1")
+
+    result = None
+    for _ in range(_MAX_REPEATED_REPAIRS + 1):
+        result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+        fc = result.context
+
+    assert fc.repair_attempts >= _MAX_REPEATED_REPAIRS
+    assert fc.staged_repair == []  # no fourth repair offered
+    error = next(i for i in result.items if i.kind == "error")
+    assert error.payload["title"] == "Repeated failure"
+
+
+def test_breaker_restarts_when_the_engine_failure_actually_changes():
+    """A genuinely different failure means the last repair achieved something,
+    so the count must restart even though it is still failing."""
+    from core.dify_builder.handlers_build import _note_repair_error, _repair_is_repeating
+
+    fc = DifyBuilderContext()
+    _note_repair_error(fc, _failed_run("node3", "Variable not found"))
+    _note_repair_error(fc, _failed_run("node3", "Variable not found"))
+    assert fc.repair_attempts == 1
+    _note_repair_error(fc, _failed_run("node3", "Invalid actual value type: number"))
+    assert fc.repair_attempts == 0
+    assert _repair_is_repeating(fc) is False
