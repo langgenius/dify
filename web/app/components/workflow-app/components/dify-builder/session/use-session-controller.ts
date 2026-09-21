@@ -64,7 +64,9 @@ const isActiveView = (view: SessionView) => isActiveRunStatus(view.run_status) &
  * history. Token deltas use an isolated frame-buffered atom. GET owns initial
  * restore and repairs any sequence gap left by a dropped commit event.
  */
-export function useDifyBuilderSessionController(): DifyBuilderSessionController {
+export function useDifyBuilderSessionController(
+  prepareCommand?: (saveDraft: boolean, signal: AbortSignal) => Promise<void>,
+): DifyBuilderSessionController {
   const store = useStore()
   const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
   const setConversation = useSetAtom(difyBuilderConversationAtom)
@@ -467,28 +469,35 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       streamingTurnBuffer.clear()
       const controller = new AbortController()
       abortRef.current = controller
+      // Preparation takes the draft barrier synchronously, before the busy
+      // projection makes the canvas read-only. It also drains in-flight saves.
+      const preparation = prepareCommand?.(true, controller.signal)
       setIsBusy(true)
       setLastError('')
       store.set(difyBuilderSessionErrorCodeAtom, null)
-      if (startsSession) {
-        setActiveSessionId(null)
-        setView(null)
-        setConversation([])
-        setConversationHasMore(false)
-        setConversationLoading(false)
-        setRetryableMessage(null)
-        setLastCanvasEvent(null)
-        canvasCursorRef.current = undefined
-        pendingMessageRef.current = null
-        // A new session boundary must start with a fresh trace buffer; clear
-        // it here (before the outbound session_start append below) so a
-        // second start*() without an intervening reset() doesn't leave the
-        // previous session's frames mixed into this session's export.
-        traceRef.current.clear()
-      }
+      let commandStarted = false
 
       try {
+        await preparation
+        if (controller.signal.aborted) return false
+        if (startsSession) {
+          setActiveSessionId(null)
+          setView(null)
+          setConversation([])
+          setConversationHasMore(false)
+          setConversationLoading(false)
+          setRetryableMessage(null)
+          setLastCanvasEvent(null)
+          canvasCursorRef.current = undefined
+          pendingMessageRef.current = null
+          // A new session boundary must start with a fresh trace buffer; clear
+          // it here (before the outbound session_start append below) so a
+          // second start*() without an intervening reset() doesn't leave the
+          // previous session's frames mixed into this session's export.
+          traceRef.current.clear()
+        }
         if (trace) traceRef.current.append({ dir: 'out', kind: trace.kind, payload: trace.payload })
+        commandStarted = true
         const events = await openStream(controller.signal)
         if (controller.signal.aborted) return false
         const outcome = await consumeStream(events, controller, knownSessionId)
@@ -584,7 +593,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
           })
         }
         setLastError(message)
-        if (knownSessionId) await reconcileSession(knownSessionId, controller)
+        if (commandStarted && knownSessionId) await reconcileSession(knownSessionId, controller)
         if (!controller.signal.aborted) setLastError(message)
         return false
       } finally {
@@ -596,6 +605,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     },
     [
       consumeStream,
+      prepareCommand,
       executionProgress,
       reasoningBuffer,
       reconcileSession,
@@ -699,11 +709,14 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       pendingMessageRef.current = null
       const controller = new AbortController()
       abortRef.current = controller
-      setActiveSessionId(normalizedSessionId)
+      const preparation = prepareCommand?.(false, controller.signal)
       setIsBusy(true)
       setLastError('')
       store.set(difyBuilderSessionErrorCodeAtom, null)
       try {
+        await preparation
+        if (controller.signal.aborted) return false
+        setActiveSessionId(normalizedSessionId)
         const outcome = await reconcileSession(normalizedSessionId, controller, true)
         if (controller.signal.aborted) return false
         if (outcome?.terminalEvent === 'state') return outcome.stateApplied === true
@@ -732,6 +745,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     },
     [
       clearSession,
+      prepareCommand,
       executionProgress,
       reasoningBuffer,
       reconcileSession,

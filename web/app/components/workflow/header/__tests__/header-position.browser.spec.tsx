@@ -11,7 +11,7 @@ import 'reactflow/dist/style.css'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: workflow } = await import('@/i18n/en-US/workflow.json')
+  const { default: workflow } = await import('@/i18n/locales/en-US/workflow.json')
   return createReactI18nextMock(workflow)
 })
 

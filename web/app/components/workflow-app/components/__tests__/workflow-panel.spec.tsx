@@ -225,8 +225,7 @@ beforeEach(() => {
     await user.click(await screen.findByRole('button', { name: 'Fix failed run with App Builder' }))
 
     expect(mockSetShowPanel).toHaveBeenCalledWith(true)
-    expect(mockSyncDraft).toHaveBeenCalledTimes(1)
-    expect(mockStartFix).toHaveBeenCalledWith('app-123', 'failed-run-1', undefined)
+    expect(mockStartFix).toHaveBeenCalledExactlyOnceWith('app-123', 'failed-run-1', undefined)
   })
 
   it('should keep run Fix disabled without edit access or while the Builder session is busy', async () => {

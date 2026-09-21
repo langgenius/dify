@@ -16,7 +16,7 @@ import {
   difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderDraftAtom,
-  difyBuilderLocalErrorAtom,
+  difyBuilderErrorAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRegisterChecklistErrorsAtom,
   difyBuilderRetryCanvasRefreshAtom,
@@ -34,7 +34,6 @@ const mocks = vi.hoisted(() => ({
   runAction: vi.fn(async () => true),
   sendMessage: vi.fn(async () => true),
   setCanvasReadOnly: vi.fn(),
-  invalidateWorkflowDraftSync: vi.fn(),
   setShowPanel: vi.fn(),
   selectWorkflowNode: vi.fn(),
   startBuild: vi.fn(async () => true),
@@ -50,8 +49,8 @@ vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
 }))
 
 vi.mock('../session/use-session-controller', () => ({
-  useDifyBuilderSessionController: () => {
-    mocks.controllerHook()
+  useDifyBuilderSessionController: (prepareCommand: (saveDraft: boolean) => Promise<void>) => {
+    mocks.controllerHook(prepareCommand)
     return {
       refresh: vi.fn(),
       loadOlderConversation: vi.fn(async () => true),
@@ -72,13 +71,11 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(
     selector: (state: {
       setCanvasReadOnly: typeof mocks.setCanvasReadOnly
-      invalidateWorkflowDraftSync: typeof mocks.invalidateWorkflowDraftSync
       setShowDifyBuilderPanel: typeof mocks.setShowPanel
     }) => T,
   ) =>
     selector({
       setCanvasReadOnly: mocks.setCanvasReadOnly,
-      invalidateWorkflowDraftSync: mocks.invalidateWorkflowDraftSync,
       setShowDifyBuilderPanel: mocks.setShowPanel,
     }),
 }))
@@ -87,7 +84,7 @@ const Probe = () => {
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
   const canvasRefreshGeneration = useAtomValue(difyBuilderCanvasRefreshGenerationAtom)
   const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
-  const localError = useAtomValue(difyBuilderLocalErrorAtom)
+  const localError = useAtomValue(difyBuilderErrorAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
   const registerChecklistErrors = useSetAtom(difyBuilderRegisterChecklistErrorsAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
@@ -299,7 +296,6 @@ describe('DifyBuilderProvider', () => {
 
     await user.click(screen.getByRole('button', { name: 'Send prompt' }))
 
-    expect(mocks.syncDraft).toHaveBeenCalledTimes(1)
     expect(mocks.startBuild).toHaveBeenCalledWith('app-1', 'Build a support bot', builderModel)
     expect(mocks.startEdit).not.toHaveBeenCalled()
   })
@@ -333,7 +329,6 @@ describe('DifyBuilderProvider', () => {
       ),
     )
     expect(mocks.setShowPanel).toHaveBeenCalledWith(true)
-    expect(mocks.syncDraft).toHaveBeenCalledOnce()
     expect(screen.getByRole('textbox', { name: 'Builder draft' })).toHaveValue('')
 
     await act(async () => finishBuild(true))
@@ -362,23 +357,9 @@ describe('DifyBuilderProvider', () => {
     )
   })
 
-  it('restores the creation prompt when draft synchronization fails', async () => {
-    mocks.syncDraft.mockRejectedValueOnce(new Error('Workflow draft sync failed.'))
-    const user = userEvent.setup()
-    renderWithConsoleQuery(<CreationNavigation />, {
-      queryClient: createBuilderQueryClient(),
-      features: { dify_builder_enabled: true },
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
-
-    expect(mocks.startBuild).not.toHaveBeenCalled()
-    expect(screen.getByRole('textbox', { name: 'Builder draft' })).toHaveValue(
-      'Build an expense workflow',
-    )
-    expect(screen.getByRole('status', { name: 'Canvas refresh error' })).toHaveTextContent(
-      'Workflow draft sync failed.',
-    )
+  it('passes the editor draft coordinator to the session controller', () => {
+    renderProvider()
+    expect(mocks.controllerHook).toHaveBeenCalledWith(mocks.syncDraft)
   })
 
   it('restores the creation prompt when starting the Builder throws', async () => {
@@ -530,11 +511,10 @@ describe('DifyBuilderProvider', () => {
     expect(mocks.startFix).not.toHaveBeenCalled()
   })
 
-  it('invalidates queued draft saves when a Builder command takes the canvas lock', async () => {
+  it('locks the canvas while a Builder command is preparing or running', async () => {
     const user = userEvent.setup()
     renderProvider()
     await user.click(screen.getByRole('button', { name: 'Start command' }))
-    expect(mocks.invalidateWorkflowDraftSync).toHaveBeenCalledOnce()
     expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
   })
 
