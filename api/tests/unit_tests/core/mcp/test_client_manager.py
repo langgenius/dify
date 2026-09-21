@@ -251,3 +251,52 @@ class TestMCPClientManager:
             for client in factory.side_effect:
                 client.cleanup.assert_called_once()
             assert manager._clients == {}
+
+    def test_same_key_race_neither_call_raises_and_loser_is_closed(self):
+        """Two callers racing on one key must both succeed on one pooled connection.
+
+        A Barrier inside the mocked ``__enter__`` forces both callers to
+        connect concurrently before either registers, mirroring the race the
+        loser branch exists for.
+        """
+        manager = MCPClientManager()
+        both_connecting = threading.Barrier(2, timeout=5)
+        created: list = []
+        created_lock = threading.Lock()
+
+        with patch("core.mcp.client_manager.MCPClientWithAuthRetry") as factory:
+
+            def make_client(**_kwargs):
+                client = MagicMock()
+
+                def slow_enter():
+                    both_connecting.wait()
+                    return client
+
+                client.__enter__.side_effect = slow_enter
+                with created_lock:
+                    created.append(client)
+                return client
+
+            factory.side_effect = make_client
+
+            results: list = []
+            errors: list = []
+
+            def call():
+                try:
+                    results.append(_invoke(manager))
+                except Exception as exc:
+                    errors.append(exc)
+
+            threads = [threading.Thread(target=call) for _ in range(2)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=5)
+
+            assert not any(thread.is_alive() for thread in threads)
+            assert errors == []
+            assert len(manager._clients) == 1
+            assert sum(client.cleanup.call_count for client in created) == 1
+            assert results[0] is results[1]
