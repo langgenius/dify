@@ -209,7 +209,7 @@ export const http = definePlugin({
       throw new HttpClientError({
         code,
         message: serverError?.message ?? `HTTP ${res.status}`,
-        hint,
+        hint: hint ?? serverError?.hint,
         httpStatus: res.status,
         method: req.method,
         url: url.toString(),

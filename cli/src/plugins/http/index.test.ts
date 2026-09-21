@@ -69,13 +69,14 @@ describe('http plugin', () => {
     expect(mock.requestCount).toBe(5) // catalog, account, account(412), catalog, account
   })
 
-  it('a second 412 is a server error, exit 1', async () => {
+  it('a second 412 is a server error, exit 1, carrying the server hint', async () => {
     const h = await new Context().get(http)
     await h.request(account)
     mock.setScenario('always-stale')
     await expect(h.request(account)).rejects.toMatchObject({
       code: 'server_error',
       httpStatus: 412,
+      hint: expect.stringContaining('X-Dify-Catalog'),
     })
   })
 
