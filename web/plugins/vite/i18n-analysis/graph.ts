@@ -483,45 +483,57 @@ export function checkTranslationGraph(
 
   // Namespace values are deliberately narrower than key/type matching. Only
   // inline arrays and immutable string bindings are concrete loading evidence.
-  function namespaceStrings(
+  function namespaceValues(
     expression: ts.Expression,
     seen = new Set<ts.Node>(),
     allowArray = true,
-  ): string[] | undefined {
+  ): { namespaces: string[]; unknown: boolean } {
+    const unknown = { namespaces: [], unknown: true }
     const node = unwrap(expression)
-    if (seen.has(node)) return undefined
+    if (seen.has(node)) return unknown
     const next = new Set(seen).add(node)
-    if (ts.isStringLiteralLike(node)) return [node.text]
+    if (ts.isStringLiteralLike(node)) return { namespaces: [node.text], unknown: false }
     if (allowArray && ts.isArrayLiteralExpression(node)) {
-      const values = node.elements.map((element) => namespaceStrings(element, next))
-      return values.every((value) => value !== undefined) ? values.flat() : undefined
+      const values = node.elements.map((element) => namespaceValues(element, next))
+      return {
+        namespaces: values.flatMap((value) => value.namespaces),
+        unknown: values.some((value) => value.unknown),
+      }
     }
-    if (allowArray && ts.isSpreadElement(node)) return namespaceStrings(node.expression, next)
+    if (allowArray && ts.isSpreadElement(node)) return namespaceValues(node.expression, next)
     if (
       !ts.isIdentifier(node) &&
       !ts.isPropertyAccessExpression(node) &&
       !ts.isElementAccessExpression(node)
     )
-      return undefined
+      return unknown
     const values = declarations(node).filter(ts.isVariableDeclaration)
-    if (!values.length) return undefined
+    if (!values.length) return unknown
     const resolved = values.map((declaration) =>
       ts.isVariableDeclarationList(declaration.parent) &&
       declaration.parent.flags & ts.NodeFlags.Const &&
       declaration.initializer
-        ? namespaceStrings(declaration.initializer, next, false)
-        : undefined,
+        ? namespaceValues(declaration.initializer, next, false)
+        : unknown,
     )
-    return resolved.every((value) => value !== undefined) ? resolved.flat() : undefined
+    return {
+      namespaces: resolved.flatMap((value) => value.namespaces),
+      unknown: resolved.some((value) => value.unknown),
+    }
+  }
+  function namespaceStrings(expression: ts.Expression): string[] {
+    const { namespaces, unknown } = namespaceValues(expression)
+    // Unknown values may select any catalog namespace. Preserve known values
+    // outside the catalog too, so route validation still sees those requests.
+    return unknown ? [...new Set([...namespaces, ...catalog.keys()])] : namespaces
   }
   function recordLoadedNamespaces(expression: ts.Expression): boolean {
-    const namespaces = namespaceStrings(expression)
-    if (!namespaces) return false
+    const { namespaces, unknown } = namespaceValues(expression)
     for (const namespace of namespaces) {
       currentNamespaces.add(namespace)
       explain('usage', [namespace], 'Explicit namespace load.')
     }
-    return true
+    return !unknown
   }
 
   function visit(node: ts.Node) {
@@ -570,7 +582,7 @@ export function checkTranslationGraph(
             : node.arguments.at(-1)
         const namespaceOption = property(options, 'ns')
         const namespaces = namespaceOption && namespaceStrings(namespaceOption)
-        if (namespaceOption && !namespaces)
+        if (namespaceOption && namespaceValues(namespaceOption).unknown)
           explain(
             'unknown-namespace',
             [],
@@ -596,7 +608,7 @@ export function checkTranslationGraph(
         if (value) attributes.set(attribute.name.getText(), value)
       }
       const key = attributes.get('i18nKey')
-      if (attributes.has('ns') && !namespaceStrings(attributes.get('ns')!))
+      if (attributes.has('ns') && namespaceValues(attributes.get('ns')!).unknown)
         explain('unknown-namespace', [], 'The Trans namespace cannot be narrowed to finite values.')
       if (key)
         consume(key, {

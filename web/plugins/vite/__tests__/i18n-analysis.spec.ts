@@ -824,6 +824,42 @@ describe('i18n build check', () => {
     },
   )
 
+  it.each(["['login', ns]", "[...ns, 'login']", "[...['login', ...ns]]"])(
+    'rejects known undeclared namespaces in partially dynamic arrays: %s',
+    async (argument) => {
+      writeFileSync(localeFile, '{}')
+      writeFileSync(
+        path.join(root, 'i18n/lib.client.ts'),
+        'export function useTranslation(ns: unknown) { return ns }',
+      )
+      mkdirSync(path.join(root, 'app'), { recursive: true })
+      writeFileSync(
+        path.join(root, 'app/page.ts'),
+        `
+        import { useTranslation } from '../i18n/lib.client'
+        export function page(ns: string[]) { return useTranslation(${argument}) }
+      `,
+      )
+      const reports: AnalysisReport[] = []
+      await expect(
+        build({
+          root,
+          configFile: false,
+          logLevel: 'silent',
+          plugins: [
+            i18nAnalysisPlugin({
+              getDeclaredNamespaces: () => ['app'],
+              onAnalysis: (report) => reports.push(report),
+            }),
+          ],
+          build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
+        }),
+      ).rejects.toThrow('Undeclared namespace: login')
+      expect(reports[0]!.routes[0]!.namespaces).toEqual(['login'])
+      expect(reports[0]!.routes[0]!.unknownNamespaceSources).toEqual(['app/page.ts'])
+    },
+  )
+
   it('reports runtime provider namespaces without blocking non-strict validation', async () => {
     writeFileSync(localeFile, '{}')
     writeFileSync(

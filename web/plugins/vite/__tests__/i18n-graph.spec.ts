@@ -206,6 +206,27 @@ describe('translation graph analysis', () => {
       expect(result.evidence.some((item) => item.kind === 'unknown-namespace')).toBe(true)
     })
 
+    it('keeps known loads and conservatively checks keys for unknown array members', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'Used', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/common.json', { used: 'Used', unused: 'Unused' })
+      writeSource(
+        'page.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+        export function page(ns: string) {
+          const { t } = useTranslation(['login', ns])
+          return t('used')
+        }
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.moduleNamespaces.get(path.join(webRoot, 'page.ts'))).toEqual(
+        new Set(['login', 'app', 'common']),
+      )
+      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toHaveLength(1)
+      expect(result.unused).toEqual({ app: ['unused'], common: ['unused'] })
+    })
+
     it('preserves a finite key type when an initializer cannot be evaluated', () => {
       writeJson('i18n/locales/en-US/app.json', { used: 'Used', unused: 'Unused' })
       writeSource(
