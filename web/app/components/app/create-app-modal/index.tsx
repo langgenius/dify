@@ -297,7 +297,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   </div>
                 )}
               </div>
-              <Separator className="h-[0.5px]" />
+              <Separator />
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <div className="mb-1 flex h-6 items-center">
