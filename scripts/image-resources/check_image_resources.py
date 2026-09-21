@@ -14,8 +14,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import unquote_to_bytes
 
-ROOT = Path(__file__).resolve().parent.parent
-CONFIG = ROOT / "scripts/image-resource-budgets.json"
+ROOT = Path(__file__).resolve().parents[2]
+CONFIG = Path(__file__).with_name("budgets.json")
 PREFIXES = ("web/public/", "web/app/", "packages/iconify-collections/assets/")
 RASTER_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif", ".ico", ".bmp", ".tif", ".tiff"}
 RULES = {"raster-bytes", "svg-gzip-bytes", "embedded-raster-bytes"}

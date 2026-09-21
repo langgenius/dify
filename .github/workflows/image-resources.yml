@@ -20,14 +20,14 @@ jobs:
           fetch-depth: 0
 
       - name: Test image checker
-        run: python3 -m unittest discover -s scripts -p 'test_check_image_resources.py'
+        run: python3 -m unittest discover -s scripts/image-resources -p 'test_check_image_resources.py'
 
       - name: Check image budgets
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           if [ -n "$BASE_SHA" ]; then
-            python3 scripts/check_image_resources.py --base "$BASE_SHA"
+            python3 scripts/image-resources/check_image_resources.py --base "$BASE_SHA"
           else
-            python3 scripts/check_image_resources.py --all
+            python3 scripts/image-resources/check_image_resources.py --all
           fi

@@ -137,10 +137,10 @@ class ImageBudgetTests(unittest.TestCase):
         self.run_git("add", ".")
         self.run_git("commit", "-qm", "changes")
         self.assertEqual(checker.image_paths(base, self.root), ["web/public/added.svg", unusual_name])
-        scripts = self.root / "scripts"
-        scripts.mkdir()
+        scripts = self.root / "scripts/image-resources"
+        scripts.mkdir(parents=True)
         shutil.copy(checker.__file__, scripts / "check_image_resources.py")
-        shutil.copy(checker.CONFIG, scripts / "image-resource-budgets.json")
+        shutil.copy(checker.CONFIG, scripts / "budgets.json")
         command = [sys.executable, str(scripts / "check_image_resources.py"), "--base", base]
         result = subprocess.run(command, cwd=self.root, capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 1, result.stderr)

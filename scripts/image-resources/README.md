@@ -6,7 +6,7 @@ The `Image resource budgets` workflow checks added or modified frontend images i
 
 The checker scans tracked images under `web/public/`, `web/app/`, and `packages/iconify-collections/assets/`. Documentation images elsewhere, remote images, generated icon JSON, and data URLs inside application code are outside its scope. It does not determine whether an asset is used at runtime.
 
-Budgets live in `scripts/image-resource-budgets.json`:
+Budgets live in `scripts/image-resources/budgets.json`:
 
 | Rule | Limit | Measurement |
 | --- | --- | --- |
@@ -23,8 +23,8 @@ These are review budgets, not proof that an image can be compressed without qual
 Run from the repository root:
 
 ```sh
-python3 scripts/check_image_resources.py --base origin/main
-python3 -m unittest discover -s scripts -p 'test_check_image_resources.py'
+python3 scripts/image-resources/check_image_resources.py --base origin/main
+python3 -m unittest discover -s scripts/image-resources -p 'test_check_image_resources.py'
 ```
 
 The comparison uses the merge base with the supplied revision and checks committed changes through `HEAD`, including renamed destinations and excluding deletions. Uncommitted changes are not selected by this mode.
@@ -32,7 +32,7 @@ The comparison uses the merge base with the supplied revision and checks committ
 To audit all tracked images, including historical violations:
 
 ```sh
-python3 scripts/check_image_resources.py --all
+python3 scripts/image-resources/check_image_resources.py --all
 ```
 
 A manual workflow run also performs the full audit. Existing over-budget images do not block unrelated PRs, but changing one requires optimization or an explicit exception. Full audits may fail on existing images.
