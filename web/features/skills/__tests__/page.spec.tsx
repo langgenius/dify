@@ -4,9 +4,9 @@ import type {
   SkillResponse,
   SkillTagResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
@@ -44,6 +44,27 @@ const mocks = vi.hoisted(() => ({
   tagsKey: vi.fn((_options: unknown): unknown[] => ['skill-tags']),
   tagsQueryOptions: vi.fn((_options: unknown) => ({})),
 }))
+
+vi.mock('react-i18next', async () => {
+  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+  const { createInstance } = await vi.importActual<typeof import('i18next')>('i18next')
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  const { default: skillTranslations } = await import('@/i18n/locales/en-US/skill.json')
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    fallbackLng: false,
+    keySeparator: false,
+    resources: { 'en-US': { skill: skillTranslations } },
+  })
+
+  return {
+    ...actual,
+    ...createReactI18nextMock(),
+    // Keep components embedded in translations, including the real Browse button.
+    Trans: (props: ComponentProps<typeof actual.Trans>) => <actual.Trans {...props} i18n={i18n} />,
+  }
+})
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -843,6 +864,102 @@ describe('SkillsPage', () => {
     },
   )
 
+  it('opens the file picker from Browse and waits for confirmation before importing', async () => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const fileInput = within(dialog).getByLabelText('skill.skillManagement.importDialog.browse')
+    const openFilePicker = vi.spyOn(fileInput, 'click')
+
+    try {
+      await user.click(within(dialog).getByRole('button', { name: 'Browse' }))
+      expect(openFilePicker).toHaveBeenCalledOnce()
+    } finally {
+      openFilePicker.mockRestore()
+    }
+
+    const file = new File(['skill'], 'refund.zip', { type: 'application/zip' })
+    await user.upload(fileInput, file)
+    expect(within(dialog).getByText(file.name)).toBeInTheDocument()
+    expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+    await waitFor(() =>
+      expect(mocks.importSkillMutationFn).toHaveBeenCalledWith(
+        { body: { file } },
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('accepts a file drag after leaving and re-entering the drop zone, then waits for confirmation', async () => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const dropZone = within(dialog).getByRole('group', {
+      name: 'skill.skillManagement.importDialog.title',
+    })
+    const description = within(dropZone).getByText('skill.skillManagement.importDialog.description')
+    const file = new File(['skill'], 'refund.zip', { type: 'application/zip' })
+    const dataTransfer = { files: [file], types: ['Files'] }
+
+    expect(fireEvent.dragEnter(dropZone, { dataTransfer })).toBe(false)
+    expect(fireEvent.dragEnter(description, { dataTransfer })).toBe(false)
+    fireEvent.dragLeave(description, { dataTransfer })
+    fireEvent.dragLeave(dropZone, { dataTransfer })
+    expect(within(dialog).queryByText(file.name)).not.toBeInTheDocument()
+
+    expect(fireEvent.dragEnter(dropZone, { dataTransfer })).toBe(false)
+    const dragOver = createEvent.dragOver(dropZone, { dataTransfer })
+    expect(fireEvent(dropZone, dragOver)).toBe(false)
+    expect(dragOver).toHaveProperty('dataTransfer.dropEffect', 'copy')
+    expect(fireEvent.drop(dropZone, { dataTransfer })).toBe(false)
+    expect(within(dialog).getByText(file.name)).toBeInTheDocument()
+    expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+    await waitFor(() =>
+      expect(mocks.importSkillMutationFn).toHaveBeenCalledWith(
+        { body: { file } },
+        expect.anything(),
+      ),
+    )
+  })
+
+  it.each(['text/plain', 'text/uri-list'])(
+    'does not intercept %s drags or clear the selected package',
+    async (type) => {
+      const user = userEvent.setup()
+      renderSkillsPage()
+      const dialog = await openImportDialog(user)
+      const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
+      await user.upload(
+        within(dialog).getByLabelText('skill.skillManagement.importDialog.browse'),
+        file,
+      )
+      const dropZone = within(dialog).getByRole('group', {
+        name: 'skill.skillManagement.importDialog.title',
+      })
+      const dataTransfer = { files: [], types: [type] }
+
+      expect(fireEvent.dragEnter(dropZone, { dataTransfer })).toBe(true)
+      expect(fireEvent.dragOver(dropZone, { dataTransfer })).toBe(true)
+      fireEvent.dragLeave(dropZone, { dataTransfer })
+      expect(fireEvent.drop(dropZone, { dataTransfer })).toBe(true)
+      expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+      expect(within(dialog).getByText(file.name)).toBeInTheDocument()
+      expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+
+      await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+      await waitFor(() =>
+        expect(mocks.importSkillMutationFn).toHaveBeenCalledWith(
+          { body: { file } },
+          expect.anything(),
+        ),
+      )
+    },
+  )
+
   it.each(['common.operation.cancel', 'common.operation.close'])(
     'clears the staged package when dismissed with %s and reopened',
     async (closeAction) => {
@@ -958,12 +1075,19 @@ describe('SkillsPage', () => {
     await user.click(cancelButton)
     await user.click(closeButton)
     await user.keyboard('{Escape}')
-    fireEvent.drop(
-      within(dialog).getByRole('group', { name: 'skill.skillManagement.importDialog.title' }),
-      {
-        dataTransfer: { files: [new File(['other'], 'replacement.zip')], types: ['Files'] },
-      },
-    )
+    const dropZone = within(dialog).getByRole('group', {
+      name: 'skill.skillManagement.importDialog.title',
+    })
+    const dataTransfer = {
+      files: [new File(['other'], 'replacement.zip')],
+      types: ['Files'],
+    }
+    expect(fireEvent.dragEnter(dropZone, { dataTransfer })).toBe(false)
+    const dragOver = createEvent.dragOver(dropZone, { dataTransfer })
+    expect(fireEvent(dropZone, dragOver)).toBe(false)
+    expect(dragOver).toHaveProperty('dataTransfer.dropEffect', 'none')
+    fireEvent.dragLeave(dropZone, { dataTransfer })
+    fireEvent.drop(dropZone, { dataTransfer })
 
     expect(dialog).toBeInTheDocument()
     expect(within(dialog).getByText('refund.skill')).toBeInTheDocument()
