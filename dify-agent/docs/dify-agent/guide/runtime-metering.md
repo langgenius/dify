@@ -1,107 +1,121 @@
 # E2B runtime metering
 
-Sandbox usage is independent of LLM tokens and message latency. One ledger row
-represents one E2B `sandboxExecutionId`, from start/resume to pause/kill.
-Repeated connects, retries, file access and overlapping leases must not multiply
-the same execution's metered duration.
+One ledger row represents one E2B `sandboxExecutionId`, from start/resume to
+pause/kill. Provider execution time and resource sizes determine compute usage;
+LLM token usage, message latency and local SDK-call duration do not.
 
-## Ownership and data flow
+## Scheduled collection and boundaries
 
-The Dify API owns `agent_sandbox_usage_events` and `agent_sandbox_executions`.
-The agent backend has no SQL connection. It observes control-plane operations,
-directly awaits the inner API once for each diagnostic event, and polls the E2B
-lifecycle API with its existing project key. The authenticated Dify inner API
-commits events and projects provider execution usage atomically.
+The Dify API's existing Celery Beat schedule dispatches
+`schedule.collect_agent_sandbox_usage.collect_agent_sandbox_usage` every 60 seconds
+by default, through the existing `ops_trace` worker queue. The job calls
+`POST /internal/e2b/usage/collect` on the Agent backend using its existing Bearer
+service token and a `project_id` body. The E2B key stays in the Agent backend.
 
-Before creating a binding, the API independently commits an allocation owner
-snapshot. `allocation_id` is the already allocated binding UUID; there is no
-new create-binding request field. The E2B adapter includes this ID in sandbox
-metadata. Accounting evidence survives the caller's business transaction rolling
-back or the business resource being deleted. Existing bindings are registered on
-their next verified lookup, without importing their historical usage.
+The provider-specific endpoint performs one bounded scan, using request-scoped
+HTTP clients. It reads E2B lifecycle events and posts them to the Dify API's
+idempotent usage ingestion endpoint. It returns `{"completed": true}` only after
+all scanned pages and the checkpoint have been acknowledged. Partial scans return
+`completed=false`; provider/API errors fail this accounting request only.
 
-Physical identity is `(provider, provider_project_id, provider_execution_id)`.
-Environments have separate databases, so neither table has an environment field.
-The project setting is also an ingestion allowlist, not a credential.
+There is no Agent-process polling loop, Redis leader election, log outbox,
+observation worker, or requested/observed operation reporting. Generic leases,
+Agent runs, files, snapshots and binding lookups do not participate in metering.
+Their timing, cancellation handling and SDK retries retain their normal behavior.
+Metering misconfiguration is checked when collection is invoked, rather than
+becoming a prerequisite for business runtime startup or binding operations.
 
-## Configuration and activation
+The endpoint has a 240-second deadline. The scheduled HTTP caller has a
+260-second timeout, and the Celery task has 270/300-second soft/hard limits.
+Scheduled messages expire after one collection interval to avoid stale backlog.
+There is no automatic HTTP retry; future scheduled scans can redeliver provider
+IDs safely. Overlapping tasks may duplicate reads, but cannot multiply usage.
 
-Apply the database migrations before enabling metering. Configure every Dify API
-or worker process that creates or resolves Agent bindings:
+## Data and attribution
+
+The API owns `agent_sandbox_usage_events` and `agent_sandbox_executions`.
+Ingestion persists provider facts and projects execution rows atomically; the
+execution key is `(provider, provider_project_id, provider_execution_id)`.
+A short project transaction lock protects ingestion. Binding creation/lookups do
+not register allocations, write accounting rows or acquire that lock.
+Steady-state usage-state reads do not take a project `FOR UPDATE` lock; activation
+can be initialized once when first needed.
+
+E2B's existing sandbox metadata contains binding, tenant, Agent and workspace
+identifiers. During background ingestion, optional attribution checks those IDs
+against the existing Binding → Workspace → App/Agent tenant-owned chain and the
+physical sandbox reference. It never trusts labels alone. Missing, malformed or
+already-deleted business records leave attribution unresolved while preserving
+complete project-level provider usage. A previously verified ownership snapshot
+survives later business deletion. Conflicting ownership is not silently reassigned.
+
+No accounting callback or transaction is added to the business path. There is no
+pre-create allocation journal. Older diagnostic/allocation columns and records
+are not destructively migrated in this revision; new accounting accepts only
+provider events and collector checkpoint/coverage-gap control records. Table
+retention is unchanged, with no new automatic cleanup policy.
+
+## Configuration
+
+Apply the existing usage-table migration before first enabling metering.
+Configure Dify API, Beat and the workers consuming `ops_trace` consistently:
 
 ```dotenv
 AGENT_SANDBOX_METERING_ENABLED=true
 AGENT_SANDBOX_METERING_PROJECT_ID=<E2B project/team ID>
-AGENT_SANDBOX_METERING_START_AT=<whole-second UTC instant, e.g. 2026-10-01T00:00:00Z>
+AGENT_SANDBOX_METERING_START_AT=<whole-second UTC instant>
+AGENT_SANDBOX_METERING_INTERVAL_SECONDS=60
 ```
 
-Configure the agent backend:
+The task reuses `AGENT_BACKEND_BASE_URL` and `AGENT_BACKEND_API_TOKEN`; the
+existing SSRF-safe HTTP policy must permit that internal service. No E2B key is
+copied into API or worker configuration.
+
+Configure the Agent backend's one-shot endpoint:
 
 ```dotenv
 DIFY_AGENT_SANDBOX_METERING_ENABLED=true
 DIFY_AGENT_E2B_PROJECT_ID=<same E2B project/team ID>
-DIFY_AGENT_SANDBOX_METERING_POLL_INTERVAL_SECONDS=60
 DIFY_AGENT_SANDBOX_METERING_OVERLAP_SECONDS=900
 DIFY_AGENT_SANDBOX_METERING_FULL_SCAN_INTERVAL_SECONDS=3600
 DIFY_AGENT_SANDBOX_METERING_MAX_PAGES=1000
 ```
 
-The backend must use `DIFY_AGENT_RUNTIME_BACKEND=e2b` and already have its E2B
-key, inner API URL and inner API key configured. Do not copy the E2B key into
-the API or into either usage table. The backend validates its settings at startup.
-Both feature flags default to false.
+It reuses the existing E2B key, `DIFY_AGENT_API_TOKEN`, inner API URL and inner API
+key. The new endpoint requires a nonempty Bearer-token configuration even when
+legacy control-plane routes permit unauthenticated local development.
+`DIFY_AGENT_SANDBOX_METERING_POLL_INTERVAL_SECONDS` is no longer used: the interval
+belongs to Celery Beat on the API side. Both metering feature flags default off.
 
-The API persists T0 and rejects changing it after activation. Restarts must not
-reset the lower bound. Only executions whose provider start time is at or after
-T0 are metered; an execution that began earlier is excluded even if its terminal
-event arrives later. A previously existing sandbox resumed after T0 produces a
-new execution and is included. There is no historical backfill.
-
-`GET /inner/api/agent/sandbox-usage/state?project_id=...` reports activation and
-completed scans. `POST /inner/api/agent/sandbox-usage/events` accepts at most 100
-events and acknowledges only a committed batch. Both use `agent_inner_api_only`
-and `X-Inner-Api-Key`.
+Activation T0 is persisted and immutable. Only provider executions started at or
+after T0 are metered; starting before T0 and ending after it does not include an
+old execution. Resuming an older sandbox after T0 creates a new execution and is
+included. There is no historical backfill and no environment column; databases
+separate environments. A project ID also scopes and allowlists ingestion.
 
 ## Failure semantics
 
-- Only E2B terminal execution data populates `metered_duration_ms`; a local
-  `finally`, RPC duration or SDK expiration deadline is never a billing clock.
-- A start/resume can create a pending execution without completed usage. A late
-  start cannot reopen a metered execution. Missing terminal fields remain
-  unresolved rather than becoming zero usage.
-- Provider event IDs deduplicate repeated delivery. Conflicting facts are
-  retained and flagged; duplicate durations are never added together.
-- Each operation observation directly awaits one inner API request with a
-  one-second overall deadline and a 64 KiB event limit. There is no operation-log
-  queue, background sender, batch buffer, shutdown drain, persistent outbox or
-  delivery retry. HTTP errors, timeout, invalid payloads and invalid ACKs produce
-  a warning containing only the error class, then normal business work continues.
-- This reporting adds a short wait to the calling operation: requested and
-  observed events can add up to roughly two seconds per lifecycle attempt if the
-  API is unresponsive. Waits while the sandbox is running are part of its actual
-  provider-metered lifetime. Cancellation or process exit can lose observations.
-- Business cancellation propagates. Reporting is skipped when the current task
-  is already cancelling, so optional diagnostics do not delay cancellation
-  cleanup or clear its cancellation count. E2B callers keep the created or
-  connected handle before awaiting result reporting, and still attempt required
-  pause/kill if cancellation arrives during its request observation.
-- Provider execution events and independently registered allocation ownership
-  remain the metering inputs. Local RPC/reporting duration is never used as a
-  replacement for provider execution time.
-- Pollers share a project-scoped renewable Redis leader lease. Lease loss cancels
-  an in-progress scan. Database idempotency remains the final duplicate defense.
-- Every scan restarts provider offset pagination from zero and overlaps prior
-  coverage. A bounded or failed scan never commits a checkpoint. Periodic full
-  scans remain limited by T0 and the provider retention window.
-- E2B's documented default event retention is seven days. A larger ingestion gap
-  is recorded and logged; the service cannot reconstruct events already removed
-  by E2B. This is not silently reported as complete coverage.
-- Resource cleanup and lifecycle concurrency behavior are unchanged. Metering
-  does not itself kill or pause resources while reconciling them.
+- Only complete provider terminal execution data populates metered duration. A
+  local `finally`, SDK expiry deadline or business success is not a billing clock.
+- Missing terminal fields remain pending; conflicts remain visible. Late starts
+  cannot reopen closed executions, and duplicate facts do not add duration twice.
+- Every scan starts provider offset pagination from zero, overlaps prior coverage
+  and periodically rescans the retained window. Failed, cancelled or page-bounded
+  scans never claim a completed checkpoint. SQL idempotency protects redelivery.
+- The assumed default provider event retention is seven days. Older uncovered
+  intervals are recorded as gaps rather than reconstructed or counted as zero.
+- A failed scheduled task affects accounting only. No accounting network request
+  is added to create/connect/pause/kill, lease helpers, runner or file operations.
+
+The API's private ingestion endpoints remain:
+`GET /inner/api/agent/sandbox-usage/state?project_id=...` and
+`POST /inner/api/agent/sandbox-usage/events`, authenticated with `X-Inner-Api-Key`.
+Event batches are limited to 100 records and 1 MiB, acknowledged after commit.
+They are for the isolated collector, not business-operation logging.
 
 ## Querying usage
 
-For fully covered, closed `quality='metered'` executions:
+For complete `quality='metered'` executions:
 
 ```text
 sandbox_hours = sum(metered_duration_ms) / 3600000
@@ -109,40 +123,30 @@ vcpu_hours = sum(metered_duration_ms * vcpu_count) / 3600000
 ram_gib_hours = sum(metered_duration_ms * memory_mib) / (3600000 * 1024)
 ```
 
-Use each execution's resource snapshot. Report pending/conflicting/unattributed
-records separately. For arbitrary UTC windows, clip each execution to `[A, B)`;
-the derived bucketing end is `started_at + metered_duration_ms`. E2B start time
-may have second precision, while its duration is milliseconds, so cross-boundary
-allocation is not claimed to be millisecond-accurate. Splitting a complete
-execution across windows must conserve its original duration.
+Project totals include complete executions with unresolved attribution; report
+that count separately. Tenant/app reports require verified resolved attribution.
+For UTC windows `[A, B)`, clip execution intervals using start plus provider
+duration. Start time can have second precision, so cross-boundary allocation is
+not claimed to be millisecond-accurate; complete-window totals conserve duration.
 
 ## Rollout checks
 
-1. Validate provider events access and the configured project with the backend's
-   existing key without logging it.
-2. Run migrations with metering disabled, then restart the relevant API/worker
-   and backend processes with a fixed T0.
-3. Verify state, a completed checkpoint, direct operation reporting and the
-   collector leader lease. Only the provider collector has a metering background
-   task; there is no observation queue, sender task or outbox.
-4. Exercise binding initialization, file list/read/download, snapshot creation
-   and restoration, successful/failed/cancelled Agent runs and cleanup.
-5. Compare the test allocations' ledger rows to their actual E2B execution
-   events. Replay events and confirm totals do not increase.
-6. Check late/missing terminal events, project rejection, start-time immutability,
-   and partial-scan failures. Do not test faults by stopping shared services.
-7. With an isolated observer and controlled HTTP endpoint, verify that reporting
-   waits for one request, failure is not retried, the deadline is bounded, later
-   observations still send, and cancellation propagates. Exercise cancellation
-   around create/connect/pause/kill reporting without stopping shared services.
+1. Verify Beat's schedule, task registration and an existing worker consuming
+   `ops_trace`, along with image revisions, flags, project and immutable T0.
+2. Verify the authenticated one-shot endpoint, real scheduled execution and
+   advancing checkpoints. The Agent must not start a metering poller or leader.
+3. Keep a real business binding until collection resolves its owner, then retire
+   it and confirm previously copied accounting remains. Also verify complete
+   project usage for test sandboxes without business records.
+4. Exercise model success/failure/cancellation, files/list/read/download/errors,
+   snapshots/restoration and resource cleanup. Isolated bad accounting settings
+   or failing accounting-service stubs must not make business lookups fail.
+5. Compare physical execution IDs, duration and resources against actual E2B
+   events; replay scans/events and confirm totals do not increase.
+6. Verify old outbox and collector-leader keys are absent after deployment. Do
+   not alter run-store keys or stop shared services to inject accounting faults.
 
-Upgrading from the outbox implementation does not migrate or replay its pending
-operation logs. After the new image is running, an operator may remove only the
-old `<redis-prefix>:sandbox-usage:<project-id>:outbox` key. Keep the collector
-leader key and the existing Agent run-store keys. No new environment variable or
-database migration is required for this delivery change.
-
-Rollback by disabling the two feature flags and restarting affected processes.
-Keep the accounting tables and the original T0; do not downgrade away collected
-usage. Table retention is unchanged; no automatic deletion is enabled by this
-implementation. Configuring a retention policy is a separate change.
+Disable the metering flags and restart the relevant processes to stop collection;
+business runtime behavior remains the same. Keep the ledger and original T0.
+The independent stdout-only sandbox file-error fix is tracked separately from
+this accounting integration.

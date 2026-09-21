@@ -1,9 +1,10 @@
 """Forward-only, provider-authoritative sandbox accounting.
 
 The activation event is also a project-scoped transaction lock. This keeps
-deduplication, owner registration, checkpoints, and execution projection atomic
+deduplication, checkpoints, and execution projection atomic
 across API workers without coupling billing records to business transactions.
-No network calls or business resource deletions belong in this service.
+Business creation/lookups never call accounting. Ownership is resolved only
+while collecting provider events. No network calls belong in this service.
 """
 
 import hashlib
@@ -21,11 +22,12 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
+from models.agent import Agent, AgentWorkspace, AgentWorkspaceBinding
 from models.agent_sandbox_usage import AgentSandboxExecution, AgentSandboxUsageEvent
+from models.model import App
 
 _T = TypeVar("_T")
-_OWNER_FIELDS = ("tenant_id", "app_id", "agent_id", "binding_id", "workspace_id")
-_APPLICATION_TYPES = {"operation_requested", "operation_observed", "collector_checkpoint", "collector_retention_gap"}
+_COLLECTOR_EVENT_TYPES = {"collector_checkpoint", "collector_retention_gap"}
 _TERMINAL_TYPES = {"sandbox.lifecycle.paused", "sandbox.lifecycle.killed"}
 _NONTERMINAL_TYPES = {"sandbox.lifecycle.created", "sandbox.lifecycle.resumed", "sandbox.lifecycle.updated"}
 
@@ -44,12 +46,6 @@ class SandboxUsageEvent(BaseModel):
     timestamp: str | None = None
     sandbox_id: str | None = Field(default=None, max_length=128)
     execution_id: str | None = Field(default=None, max_length=128)
-    allocation_id: UUID | None = None
-    operation_id: UUID | None = None
-    lease_id: UUID | None = None
-    attempt: int | None = Field(default=None, ge=1, le=32767)
-    purpose: str | None = Field(default=None, max_length=32)
-    correlation: dict[str, JsonValue] = Field(default_factory=dict)
     payload: dict[str, JsonValue]
     model_config = ConfigDict(extra="forbid")
 
@@ -241,7 +237,14 @@ class SandboxUsageService:
             ).all()
             ends = [end for _purpose, end in checkpoints if end is not None]
             full = [end for purpose, end in checkpoints if purpose == "full" and end is not None]
-            event_scope = AgentSandboxUsageEvent.provider_project_id == project_id
+            event_scope = sa.and_(
+                AgentSandboxUsageEvent.provider == "e2b",
+                AgentSandboxUsageEvent.provider_project_id == project_id,
+                sa.or_(
+                    AgentSandboxUsageEvent.source == "provider",
+                    AgentSandboxUsageEvent.event_type.in_(_COLLECTOR_EVENT_TYPES),
+                ),
+            )
             execution_scope = AgentSandboxExecution.provider_project_id == project_id
             diagnostics = {
                 "unresolved_events": session.scalar(
@@ -278,97 +281,16 @@ class SandboxUsageService:
                 "diagnostics": diagnostics,
             }
 
+        _, configured_start = cls._config(project_id)
+        with session_factory.create_session() as session:
+            activation = cls._event(session, project_id, "application", "metering_activated")
+            if activation is not None:
+                if _utc(activation.payload.get("started_at")) != configured_start:
+                    raise SandboxUsageError("sandbox_metering_start_is_immutable", status_code=409)
+                return read(session, configured_start)
+        # Only the first lookup initializes T0. Ordinary polling is SELECT-only,
+        # does not lock the project row, and cannot delay an ingestion transaction.
         return cls._write(project_id, read)
-
-    @classmethod
-    def register_allocation(
-        cls,
-        *,
-        allocation_id: str,
-        tenant_id: str,
-        app_id: str,
-        agent_id: str,
-        binding_id: str,
-        workspace_id: str,
-        sandbox_id: str | None = None,
-    ) -> None:
-        """Commit owner evidence independently, after the caller validates ownership.
-
-        No business-row lookup is performed here: a newly allocated Binding is
-        intentionally not yet committed. This operation is not exposed over HTTP.
-        """
-        if not dify_config.AGENT_SANDBOX_METERING_ENABLED:
-            return
-        project_id, _ = cls._config()
-        owner = {
-            name: str(UUID(value))
-            for name, value in (
-                ("tenant_id", tenant_id),
-                ("app_id", app_id),
-                ("agent_id", agent_id),
-                ("binding_id", binding_id),
-                ("workspace_id", workspace_id),
-            )
-        }
-        allocation_id = str(UUID(allocation_id))
-        if sandbox_id is not None and (not sandbox_id or len(sandbox_id) > 128):
-            raise SandboxUsageError("invalid_sandbox_id")
-
-        def register(session: Session, _start: datetime) -> None:
-            event_id = f"allocation:{allocation_id}"
-            row = cls._event(session, project_id, "application", event_id)
-            if sandbox_id is not None:
-                claim = session.scalar(
-                    sa.select(AgentSandboxUsageEvent)
-                    .where(
-                        AgentSandboxUsageEvent.provider_project_id == project_id,
-                        AgentSandboxUsageEvent.source == "application",
-                        AgentSandboxUsageEvent.event_type == "allocation_registered",
-                        AgentSandboxUsageEvent.sandbox_id == sandbox_id,
-                        AgentSandboxUsageEvent.allocation_id != allocation_id,
-                    )
-                    .limit(1)
-                )
-                if claim is not None:
-                    raise SandboxUsageError("sandbox_owner_conflict", status_code=409)
-            if row is None:
-                payload = {**owner, "allocation_id": allocation_id, "sandbox_id": sandbox_id}
-                row = AgentSandboxUsageEvent(
-                    provider="e2b",
-                    provider_project_id=project_id,
-                    source="application",
-                    source_event_id=event_id,
-                    event_type="allocation_registered",
-                    allocation_id=allocation_id,
-                    sandbox_id=sandbox_id,
-                    occurred_at=naive_utc_now(),
-                    payload=payload,
-                    canonical_hash=_hash(payload),
-                    projection_status="applied",
-                    **owner,
-                )
-                session.add(row)
-            elif any(getattr(row, name) != value for name, value in owner.items()):
-                raise SandboxUsageError("allocation_owner_conflict", status_code=409)
-            elif sandbox_id is not None:
-                if row.sandbox_id is not None and row.sandbox_id != sandbox_id:
-                    raise SandboxUsageError("allocation_sandbox_conflict", status_code=409)
-                if row.sandbox_id is None:
-                    row.sandbox_id = sandbox_id
-                    row.payload_versions = [
-                        *(row.payload_versions or []),
-                        {
-                            "hash": row.canonical_hash,
-                            "payload": row.payload,
-                            "received_at": _iso(row.received_at),
-                        },
-                    ]
-                    row.payload = {**row.payload, "sandbox_id": sandbox_id}
-                    row.canonical_hash = _hash(row.payload)
-            session.flush()
-            cls._attribute_pending(session, row)
-
-        cls._write(project_id, register)
 
     @classmethod
     def ingest(cls, *, project_id: str, events: list[SandboxUsageEvent]) -> dict[str, int]:
@@ -431,7 +353,7 @@ class SandboxUsageService:
                         previous.resolution = {**previous.resolution, "scope": "excluded_before_activation"}
                     return "ignored"
         else:
-            if event.type not in _APPLICATION_TYPES:
+            if event.type not in _COLLECTOR_EVENT_TYPES:
                 raise SandboxUsageError("unsupported_application_event")
             occurred = _utc(event.timestamp)
             if occurred is not None and occurred < start:
@@ -454,7 +376,7 @@ class SandboxUsageService:
         row = cls._event(session, project_id, event.source, event.id)
         if row is not None:
             if row.canonical_hash == digest:
-                if event.source == "provider" and row.projection_status in {"pending", "unresolved"}:
+                if event.source == "provider" and row.projection_status != "conflict":
                     cls._project_provider(session, row, canonical, start)
                 return "duplicates"
             versions = list(row.payload_versions or [])
@@ -462,7 +384,18 @@ class SandboxUsageService:
                 versions.append({"hash": digest, "payload": event.payload, "received_at": _iso(naive_utc_now())})
                 row.payload_versions = versions
             old = _mapping(row.resolution.get("canonical"))
-            merged = _enrich(old, canonical) if old and event.source == "provider" else None
+            # Attribution labels are optional. A bad/changed label must not
+            # invalidate otherwise identical provider-measured runtime.
+            merged = (
+                _enrich(
+                    {key: value for key, value in old.items() if key != "metadata"},
+                    {key: value for key, value in canonical.items() if key != "metadata"},
+                )
+                if old and event.source == "provider"
+                else None
+            )
+            if merged is not None:
+                merged["metadata"] = canonical.get("metadata") or old.get("metadata", {})
             if merged is None or row.projection_status == "conflict":
                 cls._conflict(session, row, "event_content_conflict")
                 return "conflicts"
@@ -480,12 +413,6 @@ class SandboxUsageService:
                 event_type=event.type,
                 sandbox_id=event.sandbox_id,
                 provider_execution_id=event.execution_id,
-                allocation_id=str(event.allocation_id) if event.allocation_id else None,
-                operation_id=str(event.operation_id) if event.operation_id else None,
-                lease_id=str(event.lease_id) if event.lease_id else None,
-                attempt=event.attempt,
-                purpose=event.purpose,
-                correlation=event.correlation,
                 occurred_at=occurred,
                 payload=event.payload,
                 canonical_hash=digest,
@@ -503,17 +430,6 @@ class SandboxUsageService:
             elif event.type == "collector_retention_gap":
                 row.projection_status = "unresolved"
                 row.projection_error_code = "provider_retention_gap"
-            owner = cls._owner(session, row, {})
-            if owner:
-                cls._copy_owner(row, owner)
-                if row.sandbox_id:
-                    if (owner.sandbox_id and owner.sandbox_id != row.sandbox_id) or cls._sandbox_has_other_owner(
-                        session, owner, row.sandbox_id
-                    ):
-                        cls._conflict(session, row, "allocation_sandbox_conflict")
-                        return "conflicts"
-                    owner.sandbox_id = row.sandbox_id
-                    cls._attribute_pending(session, owner)
         row.processed_at = naive_utc_now()
         session.flush()
         return "conflicts" if row.projection_status == "conflict" else "accepted"
@@ -538,89 +454,99 @@ class SandboxUsageService:
         ):
             raise SandboxUsageError("invalid_collector_checkpoint")
 
-    @classmethod
-    def _owner(
-        cls, session: Session, row: AgentSandboxUsageEvent, metadata: dict[str, Any]
-    ) -> AgentSandboxUsageEvent | None:
-        # Provider attribution is reconstructed from provider metadata/registered
-        # sandbox ownership, never the caller's optional envelope allocation ID.
-        allocation = metadata.get("dify.usage_allocation_id") if row.source == "provider" else row.allocation_id
-        if allocation:
-            if not isinstance(allocation, str):
-                return None
-            try:
-                allocation = str(UUID(allocation))
-            except ValueError:
-                return None
-            row.allocation_id = allocation
-            return cls._event(session, row.provider_project_id, "application", f"allocation:{allocation}")
-        query = sa.select(AgentSandboxUsageEvent).where(
-            AgentSandboxUsageEvent.provider_project_id == row.provider_project_id,
-            AgentSandboxUsageEvent.source == "application",
-            AgentSandboxUsageEvent.event_type == "allocation_registered",
-        )
-        binding = metadata.get("dify.binding_id")
-        if binding:
-            if not isinstance(binding, str):
-                return None
-            try:
-                binding = str(UUID(binding))
-            except ValueError:
-                return None
-            query = query.where(AgentSandboxUsageEvent.binding_id == binding)
-        elif row.sandbox_id:
-            query = query.where(AgentSandboxUsageEvent.sandbox_id == row.sandbox_id)
-        else:
+    @staticmethod
+    def _verified_owner(session: Session, sandbox_id: str, metadata: dict[str, Any]) -> AgentWorkspaceBinding | None:
+        """Resolve optional labels through the existing tenant-owned resource chain.
+
+        Metadata alone is never ownership evidence. Retired rows are still valid
+        historical associations until physical collection removes them.
+        """
+        binding_id = metadata.get("dify.binding_id")
+        tenant_id = metadata.get("dify.tenant_id")
+        if not isinstance(binding_id, str) or not isinstance(tenant_id, str):
             return None
-        owners = session.scalars(query.limit(2)).all()
-        return owners[0] if len(owners) == 1 else None
-
-    @staticmethod
-    def _copy_owner(target: AgentSandboxUsageEvent | AgentSandboxExecution, owner: AgentSandboxUsageEvent) -> None:
-        target.allocation_id = owner.allocation_id
-        for name in _OWNER_FIELDS:
-            setattr(target, name, getattr(owner, name))
-        if isinstance(target, AgentSandboxExecution):
-            target.attribution_status = "resolved"
-
-    @staticmethod
-    def _sandbox_has_other_owner(session: Session, owner: AgentSandboxUsageEvent, sandbox_id: str) -> bool:
-        return (
-            session.scalar(
-                sa.select(AgentSandboxUsageEvent.id)
-                .where(
-                    AgentSandboxUsageEvent.provider_project_id == owner.provider_project_id,
-                    AgentSandboxUsageEvent.source == "application",
-                    AgentSandboxUsageEvent.event_type == "allocation_registered",
-                    AgentSandboxUsageEvent.sandbox_id == sandbox_id,
-                    AgentSandboxUsageEvent.allocation_id != owner.allocation_id,
-                )
-                .limit(1)
+        try:
+            binding_id, tenant_id = str(UUID(binding_id)), str(UUID(tenant_id))
+        except ValueError:
+            return None
+        binding = session.scalar(
+            sa.select(AgentWorkspaceBinding)
+            .join(
+                AgentWorkspace,
+                sa.and_(
+                    AgentWorkspace.id == AgentWorkspaceBinding.workspace_id,
+                    AgentWorkspace.tenant_id == AgentWorkspaceBinding.tenant_id,
+                    AgentWorkspace.app_id == AgentWorkspaceBinding.app_id,
+                ),
             )
-            is not None
+            .join(
+                App,
+                sa.and_(
+                    App.id == AgentWorkspaceBinding.app_id,
+                    App.tenant_id == AgentWorkspaceBinding.tenant_id,
+                ),
+            )
+            .join(
+                Agent,
+                sa.and_(
+                    Agent.id == AgentWorkspaceBinding.agent_id,
+                    Agent.tenant_id == AgentWorkspaceBinding.tenant_id,
+                ),
+            )
+            .where(
+                AgentWorkspaceBinding.id == binding_id,
+                AgentWorkspaceBinding.tenant_id == tenant_id,
+                AgentWorkspaceBinding.backend_binding_ref == sandbox_id,
+                AgentWorkspace.backend_workspace_ref == sandbox_id,
+            )
         )
+        if binding is None:
+            return None
+        for key, expected in (
+            ("dify.agent_id", binding.agent_id),
+            ("dify.workspace_id", binding.workspace_id),
+        ):
+            supplied = metadata.get(key)
+            if supplied is not None and supplied != expected:
+                return None
+        return binding
 
     @classmethod
-    def _attribute_pending(cls, session: Session, owner: AgentSandboxUsageEvent) -> None:
-        predicates = [AgentSandboxExecution.allocation_id == owner.allocation_id]
-        if owner.sandbox_id:
-            predicates.append(AgentSandboxExecution.sandbox_id == owner.sandbox_id)
-        for execution in session.scalars(
-            sa.select(AgentSandboxExecution).where(
-                AgentSandboxExecution.provider_project_id == owner.provider_project_id, sa.or_(*predicates)
-            )
-        ):
-            if execution.attribution_status == "conflict":
-                continue
-            if (
-                execution.allocation_id
-                and execution.allocation_id != owner.allocation_id
-                or owner.sandbox_id
-                and execution.sandbox_id != owner.sandbox_id
-            ):
+    def _attribute_execution(cls, session: Session, execution: AgentSandboxExecution, metadata: dict[str, Any]) -> None:
+        owner = cls._verified_owner(session, execution.sandbox_id, metadata)
+        if owner is None or execution.attribution_status == "conflict":
+            # Existing snapshots survive missing/deleted business resources or
+            # malformed labels. No fallback to unverified allocation metadata.
+            return
+        expected = (owner.tenant_id, owner.app_id, owner.agent_id, owner.id, owner.workspace_id)
+        retained = (
+            execution.tenant_id,
+            execution.app_id,
+            execution.agent_id,
+            execution.binding_id,
+            execution.workspace_id,
+        )
+        if execution.binding_id is not None:
+            if retained != expected:
                 execution.attribution_status = "conflict"
-            else:
-                cls._copy_owner(execution, owner)
+            return
+        other_owner = session.scalar(
+            sa.select(AgentSandboxExecution.id)
+            .where(
+                AgentSandboxExecution.provider == execution.provider,
+                AgentSandboxExecution.provider_project_id == execution.provider_project_id,
+                AgentSandboxExecution.sandbox_id == execution.sandbox_id,
+                AgentSandboxExecution.attribution_status == "resolved",
+                AgentSandboxExecution.binding_id != owner.id,
+            )
+            .limit(1)
+        )
+        if other_owner is not None:
+            execution.attribution_status = "conflict"
+            return
+        execution.tenant_id, execution.app_id, execution.agent_id = owner.tenant_id, owner.app_id, owner.agent_id
+        execution.binding_id, execution.workspace_id = owner.id, owner.workspace_id
+        execution.attribution_status = "resolved"
 
     @classmethod
     def _project_provider(
@@ -628,7 +554,6 @@ class SandboxUsageService:
     ) -> None:
         row.sandbox_id = data["sandbox_id"]
         row.provider_execution_id = data["execution_id"]
-        row.allocation_id = None
         started_at = _utc(data["started_at"])
         if data["version"] != "v2" or not row.sandbox_id or not row.provider_execution_id:
             row.projection_status = "unresolved"
@@ -685,32 +610,14 @@ class SandboxUsageService:
             execution.started_at = started_at
             execution.started_at_source = "provider_execution"
             execution.started_at_precision_ms = 1000
-        owner = cls._owner(session, row, _mapping(data["metadata"]))
-        if execution.attribution_status == "conflict" or (
-            execution.allocation_id and row.allocation_id and execution.allocation_id != row.allocation_id
+        cls._attribute_execution(session, execution, _mapping(data["metadata"]))
+        for field, previous in (
+            ("template_id", execution.template_id),
+            ("template_build_id", execution.template_build_id),
+            ("vcpu_count", execution.vcpu_count),
+            ("memory_mib", execution.memory_mib),
         ):
-            execution.attribution_status = "conflict"
-            cls._conflict(session, row, "execution_owner_conflict", execution)
-            return
-        if owner:
-            if (owner.sandbox_id and owner.sandbox_id != row.sandbox_id) or cls._sandbox_has_other_owner(
-                session, owner, row.sandbox_id
-            ):
-                execution.attribution_status = "conflict"
-                cls._conflict(session, row, "allocation_sandbox_conflict", execution)
-                return
-            if execution.allocation_id and execution.allocation_id != owner.allocation_id:
-                execution.attribution_status = "conflict"
-                cls._conflict(session, row, "execution_owner_conflict", execution)
-                return
-            cls._copy_owner(row, owner)
-            cls._copy_owner(execution, owner)
-            owner.sandbox_id = row.sandbox_id
-        elif row.allocation_id:
-            execution.allocation_id = row.allocation_id
-        for field in ("template_id", "template_build_id", "vcpu_count", "memory_mib"):
             value = data[field]
-            previous = getattr(execution, field)
             if previous is not None and value is not None and previous != value:
                 cls._conflict(session, row, "execution_resources_conflict", execution)
                 return

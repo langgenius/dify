@@ -162,6 +162,7 @@ class TestCelerySSLConfiguration:
 
         # Mock all the scheduler configs
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.AGENT_SANDBOX_METERING_ENABLED = False
         mock_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED = False
         mock_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK = False
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
@@ -214,6 +215,7 @@ class TestCelerySSLConfiguration:
         mock_config.CELERY_TASK_ANNOTATIONS = {}
 
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.AGENT_SANDBOX_METERING_ENABLED = False
         mock_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED = True
         mock_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK = True
         mock_config.TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL = 7

@@ -42,11 +42,7 @@ class HomeSnapshotService:
         request: CreateHomeSnapshotFromBindingRequest,
     ) -> HomeSnapshotResponse:
         try:
-            async with open_runtime_lease(
-                self.execution_bindings,
-                request.backend_binding_ref,
-                purpose="snapshot",
-            ) as lease:
+            async with open_runtime_lease(self.execution_bindings, request.backend_binding_ref) as lease:
                 snapshot_ref = await self.home_snapshots.create_from_runtime(
                     spec=HomeSnapshotCreateSpec(
                         tenant_id=request.tenant_id,
