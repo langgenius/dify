@@ -10,17 +10,18 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
+import { AgentVersionRestore } from '../../version-restore'
 import { AgentPublishImpactDetails } from './publish-impact-details'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
@@ -119,9 +120,7 @@ export function AgentConfigurePublishBar({
     isPublishing,
   })
   const publishIsAvailable =
-    composerQuery.isSuccess &&
-    !isPublishing &&
-    (publishableState === 'draft' || publishableState === 'unpublished')
+    composerQuery.isSuccess && (publishableState === 'draft' || publishableState === 'unpublished')
   const workflowReferencesQueryOptions =
     consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
       input: {
@@ -132,59 +131,10 @@ export function AgentConfigurePublishBar({
       context: {
         silent: true,
       },
-      enabled: publishIsAvailable && !selectedVersionSnapshot,
+      enabled: publishIsAvailable && !isPublishing && !selectedVersionSnapshot,
     })
-  const workflowReferencesQuery = useQuery(workflowReferencesQueryOptions)
-  const restoreVersionMutation = useMutation(
-    consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions(),
-  )
-  const canPublish = publishIsAvailable
-
-  const handleRestoreVersion = (versionId: string) => {
-    if (restoreVersionMutation.isPending) return
-
-    restoreVersionMutation.mutate(
-      {
-        params: {
-          agent_id: agentId,
-          version_id: versionId,
-        },
-      },
-      {
-        onSuccess: async () => {
-          await Promise.all([
-            queryClient.invalidateQueries({
-              queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-                input: {
-                  params: {
-                    agent_id: agentId,
-                  },
-                },
-              }),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: consoleQuery.agent.byAgentId.composer.get.queryKey({
-                input: {
-                  params: {
-                    agent_id: agentId,
-                  },
-                },
-              }),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-            }),
-          ])
-          await onVersionRestored?.()
-          onExitVersions?.()
-          toast.success(tCommon(($) => $['api.actionSuccess']))
-        },
-        onError: () => {
-          toast.error(tCommon(($) => $['api.actionFailed']))
-        },
-      },
-    )
-  }
+  useQuery(workflowReferencesQueryOptions)
+  const canPublish = publishIsAvailable && !isPublishing
 
   const handlePublish = async () => {
     if (!canPublish) return
@@ -203,12 +153,10 @@ export function AgentConfigurePublishBar({
 
     let referencesResponse: AgentReferencingWorkflowsResponse | undefined
     try {
-      referencesResponse =
-        queryClient.getQueryData<AgentReferencingWorkflowsResponse>(
-          workflowReferencesQueryOptions.queryKey,
-        ) ??
-        workflowReferencesQuery.data ??
-        (await queryClient.ensureQueryData(workflowReferencesQueryOptions))
+      referencesResponse = await queryClient.query({
+        ...workflowReferencesQueryOptions,
+        staleTime: 0,
+      })
     } catch {
       toast.error(tCommon(($) => $['api.actionFailed']))
       return
@@ -241,12 +189,25 @@ export function AgentConfigurePublishBar({
 
   if (selectedVersionSnapshot) {
     return (
-      <AgentVersionRestoreBar
-        version={selectedVersionSnapshot}
-        isRestoring={restoreVersionMutation.isPending}
-        onExitVersions={onExitVersions}
-        onRestoreVersion={handleRestoreVersion}
-      />
+      <AgentVersionRestore
+        agentId={agentId}
+        onRestored={async () => {
+          await onVersionRestored?.()
+          onExitVersions?.()
+        }}
+      >
+        {(restore) => (
+          <AgentVersionRestoreBar
+            version={selectedVersionSnapshot}
+            isRestoring={restore.isPending}
+            restoreDisabled={restore.disabled}
+            onExitVersions={onExitVersions}
+            onRestoreVersion={
+              restore.canRestore ? () => restore.requestRestore(selectedVersionSnapshot) : undefined
+            }
+          />
+        )}
+      </AgentVersionRestore>
     )
   }
 
@@ -330,7 +291,7 @@ export function AgentConfigurePublishBar({
         metaLabel={currentStateMeta.metaLabel}
         showShortcut={currentStateMeta.showShortcut}
         statusLabel={currentStateMeta.statusLabel}
-        canPublish={canPublish}
+        publishIsAvailable={publishIsAvailable}
         onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
         onOpenVersions={() => onOpenVersions?.()}
         onPublishRequest={requestPublish}
@@ -347,7 +308,7 @@ function PublishBarActions({
   metaLabel,
   showShortcut,
   statusLabel,
-  canPublish,
+  publishIsAvailable,
   onCancelImpact,
   onOpenVersions,
   onPublishRequest,
@@ -359,12 +320,13 @@ function PublishBarActions({
   metaLabel: string
   showShortcut: boolean
   statusLabel: string
-  canPublish: boolean
+  publishIsAvailable: boolean
   onCancelImpact: () => void
   onOpenVersions: () => void
   onPublishRequest: () => void
 }) {
   const { t } = useTranslation('agentV2')
+  const publishButtonLabelId = useId()
 
   return (
     <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4">
@@ -404,13 +366,16 @@ function PublishBarActions({
       <Button
         type="button"
         variant="primary"
-        disabled={!canPublish}
+        disabled={!publishIsAvailable}
         loading={isPublishing}
+        aria-labelledby={publishButtonLabelId}
         className="h-8 gap-1 rounded-lg px-3"
         onClick={onPublishRequest}
       >
         {actionIcon && <span aria-hidden className={`${actionIcon} size-4 shrink-0`} />}
-        <span className="shrink-0">{actionLabel}</span>
+        <span id={publishButtonLabelId} className="shrink-0">
+          {actionLabel}
+        </span>
         {showShortcut && <PublishShortcut />}
       </Button>
     </div>
@@ -420,11 +385,13 @@ function PublishBarActions({
 function AgentVersionRestoreBar({
   version,
   isRestoring = false,
+  restoreDisabled,
   onExitVersions,
   onRestoreVersion,
 }: {
   version: AgentConfigSnapshotSummaryResponse
   isRestoring?: boolean
+  restoreDisabled?: boolean
   onExitVersions?: () => void
   onRestoreVersion?: (versionId: string) => void
 }) {
@@ -461,9 +428,9 @@ function AgentVersionRestoreBar({
       <Button
         type="button"
         variant="primary"
-        disabled={!onRestoreVersion}
+        disabled={!onRestoreVersion || restoreDisabled}
         loading={isRestoring}
-        className="h-8 rounded-lg px-3"
+        className="shrink-0"
         onClick={() => onRestoreVersion?.(version.id)}
       >
         {t(($) => $['agentDetail.versionHistory.restore'])}

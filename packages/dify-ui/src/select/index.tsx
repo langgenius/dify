@@ -2,10 +2,10 @@
 
 import type { ComponentRenderFn, HTMLProps } from '@base-ui/react/types'
 import type { VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 import {
@@ -31,7 +31,7 @@ function Select<Value, Multiple extends boolean | undefined = false>(
 const SelectGroup = BaseSelect.Group
 
 type SelectSelectedValue<Value, Multiple extends boolean | undefined = false> =
-  | (Multiple extends true ? Value[] : Value)
+  | (Multiple extends true ? readonly Value[] : Value)
   | null
 type SelectValueState<Value = unknown, Multiple extends boolean | undefined = false> = Omit<
   BaseSelect.Value.State,
@@ -62,7 +62,7 @@ type SelectGroupProps = BaseSelect.Group.Props
 
 const selectTriggerVariants = cva(
   [
-    'group flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
+    'group/select-trigger flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
     'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
     'data-placeholder:text-components-input-text-placeholder',
@@ -94,7 +94,7 @@ function SelectTrigger({ className, children, size, ...props }: SelectTriggerPro
   return (
     <BaseSelect.Trigger className={cn(selectTriggerVariants({ size, className }))} {...props}>
       <span className="min-w-0 grow truncate">{children}</span>
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-popup-open:text-text-secondary">
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-data-readonly/select-trigger:hidden group-[:hover:not([data-disabled])]/select-trigger:text-text-secondary data-popup-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
     </BaseSelect.Trigger>

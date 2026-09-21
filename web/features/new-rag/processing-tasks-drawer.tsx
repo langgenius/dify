@@ -20,9 +20,10 @@ import {
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { consoleQuery } from '@/service/client'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
+import { consoleQuery } from '@/service/console'
 import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
 
 type TaskAction = 'cancel' | 'retry'
@@ -150,7 +151,7 @@ export function ProcessingTasksDrawer({
   const retryTask = useMutation(
     consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry.mutationOptions(),
   )
-  const pendingActionsRef = useRef(new Set<string>())
+  const pendingActionsRef = useRefWithInit(() => new Set<string>())
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const taskQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
   const documentQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
@@ -222,8 +223,8 @@ export function ProcessingTasksDrawer({
     () => new Map(tasks.map((task) => [task.id, taskLifecycle(task)])),
     [tasks],
   )
-  const taskLifecycleGenerationsRef = useRef(
-    new Map<string, { generation: number; lifecycle: string }>(),
+  const taskLifecycleGenerationsRef = useRefWithInit(
+    () => new Map<string, { generation: number; lifecycle: string }>(),
   )
   useLayoutEffect(() => {
     actionResultsValidRef.current = actionResultsValid
@@ -240,7 +241,7 @@ export function ProcessingTasksDrawer({
     for (const taskId of taskLifecycleGenerationsRef.current.keys()) {
       if (!currentTaskIds.has(taskId)) taskLifecycleGenerationsRef.current.delete(taskId)
     }
-  }, [actionResultsValid, tasks])
+  }, [actionResultsValid, tasks, taskLifecycleGenerationsRef])
 
   useEffect(() => {
     openRef.current = open
@@ -428,7 +429,6 @@ export function ProcessingTasksDrawer({
                     <Button
                       ref={permissionQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
-                      aria-busy={permissionQueryFetching}
                       className="mt-3"
                       loading={permissionQueryFetching}
                       size="small"
@@ -452,7 +452,6 @@ export function ProcessingTasksDrawer({
                     <Button
                       ref={taskQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.tasksErrorDescription'])}`}
-                      aria-busy={taskQueryFetching}
                       className="mt-3"
                       loading={taskQueryFetching}
                       size="small"
@@ -476,7 +475,6 @@ export function ProcessingTasksDrawer({
                     <Button
                       ref={documentQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-                      aria-busy={documentQueryFetching}
                       className="mt-3"
                       loading={documentQueryFetching}
                       size="small"
@@ -494,7 +492,7 @@ export function ProcessingTasksDrawer({
                 )}
                 {taskQueryPending && !orderedTasks.length ? (
                   <div className="flex min-h-40 items-center justify-center">
-                    <Loading />
+                    <LoadingPlaceholder />
                   </div>
                 ) : orderedTasks.length ? (
                   <ul className="divide-y divide-divider-subtle">
@@ -560,8 +558,6 @@ export function ProcessingTasksDrawer({
                                   : undefined
                               }
                               size="small"
-                              aria-busy={pendingActions.has(task.id)}
-                              disabled={pendingActions.has(task.id)}
                               loading={pendingActions.has(task.id)}
                               onBlur={(event) => {
                                 if (event.relatedTarget) focusedTaskActionRef.current = null
@@ -581,8 +577,6 @@ export function ProcessingTasksDrawer({
                                   : undefined
                               }
                               size="small"
-                              aria-busy={pendingActions.has(task.id)}
-                              disabled={pendingActions.has(task.id)}
                               loading={pendingActions.has(task.id)}
                               onBlur={(event) => {
                                 if (event.relatedTarget) focusedTaskActionRef.current = null
@@ -608,7 +602,6 @@ export function ProcessingTasksDrawer({
                   <div className="mt-4 flex justify-center">
                     <Button
                       ref={loadMoreButtonRef}
-                      aria-busy={isFetchingNextTaskPage || isFetchingNextDocumentPage}
                       loading={isFetchingNextTaskPage || isFetchingNextDocumentPage}
                       onBlur={() => {
                         loadMoreRequestedRef.current = false

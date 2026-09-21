@@ -5,7 +5,7 @@ const mockExploreAppsGet = vi.hoisted(() => vi.fn())
 const mockExploreAppDetailGet = vi.hoisted(() => vi.fn())
 const mockInstalledAppsGet = vi.hoisted(() => vi.fn())
 
-vi.mock('./client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     explore: {
       apps: {

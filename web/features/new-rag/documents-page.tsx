@@ -7,13 +7,13 @@ import type {
 } from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import {
   datasetDefaultPermissionKeysAtom,
   refreshWorkspacePermissionKeysAfterMutationDenialAtom,
@@ -22,7 +22,8 @@ import {
   workspacePermissionKeysFetchingAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
 import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'
@@ -186,21 +187,30 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   >({})
   const [terminalTaskPins, setTerminalTaskPins] = useState<Record<string, TerminalTaskPin>>({})
   const [taskObserverGenerations, setTaskObserverGenerations] = useState<Record<string, number>>({})
-  const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
-  const failedTaskPollGenerationsRef = useRef(new Map<string, number>())
-  const blockedFailedTaskPollVersionsRef = useRef(new Map<string, string>())
-  const failedPollAuxiliaryDenialsRef = useRef(new Map<string, AuxiliaryTaskReadDenial>())
-  const terminalConfirmableAuxiliaryDenialsRef = useRef(new Map<string, AuxiliaryTaskReadDenial>())
-  const equalRetryListGenerationsRef = useRef(new Map<string, number>())
-  const terminalReconciliationTimeoutsRef = useRef(new Map<string, number>())
-  const terminalReconciliationControllersRef = useRef(new Map<string, AbortController>())
-  const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
+  const terminalReconciliationGenerationsRef = useRefWithInit(() => new Map<string, number>())
+  const failedTaskPollGenerationsRef = useRefWithInit(() => new Map<string, number>())
+  const blockedFailedTaskPollVersionsRef = useRefWithInit(() => new Map<string, string>())
+  const failedPollAuxiliaryDenialsRef = useRefWithInit(
+    () => new Map<string, AuxiliaryTaskReadDenial>(),
+  )
+  const terminalConfirmableAuxiliaryDenialsRef = useRefWithInit(
+    () => new Map<string, AuxiliaryTaskReadDenial>(),
+  )
+  const equalRetryListGenerationsRef = useRefWithInit(() => new Map<string, number>())
+  const terminalReconciliationTimeoutsRef = useRefWithInit(() => new Map<string, number>())
+  const terminalReconciliationControllersRef = useRefWithInit(
+    () => new Map<string, AbortController>(),
+  )
+  const pendingTerminalProgressRef = useRefWithInit(
+    () => new Map<string, ProcessingTaskProgressEvent>(),
+  )
   const taskEventCursorsRef = useRef(new Map<string, string>())
   const streamActiveOverrideVersionsRef = useRef(new Map<string, string>())
-  const trustedActiveOverrideVersionsRef = useRef(new Map<string, TrustedActiveOverride>())
-  const trustedOverrideListGenerationsRef = useRef(new Map<string, number>())
-  const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
-  if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
+  const trustedActiveOverrideVersionsRef = useRefWithInit(
+    () => new Map<string, TrustedActiveOverride>(),
+  )
+  const trustedOverrideListGenerationsRef = useRefWithInit(() => new Map<string, number>())
+  const taskProgressStoreRef = useRefWithInit(createTaskProgressStore)
   const taskProgressStore = taskProgressStoreRef.current
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
@@ -242,7 +252,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     if (!documentPermissionDenied) return
     failedPollAuxiliaryDenialsRef.current.clear()
     terminalConfirmableAuxiliaryDenialsRef.current.clear()
-  }, [documentPermissionDenied])
+  }, [
+    documentPermissionDenied,
+    failedPollAuxiliaryDenialsRef,
+    terminalConfirmableAuxiliaryDenialsRef,
+  ])
   const tasksQueryOptions = useMemo(
     () =>
       consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
@@ -445,7 +459,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         trustedOverrideListGenerationsRef.current.delete(task.id)
       }
     }
-  }, [tasks])
+  }, [tasks, trustedActiveOverrideVersionsRef, trustedOverrideListGenerationsRef])
 
   useEffect(() => {
     const clearedActiveTaskIds: string[] = []
@@ -470,9 +484,19 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       for (const taskId of clearedActiveTaskIds) next[taskId] = (next[taskId] ?? 0) + 1
       return next
     })
-  }, [auxiliaryTaskReadGuard, baseTasks, effectiveTaskById, taskListGeneration])
-  const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
-  const currentTaskVersionRef = useRef(new Map(tasks.map((task) => [task.id, task.updatedAt])))
+  }, [
+    auxiliaryTaskReadGuard,
+    baseTasks,
+    effectiveTaskById,
+    taskListGeneration,
+    terminalConfirmableAuxiliaryDenialsRef,
+  ])
+  const currentTaskStateRef = useRefWithInit(
+    () => new Map(tasks.map((task) => [task.id, task.state])),
+  )
+  const currentTaskVersionRef = useRefWithInit(
+    () => new Map(tasks.map((task) => [task.id, task.updatedAt])),
+  )
   useLayoutEffect(() => {
     const currentTaskIds = new Set(tasks.map((task) => task.id))
     for (const task of tasks) {
@@ -487,7 +511,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       currentTaskStateRef.current.delete(taskId)
       currentTaskVersionRef.current.delete(taskId)
     }
-  }, [tasks])
+  }, [tasks, currentTaskStateRef, currentTaskVersionRef])
 
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
   const documentStatuses = useMemo(
@@ -813,7 +837,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }
     if (shouldRestoreFocus) documentPermissionAlertRef.current?.focus()
     bulkActionsHadFocusRef.current = false
-  }, [permissionDenialMask, permissionDenied, refetchSourcesQuery, refetchTasksQuery, tasksOpen])
+  }, [
+    permissionDenialMask,
+    permissionDenied,
+    refetchSourcesQuery,
+    refetchTasksQuery,
+    tasksOpen,
+    blockedFailedTaskPollVersionsRef,
+  ])
 
   useEffect(() => {
     if (
@@ -1123,7 +1154,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         window.clearTimeout(requestTimeout)
       }
     },
-    [auxiliaryTaskReadGuard, denyAuxiliaryTaskRead, knowledgeSpaceId, taskProgressStore],
+    [
+      auxiliaryTaskReadGuard,
+      denyAuxiliaryTaskRead,
+      knowledgeSpaceId,
+      taskProgressStore,
+      currentTaskStateRef,
+      currentTaskVersionRef,
+      terminalReconciliationTimeoutsRef,
+      terminalReconciliationControllersRef,
+      terminalReconciliationGenerationsRef,
+      failedPollAuxiliaryDenialsRef,
+      terminalConfirmableAuxiliaryDenialsRef,
+      trustedActiveOverrideVersionsRef,
+      blockedFailedTaskPollVersionsRef,
+      failedTaskPollGenerationsRef,
+    ],
   )
 
   useEffect(() => {
@@ -1147,7 +1193,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       terminalReconciliationGenerationsRef.current.set(task.id, reconciliationGeneration)
       void reconcileTerminalTask(task.id, task.updatedAt, reconciliationGeneration)
     }
-  }, [baseTasks, permissionDenied, reconcileTerminalTask, taskListGeneration, taskOverrides])
+  }, [
+    baseTasks,
+    permissionDenied,
+    reconcileTerminalTask,
+    taskListGeneration,
+    taskOverrides,
+    trustedActiveOverrideVersionsRef,
+    trustedOverrideListGenerationsRef,
+    terminalReconciliationGenerationsRef,
+  ])
 
   useEffect(
     () => () => {
@@ -1158,7 +1213,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         window.clearTimeout(timeout)
       terminalReconciliationTimeoutsRef.current.clear()
     },
-    [knowledgeSpaceId],
+    [knowledgeSpaceId, terminalReconciliationControllersRef, terminalReconciliationTimeoutsRef],
   )
 
   useEffect(() => {
@@ -1181,7 +1236,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       window.clearTimeout(timeout)
     terminalReconciliationTimeoutsRef.current.clear()
     equalRetryListGenerationsRef.current.clear()
-  }, [knowledgeSpaceId, permissionDenied, queryClient])
+  }, [
+    knowledgeSpaceId,
+    permissionDenied,
+    queryClient,
+    terminalReconciliationControllersRef,
+    terminalReconciliationGenerationsRef,
+    terminalReconciliationTimeoutsRef,
+    equalRetryListGenerationsRef,
+  ])
 
   useEffect(() => {
     const taskIds = new Set(baseTasks.map((task) => task.id))
@@ -1234,7 +1297,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     setTerminalTaskPins(retainTaskState)
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Prune state for tasks removed by a refreshed cursor result.
     setTaskObserverGenerations(retainTaskState)
-  }, [auxiliaryTaskReadGuard, baseTasks, taskProgressStore])
+  }, [
+    auxiliaryTaskReadGuard,
+    baseTasks,
+    taskProgressStore,
+    terminalReconciliationControllersRef,
+    terminalReconciliationTimeoutsRef,
+    terminalReconciliationGenerationsRef,
+    failedTaskPollGenerationsRef,
+    blockedFailedTaskPollVersionsRef,
+    failedPollAuxiliaryDenialsRef,
+    terminalConfirmableAuxiliaryDenialsRef,
+    equalRetryListGenerationsRef,
+    pendingTerminalProgressRef,
+    trustedOverrideListGenerationsRef,
+    trustedActiveOverrideVersionsRef,
+  ])
 
   useEffect(() => {
     if (permissionDenied) return
@@ -1340,6 +1418,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     taskListGeneration,
     taskProgressStore,
     terminalTaskPins,
+    terminalReconciliationGenerationsRef,
+    terminalReconciliationControllersRef,
+    terminalReconciliationTimeoutsRef,
+    blockedFailedTaskPollVersionsRef,
+    failedPollAuxiliaryDenialsRef,
+    terminalConfirmableAuxiliaryDenialsRef,
+    failedTaskPollGenerationsRef,
+    equalRetryListGenerationsRef,
   ])
 
   const handleUploadFiles = useCallback(
@@ -1599,7 +1685,19 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }
       return true
     },
-    [reconcileTerminalTask, refreshDocuments, t, taskProgressStore],
+    [
+      reconcileTerminalTask,
+      refreshDocuments,
+      t,
+      taskProgressStore,
+      currentTaskStateRef,
+      currentTaskVersionRef,
+      pendingTerminalProgressRef,
+      trustedActiveOverrideVersionsRef,
+      failedTaskPollGenerationsRef,
+      terminalReconciliationTimeoutsRef,
+      terminalReconciliationGenerationsRef,
+    ],
   )
 
   const handleTaskUpdated = useCallback(
@@ -1643,7 +1741,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         })
       }
     },
-    [auxiliaryTaskReadGuard, taskProgressStore],
+    [
+      auxiliaryTaskReadGuard,
+      taskProgressStore,
+      currentTaskStateRef,
+      currentTaskVersionRef,
+      failedPollAuxiliaryDenialsRef,
+      terminalConfirmableAuxiliaryDenialsRef,
+      trustedActiveOverrideVersionsRef,
+      trustedOverrideListGenerationsRef,
+      blockedFailedTaskPollVersionsRef,
+      terminalReconciliationControllersRef,
+      terminalReconciliationTimeoutsRef,
+      terminalReconciliationGenerationsRef,
+      failedTaskPollGenerationsRef,
+      pendingTerminalProgressRef,
+    ],
   )
 
   useEffect(() => {
@@ -1656,7 +1769,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       failedPollAuxiliaryDenialsRef.current.delete(task.id)
       handleTaskUpdated(task)
     }
-  }, [baseTasks, handleTaskUpdated, permissionDenied, taskListGeneration])
+  }, [
+    baseTasks,
+    handleTaskUpdated,
+    permissionDenied,
+    taskListGeneration,
+    failedPollAuxiliaryDenialsRef,
+  ])
 
   useEffect(() => {
     for (const task of activeTasks) {
@@ -1665,7 +1784,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       const generation = failedTaskPollGenerationsRef.current.get(task.id) ?? 0
       failedTaskPollGenerationsRef.current.set(task.id, generation + 1)
     }
-  }, [activeTasks])
+  }, [activeTasks, blockedFailedTaskPollVersionsRef, failedTaskPollGenerationsRef])
 
   useEffect(() => {
     if (permissionDenied || !orderedFailedTasksRef.current.length) return
@@ -1767,10 +1886,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [
     auxiliaryTaskReadGuard,
     denyAuxiliaryTaskRead,
+    currentTaskVersionRef,
     failedTaskPollSignature,
     handleTaskUpdated,
     knowledgeSpaceId,
     permissionDenied,
+    blockedFailedTaskPollVersionsRef,
+    failedTaskPollGenerationsRef,
+    failedPollAuxiliaryDenialsRef,
   ])
 
   const toggleDocument = useCallback(
@@ -1830,7 +1953,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       })
       denyAuxiliaryTaskRead(taskId, taskVersion)
     },
-    [denyAuxiliaryTaskRead],
+    [denyAuxiliaryTaskRead, terminalConfirmableAuxiliaryDenialsRef],
   )
 
   return (
@@ -1938,7 +2061,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             <Button
               ref={permissionRetryButtonRef}
               aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
-              aria-busy={workspacePermissionKeysFetching}
               loading={workspacePermissionKeysFetching}
               size="small"
               onBlur={(event) => {
@@ -1972,7 +2094,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 <Button
                   ref={documentsRetryButtonRef}
                   aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-                  aria-busy={documentsQuery.isRefetching}
                   loading={documentsQuery.isRefetching}
                   size="small"
                   onBlur={(event) => {
@@ -2005,7 +2126,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   ? t(($) => $['newKnowledge.sourcesErrorDescription'])
                   : t(($) => $['newKnowledge.tasksErrorDescription'])
               }`}
-              aria-busy={dependencyRetryFetching}
               loading={dependencyRetryFetching}
               size="small"
               onBlur={(event) => {
@@ -2022,7 +2142,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         )}
         {documentsQuery.isPending && !permissionDenied ? (
           <div className="flex min-h-64 flex-1 items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         ) : permissionDenied || (documentsQuery.error && !documentsQuery.data) ? (
           <div
@@ -2051,7 +2171,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               <Button
                 ref={documentsRetryButtonRef}
                 aria-label={`${tCommon(($) => $['operation.retry'])} · ${documentsRecoveryDescription}`}
-                aria-busy={documentsQuery.isFetching}
                 className="mt-4"
                 loading={documentsQuery.isFetching}
                 onBlur={(event) => {
@@ -2085,7 +2204,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                   ? t(($) => $['newKnowledge.tasksErrorDescription'])
                   : t(($) => $['newKnowledge.sourcesErrorDescription'])
               }`}
-              aria-busy={blockingDependencyRetryFetching}
               className="mt-4"
               loading={blockingDependencyRetryFetching}
               onBlur={(event) => {

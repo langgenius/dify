@@ -51,7 +51,7 @@ const VarReferencePicker: FC<Props> = ({ readonly, className, value, onChange })
         </SelectTrigger>
         <SelectPortal>
           <SelectPositioner sideOffset={4}>
-            <SelectPopup className="w-[120px] rounded-lg border-0 p-1 shadow-sm">
+            <SelectPopup className="w-30 rounded-lg border-0 p-1 shadow-sm">
               <SelectList className="p-0">
                 {TYPES.map((type) => (
                   <SelectItem<VarType>

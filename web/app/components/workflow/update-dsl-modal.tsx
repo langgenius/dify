@@ -1,10 +1,9 @@
 'use client'
 
+import type { Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { MouseEventHandler } from 'react'
-import type { DSLImportWarning } from '@/models/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,9 +11,10 @@ import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-mo
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { importDSL, importDSLConfirm } from '@/service/apps'
+import { consoleClient } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
@@ -56,8 +56,8 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
 
   const handleFile = (file?: File) => {
     setDSLFile(file)
-    if (file) readFile(file)
-    if (!file) setFileContent('')
+    setFileContent('')
+    if (file && !file.name.toLowerCase().endsWith('.ifpkg')) readFile(file)
   }
 
   const handleWorkflowUpdate = useCallback(
@@ -84,7 +84,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
 
   const isCreatingRef = useRef(false)
   const handleCompletedImport = useCallback(
-    async (status: DSLImportStatus, appId?: string, warnings: DSLImportWarning[] = []) => {
+    async (status: Import['status'], appId?: string | null, warnings: Import['warnings'] = []) => {
       if (!appId) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
         return
@@ -134,12 +134,16 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
       return
     }
     try {
-      if (appDetail && fileContent && validateDSLContent(fileContent, appDetail.mode)) {
+      const isPackage = currentFile.name.toLowerCase().endsWith('.ifpkg')
+      if (
+        appDetail &&
+        (isPackage || (fileContent && validateDSLContent(fileContent, appDetail.mode)))
+      ) {
         setLoading(true)
-        const response = await importDSL({
-          mode: DSLImportMode.YAML_CONTENT,
-          yaml_content: fileContent,
-          app_id: appDetail.id,
+        const response = await consoleClient.apps.imports.post({
+          body: isPackage
+            ? { file: currentFile, app_id: appDetail.id }
+            : { mode: DSLImportMode.YAML_CONTENT, yaml_content: fileContent, app_id: appDetail.id },
         })
         const { id, status, app_id, imported_dsl_version, current_dsl_version, warnings } = response
 
@@ -164,8 +168,8 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
   const onUpdateDSLConfirm: MouseEventHandler = async () => {
     try {
       if (!importId) return
-      const response = await importDSLConfirm({
-        import_id: importId,
+      const response = await consoleClient.apps.imports.byImportId.confirm.post({
+        params: { import_id: importId },
       })
 
       const { status, app_id, warnings } = response
@@ -228,13 +232,18 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               {t(($) => $['common.chooseDSL'], { ns: 'workflow' })}
             </div>
             <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
-              <Uploader file={currentFile} updateFile={handleFile} className="mt-0! w-full" />
+              <Uploader
+                importType="app"
+                file={currentFile}
+                updateFile={handleFile}
+                className="mt-0! w-full"
+              />
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 self-stretch pt-5">
             <Button onClick={onCancel}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
             <Button
-              disabled={!currentFile || loading}
+              disabled={!currentFile}
               variant="primary"
               tone="destructive"
               onClick={handleImport}

@@ -3,13 +3,14 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+import yaml
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from graphon.nodes import BuiltinNodeTypes
-from models import Account, Tenant
+from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from services.snippet_dsl_service import (
     ImportMode,
     ImportStatus,
@@ -17,6 +18,7 @@ from services.snippet_dsl_service import (
     SnippetPendingData,
     _check_version_compatibility,
 )
+from tests.unit_tests.model_factories import make_account, make_tenant, make_workflow
 
 SQLITE_MODELS = (CustomizedSnippet,)
 pytestmark = [
@@ -32,12 +34,12 @@ def service(sqlite_session: Session) -> SnippetDslService:
 
 
 def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
-    account = Account(name="Snippet author", email=f"{account_id}@example.com")
-    account.id = account_id
-    tenant = Tenant(name="Snippet workspace")
-    tenant.id = tenant_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Snippet author",
+        email=f"{account_id}@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="Snippet workspace"),
+    )
 
 
 def _snippet(
@@ -63,16 +65,7 @@ def _snippet(
 
 
 def _workflow(*, graph: dict | None = None) -> Workflow:
-    return Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="snippet-1",
-        type=WorkflowType.WORKFLOW,
-        version="draft",
-        graph=json.dumps(graph or {"nodes": [], "edges": []}),
-        _features="{}",
-        created_by="account-1",
-    )
+    return make_workflow(workflow_id="workflow-1", app_id="snippet-1", graph=graph)
 
 
 @pytest.mark.parametrize(
@@ -318,6 +311,17 @@ workflow:
     edges: []
 """
 
+    account_without_tenant = _account()
+    account_without_tenant._current_tenant = None
+    missing_tenant = service.import_snippet(
+        account=account_without_tenant,
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content=yaml_content,
+    )
+    assert missing_tenant.status == ImportStatus.FAILED
+    assert missing_tenant.error == "Current tenant is not set"
+    setex.assert_not_called()
+
     result = service.import_snippet(
         account=_account(),
         import_mode=ImportMode.YAML_CONTENT.value,
@@ -459,12 +463,21 @@ workflow:
     create_or_update = Mock(return_value=snippet)
     monkeypatch.setattr(service, "_create_or_update_snippet", create_or_update)
     redis_key = "snippet_import_info:import-1"
+    pending_json = pending.model_dump_json(exclude={"tenant_id", "account_id"})
     monkeypatch.setattr(
         "services.snippet_dsl_service.redis_client.get",
-        Mock(side_effect=lambda key: pending.model_dump_json() if key == redis_key else None),
+        Mock(side_effect=lambda key: pending_json if key == redis_key else None),
     )
     redis_delete = Mock()
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.delete", redis_delete)
+    load = Mock(wraps=yaml.safe_load)
+    monkeypatch.setattr("services.snippet_dsl_service.yaml.safe_load", load)
+
+    assert service.confirm_import(import_id="import-1", account=account).status == ImportStatus.FAILED
+    load.assert_not_called()
+    create_or_update.assert_not_called()
+    redis_delete.assert_not_called()
+    pending_json = pending.model_dump_json()
 
     for other_account in (
         _account(tenant_id="tenant-2"),
@@ -491,6 +504,8 @@ def test_confirm_import_returns_failed_for_non_mapping_yaml(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
 ):
     pending = SnippetPendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content="- item",
         snippet_id=None,
@@ -509,6 +524,8 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(
     rollback_events: list[str] = []
     event.listen(sqlite_session, "after_rollback", lambda _session: rollback_events.append("rollback"))
     pending = SnippetPendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
         snippet_id="snippet-1",

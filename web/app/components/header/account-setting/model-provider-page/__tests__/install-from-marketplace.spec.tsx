@@ -5,7 +5,7 @@ import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { useMarketplaceAllPlugins } from '../hooks'
 import InstallFromMarketplace from '../install-from-marketplace'
@@ -44,12 +44,8 @@ vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
-}))
-
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading" />,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div data-testid="loading" />,
 }))
 
 vi.mock('@/app/components/plugins/marketplace/list', () => ({

@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { VisionSettings } from '@/types/app'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { withSelectorKey } from '@/test/i18n-mock'

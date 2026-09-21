@@ -14,18 +14,18 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { useBoolean, useSessionStorageState } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from './idea-output'
@@ -80,6 +80,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onFinished,
 }) => {
   const { t } = useTranslation()
+  const instructionLabelId = useId()
   const [storedModel, setStoredModel] = useAutoGenModel()
   const [selectedModel, setSelectedModel] = React.useState<Model>()
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
@@ -188,8 +189,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   )
 
   const renderLoading = (
-    <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
-      <Loading />
+    <div className="flex min-w-0 flex-col items-center justify-center space-y-3 xl:h-full xl:flex-1">
+      <LoadingPlaceholder />
       <div className="text-[13px] text-text-tertiary">
         {t(($) => $['generate.loading'], { ns: 'appDebug' })}
       </div>
@@ -280,20 +281,20 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-285 max-w-none! min-w-285 overflow-hidden! border-none p-0! text-left align-middle">
-        <div className="flex h-full min-h-0 flex-wrap">
-          <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-285 overflow-y-auto border-none p-0! text-left align-middle xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
+        <div className="flex min-h-0 flex-col xl:h-full xl:flex-row">
+          <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-r">
             <div className="mb-5">
-              <div className={`text-lg leading-7 font-bold ${s.textGradient}`}>
+              <DialogTitle className={`text-lg leading-7 font-bold ${s.textGradient}`}>
                 {t(($) => $['generate.title'], { ns: 'appDebug' })}
-              </div>
+              </DialogTitle>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
                 {t(($) => $['generate.description'], { ns: 'appDebug' })}
               </div>
             </div>
             <div>
               <ModelParameterModal
-                popupClassName="w-[520px]!"
+                popupClassName="w-130! max-w-[calc(100vw-2rem)]"
                 isAdvancedMode={true}
                 provider={model.provider}
                 completionParams={model.completion_params}
@@ -333,11 +334,15 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             {/* inputs */}
             <div className="mt-4">
               <div>
-                <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
+                <div
+                  id={instructionLabelId}
+                  className="mb-1.5 system-sm-semibold-uppercase text-text-secondary"
+                >
                   {t(($) => $['generate.instruction'], { ns: 'appDebug' })}
                 </div>
                 {isBasicMode ? (
                   <InstructionEditorInBasic
+                    aria-labelledby={instructionLabelId}
                     editorKey={instructionEditorKey}
                     generatorType={GeneratorType.prompt}
                     value={instruction}
@@ -349,6 +354,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   />
                 ) : (
                   <InstructionEditorInWorkflow
+                    aria-labelledby={instructionLabelId}
                     editorKey={instructionEditorKey}
                     generatorType={GeneratorType.prompt}
                     value={instruction}
@@ -360,7 +366,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               </div>
               <IdeaOutput value={ideaOutput} onChange={setIdeaOutput} />
 
-              <div className="mt-7 flex justify-end space-x-2">
+              <div className="mt-7 flex flex-wrap justify-end gap-2">
                 <Button onClick={onClose}>
                   {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}
                 </Button>
@@ -380,7 +386,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           </div>
 
           {!isLoading && current && (
-            <div className="h-full w-0 grow bg-background-default-subtle p-6 pb-0">
+            <div className="min-w-0 bg-background-default-subtle p-6 pb-0 xl:h-full xl:flex-1">
               <Result
                 current={current!}
                 isBasicMode={isBasicMode}

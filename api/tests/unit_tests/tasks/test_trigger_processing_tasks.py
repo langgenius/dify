@@ -1,52 +1,43 @@
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 import tasks.trigger_processing_tasks as trigger_processing_tasks_module
 from core.plugin.entities.plugin_daemon import CredentialType
-from graphon.enums import WorkflowType
 from models.enums import EndUserType
 from models.model import EndUser
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from tasks.trigger_processing_tasks import dispatch_triggered_workflow
+from tests.unit_tests.model_factories import make_end_user, make_workflow
 
 
 def _workflow(*, app_id: str = "app-123") -> Workflow:
-    workflow = Workflow.new(
+    return make_workflow(
+        workflow_id="workflow-123",
         tenant_id="tenant-123",
         app_id=app_id,
-        type=WorkflowType.WORKFLOW.value,
         version="published",
-        graph=json.dumps(
-            {
-                "nodes": [
-                    {
-                        "id": "node-123",
-                        "data": {"type": trigger_processing_tasks_module.TRIGGER_PLUGIN_NODE_TYPE},
-                    }
-                ],
-                "edges": [],
-            }
-        ),
-        features="{}",
+        graph={
+            "nodes": [
+                {
+                    "id": "node-123",
+                    "data": {"type": trigger_processing_tasks_module.TRIGGER_PLUGIN_NODE_TYPE},
+                }
+            ],
+            "edges": [],
+        },
         created_by="user-123",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
     )
-    workflow.id = "workflow-123"
-    return workflow
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="end-user-123",
+    return make_end_user(
+        end_user_id="end-user-123",
         tenant_id="tenant-123",
         app_id="app-123",
-        type=EndUserType.TRIGGER,
+        end_user_type=EndUserType.TRIGGER,
         session_id="trigger-session",
     )
 

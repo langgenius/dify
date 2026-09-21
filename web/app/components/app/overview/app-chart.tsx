@@ -1,4 +1,3 @@
-/* oxlint-disable react/only-export-components */
 'use client'
 import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
@@ -10,8 +9,8 @@ import ReactECharts from 'echarts-for-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { consoleQuery } from '@/service/console'
 import {
   buildChartOptions,
   CHART_TYPE_CONFIG,
@@ -200,7 +199,7 @@ const createBizChartComponent = <TData extends ChartResponse>({
     const { t } = useTranslation()
     const { data: response, isLoading } = useQuery(queryOptions(id, period.query))
 
-    if (isLoading || !response) return <Loading />
+    if (isLoading || !response) return <LoadingPlaceholder />
 
     const noDataFlag = !response.data || response.data.length === 0
     const fallbackKey = emptyValueKey ?? valueKey

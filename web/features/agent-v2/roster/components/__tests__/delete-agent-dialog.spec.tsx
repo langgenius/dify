@@ -10,7 +10,7 @@ vi.mock('@tanstack/react-query', () => ({
   useMutation: () => mutationMock,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -24,7 +24,7 @@ vi.mock('@/service/client', () => ({
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: agentV2 } = await import('@/i18n/en-US/agent-v-2.json')
+  const { default: agentV2 } = await import('@/i18n/locales/en-US/agent-v-2.json')
   return createReactI18nextMock({
     'roster.deleteDialog.description': agentV2['roster.deleteDialog.description'],
     'roster.deleteDialog.title': agentV2['roster.deleteDialog.title'],

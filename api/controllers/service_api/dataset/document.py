@@ -23,7 +23,7 @@ from pydantic import (
     model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -75,9 +75,8 @@ from fields.document_fields import (
 )
 from libs.helper import dump_response
 from libs.login import current_user
-from libs.pagination import paginate_query
-from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import SegmentStatus
+from libs.pagination import clamp_pagination, paginate_query
+from models.dataset import Dataset, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocForm,
@@ -211,7 +210,11 @@ def _non_null_property_schema(property_schema: object) -> dict[str, Any]:
         ]
         if len(non_null_candidates) == 1:
             return {
-                **{key: value for key, value in property_schema.items() if key != "anyOf"},
+                **{
+                    key: value
+                    for key, value in property_schema.items()
+                    if key != "anyOf" and not (key == "default" and value is None)
+                },
                 **deepcopy(non_null_candidates[0]),
             }
 
@@ -246,7 +249,7 @@ class DocumentGetQuery(BaseModel):
         default="all",
         description=(
             "`all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and "
-            "`doc_metadata`. `without` returns all fields except `doc_metadata`."
+            "`doc_metadata`. `without` returns all fields except `doc_type` and `doc_metadata`."
         ),
     )
 
@@ -305,39 +308,53 @@ def _document_and_batch_response(document: Document, batch: str, *, session: Ses
     )
 
 
-# Use SkipJsonSchema to support 3 metadata modes
+def _omit_schema_default(schema: dict[str, Any]) -> None:
+    """Keep omission placeholders out of the public non-null field contract."""
+    schema.pop("default", None)
+
+
+# These fields are absent in metadata=only responses. None is an internal
+# validation default, not a value returned for these fields when present.
 class DocumentDetailResponse(ResponseModel):
     id: str
-    position: int | SkipJsonSchema[None] = None
-    data_source_type: str | SkipJsonSchema[None] = None
-    data_source_info: dict[str, Any] | SkipJsonSchema[None] = None
+    position: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    data_source_type: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    data_source_info: dict[str, Any] | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
     dataset_process_rule_id: str | None = None
-    dataset_process_rule: dict[str, Any] | SkipJsonSchema[None] = None
-    document_process_rule: dict[str, Any] | SkipJsonSchema[None] = None
-    name: str | SkipJsonSchema[None] = None
-    created_from: str | SkipJsonSchema[None] = None
-    created_by: str | SkipJsonSchema[None] = None
-    created_at: int | SkipJsonSchema[None] = None
+    dataset_process_rule: dict[str, Any] | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
+    document_process_rule: dict[str, Any] | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
+    name: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    created_from: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    created_by: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    created_at: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     tokens: int | None = None
-    indexing_status: str | SkipJsonSchema[None] = None
+    indexing_status: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     completed_at: int | None = None
     updated_at: int | None = None
     indexing_latency: float | None = None
     error: str | None = None
-    enabled: bool | SkipJsonSchema[None] = None
+    enabled: bool | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     disabled_at: int | None = None
     disabled_by: str | None = None
-    archived: bool | SkipJsonSchema[None] = None
+    archived: bool | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     doc_type: str | None = None
     doc_metadata: list[DocumentMetadataResponse] | dict[str, Any] | None = None
-    segment_count: int | SkipJsonSchema[None] = None
-    average_segment_length: int | float | SkipJsonSchema[None] = None
-    hit_count: int | SkipJsonSchema[None] = None
+    segment_count: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    average_segment_length: int | float | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
+    hit_count: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     display_status: str | None = None
-    doc_form: str | SkipJsonSchema[None] = None
+    doc_form: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     doc_language: str | None = None
     summary_index_status: str | None = None
-    need_summary: bool | SkipJsonSchema[None] = None
+    need_summary: bool | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
 
     @field_validator("data_source_type", "indexing_status", "display_status", "doc_form", mode="before")
     @classmethod
@@ -1015,8 +1032,9 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
+        effective_page, effective_limit = clamp_pagination(query_params.page, query_params.limit, 100)
         paginated_documents = paginate_query(
-            query, session=session, page=query_params.page, per_page=query_params.limit, max_per_page=100
+            query, session=session, page=effective_page, per_page=effective_limit, max_per_page=100
         )
         documents = paginated_documents.items
 
@@ -1029,10 +1047,12 @@ class DocumentListApi(DatasetApiResource):
 
         response = {
             "data": document_responses(documents, session=session),
-            "has_more": len(documents) == query_params.limit,
-            "limit": query_params.limit,
+            # The result object already knows: it was built from the page the query
+            # ran with, while the requested values are only ever a request.
+            "has_more": paginated_documents.has_next,
+            "limit": paginated_documents.per_page,
             "total": paginated_documents.total,
-            "page": query_params.page,
+            "page": paginated_documents.page,
         }
 
         return dump_response(DocumentListResponse, response)
@@ -1139,27 +1159,10 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         documents = DocumentService.get_batch_documents(dataset_id_str, batch, session)
         if not documents:
             raise NotFound("Documents not found.")
+        segment_counts = DocumentService.get_document_segment_counts(documents, session=session)
         documents_status = []
         for document in documents:
-            completed_segments = (
-                session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.completed_at.isnot(None),
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
-            total_segments = (
-                session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
+            completed_segments, total_segments = segment_counts.get(str(document.id), (0, 0))
             # Create a dictionary with document attributes and additional fields
             document_dict = {
                 "id": document.id,
@@ -1451,7 +1454,6 @@ class DocumentApi(DatasetApiResource):
         tags=["Documents"],
         responses={
             204: "Success.",
-            400: "`document_indexing` : Cannot delete document during indexing.",
             403: "`archived_document_immutable` : The archived document is not editable.",
             404: "`not_found` : Document Not Exists.",
         },

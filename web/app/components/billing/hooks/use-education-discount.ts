@@ -1,10 +1,10 @@
 'use client'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 
 export function useEducationDiscount() {
   const { t } = useTranslation()

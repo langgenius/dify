@@ -1,16 +1,23 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { newKnowledgeDetailPath, newKnowledgeDocumentsPath, newKnowledgeListPath } from './routes'
 
 function responseStatus(error: unknown) {
@@ -79,7 +86,7 @@ export function KnowledgeSpaceShell({
       <>
         {pageTitleElement}
         <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       </>
     )
@@ -105,9 +112,9 @@ export function KnowledgeSpaceShell({
             )}
           </p>
           <div className="mt-5 flex gap-2">
-            <Button render={<Link href={newKnowledgeListPath} />}>
+            <Link href={newKnowledgeListPath} className={buttonVariants()}>
               {t(($) => $['newKnowledge.backToList'])}
-            </Button>
+            </Link>
             {!notFound && (
               <Button variant="primary" onClick={() => void knowledgeSpaceQuery.refetch()}>
                 {tCommon(($) => $['operation.retry'])}
@@ -132,22 +139,29 @@ export function KnowledgeSpaceShell({
       {pageTitleElement}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:flex-row">
         <aside className="flex shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs sm:w-60">
-          <div className="flex h-12 min-w-0 items-center px-1 pr-2">
-            <Link
-              href={newKnowledgeListPath}
-              aria-label={t(($) => $['newKnowledge.backToList'])}
-              className="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            >
-              <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-              <span aria-hidden className="i-ri-home-5-line size-4" />
-            </Link>
-            <span aria-hidden className="text-text-quaternary">
-              /
-            </span>
-            <span className="truncate px-1.5 system-sm-semibold-uppercase text-text-secondary">
-              {t(($) => $.knowledge)}
-            </span>
-          </div>
+          <Breadcrumb
+            aria-label={t(($) => $.knowledge)}
+            className="flex h-12 items-center px-1 pr-2"
+          >
+            <BreadcrumbList className="gap-0">
+              <BreadcrumbItem className="shrink-0">
+                <BreadcrumbLink
+                  render={<Link href={newKnowledgeListPath} />}
+                  aria-label={t(($) => $['newKnowledge.backToList'])}
+                  className="h-8 w-10 justify-center gap-0 rounded-lg hover:bg-state-base-hover"
+                >
+                  <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+                  <span aria-hidden className="i-ri-home-5-line size-4" />
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="text-base/6" />
+              <BreadcrumbItem>
+                <span className="truncate px-1.5 system-sm-semibold-uppercase text-text-secondary">
+                  {t(($) => $.knowledge)}
+                </span>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <div className="flex min-w-0 items-center px-1 py-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl p-2">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-icon-bg-orange-dark-soft">

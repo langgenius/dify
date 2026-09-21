@@ -35,10 +35,16 @@ from controllers.service_api.wraps import (
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.base import ResponseModel
-from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from fields.dataset_fields import (
+    DatasetDetailPrefetch,
+    build_dataset_detail_prefetch,
+    dataset_detail_response_source,
+)
+from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResponse
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_user
+from libs.pagination import clamp_pagination
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
@@ -60,7 +66,6 @@ from services.tag_service import (
 from services.tag_service import (
     UpdateTagPayload as UpdateTagServicePayload,
 )
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
@@ -88,13 +93,20 @@ PartialMemberList = Annotated[
 ]
 
 
+class DatasetDetailResponse(BaseDatasetDetailResponse):
+    # The Service API dump helpers exclude Console permission metadata.
+    permission_keys: list[str] = Field(default_factory=list, exclude=True)
+
+
 _SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
 _SERVICE_DATASET_LIST_EXCLUDE = {"data": {"__all__": _SERVICE_DATASET_DETAIL_EXCLUDE}}
 
 
-def _dump_service_dataset_detail(dataset: Any, *, session: Session) -> dict[str, Any]:
+def _dump_service_dataset_detail(
+    dataset: Any, *, session: Session, prefetch: DatasetDetailPrefetch | None = None
+) -> dict[str, Any]:
     return DatasetDetailResponse.model_validate(
-        dataset_detail_response_source(dataset, session=session), from_attributes=True
+        dataset_detail_response_source(dataset, session=session, prefetch=prefetch), from_attributes=True
     ).model_dump(
         mode="json",
         exclude=_SERVICE_DATASET_DETAIL_EXCLUDE,
@@ -430,10 +442,11 @@ class DatasetListApi(DatasetApiResource):
             query_params["tag_ids"] = request.args.getlist("tag_ids")
         query = DatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
+        effective_page, effective_limit = clamp_pagination(query.page, query.limit, 100)
 
         datasets, total = DatasetService.get_datasets(
-            query.page,
-            query.limit,
+            effective_page,
+            effective_limit,
             session,
             tenant_id,
             current_user,
@@ -454,7 +467,8 @@ class DatasetListApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        data = [_dump_service_dataset_detail(dataset, session=session) for dataset in datasets]
+        prefetch = build_dataset_detail_prefetch(datasets, session=session)
+        data = [_dump_service_dataset_detail(dataset, session=session, prefetch=prefetch) for dataset in datasets]
         for item in data:
             if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
@@ -467,10 +481,10 @@ class DatasetListApi(DatasetApiResource):
                 item["embedding_available"] = True
         response = {
             "data": data,
-            "has_more": len(datasets) == query.limit,
-            "limit": query.limit,
+            "has_more": effective_page * effective_limit < total,
+            "limit": effective_limit,
             "total": total,
-            "page": query.page,
+            "page": effective_page,
         }
         return _dump_service_dataset_list(response), 200
 
@@ -504,10 +518,9 @@ class DatasetListApi(DatasetApiResource):
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
-    def post(self, session: Session, tenant_id):
+    @model_validate(DatasetCreatePayload)
+    def post(self, payload: DatasetCreatePayload, session: Session, tenant_id):
         """Resource for creating datasets."""
-        payload = DatasetCreatePayload.model_validate(service_api_ns.payload or {})
-
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
         if embedding_model_provider and embedding_model:
@@ -552,9 +565,8 @@ class DatasetListApi(DatasetApiResource):
                 tenant_id,
                 current_user.id,
                 dataset.id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
-            initialize_created_app_rbac_access_task.delay(tenant_id, current_user.id, dataset_id=dataset.id)
 
         return _dump_service_dataset_detail(dataset, session=session), 200
 
@@ -738,18 +750,11 @@ class DatasetApi(DatasetApiResource):
 
     @service_api_ns.doc(
         summary="Delete Knowledge Base",
-        description=(
-            "Permanently delete a knowledge base and all its documents. The knowledge base must not be "
-            "in use by any application."
-        ),
+        description="Permanently delete a knowledge base and all its documents.",
         tags=["Knowledge Bases"],
         responses={
             204: "Success.",
             404: "`not_found` : Dataset not found.",
-            409: (
-                "`dataset_in_use` : The knowledge base is being used by some apps. Please remove it from the "
-                "apps before deleting."
-            ),
         },
     )
     @service_api_ns.doc("delete_dataset")
@@ -760,7 +765,6 @@ class DatasetApi(DatasetApiResource):
             204: "Dataset deleted successfully",
             401: "Unauthorized - invalid API token",
             404: "Dataset not found",
-            409: "Conflict - dataset is in use",
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")

@@ -5,19 +5,19 @@ import type { Plugin } from '../types'
 import type { EmbeddedMarketplaceCategory } from './category-marketplace'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { getCategoryMarketplaceId } from './category-marketplace'
 
 const MARKETPLACE_PAGE_SIZE = 30
@@ -86,7 +86,7 @@ const CategoryMarketplacePanel = ({
       className="flex scroll-mt-4 flex-col gap-2 pb-2"
       id={getCategoryMarketplaceId(category)}
     >
-      <Divider className="my-2! h-px" />
+      <Separator className="my-2" />
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
@@ -117,7 +117,7 @@ const CategoryMarketplacePanel = ({
       </div>
       {!collapsed && (
         <div>
-          {showLoading && <Loading type="area" />}
+          {showLoading && <LoadingPlaceholder />}
           {showInstalledPluginIdsError && (
             <div className="flex flex-col items-center gap-2 py-4">
               <span className="system-sm-regular text-text-tertiary" role="alert">

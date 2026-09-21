@@ -27,7 +27,7 @@ const OptionCard = ({ label, value, selected, nodeData, onClick }: OptionCardPro
         'flex cursor-pointer flex-col gap-1 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-2.5 shadow-shadow-shadow-3',
         selected
           ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs inset-ring-[0.5px] inset-ring-components-option-card-option-selected-border'
-          : 'hover:bg-components-option-card-bg-hover hover:border-components-option-card-option-border-hover hover:shadow-xs',
+          : 'hover:border-components-option-card-option-border-hover hover:shadow-xs',
       )}
       onClick={handleClickCard}
     >

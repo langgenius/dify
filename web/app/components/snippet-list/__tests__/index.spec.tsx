@@ -52,7 +52,7 @@ vi.mock('../hooks/use-snippets-query-state', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     systemFeatures: vi.fn(),
   },
@@ -77,7 +77,6 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
 
@@ -263,7 +262,6 @@ describe('SnippetList', () => {
     mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
     mockQueryState.creatorIDs = []
-    mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
     mockUseInfiniteSnippetList.mockReturnValue({
@@ -279,6 +277,10 @@ describe('SnippetList', () => {
 
     expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
+    const path = within(screen.getByRole('navigation', { name: 'workflow.tabs.snippets' }))
+    expect(path.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
+    expect(path.getAllByRole('listitem')).toHaveLength(2)
+    expect(path.getByText('workflow.tabs.snippets')).toHaveAttribute('aria-current', 'page')
     expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
@@ -428,8 +430,7 @@ describe('SnippetList', () => {
     expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
   })
 
-  it('shows the create button for users with snippet create permission even when they are not workspace editors', () => {
-    mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+  it('shows the create button for users with snippet create permission', () => {
     mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
 
     renderList()

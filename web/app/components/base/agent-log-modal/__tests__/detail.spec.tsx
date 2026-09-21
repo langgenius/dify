@@ -23,7 +23,7 @@ vi.mock('@/service/log', () => ({
   fetchAgentLogDetail: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -134,7 +134,7 @@ describe('AgentLogDetail', () => {
   ) => {
     const result = renderComponent(props)
     await waitFor(() => {
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
     return result
   }
@@ -149,7 +149,7 @@ describe('AgentLogDetail', () => {
 
       renderComponent()
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should display result panel after data loads', async () => {
@@ -245,7 +245,7 @@ describe('AgentLogDetail', () => {
       await waitFor(() => {
         expect(fetchAgentLogDetail).not.toHaveBeenCalled()
       })
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should notify on API error', async () => {
@@ -264,7 +264,7 @@ describe('AgentLogDetail', () => {
       renderComponent()
 
       await waitFor(() => {
-        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
       })
     })
 

@@ -22,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
 import InputItem from './input-item'
-// import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'nodes.http'
 
@@ -130,7 +129,7 @@ const KeyValueItem: FC<Props> = ({
             </SelectTrigger>
             <SelectPortal>
               <SelectPositioner>
-                <SelectPopup className="w-[80px]">
+                <SelectPopup className="w-20">
                   <SelectList className="min-w-0">
                     <SelectItem value="text">
                       <SelectItemText>text</SelectItemText>

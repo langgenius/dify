@@ -1,18 +1,19 @@
 'use client'
+
 import type { FC } from 'react'
 import type { DeliveryMethod } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import Badge from '@/app/components/base/badge'
 import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import { DeliveryMethodType } from '../../types'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -30,8 +31,10 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
     select: ({ deployment_edition }) => deployment_edition,
   })
   const [open, setOpen] = useState(false)
-  const humanInputEmailDeliveryEnabled = useProviderContextSelector(
-    (s) => s.humanInputEmailDeliveryEnabled,
+  const { data: humanInputEmailDeliveryEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.human_input_email_delivery_enabled,
+    }),
   )
   const nodes = useWorkflowNodes()
 
@@ -46,7 +49,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
 
   const emailDeliveryInfo = useMemo(() => {
     return {
-      noPermission: !humanInputEmailDeliveryEnabled,
+      noPermission: humanInputEmailDeliveryEnabled === false,
       added: data.some((method) => method.type === DeliveryMethodType.Email),
     }
   }, [data, humanInputEmailDeliveryEnabled])
@@ -124,9 +127,11 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
             <div
               className={cn(
                 'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover',
-                emailDeliveryInfo.added && 'cursor-not-allowed bg-transparent hover:bg-transparent',
+                (emailDeliveryInfo.added || humanInputEmailDeliveryEnabled === undefined) &&
+                  'cursor-not-allowed bg-transparent hover:bg-transparent',
               )}
               onClick={() => {
+                if (humanInputEmailDeliveryEnabled === undefined) return
                 if (emailDeliveryInfo.noPermission) {
                   onShowUpgradeTip()
                   return

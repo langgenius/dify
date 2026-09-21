@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import Divider from '@/app/components/base/divider'
 import { WorkflowVersionFilterOptions } from '../../../types'
 import FilterItem from './filter-item'
 import FilterSwitch from './filter-switch'
@@ -71,7 +71,7 @@ const Filter: FC<FilterProps> = ({
               )
             })}
           </div>
-          <Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />
+          <Separator orientation="horizontal" className="my-0 bg-divider-subtle" />
           <FilterSwitch enabled={isOnlyShowNamedVersions} handleSwitch={handleSwitch} />
         </div>
       </PopoverContent>

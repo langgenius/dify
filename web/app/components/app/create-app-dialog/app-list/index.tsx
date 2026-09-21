@@ -5,7 +5,7 @@ import type { App } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
@@ -13,15 +13,15 @@ import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppTypeSelector from '@/app/components/app/type-selector'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchAppDetail } from '@/service/explore'
 import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
@@ -32,7 +32,7 @@ import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
 type AppsProps = {
-  onSuccess?: () => void
+  onClose: () => void
   onCreateFromBlank?: () => void
 }
 
@@ -41,7 +41,7 @@ type AppsProps = {
 //   CREATE = 'create',
 // }
 
-const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
+const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({
@@ -151,7 +151,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
 
       setIsShowCreateModal(false)
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-      if (onSuccess) onSuccess()
+      onClose()
       await handleCheckPluginDependencies(app.app_id)
       getRedirection(
         { id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys },
@@ -171,7 +171,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   if (isLoading) {
     return (
       <div className="flex h-full items-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -187,7 +187,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
         <div className="flex max-w-137 flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
           <AppTypeSelector value={currentType} onChange={setCurrentType} />
           <div className="h-3.5">
-            <Divider type="vertical" />
+            <Separator decorative className="mx-2" orientation="vertical" />
           </div>
           <InputGroup className="flex-1 bg-transparent hover:border-transparent hover:bg-transparent">
             <InputGroupInput

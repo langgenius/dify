@@ -13,6 +13,7 @@ Covers:
   - get_response_generator              (ended / non-ended workflow run)
 """
 
+import json
 import threading
 import uuid
 from collections.abc import Callable
@@ -26,7 +27,11 @@ from sqlalchemy.orm import Session
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import DeploymentEdition, QuotaType
-from models.model import AppMode
+from graphon.enums import WorkflowExecutionStatus
+from models.account import Account
+from models.enums import AppStatus, CreatorUserRole
+from models.model import App, AppMode
+from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError,
@@ -67,19 +72,27 @@ class _DummyRateLimit:
         return generator
 
 
-def _make_app(mode: AppMode | str, *, max_active_requests: int = 0, is_agent: bool = False) -> MagicMock:
-    app = MagicMock()
-    app.mode = mode
-    app.id = "app-id"
-    app.tenant_id = "tenant-id"
-    app.max_active_requests = max_active_requests
-    app.is_agent = is_agent
-    app.is_agent_with_session.return_value = is_agent
+def _make_app(mode: AppMode | str, *, max_active_requests: int = 0) -> App:
+    app = App(
+        id="app-id",
+        tenant_id="tenant-id",
+        name="App",
+        description="",
+        mode=AppMode.CHAT if isinstance(mode, str) and mode == "invalid-mode" else mode,
+        status=AppStatus.NORMAL,
+        enable_site=False,
+        enable_api=False,
+        api_rpm=0,
+        api_rph=0,
+        max_active_requests=max_active_requests,
+    )
+    if mode == "invalid-mode":
+        app.mode = mode  # type: ignore[assignment]
     return app
 
 
-def _make_user() -> MagicMock:
-    user = MagicMock()
+def _make_user() -> Account:
+    user = Account(name="User", email="user@example.com")
     user.id = "user-id"
     return user
 
@@ -95,14 +108,42 @@ def _make_workflow(
     workflow_id: str = "workflow-id",
     created_by: str = "owner-id",
     node_types: tuple[str, ...] = (),
-) -> MagicMock:
-    workflow = MagicMock()
-    workflow.id = workflow_id
-    workflow.created_by = created_by
-    workflow.walk_nodes.return_value = [
-        (f"node-{index}", {"type": node_type}) for index, node_type in enumerate(node_types)
-    ]
-    return workflow
+) -> Workflow:
+    return Workflow(
+        id=workflow_id,
+        tenant_id="tenant-id",
+        app_id="app-id",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps(
+            {
+                "nodes": [
+                    {"id": f"node-{index}", "data": {"type": node_type}} for index, node_type in enumerate(node_types)
+                ],
+                "edges": [],
+            }
+        ),
+        features={},
+        created_by=created_by,
+        environment_variables=[],
+        conversation_variables=[],
+    )
+
+
+def _make_workflow_run(*, run_id: str, ended: bool) -> WorkflowRun:
+    run = WorkflowRun(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        workflow_id="workflow-id",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="published",
+        status=WorkflowExecutionStatus.SUCCEEDED if ended else WorkflowExecutionStatus.RUNNING,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-id",
+    )
+    run.id = run_id
+    return run
 
 
 @contextmanager
@@ -335,7 +376,8 @@ class TestGenerate(_RealSessionTest):
             "services.app_generate_service.AgentChatAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
         )
-        app = _make_app(AppMode.CHAT, is_agent=True)
+        app = _make_app(AppMode.CHAT)
+        is_agent = mocker.patch.object(App, "is_agent_with_session", return_value=True)
         session = self.session
         result = AppGenerateService.generate(
             app_model=app,
@@ -347,7 +389,7 @@ class TestGenerate(_RealSessionTest):
         )
         assert result == {"result": "agent-via-flag"}
         gen_spy.assert_called_once()
-        app.is_agent_with_session.assert_called_once_with(session=session)
+        is_agent.assert_called_once_with(session=session)
 
     # -- AGENT --------------------------------------------------------------
     def test_agent_mode_passes_session(self, mocker: MockerFixture):
@@ -383,7 +425,7 @@ class TestGenerate(_RealSessionTest):
             "services.app_generate_service.ChatAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
         )
-        app = _make_app(AppMode.CHAT, is_agent=False)
+        app = _make_app(AppMode.CHAT)
         result = AppGenerateService.generate(
             app_model=app,
             user=_make_user(),
@@ -600,7 +642,7 @@ class TestGenerate(_RealSessionTest):
 
     # -- Invalid mode -------------------------------------------------------
     def test_invalid_mode_raises(self, mocker: MockerFixture):
-        app = _make_app("invalid-mode", is_agent=False)
+        app = _make_app("invalid-mode")
         with pytest.raises(ValueError, match="Invalid app mode"):
             AppGenerateService.generate(
                 app_model=app,
@@ -1039,9 +1081,7 @@ class TestGenerateMoreLikeThis(_RealSessionTest):
 class TestGetResponseGenerator:
     def test_non_ended_workflow_run(self, mocker: MockerFixture):
         app = _make_app(AppMode.ADVANCED_CHAT)
-        workflow_run = MagicMock()
-        workflow_run.id = "run-1"
-        workflow_run.status.is_ended.return_value = False
+        workflow_run = _make_workflow_run(run_id="run-1", ended=False)
 
         gen_instance = MagicMock()
         gen_instance.retrieve_events.return_value = iter([{"event": "started"}])
@@ -1057,9 +1097,7 @@ class TestGetResponseGenerator:
     def test_ended_workflow_run_still_returns_generator(self, mocker: MockerFixture):
         """Even when the run is ended, the current code still returns a generator (TODO branch)."""
         app = _make_app(AppMode.WORKFLOW)
-        workflow_run = MagicMock()
-        workflow_run.id = "run-2"
-        workflow_run.status.is_ended.return_value = True
+        workflow_run = _make_workflow_run(run_id="run-2", ended=True)
 
         gen_instance = MagicMock()
         gen_instance.retrieve_events.return_value = iter([])

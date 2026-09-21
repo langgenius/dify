@@ -1,5 +1,8 @@
+import type {
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { Model, ModelItem } from '../../declarations'
 import { Popover } from '@langgenius/dify-ui/popover'
 import { render as renderComponent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -12,7 +15,8 @@ import {
 import { ModelSelectorTrigger } from '../model-selector-trigger'
 
 const render = (node: ReactNode) => renderComponent(<Popover>{node}</Popover>)
-const getTrigger = () => screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
+const getTrigger = () =>
+  screen.getByRole('button', { name: /GPT-4|plugin.detailPanel.configureModel/ })
 
 const mockUseQuery = vi.hoisted(() => vi.fn())
 const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
@@ -23,7 +27,9 @@ vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
   useCredentialPanelState: mockUseCredentialPanelState,
 }))
 
-const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const createModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'gpt-4',
   label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
   model_type: ModelTypeEnum.textGeneration,
@@ -35,7 +41,10 @@ const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const createModel = (overrides: Partial<Model> = {}): Model => ({
+const createModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: {
     en_US: 'https://example.com/openai-light.png',
@@ -54,7 +63,7 @@ const createModel = (overrides: Partial<Model> = {}): Model => ({
 describe('ModelSelectorTrigger', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseQuery.mockReturnValue({ data: createModel() })
+    mockUseQuery.mockReturnValue({ data: { data: [createModel()] } })
     mockUseCredentialPanelState.mockReturnValue({
       variant: 'credits-active',
       priority: 'credits',
@@ -65,6 +74,33 @@ describe('ModelSelectorTrigger', () => {
       credentialName: undefined,
       credits: 100,
     })
+  })
+
+  it('keeps an existing model neutral while its catalog is unresolved', () => {
+    const { rerender } = render(
+      <ModelSelectorTrigger loading defaultModel={{ provider: 'openai', model: 'legacy-model' }} />,
+    )
+    expect(screen.getByRole('button', { name: 'legacy-model' })).toBeDisabled()
+    expect(screen.queryByText('common.modelProvider.selector.incompatible')).not.toBeInTheDocument()
+    rerender(
+      <Popover>
+        <ModelSelectorTrigger defaultModel={{ provider: 'openai', model: 'legacy-model' }} />
+      </Popover>,
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'legacy-model common.modelProvider.selector.incompatible',
+      }),
+    ).toBeEnabled()
+  })
+
+  it('does not report incompatibility before provider metadata is available', () => {
+    mockUseQuery.mockReturnValue({ data: undefined })
+    render(
+      <ModelSelectorTrigger currentProvider={createModel()} currentModel={createModelItem()} />,
+    )
+    expect(screen.getByRole('button', { name: 'GPT-4' })).toBeEnabled()
+    expect(screen.queryByText('common.modelProvider.selector.incompatible')).not.toBeInTheDocument()
   })
 
   describe('Rendering', () => {
@@ -82,6 +118,7 @@ describe('ModelSelectorTrigger', () => {
 
       expect(screen.getByText('GPT-4')).toBeInTheDocument()
       expect(screen.getByText('CHAT')).toBeInTheDocument()
+      expect(getTrigger()).toHaveAccessibleName('GPT-4 CHAT')
       expect(getTrigger()).toBeEnabled()
     })
 
@@ -90,6 +127,11 @@ describe('ModelSelectorTrigger', () => {
 
       expect(screen.getByText('legacy-model')).toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'legacy-model common.modelProvider.selector.incompatible',
+        }),
+      ).toBeEnabled()
     })
   })
 
@@ -104,6 +146,65 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(getTrigger()).toBeDisabled()
+    })
+  })
+
+  describe('Clearing the selection', () => {
+    it('clears without opening the model picker or submitting the containing form', async () => {
+      const user = userEvent.setup()
+      const onClear = vi.fn()
+      const onOpenChange = vi.fn()
+      const onSubmit = vi.fn((event) => event.preventDefault())
+      renderComponent(
+        <form onSubmit={onSubmit}>
+          <Popover onOpenChange={onOpenChange}>
+            <ModelSelectorTrigger
+              currentProvider={createModel()}
+              currentModel={createModelItem()}
+              defaultModel={{ provider: 'openai', model: 'gpt-4' }}
+              onClear={onClear}
+              clearLabel="Reset model"
+            />
+          </Popover>
+        </form>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Reset model' }))
+
+      expect(onClear).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(onSubmit).not.toHaveBeenCalled()
+      await user.click(getTrigger())
+      expect(onOpenChange).toHaveBeenCalledWith(true, expect.anything())
+    })
+
+    it.each([{ disabled: true }, { loading: true }])(
+      'prevents clearing when unavailable: %o',
+      async (props) => {
+        const user = userEvent.setup()
+        const onClear = vi.fn()
+        render(
+          <ModelSelectorTrigger
+            currentProvider={createModel()}
+            currentModel={createModelItem()}
+            defaultModel={{ provider: 'openai', model: 'gpt-4' }}
+            onClear={onClear}
+            clearLabel="Reset model"
+            {...props}
+          />,
+        )
+
+        const clearButton = screen.getByRole('button', { name: 'Reset model' })
+        expect(clearButton).toBeDisabled()
+        await user.click(clearButton)
+        expect(onClear).not.toHaveBeenCalled()
+      },
+    )
+
+    it('does not offer clear for an empty selection', () => {
+      render(<ModelSelectorTrigger onClear={vi.fn()} clearLabel="Reset model" />)
+
+      expect(screen.queryByRole('button', { name: 'Reset model' })).not.toBeInTheDocument()
     })
   })
 

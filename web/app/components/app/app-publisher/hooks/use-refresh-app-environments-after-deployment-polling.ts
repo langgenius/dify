@@ -3,9 +3,10 @@
 import { DeploymentOperationStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useRef } from 'react'
-import { isEnvironmentDeploymentInProgress } from '@/app/components/app/deploy/state'
-import { consoleQuery } from '@/service/client'
+import { useEffect } from 'react'
+import { shouldPollEnvironmentDeployment } from '@/app/components/app/deploy/utils/environment-deployment'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
+import { consoleQuery } from '@/service/console'
 import {
   appPublisherOpenAtom,
   finishPublisherEnvironmentDeploymentPollingAtom,
@@ -17,8 +18,8 @@ import {
 
 export function useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appId?: string) {
   const queryClient = useQueryClient()
-  const operationsNeedingEnvironmentRefreshRef = useRef(new Set<string>())
-  const refreshedOperationKeysRef = useRef(new Set<string>())
+  const operationsNeedingEnvironmentRefreshRef = useRefWithInit(() => new Set<string>())
+  const refreshedOperationKeysRef = useRefWithInit(() => new Set<string>())
   const open = useAtomValue(appPublisherOpenAtom)
   const polling = useAtomValue(publisherEnvironmentDeploymentPollingAtom)
   const environment = useAtomValue(selectedPublisherEnvironmentAtom)
@@ -44,7 +45,7 @@ export function useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appId?:
         polling.environmentId !== environment.id ||
         operation?.id !== polling.operationId ||
         !isDeploymentOperationTerminal(operation.status) ||
-        isEnvironmentDeploymentInProgress(deployment)
+        shouldPollEnvironmentDeployment(deployment)
       )
         return
 
@@ -72,7 +73,7 @@ export function useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appId?:
       return
     }
 
-    if (isEnvironmentDeploymentInProgress(deployment)) {
+    if (shouldPollEnvironmentDeployment(deployment)) {
       if (operationKey) operationsNeedingEnvironmentRefreshRef.current.add(operationKey)
       return
     }
@@ -117,5 +118,15 @@ export function useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appId?:
       })
 
     void queryClient.invalidateQueries({ queryKey: appEnvironmentsQuery.queryKey })
-  }, [appId, deployment, environment, finishPolling, open, polling, queryClient])
+  }, [
+    appId,
+    deployment,
+    environment,
+    finishPolling,
+    open,
+    polling,
+    queryClient,
+    operationsNeedingEnvironmentRefreshRef,
+    refreshedOperationKeysRef,
+  ])
 }

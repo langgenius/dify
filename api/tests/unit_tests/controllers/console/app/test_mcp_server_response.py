@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -20,8 +20,9 @@ from controllers.console.wraps import RBACPermission, RBACResourceScope
 from models import Account
 from models.account import AccountStatus
 from models.enums import AppMCPServerStatus
-from models.model import App, AppMCPServer, AppMode, IconType
+from models.model import App, AppMCPServer
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_app
 
 
 def _app(
@@ -31,19 +32,7 @@ def _app(
     name: str = "Demo App",
     description: str = "App description",
 ) -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name=name,
-        description=description,
-        mode=AppMode.CHAT,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-    )
+    return make_app(app_id=app_id, tenant_id=tenant_id, name=name, description=description)
 
 
 def _server(
@@ -156,7 +145,7 @@ class TestAppMCPServerController:
 
         assert response == {}
 
-    def test_post_returns_201(self, sqlite_session: Session) -> None:
+    def test_post_returns_201(self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]) -> None:
         api = AppMCPServerController()
         method = unwrap(api.post)
         payload = {"parameters": {"timeout": 30}}
@@ -166,7 +155,7 @@ class TestAppMCPServerController:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.app.mcp_server.db.session", sqlite_session),
+            patch("controllers.console.app.mcp_server.db.session", scoped_session(sqlite_session_factory)),
             patch("controllers.console.app.mcp_server.AppMCPServer.generate_server_code", return_value="server-code"),
         ):
             response, status_code = method(
@@ -257,7 +246,9 @@ class TestAppMCPServerController:
 
 
 class TestAppMCPServerRefreshController:
-    def test_post_refreshes_server_bound_to_app_and_tenant(self, sqlite_session: Session) -> None:
+    def test_post_refreshes_server_bound_to_app_and_tenant(
+        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         api = AppMCPServerRefreshController()
         method = unwrap(api.post)
         server = _server(server_code="old-code")
@@ -270,7 +261,7 @@ class TestAppMCPServerRefreshController:
         sqlite_session.commit()
 
         with (
-            patch("controllers.console.app.mcp_server.db.session", sqlite_session),
+            patch("controllers.console.app.mcp_server.db.session", scoped_session(sqlite_session_factory)),
             patch("controllers.console.app.mcp_server.AppMCPServer.generate_server_code", return_value="new-code"),
         ):
             response = method(api, "tenant-1", app_model=_app())
@@ -315,19 +306,20 @@ class TestAppMCPServerRefreshController:
                 "controllers.common.wraps.current_account_with_tenant",
                 return_value=(current_user, "tenant-1"),
             ),
+            patch("controllers.common.rbac.locators.agent_binding", return_value=None),
+            patch("controllers.common.rbac.locators.PlainApp.owner_id", return_value=None),
             patch(
-                "controllers.common.wraps.enforce_rbac_access",
+                "controllers.common.rbac.checks.RBACService.CheckAccess.check",
                 side_effect=PermissionCheckedError,
-            ) as enforce_rbac_access,
+            ) as check_access,
             pytest.raises(PermissionCheckedError),
         ):
             method(AppMCPServerRefreshController(), app_id="app-1")
 
-        enforce_rbac_access.assert_called_once_with(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            resource_type=RBACResourceScope.APP,
+        check_access.assert_called_once_with(
+            "tenant-1",
+            "account-1",
             scene=RBACPermission.APP_EDIT,
-            resource_required=True,
-            path_args={"app_id": "app-1"},
+            resource_type=RBACResourceScope.APP,
+            resource_id="app-1",
         )

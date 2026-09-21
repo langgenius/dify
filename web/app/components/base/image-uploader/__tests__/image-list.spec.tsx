@@ -1,8 +1,17 @@
 import type { ImageFile } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import { TransferMethod } from '@/types/app'
 import ImageList from '../image-list'
+
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    'imageGallery.previewImage': 'Preview image {{index}} of {{total}}',
+  }),
+)
+
+const previewButtonName = 'Preview image 1 of 1'
 
 const createLocalFile = (overrides: Partial<ImageFile> = {}): ImageFile => ({
   type: TransferMethod.local_file,
@@ -31,32 +40,32 @@ describe('ImageList', () => {
   describe('Rendering', () => {
     it('should render images for each item in the list', () => {
       const list = [createLocalFile({ _id: 'file-1' }), createLocalFile({ _id: 'file-2' })]
-      render(<ImageList list={list} />)
+      const { container } = render(<ImageList list={list} />)
 
-      const images = screen.getAllByRole('img')
+      const images = container.querySelectorAll('img')
       expect(images).toHaveLength(2)
     })
 
     it('should use base64Url as src for local files', () => {
       const list = [createLocalFile({ _id: 'file-1', base64Url: 'data:image/png;base64,xyz' })]
-      render(<ImageList list={list} />)
+      const { container } = render(<ImageList list={list} />)
 
-      expect(screen.getByRole('img')).toHaveAttribute('src', 'data:image/png;base64,xyz')
+      expect(container.querySelector('img')).toHaveAttribute('src', 'data:image/png;base64,xyz')
     })
 
     it('should use url as src for remote files', () => {
       const list = [createRemoteFile({ _id: 'file-1', url: 'https://example.com/img.jpg' })]
-      render(<ImageList list={list} />)
+      const { container } = render(<ImageList list={list} />)
 
-      expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/img.jpg')
+      expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/img.jpg')
     })
 
-    it('should set alt attribute from file name', () => {
+    it('should use the file name for a non-interactive local thumbnail', () => {
       const file = new File(['test'], 'my-image.png', { type: 'image/png' })
-      const list = [createLocalFile({ _id: 'file-1', file })]
+      const list = [createLocalFile({ _id: 'file-1', file, progress: 50 })]
       render(<ImageList list={list} />)
 
-      expect(screen.getByRole('img')).toHaveAttribute('alt', 'my-image.png')
+      expect(screen.getByRole('img', { name: 'my-image.png' })).toBeInTheDocument()
     })
   })
 
@@ -72,7 +81,9 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1' })]
       render(<ImageList list={list} readonly onRemove={vi.fn()} />)
 
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.remove' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -94,9 +105,10 @@ describe('ImageList', () => {
     it('should show retry icon when local file upload fails (progress -1)', () => {
       const onReUpload = vi.fn()
       const list = [createLocalFile({ _id: 'file-1', progress: -1 })]
-      render(<ImageList list={list} onReUpload={onReUpload} />)
+      render(<ImageList list={list} onReUpload={onReUpload} readonly />)
 
       expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
+      expect(within(screen.getByRole('listitem')).getAllByRole('button')).toHaveLength(1)
       expect(screen.queryByText(/\d+\s*%/)).not.toBeInTheDocument()
     })
   })
@@ -131,7 +143,7 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1' })]
       render(<ImageList list={list} onRemove={onRemove} />)
 
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onRemove).toHaveBeenCalledTimes(1)
       expect(onRemove).toHaveBeenCalledWith('file-1')
@@ -153,19 +165,17 @@ describe('ImageList', () => {
       ]
       render(<ImageList list={list} />)
 
-      await user.click(screen.getByRole('img'))
+      await user.click(screen.getByRole('button', { name: previewButtonName }))
 
       const preview = screen.getByTestId('image-preview-container')
       expect(preview).toBeInTheDocument()
     })
 
-    it('should not open image preview when clicking an in-progress image', async () => {
-      const user = userEvent.setup()
+    it('should not expose a preview action for an in-progress image', () => {
       const list = [createLocalFile({ _id: 'file-1', progress: 50 })]
-      render(<ImageList list={list} />)
+      render(<ImageList list={list} readonly />)
 
-      await user.click(screen.getByRole('img'))
-
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
       expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
     })
 
@@ -175,7 +185,7 @@ describe('ImageList', () => {
       render(<ImageList list={list} />)
 
       // Open preview
-      await user.click(screen.getByRole('img'))
+      await user.click(screen.getByRole('button', { name: previewButtonName }))
       expect(screen.queryByTestId('image-preview-container')).toBeInTheDocument()
 
       // Close preview
@@ -195,7 +205,7 @@ describe('ImageList', () => {
       ]
       render(<ImageList list={list} />)
 
-      await user.click(screen.getByRole('img'))
+      await user.click(screen.getByRole('button', { name: previewButtonName }))
 
       const previewImage = screen.getByTestId('image-preview-image')
       expect(previewImage).toBeInTheDocument()
@@ -207,9 +217,11 @@ describe('ImageList', () => {
     it('should call onImageLinkLoadSuccess for remote URL on load when progress is not -1', () => {
       const onImageLinkLoadSuccess = vi.fn()
       const list = [createRemoteFile({ _id: 'file-1', progress: 0 })]
-      render(<ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />)
+      const { container } = render(
+        <ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />,
+      )
 
-      const img = screen.getByRole('img')
+      const img = container.querySelector('img')!
       fireEvent.load(img)
       expect(onImageLinkLoadSuccess).toHaveBeenCalledWith('file-1')
     })
@@ -217,9 +229,11 @@ describe('ImageList', () => {
     it('should not call onImageLinkLoadSuccess for remote URL when progress is -1', () => {
       const onImageLinkLoadSuccess = vi.fn()
       const list = [createRemoteFile({ _id: 'file-1', progress: -1 })]
-      render(<ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />)
+      const { container } = render(
+        <ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />,
+      )
 
-      const img = screen.getByRole('img')
+      const img = container.querySelector('img')!
       fireEvent.load(img)
 
       expect(onImageLinkLoadSuccess).not.toHaveBeenCalled()
@@ -228,9 +242,11 @@ describe('ImageList', () => {
     it('should not call onImageLinkLoadSuccess for local file type', () => {
       const onImageLinkLoadSuccess = vi.fn()
       const list = [createLocalFile({ _id: 'file-1', progress: 50 })]
-      render(<ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />)
+      const { container } = render(
+        <ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />,
+      )
 
-      const img = screen.getByRole('img')
+      const img = container.querySelector('img')!
       fireEvent.load(img)
 
       expect(onImageLinkLoadSuccess).not.toHaveBeenCalled()
@@ -239,9 +255,11 @@ describe('ImageList', () => {
     it('should call onImageLinkLoadError for remote URL on error', () => {
       const onImageLinkLoadError = vi.fn()
       const list = [createRemoteFile({ _id: 'file-1', progress: 0 })]
-      render(<ImageList list={list} onImageLinkLoadError={onImageLinkLoadError} />)
+      const { container } = render(
+        <ImageList list={list} onImageLinkLoadError={onImageLinkLoadError} />,
+      )
 
-      const img = screen.getByRole('img')
+      const img = container.querySelector('img')!
       fireEvent.error(img)
 
       expect(onImageLinkLoadError).toHaveBeenCalledWith('file-1')
@@ -250,9 +268,11 @@ describe('ImageList', () => {
     it('should not call onImageLinkLoadError for local file type', () => {
       const onImageLinkLoadError = vi.fn()
       const list = [createLocalFile({ _id: 'file-1', progress: 50 })]
-      render(<ImageList list={list} onImageLinkLoadError={onImageLinkLoadError} />)
+      const { container } = render(
+        <ImageList list={list} onImageLinkLoadError={onImageLinkLoadError} />,
+      )
 
-      const img = screen.getByRole('img')
+      const img = container.querySelector('img')!
       fireEvent.error(img)
 
       expect(onImageLinkLoadError).not.toHaveBeenCalled()
@@ -262,17 +282,16 @@ describe('ImageList', () => {
   describe('Edge Cases', () => {
     it('should handle list with mixed local and remote files', () => {
       const list = [createLocalFile({ _id: 'local-1' }), createRemoteFile({ _id: 'remote-1' })]
-      render(<ImageList list={list} />)
+      const { container } = render(<ImageList list={list} />)
 
-      expect(screen.getAllByRole('img')).toHaveLength(2)
+      expect(container.querySelectorAll('img')).toHaveLength(2)
     })
 
     it('should handle item without file property for alt attribute', () => {
       const list = [createLocalFile({ _id: 'file-1', file: undefined })]
-      render(<ImageList list={list} />)
+      const { container } = render(<ImageList list={list} />)
 
-      const img = screen.getByRole('img')
-      expect(img).toBeInTheDocument()
+      expect(container.querySelector('img')).toHaveAttribute('alt', '')
     })
 
     it('should handle onRemove not provided gracefully', async () => {
@@ -280,8 +299,8 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1' })]
       render(<ImageList list={list} />)
 
-      // Button exists, clicking it should not throw
-      await user.click(screen.getByRole('button'))
+      // Remove button exists, clicking it should not throw
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     })
   })
 })

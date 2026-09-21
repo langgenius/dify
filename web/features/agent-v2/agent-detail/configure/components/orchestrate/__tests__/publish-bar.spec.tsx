@@ -14,10 +14,25 @@ import {
   agentComposerSavedDraftAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { consoleQuery } from '@/service/console'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
 type PublishHandler = NonNullable<ComponentProps<typeof AgentConfigurePublishBar>['onPublish']>
 type PublishMock = Mock<PublishHandler>
+
+const restoreAccess = vi.hoisted(() => ({
+  canRestore: true,
+  plan: 'professional',
+  onUrlUpdate: vi.fn(),
+}))
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useAgentPermissions: () => ({ canReleaseAndVersion: restoreAccess.canRestore }),
+}))
+vi.mock('@/features/system-features/state', async () => {
+  const { atom } = await import('jotai')
+  return { deploymentEditionAtom: atom('CLOUD') }
+})
 
 const hotkeyRegistrations = vi.hoisted(
   () =>
@@ -53,7 +68,7 @@ const composerQuery = vi.hoisted(() => ({
   shouldFail: false,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
@@ -84,8 +99,24 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/features/system-features/client', () => ({
+  systemFeaturesQueryOptions: () => ({
+    queryKey: ['system-features'],
+    queryFn: async () => ({ deployment_edition: 'CLOUD' }),
+  }),
+}))
+
+vi.mock('@/service/console', () => ({
   consoleQuery: {
+    features: {
+      get: {
+        queryOptions: (options: Record<string, unknown>) => ({
+          ...options,
+          queryKey: ['features'],
+          queryFn: async () => ({ billing: { subscription: { plan: restoreAccess.plan } } }),
+        }),
+      },
+    },
     agent: {
       byAgentId: {
         get: {
@@ -137,7 +168,10 @@ vi.mock('@/service/client', () => ({
           byVersionId: {
             restore: {
               post: {
-                mutationOptions: () => ({ mutationFn: restoreVersionMutation }),
+                mutationOptions: (options: Record<string, unknown>) => ({
+                  ...options,
+                  mutationFn: restoreVersionMutation,
+                }),
               },
             },
           },
@@ -239,6 +273,10 @@ function renderPublishBar({
       mutations: { retry: false },
     },
   })
+  queryClient.setQueryData<unknown>(consoleQuery.features.get.queryOptions({}).queryKey, {
+    billing: { subscription: { plan: restoreAccess.plan } },
+  })
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: restoreAccess.onUrlUpdate })
   const store = createStore()
   store.set(agentComposerPromptAtom, prompt)
   setupStore?.(store)
@@ -269,21 +307,30 @@ function renderPublishBar({
     queryClient.setQueryData(composerQueryKey, composerState)
   }
 
-  const renderPublishBarTree = (nextProps?: { isPublishing?: boolean }) => (
-    <QueryClientProvider client={queryClient}>
-      <JotaiProvider store={store}>
-        <AgentConfigurePublishBar
-          agentId="agent-1"
-          agentName="Iris"
-          isPublishing={nextProps?.isPublishing ?? isPublishing}
-          selectedVersionSnapshot={selectedVersionSnapshot}
-          onPublish={onPublish}
-          onExitVersions={onExitVersions}
-          onOpenVersions={vi.fn()}
-          onVersionRestored={onVersionRestored}
-        />
-      </JotaiProvider>
-    </QueryClientProvider>
+  const renderPublishBarTree = (nextProps?: {
+    isPublishing?: boolean
+    selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  }) => (
+    <NuqsWrapper>
+      <QueryClientProvider client={queryClient}>
+        <JotaiProvider store={store}>
+          <AgentConfigurePublishBar
+            agentId="agent-1"
+            agentName="Iris"
+            isPublishing={nextProps?.isPublishing ?? isPublishing}
+            selectedVersionSnapshot={
+              nextProps?.selectedVersionSnapshot === undefined
+                ? selectedVersionSnapshot
+                : nextProps.selectedVersionSnapshot
+            }
+            onPublish={onPublish}
+            onExitVersions={onExitVersions}
+            onOpenVersions={vi.fn()}
+            onVersionRestored={onVersionRestored}
+          />
+        </JotaiProvider>
+      </QueryClientProvider>
+    </NuqsWrapper>
   )
   const view = render(renderPublishBarTree())
 
@@ -301,6 +348,8 @@ describe('AgentConfigurePublishBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     hotkeyRegistrations.clear()
+    restoreAccess.canRestore = true
+    restoreAccess.plan = 'professional'
     restoreVersionMutation.mockResolvedValue({
       active_config_snapshot_id: 'snapshot-2',
       result: 'success',
@@ -393,8 +442,13 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.getByText('Stable version')).toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.versionHistory.viewOnly')).toBeInTheDocument()
     expect(screen.getByText('formatted:1710000000 · Alice')).toBeInTheDocument()
-    fireEvent.click(
-      screen.getByRole('button', { name: 'agentV2.agentDetail.versionHistory.restore' }),
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    expect(restoreVersionMutation).not.toHaveBeenCalled()
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: /restore/i }),
     )
 
     await waitFor(() => {
@@ -411,6 +465,112 @@ describe('AgentConfigurePublishBar', () => {
       onExitVersions.mock.invocationCallOrder[0]!,
     )
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
+  })
+
+  it('starts a fresh restore confirmation after leaving and re-entering version view', async () => {
+    const user = userEvent.setup()
+    const { rerender, rerenderPublishBar } = renderPublishBar({
+      selectedVersionSnapshot: activeConfigSnapshot,
+    })
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+    rerender(rerenderPublishBar({ selectedVersionSnapshot: null }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    rerender(
+      rerenderPublishBar({
+        selectedVersionSnapshot: {
+          ...activeConfigSnapshot,
+          id: 'snapshot-2',
+          version_note: 'Version two',
+        },
+      }),
+    )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(restoreVersionMutation).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    const dialog = await screen.findByRole('alertdialog', { name: /Version two/ })
+    await user.click(within(dialog).getByRole('button', { name: /restore/i }))
+    await waitFor(() =>
+      expect(restoreVersionMutation).toHaveBeenCalledWith(
+        { params: { agent_id: 'agent-1', version_id: 'snapshot-2' } },
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('shows the agent upgrade dialog before opening pricing on the sandbox plan', async () => {
+    restoreAccess.plan = 'sandbox'
+    const user = userEvent.setup()
+    const { onExitVersions, onVersionRestored } = renderPublishBar({
+      selectedVersionSnapshot: activeConfigSnapshot,
+    })
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'billing.upgrade.agentRestore.title' })
+    expect(dialog).toHaveAccessibleDescription('billing.upgrade.agentRestore.description')
+    expect(restoreAccess.onUrlUpdate).not.toHaveBeenCalled()
+    expect(restoreVersionMutation).not.toHaveBeenCalled()
+    await user.click(
+      within(dialog).getByRole('button', { name: 'billing.triggerLimitModal.upgrade' }),
+    )
+    expect(restoreAccess.onUrlUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ queryString: '?pricing=open' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(restoreVersionMutation).not.toHaveBeenCalled()
+    expect(onExitVersions).not.toHaveBeenCalled()
+    expect(onVersionRestored).not.toHaveBeenCalled()
+  })
+
+  it('prevents duplicate restoration and cancellation while the request is pending', async () => {
+    const deferred = createDeferredPromise()
+    restoreVersionMutation.mockImplementationOnce(async () => {
+      await deferred.promise
+      return { active_config_snapshot_id: 'snapshot-2', result: 'success' }
+    })
+    const user = userEvent.setup()
+    const { onExitVersions } = renderPublishBar({ selectedVersionSnapshot: activeConfigSnapshot })
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    const confirm = within(dialog).getByRole('button', { name: /restore/i })
+    await user.click(confirm)
+    await waitFor(() => expect(confirm).toHaveAttribute('aria-disabled', 'true'))
+    expect(within(dialog).getByRole('button', { name: /cancel/i })).toBeDisabled()
+    await user.click(confirm)
+    expect(restoreVersionMutation).toHaveBeenCalledTimes(1)
+    expect(onExitVersions).not.toHaveBeenCalled()
+    await act(async () => {
+      deferred.resolve()
+      await deferred.promise
+    })
+    await waitFor(() => expect(onExitVersions).toHaveBeenCalledTimes(1))
+  })
+
+  it('keeps the selected version open when restoration fails', async () => {
+    restoreVersionMutation.mockRejectedValueOnce(new Error('Restore failed'))
+    const user = userEvent.setup()
+    const { onExitVersions, onVersionRestored } = renderPublishBar({
+      selectedVersionSnapshot: activeConfigSnapshot,
+    })
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: /restore/i }),
+    )
+    await waitFor(() => expect(restoreVersionMutation).toHaveBeenCalledTimes(1))
+    expect(onExitVersions).not.toHaveBeenCalled()
+    expect(onVersionRestored).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
   })
 
   it('should render saved time from the latest draft save timestamp', () => {
@@ -594,6 +754,35 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).not.toHaveBeenCalled()
   })
 
+  it('should refresh cached workflow references before publishing', async () => {
+    const { onPublish, queryClient } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+    })
+    const referencesQueryKey = ['agent-referencing-workflows', { params: { agent_id: 'agent-1' } }]
+
+    await waitFor(() => {
+      expect(workflowReferences.fetchCount).toBe(1)
+    })
+    queryClient.setQueryDefaults(['agent-referencing-workflows'], { staleTime: Infinity })
+    queryClient.setQueryData(referencesQueryKey, { data: [] })
+    workflowReferences.data = publishedReferences
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+      }),
+    )
+
+    expect(onPublish).not.toHaveBeenCalled()
+    expect(
+      await screen.findByRole('region', {
+        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+      }),
+    ).toBeInTheDocument()
+    expect(workflowReferences.fetchCount).toBe(2)
+  })
+
   it('should mark non-prompt draft changes as unpublished', () => {
     renderPublishBar({
       activeConfigSnapshot,
@@ -709,7 +898,7 @@ describe('AgentConfigurePublishBar', () => {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })
     expect(impactDetails).toBeInTheDocument()
-    expect(workflowReferences.fetchCount).toBe(1)
+    expect(workflowReferences.fetchCount).toBe(2)
     expect(
       screen.getAllByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,

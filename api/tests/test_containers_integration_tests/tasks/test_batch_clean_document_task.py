@@ -255,7 +255,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully
@@ -311,7 +314,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=[],
         )
 
         # Verify database cleanup
@@ -351,7 +357,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully
@@ -446,7 +455,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully despite storage failure
@@ -504,7 +516,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task with multiple documents
         batch_clean_document_task(
-            document_ids=document_ids, dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=file_ids
+            document_ids=document_ids,
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=file_ids,
         )
 
         # Verify that the task completed successfully for all documents
@@ -641,7 +656,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task with large batch
         batch_clean_document_task(
-            document_ids=document_ids, dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=file_ids
+            document_ids=document_ids,
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=file_ids,
         )
 
         end_time = time.perf_counter()
@@ -734,7 +752,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully

@@ -8,12 +8,12 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -135,7 +135,7 @@ const Conversion = () => {
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={isPending}
-              disabled={isPending || !canConvertDataset}
+              disabled={!canConvertDataset}
               onClick={handleConvert}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}

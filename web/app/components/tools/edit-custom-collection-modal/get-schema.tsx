@@ -7,11 +7,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import { toast } from '@/app/notifications'
 import { importSchemaFromURL } from '@/service/tools'
 import examples from './examples'
 
@@ -25,6 +26,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
   const [importUrl, setImportUrl] = useState('')
   const [isParsing, setIsParsing] = useState(false)
   const handleImportFromUrl = async () => {
+    if (isParsing) return
     if (!importUrl.startsWith('http://') && !importUrl.startsWith('https://')) {
       toast.error(t(($) => $['createTool.urlError'], { ns: 'tools' }))
       return
@@ -44,35 +46,50 @@ const GetSchema: FC<Props> = ({ onChange }) => {
 
   return (
     <div className="flex w-56 justify-end gap-1">
-      <DropdownMenu open={showImportFromUrl} onOpenChange={setShowImportFromUrl}>
-        <DropdownMenuTrigger render={<Button size="small" />}>
+      <Popover open={showImportFromUrl} onOpenChange={setShowImportFromUrl}>
+        <PopoverTrigger render={<Button size="small" />}>
           <span className="i-ri-add-line size-3" aria-hidden />
           <span className="system-xs-medium text-text-secondary">
             {t(($) => $['createTool.importFromUrl'], { ns: 'tools' })}
           </span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-start" sideOffset={2} className="w-[300px] p-2">
-          <div className="relative">
-            <Input
-              type="text"
-              className="w-full"
-              placeholder={t(($) => $['createTool.importFromUrlPlaceHolder'], { ns: 'tools' })!}
-              value={importUrl}
-              onChange={(e) => setImportUrl(e.target.value)}
-            />
-            <Button
-              className="absolute top-1 right-1"
-              size="small"
-              variant="primary"
-              disabled={!importUrl}
-              onClick={handleImportFromUrl}
-              loading={isParsing}
-            >
-              {isParsing ? '' : t(($) => $['operation.ok'], { ns: 'common' })}
-            </Button>
-          </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </PopoverTrigger>
+        <PopoverContent
+          placement="bottom-start"
+          sideOffset={2}
+          className="w-75 p-2"
+          aria-label={t(($) => $['createTool.importFromUrl'], { ns: 'tools' })}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              void handleImportFromUrl()
+            }}
+          >
+            <InputGroup>
+              <InputGroupInput
+                type="text"
+                name="schemaUrl"
+                inputMode="url"
+                aria-label={t(($) => $['createTool.importFromUrl'], { ns: 'tools' })}
+                placeholder={t(($) => $['createTool.importFromUrlPlaceHolder'], { ns: 'tools' })!}
+                value={importUrl}
+                onValueChange={(value) => setImportUrl(value)}
+              />
+              <InputGroupAddon align="inline-end" className="pe-1">
+                <Button
+                  type="submit"
+                  size="small"
+                  variant="primary"
+                  disabled={!importUrl}
+                  loading={isParsing}
+                >
+                  {t(($) => $['operation.ok'], { ns: 'common' })}
+                </Button>
+              </InputGroupAddon>
+            </InputGroup>
+          </form>
+        </PopoverContent>
+      </Popover>
       <DropdownMenu open={showExamples} onOpenChange={setShowExamples}>
         <DropdownMenuTrigger render={<Button size="small" />}>
           <span className="system-xs-medium text-text-secondary">
