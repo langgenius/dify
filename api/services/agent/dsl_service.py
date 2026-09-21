@@ -625,40 +625,9 @@ class AgentDslService:
             )
             for asset in package.omitted_assets
         ]
-        # Legacy DSLs can retain source-workspace ids without an is_missing flag.
-        # Check local records so resources materialized from archives remain usable.
-        asset_refs = [
-            (kind, index, item)
-            for kind, field in (("skill", "config_skills"), ("file", "config_files"))
-            for index, item in enumerate(soul_data[field])
-            if not item["is_missing"]
-        ]
-        for file_kind, model in (("tool_file", ToolFile), ("upload_file", UploadFile)):
-            refs = [(kind, index, item) for kind, index, item in asset_refs if item["file_kind"] == file_kind]
-            valid_ids: set[str] = set()
-            for _, _, item in refs:
-                try:
-                    valid_ids.add(str(UUID(item["file_id"])))
-                except ValueError:
-                    continue
-            existing_ids = (
-                set(self.session.scalars(select(model.id).where(model.tenant_id == tenant_id, model.id.in_(valid_ids))))
-                if valid_ids
-                else set()
-            )
-            for kind, index, item in refs:
-                if item["file_id"] in existing_ids:
-                    continue
-                item["file_id"] = ""
-                item["is_missing"] = True
-                warnings.append(
-                    DslImportWarning(
-                        code=f"agent_{kind}_missing",
-                        path=f"{package_path}.soul.config_{'skills' if kind == 'skill' else 'files'}.{index}",
-                        message=f"Agent {kind} {item['name']!r} is unavailable in the target workspace.",
-                        details={"kind": kind, "name": item["name"]},
-                    )
-                )
+        warnings.extend(
+            self._mark_missing_package_assets(tenant_id=tenant_id, soul_data=soul_data, package_path=package_path)
+        )
         for tool_index, tool in enumerate(package.soul.tools.dify_tools):
             tool_label = tool.tool_name or tool.provider or tool.provider_id
             warnings.append(
@@ -710,6 +679,51 @@ class AgentDslService:
                     )
                 )
         return AgentSoulConfig.model_validate(soul_data), warnings
+
+    def _mark_missing_package_assets(
+        self,
+        *,
+        tenant_id: str,
+        soul_data: dict[str, Any],
+        package_path: str,
+    ) -> list[DslImportWarning]:
+        """Mark unavailable asset references in place and return import warnings."""
+        warnings: list[DslImportWarning] = []
+        # Legacy DSLs can retain source-workspace ids without an is_missing flag.
+        # Check local records so resources materialized from archives remain usable.
+        asset_refs = [
+            (kind, index, item)
+            for kind, field in (("skill", "config_skills"), ("file", "config_files"))
+            for index, item in enumerate(soul_data[field])
+            if not item["is_missing"]
+        ]
+        for file_kind, model in (("tool_file", ToolFile), ("upload_file", UploadFile)):
+            refs = [(kind, index, item) for kind, index, item in asset_refs if item["file_kind"] == file_kind]
+            valid_ids: set[str] = set()
+            for _, _, item in refs:
+                try:
+                    valid_ids.add(str(UUID(item["file_id"])))
+                except ValueError:
+                    continue
+            existing_ids = (
+                set(self.session.scalars(select(model.id).where(model.tenant_id == tenant_id, model.id.in_(valid_ids))))
+                if valid_ids
+                else set()
+            )
+            for kind, index, item in refs:
+                if item["file_id"] in existing_ids:
+                    continue
+                item["file_id"] = ""
+                item["is_missing"] = True
+                warnings.append(
+                    DslImportWarning(
+                        code=f"agent_{kind}_missing",
+                        path=f"{package_path}.soul.config_{'skills' if kind == 'skill' else 'files'}.{index}",
+                        message=f"Agent {kind} {item['name']!r} is unavailable in the target workspace.",
+                        details={"kind": kind, "name": item["name"]},
+                    )
+                )
+        return warnings
 
     def _create_snapshot(
         self,
