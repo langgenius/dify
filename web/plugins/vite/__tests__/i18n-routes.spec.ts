@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vite-plus/test'
-import { analyzeRouteNamespaces } from '../i18n-analysis/routes'
+import { analyzeRouteNamespaces, validateRouteNamespaces } from '../i18n-analysis/routes'
 
 describe('route namespace analysis', () => {
   it('includes ancestor boundaries and parallel slots without leaking sibling layouts', () => {
@@ -44,6 +44,29 @@ describe('route namespace analysis', () => {
         'sidebar',
       ],
     })
+    expect(() => validateRouteNamespaces(report, () => undefined)).not.toThrow()
+    expect(() =>
+      validateRouteNamespaces(report, (route) =>
+        route === '/items'
+          ? [
+              'common',
+              'console',
+              'detail',
+              'error',
+              'items',
+              'lazy',
+              'loading',
+              'shared',
+              'sidebar',
+            ]
+          : undefined,
+      ),
+    ).not.toThrow()
+    expect(() =>
+      validateRouteNamespaces(report, (route) => (route === '/items' ? [] : undefined)),
+    ).toThrow(
+      /Route namespace declarations[\s\S]*\/items[\s\S]*\[shared\] app\/layout.tsx[\s\S]*\[slots\][\s\S]*\[page\][\s\S]*\[lazy\] lazy.ts/,
+    )
     const groups = report.find((item) => item.page === 'app/(console)/items/page.tsx')!.groups
     expect(groups.page).toEqual([
       { namespace: 'items', sources: ['app/(console)/items/page.tsx'] },

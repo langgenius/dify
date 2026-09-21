@@ -88,6 +88,13 @@ class ServerSettings(BaseSettings):
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    sandbox_metering_enabled: bool = False
+    e2b_project_id: str = ""
+    # Optional accounting validates its numeric configuration at invocation,
+    # so a bad metering value cannot prevent ordinary runtime startup.
+    sandbox_metering_overlap_seconds: int | str = 900
+    sandbox_metering_full_scan_interval_seconds: int | str = 3600
+    sandbox_metering_max_pages: int | str = 1000
     openshell_gateway_endpoint: str | None = None
     openshell_workspace: str = "default"
     openshell_bearer_token: str | None = None

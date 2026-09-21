@@ -323,7 +323,7 @@ describe('ConfigurationView', () => {
   it('should render a loading state before configuration data is ready', () => {
     render(<ConfigurationView {...createViewModel({ showLoading: true })} />)
 
-    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByTestId('app-publisher')).not.toBeInTheDocument()
   })
 

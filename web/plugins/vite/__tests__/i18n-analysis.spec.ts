@@ -123,6 +123,42 @@ describe('i18n build check', () => {
     })
   })
 
+  it('fails opted-in route builds with undeclared dynamic dependencies and their source paths', async () => {
+    writeFileSync(localeFile, JSON.stringify({ used: 'Used' }))
+    mkdirSync(path.join(root, 'app/signin/check-code'), { recursive: true })
+    writeFileSync(
+      path.join(root, 'app/signin/check-code/page.ts'),
+      `export const page = () => import('../../../lazy')`,
+    )
+    writeFileSync(
+      path.join(root, 'lazy.ts'),
+      `export function label(t: (key: string) => string) { return t('app:used') }`,
+    )
+    writeFileSync(
+      path.join(root, 'entry.ts'),
+      `export { page } from './app/signin/check-code/page'`,
+    )
+    let enabled = true
+    const run = () =>
+      build({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        plugins: [
+          i18nAnalysisPlugin({
+            getDeclaredNamespaces: (route) =>
+              enabled && route.startsWith('/signin/') ? ['common', 'login'] : undefined,
+          }),
+        ],
+        build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
+      })
+    await expect(run()).rejects.toThrow(
+      /\/signin\/check-code[\s\S]*Undeclared namespace: app[\s\S]*\[lazy\] lazy.ts/,
+    )
+    enabled = false
+    await expect(run()).resolves.toBeDefined()
+  })
+
   it('fails builds with actionable findings without modifying translations', async () => {
     const content = JSON.stringify({ used: 'Used', unused: 'Unused' })
     writeFileSync(localeFile, content)

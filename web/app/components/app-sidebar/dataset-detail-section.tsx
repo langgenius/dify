@@ -2,6 +2,7 @@
 
 import type { RemixiconComponentType } from '@remixicon/react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import {
   RiEqualizer2Fill,
   RiEqualizer2Line,
@@ -16,7 +17,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import ExtraInfo from '@/app/components/datasets/extra-info'
 import DatasetDetailContext from '@/context/dataset-detail'
@@ -141,10 +141,11 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
       <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
         {!expand && (
           <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-0.75">
-            <Divider
-              type="horizontal"
-              bgStyle="solid"
-              className="my-0 h-px w-6.75 bg-divider-subtle"
+            <Separator
+              decorative
+              orientation="horizontal"
+              variant="solid"
+              className="my-0 w-6.75 bg-divider-subtle"
             />
           </div>
         )}

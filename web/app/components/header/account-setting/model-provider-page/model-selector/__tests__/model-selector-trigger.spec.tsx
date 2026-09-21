@@ -149,6 +149,65 @@ describe('ModelSelectorTrigger', () => {
     })
   })
 
+  describe('Clearing the selection', () => {
+    it('clears without opening the model picker or submitting the containing form', async () => {
+      const user = userEvent.setup()
+      const onClear = vi.fn()
+      const onOpenChange = vi.fn()
+      const onSubmit = vi.fn((event) => event.preventDefault())
+      renderComponent(
+        <form onSubmit={onSubmit}>
+          <Popover onOpenChange={onOpenChange}>
+            <ModelSelectorTrigger
+              currentProvider={createModel()}
+              currentModel={createModelItem()}
+              defaultModel={{ provider: 'openai', model: 'gpt-4' }}
+              onClear={onClear}
+              clearLabel="Reset model"
+            />
+          </Popover>
+        </form>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Reset model' }))
+
+      expect(onClear).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(onSubmit).not.toHaveBeenCalled()
+      await user.click(getTrigger())
+      expect(onOpenChange).toHaveBeenCalledWith(true, expect.anything())
+    })
+
+    it.each([{ disabled: true }, { loading: true }])(
+      'prevents clearing when unavailable: %o',
+      async (props) => {
+        const user = userEvent.setup()
+        const onClear = vi.fn()
+        render(
+          <ModelSelectorTrigger
+            currentProvider={createModel()}
+            currentModel={createModelItem()}
+            defaultModel={{ provider: 'openai', model: 'gpt-4' }}
+            onClear={onClear}
+            clearLabel="Reset model"
+            {...props}
+          />,
+        )
+
+        const clearButton = screen.getByRole('button', { name: 'Reset model' })
+        expect(clearButton).toBeDisabled()
+        await user.click(clearButton)
+        expect(onClear).not.toHaveBeenCalled()
+      },
+    )
+
+    it('does not offer clear for an empty selection', () => {
+      render(<ModelSelectorTrigger onClear={vi.fn()} clearLabel="Reset model" />)
+
+      expect(screen.queryByRole('button', { name: 'Reset model' })).not.toBeInTheDocument()
+    })
+  })
+
   describe('Status Handling', () => {
     it('should show status badge when selected model is not active and enabled', () => {
       render(
