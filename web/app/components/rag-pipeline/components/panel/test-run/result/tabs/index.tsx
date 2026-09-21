@@ -23,7 +23,7 @@ const Tabs = ({ workflowRunningData }: TabsProps) => {
           key={tab.value}
           value={tab.value}
           disabled={!workflowRunningData}
-          className="py-3 system-sm-semibold-uppercase"
+          className="py-3 system-sm-semibold-uppercase!"
         >
           {tab.label}
         </TabsTab>
