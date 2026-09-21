@@ -49,6 +49,7 @@ from libs.helper import dump_response, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import Account, App, Dataset, UploadFile
 from models.evaluation import EvaluationConfiguration, EvaluationRun, EvaluationTargetType
+from models.model import AppMode
 from models.snippet import CustomizedSnippet
 from models.workflow import WorkflowKind, WorkflowType
 from services.dataset_service import DatasetService
@@ -118,6 +119,7 @@ class EvaluationRunResponse(ResponseModel):
     tenant_id: str
     target_type: str
     target_id: str
+    target_workflow_version_id: str | None = None
     evaluation_config_id: str
     status: str
     dataset_file_id: str | None = None
@@ -285,7 +287,7 @@ register_response_schema_models(
 def evaluation_target_required(
     *,
     app_permission: RBACPermission,
-    snippet_permission: RBACPermission | None = None,
+    snippet_permission: RBACPermission = RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Resolve an app/snippet target with tenant and dynamic RBAC checks."""
 
@@ -312,12 +314,11 @@ def evaluation_target_required(
                     )
                 )
             elif target_type == EvaluationTargetType.SNIPPETS.value:
-                if snippet_permission is not None:
-                    enforce_rbac_checks(
-                        tenant_id=tenant_id,
-                        account_id=current_user.id,
-                        checks=[RBACCheck(snippet_permission, Workspace())],
-                    )
+                enforce_rbac_checks(
+                    tenant_id=tenant_id,
+                    account_id=current_user.id,
+                    checks=[RBACCheck(snippet_permission, Workspace())],
+                )
                 target = session.scalar(
                     select(CustomizedSnippet).where(
                         CustomizedSnippet.id == target_id,
@@ -329,6 +330,8 @@ def evaluation_target_required(
 
             if target is None:
                 raise NotFound("Evaluation target not found.")
+            if isinstance(target, App) and AppMode.value_of(target.mode) != AppMode.WORKFLOW:
+                raise BadRequest("Only workflow apps support evaluation.")
 
             kwargs["target"] = target
             kwargs["target_type"] = target_type

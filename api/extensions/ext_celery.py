@@ -212,6 +212,11 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.ENABLE_EVALUATION_RUN_RECONCILER:
+        beat_schedule["evaluation-run-reconciler"] = {
+            "task": "tasks.evaluation_task.reconcile_stale_evaluation_runs",
+            "schedule": timedelta(minutes=1),
+        }
     if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
         from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
 

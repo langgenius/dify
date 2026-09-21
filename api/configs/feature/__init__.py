@@ -1485,6 +1485,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
         default=True,
     )
+    ENABLE_EVALUATION_RUN_RECONCILER: bool = Field(
+        description="Enable periodic recovery of running evaluations that exceed the execution timeout",
+        default=True,
+    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,

@@ -105,6 +105,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: Literal[True],
         call_depth: int,
         workflow_run_id: str | uuid.UUID | None = None,
+        task_id: str | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
@@ -124,6 +125,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: Literal[False],
         call_depth: int,
         workflow_run_id: str | uuid.UUID | None = None,
+        task_id: str | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
@@ -143,6 +145,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool,
         call_depth: int,
         workflow_run_id: str | uuid.UUID | None = None,
+        task_id: str | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
@@ -161,6 +164,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_run_id: str | uuid.UUID | None = None,
+        task_id: str | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
@@ -218,7 +222,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 )
             # init application generate entity
             application_generate_entity = WorkflowAppGenerateEntity(
-                task_id=str(uuid.uuid4()),
+                task_id=task_id or str(uuid.uuid4()),
                 app_config=app_config,
                 file_upload_config=file_extra_config,
                 inputs=inputs,

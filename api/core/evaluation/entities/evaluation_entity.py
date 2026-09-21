@@ -255,9 +255,11 @@ class EvaluationRunData(BaseModel):
     tenant_id: str
     target_type: str
     target_id: str
+    target_workflow_version_id: str | None = None
     evaluation_model_provider: str
     evaluation_model: str
     default_metrics: list[DefaultMetric] = Field(default_factory=list)
     customized_metrics: CustomizedMetrics | None = None
     judgment_config: JudgmentConfig | None = None
+    llm_context_node_mapping: dict[str, list[str]] = Field(default_factory=dict)
     input_list: list[EvaluationDatasetInput]

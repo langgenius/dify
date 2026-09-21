@@ -33,11 +33,12 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
         tenant_id: str,
         dataset_items: list[EvaluationDatasetInput] | None = None,
         node_info: NodeInfo | None = None,
+        context_list: list[list[str] | None] | None = None,
     ) -> list[EvaluationItemResult]:
         """Use the evaluation instance to compute LLM metrics."""
         if not node_run_result_list:
             return []
-        merged_items = self._merge_results_into_items(node_run_result_list, dataset_items, node_info)
+        merged_items = self._merge_results_into_items(node_run_result_list, dataset_items, node_info, context_list)
         return self.evaluation_instance.evaluate_llm(
             merged_items, [default_metric.metric], model_provider, model_name, tenant_id
         )
@@ -47,6 +48,7 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
         items: list[NodeRunResult],
         dataset_items: list[EvaluationDatasetInput] | None = None,
         node_info: NodeInfo | None = None,
+        context_list: list[list[str] | None] | None = None,
     ) -> list[EvaluationItemInput]:
         """Create new items from NodeRunResult for ragas evaluation.
 
@@ -70,7 +72,11 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
                         if dataset_item
                         else None
                     ),
-                    context=_extract_context_blocks(prompts),
+                    context=(
+                        context_list[i]
+                        if context_list is not None and i < len(context_list) and context_list[i] is not None
+                        else _extract_context_blocks(prompts)
+                    ),
                 )
             )
         return merged

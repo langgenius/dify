@@ -3,13 +3,13 @@ import io
 import json
 import logging
 import uuid
-from collections.abc import Mapping, Sequence
-from typing import Any, TypedDict, Union
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, TypedDict, Union, cast
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-from sqlalchemy import select
+from sqlalchemy import delete, event, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -31,8 +31,10 @@ from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.node_events.base import NodeRunResult
+from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
+from models.dataset import Dataset
 from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
@@ -68,8 +70,7 @@ class EvaluationService:
     based on App or Snippet input parameters.
     """
 
-    # Excluded app modes that don't support evaluation templates
-    EXCLUDED_APP_MODES = {AppMode.RAG_PIPELINE}
+    ALLOWED_APP_MODES = {AppMode.WORKFLOW}
     CONSOLE_DISABLED_CATEGORIES = {"agent"}
     SUPPORTED_NODE_TYPES = {"llm", "knowledge-retrieval", "knowledge_retrieval"}
     CONSOLE_DISABLED_METRICS = {"tool_correctness", "task_completion"}
@@ -102,8 +103,7 @@ class EvaluationService:
         if target_type == EvaluationTargetType.APPS.value:
             if not isinstance(target, App):
                 raise ValueError("Invalid target: expected App instance")
-            if AppMode.value_of(target.mode) in cls.EXCLUDED_APP_MODES:
-                raise ValueError(f"App mode '{target.mode}' does not support evaluation templates")
+            cls._validate_app_mode(target)
             input_fields = cls._get_app_input_fields(target, session)
         elif target_type == EvaluationTargetType.SNIPPETS.value:
             if not isinstance(target, CustomizedSnippet):
@@ -129,6 +129,7 @@ class EvaluationService:
         :param app: App instance
         :return: List of input field definitions
         """
+        cls._validate_app_mode(app)
         workflow_service = WorkflowService()
         workflow = workflow_service.get_published_workflow(app_model=app, session=session)
         if not workflow:
@@ -311,13 +312,16 @@ class EvaluationService:
         target_id: str,
         account_id: str,
         data: EvaluationConfigData,
+        target_workflow: Workflow | None = None,
+        validation_data: EvaluationConfigData | None = None,
     ) -> EvaluationConfiguration:
         cls.validate_evaluation_config(
             session=session,
             tenant_id=tenant_id,
             target_type=target_type,
             target_id=target_id,
-            data=data,
+            data=validation_data or data,
+            target_workflow=target_workflow,
         )
         config = cls.get_evaluation_config(session, tenant_id, target_type, target_id)
         if config is None:
@@ -421,6 +425,7 @@ class EvaluationService:
         target_type: str,
         target_id: str,
         data: EvaluationConfigData,
+        target_workflow: Workflow | None = None,
     ) -> None:
         """Validate supported metrics and the optional custom evaluator."""
         normalized_target_type = EvaluationTargetType(target_type)
@@ -428,9 +433,26 @@ class EvaluationService:
             raise ValueError("At least one default or customized metric is required.")
         if data.default_metrics and (not data.evaluation_model_provider or not data.evaluation_model):
             raise ValueError("evaluation_model_provider and evaluation_model are required for default metrics.")
+        if data.default_metrics:
+            cls._validate_evaluation_model(
+                tenant_id=tenant_id,
+                provider=data.evaluation_model_provider,
+                model_name=data.evaluation_model,
+            )
 
         published_node_types: dict[str, str] = {}
-        if normalized_target_type != EvaluationTargetType.KNOWLEDGE_BASE:
+        if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
+            dataset = session.scalar(
+                select(Dataset).where(
+                    Dataset.id == target_id,
+                    Dataset.tenant_id == tenant_id,
+                )
+            )
+            if dataset is None:
+                raise ValueError("Evaluation target not found.")
+            if dataset.provider == "external":
+                raise ValueError("External knowledge bases are not supported by evaluation.")
+        else:
             target: App | CustomizedSnippet | None
             if normalized_target_type == EvaluationTargetType.APPS:
                 target = session.scalar(
@@ -449,7 +471,11 @@ class EvaluationService:
                 )
             if target is None:
                 raise ValueError("Evaluation target not found.")
-            published_workflow = cls._resolve_published_workflow(target, normalized_target_type.value, session)
+            if normalized_target_type == EvaluationTargetType.APPS:
+                cls._validate_app_mode(cast(App, target))
+            published_workflow = target_workflow or cls._resolve_published_workflow(
+                target, normalized_target_type.value, session
+            )
             if published_workflow is None:
                 raise ValueError("The evaluation target must have a published workflow.")
             published_node_types = {
@@ -476,44 +502,168 @@ class EvaluationService:
                     raise ValueError(f"Metric '{metric.metric}' is not supported for category '{category.value}'.")
 
         customized_metrics = data.customized_metrics
-        if customized_metrics is None:
-            return
-        if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
-            raise ValueError("Customized evaluation workflows are not supported for knowledge bases.")
-        output_variables = [field.variable for field in customized_metrics.output_fields]
-        if not output_variables:
-            raise ValueError("Customized metrics must select at least one evaluation workflow output.")
-        if len(output_variables) != len(set(output_variables)):
-            raise ValueError("Customized metric output variables must be unique.")
-        evaluator_app = session.scalar(
-            select(App).where(
-                App.id == customized_metrics.evaluation_workflow_id,
-                App.tenant_id == tenant_id,
-                App.status == "normal",
+        if customized_metrics is not None:
+            if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
+                raise ValueError("Customized evaluation workflows are not supported for knowledge bases.")
+            output_variables = [field.variable for field in customized_metrics.output_fields]
+            if not output_variables:
+                raise ValueError("Customized metrics must select at least one evaluation workflow output.")
+            if len(output_variables) != len(set(output_variables)):
+                raise ValueError("Customized metric output variables must be unique.")
+            evaluator_app = session.scalar(
+                select(App).where(
+                    App.id == customized_metrics.evaluation_workflow_id,
+                    App.tenant_id == tenant_id,
+                    App.status == "normal",
+                )
             )
+            if evaluator_app is None:
+                raise ValueError("Evaluation workflow app not found.")
+            workflow_service = WorkflowService()
+            evaluator_workflow = (
+                workflow_service.get_published_workflow_by_id(
+                    app_model=evaluator_app,
+                    workflow_id=customized_metrics.evaluation_workflow_version_id,
+                    session=session,
+                )
+                if customized_metrics.evaluation_workflow_version_id
+                else workflow_service.get_published_workflow(app_model=evaluator_app, session=session)
+            )
+            if (
+                evaluator_workflow is None
+                or evaluator_workflow.type != WorkflowType.WORKFLOW
+                or evaluator_workflow.resolved_kind != WorkflowKind.EVALUATION
+            ):
+                raise ValueError("The customized evaluator must be a published evaluation workflow.")
+            available_output_variables = {
+                output.get("variable")
+                for _, node_data in evaluator_workflow.walk_nodes()
+                if node_data.get("type") == "end"
+                for output in (node_data.get("outputs") or [])
+                if isinstance(output, Mapping) and isinstance(output.get("variable"), str)
+            }
+            missing_output_variables = sorted(set(output_variables) - available_output_variables)
+            if missing_output_variables:
+                raise ValueError(
+                    "Customized metric outputs are not declared by the published evaluation workflow: "
+                    + ", ".join(missing_output_variables)
+                )
+            cls._validate_customized_inputs(
+                customized_metrics=customized_metrics,
+                evaluator_workflow=evaluator_workflow,
+                published_node_ids=set(published_node_types),
+            )
+
+        cls._validate_judgment_config(
+            data,
+            target_type=normalized_target_type,
+            target_id=target_id,
         )
-        if evaluator_app is None:
-            raise ValueError("Evaluation workflow app not found.")
-        evaluator_workflow = WorkflowService().get_published_workflow(app_model=evaluator_app, session=session)
-        if (
-            evaluator_workflow is None
-            or evaluator_workflow.type != WorkflowType.WORKFLOW
-            or evaluator_workflow.resolved_kind != WorkflowKind.EVALUATION
-        ):
-            raise ValueError("The customized evaluator must be a published evaluation workflow.")
-        available_output_variables = {
-            output.get("variable")
-            for _, node_data in evaluator_workflow.walk_nodes()
-            if node_data.get("type") == "end"
-            for output in (node_data.get("outputs") or [])
-            if isinstance(output, Mapping) and isinstance(output.get("variable"), str)
-        }
-        missing_output_variables = sorted(set(output_variables) - available_output_variables)
-        if missing_output_variables:
-            raise ValueError(
-                "Customized metric outputs are not declared by the published evaluation workflow: "
-                + ", ".join(missing_output_variables)
+
+    @classmethod
+    def _validate_app_mode(cls, app: App) -> None:
+        app_mode = AppMode.value_of(app.mode)
+        if app_mode not in cls.ALLOWED_APP_MODES:
+            raise ValueError("Only workflow apps support evaluation.")
+
+    @staticmethod
+    def _validate_evaluation_model(*, tenant_id: str, provider: str, model_name: str) -> None:
+        """Resolve the configured judge model now so invalid runs fail admission."""
+        try:
+            from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
+            from graphon.model_runtime.entities.model_entities import ModelType
+
+            assembly = create_plugin_model_assembly(tenant_id=tenant_id)
+            assembly.model_manager.get_model_instance(
+                tenant_id=tenant_id,
+                provider=provider,
+                model_type=ModelType.LLM,
+                model=model_name,
             )
+            configurations = assembly.provider_manager.get_configurations(tenant_id)
+            configured_models = configurations.get_models(provider=provider, model_type=ModelType.LLM)
+            target_model = next(
+                (
+                    model
+                    for model in configured_models
+                    if model.model == model_name and model.provider.provider == provider
+                ),
+                None,
+            )
+            if target_model is None:
+                raise ValueError(f"Model {model_name} not found for provider {provider}")
+            target_model.raise_for_status()
+        except Exception as exc:
+            raise ValueError(
+                f"Failed to validate evaluation model (provider: {provider}, model: {model_name}): {exc}"
+            ) from exc
+
+    @staticmethod
+    def _validate_customized_inputs(
+        *,
+        customized_metrics: CustomizedMetrics,
+        evaluator_workflow: Workflow,
+        published_node_ids: set[str],
+    ) -> None:
+        input_definitions = [field for field in evaluator_workflow.user_input_form() if isinstance(field, Mapping)]
+        declared_inputs = {
+            str(field.get("variable") or field.get("name"))
+            for field in input_definitions
+            if field.get("variable") or field.get("name")
+        }
+        configured_inputs = set(customized_metrics.input_fields)
+        unknown_inputs = sorted(configured_inputs - declared_inputs)
+        if unknown_inputs:
+            raise ValueError(
+                "Customized metric inputs are not declared by the evaluation workflow: " + ", ".join(unknown_inputs)
+            )
+        required_inputs = {
+            str(field.get("variable") or field.get("name"))
+            for field in input_definitions
+            if field.get("required") and (field.get("variable") or field.get("name"))
+        }
+        missing_inputs = sorted(required_inputs - configured_inputs)
+        if missing_inputs:
+            raise ValueError("Customized evaluator required inputs are not mapped: " + ", ".join(missing_inputs))
+
+        for field_name, value_source in customized_metrics.input_fields.items():
+            if not isinstance(value_source, str):
+                continue
+            selectors = VariableTemplateParser(value_source).extract_variable_selectors()
+            if "{{#" in value_source and not selectors:
+                raise ValueError(f"Customized metric input '{field_name}' contains an invalid variable selector.")
+            for selector in selectors:
+                node_id = selector.value_selector[0]
+                if node_id not in published_node_ids:
+                    raise ValueError(
+                        f"Customized metric selector node '{node_id}' is not in the published target workflow."
+                    )
+
+    @staticmethod
+    def _validate_judgment_config(
+        data: EvaluationConfigData,
+        *,
+        target_type: EvaluationTargetType,
+        target_id: str,
+    ) -> None:
+        if data.judgment_config is None:
+            return
+        available_selectors = {
+            (node.node_id, metric.metric) for metric in data.default_metrics for node in metric.node_info_list
+        }
+        if target_type == EvaluationTargetType.KNOWLEDGE_BASE:
+            available_selectors.update((target_id, metric.metric) for metric in data.default_metrics)
+        if data.customized_metrics is not None:
+            available_selectors.update(
+                (data.customized_metrics.evaluation_workflow_id, output.variable)
+                for output in data.customized_metrics.output_fields
+            )
+        for condition in data.judgment_config.conditions:
+            if len(condition.variable_selector) < 2:
+                raise ValueError("Judgment selector must contain node ID and metric name.")
+            selector = (condition.variable_selector[0], condition.variable_selector[1])
+            if selector not in available_selectors:
+                raise ValueError(f"Judgment selector '{selector[0]}.{selector[1]}' is not configured for evaluation.")
 
     @staticmethod
     def category_for_node_type(node_type: str) -> EvaluationCategory:
@@ -558,6 +708,63 @@ class EvaluationService:
         pinned_metrics = customized_metrics.model_copy(update={"evaluation_workflow_version_id": workflow.id})
         return run_request.model_copy(update={"customized_metrics": pinned_metrics})
 
+    @classmethod
+    def _pin_target_workflow(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        target_type: str,
+        target_id: str,
+    ) -> tuple[str | None, Workflow | None]:
+        """Resolve the target's immutable published workflow snapshot."""
+        normalized_target_type = EvaluationTargetType(target_type)
+        if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
+            return None, None
+
+        target: App | CustomizedSnippet | None
+        if normalized_target_type == EvaluationTargetType.APPS:
+            target = session.scalar(
+                select(App).where(
+                    App.id == target_id,
+                    App.tenant_id == tenant_id,
+                    App.status == "normal",
+                )
+            )
+            if target is not None:
+                cls._validate_app_mode(target)
+        else:
+            target = session.scalar(
+                select(CustomizedSnippet).where(
+                    CustomizedSnippet.id == target_id,
+                    CustomizedSnippet.tenant_id == tenant_id,
+                )
+            )
+        if target is None:
+            raise ValueError("Evaluation target not found.")
+
+        workflow = cls._resolve_published_workflow(target, normalized_target_type.value, session)
+        if workflow is None:
+            raise ValueError("The evaluation target must have a published workflow.")
+        return workflow.id, workflow
+
+    @staticmethod
+    def _extract_llm_context_node_mapping(workflow: Workflow | None) -> dict[str, list[str]]:
+        """Capture retrieval sources explicitly configured as each LLM node's context."""
+        if workflow is None:
+            return {}
+        mapping: dict[str, list[str]] = {}
+        for node_id, node_data in workflow.walk_nodes():
+            if node_data.get("type") != "llm":
+                continue
+            context_config = node_data.get("context")
+            if not isinstance(context_config, Mapping) or not context_config.get("enabled"):
+                continue
+            selector = context_config.get("variable_selector")
+            if isinstance(selector, list) and selector and isinstance(selector[0], str):
+                mapping[node_id] = [selector[0]]
+        return mapping
+
     # ---- Evaluation Run Management ----
 
     @classmethod
@@ -590,6 +797,17 @@ class EvaluationService:
             target_id=target_id,
             run_request=run_request,
         )
+        pinned_run_request = cls._pin_customized_evaluator(
+            session=session,
+            tenant_id=tenant_id,
+            run_request=resolved_run_request,
+        )
+        target_workflow_version_id, target_workflow = cls._pin_target_workflow(
+            session=session,
+            tenant_id=tenant_id,
+            target_type=target_type,
+            target_id=target_id,
+        )
 
         # Save the editable configuration without pinning it to today's published evaluator.
         config = cls.save_evaluation_config(
@@ -599,6 +817,8 @@ class EvaluationService:
             target_id=target_id,
             account_id=account_id,
             data=resolved_run_request,
+            target_workflow=target_workflow,
+            validation_data=pinned_run_request,
         )
 
         # Parse dataset
@@ -614,12 +834,6 @@ class EvaluationService:
                     "Knowledge base datasets require a non-empty 'query' value; "
                     f"invalid rows: {missing_query_indices[:10]}."
                 )
-
-        pinned_run_request = cls._pin_customized_evaluator(
-            session=session,
-            tenant_id=tenant_id,
-            run_request=resolved_run_request,
-        )
 
         # Serialize admission for a tenant so the concurrent-run limit is authoritative.
         locked_tenant = session.scalar(select(Tenant.id).where(Tenant.id == tenant_id).with_for_update())
@@ -640,9 +854,11 @@ class EvaluationService:
             tenant_id=tenant_id,
             target_type=target_type,
             target_id=target_id,
+            target_workflow_version_id=target_workflow_version_id,
             evaluation_config_id=config.id,
             config_snapshot=json.dumps(pinned_run_request.model_dump(mode="json"), ensure_ascii=False),
             status=EvaluationRunStatus.PENDING,
+            progress_rate=0.0,
             dataset_file_id=resolved_run_request.file_id,
             total_items=len(items),
             created_by=account_id,
@@ -658,11 +874,13 @@ class EvaluationService:
             tenant_id=tenant_id,
             target_type=target_type,
             target_id=target_id,
+            target_workflow_version_id=target_workflow_version_id,
             evaluation_model_provider=pinned_run_request.evaluation_model_provider,
             evaluation_model=pinned_run_request.evaluation_model,
             default_metrics=pinned_run_request.default_metrics,
             customized_metrics=pinned_run_request.customized_metrics,
             judgment_config=pinned_run_request.judgment_config,
+            llm_context_node_mapping=cls._extract_llm_context_node_mapping(target_workflow),
             input_list=items,
         )
 
@@ -799,6 +1017,9 @@ class EvaluationService:
         celery_task_id = run.celery_task_id
         session.commit()
 
+        if target_type in {EvaluationTargetType.APPS.value, EvaluationTargetType.SNIPPETS.value}:
+            cls._stop_workflow_tasks(run.id, run.total_items)
+
         # Persist cancellation before notifying Celery so cooperative checks in
         # a running task can observe the terminal state immediately.
         if celery_task_id:
@@ -810,6 +1031,203 @@ class EvaluationService:
                 logger.exception("Failed to revoke Celery task %s", celery_task_id)
 
         return run
+
+    @staticmethod
+    def workflow_task_id(evaluation_run_id: str, phase: str, position: int) -> str:
+        return f"evaluation:{evaluation_run_id}:{phase}:{position}"
+
+    @classmethod
+    def _stop_workflow_tasks(cls, evaluation_run_id: str, total_items: int) -> None:
+        from core.app.apps.base_app_queue_manager import AppQueueManager
+        from extensions.ext_redis import redis_client
+        from graphon.graph_engine.manager import GraphEngineManager
+
+        try:
+            manager = GraphEngineManager(redis_client)
+        except Exception:
+            logger.exception(
+                "Failed to initialize graph engine manager while stopping evaluation run %s", evaluation_run_id
+            )
+            manager = None
+        for position in range(total_items):
+            for phase in ("target", "evaluator"):
+                task_id = cls.workflow_task_id(evaluation_run_id, phase, position)
+                try:
+                    AppQueueManager.set_stop_flag_no_user_check(task_id)
+                except Exception:
+                    logger.exception("Failed to set stop flag for evaluation workflow task %s", task_id)
+                if manager is None:
+                    continue
+                try:
+                    manager.send_stop_command(task_id)
+                except Exception:
+                    logger.exception("Failed to send stop command for evaluation workflow task %s", task_id)
+
+    @classmethod
+    def stage_target_evaluation_cleanup(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        target_type: str,
+        target_id: str,
+    ) -> None:
+        """Delete target-owned evaluation rows in the caller's transaction.
+
+        Broker notifications and object-storage deletion are deferred until the
+        transaction commits, so a rollback leaves the evaluation data usable.
+        """
+        normalized_target_type = EvaluationTargetType(target_type)
+        runs = list(
+            session.scalars(
+                select(EvaluationRun).where(
+                    EvaluationRun.tenant_id == tenant_id,
+                    EvaluationRun.target_type == normalized_target_type,
+                    EvaluationRun.target_id == target_id,
+                )
+            ).all()
+        )
+        run_ids = [run.id for run in runs]
+        result_file_ids = [run.result_file_id for run in runs if run.result_file_id]
+        result_files = (
+            list(
+                session.scalars(
+                    select(UploadFile).where(
+                        UploadFile.tenant_id == tenant_id,
+                        UploadFile.id.in_(result_file_ids),
+                    )
+                ).all()
+            )
+            if result_file_ids
+            else []
+        )
+        tasks_to_stop: list[tuple[str, str | None, str, int]] = [
+            (run.id, run.celery_task_id, EvaluationTargetType(run.target_type).value, run.total_items)
+            for run in runs
+            if run.status in {EvaluationRunStatus.PENDING, EvaluationRunStatus.RUNNING}
+        ]
+
+        if run_ids:
+            session.execute(delete(EvaluationRunItem).where(EvaluationRunItem.evaluation_run_id.in_(run_ids)))
+            session.execute(delete(EvaluationRun).where(EvaluationRun.id.in_(run_ids)))
+        session.execute(
+            delete(EvaluationConfiguration).where(
+                EvaluationConfiguration.tenant_id == tenant_id,
+                EvaluationConfiguration.target_type == normalized_target_type,
+                EvaluationConfiguration.target_id == target_id,
+            )
+        )
+        if result_file_ids:
+            session.execute(
+                delete(UploadFile).where(
+                    UploadFile.tenant_id == tenant_id,
+                    UploadFile.id.in_(result_file_ids),
+                )
+            )
+
+        if normalized_target_type == EvaluationTargetType.APPS:
+            cls._remove_evaluator_references(
+                session=session,
+                tenant_id=tenant_id,
+                evaluator_app_id=target_id,
+                tasks_to_stop=tasks_to_stop,
+            )
+
+        storage_keys = [upload_file.key for upload_file in result_files]
+        if not tasks_to_stop and not storage_keys:
+            return
+
+        cancelled = False
+
+        def cancel_external_cleanup(_session: Session) -> None:
+            nonlocal cancelled
+            cancelled = True
+
+        def cleanup_external_state(_session: Session) -> None:
+            if cancelled:
+                return
+            from celery import current_app as celery_app
+
+            from extensions.ext_storage import storage
+
+            for run_id, celery_task_id, run_target_type, total_items in tasks_to_stop:
+                if run_target_type in {EvaluationTargetType.APPS.value, EvaluationTargetType.SNIPPETS.value}:
+                    cls._stop_workflow_tasks(run_id, total_items)
+                if celery_task_id:
+                    try:
+                        celery_app.control.revoke(celery_task_id, terminate=False)
+                    except Exception:
+                        logger.exception("Failed to revoke evaluation task %s during target cleanup", celery_task_id)
+            for storage_key in storage_keys:
+                try:
+                    storage.delete(storage_key)
+                except Exception:
+                    logger.exception("Failed to delete evaluation result file %s", storage_key)
+
+        event.listen(session, "after_rollback", cancel_external_cleanup, once=True)
+        event.listen(session, "after_commit", cleanup_external_state, once=True)
+
+    @classmethod
+    def _remove_evaluator_references(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        evaluator_app_id: str,
+        tasks_to_stop: list[tuple[str, str | None, str, int]],
+    ) -> None:
+        referenced_configs = list(
+            session.scalars(
+                select(EvaluationConfiguration).where(
+                    EvaluationConfiguration.tenant_id == tenant_id,
+                    EvaluationConfiguration.evaluator_app_id == evaluator_app_id,
+                )
+            ).all()
+        )
+        for config in referenced_configs:
+            metrics_config = config.metrics_config_dict
+            metrics_config["customized_metrics"] = None
+            default_metrics = metrics_config.get("default_metrics") or []
+            if not default_metrics:
+                session.delete(config)
+                continue
+            config.metrics_config = json.dumps(metrics_config, ensure_ascii=False)
+            config.evaluator_app_id = None
+            judgment = config.judgment_config_dict
+            if judgment:
+                conditions = judgment.get("conditions") or []
+                judgment["conditions"] = [
+                    condition
+                    for condition in conditions
+                    if not (
+                        isinstance(condition, Mapping)
+                        and isinstance(condition.get("variable_selector"), list)
+                        and condition["variable_selector"]
+                        and condition["variable_selector"][0] == evaluator_app_id
+                    )
+                ]
+                config.judgment_conditions = json.dumps(judgment, ensure_ascii=False)
+
+        active_runs = list(
+            session.scalars(
+                select(EvaluationRun).where(
+                    EvaluationRun.tenant_id == tenant_id,
+                    EvaluationRun.status.in_([EvaluationRunStatus.PENDING, EvaluationRunStatus.RUNNING]),
+                )
+            ).all()
+        )
+        for run in active_runs:
+            customized_metrics = run.config_snapshot_dict.get("customized_metrics")
+            if not isinstance(customized_metrics, Mapping):
+                continue
+            if customized_metrics.get("evaluation_workflow_id") != evaluator_app_id:
+                continue
+            run.status = EvaluationRunStatus.CANCELLED
+            run.completed_at = naive_utc_now()
+            run.error = "The customized evaluator app was deleted."
+            tasks_to_stop.append(
+                (run.id, run.celery_task_id, EvaluationTargetType(run.target_type).value, run.total_items)
+            )
 
     @classmethod
     def get_evaluation_file(
@@ -1139,12 +1557,16 @@ class EvaluationService:
     @classmethod
     def execute_targets(
         cls,
+        evaluation_run_id: str,
         tenant_id: str,
         target_type: str,
         target_id: str,
+        target_workflow_version_id: str,
         input_list: list[EvaluationDatasetInput],
         max_workers: int | None = None,
-    ) -> tuple[list[dict[str, NodeRunResult]], list[str | None]]:
+        cancellation_check: Callable[[], None] | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[dict[str, NodeRunResult]], list[str | None], list[str | None]]:
         """Execute the evaluation target for every test-data item in parallel.
 
         :param tenant_id: Workspace / tenant ID.
@@ -1158,13 +1580,16 @@ class EvaluationService:
             workflow_run_ids: ordered list of workflow_run_id strings (or None)
             for each input item.
         """
-        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
         from flask import Flask, current_app
 
         flask_app: Flask = current_app._get_current_object()  # type: ignore
 
-        def _worker(item: EvaluationDatasetInput) -> tuple[dict[str, NodeRunResult], str | None]:
+        def _worker(
+            position: int,
+            item: EvaluationDatasetInput,
+        ) -> tuple[dict[str, NodeRunResult], str | None, str | None]:
             with flask_app.app_context():
                 with session_factory.create_session() as thread_session:
                     try:
@@ -1173,7 +1598,9 @@ class EvaluationService:
                             tenant_id=tenant_id,
                             target_type=target_type,
                             target_id=target_id,
+                            target_workflow_version_id=target_workflow_version_id,
                             item=item,
+                            task_id=cls.workflow_task_id(evaluation_run_id, "target", position),
                         )
 
                         workflow_run_id = cls._extract_workflow_run_id(response)
@@ -1183,7 +1610,7 @@ class EvaluationService:
                                 item.index,
                                 target_id,
                             )
-                            return {}, None
+                            return {}, None, "Target execution returned no workflow run ID."
 
                         node_results = cls._query_node_run_results(
                             session=thread_session,
@@ -1191,31 +1618,55 @@ class EvaluationService:
                             app_id=target_id,
                             workflow_run_id=workflow_run_id,
                         )
-                        return node_results, workflow_run_id
-                    except Exception:
+                        if not node_results:
+                            return {}, workflow_run_id, "Target execution produced no successful node results."
+                        return node_results, workflow_run_id, None
+                    except Exception as exc:
                         logger.exception(
                             "Target execution failed for item %d (target=%s)",
                             item.index,
                             target_id,
                         )
-                        return {}, None
+                        return {}, None, str(exc) or type(exc).__name__
 
         worker_count = max_workers or dify_config.EVALUATION_MAX_PARALLEL_TARGETS
-        with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            futures = [executor.submit(_worker, item) for item in input_list]
-            ordered_results: list[dict[str, NodeRunResult]] = []
-            ordered_workflow_run_ids: list[str | None] = []
-            for future in futures:
-                try:
-                    node_result, wf_run_id = future.result()
-                    ordered_results.append(node_result)
-                    ordered_workflow_run_ids.append(wf_run_id)
-                except Exception:
-                    logger.exception("Unexpected error collecting target execution result")
-                    ordered_results.append({})
-                    ordered_workflow_run_ids.append(None)
+        executor = ThreadPoolExecutor(max_workers=worker_count)
+        future_positions: dict[Future[tuple[dict[str, NodeRunResult], str | None, str | None]], int] = {
+            executor.submit(_worker, position, item): position for position, item in enumerate(input_list)
+        }
+        ordered_results: list[dict[str, NodeRunResult]] = [{} for _ in input_list]
+        ordered_workflow_run_ids: list[str | None] = [None for _ in input_list]
+        ordered_errors: list[str | None] = [None for _ in input_list]
+        pending = set(future_positions)
+        completed = 0
+        try:
+            while pending:
+                if cancellation_check is not None:
+                    cancellation_check()
+                done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
+                for future in done:
+                    position = future_positions[future]
+                    try:
+                        node_result, workflow_run_id, error = future.result()
+                    except Exception as exc:
+                        logger.exception("Unexpected error collecting target execution result")
+                        node_result, workflow_run_id, error = {}, None, str(exc) or type(exc).__name__
+                    ordered_results[position] = node_result
+                    ordered_workflow_run_ids[position] = workflow_run_id
+                    ordered_errors[position] = error
+                    completed += 1
+                    if progress_callback is not None:
+                        progress_callback(completed, len(input_list))
+        except Exception:
+            for future in pending:
+                future.cancel()
+            cls._stop_workflow_tasks(evaluation_run_id, len(input_list))
+            executor.shutdown(wait=False, cancel_futures=True)
+            raise
+        else:
+            executor.shutdown(wait=True)
 
-        return ordered_results, ordered_workflow_run_ids
+        return ordered_results, ordered_workflow_run_ids, ordered_errors
 
     @classmethod
     def _run_single_target(
@@ -1224,7 +1675,9 @@ class EvaluationService:
         tenant_id: str,
         target_type: str,
         target_id: str,
+        target_workflow_version_id: str,
         item: EvaluationDatasetInput,
+        task_id: str | None = None,
     ) -> Mapping[str, object]:
         """Execute a single evaluation target with one test-data item.
 
@@ -1261,6 +1714,8 @@ class EvaluationService:
                 args={"inputs": item.inputs},
                 invoke_from=InvokeFrom.SERVICE_API,
                 session_maker=session_factory.get_session_maker(),
+                workflow_id=target_workflow_version_id,
+                task_id=task_id,
             )
         if target_type == EvaluationTargetType.APPS.value:
             # target_type == "apps"
@@ -1273,13 +1728,20 @@ class EvaluationService:
             )
             if not app:
                 raise ValueError(f"App {target_id} not found")
+            cls._validate_app_mode(app)
 
             service_account = get_service_account_for_app(session, target_id, tenant_id)
 
             workflow_service = WorkflowService()
-            workflow = workflow_service.get_published_workflow(app_model=app, session=session)
+            workflow = workflow_service.get_published_workflow_by_id(
+                app_model=app,
+                workflow_id=target_workflow_version_id,
+                session=session,
+            )
             if not workflow:
-                raise ValueError(f"No published workflow for app {target_id}")
+                raise ValueError(
+                    f"Published workflow version {target_workflow_version_id} was not found for app {target_id}"
+                )
 
             response: Mapping[str, object] = WorkflowAppGenerator().generate(
                 app_model=app,
@@ -1289,6 +1751,7 @@ class EvaluationService:
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
                 call_depth=0,
+                task_id=task_id,
             )
             return response
         raise ValueError(f"Unsupported evaluation target type: {target_type}")
@@ -1510,7 +1973,9 @@ class EvaluationService:
         account_id: str,
         input_list: list[EvaluationDatasetInput],
         max_workers: int | None = None,
-    ) -> list[NodeRunResult]:
+        cancellation_check: Callable[[], None] | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[NodeRunResult | None], list[str | None]]:
         """Run hit testing against a knowledge base for every input item in parallel.
 
         Each item must supply a ``query`` key in its ``inputs`` dict.  The
@@ -1524,11 +1989,10 @@ class EvaluationService:
                 outputs={"result": [{"content": "...", "score": ...}, ...]},
             )
 
-        :returns: Ordered list of ``NodeRunResult`` — one per input item.
-            If retrieval fails for an item the result has an empty ``result``
-            list so the runner can still persist a (metric-less) row.
+        :returns: Ordered retrieval results and per-row errors. Failed rows
+            remain ``None`` and are never scored as a successful empty retrieval.
         """
-        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
         from flask import current_app
 
@@ -1546,6 +2010,8 @@ class EvaluationService:
                     )
                     if not dataset:
                         raise ValueError(f"Dataset {dataset_id} not found")
+                    if dataset.provider == "external":
+                        raise ValueError("External knowledge bases are not supported by evaluation")
 
                     account = thread_session.get(Account, account_id)
                     if not account:
@@ -1588,14 +2054,36 @@ class EvaluationService:
                 )
 
         worker_count = max_workers or dify_config.EVALUATION_MAX_PARALLEL_TARGETS
-        with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            futures = [executor.submit(_worker, item) for item in input_list]
-            results: list[NodeRunResult] = []
-            for item, future in zip(input_list, futures):
-                try:
-                    results.append(future.result())
-                except Exception:
-                    logger.exception("Retrieval test failed for item %d (dataset=%s)", item.index, dataset_id)
-                    results.append(NodeRunResult(inputs={}, outputs={"result": []}))
+        executor = ThreadPoolExecutor(max_workers=worker_count)
+        future_positions: dict[Future[NodeRunResult], int] = {
+            executor.submit(_worker, item): position for position, item in enumerate(input_list)
+        }
+        results: list[NodeRunResult | None] = [None for _ in input_list]
+        errors: list[str | None] = [None for _ in input_list]
+        pending = set(future_positions)
+        completed = 0
+        try:
+            while pending:
+                if cancellation_check is not None:
+                    cancellation_check()
+                done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
+                for future in done:
+                    position = future_positions[future]
+                    try:
+                        results[position] = future.result()
+                    except Exception as exc:
+                        item = input_list[position]
+                        logger.exception("Retrieval test failed for item %d (dataset=%s)", item.index, dataset_id)
+                        errors[position] = str(exc) or type(exc).__name__
+                    completed += 1
+                    if progress_callback is not None:
+                        progress_callback(completed, len(input_list))
+        except Exception:
+            for future in pending:
+                future.cancel()
+            executor.shutdown(wait=False, cancel_futures=True)
+            raise
+        else:
+            executor.shutdown(wait=True)
 
-        return results
+        return results, errors

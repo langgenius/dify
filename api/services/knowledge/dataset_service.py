@@ -1264,6 +1264,16 @@ class DatasetService:
 
         DatasetService.check_dataset_permission(dataset, user, session)
 
+        from models.evaluation import EvaluationTargetType
+        from services.evaluation_service import EvaluationService
+
+        EvaluationService.stage_target_evaluation_cleanup(
+            session=session,
+            tenant_id=dataset.tenant_id,
+            target_type=EvaluationTargetType.KNOWLEDGE_BASE.value,
+            target_id=dataset.id,
+        )
+
         dataset_was_deleted.send(dataset)
 
         # Remove any dataset API key scoped only to this knowledge base, so it cannot
