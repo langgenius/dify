@@ -204,6 +204,7 @@ def test_form_fields_round_trips():
 
 def test_form_fields_defaults_empty_when_absent():
     from services.dify_builder.serde import context_from_dict
+
     assert context_from_dict({}).form_fields == []
 
 
@@ -215,3 +216,22 @@ def test_reply_language_round_trips():
 
 def test_reply_language_defaults_empty_when_absent():
     assert context_from_dict({}).reply_language == ""
+
+
+def test_repair_loop_fields_round_trip():
+    # Regression: context_from_dict previously never read these two keys,
+    # so a session persisted mid-repair-loop silently reset its attempt
+    # count to 0 on the very next turn, making the repeated-failure guard
+    # in handlers_build.py structurally unreachable (BUILD_AWAIT_REPAIR is
+    # a waiting state -- every approve_repair is a fresh turn that reloads
+    # the context via context_from_dict).
+    fc = DifyBuilderContext(repair_attempts=5, last_repair_error="boom")
+    result = context_from_dict(context_to_dict(fc))
+    assert result.repair_attempts == 5
+    assert result.last_repair_error == "boom"
+
+
+def test_repair_loop_fields_default_when_absent():
+    out = context_from_dict({})  # an older row with no repair_attempts/last_repair_error keys
+    assert out.repair_attempts == 0
+    assert out.last_repair_error == ""

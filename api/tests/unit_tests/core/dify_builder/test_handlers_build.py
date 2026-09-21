@@ -2029,3 +2029,33 @@ def test_repeated_failure_stops_offering_a_repair():
     assert _repair_is_repeating(fc, "Invalid actual value type: number") is True
     # a NEW error means progress -- keep repairing
     assert _repair_is_repeating(fc, "Variable not found") is False
+
+
+def test_test_and_repair_stops_offering_a_repair_through_the_handler():
+    """Integration coverage for the OFFER-time wiring: drive the repeated-
+    failure branch through handle_test_and_repair itself (not by calling
+    _repair_is_repeating directly), so a regression that re-disconnects the
+    guard from the handler (e.g. the dead-on-reload bug fixed in
+    services/dify_builder/serde.py) would show up here even if the unit
+    tests for _repair_is_repeating still pass in isolation."""
+    from core.dify_builder.handlers_build import _MAX_REPEATED_REPAIRS, handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    env, _ = _new_env(agent=StubAgent())  # StubAgent.diagnose always returns the same root_cause
+    env.dify = FakeBuildDifyPort()
+    env.dify.verify_pass = False  # default error "boom" -> config, not input
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(
+        test_input_ref="ti-1",
+        last_repair_error="Output node requires 'metrics'",  # matches StubAgent's diagnosis
+        repair_attempts=_MAX_REPEATED_REPAIRS,
+    )
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
+    assert result.context.staged_repair == []  # cleared -- no repair offered on the 3rd identical failure
+    error = next(i for i in result.items if i.kind == "error")
+    assert error.payload["title"] == "Repeated failure"
