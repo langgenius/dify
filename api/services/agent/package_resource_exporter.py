@@ -8,12 +8,13 @@ import re
 import zipfile
 from collections.abc import Generator, Sequence
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from constants import IMAGE_EXTENSIONS
 from extensions.ext_storage import storage
 from models.agent import Agent
 from models.agent_config_entities import AgentSoulConfig
@@ -23,6 +24,7 @@ from services.agent.dsl_entities import AgentPackage, AgentPackageWorkspaceSkill
 from services.agent.errors import RosterAgentPackageExportFailedError, RosterAgentPackageTooLargeError
 from services.agent.roster_package_entities import (
     AgentPackageResources,
+    PackageIcon,
     RosterAgentPackageAudit,
     RosterAgentPackageFile,
     RosterAgentPackageSkill,
@@ -59,6 +61,7 @@ class AgentPackageResourceExporter:
     def __init__(self, *, storage_backend: _Storage = storage) -> None:
         self._storage = storage_backend
         self.sources: dict[str, tuple[list[_SkillSource], list[_FileSource]]] = {}
+        self.icon_sources: dict[str, tuple[str, str]] = {}
         self.packages: dict[str, AgentPackage] = {}
         self._workspace_sources: dict[str, tuple[str, str, str | None, bool]] = {}
 
@@ -81,9 +84,45 @@ class AgentPackageResourceExporter:
         )
         self.sources[package_ref] = skills, files
         package = make_portable_agent_package(agent, soul, include_assets=True)
+        metadata = package.metadata.model_dump()
+        self.collect_icon(session=session, tenant_id=agent.tenant_id, metadata=metadata)
+        package.metadata.icon = metadata["icon"]
         self.packages[package_ref] = package
         self._workspace_sources[package_ref] = agent.tenant_id, agent.id, snapshot_id, include_draft
         return package
+
+    def collect_icon(self, *, session: Session, tenant_id: str, metadata: dict[str, Any]) -> None:
+        if metadata.get("icon_type") != "image" or not metadata.get("icon"):
+            return
+        file_id = metadata["icon"]
+        if file_id not in self.icon_sources:
+            upload = self._upload_files(session=session, tenant_id=tenant_id, file_ids=[file_id]).get(file_id)
+            if upload is None:
+                raise RosterAgentPackageExportFailedError("App icon payload is unavailable")
+            extension = upload.extension.lower()
+            if extension not in IMAGE_EXTENSIONS:
+                raise RosterAgentPackageExportFailedError("App icon must be an image")
+            resource_id = f"i_{len(self.icon_sources) + 1:06d}"
+            self.icon_sources[file_id] = f"{resource_id}.{extension}", upload.key
+        metadata["icon"] = self.icon_sources[file_id][0].split(".")[0]
+
+    def write_icons(self, archive: zipfile.ZipFile, *, total_size: int) -> tuple[list[PackageIcon], int]:
+        if len(archive.infolist()) + len(self.icon_sources) + 2 > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
+            raise RosterAgentPackageTooLargeError("Agent package has too many members")
+        icons = []
+        for path, key in self.icon_sources.values():
+            size, digest = self._write_storage_member(
+                archive,
+                path=path,
+                storage_key=key,
+                max_bytes=min(
+                    dify_config.AGENT_PACKAGE_MAX_BYTES - total_size,
+                    dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024,
+                ),
+            )
+            total_size += size
+            icons.append(PackageIcon(id=path.split(".")[0], path=path, size=size, sha256=digest))
+        return icons, total_size
 
     def collect_workspace_skills(self) -> None:
         """Resolve legacy Skill metadata after the caller closes its database read session."""

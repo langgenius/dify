@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import mimetypes
 import os
 from typing import Protocol
 from uuid import uuid4
@@ -24,7 +25,7 @@ from services.agent.errors import (
     PlaintextSecretNotAllowedError,
     RosterAgentPackageResourceUnavailableError,
 )
-from services.agent.roster_package_entities import AgentPackageResources, PreparedPackageArchive
+from services.agent.roster_package_entities import AgentPackageResources, PackageIcon, PreparedPackageArchive
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.entities.dsl_entities import DslImportWarning
@@ -212,6 +213,40 @@ class AgentPackageResourceImporter:
             session.add_all(files)
         # Localized Skills must not bind to same-named Skills in the target workspace.
         return agent_package.model_copy(update={"soul": soul, "workspace_skills": []}), warnings
+
+    def materialize_icons(
+        self, *, archive: PreparedPackageArchive, icons: list[PackageIcon], tenant_id: str, account_id: str
+    ) -> dict[str, str]:
+        files: list[ToolFile | UploadFile] = []
+        mapping: dict[str, str] = {}
+        for icon in icons:
+            payload = self._reader.read_member_bytes(
+                archive, icon.path, max_bytes=dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+            )
+            extension = self._extension(icon.path)
+            file_id = str(uuid4())
+            key = f"upload_files/{tenant_id}/{file_id}.{extension}"
+            row = UploadFile(
+                tenant_id=tenant_id,
+                storage_type=StorageType(dify_config.STORAGE_TYPE),
+                key=key,
+                name=icon.path,
+                size=len(payload),
+                extension=extension,
+                mime_type=mimetypes.guess_type(icon.path)[0] or "application/octet-stream",
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=account_id,
+                created_at=naive_utc_now(),
+                used=False,
+                hash=hashlib.sha3_256(payload).hexdigest(),
+            )
+            row.id = file_id
+            self._save_resource(storage_key=key, payload=payload, files=files, row=row)
+            mapping[icon.id] = file_id
+        if files:
+            with session_factory.create_session() as session, session.begin():
+                session.add_all(files)
+        return mapping
 
     def _save_resource(
         self,
