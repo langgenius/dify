@@ -325,7 +325,10 @@ class FakeDifyPort:
         _actor: Actor,
         intents: list[MutationIntent],
         on_canvas: Callable[[dict], None] | None = None,
+        *,
+        expected_revision: str = "",
     ) -> ApplyResult:
+        self.expected_revision = expected_revision
         self.applied = copy.deepcopy(intents)
         self.hash = "h1"
         changed = [intent.args["node_id"] for intent in intents if isinstance(intent.args.get("node_id"), str)]
@@ -364,7 +367,8 @@ class FakeDifyPort:
     def publish(self, _app_id: str, _actor: Actor) -> None:
         self.published = True
 
-    def restore_graph(self, _app_id: str, _actor: Actor, graph: Graph) -> str:
+    def restore_graph(self, _app_id: str, _actor: Actor, graph: Graph, *, expected_revision: str = "") -> str:
+        self.expected_revision = expected_revision
         self.graph = copy.deepcopy(graph)
         self.hash = "h-restored"
         return self.hash
@@ -518,7 +522,10 @@ class FakeBuildDifyPort:
         _actor: Actor,
         intents: list[MutationIntent],
         on_canvas: Callable[[dict], None] | None = None,
+        *,
+        expected_revision: str = "",
     ) -> ApplyResult:
+        self.expected_revision = expected_revision
         self.applied.extend(copy.deepcopy(intents))
         before = copy.deepcopy(self.graph)
         graph = self.graph
@@ -567,7 +574,8 @@ class FakeBuildDifyPort:
     def publish(self, _app_id: str, _actor: Actor) -> None:
         self.published = True
 
-    def restore_graph(self, _app_id: str, _actor: Actor, graph: Graph) -> str:
+    def restore_graph(self, _app_id: str, _actor: Actor, graph: Graph, *, expected_revision: str = "") -> str:
+        self.expected_revision = expected_revision
         self.graph = copy.deepcopy(graph)
         self.hash = "h-restored"
         return self.hash

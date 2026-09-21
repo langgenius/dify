@@ -13,6 +13,7 @@ type RefreshWorkflowDraftOptions = {
   shouldApply?: () => boolean
   syncToCollaboration?: boolean
   resolveConflict?: boolean
+  builderRefresh?: boolean
 }
 
 export const useWorkflowRefreshDraft = () => {
@@ -26,6 +27,8 @@ export const useWorkflowRefreshDraft = () => {
 
   const handleRefreshWorkflowDraft = useCallback(
     (notUpdateCanvas?: boolean, options?: RefreshWorkflowDraftOptions) => {
+      if (workflowStore.getState().workflowDraftSyncPhase !== 'idle' && !options?.builderRefresh)
+        return Promise.resolve(false)
       if (options?.shouldApply && !options.shouldApply()) return Promise.resolve(false)
       // Background refreshes must not discard the local edits preserved after a conflict.
       if (workflowStore.getState().hasWorkflowDraftConflict && !options?.resolveConflict)
@@ -56,8 +59,10 @@ export const useWorkflowRefreshDraft = () => {
         )
       }
       setIsSyncingWorkflowDraft(true)
-      return fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-        .then((response) => {
+      return workflowStore.getState().enqueueWorkflowDraftOperation(async () => {
+        try {
+          if (!isCurrent()) return false
+          const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
           if (!isCurrent()) return false
 
           // Ensure we have a valid workflow structure with viewport
@@ -66,14 +71,22 @@ export const useWorkflowRefreshDraft = () => {
             // reconnects. Its graph recovery will restore the shared baseline.
             const syncToCollaboration =
               options?.syncToCollaboration ??
-              (!options?.resolveConflict || collaborationManager.canApplyLocalGraphMutation())
-            const applied = handleUpdateWorkflowCanvas(
-              getWorkflowDraftGraphForCanvas(response.graph),
-              {
-                syncToCollaboration,
-                features: response.features,
-              },
-            )
+              (!options?.resolveConflict || collaborationManager.canRestoreGraphFromCrdt())
+            const useServerWriter = syncToCollaboration && collaborationManager.isConnected()
+            let graph = getWorkflowDraftGraphForCanvas(response.graph)
+            if (useServerWriter) {
+              const synced = await collaborationManager.requestServerDraftSync()
+              if (!isCurrent() || synced.hash !== response.hash) return false
+              graph = {
+                ...graph,
+                nodes: collaborationManager.getNodes(),
+                edges: collaborationManager.getEdges(),
+              }
+            }
+            const applied = handleUpdateWorkflowCanvas(graph, {
+              syncToCollaboration: syncToCollaboration && !useServerWriter,
+              features: response.features,
+            })
             if (!applied) return false
             // The hash is a baseline for this graph, never for a metadata-only refresh.
             setSyncWorkflowDraftHash(response.hash, response.graph)
@@ -99,14 +112,16 @@ export const useWorkflowRefreshDraft = () => {
             setDraftUpdatedAt(response.updated_at)
             setIsWorkflowDataLoaded(true)
             setWorkflowDraftConflict(false)
+            if (options?.builderRefresh) workflowStore.getState().setWorkflowDraftSyncPhase('idle')
           }
           return true
-        })
-        .catch(() => false)
-        .finally(() => {
+        } catch {
+          return false
+        } finally {
           if (workflowStore.getState().workflowDraftGeneration === generation)
             setIsSyncingWorkflowDraft(false)
-        })
+        }
+      })
     },
     [appId, getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
   )

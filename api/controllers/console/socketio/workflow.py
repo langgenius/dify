@@ -11,11 +11,15 @@ from extensions.otel.workflow_collaboration import observe_workflow_event
 from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from repositories.workflow_draft_sync_repository import WorkflowDraftSyncRepository
 from services.errors.billing import BillingUpstreamError
 from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
+from services.workflow_draft_sync_service import WorkflowDraftSyncService
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
+draft_sync_repository = WorkflowDraftSyncRepository()
+draft_sync_service = WorkflowDraftSyncService(draft_sync_repository, repository, collaboration_service, sio)
 
 
 def _sio_on(event: str) -> Callable[[Callable[..., object]], Callable[..., object]]:
@@ -85,6 +89,9 @@ def handle_user_connect(sid, data):
         return {"msg": "unauthorized"}, 401
 
     user_id, is_leader = result
+    pending_draft = draft_sync_repository.get(workflow_id)
+    if pending_draft is not None and pending_draft.update is None:
+        sio.emit("server_draft_changed", {"revision": pending_draft.revision}, to=sid)
     return {"msg": "connected", "user_id": user_id, "sid": sid, "isLeader": is_leader}
 
 
@@ -98,7 +105,16 @@ def handle_get_online_user_avatars(sid: str, _data: object = None) -> dict[str, 
 @observe_workflow_event("disconnect", sio)
 def _handle_disconnect(sid):
     """Remove the session from online users and observe the result."""
-    collaboration_service.disconnect_session(sid)
+    workflow_id = collaboration_service.disconnect_session(sid)
+    if workflow_id and not repository.get_session_sids(workflow_id):
+        draft_sync_repository.clear(workflow_id)
+
+
+@_sio_on("server_draft_sync")
+def handle_server_draft_sync(sid, _data):
+    """Return one accepted CRDT update for the latest committed server draft."""
+    with sio.app.app_context(), session_factory.create_session() as session:
+        return draft_sync_service.sync(sid, session=session)
 
 
 @_sio_on("disconnect")

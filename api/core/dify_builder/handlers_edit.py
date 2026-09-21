@@ -256,7 +256,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
 
     progress.activate("edit-apply")
-    result = env.dify.apply_repair(s.app_id, turn.actor, intents, on_canvas=None)
+    result = env.dify.apply_repair(
+        s.app_id, turn.actor, intents, on_canvas=None, expected_revision=fc.last_snapshot_hash
+    )
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
     emit_canvas(env, "apply_edit_plan")
@@ -658,7 +660,13 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             ],
         )
         progress.activate("edit-apply-repair")
-        result = env.dify.apply_repair(s.app_id, turn.actor, list(fc.staged_repair), on_canvas=env.emit_canvas)
+        result = env.dify.apply_repair(
+            s.app_id,
+            turn.actor,
+            list(fc.staged_repair),
+            on_canvas=env.emit_canvas,
+            expected_revision=fc.last_snapshot_hash,
+        )
         fc.last_snapshot_hash = result.new_hash
         fc.last_structure_fingerprint = result.structure_fingerprint
         fc.staged_repair = []

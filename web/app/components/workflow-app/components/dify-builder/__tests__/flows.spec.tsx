@@ -332,7 +332,10 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       .mockResolvedValue(waiting)
     const storageKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
     window.sessionStorage.setItem(storageKey, waiting.session_id)
-    renderFlow(1, true)
+    const first = renderFlow(1)
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledOnce())
+    first.unmount()
+    renderFlow(1)
 
     const runTest = await screen.findByRole('button', { name: 'Run test' })
     await waitFor(() => expect(runTest).toBeEnabled())
@@ -974,7 +977,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       ),
     )
     let finishSync!: () => void
-    mocks.syncDraft.mockImplementationOnce(
+    mocks.syncDraft.mockResolvedValueOnce(undefined).mockImplementationOnce(
       () =>
         new Promise<void>((resolve) => {
           finishSync = resolve

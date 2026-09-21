@@ -229,7 +229,9 @@ def perform_revert(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     if not fc.checkpoint_id:
         return
     _cp, snap = env.repo.get_checkpoint(fc.checkpoint_id)
-    fc.last_snapshot_hash = env.dify.restore_graph(s.app_id, turn.actor, snap.graph)
+    fc.last_snapshot_hash = env.dify.restore_graph(
+        s.app_id, turn.actor, snap.graph, expected_revision=fc.last_snapshot_hash
+    )
     fc.last_structure_fingerprint = env.dify.structural_fingerprint(snap.graph)
     env.repo.invalidate_conversation_items(s.id, fc.checkpoint_seq)
     fc.checkpoint_id = ""
@@ -548,7 +550,9 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
         ],
     )
     progress.activate("fix-apply-repair")
-    result = env.dify.apply_repair(s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas)
+    result = env.dify.apply_repair(
+        s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
+    )
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
     progress.activate("fix-summarize-changes")
