@@ -906,3 +906,17 @@ def test_model_config_error_text_ignores_non_model_errors():
     assert model_config_error_text(_run_with_node_error("NameError: x is not defined")) is None
     # a generic 'does not exist' without model/provider/credential context is not matched
     assert model_config_error_text(_run_with_node_error("node 'foo' does not exist")) is None
+
+
+def test_build_change_set_survives_non_string_changed_nodes():
+    """ESQ1-271: an int node id used to crash the whole session on join()."""
+    from core.dify_builder.handlers_fix import build_change_set
+    from core.dify_builder.models import ApplyResult
+
+    # ApplyResult is @dataclass(kw_only=True) with every field defaulted
+    # (models.py:213) -- pass only what the assertion needs.
+    result = ApplyResult(changed_nodes=[1, "n2"], new_hash="h")
+    changes, scope, change_set = build_change_set(result, default_scope="configuration", fallback_diff="repair")
+    assert changes == ["1", "n2"]
+    assert change_set.diff == "1; n2"
+    assert scope == "configuration"
