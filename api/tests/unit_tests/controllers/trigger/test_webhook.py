@@ -150,8 +150,9 @@ class TestHandleWebhook:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=ValueError("missing"))
     def test_value_error_not_found(self, mock_get):
-        with pytest.raises(NotFound):
-            module.handle_webhook("wh-1")
+        response = module.handle_webhook("wh-1")
+        assert response.status_code == 404
+        assert response.data == NotFound().get_body().encode()
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=RequestEntityTooLarge())
     def test_request_entity_too_large(self, mock_get):
@@ -228,8 +229,9 @@ class TestHandleWebhookDebug:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=ValueError("missing"))
     def test_debug_not_found(self, mock_get):
-        with pytest.raises(NotFound):
-            module.handle_webhook_debug("wh-1")
+        response = module.handle_webhook_debug("wh-1")
+        assert response.status_code == 404
+        assert response.data == NotFound().get_body().encode()
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=RequestEntityTooLarge())
     def test_debug_request_entity_too_large(self, mock_get):

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
+from controllers.common.access_response import MISSING_BEARER_MESSAGE
 from controllers.service_api.schema import (
     USER_FETCH_FROM_ATTR,
     USER_FORM_PARAM,
@@ -390,15 +391,14 @@ def validate_and_get_api_token(scope: str | None = None):
     The last_used_at field is updated asynchronously via Celery task
     to avoid blocking the request.
     """
-    auth_header = request.headers.get("Authorization")
-    if auth_header is None or " " not in auth_header:
-        raise Unauthorized("Authorization header must be provided and start with 'Bearer'")
-
-    auth_scheme, auth_token = auth_header.split(None, 1)
-    auth_scheme = auth_scheme.lower()
-
-    if auth_scheme != "bearer":
-        raise Unauthorized("Authorization scheme must be 'Bearer'")
+    # HTTP whitespace is SP/HTAB, not Python's wider Unicode whitespace set.
+    # Match the Gateway parser so a raw Latin-1 NBSP/control separator cannot
+    # skip policy identity resolution and then authenticate successfully here.
+    auth_header = request.headers.get("Authorization") or ""
+    auth_parts = [part for part in auth_header.replace("\t", " ").split(" ") if part]
+    if len(auth_parts) != 2 or auth_parts[0].lower() != "bearer":
+        raise Unauthorized(MISSING_BEARER_MESSAGE)
+    auth_token = auth_parts[1]
 
     # Try to get token from cache first
     # Returns a CachedApiToken (plain Python object), not a SQLAlchemy model

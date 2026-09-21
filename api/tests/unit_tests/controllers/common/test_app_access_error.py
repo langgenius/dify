@@ -97,7 +97,7 @@ def test_web_app_identity_404s_receive_metadata(rule: str) -> None:
     response = _create_app().test_client().get("/api" + rule, environ_overrides={"REMOTE_ADDR": "203.0.113.42"})
     assert response.status_code == 404
     assert response.get_json() == {
-        "code": "not_found",
+        "code": "app_not_found",
         "message": "App not found.",
         "status": 404,
         "client_ip": "203.0.113.42",
@@ -130,13 +130,15 @@ def test_typed_app_not_found_keeps_exception_payload_after_restx_formatting(pref
         .open(prefix + "/chat-messages", method=method, environ_overrides={"REMOTE_ADDR": "203.0.113.42"})
     )
     assert response.status_code == 404
-    assert response.get_json() == {
+    expected: dict[str, object] = {
         "code": "app_not_found",
         "message": "App not found.",
         "status": 404,
-        "detail": {"reason": "unavailable"},
         "client_ip": "203.0.113.42",
     }
+    if prefix == "/console/api":
+        expected["detail"] = {"reason": "unavailable"}
+    assert response.get_json() == expected
 
 
 def test_agent_error_code_is_not_reclassified() -> None:
@@ -194,7 +196,7 @@ def test_missing_or_invalid_trust_configuration_preserves_original_404(
         .get("/api/site", environ_overrides={"REMOTE_ADDR": "172.18.0.2", "HTTP_X_FORWARDED_FOR": "203.0.113.42"})
     )
     assert response.status_code == 404
-    assert response.get_json() == {"code": "not_found", "message": "App not found.", "status": 404}
+    assert response.get_json() == {"code": "app_not_found", "message": "App not found.", "status": 404}
     assert response.headers["Cache-Control"] == "no-store"
 
 
@@ -227,7 +229,7 @@ def test_unavailable_client_ip_removes_existing_unverified_metadata(
         .get("/api/site", environ_overrides={"REMOTE_ADDR": "172.18.0.2"})
     )
     assert response.status_code == 404
-    assert response.get_json() == {"code": "app_not_found", "message": "missing", "status": 404, "extra": "kept"}
+    assert response.get_json() == {"code": "app_not_found", "message": "App not found.", "status": 404}
     assert response.headers["Cache-Control"] == "no-store"
 
 
@@ -251,7 +253,7 @@ def test_response_metadata_is_request_local_and_disables_shared_caching() -> Non
     for peer in ("203.0.113.42", "2001:db8::43", "172.18.0.2"):
         response = client.get("/api/site", environ_overrides={"REMOTE_ADDR": peer})
         assert response.get_json().get("client_ip") == (None if peer == "172.18.0.2" else peer)
-        assert response.get_json()["extra"] == ["kept"]
+        assert "extra" not in response.get_json()
         assert response.headers["Cache-Control"] == "no-store"
         assert response.headers["X-Custom"] == "kept"
     assert "client_ip" not in payload
@@ -262,8 +264,54 @@ def test_response_metadata_is_request_local_and_disables_shared_caching() -> Non
 def test_unrelated_resource_and_human_input_form_404s_are_unchanged(prefix: str, rule: str) -> None:
     response = _create_app().test_client().get(prefix + _path(rule))
     assert response.status_code == 404
-    assert response.get_json() == {"code": "not_found", "message": "App not found.", "status": 404}
-    assert "Cache-Control" not in response.headers
+    if prefix == "/api" and rule.startswith("/form/human_input/"):
+        assert response.get_json() == {"code": "not_found", "message": "Form not found", "status": 404}
+        assert response.headers["Cache-Control"] == "no-store"
+    else:
+        assert response.get_json() == {"code": "not_found", "message": "App not found.", "status": 404}
+        assert "Cache-Control" not in response.headers
+
+
+@pytest.mark.parametrize("code", ["app_unavailable", "agent_not_published"])
+@pytest.mark.parametrize("route", WEB_IDENTITIES)
+def test_web_unavailable_and_unpublished_identity_uses_same_404(code: str, route: str) -> None:
+    payload = {"code": code, "message": "private configuration details", "status": 400, "app_name": "private"}
+    response = (
+        _create_app(lambda: (payload, 400))
+        .test_client()
+        .get("/api" + route, environ_overrides={"REMOTE_ADDR": "203.0.113.42"})
+    )
+    assert response.status_code == 404
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.data == (
+        b'{"client_ip":"203.0.113.42","code":"app_not_found","message":"App not found.","status":404}'
+    )
+
+
+@pytest.mark.parametrize("code", ["not_found", "app_not_found", "agent_not_found_error"])
+def test_web_missing_identity_has_one_minimal_canonical_wire_contract(code: str) -> None:
+    payload = {"code": code, "message": "private cause", "status": 404, "policy_id": "private", "app_name": "private"}
+    response = (
+        _create_app(lambda: (payload, 404))
+        .test_client()
+        .get("/api/passport", environ_overrides={"REMOTE_ADDR": "203.0.113.42"})
+    )
+    assert response.data == (
+        b'{"client_ip":"203.0.113.42","code":"app_not_found","message":"App not found.","status":404}'
+    )
+    assert response.headers["Content-Type"] == "application/json"
+
+
+def test_hitl_upload_invalid_token_keeps_native_contract_without_ip() -> None:
+    payload = {"code": "invalid_upload_token", "message": "private cause", "status": 403, "client_ip": "192.0.2.1"}
+    response = _create_app(lambda: (payload, 403)).test_client().post("/api/human-input-forms/files")
+    assert response.status_code == 403
+    assert response.data == (
+        b'{"code":"invalid_upload_token","message":"Upload token is invalid or expired.","status":403}'
+    )
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["Content-Type"] == "application/json"
 
 
 @pytest.mark.parametrize("prefix", ["/api", "/console/api"])

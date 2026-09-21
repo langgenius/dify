@@ -2,9 +2,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden
+from flask import Blueprint, Flask
+from werkzeug.exceptions import Forbidden, ServiceUnavailable
 
+from controllers.common.app_access_error import register_app_access_error_metadata
 from controllers.web import site as site_module
+from controllers.web.error import WebAppNotFoundError
+from libs.external_api import ExternalApi
 from services.app_definition_query_service import AppSiteConfiguration
 from services.web_app_runtime_query_service import (
     WebAppBootstrap,
@@ -70,7 +74,7 @@ def test_app_site_api_queries_the_admitted_app_runtime() -> None:
     web_app_runtime.get_bootstrap.assert_called_once_with("app-id")
 
 
-def test_app_site_api_maps_unavailable_runtime_to_forbidden() -> None:
+def test_app_site_api_maps_unavailable_runtime_to_app_not_found() -> None:
     web_app_runtime = MagicMock()
     web_app_runtime.get_bootstrap.side_effect = WebAppRuntimeUnavailableError
 
@@ -80,6 +84,54 @@ def test_app_site_api_maps_unavailable_runtime_to_forbidden() -> None:
             "application_services",
             return_value=SimpleNamespace(web_app_runtime=web_app_runtime),
         ),
-        pytest.raises(Forbidden),
+        pytest.raises(WebAppNotFoundError),
     ):
         site_module.AppSiteApi().get(MagicMock(id="app-id"), MagicMock(id="end-user-id"))
+
+
+@pytest.mark.parametrize(
+    ("failure", "status"),
+    [
+        (WebAppRuntimeUnavailableError("Site not found"), 404),
+        (ServiceUnavailable("dependency unavailable"), 503),
+        (Forbidden("business permission denied"), 403),
+        (RuntimeError("programming bug"), 500),
+    ],
+)
+def test_site_final_response_only_reclassifies_terminal_runtime_failure(
+    failure: Exception, status: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from configs import dify_config
+    from controllers.web import wraps
+
+    app = Flask(__name__)
+    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
+    bp = Blueprint("site_fixture", __name__, url_prefix="/api")
+    register_app_access_error_metadata(bp, surface="web")
+    api = ExternalApi(bp)
+    api.add_resource(site_module.AppSiteApi, "/site")
+    app.register_blueprint(bp)
+    runtime = MagicMock()
+    runtime.get_bootstrap.side_effect = failure
+    monkeypatch.setattr(site_module, "application_services", lambda: SimpleNamespace(web_app_runtime=runtime))
+    monkeypatch.setattr(
+        wraps,
+        "decode_jwt_token",
+        lambda: (
+            SimpleNamespace(id="fixture-app"),
+            SimpleNamespace(id="fixture-user", tenant_id="fixture-tenant", type="browser"),
+        ),
+    )
+    monkeypatch.setattr(dify_config, "NETWORK_ACCESS_TRUSTED_PROXY_CIDRS", "172.18.0.0/16")
+    response = app.test_client().get("/api/site", environ_overrides={"REMOTE_ADDR": "203.0.113.42"})
+    assert response.status_code == status
+    if status == 404:
+        assert (
+            response.data
+            == b'{"client_ip":"203.0.113.42","code":"app_not_found","message":"App not found.","status":404}'
+        )
+        assert response.headers["Content-Type"] == "application/json"
+        assert response.headers["Cache-Control"] == "no-store"
+    else:
+        assert response.get_json()["code"] != "app_not_found"
+        assert "client_ip" not in response.get_json()

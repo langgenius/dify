@@ -351,6 +351,95 @@ describe('application not-found transport', () => {
   })
   afterEach(() => vi.restoreAllMocks())
 
+  it('handles the opaque Gateway 404 on a non-identity runtime request without an auth retry', async () => {
+    window.history.replaceState({}, '', '/chat/app')
+    const body = {
+      code: 'app_not_found',
+      message: 'App not found.',
+      status: 404,
+      client_ip: '203.0.113.8',
+    }
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(body, 404))
+    const error = await request(
+      '/chat-messages',
+      { method: 'POST', body: {} },
+      { isPublicAPI: true },
+    ).catch((error) => error)
+    expect(isAppAccessError(error)).toBe(true)
+    expect(await (error as Response).json()).toEqual(body)
+    expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({
+      reason: 'app_not_found',
+      clientIp: '203.0.113.8',
+    })
+    expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(fetch).toHaveBeenCalledOnce()
+    expect(window.location.pathname).toBe('/chat/app')
+  })
+
+  it('handles an opaque Gateway upload 404 through the same App error boundary', async () => {
+    window.history.replaceState({}, '', '/chat/app')
+    const body = {
+      code: 'app_not_found',
+      message: 'App not found.',
+      status: 404,
+      client_ip: '2001:db8::12',
+    }
+    const xhr = createXhr(body, 404)
+    await expect(upload({ xhr, data: new FormData() }, true, '/files/upload')).rejects.toBe(xhr)
+    expect(isAppAccessError(xhr)).toBe(true)
+    expect(appAccessStore.get(appAccessErrorAtom)?.clientIp).toBe('2001:db8::12')
+    expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { name: 'POST', stream: ssePost, path: '/chat-messages' },
+    { name: 'GET', stream: sseGet, path: '/workflow/run-id/events' },
+  ])(
+    'settles an opaque Gateway 404 before opening an SSE $name stream',
+    async ({ stream, path }) => {
+      window.history.replaceState({}, '', '/chat/app')
+      const body = {
+        code: 'app_not_found',
+        message: 'App not found.',
+        status: 404,
+        client_ip: '203.0.113.8',
+      }
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(createResponse(body, 404))
+      const onData = vi.fn()
+      const onError = vi.fn()
+      const onCompleted = vi.fn()
+      await stream(path, {}, { isPublicAPI: true, onData, onError, onCompleted })
+      await waitFor(() => expect(onError).toHaveBeenCalledExactlyOnceWith(body.message, body.code))
+      expect(onData).not.toHaveBeenCalled()
+      expect(onCompleted).not.toHaveBeenCalled()
+      expect(appAccessStore.get(appAccessErrorAtom)?.clientIp).toBe('203.0.113.8')
+      expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+      expect(toast.error).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ['/form/human_input/token', 404, 'not_found', 'Form not found'],
+    [
+      '/human-input-forms/files',
+      403,
+      'invalid_upload_token',
+      'Upload token is invalid or expired.',
+    ],
+  ])(
+    'leaves the native HITL unavailable response to its form owner: %s',
+    async (path, status, code, message) => {
+      window.history.replaceState({}, '', '/form/token')
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        createResponse({ code, message, status }, status),
+      )
+      const error = await request(path, {}, { isPublicAPI: true }).catch((error) => error)
+      expect(isAppAccessError(error)).toBe(false)
+      expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
+    },
+  )
+
   it.each([
     ['/chat/app', '/site', true],
     ['/completion/app', '/parameters', true],

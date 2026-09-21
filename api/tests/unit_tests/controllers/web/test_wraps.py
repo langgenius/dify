@@ -1,10 +1,11 @@
+from typing import Never
 from unittest import mock
 from uuid import uuid4
 
 import pytest
-from flask import Flask
+from flask import Blueprint, Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
 from core.logging.context import clear_request_context, get_identity_context
 from models import App, EndUser
@@ -105,3 +106,96 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
 
     assert result_app.id == app_model.id
     assert result_end_user.id == end_user.id
+
+
+@pytest.mark.parametrize("missing", ["app", "site", "code", "disabled", "end_user", "resource"])
+def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, missing: str
+) -> None:
+    from configs import dify_config
+    from controllers.common.app_access_error import register_app_access_error_metadata
+    from controllers.web import wraps
+    from libs.external_api import ExternalApi
+    from models.enums import EndUserType
+    from models.model import AppMode, CustomizeTokenStrategy, Site
+
+    app_id, tenant_id, end_user_id = str(uuid4()), str(uuid4()), str(uuid4())
+    if missing != "app":
+        sqlite_session.add(
+            App(
+                id=app_id,
+                tenant_id=tenant_id,
+                name="fixture",
+                mode=AppMode.CHAT,
+                enable_site=missing != "disabled",
+                enable_api=True,
+            )
+        )
+    if missing != "site":
+        sqlite_session.add(
+            Site(
+                app_id=app_id,
+                code="fixture-code",
+                title="fixture",
+                default_language="en-US",
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            )
+        )
+    if missing == "resource":
+        sqlite_session.add(
+            EndUser(
+                id=end_user_id,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                type=EndUserType.BROWSER,
+                session_id="fixture-session",
+            )
+        )
+    sqlite_session.commit()
+    monkeypatch.setattr(dify_config, "NETWORK_ACCESS_TRUSTED_PROXY_CIDRS", "172.18.0.0/16")
+    app = Flask(__name__)
+    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
+    bp = Blueprint("web_post_fixture", __name__, url_prefix="/api")
+    register_app_access_error_metadata(bp, surface="web")
+    api = ExternalApi(bp)
+    calls: list[str] = []
+
+    class ProtectedResource(wraps.WebApiResource):
+        def post(self, _app: App, _end_user: EndUser) -> Never:
+            calls.append("view")
+            raise NotFound("Conversation not found.")
+
+    api.add_resource(ProtectedResource, "/chat-messages")
+    app.register_blueprint(bp)
+    with (
+        mock.patch.object(wraps, "extract_webapp_passport", return_value="fixture-passport"),
+        mock.patch.object(wraps, "PassportService") as passport,
+        mock.patch.object(wraps.SystemFeatureService, "is_webapp_auth_enabled", return_value=False),
+    ):
+        passport.return_value.verify.return_value = {
+            "app_code": None if missing == "code" else "fixture-code",
+            "app_id": app_id,
+            "end_user_id": end_user_id,
+        }
+        response = app.test_client().post(
+            "/api/chat-messages",
+            json={},
+            headers={"X-App-Code": "fixture-code"},
+            environ_overrides={"REMOTE_ADDR": "203.0.113.42"},
+        )
+
+    assert response.status_code == 404
+    if missing in {"app", "site", "code", "disabled"}:
+        assert (
+            response.data
+            == b'{"client_ip":"203.0.113.42","code":"app_not_found","message":"App not found.","status":404}'
+        )
+        assert response.headers["Content-Type"] == "application/json"
+        assert response.headers["Cache-Control"] == "no-store"
+    else:
+        assert response.get_json()["code"] == "not_found"
+        assert "client_ip" not in response.get_json()
+        assert "Cache-Control" not in response.headers
+        if missing == "resource":
+            assert response.get_json()["message"] == "Conversation not found."
+    assert calls == (["view"] if missing == "resource" else [])

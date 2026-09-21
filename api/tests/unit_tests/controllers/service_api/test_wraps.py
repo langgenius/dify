@@ -123,7 +123,7 @@ class TestValidateAndGetApiToken:
             # Act & Assert
             with pytest.raises(Unauthorized) as exc_info:
                 validate_and_get_api_token("app")
-            assert "Authorization scheme must be 'Bearer'" in str(exc_info.value)
+            assert "Authorization header must be provided and start with 'Bearer'" in str(exc_info.value)
 
     @patch("controllers.service_api.wraps.record_token_usage")
     @patch("controllers.service_api.wraps.ApiTokenCache")
