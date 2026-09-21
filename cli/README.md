@@ -57,7 +57,8 @@ difyctl has no built-in business commands: `ops` and `call` are the whole surfac
 | `config unset <key>`       | Remove a local config value, restoring its default                             |
 | `cache refresh`            | Refetch the server catalog and replace the local cache                         |
 | `cache clear`              | Delete the local server catalog cache                                          |
-| `skills install [dir]`     | Install the agent skill into detected agent directories                        |
+| `skills list`              | List the skills in the collection                                              |
+| `skills install <dir>`     | Write skills from the collection into a skills root (`--skill`)                |
 | `ops`                      | List every operation the server publishes                                      |
 | `ops describe <op-id>`     | Show one operation's input schema, kind, and pins                              |
 | `call <op-id>`             | Call any catalog operation by id (`--input`, `--stream`, `--only`, `--output`) |
@@ -67,15 +68,16 @@ response in the error envelope instead of dropping it.
 
 Run `difyctl <cmd> --help` for a command's JSON descriptor, or `difyctl call <op-id> --help` (same as `ops describe <op-id>`) for an operation's. Run `difyctl --help` with no other arguments for the full command list, plus — once logged in — the operation list.
 
-## Agent skill
+## Agent skills
 
-`difyctl skills install` installs a single `SKILL.md` into your local agents so they auto-load it. The skill teaches the discovery flow — `ops` to list operations, `ops describe <op-id>` to inspect one, `call <op-id> --input '<json>'` to run it — so it stays correct as the server's catalog grows; it does not enumerate operations itself. It is embedded in the binary (version-stamped) rather than checked in.
+difyctl ships a collection of agent skills from [`skills/`] at the repo root. The basic skill, `difyctl`, teaches the discovery flow — `ops` to list operations, `ops describe <op-id>` to inspect one, `call <op-id> --input '<json>'` to run it — so it stays correct as the server's catalog grows. Scenario skills add guidance for one kind of task and open by reading the basic one. The collection is embedded in the binary.
 
-- `difyctl skills install` — dry-run: detect installed agents (Claude Code, Codex, opencode, Cursor, pi) and print where the skill would land. Writes nothing.
-- `difyctl skills install --yes` — write to every detected agent, printing each path. `--agent claude-code[,cursor]` restricts to a subset; `<dir>` forces one explicit directory (handy when your agent isn't detected).
-- `difyctl skills install --stdout` — print the `SKILL.md` to stdout (for piping or self-install); writes nothing.
+- `difyctl skills list` — the collection: each skill's name and description. Writes nothing.
+- `difyctl skills install <dir>` — write every skill into `<dir>`, the agent's skills root: the folder that holds one subfolder per skill, for example `~/.claude/skills` for Claude Code or `~/.codex/skills` for Codex. Existing copies are overwritten. `--skill <name>` (repeatable) writes only those skills; a scenario skill brings `difyctl` along.
 
-Detection is by config-directory existence (`~/.claude`, `~/.codex`, `~/.config/opencode`, `~/.cursor`, `~/.pi`). If a copy ever looks stale, run `difyctl version` and re-run `difyctl skills install`.
+difyctl does not detect agents. You name the root, and the same command re-run after an upgrade refreshes the copies.
+
+The same files install through the Vercel skills installer: `npx skills add langgenius/dify --skill difyctl -g`. Always pass `--skill`; without it the installer also offers the contributor skills under `.agents/skills/`.
 
 ## Configuration
 
@@ -126,6 +128,7 @@ See [`ARD.md`] for architecture patterns, scaffolding recipe, dev workflow.
 
 Apache-2.0.
 
-[Agent skill]: #agent-skill
+[Agent skill]: #agent-skills
 [Dify]: https://dify.ai
 [`ARD.md`]: ARD.md
+[`skills/`]: ../skills

@@ -13,6 +13,7 @@ import Logout from '@/commands/logout/index'
 import OpsDescribe from '@/commands/ops/describe/index'
 import Ops from '@/commands/ops/index'
 import SkillsInstall from '@/commands/skills/install/index'
+import SkillsList from '@/commands/skills/list/index'
 import Version from '@/commands/version/index'
 import WorkspaceList from '@/commands/workspace/list/index'
 import WorkspaceUse from '@/commands/workspace/use/index'
@@ -43,6 +44,7 @@ export const commandTree: CommandTree = {
   skills: {
     subcommands: {
       install: { command: SkillsInstall, subcommands: {} },
+      list: { command: SkillsList, subcommands: {} },
     },
   },
   version: { command: Version, subcommands: {} },

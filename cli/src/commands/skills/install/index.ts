@@ -1,47 +1,31 @@
-import type { CommandContext } from '@/plugins/base'
+import { resolve } from 'node:path'
 import { z } from 'zod'
-import { BaseError } from '@/errors/base'
-import { ErrorCode, ExitCode } from '@/errors/codes'
-import { Command, Outcome } from '@/plugins/commands/command'
-import { io } from '@/plugins/io'
-import { runSkillsInstall } from '@/skills/install'
-import { versionInfo } from '@/version/info'
+import { Command } from '@/plugins/commands/command'
+import { installSkills, selectSkills } from '@/skills/install'
 
 const INPUT = z.object({
-  dir: z.string().optional(),
-  agent: z.array(z.string()).default([]),
-  stdout: z.boolean().default(false),
-  yes: z.boolean().default(false),
+  dir: z
+    .string()
+    .min(1)
+    .describe("The agent's skills root: the folder that holds one subfolder per skill"),
+  skill: z
+    .array(z.string())
+    .default([])
+    .describe('Skill to install (repeatable); default: the whole collection'),
 })
 
 export default class SkillsInstall extends Command<typeof INPUT> {
-  static override summary = 'Install the difyctl agent skill into detected agent directories'
+  static override summary = 'Write skills from the collection into a skills root'
   static override effect = 'write' as const
   static override input = INPUT
   static override positional = ['dir'] as const
   static override examples = [
-    { title: 'Print the skill without installing', input: { stdout: true } },
+    { title: 'Install every skill for Claude Code', input: { dir: '~/.claude/skills' } },
+    { title: 'Install one skill for Codex', input: { dir: '~/.codex/skills', skill: ['difyctl'] } },
   ]
 
-  async run(input: z.infer<typeof INPUT>, ctx: CommandContext) {
-    const result = await runSkillsInstall({
-      version: versionInfo.version,
-      write: input.yes,
-      stdout: input.stdout,
-      dir: input.dir,
-      agents: input.agent,
-    })
-
-    if (result.kind === 'usage') {
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: result.message })
-    }
-
-    if (input.stdout) {
-      const streams = await ctx.get(io)
-      await streams.raw(result.text)
-      return new Outcome(ExitCode.Success)
-    }
-
-    return { wrote: result.wrote, text: result.text }
+  async run(input: z.infer<typeof INPUT>) {
+    const wrote = await installSkills(resolve(input.dir), selectSkills(input.skill))
+    return { wrote }
   }
 }
