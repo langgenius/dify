@@ -14888,6 +14888,7 @@ section may be empty, which is how callers express "no knowledge layer".
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | active_config_snapshot_id | string |  | Yes |
 | draft | [AgentConfigDraftSummaryResponse](#agentconfigdraftsummaryresponse) |  | No |
+| publication_kind | string, <br>**Available values:** "first", "update" | Classifies the publication by whether the Agent had a publish-visible active snapshot before publishing: 'first' if none existed, otherwise 'update'. This is not a historical first-publish indicator. It does not depend on draft edits, Web App or API enablement, or the requesting user's access permissions.<br>*Enum:* `"first"`, `"update"` | Yes |
 | result | string |  | Yes |
 
 #### AgentPublishedReferenceResponse

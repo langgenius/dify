@@ -10,7 +10,7 @@ import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
-const browserTestPattern = 'app/**/*.browser.spec.{ts,tsx}'
+const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
 
 export default defineConfig(({ command, mode, isPreview }) => {
   const isTest = mode === 'test'
