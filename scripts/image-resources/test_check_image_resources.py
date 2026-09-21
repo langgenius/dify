@@ -172,6 +172,36 @@ class ImageOptimizationTests(unittest.TestCase):
         self.write("web/public/group.svg", candidate)
         self.assertEqual(checker.inspect_image("web/public/group.svg", self.root)[0], "passed")
 
+    def test_fix_preserves_inline_style_precedence_over_stylesheet(self):
+        self.run_git("init", "-q")
+        source = (
+            b'<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">'
+            b"<style>rect {fill:red}</style>"
+            + b"\n    " * 80
+            + b'<rect style="fill:blue" width="80" height="80"/></svg>'
+        )
+        path = self.write("images/precedence.svg", source)
+        self.run_git("add", ".")
+        scripts = self.root / "scripts/image-resources"
+        scripts.mkdir(parents=True)
+        shutil.copy(checker.__file__, scripts / "check_image_resources.py")
+        result = subprocess.run(
+            [sys.executable, str(scripts / "check_image_resources.py"), "--all", "--fix"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("1 fixed", result.stdout)
+        self.assertTrue(checker.exceeds_threshold(len(source), path.stat().st_size))
+        root = ET.fromstring(path.read_bytes())
+        ns = {"svg": "http://www.w3.org/2000/svg"}
+        self.assertEqual(root.find("svg:style", ns).text, "rect {fill:red}")
+        rect = root.find("svg:rect", ns)
+        self.assertIn("fill:blue", rect.get("style", "").replace(" ", ""))
+        self.assertNotIn("fill", rect.attrib)
+        self.assertEqual(checker.inspect_image("images/precedence.svg", self.root)[0], "passed")
+
     def test_svg_markup_is_optimized(self):
         data = (
             b'<svg xmlns="http://www.w3.org/2000/svg">' + b"\n        " * 100 + b'<rect width="10" height="10"/></svg>'

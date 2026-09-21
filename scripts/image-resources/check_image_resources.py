@@ -102,6 +102,8 @@ def compress_svg(data: bytes) -> tuple[bytes, str]:
     options = scour.parse_args(
         [
             "--disable-group-collapsing",
+            # Inline styles outrank stylesheets; presentation attributes do not.
+            "--disable-style-to-xml",
             "--disable-embed-rasters",
             "--strip-xml-prolog",
             "--indent=none",
