@@ -14888,6 +14888,7 @@ section may be empty, which is how callers express "no knowledge layer".
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | active_config_snapshot_id | string |  | Yes |
 | draft | [AgentConfigDraftSummaryResponse](#agentconfigdraftsummaryresponse) |  | No |
+| publication_kind | string, <br>**Available values:** "first", "update" | Whether this publication first enables access or updates an already accessible Agent<br>*Enum:* `"first"`, `"update"` | Yes |
 | result | string |  | Yes |
 
 #### AgentPublishedReferenceResponse
