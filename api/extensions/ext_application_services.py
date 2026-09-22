@@ -136,6 +136,8 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.app_audio_adapters import AppAudioRuntime
+from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
 from services.app_preview_details_service import AppPreviewDetails
@@ -296,6 +298,7 @@ class ApplicationServices:
     remote_files: RemoteFileService
     app_tasks: AppTaskControlService
     trial_app_access: TrialAppAccessService
+    app_audio: AppAudio
     trial_app_generation: TrialAppGenerationService
     trial_app_usage: TrialAppUsageRecorder
     workflow_run_archives: WorkflowRunArchiveService
@@ -737,6 +740,7 @@ def build_application_services(
         remote_files=remote_file_service,
         app_tasks=AppTaskControlService(redis_client=redis),
         trial_app_access=TrialAppAccessService(apps=trial_apps),
+        app_audio=AppAudioRuntime(session_factory=database_client),
         trial_app_generation=TrialAppGenerationService(
             runtime=AppGenerateServiceRuntime(session_factory=database_client), usage=trial_apps
         ),
