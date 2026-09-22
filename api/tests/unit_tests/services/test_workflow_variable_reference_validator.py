@@ -16,12 +16,7 @@ from services.workflow_variable_reference_validator import (
     validate_variable_references,
 )
 
-_FIXTURE = (
-    Path(__file__).resolve().parents[2]
-    / "fixtures"
-    / "workflow"
-    / "minimal_non_uuid_conversation_variable.yml"
-)
+_FIXTURE = Path(__file__).resolve().parents[2] / "fixtures" / "workflow" / "minimal_non_uuid_conversation_variable.yml"
 
 
 def _node(node_id: str, node_type: str, title: str = "", *, selector: list[str] | None = None) -> dict:

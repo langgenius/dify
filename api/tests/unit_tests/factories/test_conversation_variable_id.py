@@ -23,9 +23,7 @@ def test_non_uuid_conversation_variable_id_is_coerced() -> None:
     assert _is_uuid(result.id)
     assert result.name == "optimization_comparison_prompt"
     assert result.value == "-"
-    assert result.id == str(
-        uuid5(NAMESPACE_URL, "dify:conversation-variable:optimization_comparison_prompt")
-    )
+    assert result.id == str(uuid5(NAMESPACE_URL, "dify:conversation-variable:optimization_comparison_prompt"))
 
 
 def test_non_uuid_conversation_variable_id_is_stable_for_the_same_name() -> None:
