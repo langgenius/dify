@@ -215,6 +215,8 @@ def init_app(app: DifyApp) -> Celery:
 
         interval = dify_config.KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS
         for operation, queue in OPERATION_QUEUES.items():
+            if operation == "vector.cleanup" and dify_config.KNOWLEDGE_VECTOR_STORAGE != "dify":
+                continue
             beat_schedule[f"knowledge_fs_background_{operation}"] = {
                 "task": OPERATION_TASK,
                 "schedule": timedelta(seconds=interval),

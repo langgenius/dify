@@ -10,7 +10,10 @@ from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATIO
 
 
 @pytest.mark.parametrize("background_enabled", [False, True])
-def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_ready(background_enabled: bool) -> None:
+@pytest.mark.parametrize("vector_storage", ["postgres", "dify"])
+def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_ready(
+    background_enabled: bool, vector_storage: str
+) -> None:
     config = MagicMock()
     config.BROKER_USE_SSL = False
     config.REDIS_KEY_PREFIX = "test"
@@ -21,6 +24,7 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     config.CELERY_USE_SENTINEL = False
     config.CELERY_BROKER_VISIBILITY_TIMEOUT = 10800
     config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED = background_enabled
+    config.KNOWLEDGE_VECTOR_STORAGE = vector_storage
     config.KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS = 5
     config.KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS = 7200
     config.LOG_FORMAT = "%(message)s"
@@ -83,6 +87,9 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     if background_enabled:
         assert celery_app.conf["broker_transport_options"]["visibility_timeout"] == 10800
         for operation, queue in OPERATION_QUEUES.items():
+            if operation == "vector.cleanup" and vector_storage != "dify":
+                assert f"knowledge_fs_background_{operation}" not in schedules
+                continue
             assert schedules[f"knowledge_fs_background_{operation}"] == {
                 "task": OPERATION_TASK,
                 "schedule": timedelta(seconds=5),
