@@ -414,18 +414,26 @@ class DifyNodeFactory(NodeFactory):
             if node type is unknown, or if no implementation exists for the resolved version
         """
         adapted_node_config = adapt_node_config_for_graph(node_config)
-        typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
-        node_id = typed_node_config["id"]
-        node_data = typed_node_config["data"]
-        node_class = self._resolve_node_class(
-            node_type=node_data.type,
-            node_version=str(node_data.version),
-            node_data=node_data,
-        )
-        # Graph configs are initially validated against permissive shared node data.
-        # Re-validate using the resolved node class so workflow-local node schemas
-        # stay explicit and constructors receive the concrete typed payload.
-        resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
+        try:
+            typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
+            node_id = typed_node_config["id"]
+            node_data = typed_node_config["data"]
+            node_class = self._resolve_node_class(
+                node_type=node_data.type,
+                node_version=str(node_data.version),
+                node_data=node_data,
+            )
+            # Graph configs are initially validated against permissive shared node data.
+            # Re-validate using the resolved node class so workflow-local node schemas
+            # stay explicit and constructors receive the concrete typed payload.
+            resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
+        except ValueError as exc:
+            # pydantic's ValidationError subclasses ValueError. Its message names
+            # only the model class ("... for HttpRequestNodeData"), so a run that
+            # dies at Graph.init could not say WHICH node was wrong (ESQ1-302).
+            # Every workflow start goes through here, so this changes the error
+            # text of every graph-init failure, not only the Builder's.
+            raise _node_config_error(adapted_node_config, exc) from exc
         node_type = node_data.type
         if node_type == BuiltinNodeTypes.LLM:
             resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
@@ -739,3 +747,36 @@ class DifyNodeFactory(NodeFactory):
             node_data_memory=node_data.memory,
             model_instance=model_instance,
         )
+
+
+def _node_config_error(node_config: Mapping[str, Any], exc: Exception) -> ValueError:
+    """``exc`` re-raised as a ``ValueError`` whose message starts with the
+    offending node's id and type, e.g. ``node 'node4' (http-request): ...``."""
+    data = node_config.get("data")
+    node_type = str(data.get("type") or "") if isinstance(data, Mapping) else ""
+    node_id = str(node_config.get("id") or "")
+    return ValueError(f"node {node_id!r} ({node_type or 'unknown type'}): {exc}")
+
+
+def validate_node_config(node_config: Mapping[str, Any] | NodeConfigDict) -> BaseNodeData:
+    """Validate ONE raw node config exactly as ``DifyNodeFactory.create_node``
+    does before constructing the node -- adapt, shared-shape validation,
+    node-class resolution, concrete NodeData re-validation -- with no factory
+    instance and no runtime state.
+
+    This is the dry check a draft can be put through BEFORE it is run: whatever
+    raises here would raise at ``Graph.init`` and kill the run before its first
+    node. Raises ``ValueError`` prefixed ``node <id> (<type>):``.
+    """
+    adapted_node_config = adapt_node_config_for_graph(node_config)
+    try:
+        typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
+        node_data = typed_node_config["data"]
+        node_class = DifyNodeFactory._resolve_node_class(
+            node_type=node_data.type,
+            node_version=str(node_data.version),
+            node_data=node_data,
+        )
+        return DifyNodeFactory._validate_resolved_node_data(node_class, node_data)
+    except ValueError as exc:
+        raise _node_config_error(adapted_node_config, exc) from exc

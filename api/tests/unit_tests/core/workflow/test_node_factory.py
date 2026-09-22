@@ -1,3 +1,4 @@
+import copy
 from collections.abc import Mapping
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch, sentinel
@@ -1323,3 +1324,112 @@ class TestDifyNodeFactoryMemory:
             node_data_memory=memory_config,
             model_instance=sentinel.model_instance,
         )
+
+
+class TestNodeConfigErrorsNameTheNode:
+    """ESQ1-302: a graph-init failure surfaced as "2 validation errors for
+    HttpRequestNodeData ..." -- the model class, never the node. The Builder (and
+    anyone reading the run's error) had to guess which node it was. Every
+    node-config error now starts with ``node <id> (<type>):``. This wrapping is
+    in ``DifyNodeFactory.create_node``, so it changes the error text of EVERY
+    workflow run that fails at graph init, not only the Builder's."""
+
+    # The http-request node exactly as the ESQ1-302 draft stored it (dev app
+    # a26c8d2b, node4): a json body whose items lack ``type``.
+    ESQ1_302_HTTP_NODE = {
+        "id": "node4",
+        "type": "custom",
+        "data": {
+            "type": "http-request",
+            "title": "Call PPT API",
+            "desc": "Call external PPT generation API with the validated slide content.",
+            "method": "post",
+            "url": "https://api.example.com/ppt/generate",
+            "authorization": {"config": None, "type": "no-auth"},
+            "headers": "",
+            "params": "",
+            "ssl_verify": True,
+            "timeout": {"max_connect_timeout": 0, "max_write_timeout": 0, "max_read_timeout": 0},
+            "retry_config": {"max_retries": 3, "retry_interval": 100, "retry_enabled": True},
+            "variables": [
+                {"variable": "slide_content", "value_selector": ["node3", "text"]},
+                {"variable": "output_filename", "value_selector": ["node1", "output_filename"]},
+            ],
+            "body": {
+                "type": "json",
+                "data": [
+                    {"value": "{{#node3.text#}}", "key": "slides"},
+                    {"value": "{{#node1.output_filename#}}", "key": "filename"},
+                ],
+            },
+        },
+    }
+
+    # The if-else node exactly as the ESQ1-303 draft stored it (dev app
+    # 0f11bedc, node2): ``value`` is the JSON number 60.
+    ESQ1_303_IF_ELSE_NODE = {
+        "id": "node2",
+        "type": "custom",
+        "data": {
+            "type": "if-else",
+            "title": "判断分数",
+            "_targetBranches": [{"id": "true", "name": "IF"}, {"id": "false", "name": "ELSE"}],
+            "logical_operator": "and",
+            "cases": [
+                {
+                    "case_id": "true",
+                    "logical_operator": "and",
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "variable_selector": ["node1", "score"],
+                            "comparison_operator": "=",
+                            "value": 60,
+                        }
+                    ],
+                }
+            ],
+        },
+    }
+
+    @pytest.fixture
+    def factory(self):
+        factory = object.__new__(node_factory.DifyNodeFactory)
+        factory.graph_init_params = sentinel.graph_init_params
+        factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        return factory
+
+    def test_create_node_names_the_node_that_failed_validation(self, factory):
+        with pytest.raises(ValueError, match=r"^node 'node4' \(http-request\): ") as excinfo:
+            factory.create_node(self.ESQ1_302_HTTP_NODE)
+
+        assert "body.data.0.type" in str(excinfo.value)
+        assert "body.data.1.type" in str(excinfo.value)
+
+    def test_create_node_still_names_the_node_for_an_unknown_type(self, factory):
+        with pytest.raises(
+            ValueError, match=r"^node 'node-id' \(missing\): No class mapping found for node type: missing"
+        ):
+            factory.create_node({"id": "node-id", "data": {"type": "missing"}})
+
+    def test_validate_node_config_rejects_the_esq1_303_numeric_value_with_the_node_id(self):
+        with pytest.raises(ValueError, match=r"^node 'node2' \(if-else\): ") as excinfo:
+            node_factory.validate_node_config(self.ESQ1_303_IF_ELSE_NODE)
+
+        assert "Input should be a valid string" in str(excinfo.value)
+
+    def test_validate_node_config_accepts_the_same_node_once_the_value_is_a_string(self):
+        healed = copy.deepcopy(self.ESQ1_303_IF_ELSE_NODE)
+        healed["data"]["cases"][0]["conditions"][0]["value"] = "60"
+
+        data = node_factory.validate_node_config(healed)
+
+        assert data.type == BuiltinNodeTypes.IF_ELSE
+
+    def test_validate_node_config_needs_no_factory_instance(self):
+        # No graph_init_params / runtime state anywhere: a pure, dry check.
+        data = node_factory.validate_node_config(
+            {"id": "s", "data": {"type": BuiltinNodeTypes.START, "title": "Start"}}
+        )
+
+        assert data.type == BuiltinNodeTypes.START
