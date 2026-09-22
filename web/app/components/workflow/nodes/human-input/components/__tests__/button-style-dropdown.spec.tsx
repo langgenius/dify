@@ -15,7 +15,13 @@ describe('ButtonStyleDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
+      t: withSelectorKey((key: string) => {
+        const translations: Record<string, string> = {
+          'nodes.humanInput.userActions.buttonStyle.ghost': 'Ghost',
+          'nodes.humanInput.userActions.buttonStyle.primary': 'Primary',
+        }
+        return translations[key] ?? key
+      }),
     })
   })
 
@@ -25,9 +31,22 @@ describe('ButtonStyleDropdown', () => {
       <ButtonStyleDropdown text="Approve" data={UserActionButtonType.Ghost} onChange={onChange} />,
     )
 
-    await user.click(screen.getByRole('button'))
-    expect(screen.getByText('nodes.humanInput.userActions.chooseStyle')).toBeInTheDocument()
-    await user.click(screen.getAllByRole('button', { name: 'Approve' })[0]!)
+    const trigger = screen.getByRole('button', {
+      name: 'nodes.humanInput.userActions.chooseStyle',
+    })
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    await user.keyboard('{Enter}')
+    const radioGroup = screen.getByRole('radiogroup', {
+      name: 'nodes.humanInput.userActions.chooseStyle',
+    })
+    expect(radioGroup).toBeInTheDocument()
+
+    const ghostRadio = screen.getByRole('radio', { name: 'Approve, Ghost' })
+    expect(ghostRadio).toHaveAttribute('aria-checked', 'true')
+    const primaryRadio = screen.getByRole('radio', { name: 'Approve, Primary' })
+    primaryRadio.focus()
+    await user.keyboard(' ')
 
     expect(onChange).toHaveBeenCalledWith(UserActionButtonType.Primary)
   })
@@ -43,7 +62,11 @@ describe('ButtonStyleDropdown', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button'))
+    const trigger = screen.getByRole('button', {
+      name: 'nodes.humanInput.userActions.chooseStyle',
+    })
+    expect(trigger).toBeDisabled()
+    await user.click(trigger)
 
     expect(screen.queryByText('nodes.humanInput.userActions.chooseStyle')).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()

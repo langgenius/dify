@@ -1,7 +1,8 @@
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { RiFontSize } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -43,16 +44,25 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
     >
       <PopoverTrigger
         render={
-          <div
+          <Button
+            type="button"
+            aria-label={t(($) => $[`${i18nPrefix}.userActions.chooseStyle`], { ns: 'workflow' })}
+            disabled={readonly}
             className={cn(
-              'flex items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1 data-popup-open:bg-components-button-tertiary-bg-hover',
+              'flex h-8 items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1 data-popup-open:bg-components-button-tertiary-bg-hover',
               !readonly && 'cursor-pointer hover:bg-components-button-tertiary-bg-hover',
             )}
+            variant="tertiary"
           >
-            <Button size="small" className="pointer-events-none px-1" variant={currentStyle}>
-              <RiFontSize className="size-4" />
-            </Button>
-          </div>
+            <span
+              className={cn(
+                buttonVariants({ variant: currentStyle, size: 'small' }),
+                'pointer-events-none',
+              )}
+            >
+              <RiFontSize className="size-4" aria-hidden="true" />
+            </span>
+          </Button>
         }
       />
       <PopoverContent
@@ -65,56 +75,63 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
           <div className="system-md-medium text-text-primary">
             {t(($) => $[`${i18nPrefix}.userActions.chooseStyle`], { ns: 'workflow' })}
           </div>
-          <div className="mt-2 flex w-81 flex-wrap gap-1">
-            <div
-              className={cn(
-                'box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
-                data === UserActionButtonType.Primary &&
-                  'border-components-option-card-option-selected-border',
-              )}
-              onClick={() => onChange(UserActionButtonType.Primary)}
+          <RadioGroup
+            aria-label={t(($) => $[`${i18nPrefix}.userActions.chooseStyle`], { ns: 'workflow' })}
+            value={data}
+            onValueChange={(value) => onChange(value)}
+            disabled={readonly}
+            className="mt-2 flex w-81 flex-wrap gap-1"
+          >
+            <RadioItem
+              value={UserActionButtonType.Primary}
+              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.primary`], { ns: 'workflow' })}`}
+              nativeButton
+              render={<button type="button" />}
+              className="box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section outline-hidden hover:bg-background-section-burn focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-disabled:cursor-not-allowed"
             >
-              <Button variant="primary" className="pointer-events-none">
+              <span className={cn(buttonVariants({ variant: 'primary' }), 'pointer-events-none')}>
                 {text}
-              </Button>
-            </div>
-            <div
-              className={cn(
-                'box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
-                data === UserActionButtonType.Default &&
-                  'border-components-option-card-option-selected-border',
-              )}
-              onClick={() => onChange(UserActionButtonType.Default)}
+              </span>
+            </RadioItem>
+            <RadioItem
+              value={UserActionButtonType.Default}
+              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.default`], { ns: 'workflow' })}`}
+              nativeButton
+              render={<button type="button" />}
+              className="box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section outline-hidden hover:bg-background-section-burn focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-disabled:cursor-not-allowed"
             >
-              <Button variant="secondary" className="pointer-events-none">
+              <span className={cn(buttonVariants({ variant: 'secondary' }), 'pointer-events-none')}>
                 {text}
-              </Button>
-            </div>
-            <div
-              className={cn(
-                'box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
-                data === UserActionButtonType.Accent &&
-                  'border-components-option-card-option-selected-border',
-              )}
-              onClick={() => onChange(UserActionButtonType.Accent)}
+              </span>
+            </RadioItem>
+            <RadioItem
+              value={UserActionButtonType.Accent}
+              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.accent`], { ns: 'workflow' })}`}
+              nativeButton
+              render={<button type="button" />}
+              className="box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section outline-hidden hover:bg-background-section-burn focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-disabled:cursor-not-allowed"
             >
-              <Button variant="secondary-accent" className="pointer-events-none">
+              <span
+                className={cn(
+                  buttonVariants({ variant: 'secondary-accent' }),
+                  'pointer-events-none',
+                )}
+              >
                 {text}
-              </Button>
-            </div>
-            <div
-              className={cn(
-                'box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
-                data === UserActionButtonType.Ghost &&
-                  'border-components-option-card-option-selected-border',
-              )}
-              onClick={() => onChange(UserActionButtonType.Ghost)}
+              </span>
+            </RadioItem>
+            <RadioItem
+              value={UserActionButtonType.Ghost}
+              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.ghost`], { ns: 'workflow' })}`}
+              nativeButton
+              render={<button type="button" />}
+              className="box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section outline-hidden hover:bg-background-section-burn focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-disabled:cursor-not-allowed"
             >
-              <Button variant="ghost" className="pointer-events-none">
+              <span className={cn(buttonVariants({ variant: 'ghost' }), 'pointer-events-none')}>
                 {text}
-              </Button>
-            </div>
-          </div>
+              </span>
+            </RadioItem>
+          </RadioGroup>
         </div>
       </PopoverContent>
     </Popover>
