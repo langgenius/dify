@@ -1,8 +1,8 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
-import { expectAgentModelRequiredFeedback, getCurrentAgentId } from './configure-helpers'
+import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure.ts'
+import { expectAgentModelRequiredFeedback, getCurrentAgentId } from './configure-helpers.ts'
 
 When('I publish the Agent v2 draft', async function (this: DifyWorld) {
   const page = this.getPage()

@@ -132,7 +132,7 @@ def test_materialized_icon_is_owned_by_destination(monkeypatch: pytest.MonkeyPat
 
 def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> None:
     from models.agent_config_entities import AgentSoulConfig
-    from models.model import App
+    from models.model import App, AppMode
     from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata, make_agent_app_dsl
     from services.agent.roster_package_exporter import RosterAgentPackageExporter
     from services.agent.roster_package_reader import RosterAgentPackageReader
@@ -153,7 +153,7 @@ def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> Non
     )
     resources.collect_icon(session=Mock(), tenant_id="source", metadata=metadata)
     app = make_agent_app_dsl(
-        App(name="Agent", mode="agent"),
+        App(name="Agent", mode=AppMode.AGENT),
         package_ref="agent_1",
         packages={
             "agent_1": AgentPackage(metadata=AgentPackageMetadata.model_validate(metadata), soul=AgentSoulConfig())

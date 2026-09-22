@@ -4,13 +4,6 @@ import type { FC } from 'react'
 import type { TriggerMetadata } from '@/models/log'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Code,
-  KnowledgeRetrieval,
-  Schedule,
-  WebhookLine,
-  WindowCursor,
-} from '@/app/components/base/icons/src/vender/workflow'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useTheme from '@/hooks/use-theme'
@@ -65,13 +58,19 @@ const getTriggerIcon = (
     case 'webhook':
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-1 shadow-md">
-          <WebhookLine className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-workflow-webhook-line size-4 text-text-primary-on-surface"
+          />
         </div>
       )
     case 'schedule':
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-500 p-1 shadow-md">
-          <Schedule className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-workflow-schedule size-4 text-text-primary-on-surface"
+          />
         </div>
       )
     case 'plugin':
@@ -81,14 +80,20 @@ const getTriggerIcon = (
     case 'debugging':
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-1 shadow-md">
-          <Code className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-workflow-code size-4 text-text-primary-on-surface"
+          />
         </div>
       )
     case 'rag-pipeline-run':
     case 'rag-pipeline-debugging':
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-green-green-500 p-1 shadow-md">
-          <KnowledgeRetrieval className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-workflow-knowledge-retrieval size-4 text-text-primary-on-surface"
+          />
         </div>
       )
     case 'app-run':
@@ -96,7 +101,10 @@ const getTriggerIcon = (
       // For user input types (app-run, etc.), use webapp icon
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
-          <WindowCursor className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-workflow-window-cursor size-4 text-text-primary-on-surface"
+          />
         </div>
       )
   }

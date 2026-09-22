@@ -1,6 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -15,6 +15,7 @@ import { renderI18nObject } from '@/i18n/metadata'
 import Link from '@/next/link'
 import { trackMarketplaceSiteCardClick } from '@/utils/marketplace-site-track'
 import MarketplaceDetailDialog from '../detail-dialog'
+import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
 import { getPluginDetailLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
@@ -24,13 +25,14 @@ type CardWrapperProps = {
   linkToMarketplaceDetail?: boolean
   section?: string
 }
-const CardWrapperComponent = ({
+const CardWrapperContent = ({
   plugin,
   showInstallButton,
   isInstalled = false,
   linkToMarketplaceDetail = false,
   section = 'list',
-}: CardWrapperProps) => {
+  externalDetailHref,
+}: CardWrapperProps & { externalDetailHref?: string }) => {
   const { t } = useTranslation()
   const locale = useGetLanguage()
   const [
@@ -94,12 +96,22 @@ const CardWrapperComponent = ({
       className="group relative cursor-pointer rounded-xl"
       data-marketplace-card={plugin.plugin_id}
     >
-      <button
-        type="button"
-        aria-label={pluginLabel}
-        className="absolute inset-0 z-[1] rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        onClick={showMarketplaceDetail}
-      />
+      {externalDetailHref ? (
+        <a
+          href={externalDetailHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={pluginLabel}
+          className="absolute inset-0 z-[1] rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        />
+      ) : (
+        <button
+          type="button"
+          aria-label={pluginLabel}
+          className="absolute inset-0 z-[1] rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          onClick={showMarketplaceDetail}
+        />
+      )}
       {cardBody}
       {showInstallAction && (
         <div className="pointer-events-none absolute right-[-0.5px] bottom-[-0.5px] left-[-0.5px] z-10 flex items-center gap-2 rounded-b-xl bg-linear-to-t from-components-panel-on-panel-item-bg-hover from-60% to-background-gradient-mask-transparent px-4 pt-8 pb-4 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
@@ -116,23 +128,38 @@ const CardWrapperComponent = ({
               ? t(($) => $['task.installed'], { ns: 'plugin' })
               : t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
           </Button>
-          <Button
-            className="min-w-0 flex-1 shadow-xs backdrop-blur-[5px]"
-            onClick={(event) => {
-              event.stopPropagation()
-              showMarketplaceDetail()
-            }}
-          >
-            {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
-          </Button>
+          {externalDetailHref ? (
+            <a
+              href={externalDetailHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({
+                className: 'min-w-0 flex-1 shadow-xs backdrop-blur-[5px]',
+              })}
+            >
+              {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
+            </a>
+          ) : (
+            <Button
+              className="min-w-0 flex-1 shadow-xs backdrop-blur-[5px]"
+              onClick={(event) => {
+                event.stopPropagation()
+                showMarketplaceDetail()
+              }}
+            >
+              {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
+            </Button>
+          )}
         </div>
       )}
-      <MarketplaceDetailDialog
-        isInstalled={isInstalled}
-        open={isShowMarketplaceDetail}
-        plugin={plugin}
-        onOpenChange={handleMarketplaceDetailOpenChange}
-      />
+      {!externalDetailHref && (
+        <MarketplaceDetailDialog
+          isInstalled={isInstalled}
+          open={isShowMarketplaceDetail}
+          plugin={plugin}
+          onOpenChange={handleMarketplaceDetailOpenChange}
+        />
+      )}
       {isShowInstallFromMarketplace && (
         <InstallFromMarketplace
           manifest={plugin}
@@ -142,6 +169,19 @@ const CardWrapperComponent = ({
         />
       )}
     </div>
+  )
+}
+
+function DifyCardWrapper(props: CardWrapperProps) {
+  const navigation = useMarketplaceDetailNavigation()
+  return <CardWrapperContent {...props} externalDetailHref={navigation.pluginHref(props.plugin)} />
+}
+
+function CardWrapperComponent(props: CardWrapperProps) {
+  return props.linkToMarketplaceDetail ? (
+    <CardWrapperContent {...props} />
+  ) : (
+    <DifyCardWrapper {...props} />
   )
 }
 

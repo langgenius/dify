@@ -44,7 +44,7 @@ describe('ParamItem', () => {
     it('should render a switch when hasSwitch is true', () => {
       render(<ParamItem {...defaultProps} hasSwitch />)
 
-      expect(screen.getByRole('switch')).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: 'Test Param' })).toBeInTheDocument()
     })
 
     it('should not render a switch by default', () => {

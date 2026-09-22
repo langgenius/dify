@@ -82,7 +82,9 @@ const KeyValueItem: FC<Props> = ({
   )
 
   const filterOnlyFileVariable = (varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+
+    return fileVariableTypes.includes(varPayload.type)
   }
 
   const handleValueContainerClick = useCallback(() => {

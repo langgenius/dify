@@ -1,5 +1,5 @@
 'use client'
-import type { App } from '@/models/explore'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { PlusIcon } from '@heroicons/react/20/solid'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -15,7 +15,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
 type AppCardProps = {
-  app: App
+  app: RecommendedAppResponse
   canCreate: boolean
   onCreate: () => void
 }
@@ -27,18 +27,26 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
     select: ({ deployment_edition }) => deployment_edition,
   })
   const { app: appBasicInfo } = app
+  const appName = appBasicInfo?.name ?? ''
+  const appMode = appBasicInfo?.mode ?? ''
+  const appIconType =
+    appBasicInfo?.icon_type === 'image' ||
+    appBasicInfo?.icon_type === 'emoji' ||
+    appBasicInfo?.icon_type === 'link'
+      ? appBasicInfo.icon_type
+      : null
   const canViewApp = deploymentEdition === 'CLOUD'
   const openTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.openTryAppPanel)
   const handleShowTryAppPanel = useCallback(() => {
     trackEvent('preview_template', {
       template_id: app.app_id,
-      template_name: appBasicInfo.name,
-      template_mode: appBasicInfo.mode,
-      template_categories: app.categories,
+      template_name: appName,
+      template_mode: appMode,
+      template_categories: app.categories ?? [],
       page: 'studio',
     })
-    openTryAppPanel({ appId: app.app_id, app })
-  }, [openTryAppPanel, app, appBasicInfo])
+    openTryAppPanel(app)
+  }, [openTryAppPanel, app, appName, appMode])
   return (
     <div
       className={cn(
@@ -49,27 +57,24 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
         <div className="relative shrink-0">
           <AppIcon
             size="large"
-            iconType={appBasicInfo.icon_type}
-            icon={appBasicInfo.icon}
-            background={appBasicInfo.icon_background}
-            imageUrl={appBasicInfo.icon_url}
+            iconType={appIconType}
+            icon={appBasicInfo?.icon ?? ''}
+            background={appBasicInfo?.icon_background ?? ''}
+            imageUrl={appBasicInfo?.icon_url ?? ''}
           />
           <AppTypeIcon
             wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
             className="size-3"
-            type={appBasicInfo.mode}
+            type={appMode}
           />
         </div>
         <div className="flex grow flex-col gap-1">
           <div className="line-clamp-1">
-            <span className="system-md-semibold text-text-secondary" title={appBasicInfo.name}>
-              {appBasicInfo.name}
+            <span className="system-md-semibold text-text-secondary" title={appName}>
+              {appName}
             </span>
           </div>
-          <AppTypeLabel
-            className="system-2xs-medium-uppercase text-text-tertiary"
-            type={app.app.mode}
-          />
+          <AppTypeLabel className="system-2xs-medium-uppercase text-text-tertiary" type={appMode} />
         </div>
       </div>
       <div className="py-1 system-xs-regular text-text-tertiary">

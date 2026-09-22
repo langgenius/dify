@@ -1,7 +1,7 @@
 import type { UsagePriority } from '../use-credential-panel-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { PreferredProviderTypeEnum } from '../../declarations'
 
 type UsagePrioritySectionProps = {
@@ -38,7 +38,10 @@ export default function UsagePrioritySection({
           <span className="truncate system-sm-medium text-text-secondary">
             {t(($) => $['modelProvider.card.usagePriority'], { ns: 'common' })}
           </span>
-          <Infotip aria-label={usagePriorityTip}>{usagePriorityTip}</Infotip>
+          <Infotip>
+            <InfotipTrigger aria-label={usagePriorityTip} />
+            <InfotipContent aria-label={usagePriorityTip}>{usagePriorityTip}</InfotipContent>
+          </Infotip>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {options.map((option) => {

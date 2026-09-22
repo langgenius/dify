@@ -200,7 +200,6 @@
   "openInExplore": "فتح Web App في الشريط الجانبي",
   "publishApp.notSet": "لم يتم تعيينه",
   "removeOriginal": "حذف التطبيق الأصلي",
-  "structOutput.LLMResponse": "استجابة LLM",
   "structOutput.configure": "تكوين",
   "structOutput.modelNotSupported": "النموذج غير مدعوم",
   "structOutput.modelNotSupportedTip": "النموذج الحالي لا يدعم هذه الميزة ويتم تخفيضه تلقائيًا إلى حقن المطالبة.",

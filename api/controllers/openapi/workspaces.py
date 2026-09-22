@@ -21,7 +21,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from configs import dify_config
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi._models import (
     MemberActionResponse,
@@ -32,6 +32,7 @@ from controllers.openapi._models import (
     MemberResponse,
     MemberRoleUpdatePayload,
     WorkspaceDetailResponse,
+    WorkspaceListQuery,
     WorkspaceListResponse,
     WorkspaceSummaryResponse,
 )
@@ -88,18 +89,29 @@ def _check_member_invite_quota(tenant_id: str) -> None:
 @openapi_ns.route("/workspaces")
 class WorkspacesApi(Resource):
     @endpoint(
+        op="workspace.list",
+        kind=Kind.LIST,
+        summary="List workspaces of the current account",
+        examples=(Example(title="List my workspaces, first page", input={"page": 1, "limit": 20}),),
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
+        query=WorkspaceListQuery,
         returns=(200, WorkspaceListResponse, "Workspace list"),
     )
-    def get(self, ctx: Context):
+    def get(self, ctx: Context, *, query: WorkspaceListQuery):
         rows = TenantService.get_workspaces_for_account(str(ctx.subject.account_id), session=ctx.session)
-
-        return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows)))
+        return WorkspaceListResponse.page_of(list(starmap(_workspace_summary, rows)), query=query)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>")
 class WorkspaceByIdApi(Resource):
     @endpoint(
+        op="workspace.get",
+        kind=Kind.OBJECT,
+        summary="Workspace detail",
+        examples=(
+            Example(title="Show the pinned workspace", input={}),
+            Example(title="Show another workspace by id", input={"workspace_id": "<workspace_id>"}),
+        ),
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
         returns=(200, WorkspaceDetailResponse, "Workspace detail"),
     )
@@ -122,6 +134,11 @@ class WorkspaceSwitchApi(Resource):
     """
 
     @endpoint(
+        op="workspace.switch",
+        kind=Kind.OBJECT,
+        summary="Server-side current workspace switch (shared with the web console)",
+        examples=(Example(title="Make a workspace current on the server", input={"workspace_id": "<workspace_id>"}),),
+        internal=True,
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),
@@ -151,6 +168,10 @@ class WorkspaceMembersApi(Resource):
     """
 
     @endpoint(
+        op="workspace.members.list",
+        kind=Kind.LIST,
+        summary="List workspace members",
+        examples=(Example(title="List members of the pinned workspace, first page", input={"page": 1, "limit": 20}),),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),
@@ -161,17 +182,16 @@ class WorkspaceMembersApi(Resource):
     )
     def get(self, ctx: Context, workspace_id: str, *, query: MemberListQuery):
         members = TenantService.get_tenant_members(ctx.workspace, session=ctx.session)
-        total = len(members)
-        start = (query.page - 1) * query.limit
-        page_items = members[start : start + query.limit]
-        return MemberListResponse.build(
-            page=query.page,
-            limit=query.limit,
-            total=total,
-            items=[_member_response(m) for m in page_items],
-        )
+        return MemberListResponse.page_of([_member_response(m) for m in members], query=query)
 
     @endpoint(
+        op="workspace.members.invite",
+        kind=Kind.OBJECT,
+        summary="Invite a member by email",
+        examples=(
+            Example(title="Invite a member as a normal user", input={"email": "ada@example.com", "role": "normal"}),
+            Example(title="Invite a member as an admin", input={"email": "grace@example.com", "role": "admin"}),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
@@ -232,6 +252,10 @@ class WorkspaceMemberApi(Resource):
     """
 
     @endpoint(
+        op="workspace.members.remove",
+        kind=Kind.OBJECT,
+        summary="Remove a member",
+        examples=(Example(title="Remove a member by account id", input={"member_id": "<member_id>"}),),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
@@ -258,6 +282,13 @@ class WorkspaceMemberApi(Resource):
         return MemberActionResponse()
 
     @endpoint(
+        op="workspace.members.set_role",
+        kind=Kind.OBJECT,
+        summary="Change a member's role",
+        examples=(
+            Example(title="Promote a member to admin", input={"member_id": "<member_id>", "role": "admin"}),
+            Example(title="Demote an admin to a normal member", input={"member_id": "<member_id>", "role": "normal"}),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),

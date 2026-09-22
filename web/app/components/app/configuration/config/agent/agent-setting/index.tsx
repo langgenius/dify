@@ -14,8 +14,6 @@ import {
 } from '@langgenius/dify-ui/slider'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
-import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 import ItemPanel from './item-panel'
 
@@ -80,7 +78,12 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
           {/* Agent Mode */}
           <ItemPanel
             className="mb-4"
-            icon={<CuteRobot className="size-4 text-indigo-600" />}
+            icon={
+              <span
+                aria-hidden
+                className="i-custom-vender-solid-communication-cute-robot size-4 text-indigo-600"
+              />
+            }
             name={t(($) => $['agent.agentMode'], { ns: 'appDebug' })}
             description={t(($) => $['agent.agentModeDes'], { ns: 'appDebug' })}
           >
@@ -93,7 +96,12 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
 
           <ItemPanel
             className="mb-4"
-            icon={<Unblur className="h-4 w-4 text-[#FB6514]" />}
+            icon={
+              <span
+                aria-hidden
+                className="i-custom-vender-solid-education-unblur h-4 w-4 text-[#FB6514]"
+              />
+            }
             name={maximumIterationsLabel}
             description={t(($) => $['agent.setting.maximumIterations.description'], {
               ns: 'appDebug',

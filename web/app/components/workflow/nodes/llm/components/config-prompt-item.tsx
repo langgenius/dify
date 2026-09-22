@@ -2,10 +2,10 @@
 import type { SelectorParam } from 'i18next'
 import type { FC } from 'react'
 import type { ModelConfig, Node, NodeOutPutVar, PromptItem, Variable } from '../../../types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { PromptRole } from '@/models/debug'
@@ -127,8 +127,11 @@ const ConfigPromptItem: FC<Props> = ({
           )}
 
           {roleDescription && (
-            <Infotip aria-label={roleDescription} popupClassName="w-[180px]">
-              {roleDescription}
+            <Infotip>
+              <InfotipTrigger aria-label={roleDescription} />
+              <InfotipContent aria-label={roleDescription} className="w-45">
+                {roleDescription}
+              </InfotipContent>
             </Infotip>
           )}
         </div>

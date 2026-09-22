@@ -9,7 +9,6 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
-import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { toast } from '@/app/notifications'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
@@ -242,7 +241,10 @@ const Question: FC<QuestionProps> = ({
         <div className="size-10 shrink-0">
           {questionIcon || (
             <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-              <User className="question-default-user-icon size-full" />
+              <span
+                aria-hidden
+                className="question-default-user-icon i-custom-public-avatar-user size-full"
+              />
             </div>
           )}
         </div>

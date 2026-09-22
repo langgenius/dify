@@ -5,6 +5,7 @@ import type { Placement } from '../placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '../cn'
 import { resolveClassName } from '../internals/resolve-class-name'
+import { hintPopupClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
 /**
@@ -60,13 +61,7 @@ function TooltipContent({
         className="z-50 outline-hidden"
       >
         <BaseTooltip.Popup
-          className={(state) =>
-            cn(
-              'max-w-75 overflow-clip rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 text-start system-xs-medium wrap-break-word text-text-secondary shadow-[0px_12px_16px_-4px_var(--color-shadow-shadow-5),0px_4px_6px_-2px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
-              'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0 motion-reduce:transition-none',
-              resolveClassName(className, state),
-            )
-          }
+          className={(state) => cn(hintPopupClassName, resolveClassName(className, state))}
           {...props}
         >
           {children}

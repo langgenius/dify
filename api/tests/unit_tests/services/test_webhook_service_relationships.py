@@ -25,6 +25,7 @@ def test_draft_sync_preserves_webhook_id_when_deleted_node_is_restored(
         App,
         SimpleNamespace(id="00000000-0000-0000-0000-000000000001", tenant_id="tenant-1", created_by="user-1"),
     )
+    assert app.created_by is not None
     webhook_trigger = WorkflowWebhookTrigger(
         app_id=app.id,
         tenant_id=app.tenant_id,
@@ -69,6 +70,7 @@ def test_published_sync_removes_stale_webhook_relationships(
         App,
         SimpleNamespace(id="00000000-0000-0000-0000-000000000001", tenant_id="tenant-1", created_by="user-1"),
     )
+    assert app.created_by is not None
     webhook_trigger = WorkflowWebhookTrigger(
         app_id=app.id,
         tenant_id=app.tenant_id,

@@ -1,5 +1,5 @@
 import type { SyncDraftWorkflowPayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { ConsoleClient } from './console-client'
+import type { ConsoleClient } from './console-client.ts'
 
 export async function syncMinimalWorkflowDraft(
   client: ConsoleClient,

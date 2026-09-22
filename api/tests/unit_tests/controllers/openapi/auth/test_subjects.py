@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from unittest.mock import patch
+from types import SimpleNamespace
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Unauthorized
 
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
@@ -11,6 +12,8 @@ from libs.oauth_bearer import TokenType
 from models import Account, EndUser, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.enums import EndUserType
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
+from services.app_scoped_end_user_service import AppScopedEndUserService
 
 from ._world import (
     ACCOUNT_ID,
@@ -76,7 +79,12 @@ class TestAccountResolveCaller:
 
 
 class TestExternalSsoResolveCaller:
-    def test_resolves_the_end_user_against_the_apps_workspace(self, sqlite_session: Session) -> None:
+    def test_resolves_the_end_user_against_the_apps_workspace(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """It loads both itself. Nothing before it on an SSO route needs a
         workspace, so a subject that expected one to be there already would
         resolve an end user against nothing.
@@ -84,26 +92,23 @@ class TestExternalSsoResolveCaller:
         persist(sqlite_session, make_app(), make_tenant())
         subject = ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO))
         ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
-        end_user = EndUser(
-            tenant_id=TENANT_ID,
-            app_id=APP_ID,
-            type=EndUserType.OPENAPI,
-            is_anonymous=False,
-            session_id=SSO_EMAIL,
+        commands = AppScopedEndUserService(
+            end_users=AppScopedEndUserRepo(session_factory=sqlite_session_factory),
         )
+        services = SimpleNamespace(app_scoped_end_users=SimpleNamespace(commands=commands))
+        monkeypatch.setattr("controllers.openapi.auth.subjects.application_services", lambda: services)
 
-        with patch(
-            "controllers.openapi.auth.subjects.EndUserService.get_or_create_end_user_by_type",
-            return_value=end_user,
-        ) as get_or_create:
-            assert subject.resolve_caller(ctx, sqlite_session) is end_user
+        caller = subject.resolve_caller(ctx, sqlite_session)
 
-        get_or_create.assert_called_once_with(
-            EndUserType.OPENAPI,
-            tenant_id=TENANT_ID,
-            app_id=APP_ID,
-            user_id=SSO_EMAIL,
-        )
+        assert isinstance(caller, EndUser)
+        with sqlite_session_factory() as observer:
+            persisted = observer.scalar(select(EndUser).where(EndUser.session_id == SSO_EMAIL))
+        assert persisted is not None
+        assert persisted.id == caller.id
+        assert persisted.tenant_id == TENANT_ID
+        assert persisted.app_id == APP_ID
+        assert persisted.type == EndUserType.OPENAPI
+        assert persisted.external_user_id == SSO_EMAIL
 
     def test_rejects_a_token_without_an_external_identity(self, sqlite_session: Session) -> None:
         subject = ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO, subject_email=None))

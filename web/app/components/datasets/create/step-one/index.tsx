@@ -8,7 +8,7 @@ import { RiFolder6Line } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import NotionConnector from '@/app/components/base/notion-connector'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
@@ -100,6 +100,7 @@ const StepOne = ({
   authedDataSourceList,
 }: IStepOneProps) => {
   const { t } = useTranslation()
+  const sourceLabelId = useId()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
@@ -212,18 +213,22 @@ const StepOne = ({
   ])
 
   return (
-    <div className="size-full overflow-x-auto">
-      <div className="flex h-full w-full min-w-360">
+    <div className="size-full min-w-0 overflow-y-auto">
+      <div className="flex min-h-full w-full min-w-0 flex-col xl:h-full xl:flex-row">
         {/* Left Panel - Form */}
-        <div className="relative h-full w-1/2 overflow-y-auto">
-          <div className="flex justify-end">
+        <div className="relative w-full min-w-0 xl:h-full xl:w-1/2 xl:overflow-y-auto">
+          <div className="flex min-w-0 justify-end">
             <div className={cn(s.form)}>
               {shouldShowDataSourceTypeList && (
                 <>
-                  <div className={cn(s.stepHeader, 'system-md-semibold text-text-secondary')}>
+                  <h1
+                    id={sourceLabelId}
+                    className={cn(s.stepHeader, 'system-md-semibold text-text-secondary')}
+                  >
                     {t(($) => $['steps.one'], { ns: 'datasetCreation' })}
-                  </div>
+                  </h1>
                   <DataSourceTypeSelector
+                    labelledBy={sourceLabelId}
                     currentType={dataSourceType}
                     disabled={dataSourceTypeDisable}
                     onChange={changeType}
@@ -276,13 +281,18 @@ const StepOne = ({
               {dataSourceType === DataSourceType.NOTION && (
                 <>
                   {!isNotionAuthed && (
-                    <div className={cn('mb-8 w-160', !shouldShowDataSourceTypeList && 'mt-12')}>
+                    <div
+                      className={cn(
+                        'mb-8 w-full max-w-160',
+                        !shouldShowDataSourceTypeList && 'mt-12',
+                      )}
+                    >
                       <NotionConnector onSetting={onSetting} />
                     </div>
                   )}
                   {isNotionAuthed && (
                     <>
-                      <div className="mb-8 w-160">
+                      <div className="mb-8 w-full max-w-160">
                         <NotionPageSelector
                           value={notionPages.map((page) => page.page_id)}
                           onSelect={updateNotionPages}
@@ -322,7 +332,12 @@ const StepOne = ({
               {/* Web Data Source */}
               {dataSourceType === DataSourceType.WEB && (
                 <>
-                  <div className={cn('mb-8 w-160', !shouldShowDataSourceTypeList && 'mt-12')}>
+                  <div
+                    className={cn(
+                      'mb-8 w-full max-w-160',
+                      !shouldShowDataSourceTypeList && 'mt-12',
+                    )}
+                  >
                     <Website
                       onPreview={showWebsitePreview}
                       checkedCrawlResult={websitePages}
@@ -350,13 +365,14 @@ const StepOne = ({
               {!datasetId && (
                 <>
                   <div className="my-8 h-px max-w-160 bg-divider-regular" />
-                  <span
-                    className="inline-flex cursor-pointer items-center text-[13px] leading-4 text-text-accent"
+                  <button
+                    type="button"
+                    className="inline-flex cursor-pointer items-center rounded-sm text-left text-[13px] leading-4 text-text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-input-border-active"
                     onClick={openModal}
                   >
-                    <RiFolder6Line className="mr-1 size-4" />
+                    <RiFolder6Line aria-hidden="true" className="mr-1 size-4 shrink-0" />
                     {t(($) => $['stepOne.emptyDatasetCreation'], { ns: 'datasetCreation' })}
-                  </span>
+                  </button>
                 </>
               )}
             </div>
@@ -371,7 +387,7 @@ const StepOne = ({
           currentWebsite={currentWebsite}
           notionCredentialId={notionCredentialId}
           isShowPlanUpgradeModal={isShowPlanUpgradeModal}
-          hideFilePreview={hideFilePreview}
+          hideFilePreview={() => hideFilePreview(true)}
           hideNotionPagePreview={hideNotionPagePreview}
           hideWebsitePreview={hideWebsitePreview}
           hidePlanUpgradeModal={hidePlanUpgradeModal}

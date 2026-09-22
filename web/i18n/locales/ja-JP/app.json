@@ -200,7 +200,6 @@
   "openInExplore": "左側のWeb Appを開く",
   "publishApp.notSet": "未設定",
   "removeOriginal": "元のアプリを削除する",
-  "structOutput.LLMResponse": "LLM のレスポンス",
   "structOutput.configure": "設定",
   "structOutput.modelNotSupported": "モデルが対応していません",
   "structOutput.modelNotSupportedTip": "現在のモデルはこの機能に対応しておらず、自動的にプロンプトインジェクションに切り替わります。",
