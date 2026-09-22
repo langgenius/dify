@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
 from models.model import Message
 
@@ -24,7 +24,7 @@ def filter_none_values(data: dict[str, Any]) -> dict[str, Any]:
     return new_data
 
 
-def get_message_data(message_id: str, session: Session):
+def get_message_data(message_id: str, session: Session | scoped_session):
     return session.scalar(select(Message).where(Message.id == message_id))
 
 
