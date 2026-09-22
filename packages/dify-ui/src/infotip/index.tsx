@@ -106,9 +106,4 @@ function InfotipContent({
 }
 
 export { Infotip, InfotipContent, InfotipTitle, InfotipTrigger }
-export type {
-  InfotipContentProps,
-  InfotipProps,
-  InfotipTitleProps,
-  InfotipTriggerProps,
-}
+export type { InfotipContentProps, InfotipProps, InfotipTitleProps, InfotipTriggerProps }
