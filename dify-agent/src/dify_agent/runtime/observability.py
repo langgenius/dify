@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final, Literal
@@ -259,6 +260,15 @@ class AgentObservability:
         if not run_attributes:
             return provider
         return RunScopedTracerProvider(provider, run_attributes)
+
+    async def aclose(self) -> None:
+        """Flush and tear down this instance's own export pipeline.
+
+        The owning scope closes the instance; shutdown is blocking, so it runs off
+        the event loop. This only affects the Agent pipeline and leaves the
+        platform Logfire instance running.
+        """
+        await asyncio.to_thread(self.client.shutdown, timeout_millis=5000)
 
 
 __all__ = [

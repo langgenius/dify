@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import base64
+import os
 import time
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from typing import ClassVar
 
 import httpx
@@ -11,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import dify_agent.server.app as app_module
+import dify_agent.server.observability as server_observability
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
@@ -24,6 +24,24 @@ from dify_agent.runtime.compositor_factory import DifyAgentLayerProvider
 from dify_agent.server.app import create_app, create_dify_api_inner_http_client, create_plugin_daemon_http_client
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
+
+
+@pytest.fixture(autouse=True)
+def _isolated_app_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep app construction independent of the developer's dotenv and SDK env.
+
+    ``ServerSettings`` resolves ``.env``/``dify-agent/.env`` against the current
+    directory, and importing this module builds ``app_module.app``, which already
+    latched the process-global trace context mode from whatever it found there.
+    Pinning the settings source and resetting that latch lets each case build an
+    app from the settings it states, in any order and on any machine.
+    """
+    for name in tuple(os.environ):
+        if name.startswith(("DIFY_AGENT_", "OTEL_", "LOGFIRE_")):
+            monkeypatch.delenv(name)
+    monkeypatch.setitem(ServerSettings.model_config, "env_file", None)
+    monkeypatch.setattr(server_observability, "_global_instrumentation_ready", False)
+    monkeypatch.setattr(server_observability, "_global_trace_context_mode", None)
 
 
 def _base64url_secret(value: bytes) -> str:
@@ -456,19 +474,22 @@ def test_create_dify_api_inner_http_client_uses_generic_outbound_httpx_construct
 def test_create_app_lifecycle_owns_agent_observability_instance(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_app_lifecycle(monkeypatch)
     events: list[str] = []
-    sentinel = object()
 
-    @asynccontextmanager
-    async def fake_agent_observability_context(_settings: ServerSettings) -> AsyncIterator[object]:
-        events.append("agent-observability-enter")
-        yield sentinel
-        events.append("agent-observability-exit")
+    class FakeAgentObservability:
+        async def aclose(self) -> None:
+            events.append("agent-observability-close")
+
+    sentinel = FakeAgentObservability()
+
+    def fake_configure_agent_observability(_settings: ServerSettings) -> object:
+        events.append("agent-observability-configure")
+        return sentinel
 
     async def recording_shutdown(self: FakeRunScheduler) -> None:
         self.shutdown_called = True
         events.append("scheduler-shutdown")
 
-    monkeypatch.setattr(app_module, "agent_observability_context", fake_agent_observability_context)
+    monkeypatch.setattr(app_module, "configure_agent_observability", fake_configure_agent_observability)
     monkeypatch.setattr(FakeRunScheduler, "shutdown", recording_shutdown)
     FakeRunScheduler.created.clear()
 
@@ -476,9 +497,11 @@ def test_create_app_lifecycle_owns_agent_observability_instance(monkeypatch: pyt
     with TestClient(app):
         assert app.state.agent_observability is sentinel
         assert FakeRunScheduler.created[0].agent_observability is sentinel
-        assert events == ["agent-observability-enter"]
+        assert events == ["agent-observability-configure"]
 
-    assert events == ["agent-observability-enter", "scheduler-shutdown", "agent-observability-exit"]
+    # The instance is closed after the scheduler drains, so spans from runs
+    # finishing during shutdown still reach the exporter.
+    assert events == ["agent-observability-configure", "scheduler-shutdown", "agent-observability-close"]
 
 
 def test_create_app_defaults_agent_observability_to_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -486,13 +509,13 @@ def test_create_app_defaults_agent_observability_to_disabled(monkeypatch: pytest
     FakeRunScheduler.created.clear()
     settings = ServerSettings(redis_url="redis://example.invalid/0", trajectory_enabled=False)
     created: list[ServerSettings] = []
-    real_context = app_module.agent_observability_context
+    real_configure = app_module.configure_agent_observability
 
-    def recording_context(settings: ServerSettings):
+    def recording_configure(settings: ServerSettings):
         created.append(settings)
-        return real_context(settings)
+        return real_configure(settings)
 
-    monkeypatch.setattr(app_module, "agent_observability_context", recording_context)
+    monkeypatch.setattr(app_module, "configure_agent_observability", recording_configure)
     app = create_app(settings)
     with TestClient(app):
         assert app.state.agent_observability is None

@@ -18,10 +18,13 @@ from dify_agent.server.settings import ServerSettings
 
 @pytest.fixture(autouse=True)
 def isolate_observability_environment(monkeypatch, tmp_path):
+    # The temporary working directory hides a developer's dotenv, while stripping
+    # the SDK and DIFY_AGENT_* variables hides exported ones. Cases that exercise
+    # a dotenv or a specific variable write it themselves after this runs.
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(os, "environ", dict(os.environ))
     for key in tuple(os.environ):
-        if key.startswith(("OTEL_", "LOGFIRE_")):
+        if key.startswith(("OTEL_", "LOGFIRE_", "DIFY_AGENT_")):
             monkeypatch.delenv(key)
 
 
@@ -514,26 +517,10 @@ class FakeAgentLogfireClient:
         self.shutdown_calls.append(kwargs)
 
 
-def test_agent_observability_context_shuts_down_agent_client_on_body_failure(monkeypatch) -> None:
+def test_agent_observability_aclose_shuts_down_only_the_agent_client() -> None:
     client = FakeAgentLogfireClient()
     instance = AgentObservability(client=cast(logfire.Logfire, client))
-    monkeypatch.setattr(observability, "configure_agent_observability", lambda _settings: instance)
 
-    async def scenario() -> None:
-        with pytest.raises(RuntimeError, match="body failed"):
-            async with observability.agent_observability_context(ServerSettings()):
-                raise RuntimeError("body failed")
-
-    asyncio.run(scenario())
+    asyncio.run(instance.aclose())
 
     assert client.shutdown_calls == [{"timeout_millis": 5000}]
-
-
-def test_agent_observability_context_disabled_yields_none_without_shutdown(monkeypatch) -> None:
-    monkeypatch.setattr(observability, "configure_agent_observability", lambda _settings: None)
-
-    async def scenario() -> None:
-        async with observability.agent_observability_context(ServerSettings()) as instance:
-            assert instance is None
-
-    asyncio.run(scenario())

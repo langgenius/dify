@@ -19,10 +19,9 @@ code that mutates ``os.environ`` concurrently.
 
 from __future__ import annotations
 
-import asyncio
 import os
-from collections.abc import AsyncIterator, Iterator
-from contextlib import asynccontextmanager, contextmanager
+from collections.abc import Iterator
+from contextlib import contextmanager
 from threading import RLock
 from typing import Any, Literal
 
@@ -175,22 +174,8 @@ def configure_agent_observability(settings: ServerSettings) -> AgentObservabilit
     )
 
 
-@asynccontextmanager
-async def agent_observability_context(
-    settings: ServerSettings,
-) -> AsyncIterator[AgentObservability | None]:
-    """Own the Agent observability instance for the app lifespan."""
-    instance = configure_agent_observability(settings)
-    try:
-        yield instance
-    finally:
-        if instance is not None:
-            await asyncio.to_thread(instance.client.shutdown, timeout_millis=5000)
-
-
 __all__ = [
     "AgentObservability",
-    "agent_observability_context",
     "configure_agent_observability",
     "configure_server_observability",
 ]
