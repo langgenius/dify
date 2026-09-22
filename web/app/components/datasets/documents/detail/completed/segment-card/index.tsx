@@ -9,6 +9,8 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
@@ -16,7 +18,6 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Divider from '@/app/components/base/divider'
 import ImageList from '@/app/components/datasets/common/image-list'
 import { ChunkingMode } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
@@ -85,6 +86,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   const [showModal, setShowModal] = useState(false)
   const docForm = useDocumentContext((s) => s.docForm)
   const parentMode = useDocumentContext((s) => s.parentMode)
+  const canEdit = useDocumentContext((s) => s.canEdit)
 
   const isGeneralMode = useMemo(() => {
     return docForm === ChunkingMode.text
@@ -193,50 +195,43 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                       <Tooltip>
                         <TooltipTrigger
                           render={
-                            <button
-                              type="button"
+                            <IconButton
                               aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
-                              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover"
+                              disabled={!canEdit}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 onClickEdit?.()
                               }}
                             >
-                              <RiEditLine
-                                className="size-4 text-text-tertiary"
-                                aria-hidden="true"
-                              />
-                            </button>
+                              <RiEditLine className="size-4" aria-hidden="true" />
+                            </IconButton>
                           }
                         />
-                        <TooltipContent className="system-xs-medium text-text-secondary">
-                          Edit
+                        <TooltipContent>
+                          {t(($) => $['operation.edit'], { ns: 'common' })}
                         </TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger
                           render={
-                            <button
-                              type="button"
+                            <IconButton
                               aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
-                              className="group/delete flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-destructive-hover"
+                              tone="destructive"
+                              disabled={!canEdit}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 setShowModal(true)
                               }}
                             >
-                              <RiDeleteBinLine
-                                className="size-4 text-text-tertiary group-hover/delete:text-text-destructive"
-                                aria-hidden="true"
-                              />
-                            </button>
+                              <RiDeleteBinLine className="size-4" aria-hidden="true" />
+                            </IconButton>
                           }
                         />
-                        <TooltipContent className="system-xs-medium text-text-secondary">
-                          Delete
+                        <TooltipContent>
+                          {t(($) => $['operation.delete'], { ns: 'common' })}
                         </TooltipContent>
                       </Tooltip>
-                      <Divider type="vertical" className="h-3.5 bg-divider-regular" />
+                      <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
                     </>
                   )}
                   <div
@@ -247,7 +242,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                   >
                     <Switch
                       size="md"
-                      disabled={archived || detail?.status !== 'completed'}
+                      aria-label={t(($) => $['batchAction.enable'], { ns: 'dataset' })}
+                      disabled={!canEdit || archived || detail?.status !== 'completed'}
                       checked={enabled}
                       onCheckedChange={async (val) => {
                         await onChangeSwitch?.(val, id)
@@ -310,6 +306,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
+              disabled={!canEdit}
               onClick={async () => {
                 await onDelete?.(id)
               }}

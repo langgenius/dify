@@ -25,7 +25,7 @@ const LoopLogTrigger = ({ nodeInfo, allExecutions, onShowLoopResultList }: LoopL
     if (parallelNodes.length > 0) return parallelNodes
 
     const serialIndex = Number.parseInt(key, 10)
-    if (!isNaN(serialIndex)) {
+    if (!Number.isNaN(serialIndex)) {
       const serialNodes = allExecutions.filter(
         (exec) =>
           exec.execution_metadata?.loop_id === nodeInfo.node_id &&

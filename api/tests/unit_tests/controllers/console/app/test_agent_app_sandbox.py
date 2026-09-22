@@ -12,6 +12,7 @@ from models.account import Account
 from models.model import App, AppMode, IconType
 from services.agent_app_sandbox_service import AgentSandboxDownload, AgentSandboxInfo, AgentSandboxInspectorError
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.unit_tests.model_factories import make_account
 
 
 class _AgentAppService:
@@ -142,9 +143,7 @@ def _app_model(app_id: str = "app-1") -> App:
 
 
 def _account() -> Account:
-    account = Account(name="Sandbox Tester", email="sandbox-tester@example.com")
-    account.id = "account-1"
-    return account
+    return make_account(name="Sandbox Tester", email="sandbox-tester@example.com")
 
 
 @pytest.mark.parametrize(

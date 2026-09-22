@@ -4,8 +4,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { getPluginLanguage } from '@/i18n/metadata'
 
 type Props = Readonly<{
   tool: Tool
@@ -13,7 +13,7 @@ type Props = Readonly<{
 
 const MCPToolItem = ({ tool }: Props) => {
   const locale = useLocale()
-  const language = getLanguage(locale)
+  const language = getPluginLanguage(locale)
   const { t } = useTranslation()
 
   const renderParameters = () => {

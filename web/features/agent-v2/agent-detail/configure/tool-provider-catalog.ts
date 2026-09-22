@@ -13,6 +13,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { getProviderReference } from '@/utils/provider-reference'
 
 type AgentToolPresentationProvider = Pick<
   AgentProviderTool,
@@ -54,6 +55,9 @@ export function createAgentToolProviderCatalog({
 
   allProviders.forEach((provider) => {
     providers.set(provider.id, provider)
+    // Redundant for every type except MCP, which the saved config references by
+    // server identifier.
+    providers.set(getProviderReference(provider), provider)
     providers.set(provider.name, provider)
     if (provider.plugin_id) {
       providers.set(provider.plugin_id, provider)

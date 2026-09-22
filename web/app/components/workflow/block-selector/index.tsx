@@ -1,5 +1,10 @@
-import type { PopoverPositionerProps, PopoverTriggerProps } from '@langgenius/dify-ui/popover'
-import type { CSSProperties, KeyboardEvent, MouseEventHandler } from 'react'
+import type {
+  PopoverPopupProps,
+  PopoverPositionerProps,
+  PopoverProps,
+  PopoverTriggerProps,
+} from '@langgenius/dify-ui/popover'
+import type { CSSProperties, KeyboardEvent, MouseEventHandler, Ref } from 'react'
 import type {
   CommonNodeType,
   NodeDefault,
@@ -34,8 +39,13 @@ export type BlockSelectorProps = Pick<
   PopoverPositionerProps,
   'alignOffset' | 'placement' | 'sideOffset'
 > & {
+  finalFocus?: PopoverPopupProps['finalFocus']
+  triggerRef?: Ref<HTMLButtonElement>
   open?: boolean
-  onOpenChange?: (open: boolean) => void
+  onOpenChange?: (
+    open: boolean,
+    details?: Parameters<NonNullable<PopoverProps['onOpenChange']>>[1],
+  ) => void
   onSelect: OnSelectBlock
   trigger?: NonNullable<PopoverTriggerProps['render']>
   triggerTooltip?: string
@@ -64,6 +74,8 @@ function BlockSelector({
   onSelect,
   trigger,
   triggerTooltip,
+  triggerRef,
+  finalFocus,
   placement = 'right',
   sideOffset,
   alignOffset,
@@ -91,11 +103,11 @@ function BlockSelector({
   const searchInputRef = useRef<HTMLInputElement>(null)
   const open = openFromProps === undefined ? localOpen : openFromProps
   const handleOpenChange = useCallback(
-    (newOpen: boolean) => {
+    (newOpen: boolean, details?: Parameters<NonNullable<PopoverProps['onOpenChange']>>[1]) => {
       if (newOpen && disabled) return
 
       setLocalOpen(newOpen)
-      if (onOpenChange) onOpenChange(newOpen)
+      if (onOpenChange) onOpenChange(newOpen, details)
     },
     [disabled, onOpenChange],
   )
@@ -125,6 +137,7 @@ function BlockSelector({
 
   const triggerControl = trigger ? (
     <PopoverTrigger
+      ref={triggerRef}
       aria-label={triggerAriaLabel}
       disabled={disabled}
       render={trigger}
@@ -132,12 +145,13 @@ function BlockSelector({
     />
   ) : (
     <PopoverTrigger
+      ref={triggerRef}
       disabled={disabled}
       render={
         <IconButton
           aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
           variant="primary"
-          size="xs"
+          size="md"
           className={cn('z-10 rounded-full', triggerClassName)}
           style={triggerStyle}
         >
@@ -165,6 +179,7 @@ function BlockSelector({
         >
           <PopoverPopup
             initialFocus={searchInputRef}
+            finalFocus={finalFocus}
             className="border-none bg-transparent shadow-none"
             onClick={handlePopupClick}
             onKeyDown={isolateKeyboardEvents ? handlePopupKeyDown : undefined}
@@ -226,7 +241,7 @@ type BlockSelectorContentProps = Pick<
   searchInputRef: React.RefObject<HTMLInputElement | null>
 }
 
-function BlockSelectorContent({
+export function BlockSelectorContent({
   allowUserInputSelection,
   availableBlocksTypes,
   blocks: blocksFromProps,
@@ -251,7 +266,7 @@ function BlockSelectorContent({
     if (blocksFromProps) return blocksFromProps
 
     return (availableNodesMetaData?.nodes ?? []).filter((block) => {
-      return ![
+      const excludedBlockTypes: readonly BlockEnum[] = [
         BlockEnum.Start,
         BlockEnum.StartPlaceholder,
         BlockEnum.DataSource,
@@ -259,7 +274,9 @@ function BlockSelectorContent({
         BlockEnum.IterationStart,
         BlockEnum.LoopStart,
         BlockEnum.DataSourceEmpty,
-      ].includes(block.metaData.type)
+      ]
+
+      return !excludedBlockTypes.includes(block.metaData.type)
     })
   }, [availableNodesMetaData?.nodes, blocksFromProps])
   const dataSources = dataSourcesFromProps ?? fallbackDataSources ?? []

@@ -1,18 +1,22 @@
 'use client'
 import type { FC } from 'react'
 import type { FileUpload } from '@/app/components/base/features/types'
+import { Field, FieldItem } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Infotip } from '@/app/components/base/infotip'
 import ParamItem from '@/app/components/base/param-item'
-import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { Resolution, TransferMethod } from '@/types/app'
 
 const MIN = 1
 const MAX = 6
+const optionClassName =
+  'flex h-8 w-full cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary data-unchecked:cursor-pointer data-unchecked:hover:border-components-option-card-option-border-hover data-unchecked:hover:bg-components-option-card-option-bg-hover data-unchecked:hover:shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:system-sm-medium data-checked:shadow-xs'
 const ParamConfigContent: FC = () => {
   const { t } = useTranslation()
   const file = useFeatures((s) => s.features.file)
@@ -40,131 +44,147 @@ const ParamConfigContent: FC = () => {
     [featuresStore],
   )
 
+  const uploadMethod =
+    file?.allowed_file_upload_methods?.length === 1
+      ? (file.allowed_file_upload_methods[0] ?? null)
+      : file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) &&
+          file.allowed_file_upload_methods.includes(TransferMethod.remote_url)
+        ? 'both'
+        : null
+
   return (
-    <div>
-      <div className="text-base/6 font-semibold text-text-primary">
-        {t(($) => $['vision.visionSettings.title'], { ns: 'appDebug' })}
-      </div>
-      <div className="space-y-6 pt-3">
-        <div>
+    <div className="space-y-6 pt-3">
+      <Field>
+        <Fieldset
+          render={
+            <RadioGroup<Resolution | null>
+              value={file?.image?.detail ?? null}
+              onValueChange={(detail) => {
+                if (detail) handleChange({ ...file, image: { detail } })
+              }}
+              className="block"
+            />
+          }
+        >
           <div className="mb-2 flex items-center space-x-1">
-            <div className="text-[13px] leading-4.5 font-semibold text-text-secondary">
+            <FieldsetLegend className="m-0 py-0 text-[13px] leading-4.5 font-semibold text-text-secondary">
               {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
-            </div>
-            <Infotip
-              aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                ns: 'appDebug',
-              })}
-              popupClassName="w-[180px]"
-            >
-              {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })
-                .split('\n')
-                .map((item) => (
-                  <div key={item}>{item}</div>
-                ))}
+            </FieldsetLegend>
+            <Infotip>
+              <InfotipTrigger
+                aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
+                  ns: 'appDebug',
+                })}
+              />
+              <InfotipContent
+                aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
+                  ns: 'appDebug',
+                })}
+                className="w-45 whitespace-pre-wrap"
+              >
+                {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <div className="flex items-center gap-1">
-            <OptionCard
-              className="grow"
-              title={t(($) => $['vision.visionSettings.high'], { ns: 'appDebug' })}
-              selected={file?.image?.detail === Resolution.high}
-              onSelect={() =>
-                handleChange({
-                  ...file,
-                  image: { detail: Resolution.high },
-                })
-              }
-            />
-            <OptionCard
-              className="grow"
-              title={t(($) => $['vision.visionSettings.low'], { ns: 'appDebug' })}
-              selected={file?.image?.detail === Resolution.low}
-              onSelect={() =>
-                handleChange({
-                  ...file,
-                  image: { detail: Resolution.low },
-                })
-              }
-            />
+            {[
+              {
+                value: Resolution.high,
+                label: t(($) => $['vision.visionSettings.high'], { ns: 'appDebug' }),
+              },
+              {
+                value: Resolution.low,
+                label: t(($) => $['vision.visionSettings.low'], { ns: 'appDebug' }),
+              },
+            ].map((option) => (
+              <FieldItem key={option.value} className="grow">
+                <RadioItem<Resolution>
+                  value={option.value}
+                  nativeButton
+                  render={<button type="button" />}
+                  className={optionClassName}
+                >
+                  {option.label}
+                </RadioItem>
+              </FieldItem>
+            ))}
           </div>
-        </div>
-        <div>
-          <div className="mb-2 text-[13px] leading-4.5 font-semibold text-text-secondary">
+        </Fieldset>
+      </Field>
+      <Field>
+        <Fieldset
+          render={
+            <RadioGroup<TransferMethod | 'both' | null>
+              value={uploadMethod}
+              onValueChange={(method) => {
+                if (!method) return
+                handleChange({
+                  ...file,
+                  allowed_file_upload_methods:
+                    method === 'both'
+                      ? [TransferMethod.local_file, TransferMethod.remote_url]
+                      : [method],
+                })
+              }}
+              className="block"
+            />
+          }
+        >
+          <FieldsetLegend className="mb-2 py-0 text-[13px] leading-4.5 font-semibold text-text-secondary">
             {t(($) => $['vision.visionSettings.uploadMethod'], { ns: 'appDebug' })}
-          </div>
+          </FieldsetLegend>
           <div className="flex items-center gap-1">
-            <OptionCard
-              className="grow"
-              title={t(($) => $['vision.visionSettings.both'], { ns: 'appDebug' })}
-              selected={
-                !!file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) &&
-                !!file?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)
-              }
-              onSelect={() =>
-                handleChange({
-                  ...file,
-                  allowed_file_upload_methods: [
-                    TransferMethod.local_file,
-                    TransferMethod.remote_url,
-                  ],
-                })
-              }
-            />
-            <OptionCard
-              className="grow"
-              title={t(($) => $['vision.visionSettings.localUpload'], { ns: 'appDebug' })}
-              selected={
-                !!file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) &&
-                file?.allowed_file_upload_methods?.length === 1
-              }
-              onSelect={() =>
-                handleChange({
-                  ...file,
-                  allowed_file_upload_methods: [TransferMethod.local_file],
-                })
-              }
-            />
-            <OptionCard
-              className="grow"
-              title={t(($) => $['vision.visionSettings.url'], { ns: 'appDebug' })}
-              selected={
-                !!file?.allowed_file_upload_methods?.includes(TransferMethod.remote_url) &&
-                file?.allowed_file_upload_methods?.length === 1
-              }
-              onSelect={() =>
-                handleChange({
-                  ...file,
-                  allowed_file_upload_methods: [TransferMethod.remote_url],
-                })
-              }
-            />
+            {[
+              {
+                value: 'both' as const,
+                label: t(($) => $['vision.visionSettings.both'], { ns: 'appDebug' }),
+              },
+              {
+                value: TransferMethod.local_file,
+                label: t(($) => $['vision.visionSettings.localUpload'], { ns: 'appDebug' }),
+              },
+              {
+                value: TransferMethod.remote_url,
+                label: t(($) => $['vision.visionSettings.url'], { ns: 'appDebug' }),
+              },
+            ].map((option) => (
+              <FieldItem key={option.value} className="grow">
+                <RadioItem<TransferMethod | 'both'>
+                  value={option.value}
+                  nativeButton
+                  render={<button type="button" />}
+                  className={optionClassName}
+                >
+                  {option.label}
+                </RadioItem>
+              </FieldItem>
+            ))}
           </div>
-        </div>
-        <div>
-          <ParamItem
-            id="upload_limit"
-            className=""
-            name={t(($) => $['vision.visionSettings.uploadLimit'], { ns: 'appDebug' })}
-            noTooltip
-            {...{
-              default: 2,
-              step: 1,
-              min: MIN,
-              max: MAX,
-            }}
-            value={file?.number_limits || 3}
-            enable={true}
-            onChange={(_key: string, value: number) => {
-              if (!value) return
+        </Fieldset>
+      </Field>
+      <div>
+        <ParamItem
+          id="upload_limit"
+          className=""
+          name={t(($) => $['vision.visionSettings.uploadLimit'], { ns: 'appDebug' })}
+          noTooltip
+          {...{
+            default: 2,
+            step: 1,
+            min: MIN,
+            max: MAX,
+          }}
+          value={file?.number_limits || 3}
+          enable={true}
+          onChange={(_key: string, value: number) => {
+            if (!value) return
 
-              handleChange({
-                ...file,
-                number_limits: value,
-              })
-            }}
-          />
-        </div>
+            handleChange({
+              ...file,
+              number_limits: value,
+            })
+          }}
+        />
       </div>
     </div>
   )

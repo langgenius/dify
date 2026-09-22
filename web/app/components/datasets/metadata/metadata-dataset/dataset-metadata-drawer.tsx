@@ -23,16 +23,16 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { useBoolean, useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { CreateMetadataModal } from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
+import { toast } from '@/app/notifications'
 import { getIconClassName } from '../utils/get-icon'
 import Field from './field'
 
@@ -265,11 +265,20 @@ const DatasetMetadataDrawer: FC<Props> = ({
                   <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">
                     {t(($) => $[`${i18nPrefix}.builtIn`], { ns: 'dataset' })}
                   </div>
-                  <Infotip
-                    aria-label={t(($) => $[`${i18nPrefix}.builtInDescription`], { ns: 'dataset' })}
-                    popupClassName="max-w-[100px]"
-                  >
-                    {t(($) => $[`${i18nPrefix}.builtInDescription`], { ns: 'dataset' })}
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-label={t(($) => $[`${i18nPrefix}.builtInDescription`], {
+                        ns: 'dataset',
+                      })}
+                    />
+                    <InfotipContent
+                      aria-label={t(($) => $[`${i18nPrefix}.builtInDescription`], {
+                        ns: 'dataset',
+                      })}
+                      className="max-w-25"
+                    >
+                      {t(($) => $[`${i18nPrefix}.builtInDescription`], { ns: 'dataset' })}
+                    </InfotipContent>
                   </Infotip>
                 </div>
 

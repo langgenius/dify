@@ -2,13 +2,13 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
+from uuid import UUID
 
-from flask import request
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound, Unauthorized
 
 import services
 from controllers.common.fields import (
@@ -19,12 +19,14 @@ from controllers.common.fields import (
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import (
+    JsonResponseWithStatus,
     query_params_from_model,
     register_response_schema_models,
     register_schema_models,
 )
 from controllers.console import console_ns
 from controllers.console.app.error import (
+    AppNotFoundError,
     AppUnavailableError,
     AudioTooLargeError,
     CompletionRequestError,
@@ -38,21 +40,29 @@ from controllers.console.app.error import (
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
+from controllers.console.app.preview_admission import get_preview_app
 from controllers.console.app.wraps import get_previewable_app_model, with_session
+from controllers.console.explore.error import (
+    AppPreviewOwnerUnavailableError as AppPreviewOwnerUnavailableHttpError,
+)
+from controllers.console.explore.error import (
+    AppPreviewSiteUnavailableError as AppPreviewSiteUnavailableHttpError,
+)
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
     NotCompletionAppError,
     NotWorkflowAppError,
 )
+from controllers.console.explore.trial_app_admission import get_trial_app
 from controllers.console.explore.wraps import TrialAppResource
-from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
+from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request_context
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
+    AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
@@ -61,27 +71,29 @@ from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.file_fields import FileResponse, FileWithSignedUrl
 from fields.message_fields import SuggestedQuestionsResponse
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
-from models import Account, App
-from models.account import TenantStatus
-from models.model import AppMode, Site
+from machinery.context import RequestContext
+from models import Account
+from models.enums import CreatorUserRole
 from models.workflow import Workflow
-from services.account_service import TenantService
+from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
-from services.app_generate_service import AppGenerateService
+from services.app_preview_query_service import (
+    AppPreviewOwnerUnavailableError,
+    AppPreviewRef,
+    AppPreviewSiteUnavailableError,
+    AppPreviewUnavailableError,
+)
 from services.app_ref_service import AppRefService
 from services.app_service import AppResponseView, AppService
 from services.audio_service import AudioService
-from services.dataset_service import DatasetService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -95,7 +107,14 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.message_service import MessageService
+from services.file_service import FileUploadActor
+from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
+from services.trial_app_access_service import TrialAppRef
+from services.trial_app_generation_service import (
+    TrialAppNotChatError,
+    TrialAppNotCompletionError,
+    TrialAppNotWorkflowError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -453,68 +472,66 @@ register_response_schema_models(
 simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
 
-class TrialAppFileUploadApi(TrialAppResource):
-    @cloud_edition_billing_resource_check("documents")
+class TrialAppFileUploadApi(Resource):
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account, app_model: App):
+    @console_account_admission()
+    @get_trial_app
+    @cloud_edition_billing_resource_check("documents")
+    def post(self, request_context: RequestContext, trial_app: TrialAppRef) -> JsonResponseWithStatus:
         """Upload a file into the tenant that owns the trial app."""
-        upload_file = upload_file_from_request(
-            current_user=current_user,
-            resource_tenant_id=app_model.tenant_id,
+        upload_file = upload_file_from_request_context(
+            request_context=request_context,
+            resource_tenant_id=trial_app.tenant_id,
         )
         return dump_response(FileResponse, upload_file), 201
 
 
-class TrialAppRemoteFileUploadApi(TrialAppResource):
-    @cloud_edition_billing_resource_check("documents")
+class TrialAppRemoteFileUploadApi(Resource):
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
-    @with_current_user
+    @console_account_admission()
+    @get_trial_app
+    @cloud_edition_billing_resource_check("documents")
     @model_validate(RemoteFileUploadPayload)
-    def post(self, payload: RemoteFileUploadPayload, current_user: Account, app_model: App):
+    def post(
+        self, payload: RemoteFileUploadPayload, request_context: RequestContext, trial_app: TrialAppRef
+    ) -> JsonResponseWithStatus:
         """Upload a remote file into the tenant that owns the trial app."""
         remote_file = upload_remote_file(
             url=payload.url,
-            current_user=current_user,
-            resource_tenant_id=app_model.tenant_id,
+            current_user=FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=trial_app.tenant_id,
         )
         return dump_response(FileWithSignedUrl, remote_file), 201
 
 
-class TrialAppWorkflowRunApi(TrialAppResource):
+class TrialAppWorkflowRunApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(200, "Success")
-    @with_current_user
-    @with_session
+    @console_account_admission()
+    @get_trial_app
     @model_validate(WorkflowRunRequest)
-    def post(self, req_data: WorkflowRunRequest, session: Session, current_user: Account, trial_app):
+    def post(self, req_data: WorkflowRunRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
         """
         Run workflow
         """
-        app_model = trial_app
-        if not app_model:
-            raise NotWorkflowAppError()
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
-            raise NotWorkflowAppError()
-
-        args = req_data.model_dump()
         try:
-            app_id = app_model.id
-            user_id = current_user.id
-            response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.EXPLORE,
-                streaming=True,
+            response = application_services().trial_app_generation.generate_workflow(
+                trial_app=trial_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(),
             )
-            application_services().trial_app_usage.record(app_id=app_id, account_id=user_id)
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TrialAppNotWorkflowError as error:
+            raise NotWorkflowAppError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
+        except services.errors.app_model_config.AppModelConfigBrokenError as error:
+            raise AppUnavailableError() from error
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -523,7 +540,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except InvokeRateLimitError as ex:
+        except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
@@ -532,41 +549,29 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             raise InternalServerError()
 
 
-class TrialAppWorkflowTaskStopApi(TrialAppResource):
+class TrialAppWorkflowTaskStopApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, trial_app, task_id: str):
+    @console_account_admission()
+    @get_trial_app
+    def post(self, request_context: RequestContext, trial_app: TrialAppRef, task_id: str) -> dict[str, object]:
         """
         Stop workflow task
         """
-        app_model = trial_app
-        if not app_model:
-            raise NotWorkflowAppError()
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
+        if trial_app.app_mode != "workflow":
             raise NotWorkflowAppError()
 
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
+        application_services().app_tasks.stop_workflow_task_no_user_check(task_id=task_id)
 
-        # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
-
-        return {"result": "success"}
+        return dump_response(SimpleResultResponse, {"result": "success"})
 
 
-class TrialChatApi(TrialAppResource):
+class TrialChatApi(Resource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
     @console_ns.response(200, "Success")
-    @with_current_user
-    @with_session
+    @console_account_admission()
+    @get_trial_app
     @model_validate(ChatRequest)
-    def post(self, req_data: ChatRequest, session: Session, current_user: Account, trial_app):
-        app_model = trial_app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
+    def post(self, req_data: ChatRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
         args = req_data.model_dump()
 
         # Validate UUID values if provided
@@ -575,24 +580,20 @@ class TrialChatApi(TrialAppResource):
         if args.get("parent_message_id"):
             args["parent_message_id"] = uuid_value(args["parent_message_id"])
 
-        args["auto_generate_name"] = False
-
         try:
-            # Get IDs before they might be detached from session
-            app_id = app_model.id
-            user_id = current_user.id
-
-            response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=current_user,
+            response = application_services().trial_app_generation.generate_chat(
+                trial_app=trial_app,
+                account_id=request_context.account_id,
                 args=args,
-                invoke_from=InvokeFrom.EXPLORE,
-                streaming=True,
             )
-            application_services().trial_app_usage.record(app_id=app_id, account_id=user_id)
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TrialAppNotChatError as error:
+            raise NotChatAppError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -608,7 +609,7 @@ class TrialChatApi(TrialAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except InvokeRateLimitError as ex:
+        except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
@@ -617,25 +618,26 @@ class TrialChatApi(TrialAppResource):
             raise InternalServerError()
 
 
-class TrialMessageSuggestedQuestionApi(TrialAppResource):
+class TrialMessageSuggestedQuestionApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
-    @with_current_user
-    def get(self, current_user: Account, trial_app, message_id):
-        app_model = trial_app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+    @console_account_admission()
+    @get_trial_app
+    def get(self, request_context: RequestContext, trial_app: TrialAppRef, message_id: UUID) -> dict[str, object]:
+        if trial_app.app_mode not in {"chat", "agent-chat", "advanced-chat"}:
             raise NotChatAppError()
 
-        message_id = str(message_id)
-
         try:
-            questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model,
-                user=current_user,
-                message_id=message_id,
-                invoke_from=InvokeFrom.EXPLORE,
-                session=db.session(),
+            questions = application_services().message_suggested_questions.get_suggested_questions(
+                app_id=trial_app.app_id,
+                app_owner_tenant_id=trial_app.tenant_id,
+                expected_app_mode=trial_app.app_mode,
+                actor=SuggestedQuestionsAccount(account_id=request_context.account_id, invoke_from="explore"),
+                message_id=str(message_id),
             )
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except SuggestedQuestionsActorNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
         except MessageNotExistsError:
             raise NotFound("Message not found")
         except ConversationNotExistsError:
@@ -654,7 +656,7 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
             logger.exception("internal server error.")
             raise InternalServerError()
 
-        return {"data": questions}
+        return dump_response(SuggestedQuestionsResponse, {"data": questions})
 
 
 class TrialChatAudioApi(TrialAppResource):
@@ -765,39 +767,27 @@ class TrialChatTextApi(TrialAppResource):
             raise InternalServerError()
 
 
-class TrialCompletionApi(TrialAppResource):
+class TrialCompletionApi(Resource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
     @console_ns.response(200, "Success")
-    @with_current_user
-    @with_session
+    @console_account_admission()
+    @get_trial_app
     @model_validate(CompletionRequest)
-    def post(self, req_data: CompletionRequest, session: Session, current_user: Account, trial_app):
-        app_model = trial_app
-        if app_model.mode != "completion":
-            raise NotCompletionAppError()
-
-        args = req_data.model_dump()
-
-        streaming = args["response_mode"] == "streaming"
-        args["auto_generate_name"] = False
-
+    def post(self, req_data: CompletionRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
         try:
-            # Get IDs before they might be detached from session
-            app_id = app_model.id
-            user_id = current_user.id
-
-            response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.EXPLORE,
-                streaming=streaming,
+            response = application_services().trial_app_generation.generate_completion(
+                trial_app=trial_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(),
             )
-
-            application_services().trial_app_usage.record(app_id=app_id, account_id=user_id)
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TrialAppNotCompletionError as error:
+            raise NotCompletionAppError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -813,6 +803,8 @@ class TrialCompletionApi(TrialAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+        except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
         except Exception:
@@ -824,40 +816,31 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
-    @with_session(write=False)
-    @get_previewable_app_model(None)
-    def get(self, session: Session, app_model):
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app site info.
 
         Returns the site configuration for the application including theme, icons, and text.
         """
-        site = session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
-
-        if not site:
-            raise Forbidden()
-
-        tenant = TenantService.get_tenant_by_id(app_model.tenant_id, session=session)
-        assert tenant
-        if tenant.status == TenantStatus.ARCHIVE:
-            raise Forbidden()
-
-        return SiteResponse.model_validate(site).model_dump(mode="json")
+        try:
+            site = application_services().app_previews.get_site(app=app)
+        except AppPreviewSiteUnavailableError as error:
+            raise AppPreviewSiteUnavailableHttpError(str(error)) from error
+        except AppPreviewOwnerUnavailableError as error:
+            raise AppPreviewOwnerUnavailableHttpError(str(error)) from error
+        return dump_response(SiteResponse, site)
 
 
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
-    @with_session(write=False)
-    @get_previewable_app_model(None)
-    def get(self, session: Session, app_model):
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app parameters."""
 
-        if app_model is None:
-            raise AppUnavailableError()
-
         try:
-            parameters = application_services().app_definitions.get_parameters(app_model.id)
+            parameters = application_services().app_definitions.get_parameters(app.app_id)
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
 
@@ -902,23 +885,28 @@ class AppWorkflowApi(Resource):
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
-    @with_session(write=False)
-    @get_previewable_app_model(None)
-    def get(self, session: Session, app_model):
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
+        # These legacy fields are response metadata: the query returns all
+        # requested IDs without pagination. Keep their integer fallback and echo behavior.
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         ids = request.args.getlist("ids")
 
-        tenant_id = app_model.tenant_id
-        if ids:
-            datasets, total = DatasetService.get_datasets_by_ids(ids, tenant_id, session=session)
-        else:
+        if not ids:
             raise NeedAddIdsError()
+        try:
+            datasets = application_services().app_previews.get_datasets(app=app, ids=ids)
+        except AppPreviewUnavailableError as error:
+            raise AppNotFoundError() from error
 
-        # `get_datasets_by_ids` resolves the ids it was handed in a single page
-        # (`per_page=len(ids)`), so `limit` never bounded this result and there is
-        # never a next page to ask for.
-        response = {"data": datasets, "has_more": False, "limit": limit, "total": total, "page": page}
+        response = {
+            "data": datasets,
+            "has_more": False,
+            "limit": limit,
+            "total": len(datasets),
+            "page": page,
+        }
         return dump_response(TrialDatasetListResponse, response)
 
 

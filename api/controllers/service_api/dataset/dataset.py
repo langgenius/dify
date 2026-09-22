@@ -44,6 +44,7 @@ from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResp
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_user
+from libs.pagination import clamp_pagination
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
@@ -65,7 +66,6 @@ from services.tag_service import (
 from services.tag_service import (
     UpdateTagPayload as UpdateTagServicePayload,
 )
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
@@ -442,10 +442,10 @@ class DatasetListApi(DatasetApiResource):
             query_params["tag_ids"] = request.args.getlist("tag_ids")
         query = DatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
-        effective_limit = min(query.limit, 100)
+        effective_page, effective_limit = clamp_pagination(query.page, query.limit, 100)
 
         datasets, total = DatasetService.get_datasets(
-            query.page,
+            effective_page,
             effective_limit,
             session,
             tenant_id,
@@ -481,10 +481,10 @@ class DatasetListApi(DatasetApiResource):
                 item["embedding_available"] = True
         response = {
             "data": data,
-            "has_more": query.page * effective_limit < total,
+            "has_more": effective_page * effective_limit < total,
             "limit": effective_limit,
             "total": total,
-            "page": query.page,
+            "page": effective_page,
         }
         return _dump_service_dataset_list(response), 200
 
@@ -565,9 +565,8 @@ class DatasetListApi(DatasetApiResource):
                 tenant_id,
                 current_user.id,
                 dataset.id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
-            initialize_created_app_rbac_access_task.delay(tenant_id, current_user.id, dataset_id=dataset.id)
 
         return _dump_service_dataset_detail(dataset, session=session), 200
 

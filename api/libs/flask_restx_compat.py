@@ -355,10 +355,12 @@ def install_swagger_compatibility() -> None:
     def responses_for_with_status_specific_media(self: Swagger, doc: dict[str, object], method: str):
         responses = original_responses_for(self, doc, method)
         blueprint = self.api.blueprint
-        if blueprint is None or blueprint.name != "service_api":
-            return responses
         method_doc = doc.get(method)
         if not isinstance(method_doc, dict):
+            return responses
+        vendor = method_doc.get("vendor", {})
+        is_binary_response = isinstance(vendor, dict) and BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY in vendor
+        if blueprint is None or (blueprint.name != "service_api" and not is_binary_response):
             return responses
 
         for status, response in responses.items():

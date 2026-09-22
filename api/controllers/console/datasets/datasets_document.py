@@ -19,7 +19,7 @@ import services
 from configs import dify_config
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
-from controllers.common.rbac import DatasetId, RBACCheck
+from controllers.common.rbac import DatasetId, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
@@ -65,7 +65,6 @@ from services.entities.knowledge_entities.knowledge_entities import KnowledgeCon
 from services.file_service import FileService
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 from ..app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -368,6 +367,13 @@ class GetProcessRuleApi(Resource):
             if not dataset:
                 raise NotFound("Dataset not found.")
 
+            enforce_rbac_checks(
+                tenant_id=dataset.tenant_id,
+                account_id=current_user.id,
+                checks=[RBACCheck(RBACPermission.DATASET_READONLY, DatasetId())],
+                path_args={"dataset_id": dataset.id},
+            )
+
             try:
                 DatasetService.check_dataset_permission(dataset, current_user, session)
             except services.errors.account.NoPermissionError as e:
@@ -406,7 +412,7 @@ class DatasetDocumentListApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -696,9 +702,8 @@ class DatasetInitApi(Resource):
                 current_tenant_id,
                 current_user.id,
                 dataset.id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
 
         return dump_response(
             DatasetAndDocumentResponse,
@@ -723,7 +728,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_USE, DatasetId()))
     @with_session
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -815,7 +820,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_USE, DatasetId()))
     @with_session
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, batch: str):
         dataset_id_str = str(dataset_id)
@@ -937,7 +942,7 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID, batch: str):
         dataset_id_str = str(dataset_id)
@@ -980,7 +985,7 @@ class DocumentIndexingStatusApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1046,7 +1051,7 @@ class DocumentApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1616,7 +1621,7 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(
         self,
@@ -1769,7 +1774,7 @@ class DocumentSummaryStatusApi(DocumentResource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID, document_id: UUID):
         """

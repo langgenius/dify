@@ -16,10 +16,7 @@ type LabelSelectorProps = {
 
 function LabelSelector({ value, onChange }: LabelSelectorProps) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
   const { tags: labelList } = useTags()
-
   const [keywords, setKeywords] = useState('')
   const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
@@ -28,7 +25,7 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
   const selectedLabels = value.map((v) => labelList.find((l) => l.name === v)?.label).join(', ')
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <div className="relative">
         <PopoverTrigger
           className={cn(

@@ -7,11 +7,11 @@ import type {
 } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiAlertFill, RiSearchEyeLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { Infotip } from '@/app/components/base/infotip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
@@ -131,10 +131,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
         {/* Container query, not a viewport breakpoint: three across at/above a
             552px container, stacked one-per-row below (see inputs.tsx FormField). */}
         <div className="flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
-          <DelimiterInput
-            value={segmentIdentifier}
-            onChange={(e) => onSegmentIdentifierChange(e.target.value)}
-          />
+          <DelimiterInput value={segmentIdentifier} onValueChange={onSegmentIdentifierChange} />
           <MaxLengthInput
             unit="characters"
             value={maxChunkLength}
@@ -147,7 +144,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
             <div className="inline-flex shrink-0">
               <TextLabel>{t(($) => $['stepTwo.rules'], { ns: 'datasetCreation' })}</TextLabel>
             </div>
-            <Divider className="grow" bgStyle="gradient" />
+            <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
           </div>
           <div className="mt-1">
             {rules.map((rule) => (
@@ -169,7 +166,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
             )}
             {isNonCloudEdition && (
               <>
-                <Divider type="horizontal" className="my-4 bg-divider-subtle" />
+                <Separator orientation="horizontal" className="my-4 h-[0.5px] bg-divider-subtle" />
                 <div className="flex items-center py-0.5">
                   <label
                     className={`flex items-center ${hasCurrentDatasetDocForm ? '' : 'cursor-pointer'}`}
@@ -192,11 +189,16 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     onSelect={onDocLanguageChange}
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
-                  <Infotip
-                    aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
-                    className="size-3.5"
-                  >
-                    {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
+                      className="size-3.5"
+                    />
+                    <InfotipContent
+                      aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
+                    >
+                      {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
+                    </InfotipContent>
                   </Infotip>
                 </div>
                 {currentDocForm === ChunkingMode.qa && (

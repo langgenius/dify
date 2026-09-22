@@ -3,14 +3,14 @@
 import type { FC } from 'react'
 import type { StepTwoProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
+import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useLocale } from '@/context/i18n'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
 import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
@@ -56,6 +56,8 @@ const StepTwo: FC<StepTwoProps> = ({
   onCancel,
   updateRetrievalMethodCache,
 }) => {
+  const generalChunkingModes: readonly ChunkingMode[] = [ChunkingMode.text, ChunkingMode.qa]
+
   const { t } = useTranslation()
   const locale = useLocale()
   const isMobile = useBreakpoints() === MediaType.mobile
@@ -256,7 +258,7 @@ const StepTwo: FC<StepTwoProps> = ({
 
   // Show options conditions
   const showGeneralOption =
-    (isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form)) ||
+    (isInUpload && generalChunkingModes.includes(currentDataset!.doc_form)) ||
     isUploadInEmptyDataset ||
     isInInit
   const showParentChildOption =
@@ -280,7 +282,7 @@ const StepTwo: FC<StepTwoProps> = ({
             rules={segmentation.rules}
             currentDocForm={currentDocForm}
             docLanguage={docLanguage}
-            isActive={[ChunkingMode.text, ChunkingMode.qa].includes(currentDocForm)}
+            isActive={generalChunkingModes.includes(currentDocForm)}
             isInUpload={isInUpload}
             isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
             hasCurrentDatasetDocForm={!!currentDataset?.doc_form}
@@ -320,7 +322,7 @@ const StepTwo: FC<StepTwoProps> = ({
             onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
           />
         )}
-        <Divider className="my-5" />
+        <Separator className="my-5 h-[0.5px]" />
         <IndexingModeSection
           indexType={indexing.indexType}
           hasSetIndexType={hasSetIndexType}

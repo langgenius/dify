@@ -13,7 +13,7 @@ vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({ data: undefined, isLoading: false, error: null }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: { error: vi.fn() } }))
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const requiredSchema = (label: string): FormSchema => ({
   name: 'token',

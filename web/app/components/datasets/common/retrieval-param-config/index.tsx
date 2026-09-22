@@ -2,15 +2,14 @@
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import { Infotip } from '@/app/components/base/infotip'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import RadioCard from '@/app/components/base/radio-card'
@@ -20,6 +19,7 @@ import {
   useModelListAndDefaultModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { toast } from '@/app/notifications'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import ProgressIndicator from '../../create/assets/progress-indicator.svg'
@@ -128,11 +128,16 @@ const RetrievalParamConfig: FC<Props> = ({
               <span className="mr-0.5 system-sm-semibold text-text-secondary">
                 {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
               </span>
-              <Infotip
-                aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                popupClassName="w-[200px]"
-              >
-                {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+              <Infotip>
+                <InfotipTrigger
+                  aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                />
+                <InfotipContent
+                  aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                  className="w-50"
+                >
+                  {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                </InfotipContent>
               </Infotip>
             </div>
           </div>

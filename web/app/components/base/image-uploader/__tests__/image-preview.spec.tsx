@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   clipboardWrite: vi.fn<(items: ClipboardItem[]) => Promise<void>>(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (...args: Parameters<typeof mocks.notify>) => mocks.notify(...args),
   },
@@ -49,6 +49,12 @@ describe('ImagePreview', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementation(async () => new Response(new Blob(['image'], { type: 'image/png' }))),
+    )
 
     if (!navigator.clipboard) {
       Object.defineProperty(globalThis.navigator, 'clipboard', {
@@ -75,7 +81,11 @@ describe('ImagePreview', () => {
     })
 
     globalThis.ClipboardItem = class {
-      constructor(public readonly data: Record<string, Blob>) {}
+      public readonly data: Record<string, Blob | Promise<Blob>>
+
+      constructor(data: Record<string, Blob | Promise<Blob>>) {
+        this.data = data
+      }
     } as unknown as typeof ClipboardItem
     vi.spyOn(window, 'open').mockImplementation((...args: Parameters<Window['open']>) => {
       return mocks.windowOpen(...args)
@@ -85,6 +95,7 @@ describe('ImagePreview', () => {
   afterEach(() => {
     globalThis.ClipboardItem = originalClipboardItem
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   describe('Rendering', () => {
@@ -289,21 +300,18 @@ describe('ImagePreview', () => {
   })
 
   describe('Action Buttons', () => {
-    it('should open valid url in new tab', async () => {
-      const user = userEvent.setup()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
+    it.each(['https://example.com/image.png', '/image-proxy/github/example'])(
+      'should open valid url %s in new tab',
+      async (url) => {
+        const user = userEvent.setup()
+        render(<ImagePreview url={url} title="Preview Image" onCancel={vi.fn()} />)
 
-      const openInTabButton = getOpenInTabButton()
-      await user.click(openInTabButton)
+        const openInTabButton = getOpenInTabButton()
+        await user.click(openInTabButton)
 
-      expect(mocks.windowOpen).toHaveBeenCalledWith('https://example.com/image.png', '_blank')
-    })
+        expect(mocks.windowOpen).toHaveBeenCalledWith(url, '_blank')
+      },
+    )
 
     it('should open data image by writing to popup window document', async () => {
       const user = userEvent.setup()
@@ -336,7 +344,7 @@ describe('ImagePreview', () => {
       })
     })
 
-    it('should fall back to download and show info toast when clipboard copy fails', async () => {
+    it('keeps the preview open and reports clipboard denial without downloading or navigating', async () => {
       const user = userEvent.setup()
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       mocks.clipboardWrite.mockRejectedValue(new Error('copy failed'))
@@ -346,19 +354,114 @@ describe('ImagePreview', () => {
       const copyButton = getCopyButton()
       await user.click(copyButton)
 
-      await waitFor(() => {
-        expect(mocks.downloadUrl).toHaveBeenCalledWith({
-          url: dataImage,
-          fileName: 'Preview Image.png',
-        })
-      })
-      expect(mocks.notify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'info',
+      await waitFor(() =>
+        expect(mocks.notify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'common.operation.imageCopyFailed',
         }),
       )
+      expect(mocks.downloadUrl).not.toHaveBeenCalled()
+      expect(mocks.windowOpen).not.toHaveBeenCalled()
+      expect(getOverlay()).toBeInTheDocument()
       expect(consoleErrorSpy).toHaveBeenCalled()
       consoleErrorSpy.mockRestore()
+    })
+
+    it('copies a remote PNG and starts the clipboard write before the image fetch resolves', async () => {
+      const user = userEvent.setup()
+      const png = new Blob(['png bytes'], { type: 'image/png' })
+      let resolveFetch!: (response: Response) => void
+      const fetchMock = vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFetch = resolve
+          }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      let copiedBlob: Blob | undefined
+      mocks.clipboardWrite.mockImplementation(async ([item]) => {
+        copiedBlob = await (item as unknown as { data: Record<string, Promise<Blob>> }).data[
+          'image/png'
+        ]
+      })
+      render(
+        <ImagePreview
+          url="https://example.com/image.png"
+          title="Preview Image"
+          onCancel={vi.fn()}
+        />,
+      )
+
+      await user.click(getCopyButton())
+
+      expect(mocks.clipboardWrite).toHaveBeenCalledTimes(1)
+      expect(copiedBlob).toBeUndefined()
+      resolveFetch(new Response(png))
+      await waitFor(() =>
+        expect(mocks.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' })),
+      )
+      expect(copiedBlob?.type).toBe('image/png')
+      expect(await copiedBlob?.text()).toBe('png bytes')
+      expect(mocks.downloadUrl).not.toHaveBeenCalled()
+    })
+
+    it('converts a JPEG to PNG instead of labelling JPEG bytes as PNG', async () => {
+      const user = userEvent.setup()
+      const jpeg = new Blob(['jpeg bytes'], { type: 'image/jpeg' })
+      const png = new Blob(['encoded png'], { type: 'image/png' })
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(jpeg)))
+      const bitmap = { width: 12, height: 8, close: vi.fn() }
+      vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap))
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        drawImage: vi.fn(),
+      } as unknown as CanvasRenderingContext2D)
+      vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) =>
+        callback(png),
+      )
+      let copiedBlob: Blob | undefined
+      mocks.clipboardWrite.mockImplementation(async ([item]) => {
+        copiedBlob = await (item as unknown as { data: Record<string, Promise<Blob>> }).data[
+          'image/png'
+        ]
+      })
+      render(
+        <ImagePreview
+          url="https://example.com/image.jpg"
+          title="Preview Image"
+          onCancel={vi.fn()}
+        />,
+      )
+
+      await user.click(getCopyButton())
+
+      await waitFor(() => expect(copiedBlob).toBe(png))
+      expect(bitmap.close).toHaveBeenCalled()
+      expect(mocks.downloadUrl).not.toHaveBeenCalled()
+    })
+
+    it('reports an image fetch failure without leaving the preview', async () => {
+      const user = userEvent.setup()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+      mocks.clipboardWrite.mockImplementation(async ([item]) => {
+        await (item as unknown as { data: Record<string, Promise<Blob>> }).data['image/png']
+      })
+      render(
+        <ImagePreview
+          url="https://example.com/image.png"
+          title="Preview Image"
+          onCancel={vi.fn()}
+        />,
+      )
+
+      await user.click(getCopyButton())
+
+      await waitFor(() =>
+        expect(mocks.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })),
+      )
+      expect(mocks.downloadUrl).not.toHaveBeenCalled()
+      expect(mocks.windowOpen).not.toHaveBeenCalled()
+      expect(getOverlay()).toBeInTheDocument()
     })
 
     it('should copy image and show success toast', async () => {
@@ -379,24 +482,21 @@ describe('ImagePreview', () => {
       )
     })
 
-    it('should call download action for valid url', async () => {
-      const user = userEvent.setup()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-      const downloadButton = getDownloadButton()
-      await user.click(downloadButton)
+    it.each(['https://example.com/image.png', '/image-proxy/github/example'])(
+      'should download valid url %s',
+      async (url) => {
+        const user = userEvent.setup()
+        render(<ImagePreview url={url} title="Preview Image" onCancel={vi.fn()} />)
+        const downloadButton = getDownloadButton()
+        await user.click(downloadButton)
 
-      expect(mocks.downloadUrl).toHaveBeenCalledWith({
-        url: 'https://example.com/image.png',
-        fileName: 'Preview Image',
-        target: '_blank',
-      })
-    })
+        expect(mocks.downloadUrl).toHaveBeenCalledWith({
+          url,
+          fileName: 'Preview Image',
+          target: '_blank',
+        })
+      },
+    )
 
     it('should show error toast for invalid download url', async () => {
       const user = userEvent.setup()

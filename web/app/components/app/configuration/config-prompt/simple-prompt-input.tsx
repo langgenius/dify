@@ -4,11 +4,12 @@ import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
@@ -16,7 +17,6 @@ import AutomaticBtn from '@/app/components/app/configuration/config/automatic/au
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { toast } from '@/app/components/app/configuration/toast'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
@@ -52,6 +52,11 @@ const Prompt: FC<ISimplePromptInput> = ({
   noResize,
 }) => {
   const { t } = useTranslation()
+  const titleId = useId()
+  const title =
+    mode !== AppModeEnum.COMPLETION
+      ? t(($) => $.chatSubTitle, { ns: 'appDebug' })
+      : t(($) => $.completionSubTitle, { ns: 'appDebug' })
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const featuresStore = useFeaturesStore()
@@ -197,18 +202,21 @@ const Prompt: FC<ISimplePromptInput> = ({
         {!noTitle && (
           <div className="flex h-11 items-center justify-between pr-2.5 pl-3">
             <div className="flex items-center space-x-1">
-              <div className="system-sm-semibold-uppercase text-text-secondary">
-                {mode !== AppModeEnum.COMPLETION
-                  ? t(($) => $.chatSubTitle, { ns: 'appDebug' })
-                  : t(($) => $.completionSubTitle, { ns: 'appDebug' })}
-              </div>
+              <h2 id={titleId} className="system-sm-semibold-uppercase text-text-secondary">
+                {title}
+              </h2>
               {!readonly && (
-                <Infotip
-                  aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                  className="ml-1"
-                  popupClassName="w-[180px]"
-                >
-                  {t(($) => $.promptTip, { ns: 'appDebug' })}
+                <Infotip>
+                  <InfotipTrigger
+                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
+                    className="ml-1"
+                  />
+                  <InfotipContent
+                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
+                    className="w-45"
+                  >
+                    {t(($) => $.promptTip, { ns: 'appDebug' })}
+                  </InfotipContent>
                 </Infotip>
               )}
             </div>
@@ -233,6 +241,8 @@ const Prompt: FC<ISimplePromptInput> = ({
           }
         >
           <PromptEditor
+            aria-labelledby={noTitle ? undefined : titleId}
+            aria-label={noTitle ? title : undefined}
             className="min-h-52.5"
             compact
             value={promptTemplate}

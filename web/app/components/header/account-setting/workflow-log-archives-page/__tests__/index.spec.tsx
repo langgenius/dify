@@ -1,6 +1,7 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
@@ -217,6 +218,38 @@ describe('WorkflowLogArchivesPage', () => {
       await waitFor(() =>
         expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
       )
+    })
+
+    it('opens failure details independently of the retry action', async () => {
+      const user = userEvent.setup()
+      renderPage({
+        ...archiveData,
+        months: [
+          {
+            ...archiveMonth,
+            download_task: {
+              download_id: 'failed-export',
+              status: 'failed',
+              error: 'Storage unavailable',
+              year: 2025,
+              month: 3,
+              archive_bytes: 1048576,
+              bundle_count: 2,
+              created_at: '2025-03-03T00:00:00Z',
+              updated_at: '2025-03-03T00:00:00Z',
+              expires_at: '2025-03-04T00:00:00Z',
+            },
+          },
+        ],
+      })
+
+      const retry = screen.getByRole('button', { name: 'common.operation.retry 2025-03' })
+      expect(retry).toBeEnabled()
+      await user.click(screen.getByRole('button', { name: 'common.operation.learnMore: 2025-03' }))
+      expect(await screen.findByRole('dialog')).toHaveTextContent(
+        'appLog.archives.downloadHint.failedWithReason',
+      )
+      expect(retry).toBeEnabled()
     })
 
     it('should show archive content for paid workspaces', () => {

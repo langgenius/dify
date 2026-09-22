@@ -16,8 +16,8 @@ import type {
   AgentTool,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Kbd } from '@langgenius/dify-ui/kbd'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
@@ -35,10 +35,10 @@ import {
 } from 'lexical'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
@@ -1087,8 +1087,11 @@ export function AgentPromptEditor() {
           >
             {t(($) => $['agentDetail.configure.prompt.label'])}
           </h3>
-          <Infotip aria-label={promptTip} popupClassName="max-w-64">
-            <AgentConfigureTipContent type="prompt" />
+          <Infotip>
+            <InfotipTrigger aria-label={promptTip} />
+            <InfotipContent aria-label={promptTip} className="max-w-64">
+              <AgentConfigureTipContent type="prompt" />
+            </InfotipContent>
           </Infotip>
         </div>
         <Tooltip>

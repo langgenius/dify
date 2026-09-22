@@ -537,6 +537,9 @@ class TestWorkflowToolManageService:
                 ]
             }
         )
+        # The service reads the published workflow in its own session, so the graph has
+        # to be committed — matching test_update_workflow_tool_human_input_node_error.
+        db_session_with_containers.commit()
 
         tool_parameters = self._create_test_workflow_tool_parameters()
         with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
@@ -877,6 +880,9 @@ class TestWorkflowToolManageService:
             ]
         }
         workflow.graph = json.dumps(workflow_graph)
+        # The service reads the published workflow in its own session, so the graph has
+        # to be committed for this setup to reach it.
+        db_session_with_containers.commit()
 
         # Setup workflow tool parameters with FILE type
         file_parameters = [
@@ -952,6 +958,9 @@ class TestWorkflowToolManageService:
             ]
         }
         workflow.graph = json.dumps(workflow_graph)
+        # The service reads the published workflow in its own session, so the graph has
+        # to be committed for this setup to reach it.
+        db_session_with_containers.commit()
 
         # Setup workflow tool parameters with FILES type
         files_parameters = [

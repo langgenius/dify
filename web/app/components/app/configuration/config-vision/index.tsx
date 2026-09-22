@@ -1,17 +1,17 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 // import { Resolution } from '@/types/app'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Vision } from '@/app/components/base/icons/src/vender/features'
-import { Infotip } from '@/app/components/base/infotip'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 // import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
@@ -21,6 +21,7 @@ import ParamConfig from './param-config'
 
 const ConfigVision: FC = () => {
   const { t } = useTranslation()
+  const titleId = useId()
   const { isShowVisionConfig, isAllowVideoUpload, readonly } = useContext(ConfigContext)
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
@@ -71,14 +72,17 @@ const ConfigVision: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">
+        <h2 id={titleId} className="mr-1 system-sm-semibold text-text-secondary">
           {t(($) => $['vision.name'], { ns: 'appDebug' })}
-        </div>
-        <Infotip
-          aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })}
-          popupClassName="w-[180px]"
-        >
-          {t(($) => $['vision.description'], { ns: 'appDebug' })}
+        </h2>
+        <Infotip>
+          <InfotipTrigger aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })} />
+          <InfotipContent
+            aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })}
+            className="w-45"
+          >
+            {t(($) => $['vision.description'], { ns: 'appDebug' })}
+          </InfotipContent>
         </Infotip>
       </div>
       <div className="flex shrink-0 items-center">
@@ -88,17 +92,20 @@ const ConfigVision: FC = () => {
               <div className="system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
               </div>
-              <Infotip
-                aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                  ns: 'appDebug',
-                })}
-                popupClassName="w-[180px]"
-              >
-                {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })
-                  .split('\n')
-                  .map((item) => (
-                    <div key={item}>{item}</div>
-                  ))}
+              <Infotip>
+                <InfotipTrigger
+                  aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
+                    ns: 'appDebug',
+                  })}
+                />
+                <InfotipContent
+                  aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
+                    ns: 'appDebug',
+                  })}
+                  className="w-45 whitespace-pre-wrap"
+                >
+                  {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}
+                </InfotipContent>
               </Infotip>
             </div>
             <div className="flex items-center gap-1">
@@ -128,7 +135,12 @@ const ConfigVision: FC = () => {
           <>
             <ParamConfig />
             <div className="mr-3 ml-1 h-3.5 w-px bg-divider-regular"></div>
-            <Switch checked={isImageEnabled} onCheckedChange={handleChange} size="md" />
+            <Switch
+              aria-labelledby={titleId}
+              checked={isImageEnabled}
+              onCheckedChange={handleChange}
+              size="md"
+            />
           </>
         )}
       </div>

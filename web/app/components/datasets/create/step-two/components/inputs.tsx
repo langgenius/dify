@@ -1,11 +1,13 @@
+import type { InputProps } from '@langgenius/dify-ui/input'
 import type {
   NumberFieldInputProps,
   NumberFieldProps,
   NumberFieldSize,
 } from '@langgenius/dify-ui/number-field'
 import type { FC, PropsWithChildren, ReactNode } from 'react'
-import type { InputProps } from '@/app/components/base/input'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   NumberField,
   NumberFieldControls,
@@ -17,8 +19,6 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { env } from '@/env'
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
@@ -35,12 +35,12 @@ const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
   )
 }
 
-export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
-  tooltip,
-  onChange,
-  value,
-  ...rest
-}) => {
+export const DelimiterInput: FC<
+  Omit<InputProps, 'onChange' | 'onValueChange'> & {
+    tooltip?: string
+    onValueChange?: (value: string) => void
+  }
+> = ({ tooltip, onValueChange, value, ...rest }) => {
   const { t } = useTranslation()
   const generatedInputId = useId()
   const inputId = rest.id ?? generatedInputId
@@ -54,11 +54,16 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
           <label htmlFor={inputId} className="mr-0.5 system-sm-semibold">
             {t(($) => $['stepTwo.separator'], { ns: 'datasetCreation' })}
           </label>
-          <Infotip
-            aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
-            popupClassName="max-w-[200px]"
-          >
-            {tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+            />
+            <InfotipContent
+              aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+              className="max-w-50"
+            >
+              {tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+            </InfotipContent>
           </Infotip>
         </div>
       }
@@ -69,9 +74,9 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
         className="h-9"
         placeholder={t(($) => $['stepTwo.separatorPlaceholder'], { ns: 'datasetCreation' })!}
         value={isComposing.current ? compositionValue : value}
-        onChange={(e) => {
-          if (isComposing.current) setCompositionValue(e.target.value)
-          else onChange?.(e)
+        onValueChange={(value) => {
+          if (isComposing.current) setCompositionValue(value)
+          else onValueChange?.(value)
         }}
         onCompositionStart={() => {
           isComposing.current = true
@@ -81,10 +86,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
           const committed = e.currentTarget.value
           isComposing.current = false
           setCompositionValue('')
-          onChange?.({
-            ...e,
-            target: { ...e.target, value: committed },
-          } as unknown as React.ChangeEvent<HTMLInputElement>)
+          onValueChange?.(committed)
         }}
         {...rest}
       />
@@ -188,11 +190,16 @@ export const OverlapInput: FC<LabeledCompoundNumberInputProps> = (props) => {
       label={
         <div className="mb-1 flex items-center">
           <span className="system-sm-semibold">{label}</span>
-          <Infotip
-            aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
-            popupClassName="max-w-[200px]"
-          >
-            {t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+            />
+            <InfotipContent
+              aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+              className="max-w-50"
+            >
+              {t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+            </InfotipContent>
           </Infotip>
         </div>
       }

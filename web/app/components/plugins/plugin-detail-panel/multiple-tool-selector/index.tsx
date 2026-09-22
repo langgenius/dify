@@ -4,12 +4,13 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { Infotip } from '@/app/components/base/infotip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useAllMCPTools } from '@/service/use-tools'
 
 type Props = Readonly<{
@@ -45,7 +46,7 @@ const MultipleToolSelector = ({
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const { data: mcpTools } = useAllMCPTools()
   const addToolButtonRef = React.useRef<HTMLButtonElement>(null)
-  const toolItemTriggerByKeyRef = React.useRef(new Map<string, HTMLButtonElement>())
+  const toolItemTriggerByKeyRef = useRefWithInit(() => new Map<string, HTMLButtonElement>())
   const pendingFocusTargetRef = React.useRef<{ toolKey?: string } | null>(null)
   const enabledCount = value.filter((item) => {
     const isMCPTool = mcpTools?.find((tool) => tool.id === item.provider_name)
@@ -65,7 +66,7 @@ const MultipleToolSelector = ({
 
     resolvedFocusTarget?.focus()
     pendingFocusTargetRef.current = null
-  }, [value])
+  }, [value, toolItemTriggerByKeyRef])
 
   // add tool
   const [selectorOpen, setSelectorOpen] = React.useState(false)
@@ -152,11 +153,14 @@ const MultipleToolSelector = ({
             </>
           )}
           {tooltip ? (
-            <Infotip
-              aria-label={typeof tooltip === 'string' ? tooltip : label}
-              className="size-3.5"
-            >
-              {tooltip}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={typeof tooltip === 'string' ? tooltip : label}
+                className="size-3.5"
+              />
+              <InfotipContent aria-label={typeof tooltip === 'string' ? tooltip : label}>
+                {tooltip}
+              </InfotipContent>
             </Infotip>
           ) : null}
         </div>
@@ -166,7 +170,7 @@ const MultipleToolSelector = ({
               <span>{`${enabledCount}/${value.length}`}</span>
               <span>{t(($) => $['agent.tools.enabled'], { ns: 'appDebug' })}</span>
             </div>
-            <Divider type="vertical" className="mr-1 ml-3 h-3" />
+            <Separator decorative orientation="vertical" className="mr-1 ml-3 h-3" />
           </>
         )}
         {!disabled && (

@@ -91,6 +91,16 @@ const ConditionItem = ({
   numberVariables,
   filterVar,
 }: ConditionItemProps) => {
+  const containmentOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.contains,
+    ComparisonOperator.notContains,
+    ComparisonOperator.allOf,
+  ]
+  const membershipOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.in,
+    ComparisonOperator.notIn,
+  ]
+
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
   const [isHovered, setIsHovered] = useState(false)
@@ -151,11 +161,7 @@ const ConditionItem = ({
 
   const isSubVariable =
     condition.varType === VarType.arrayFile &&
-    [
-      ComparisonOperator.contains,
-      ComparisonOperator.notContains,
-      ComparisonOperator.allOf,
-    ].includes(condition.comparison_operator!)
+    containmentOperators.includes(condition.comparison_operator!)
 
   const fileAttr = useMemo(() => {
     if (file) return file
@@ -186,8 +192,7 @@ const ConditionItem = ({
   )
 
   const isSelect =
-    condition.comparison_operator &&
-    [ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
+    condition.comparison_operator && membershipOperators.includes(condition.comparison_operator)
   const selectOptions = useMemo<Array<{ name: string; value: string }>>(() => {
     if (isSelect) {
       if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
@@ -291,13 +296,16 @@ const ConditionItem = ({
   )
 
   const showBooleanInput = useMemo(() => {
+    const itemContainmentOperators: readonly ComparisonOperator[] = [
+      ComparisonOperator.contains,
+      ComparisonOperator.notContains,
+    ]
+
     if (condition.varType === VarType.boolean) return true
 
     if (
       condition.varType === VarType.arrayBoolean &&
-      [ComparisonOperator.contains, ComparisonOperator.notContains].includes(
-        condition.comparison_operator!,
-      )
+      itemContainmentOperators.includes(condition.comparison_operator!)
     )
       return true
     return false

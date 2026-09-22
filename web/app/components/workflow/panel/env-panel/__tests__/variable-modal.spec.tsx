@@ -5,7 +5,6 @@ import type {
 import type { ReactElement } from 'react'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
@@ -15,6 +14,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
+import { toast } from '@/app/notifications'
 import VariableModal from '../variable-modal'
 
 type MockModelParameterModalProps = {
@@ -78,7 +78,7 @@ vi.mock(
   }),
 )
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),

@@ -5,8 +5,8 @@ import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { useState } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId, useState } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal'
@@ -38,6 +38,7 @@ const TriggerFormItem: FC<Props> = ({
   disableVariableInsertion = false,
 }) => {
   const language = useLanguage()
+  const labelId = useId()
   const { name, label, type, required, tooltip, input_schema } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
   const showDescription =
@@ -51,19 +52,18 @@ const TriggerFormItem: FC<Props> = ({
     <div className="space-y-0.5 py-1">
       <div>
         <div className="flex h-6 items-center">
-          <div className="system-sm-medium text-text-secondary">
+          <div id={labelId} className="system-sm-medium text-text-secondary">
             {label[language] || label.en_US}
           </div>
           {required && (
             <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
           )}
           {!showDescription && tooltip && (
-            <Infotip
-              aria-label={tooltip[language] || tooltip.en_US}
-              className="ml-1 size-4"
-              popupClassName="w-[200px]"
-            >
-              {tooltip[language] || tooltip.en_US}
+            <Infotip>
+              <InfotipTrigger aria-label={tooltip[language] || tooltip.en_US} className="ml-1" />
+              <InfotipContent aria-label={tooltip[language] || tooltip.en_US} className="w-50">
+                {tooltip[language] || tooltip.en_US}
+              </InfotipContent>
             </Infotip>
           )}
           {showSchemaButton && (
@@ -88,6 +88,7 @@ const TriggerFormItem: FC<Props> = ({
         )}
       </div>
       <FormInputItem
+        labelId={labelId}
         readOnly={readOnly}
         nodeId={nodeId}
         schema={schema}

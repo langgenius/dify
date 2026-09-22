@@ -18,9 +18,9 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
 
   return (
     <div className="space-y-2">
-      <label className="block text-xs font-medium text-gray-500">
+      <div className="text-xs font-medium text-text-secondary">
         {t(($) => $['nodes.triggerSchedule.nextExecutionTimes'], { ns: 'workflow' })}
-      </label>
+      </div>
       <div className="flex min-h-20 flex-col rounded-xl bg-components-input-bg-normal py-2">
         {executionTimes.map((time, index) => (
           <div key={index} className="flex items-baseline text-xs">

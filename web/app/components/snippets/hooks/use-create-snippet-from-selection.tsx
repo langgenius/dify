@@ -6,13 +6,13 @@ import type {
   ValueSelector,
 } from '@/app/components/workflow/types'
 import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getNodesBounds } from 'reactflow'
 import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
 import { resolveLLMNodeModel } from '@/app/components/workflow/nodes/llm/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useCreateSnippet } from './use-create-snippet'
 

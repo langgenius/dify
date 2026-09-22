@@ -20,20 +20,21 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
 import { normalizeWorkflowOutputName } from '@/app/components/workflow/utils/variable'
+import { toast } from '@/app/notifications'
 import {
   buildWorkflowToolRequestPayload,
   getReservedWorkflowOutputParameters,
@@ -87,8 +88,11 @@ type WorkflowToolDrawerFrameProps = {
 
 const InfoTooltip = ({ children }: { children: string }) => {
   return (
-    <Infotip aria-label={children} className="ml-1 size-3.5" popupClassName="w-[180px]">
-      {children}
+    <Infotip>
+      <InfotipTrigger aria-label={children} className="ml-1 size-3.5" />
+      <InfotipContent aria-label={children} className="w-45">
+        {children}
+      </InfotipContent>
     </Infotip>
   )
 }
@@ -181,33 +185,38 @@ const WorkflowToolOutputName = React.memo(
             </span>
           )}
           {hasReservedNameConflict || hasDuplicateNameConflict ? (
-            <Infotip
-              aria-label={issueLabel}
-              className="text-text-warning-secondary"
-              iconSize="small"
-              iconVariant="warning"
-              popupClassName={hasDuplicateNameConflict ? 'w-60' : 'w-45'}
-            >
-              <div className="space-y-2">
-                {hasReservedNameConflict ? <p>{reservedOutputDuplicateTip}</p> : null}
-                {hasDuplicateNameConflict ? (
-                  <div className="space-y-1.5">
-                    <p>{duplicateOutputTip}</p>
-                    {sources.length > 0 ? (
-                      <ul className="space-y-1">
-                        {sources.map((source) => {
-                          const sourceTitle = getSourceNodeDisplayName(source, sources)
-                          return (
-                            <li key={source.nodeId} className="wrap-break-word">
-                              {sourceNodeLabel}: <span translate="no">{sourceTitle}</span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+            <Infotip>
+              <InfotipTrigger
+                aria-label={issueLabel}
+                className="text-text-warning-secondary"
+                iconSize="small"
+                iconVariant="warning"
+              />
+              <InfotipContent
+                aria-label={issueLabel}
+                className={hasDuplicateNameConflict ? 'w-60' : 'w-45'}
+              >
+                <div className="space-y-2">
+                  {hasReservedNameConflict ? <p>{reservedOutputDuplicateTip}</p> : null}
+                  {hasDuplicateNameConflict ? (
+                    <div className="space-y-1.5">
+                      <p>{duplicateOutputTip}</p>
+                      {sources.length > 0 ? (
+                        <ul className="space-y-1">
+                          {sources.map((source) => {
+                            const sourceTitle = getSourceNodeDisplayName(source, sources)
+                            return (
+                              <li key={source.nodeId}>
+                                {sourceNodeLabel}: <span translate="no">{sourceTitle}</span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </InfotipContent>
             </Infotip>
           ) : null}
         </div>
@@ -232,6 +241,7 @@ export function WorkflowToolDrawer({
   onCreate,
 }: WorkflowToolDrawerProps) {
   const { t } = useTranslation()
+  const parameterId = React.useId()
 
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
   const [emoji, setEmoji] = useState<Emoji>(payload.icon)
@@ -323,14 +333,23 @@ export function WorkflowToolDrawer({
         title={t(($) => $['common.workflowAsTool'], { ns: 'workflow' })!}
         closeLabel={t(($) => $['operation.close'], { ns: 'common' })!}
       >
-        <div className="flex h-full flex-col">
+        <form
+          className="flex h-full flex-col"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (isAdd) onConfirm()
+            else setConfirmModalOpen(true)
+          }}
+        >
           <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
             {/* name & icon */}
-            <div>
-              <div className="py-2 system-sm-medium text-text-primary">
+            <Field name="label" className="gap-0">
+              <FieldLabel className="py-2 text-text-primary">
                 {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
-                <span className="ml-1 text-red-500">*</span>
-              </div>
+                <span aria-hidden className="ml-1 text-text-destructive">
+                  *
+                </span>
+              </FieldLabel>
               <div className="flex items-center justify-between gap-3">
                 <AppIcon
                   size="large"
@@ -343,18 +362,22 @@ export function WorkflowToolDrawer({
                   background={emoji.background}
                 />
                 <Input
-                  className="h-10 grow"
+                  className="h-10 min-w-0 flex-1"
                   placeholder={t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
                   value={label}
-                  onChange={(e) => setLabel(e.target.value)}
+                  onValueChange={(value) => setLabel(value)}
                 />
               </div>
-            </div>
+            </Field>
             {/* name for tool call */}
-            <div>
+            <Field name="name" className="gap-0" invalid={!isWorkflowToolNameValid(name)}>
               <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                {t(($) => $['createTool.nameForToolCall'], { ns: 'tools' })}{' '}
-                <span className="ml-1 text-red-500">*</span>
+                <FieldLabel className="py-0 text-text-primary">
+                  {t(($) => $['createTool.nameForToolCall'], { ns: 'tools' })}
+                </FieldLabel>
+                <span aria-hidden className="ml-1 text-text-destructive">
+                  *
+                </span>
                 <InfoTooltip>
                   {t(($) => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })}
                 </InfoTooltip>
@@ -363,28 +386,27 @@ export function WorkflowToolDrawer({
                 className="h-10"
                 placeholder={t(($) => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })!}
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onValueChange={(value) => setName(value)}
               />
               {!isWorkflowToolNameValid(name) && (
-                <div className="text-xs leading-4.5 text-red-500">
+                <FieldError match className="py-0 text-xs leading-4.5">
                   {t(($) => $['createTool.nameForToolCallTip'], { ns: 'tools' })}
-                </div>
+                </FieldError>
               )}
-            </div>
+            </Field>
             {/* description */}
-            <div>
-              <div className="py-2 system-sm-medium text-text-primary">
+            <Field name="description" className="gap-0">
+              <FieldLabel className="py-2 text-text-primary">
                 {t(($) => $['createTool.description'], { ns: 'tools' })}
-              </div>
+              </FieldLabel>
               <Textarea
-                aria-label={t(($) => $['createTool.description'], { ns: 'tools' })}
                 placeholder={
                   t(($) => $['createTool.descriptionPlaceholder'], { ns: 'tools' }) || ''
                 }
                 value={description}
                 onValueChange={(value) => setDescription(value)}
               />
-            </div>
+            </Field>
             {/* Tool Input  */}
             <div>
               <div className="py-2 system-sm-medium text-text-primary">
@@ -400,7 +422,7 @@ export function WorkflowToolDrawer({
                       <th className="w-25.5 p-2 pl-3 font-medium">
                         {t(($) => $['createTool.toolInput.method'], { ns: 'tools' })}
                       </th>
-                      <th className="p-2 pl-3 font-medium">
+                      <th id={`${parameterId}-description`} className="p-2 pl-3 font-medium">
                         {t(($) => $['createTool.toolInput.description'], { ns: 'tools' })}
                       </th>
                     </tr>
@@ -411,7 +433,10 @@ export function WorkflowToolDrawer({
                         <td className="max-w-39 p-2 pl-3">
                           <div className="text-[13px] leading-4.5">
                             <div className="flex">
-                              <span className="truncate font-medium text-text-primary">
+                              <span
+                                id={`${parameterId}-${index}-name`}
+                                className="truncate font-medium text-text-primary"
+                              >
                                 {item.name}
                               </span>
                               <span className="shrink-0 pl-1 text-xs leading-4.5 text-[#ec4a0a]">
@@ -451,7 +476,8 @@ export function WorkflowToolDrawer({
                         <td className="w-59 p-2 pl-3 text-text-tertiary">
                           <input
                             type="text"
-                            className="w-full appearance-none bg-transparent text-[13px] leading-4.5 font-normal text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary"
+                            aria-labelledby={`${parameterId}-${index}-name ${parameterId}-description`}
+                            className="w-full appearance-none rounded-sm bg-transparent text-[13px] leading-4.5 font-normal text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                             placeholder={t(
                               ($) => $['createTool.toolInput.descriptionPlaceholder'],
                               {
@@ -527,19 +553,19 @@ export function WorkflowToolDrawer({
               <LabelSelector value={labels} onChange={handleLabelSelect} />
             </div>
             {/* Privacy Policy */}
-            <div>
-              <div className="py-2 system-sm-medium text-text-primary">
+            <Field name="privacy_policy" className="gap-0">
+              <FieldLabel className="py-2 text-text-primary">
                 {t(($) => $['createTool.privacyPolicy'], { ns: 'tools' })}
-              </div>
+              </FieldLabel>
               <Input
                 className="h-10"
                 value={privacyPolicy}
-                onChange={(e) => setPrivacyPolicy(e.target.value)}
+                onValueChange={(value) => setPrivacyPolicy(value)}
                 placeholder={
                   t(($) => $['createTool.privacyPolicyPlaceholder'], { ns: 'tools' }) || ''
                 }
               />
-            </div>
+            </Field>
           </div>
           <div
             className={cn(
@@ -554,18 +580,12 @@ export function WorkflowToolDrawer({
             )}
             <div className="flex space-x-2">
               <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  if (isAdd) onConfirm()
-                  else setConfirmModalOpen(true)
-                }}
-              >
+              <Button variant="primary" type="submit">
                 {t(($) => $['operation.save'], { ns: 'common' })}
               </Button>
             </div>
           </div>
-        </div>
+        </form>
       </WorkflowToolDrawerFrame>
       <AppIconPicker
         open={showEmojiPicker}

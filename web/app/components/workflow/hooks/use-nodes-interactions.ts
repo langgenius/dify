@@ -13,12 +13,12 @@ import type { LoopNodeType } from '../nodes/loop/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
@@ -1780,7 +1780,7 @@ export const useNodesInteractions = () => {
     const selectedNodes = nodes.filter((node) => node.selected)
     // Keep this list aligned with availableBlocksFilter(inContainer)
     // in use-available-blocks.ts.
-    const commonNestedDisallowPasteNodes = [
+    const commonNestedDisallowPasteNodes: BlockEnum[] = [
       BlockEnum.End,
       BlockEnum.Iteration,
       BlockEnum.Loop,
