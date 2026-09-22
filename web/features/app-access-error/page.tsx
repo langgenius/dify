@@ -1,5 +1,6 @@
 'use client'
 
+import type { Resource } from 'i18next'
 import type { Locale } from '@/i18n-config'
 import { cn } from '@langgenius/dify-ui/cn'
 import { createInstance } from 'i18next'
@@ -22,6 +23,9 @@ type AppNotAccessibleProps = {
   clientIp?: string
   /** A dialog supplies its own landmarks and close control. */
   embedded?: boolean
+  /** The document gate supplies browser-language resources before streaming. */
+  initialLocale?: Locale
+  initialResources?: Resource
 }
 
 function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
@@ -135,7 +139,10 @@ export default function AppNotAccessible(props: AppNotAccessibleProps) {
     const instance = createInstance()
     void instance.use(resourcesToBackend(loadI18nResource)).init({
       ...getInitOptions(),
-      lng: getBrowserLocale(typeof navigator === 'undefined' ? [] : navigator.languages),
+      lng:
+        props.initialLocale ??
+        getBrowserLocale(typeof navigator === 'undefined' ? [] : navigator.languages),
+      resources: props.initialResources,
       ns: ['share', 'common', 'login'],
       defaultNS: 'share',
     })
