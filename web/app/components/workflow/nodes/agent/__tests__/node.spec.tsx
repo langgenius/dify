@@ -5,8 +5,8 @@ import type useConfig from '../use-config'
 import { zAgentStrategyParameter } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { render, screen } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { VarType } from '../../tool/types'
 import Node from '../node'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
@@ -101,15 +101,15 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   plugin_unique_identifier: 'provider/agent:1.0.0',
   agent_parameters: {
     optionalModel: {
-      type: VarType.constant,
+      type: VarKindType.constant,
       value: { provider: 'openai', model: 'gpt-4o' },
     },
     toolParam: {
-      type: VarType.constant,
+      type: VarKindType.constant,
       value: { provider_name: 'author/tool-a' },
     },
     multiToolParam: {
-      type: VarType.constant,
+      type: VarKindType.constant,
       value: [{ provider_name: 'author/tool-b' }, { provider_name: 'author/tool-c' }],
     },
   },

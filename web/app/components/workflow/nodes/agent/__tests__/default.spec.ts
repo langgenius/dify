@@ -1,8 +1,8 @@
 import type { AgentStrategyParameter } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentNodeType } from '../types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { VarType } from '../../tool/types'
 import nodeDefault from '../default'
 import { createStrategy } from './strategy-fixture'
 
@@ -13,7 +13,7 @@ const check = (parameter: AgentStrategyParameter, value?: unknown) => {
     desc: '',
     type: BlockEnum.Agent,
     output_schema: null,
-    agent_parameters: value === undefined ? {} : { input: { type: VarType.constant, value } },
+    agent_parameters: value === undefined ? {} : { input: { type: VarKindType.constant, value } },
   }
   return nodeDefault.checkValid(payload, t, {
     strategy: createStrategy({ parameters: [parameter] }),

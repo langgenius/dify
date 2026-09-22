@@ -3968,9 +3968,6 @@
     }
   },
   "web/app/components/workflow/nodes/tool/types.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }

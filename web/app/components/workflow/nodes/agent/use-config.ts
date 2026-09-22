@@ -1,6 +1,6 @@
 import type { Memory, Var } from '../../types'
-import type { ToolVarInputs } from '../tool/types'
 import type { AgentNodeType } from './types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo } from 'react'
@@ -9,14 +9,14 @@ import {
   generateAgentToolValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { consoleQuery } from '@/service/console'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
-import { VarType as VarKindType } from '../../types'
+import { VarType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import useVarList from '../_base/hooks/use-var-list'
-import { VarType } from '../tool/types'
 
 type StrategyStatus = {
   plugin: {
@@ -111,14 +111,14 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       const isVariable = currentStrategy?.parameters?.some(
         (param) => param.name === paramName && param.type === FormTypeEnum.any,
       )
-      if (isVariable) return VarType.variable
-      return VarType.constant
+      if (isVariable) return VarKindType.variable
+      return VarKindType.constant
     },
     [currentStrategy?.parameters],
   )
 
   const onFormChange = (value: Record<string, unknown>) => {
-    const res: ToolVarInputs = { ...inputs.agent_parameters }
+    const res: ResourceVarInputs = { ...inputs.agent_parameters }
     Object.entries(value).forEach(([key, val]) => {
       res[key] = {
         type: getParamVarType(key),
@@ -178,16 +178,16 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   // vars
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
-    const supportedVariableTypes: readonly VarKindType[] = [
-      VarKindType.arrayObject,
-      VarKindType.array,
-      VarKindType.number,
-      VarKindType.string,
-      VarKindType.secret,
-      VarKindType.arrayString,
-      VarKindType.arrayNumber,
-      VarKindType.file,
-      VarKindType.arrayFile,
+    const supportedVariableTypes: readonly VarType[] = [
+      VarType.arrayObject,
+      VarType.array,
+      VarType.number,
+      VarType.string,
+      VarType.secret,
+      VarType.arrayString,
+      VarType.arrayNumber,
+      VarType.file,
+      VarType.arrayFile,
     ]
 
     return supportedVariableTypes.includes(varPayload.type)

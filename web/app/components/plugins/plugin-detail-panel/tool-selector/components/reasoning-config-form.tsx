@@ -28,11 +28,11 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
 import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   createPickerProps,

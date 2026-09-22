@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { DataSourceNodeType } from './types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'

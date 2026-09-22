@@ -1,9 +1,9 @@
 import type { AgentNodeType } from '../types'
 import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
-import { VarType } from '../../tool/types'
 import useConfig, { useStrategyInfo } from '../use-config'
 import { createProvider, createStrategy } from './strategy-fixture'
 
@@ -39,7 +39,7 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   output_schema: null,
   agent_strategy_provider_name: 'langgenius/agent/provider',
   agent_strategy_name: 'react',
-  agent_parameters: { instruction: { type: VarType.constant, value: '' } },
+  agent_parameters: { instruction: { type: VarKindType.constant, value: '' } },
   tool_node_version: '2',
   ...overrides,
 })
@@ -86,8 +86,8 @@ describe('agent strategy query and configuration', () => {
   it('keeps cleared form values and unknown persisted parameters when editing', async () => {
     const inputs = createData({
       agent_parameters: {
-        instruction: { type: VarType.constant, value: '' },
-        unknown_parameter: { type: VarType.constant, value: { count: 0, enabled: false } },
+        instruction: { type: VarKindType.constant, value: '' },
+        unknown_parameter: { type: VarKindType.constant, value: { count: 0, enabled: false } },
       },
     })
     const { result } = renderHook(() => useConfig('agent', inputs))
@@ -99,8 +99,8 @@ describe('agent strategy query and configuration', () => {
     expect(setInputs).toHaveBeenLastCalledWith(
       expect.objectContaining({
         agent_parameters: {
-          instruction: { type: VarType.constant, value: 'Changed' },
-          unknown_parameter: { type: VarType.constant, value: { count: 0, enabled: false } },
+          instruction: { type: VarKindType.constant, value: 'Changed' },
+          unknown_parameter: { type: VarKindType.constant, value: { count: 0, enabled: false } },
         },
       }),
     )
@@ -133,8 +133,8 @@ describe('agent strategy query and configuration', () => {
     const inputs = createData({
       tool_node_version: undefined,
       agent_parameters: {
-        tools: { type: VarType.constant, value: [legacyTool] },
-        unrecognized: { type: VarType.constant, value: { untouched: true } },
+        tools: { type: VarKindType.constant, value: [legacyTool] },
+        unrecognized: { type: VarKindType.constant, value: { untouched: true } },
       },
     })
     renderHook(() => useConfig('agent', inputs))
@@ -144,7 +144,7 @@ describe('agent strategy query and configuration', () => {
           tool_node_version: '2',
           agent_parameters: {
             tools: {
-              type: VarType.constant,
+              type: VarKindType.constant,
               value: [
                 expect.objectContaining({
                   settings: { api_key: { value: { type: 'mixed', value: 'secret' } } },
@@ -152,7 +152,7 @@ describe('agent strategy query and configuration', () => {
                 }),
               ],
             },
-            unrecognized: { type: VarType.constant, value: { untouched: true } },
+            unrecognized: { type: VarKindType.constant, value: { untouched: true } },
           },
         }),
       ),
@@ -187,7 +187,10 @@ describe('agent strategy query and configuration', () => {
   it('does not convert tools with an existing tool node version', async () => {
     const inputs = createData({
       agent_parameters: {
-        tools: { type: VarType.constant, value: [{ settings: { secret: { value: 'existing' } } }] },
+        tools: {
+          type: VarKindType.constant,
+          value: [{ settings: { secret: { value: 'existing' } } }],
+        },
       },
     })
     renderHook(() => useConfig('agent', inputs))

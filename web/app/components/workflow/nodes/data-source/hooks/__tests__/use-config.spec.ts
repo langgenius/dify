@@ -1,6 +1,6 @@
 import type { DataSourceNodeType } from '../../types'
 import { renderHook } from '@testing-library/react'
-import { VarType as VarKindType } from '../../../tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useConfig } from '../use-config'
 
 const mockUseStoreApi = vi.hoisted(() => vi.fn())

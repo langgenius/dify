@@ -1,4 +1,3 @@
-import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
   HandleAddSubVariableCondition,
@@ -8,6 +7,7 @@ import type {
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
 } from '../../types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -148,7 +148,7 @@ const ConditionItem = ({
   )
 
   const handleUpdateConditionNumberVarType = useCallback(
-    (numberVarType: NumberVarType) => {
+    (numberVarType: VarKindType) => {
       const newCondition = {
         ...condition,
         numberVarType,

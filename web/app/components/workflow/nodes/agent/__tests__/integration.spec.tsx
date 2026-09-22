@@ -12,8 +12,8 @@ import {
   FormTypeEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { VarType as ToolVarType } from '../../tool/types'
 import { ModelBar } from '../components/model-bar'
 import { ToolIcon } from '../components/tool-icon'
 import Node from '../node'
@@ -200,9 +200,9 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   agent_strategy_name: 'react',
   agent_strategy_label: 'React Agent',
   agent_parameters: {
-    modelParam: { type: ToolVarType.constant, value: { provider: 'openai', model: 'gpt-4o' } },
-    toolParam: { type: ToolVarType.constant, value: { provider_name: 'author/tool-a' } },
-    multiToolParam: { type: ToolVarType.constant, value: [{ provider_name: 'author/tool-b' }] },
+    modelParam: { type: VarKindType.constant, value: { provider: 'openai', model: 'gpt-4o' } },
+    toolParam: { type: VarKindType.constant, value: { provider_name: 'author/tool-a' } },
+    multiToolParam: { type: VarKindType.constant, value: [{ provider_name: 'author/tool-b' }] },
   },
   meta: { version: '1.0.0' },
   plugin_unique_identifier: 'provider/agent:1.0.0',
