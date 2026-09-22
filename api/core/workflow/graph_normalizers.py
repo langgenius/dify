@@ -47,8 +47,8 @@ _LIST_OPERATORS = frozenset({"in", "not in", "all of"})
 # be either and ``!=`` / ``<>`` likewise -- the same ambiguity that keeps the
 # word forms (``equals``, ``gte``) rejected. The ordering forms carry none of
 # it: graphon has no string ordering operator at all
-# (``_assert_greater_than`` and its three siblings raise "Invalid actual value
-# type: number" for anything but a number), so ``>=`` can only mean ``≥``.
+# (``_assert_greater_than`` and its three siblings raise "Invalid actual
+# value type: number" for anything but a number), so ``>=`` can only mean ``≥``.
 # Guessing an equality would silently change which comparison the draft runs;
 # a loud refusal is the right outcome there.
 _ASCII_COMPARISON_OPERATORS: Mapping[str, str] = {
