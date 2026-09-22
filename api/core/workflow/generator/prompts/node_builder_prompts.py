@@ -7,6 +7,7 @@ rather than with the full ReactFlow graph.
 """
 
 import json
+from collections.abc import Iterable
 from typing import Any
 
 from core.workflow.generator.prompts.builder_prompts import get_node_config_snippet
@@ -36,7 +37,12 @@ type, title, desc, selected, position, wrapper fields, edges, or viewport.
 Rules:
 - Use only ids from the supplied normalized plan.
 - Placeholder strings use ``{{#node_id.variable#}}``; selector fields use
-  ``["node_id", "variable"]``. Never invent an upstream output.
+  ``["node_id", "variable"]``. Never invent an upstream output. An upstream
+  llm node exposes "text", "reasoning_content" and "usage"; each of its
+  structured-output fields is one segment deeper —
+  ``{{#node_id.structured_output.field#}}`` as a placeholder,
+  ``["node_id", "structured_output", "field"]`` as a selector — never the
+  flat ``{{#node_id.field#}}`` / ``["node_id", "field"]``.
 - Use the selected model verbatim for llm, question-classifier, and
   parameter-extractor nodes.
 - Keep prompts/code concise but complete for the user's requested behavior.
@@ -56,7 +62,7 @@ purpose={purpose}
 
 {instruction}
 
-{ideal_output_section}{mode_section}{model_section}{tool_catalogue_section}{start_inputs_section}{existing_config_section}\
+{ideal_output_section}{mode_section}{model_section}{tool_catalogue_section}{start_inputs_section}{existing_config_section}{node_outputs_section}\
 # Normalized plan and topology
 
 {plan_json}
@@ -81,6 +87,12 @@ def format_parallel_plan(
     ``start_inputs`` rides along so downstream builders reference the declared
     ``{{#<start-id>.<variable>#}}`` names instead of guessing them from prose
     — a guessed name gets auto-injected as a spurious form input later.
+
+    The planner's declared producer outputs deliberately do NOT ride here:
+    serialised raw they would give every consumer an llm producer's schema
+    fields flat, which is the one reference form the engine cannot resolve.
+    ``format_node_outputs_section`` renders them per call instead, where the
+    node's type is known.
     """
     payload: dict[str, Any] = {"nodes": plan_nodes, "edges": plan_edges}
     if start_inputs:
@@ -124,6 +136,64 @@ def format_start_inputs_section(start_inputs: list[dict[str, Any]]) -> str:
         lines.append(f"- variable={variable!r}  label={label!r}  type={type_!r}")
     lines.append("")
     return "\n".join(lines) + "\n"
+
+
+def format_node_outputs_section(
+    node_outputs: dict[str, list[str]] | None,
+    target_node_id: str,
+    node_types: dict[str, str] | None = None,
+) -> str:
+    """Render the planner's declared producer outputs for one builder call.
+
+    Two halves, both needed: the target node is told to expose exactly the
+    names the plan promised on its behalf, and every other declared node is
+    listed so this node references only names that will really exist.
+
+    ``node_types`` (plan node id -> node type) makes the consumer half
+    type-aware, which it must be: an ``llm`` producer's declared names are its
+    structured-output SCHEMA FIELDS, and the engine publishes those under one
+    ``structured_output`` object. Listing them flat would hand every consumer
+    ``{{#<id>.<field>#}}`` — precisely the reference the engine can never
+    resolve. A node whose type we don't know is listed as-is; only the four
+    declaring types ever reach here, and the other three name their outputs
+    flat.
+
+    Returns an empty string when there is nothing to say, keeping the prompt
+    identical to the one a plan without the key has always produced.
+    """
+    if not node_outputs:
+        return ""
+    types = node_types or {}
+    body: list[str] = []
+    own = node_outputs.get(target_node_id) or []
+    if own:
+        body.append(
+            "This node MUST expose exactly these output names, spelled exactly: "
+            + _quoted_names(own)
+            + " (a code node's ``outputs`` keys, a parameter-extractor's parameter names, a "
+            "human-input input's ``output_variable_name``, an llm's ``structured_output`` schema fields)."
+        )
+    others = [(node_id, names) for node_id, names in node_outputs.items() if node_id != target_node_id and names]
+    if others:
+        body.append("These nodes expose exactly the names below — reference no other name on them:")
+        for node_id, names in others:
+            if types.get(node_id) == "llm":
+                # Schema fields live under the node's ``structured_output``
+                # object: 3 segments, never flat.
+                body.append(
+                    f"- {node_id} (llm structured output): "
+                    + _quoted_names(f"structured_output.{name}" for name in names)
+                )
+            else:
+                body.append(f"- {node_id}: " + _quoted_names(names))
+    if not body:
+        return ""
+    return "\n".join(["# Declared outputs (the plan's contract — binding)", "", *body, ""]) + "\n"
+
+
+def _quoted_names(names: Iterable[str]) -> str:
+    """Render output names as a readable, unambiguous comma-separated list."""
+    return ", ".join(repr(name) for name in names)
 
 
 def format_tool_catalogue_section(catalogue_text: str) -> str:
