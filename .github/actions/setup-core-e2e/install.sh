@@ -6,7 +6,7 @@ case "${E2E_INSTALL_BROWSER:-}" in
   *) echo "Expected chromium or webkit" >&2; exit 1 ;;
 esac
 
-# Keep both branches in this step so failures are collected before tests start.
+# Join all preparation branches before tests start, including image pull failures.
 started=$SECONDS
 timing_dir=$(mktemp -d)
 trap 'rm -rf "$timing_dir"' EXIT
@@ -29,10 +29,25 @@ api_pid=$!
 ) &
 web_pid=$!
 
+(
+  images_started=$SECONDS
+  if [[ ! -f docker/middleware.env ]]; then
+    cp docker/envs/middleware.env.example docker/middleware.env
+  fi
+  # Pull only the core suite's services. The E2E runner still owns their lifecycle.
+  docker compose -f docker/docker-compose.middleware.yaml \
+    --profile postgresql --profile weaviate \
+    pull db_postgres redis weaviate sandbox ssrf_proxy plugin_daemon
+  echo "$((SECONDS - images_started))" > "$timing_dir/images"
+) &
+images_pid=$!
+
 api_status=0
 web_status=0
+images_status=0
 wait "$api_pid" || api_status=$?
 wait "$web_pid" || web_status=$?
+wait "$images_pid" || images_status=$?
 
 {
   echo "### E2E dependency preparation ($E2E_INSTALL_BROWSER)"
@@ -41,16 +56,16 @@ wait "$web_pid" || web_status=$?
   echo ""
   echo "| Phase | Seconds |"
   echo "| --- | ---: |"
-  for phase in api web browser; do
+  for phase in api web browser images; do
     if [[ -f "$timing_dir/$phase" ]]; then
       echo "| $phase | $(cat "$timing_dir/$phase") |"
     fi
   done
   echo ""
-  echo "API exit status: $api_status; Web/browser exit status: $web_status"
+  echo "API exit status: $api_status; Web/browser exit status: $web_status; Images exit status: $images_status"
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
-if (( api_status != 0 || web_status != 0 )); then
-  echo "E2E dependency installation failed (API: $api_status, Web/browser: $web_status)" >&2
+if (( api_status != 0 || web_status != 0 || images_status != 0 )); then
+  echo "E2E dependency installation failed (API: $api_status, Web/browser: $web_status, Images: $images_status)" >&2
   exit 1
 fi

@@ -1,5 +1,5 @@
 name: Setup Core E2E Dependencies
-description: Install API dependencies alongside web dependencies and the selected browser
+description: Install API and browser dependencies while pulling core middleware images
 
 inputs:
   browser:
