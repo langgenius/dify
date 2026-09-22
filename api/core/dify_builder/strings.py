@@ -53,6 +53,8 @@ PLAIN: frozenset[str] = frozenset(
         "No automatic fix found — review the diagnosis and edit the canvas manually, or reject.",
         "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test.",
         "No fix is staged for this failure -- keep the draft or revert.",
+        "I didn't apply the workflow: it would fail before its first node. Adjust the plan and approve again.",
+        "I didn't apply the change: the workflow would fail before its first node. Adjust it and approve again.",
         # card titles
         "Test run",
         "Review",
@@ -71,6 +73,7 @@ PLAIN: frozenset[str] = frozenset(
         "Couldn't apply the fix",
         "Proceeding with sensible defaults",
         "Repeated failure",
+        "The workflow can't start",
         "Test failed",
         "Validation",
         # model-config-failure surface (build + edit)
@@ -128,6 +131,11 @@ PLAIN: frozenset[str] = frozenset(
 
 
 TEMPLATES: list[Template] = [
+    Template(
+        pattern=re.compile(r"^The generated workflow would fail before its first node: (?P<value>.+)$", re.DOTALL),
+        template="The generated workflow would fail before its first node: {value}",
+        translate_fields=frozenset(),  # value is the engine's node error, kept verbatim
+    ),
     Template(
         pattern=re.compile(r"^Workflow built \((?P<count>\d+) nodes\)$"),
         template="Workflow built ({count} nodes)",
