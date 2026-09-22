@@ -484,6 +484,34 @@ def build_nodes(
                 )
             )
             return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
+        if rejected:
+            # A partial reject still builds what applies, but the dropped intents
+            # must not vanish: e.g. a connect on a branch handle the node does not
+            # declare (one postprocess could not re-home unambiguously) leaves that
+            # arm unwired on the canvas.
+            summary = [
+                {
+                    "intent": str(intent.op),
+                    # a create_node's config is the whole node body -- name the node, not its body
+                    "args": {key: value for key, value in intent.args.items() if key != "config"},
+                    "reason": str(reason),
+                }
+                for intent, reason in rejected
+            ]
+            logger.warning(
+                "Dify Builder: build_nodes dropped %d of %d intents for tenant %s: %s",
+                len(rejected),
+                len(intents),
+                tenant_id,
+                "; ".join(f"{item['intent']} {item['args']}: {item['reason']}" for item in summary),
+            )
+            diagnostics.append(
+                _diagnostic(
+                    source="build_nodes",
+                    message=f"{len(rejected)} generated intent(s) were rejected by validation and not applied",
+                    rejected=summary,
+                )
+            )
         # Retries that eventually succeeded still leave their breadcrumbs behind.
         return BuildNodesResult(intents=applicable, diagnostics=diagnostics)
     except Exception as exc:  # any generation/translation failure -> honest empty build
