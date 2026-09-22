@@ -2,10 +2,11 @@
 
 import type { Switch as BaseSwitchNS } from '@base-ui/react/switch'
 import type { VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const switchRootStateClassName =
   'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled'
@@ -67,13 +68,12 @@ type SwitchControlProps = ControlledSwitchProps | UncontrolledSwitchProps
 
 type SwitchProps = Omit<
   BaseSwitchNS.Root.Props,
-  'checked' | 'defaultChecked' | 'className' | 'size' | 'onCheckedChange'
+  'checked' | 'defaultChecked' | 'size' | 'onCheckedChange'
 > &
   VariantProps<typeof switchRootVariants> &
   SwitchControlProps & {
     onCheckedChange?: (checked: boolean) => void
     loading?: boolean
-    className?: string
   }
 
 function Switch({
@@ -92,7 +92,7 @@ function Switch({
       checked={checked}
       disabled={isDisabled}
       aria-busy={loading || undefined}
-      className={cn(switchRootVariants({ size }), className)}
+      className={(state) => cn(switchRootVariants({ size }), resolveClassName(className, state))}
       onCheckedChange={(value) => onCheckedChange?.(value)}
       {...props}
     >

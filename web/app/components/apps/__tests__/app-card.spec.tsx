@@ -48,8 +48,8 @@ const mockUnstarAppMutation = vi.hoisted(() =>
   vi.fn((_variables: unknown): Promise<unknown> => Promise.resolve()),
 )
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const withMutation = (operation: object, mutationFn: typeof mockCopyApp) =>
     new Proxy(operation, {
       get(target, property, receiver) {
@@ -141,7 +141,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
@@ -159,7 +159,6 @@ vi.mock('use-context-selector', () => ({
 }))
 
 const mockConsoleState = vi.hoisted(() => ({
-  isCurrentWorkspaceEditor: true,
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
@@ -446,7 +445,6 @@ describe('AppCard', () => {
     mockAppDslExport.exportAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockWorkflowAppDslExport.isExporting = false
     mockWorkflowAppDslExport.exportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
-    mockConsoleState.isCurrentWorkspaceEditor = true
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
   })
@@ -546,10 +544,10 @@ describe('AppCard', () => {
     it('should render app icon', () => {
       // AppIcon component renders the emoji icon from app data
       const { container } = render(<AppCard app={mockApp} />)
-      const emojiIcon = container.querySelector(`em-emoji[id="${mockApp.icon}"]`)
+      const emojiIcon = screen.getByText(mockApp.icon!)
       const imageIcon = container.querySelector('img')
       expect(emojiIcon || imageIcon).toBeTruthy()
-      expect(emojiIcon?.parentElement).toHaveAttribute('aria-hidden', 'true')
+      expect(emojiIcon).toHaveAttribute('aria-hidden', 'true')
     })
 
     it('should treat a redundant image icon as decorative', () => {
@@ -608,7 +606,6 @@ describe('AppCard', () => {
     })
 
     it('should allow app edit permission to bind tags without workspace tag management permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = []
       mockConsoleState.userProfile = { id: 'user-2' }
       const editableApp = createMockApp({
@@ -626,7 +623,6 @@ describe('AppCard', () => {
     })
 
     it('should allow workspace app tag management permission to bind tags without app edit permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = ['app.tag.manage']
       mockConsoleState.userProfile = { id: 'user-2' }
       const tagManageApp = createMockApp({
@@ -644,7 +640,6 @@ describe('AppCard', () => {
     })
 
     it('should render existing app tags as readonly without app edit or workspace tag management permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = []
       mockConsoleState.userProfile = { id: 'user-2' }
       const readonlyApp = createMockApp({
@@ -1610,14 +1605,6 @@ describe('AppCard', () => {
         // openInExplore should not be shown for draft trigger apps
         expect(screen.queryByText('app.openInExplore')).not.toBeInTheDocument()
       })
-    })
-  })
-
-  describe('Non-editor User', () => {
-    it('should handle non-editor workspace users', () => {
-      // This tests the isCurrentWorkspaceEditor=true branch (default mock)
-      render(<AppCard app={mockApp} />)
-      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
   })
 

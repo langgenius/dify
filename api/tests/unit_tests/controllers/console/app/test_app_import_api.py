@@ -146,7 +146,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = unwrap(api.post)
+        method = unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         app_id = _install_persisting_service_result(
@@ -172,7 +172,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = unwrap(api.post)
+        method = unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         app_id = _install_persisting_service_result(
@@ -198,7 +198,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = unwrap(api.post)
+        method = unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=True)
         app_id = _install_persisting_service_result(
@@ -227,7 +227,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = _unwrap(api.post)
+        method = _unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -263,7 +263,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = _unwrap(api.post)
+        method = _unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -343,7 +343,8 @@ class TestAppImportConfirmApi:
         )
         redis_get = MagicMock(
             return_value=(
-                b'{"import_mode":"yaml-content","yaml_content":"app: {}","app_id":null,'
+                b'{"tenant_id":"tenant-1","account_id":"u1","import_mode":"yaml-content",'
+                b'"yaml_content":"app: {}","app_id":null,'
                 b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
             )
         )
@@ -388,7 +389,8 @@ class TestAppImportConfirmApi:
             app_import_module.redis_client,
             "get",
             lambda *_args, **_kwargs: (
-                b'{"import_mode":"yaml-content","yaml_content":"app: {}","app_id":"existing-app",'
+                b'{"tenant_id":"tenant-1","account_id":"u1","import_mode":"yaml-content",'
+                b'"yaml_content":"app: {}","app_id":"existing-app",'
                 b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
             ),
         )

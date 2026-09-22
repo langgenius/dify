@@ -3,14 +3,14 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { SelectorParam } from 'i18next'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
-import { getAppACLCapabilities } from '@/utils/permission'
+import {
+  useAppWhiteListSubjects,
+  useGetUserCanAccessApp,
+} from '@/service/access-control/use-app-access-control'
 
 const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
@@ -37,17 +37,17 @@ export function useWebAppAccessControl(
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.webapp_auth.enabled,
   })
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { canReleaseAndVersion: canManage } = getAppACLCapabilities(agent?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: agent?.maintainer,
-    workspacePermissionKeys,
-  })
+  const { canManageAccessPoint: canManage } = getAgentACLCapabilities(agent?.permission_keys)
   const hasAccessControl = Boolean(webAppAuthEnabled && appId && accessMode)
+  const { data: userCanAccessApp, refetch: refetchUserCanAccessApp } = useGetUserCanAccessApp({
+    appId,
+    enabled: Boolean(webAppAuthEnabled && appId),
+  })
+  const accessPermission = {
+    noAccessPermission:
+      webAppAuthEnabled && accessMode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result,
+    refetchUserCanAccessApp,
+  }
   const { data: accessSubjects } = useAppWhiteListSubjects(
     appId,
     hasAccessControl && canManage && accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
@@ -57,11 +57,12 @@ export function useWebAppAccessControl(
     accessMode !== AccessMode.SPECIFIC_GROUPS_MEMBERS ||
     Boolean(accessSubjects.groups.length || accessSubjects.members.length)
 
-  if (!webAppAuthEnabled) return { state: 'hidden' as const }
-  if (isLoading) return { state: 'loading' as const }
-  if (!appId || !accessMode) return { state: 'hidden' as const }
+  if (!webAppAuthEnabled) return { ...accessPermission, state: 'hidden' as const }
+  if (isLoading) return { ...accessPermission, state: 'loading' as const }
+  if (!appId || !accessMode) return { ...accessPermission, state: 'hidden' as const }
 
   return {
+    ...accessPermission,
     state: 'ready' as const,
     app: { id: appId, access_mode: accessMode },
     entryProps: {

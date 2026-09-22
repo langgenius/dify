@@ -3,13 +3,13 @@
 import type { ConfigParams } from '@/app/components/app/overview/settings'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { toast } from '@/app/notifications'
 import { fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 
 export function useAccessPointActions(appId: string, canManageAccessPoint: boolean) {

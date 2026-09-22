@@ -1,12 +1,18 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { Popup } from '../popup'
 
-const render = (ui: React.ReactElement) => {
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
+let mockIsAllowPublishAsCustom = true
+
+const renderWithoutPricing = (ui: React.ReactElement) => {
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { knowledge_pipeline: { publish_enabled: mockIsAllowPublishAsCustom } },
   })
   return renderWithConsoleState(ui, { wrapper })
 }
@@ -20,7 +26,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -42,7 +48,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockSetPublishedAt = vi.fn()
 const mockMutateDatasetRes = vi.fn()
-const mockSetShowPricingModal = vi.fn()
+
 const mockInvalidPublishedPipelineInfo = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidCustomizedTemplateList = vi.fn()
@@ -50,7 +56,6 @@ const mockInvalidCustomizedTemplateList = vi.fn()
 let mockPublishedAt: string | undefined = '2024-01-01T00:00:00Z'
 let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
-let mockIsAllowPublishAsCustom = true
 let mockDatasetPermissionKeys = ['dataset.acl.use']
 let mockDatasetMaintainer: string | undefined
 let mockCurrentUserId = 'user-1'
@@ -91,10 +96,6 @@ vi.mock('@/app/components/workflow/store', () => ({
       setPublishedAt: mockSetPublishedAt,
     }),
   }),
-}))
-
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <hr />,
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -146,16 +147,6 @@ vi.mock('@/context/permission-state', async () => {
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => 'https://docs.dify.ai',
-}))
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: <T,>(
-    selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T,
-  ) => selector({ setShowPricingModal: mockSetShowPricingModal }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: () => mockIsAllowPublishAsCustom,
 }))
 
 vi.mock('@/hooks/use-api-access-url', () => ({
@@ -222,6 +213,11 @@ vi.mock('@remixicon/react', () => ({
   RiPlayCircleLine: () => <span />,
   RiTerminalBoxLine: () => <span />,
 }))
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
 
 describe('Popup', () => {
   beforeEach(() => {
@@ -341,7 +337,7 @@ describe('Popup', () => {
   })
 
   describe('Publish As Knowledge Pipeline', () => {
-    it('should show pricing modal when not allowed', () => {
+    it('should show pricing modal when not allowed', async () => {
       mockIsAllowPublishAsCustom = false
       const onRequestClose = vi.fn()
       render(<Popup onRequestClose={onRequestClose} />)
@@ -349,7 +345,9 @@ describe('Popup', () => {
       fireEvent.click(screen.getByText('pipeline.common.publishAs'))
 
       expect(onRequestClose).toHaveBeenCalledTimes(1)
-      expect(mockSetShowPricingModal).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
     it('should request closing the outer popover before opening publish-as modal', () => {

@@ -1,7 +1,7 @@
 """Unit tests for the Console workflow-run application service."""
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 
@@ -213,4 +213,4 @@ class TestWorkflowRunServiceQueries:
             app_id="app-1",
             workflow_run_id="run-1",
         )
-        mock_assemble.assert_called_once_with(expected_executions, node_executions)
+        mock_assemble.assert_called_once_with(expected_executions, node_executions, session=ANY)

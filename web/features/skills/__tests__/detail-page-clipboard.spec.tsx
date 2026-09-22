@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   createDataTransfer,
   createSkillDetail,
+  getFileTabButton,
   getFileTreeButton,
   getFileTreeContextRegion,
   getFileTreeItem,
@@ -247,13 +248,7 @@ describe('SkillDetailPage clipboard', () => {
       )
     })
     await waitFor(() => {
-      const editorMain = screen.getAllByRole('main').at(-1)
-      if (!editorMain) throw new Error('file editor not found')
-      expect(
-        within(editorMain).getByRole('button', {
-          name: 'SKILL copy.md',
-        }),
-      ).toBeInTheDocument()
+      expect(getFileTabButton('SKILL copy.md')).toHaveAccessibleName('SKILL copy.md')
     })
   })
 

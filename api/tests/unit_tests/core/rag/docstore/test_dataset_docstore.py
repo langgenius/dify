@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore, DocumentSegment
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import ChildChunk, Dataset, SegmentAttachmentBinding
+from tests.unit_tests.model_factories import make_dataset
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DATASET_ID = "00000000-0000-0000-0000-000000000002"
@@ -23,11 +24,7 @@ ATTACHMENT_ID = "00000000-0000-0000-0000-000000000005"
 
 
 def _dataset() -> Dataset:
-    dataset = Dataset(
-        id=DATASET_ID,
-        tenant_id=TENANT_ID,
-    )
-    return dataset
+    return make_dataset(dataset_id=DATASET_ID, tenant_id=TENANT_ID)
 
 
 def _persist_segment(

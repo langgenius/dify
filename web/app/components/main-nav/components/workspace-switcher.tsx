@@ -21,7 +21,6 @@ import { WorkspaceMenuItemContent } from './workspace-menu-content'
 const workspaceSwitchActionIconWrapClassName = 'flex size-5 shrink-0 items-center justify-center'
 const workspaceSwitchActionIconClassName = 'size-3.5 shrink-0'
 const workspaceSwitchListClassName = 'max-h-[240px] overflow-y-auto overscroll-contain scroll-py-1'
-const workspaceSwitchI18nKey = (key: string) => key as 'mainNav.workspace.settings'
 type WorkspaceSort = 'lastOpened' | 'createdAt'
 
 const getWorkspaceName = (workspace: TenantListItemResponse) => workspace.name || workspace.id
@@ -46,19 +45,19 @@ function WorkspaceSwitchControls({
 }) {
   const { t } = useTranslation()
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
-  const sortMenuLabel = t(($) => $[workspaceSwitchI18nKey('mainNav.workspace.sort.openMenu')], {
+  const sortMenuLabel = t(($) => $['mainNav.workspace.sort.openMenu'], {
     ns: 'common',
   })
   const sortOptions: Array<{ value: WorkspaceSort; label: string }> = [
     {
       value: 'lastOpened',
-      label: t(($) => $[workspaceSwitchI18nKey('mainNav.workspace.sort.lastOpened')], {
+      label: t(($) => $['mainNav.workspace.sort.lastOpened'], {
         ns: 'common',
       }),
     },
     {
       value: 'createdAt',
-      label: t(($) => $[workspaceSwitchI18nKey('mainNav.workspace.sort.createdTime')], {
+      label: t(($) => $['mainNav.workspace.sort.createdTime'], {
         ns: 'common',
       }),
     },
@@ -118,7 +117,7 @@ function WorkspaceSwitchControls({
         </DropdownMenu>
         <CollapsibleTrigger
           disabled={disabled}
-          className="size-6 min-h-0 w-6 justify-center gap-0 rounded-md p-0.5 data-panel-open:bg-state-base-hover data-panel-open:text-text-secondary"
+          className="text-text-secondary data-panel-open:bg-state-base-hover"
           render={
             <IconButton aria-label={t(($) => $['operation.search'], { ns: 'common' })}>
               <span aria-hidden className={workspaceSwitchActionIconWrapClassName}>
@@ -133,10 +132,7 @@ function WorkspaceSwitchControls({
           <SearchInput
             value={searchText}
             onValueChange={onSearchTextChange}
-            placeholder={t(
-              ($) => $[workspaceSwitchI18nKey('mainNav.workspace.searchPlaceholder')],
-              { ns: 'common' },
-            )}
+            placeholder={t(($) => $['mainNav.workspace.searchPlaceholder'], { ns: 'common' })}
             autoFocus
           />
         </div>
@@ -208,7 +204,7 @@ export function WorkspaceSwitcher({
             role="status"
             className="flex h-8 items-center px-3 system-xs-regular text-text-tertiary"
           >
-            {t(($) => $[workspaceSwitchI18nKey('mainNav.workspace.noResults')], {
+            {t(($) => $['mainNav.workspace.noResults'], {
               ns: 'common',
             })}
           </div>

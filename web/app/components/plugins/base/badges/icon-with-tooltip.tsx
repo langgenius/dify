@@ -34,9 +34,7 @@ const IconWithTooltip: FC<IconWithTooltipProps> = ({
   return (
     <Tooltip>
       <TooltipTrigger render={icon} />
-      <TooltipContent className="border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary">
-        {popupContent}
-      </TooltipContent>
+      <TooltipContent>{popupContent}</TooltipContent>
     </Tooltip>
   )
 }

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useModalContext } from '@/context/modal-context'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type ApiItem = {
   value: string

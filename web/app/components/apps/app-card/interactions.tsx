@@ -36,7 +36,6 @@ import {
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
@@ -50,6 +49,7 @@ import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
 } from '@/app/components/step-by-step-tour/dropdown-menu'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -58,7 +58,7 @@ import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -693,7 +693,7 @@ export function AppCardInteractions({
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
               <Field name="confirm-app-name" className="mt-2">
-                <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
+                <FieldLabel className="system-sm-regular">
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"

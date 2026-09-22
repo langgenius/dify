@@ -1,5 +1,6 @@
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiCheckboxCircleFill,
@@ -11,7 +12,6 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
@@ -125,7 +125,7 @@ const CommentsPanel = () => {
                 </span>
                 {showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
               </button>
-              <Divider type="horizontal" className="my-1" />
+              <Separator orientation="horizontal" className="my-1 h-[0.5px]" />
               <div
                 className="flex w-full items-center justify-between rounded-md p-2"
                 onClick={(e) => {
@@ -145,7 +145,7 @@ const CommentsPanel = () => {
               </div>
             </div>
           )}
-          <Divider type="vertical" className="h-3.5" />
+          <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
           <div
             className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => {

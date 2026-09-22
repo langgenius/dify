@@ -1,17 +1,16 @@
 'use client'
 
-import type { KeyboardEvent, MouseEvent } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
-import { useRouter } from '@/next/navigation'
+import Link from '@/next/link'
 import {
   getDatasetACLCapabilities,
   hasOnlyDatasetPreviewPermission,
@@ -45,7 +44,7 @@ const DatasetCard = ({
   stepByStepTourCardTarget,
 }: DatasetCardProps) => {
   const { t } = useTranslation()
-  const { push } = useRouter()
+  const nameId = useId()
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -86,55 +85,51 @@ const DatasetCard = ({
     toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
   }
 
-  const handleCardClick = (e: MouseEvent) => {
-    e.preventDefault()
-    if (isPreviewOnly) {
-      showPreviewOnlyAccessWarning()
-      return
-    }
-
-    if (isExternalProvider) {
-      push(
-        datasetACLCapabilities.canRetrievalRecall
-          ? `/datasets/${dataset.id}/hitTesting`
-          : `/datasets/${dataset.id}/settings`,
-      )
-    } else if (isPipelineUnpublished) {
-      push(`/datasets/${dataset.id}/pipeline`)
-    } else {
-      push(`/datasets/${dataset.id}/documents`)
-    }
-  }
-
-  const handlePreviewOnlyCardKeyDown = (e: KeyboardEvent<HTMLElement>) => {
-    if (!isPreviewOnly || (e.key !== 'Enter' && e.key !== ' ')) return
-
-    e.preventDefault()
-    showPreviewOnlyAccessWarning()
-  }
+  const href = isExternalProvider
+    ? datasetACLCapabilities.canRetrievalRecall
+      ? `/datasets/${dataset.id}/hitTesting`
+      : `/datasets/${dataset.id}/settings`
+    : isPipelineUnpublished
+      ? `/datasets/${dataset.id}/pipeline`
+      : `/datasets/${dataset.id}/documents`
 
   const cardClassName = cn(
-    'group relative col-span-1 flex h-41.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-[background-color,box-shadow] duration-200 ease-in-out',
+    'group relative col-span-1 flex min-h-41.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-[background-color,box-shadow] duration-200 ease-in-out',
     isPreviewOnly
-      ? 'cursor-not-allowed opacity-60 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
-      : 'cursor-pointer hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5',
+      ? 'opacity-60'
+      : 'hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 hover:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)]',
   )
+  const content = (
+    <>
+      <DatasetCardHeader dataset={dataset} nameId={nameId} />
+      <Description dataset={dataset} />
+    </>
+  )
+  const entryClassName =
+    'block rounded-t-xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset focus-visible:outline-hidden'
 
   return (
     <>
       <div
-        role={isPreviewOnly ? 'button' : undefined}
-        tabIndex={isPreviewOnly ? 0 : undefined}
-        aria-label={isPreviewOnly ? dataset.name : undefined}
         className={cardClassName}
         data-disable-nprogress={true}
         data-step-by-step-tour-target={stepByStepTourCardTarget}
-        onClick={handleCardClick}
-        onKeyDown={handlePreviewOnlyCardKeyDown}
       >
         <CornerLabels dataset={dataset} />
-        <DatasetCardHeader dataset={dataset} />
-        <Description dataset={dataset} />
+        {isPreviewOnly ? (
+          <button
+            type="button"
+            aria-labelledby={nameId}
+            className={cn(entryClassName, 'w-full cursor-not-allowed text-left')}
+            onClick={showPreviewOnlyAccessWarning}
+          >
+            {content}
+          </button>
+        ) : (
+          <Link href={href} aria-labelledby={nameId} className={entryClassName}>
+            {content}
+          </Link>
+        )}
         <DatasetCardTags
           datasetId={dataset.id}
           embeddingAvailable={dataset.embedding_available}

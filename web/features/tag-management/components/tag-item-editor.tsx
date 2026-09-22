@@ -9,13 +9,13 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 
 type TagItemEditorProps = {
   tag: Tag
@@ -102,7 +102,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
                   {tag.binding_count}
                 </div>
               </TooltipTrigger>
-              <TooltipContent>{t(($) => $['common.tagBound'], { ns: 'workflow' })}</TooltipContent>
+              <TooltipContent>{t(($) => $['tag.boundItems'], { ns: 'common' })}</TooltipContent>
             </Tooltip>
             <button
               type="button"

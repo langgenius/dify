@@ -46,10 +46,7 @@ const ImageUploader = () => {
               </span>
             )}
           </TooltipTrigger>
-          <TooltipContent
-            sideOffset={4}
-            className="rounded-lg p-1.5 system-xs-medium text-text-secondary"
-          >
+          <TooltipContent sideOffset={4}>
             {t(($) => $['imageUploader.tooltip'], {
               ns: 'datasetHitTesting',
               size: fileUploadConfig.imageFileSizeLimit,

@@ -4,7 +4,6 @@ import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowOnlineUser } from '@/models/app'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId, useMemo } from 'react'
@@ -12,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -80,9 +80,9 @@ export const AppCard = memo(
 
       const timeText = formatTime({
         date: timestamp * 1000,
-        dateFormat: `${t(($) => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
+        dateFormat: `${t(($) => $['dateFormats.compact'], { ns: 'time' })}`,
       })
-      return `${t(($) => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
+      return `${t(($) => $.editedAt, { ns: 'common' })} ${timeText}`
     }, [app.updated_at, app.created_at, t])
 
     const appModeLabel = useMemo(() => {
@@ -187,9 +187,9 @@ export const AppCard = memo(
     return (
       <li
         className={cn(
-          "group relative isolate col-span-1 h-41.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
+          "group relative isolate col-span-1 h-41.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
           !isPreviewOnly &&
-            'hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 [@media(hover:none)]:bg-components-card-bg-alt',
+            'hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 hover:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-data-popup-open:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] [@media(hover:none)]:bg-components-card-bg-alt [@media(hover:none)]:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)]',
         )}
       >
         {isPreviewOnly ? (

@@ -2,8 +2,9 @@
 import type { RefObject } from 'react'
 import type { FileUploadConfig } from '../hooks/use-file-upload'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 
 export type UploadDropzoneProps = {
   dropRef: RefObject<HTMLDivElement | null>
@@ -31,7 +32,7 @@ const UploadDropzone = ({
   onFileChange,
 }: UploadDropzoneProps) => {
   const { t } = useTranslation()
-  const enableBilling = useProviderContextSelector((state) => state.enableBilling)
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
 
   return (
     <>
@@ -69,7 +70,7 @@ const UploadDropzone = ({
           </span>
         </div>
         <div>
-          {enableBilling
+          {deploymentEdition === 'CLOUD'
             ? t(($) => $['stepOne.uploader.tipWithTotalLimit'], {
                 ns: 'datasetCreation',
                 size: fileUploadConfig.file_size_limit,

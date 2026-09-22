@@ -7,24 +7,39 @@ type NotionIconProps = {
   type?: IconTypes
   name?: string | null
   className?: string
+  decorative?: boolean
   src?: string | null | DataSourceNotionPage['page_icon']
 }
-const NotionIcon = ({ type = 'workspace', src, name, className }: NotionIconProps) => {
+const NotionIcon = ({
+  type = 'workspace',
+  src,
+  name,
+  className,
+  decorative = false,
+}: NotionIconProps) => {
   if (type === 'workspace') {
     if (typeof src === 'string') {
       if (src.startsWith('https://') || src.startsWith('http://')) {
         return (
           <img
-            alt="workspace icon"
+            alt={decorative ? '' : 'workspace icon'}
             src={src}
             className={cn('block size-5 object-cover', className)}
           />
         )
       }
-      return <div className={cn('flex size-5 items-center justify-center', className)}>{src}</div>
+      return (
+        <div
+          aria-hidden={decorative || undefined}
+          className={cn('flex size-5 items-center justify-center', className)}
+        >
+          {src}
+        </div>
+      )
     }
     return (
       <div
+        aria-hidden={decorative || undefined}
         className={cn(
           'flex size-5 items-center justify-center rounded-sm bg-gray-200 text-xs font-medium text-gray-500',
           className,
@@ -39,18 +54,28 @@ const NotionIcon = ({ type = 'workspace', src, name, className }: NotionIconProp
     if (src?.type === 'url') {
       return (
         <img
-          alt="page icon"
+          alt={decorative ? '' : 'page icon'}
           src={src.url || ''}
           className={cn('block size-5 object-cover', className)}
         />
       )
     }
     return (
-      <div className={cn('flex size-5 items-center justify-center', className)}>{src?.emoji}</div>
+      <div
+        aria-hidden={decorative || undefined}
+        className={cn('flex size-5 items-center justify-center', className)}
+      >
+        {src?.emoji}
+      </div>
     )
   }
 
-  return <RiFileTextLine className={cn('size-5 text-text-tertiary', className)} />
+  return (
+    <RiFileTextLine
+      aria-hidden={decorative || undefined}
+      className={cn('size-5 text-text-tertiary', className)}
+    />
+  )
 }
 
 export default NotionIcon

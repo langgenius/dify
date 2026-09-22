@@ -25,8 +25,8 @@ import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_API_PREFIX } from '@/config'
-import { renderI18nObject } from '@/i18n-config/index'
-import { marketplaceQuery } from '@/service/client'
+import { renderI18nObject } from '@/i18n/metadata'
+import { marketplaceQuery } from '@/service/marketplace'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
 import {
   getPluginDetailLinkInMarketplace,

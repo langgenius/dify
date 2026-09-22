@@ -1,11 +1,11 @@
 import type { Snippet as SnippetContract } from '@/types/snippet'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 

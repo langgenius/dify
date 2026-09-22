@@ -150,7 +150,7 @@ const AppInfoModals = ({
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
               <Field name="confirm-app-name" className="mt-2 gap-0">
-                <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
+                <FieldLabel className="system-sm-regular">
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"

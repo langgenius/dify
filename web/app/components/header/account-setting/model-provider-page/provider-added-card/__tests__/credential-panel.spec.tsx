@@ -29,7 +29,7 @@ const {
   mockChangePriorityFn: vi.fn().mockResolvedValue({ result: 'success' }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: { notify: mockToastNotify },
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
@@ -39,8 +39,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const mockedModelProviders = {
     byProvider: {
       models: {

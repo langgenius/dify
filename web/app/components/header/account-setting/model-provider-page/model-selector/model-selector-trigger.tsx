@@ -1,10 +1,11 @@
 import type { ModelSelectorModel, ModelSelectorProvider, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   DERIVED_MODEL_STATUS_BADGE_I18N,
   DERIVED_MODEL_STATUS_TOOLTIP_I18N,
@@ -18,7 +19,10 @@ type ModelSelectorTriggerProps = {
   currentProvider?: ModelSelectorProvider
   currentModel?: ModelSelectorModel
   defaultModel?: ModelSelectorValue
+  onClear?: () => void
+  clearLabel?: string
   disabled?: boolean
+  loading?: boolean
   size?: 'small' | 'medium'
   surface?: 'default' | 'workflow'
   shape?: 'standalone' | 'split'
@@ -32,7 +36,10 @@ function ModelSelectorTrigger({
   currentProvider,
   currentModel,
   defaultModel,
+  onClear,
+  clearLabel,
   disabled,
+  loading = false,
   size = 'medium',
   surface = 'default',
   shape = 'standalone',
@@ -43,68 +50,72 @@ function ModelSelectorTrigger({
 }: ModelSelectorTriggerProps) {
   const { t } = useTranslation()
 
+  const showClear = !!defaultModel && !!onClear
   const isSelected = !!currentProvider && !!currentModel
   const isDeprecated = !isSelected && !!defaultModel
   const isEmpty = !isSelected && !defaultModel
   const providerId = isSelected ? currentProvider.provider : defaultModel?.provider
-  const { data: resolvedProvider } = useQuery({
+  const { data: providerSummary } = useQuery({
     ...consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
     enabled: !!providerId,
-    select: ({ data }) => data.find((provider) => provider.provider === providerId),
   })
+  const resolvedProvider = providerSummary?.data.find(
+    (provider) => provider.provider === providerId,
+  )
+  const isStatusUnavailable = loading || (!!providerId && providerSummary === undefined)
+  const isDisabled = disabled || loading
   const credentialPanel = useCredentialPanelInfo(resolvedProvider)
 
-  const status = deriveModelStatus(
-    isSelected ? currentModel?.model : defaultModel?.model,
-    isSelected ? currentProvider?.provider : defaultModel?.provider,
-    resolvedProvider,
-    currentModel,
-    credentialPanel,
-  )
+  const status = isStatusUnavailable
+    ? undefined
+    : deriveModelStatus(
+        isSelected ? currentModel?.model : defaultModel?.model,
+        isSelected ? currentProvider?.provider : defaultModel?.provider,
+        resolvedProvider,
+        currentModel,
+        credentialPanel,
+      )
 
   const isActive = status === 'active'
   const statusI18nKey =
     DERIVED_MODEL_STATUS_BADGE_I18N[status as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
   const tooltipI18nKey =
     DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
-  const statusLabel =
-    isModelCompatible && statusI18nKey
+  const statusLabel = !isModelCompatible
+    ? t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
+    : statusI18nKey
       ? t(($) => $[statusI18nKey], { ns: 'common' })
-      : t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
-  const tooltipLabel =
-    isModelCompatible && tooltipI18nKey
+      : undefined
+  const tooltipLabel = !isModelCompatible
+    ? t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
+    : tooltipI18nKey
       ? t(($) => $[tooltipI18nKey], { ns: 'common' })
-      : t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
+      : statusLabel
   const isCreditsExhausted = status === 'credits-exhausted'
   const shouldShowModelMeta = showModelMeta && status === 'active' && isModelCompatible
-  const deprecatedStatusLabel =
-    statusLabel || t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
-  const deprecatedTooltipLabel =
-    tooltipLabel || t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
   const triggerTooltipLabel =
-    isDeprecated && showDeprecatedWarnIcon
-      ? deprecatedTooltipLabel
-      : isSelected && ((!isActive && statusI18nKey) || !isModelCompatible)
+    isDeprecated && !isStatusUnavailable && showDeprecatedWarnIcon
+      ? tooltipLabel
+      : isSelected && !isStatusUnavailable && ((!isActive && statusI18nKey) || !isModelCompatible)
         ? tooltipLabel
         : undefined
 
-  return (
+  const trigger = (
     <Tooltip>
       <TooltipTrigger
-        disabled={!triggerTooltipLabel || disabled}
+        disabled={!triggerTooltipLabel || isDisabled}
         render={
           <PopoverTrigger
-            disabled={disabled}
+            disabled={isDisabled}
             render={
               <button
                 type="button"
-                aria-label={t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
-                data-deprecated={isDeprecated ? '' : undefined}
+                data-deprecated={isDeprecated && !isStatusUnavailable ? '' : undefined}
                 data-model-status={status}
                 data-shape={shape}
                 data-size={size}
                 data-surface={surface}
-                disabled={disabled}
+                disabled={isDisabled}
                 className={cn(
                   'group/model-selector-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden transition-colors',
                   'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt',
@@ -121,7 +132,13 @@ function ModelSelectorTrigger({
               />
             }
           >
-            <span className="flex min-w-0 grow items-center gap-0.5">
+            <span
+              className={cn(
+                'flex min-w-0 grow items-center gap-0.5',
+                showClear &&
+                  'group-focus-within/model-selector-clearable:mr-6 group-hover/model-selector-clearable:mr-6',
+              )}
+            >
               {isEmpty ? (
                 <span
                   className={cn(
@@ -154,13 +171,21 @@ function ModelSelectorTrigger({
                   <ModelName
                     className="grow"
                     modelItem={currentModel}
-                    nameClassName={currentModel?.deprecated ? 'line-through' : undefined}
+                    nameClassName={
+                      currentModel?.deprecated && !isStatusUnavailable ? 'line-through' : undefined
+                    }
                     showMode={shouldShowModelMeta}
                     showFeatures={shouldShowModelMeta}
                   />
                 )}
                 {isDeprecated && (
-                  <span className="grow truncate system-sm-regular text-components-input-text-filled line-through">
+                  <span
+                    className={cn(
+                      'grow truncate system-sm-regular text-components-input-text-filled',
+                      !isStatusUnavailable && 'line-through',
+                    )}
+                    title={defaultModel.model}
+                  >
                     {defaultModel.model}
                   </span>
                 )}
@@ -171,11 +196,14 @@ function ModelSelectorTrigger({
                 )}
 
                 {isSelected &&
-                  !disabled &&
+                  !isDisabled &&
+                  !isStatusUnavailable &&
                   ((!isActive && statusI18nKey) || !isModelCompatible) && (
                     <span
                       className={cn(
                         'flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning px-1.25 py-0.5',
+                        showClear &&
+                          'group-focus-within/model-selector-clearable:hidden group-focus-within/model-selector-trigger:hidden group-hover/model-selector-clearable:hidden group-hover/model-selector-trigger:hidden',
                         isCreditsExhausted && 'min-w-5 justify-center bg-components-badge-bg-dimm',
                       )}
                     >
@@ -186,17 +214,23 @@ function ModelSelectorTrigger({
                     </span>
                   )}
 
-                {isDeprecated && showDeprecatedWarnIcon && (
-                  <span className="flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning bg-components-badge-bg-dimm px-1.25 py-0.5">
+                {isDeprecated && !isStatusUnavailable && showDeprecatedWarnIcon && (
+                  <span
+                    className={cn(
+                      'flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning bg-components-badge-bg-dimm px-1.25 py-0.5',
+                      showClear &&
+                        'group-focus-within/model-selector-clearable:hidden group-focus-within/model-selector-trigger:hidden group-hover/model-selector-clearable:hidden group-hover/model-selector-trigger:hidden',
+                    )}
+                  >
                     <span aria-hidden className="i-ri-alert-fill size-3 text-text-warning" />
                     <span className="system-xs-medium whitespace-nowrap text-text-warning">
-                      {deprecatedStatusLabel}
+                      {statusLabel}
                     </span>
                   </span>
                 )}
               </span>
             </span>
-            {!disabled && shape !== 'split' && (isActive || isEmpty) && (
+            {!isDisabled && shape !== 'split' && (
               <span
                 aria-hidden="true"
                 className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary transition-colors group-hover/model-selector-trigger:text-text-secondary group-data-popup-open/model-selector-trigger:text-text-secondary"
@@ -209,6 +243,32 @@ function ModelSelectorTrigger({
         <TooltipContent placement="top">{triggerTooltipLabel}</TooltipContent>
       )}
     </Tooltip>
+  )
+
+  if (!showClear) return trigger
+
+  return (
+    <div
+      className={cn(
+        'group/model-selector-clearable relative min-w-0',
+        shape === 'split' ? 'flex-1' : 'w-full',
+      )}
+    >
+      {trigger}
+      <IconButton
+        aria-label={clearLabel ?? t(($) => $['operation.reset'], { ns: 'common' })}
+        size="sm"
+        disabled={isDisabled}
+        onClick={onClear}
+        className={cn(
+          'pointer-events-none absolute top-1/2 -translate-y-1/2 opacity-0 group-focus-within/model-selector-clearable:pointer-events-auto group-focus-within/model-selector-clearable:opacity-100 group-hover/model-selector-clearable:pointer-events-auto group-hover/model-selector-clearable:opacity-100',
+          'text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset',
+          shape === 'split' ? 'right-1' : size === 'small' ? 'right-4.5' : 'right-5',
+        )}
+      >
+        <span aria-hidden="true" className="i-ri-close-circle-fill size-4" />
+      </IconButton>
+    </div>
   )
 }
 

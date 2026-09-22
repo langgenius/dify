@@ -2,11 +2,11 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import {
   fetchMarketplaceTemplateDSL,

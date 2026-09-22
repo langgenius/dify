@@ -6,12 +6,12 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import {
@@ -20,7 +20,7 @@ import {
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
 import { fetchAppDetail, updateAppInfo } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 

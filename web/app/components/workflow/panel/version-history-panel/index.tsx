@@ -2,18 +2,20 @@
 
 import type { AppModeEnum } from '@/types/app'
 import type { VersionHistory } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
-import Divider from '@/app/components/base/divider'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
-import { useProviderContext } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import {
   useDeleteWorkflow,
   useInvalidAllLastRun,
@@ -68,8 +70,14 @@ export const VersionHistoryPanel = ({
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
-  const { plan, enableBilling } = useProviderContext()
-  const canUseWorkflowVersionAction = !enableBilling || plan.type !== 'sandbox'
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
   const workflowStore = useWorkflowStore()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
@@ -152,7 +160,8 @@ export const VersionHistoryPanel = ({
       setOperatedItem(item)
       switch (operation) {
         case VersionHistoryContextMenuOptions.restore:
-          if (!canUseWorkflowVersionAction) {
+          if (isPlanUnavailable) return
+          if (deploymentEdition === 'CLOUD' && plan === 'sandbox') {
             setIsRestorePlanUpgradeModalOpen(true)
             break
           }
@@ -169,7 +178,8 @@ export const VersionHistoryPanel = ({
           toast.success(t(($) => $['versionHistory.action.copyIdSuccess'], { ns: 'workflow' }))
           break
         case VersionHistoryContextMenuOptions.exportDSL:
-          if (!canUseWorkflowVersionAction) {
+          if (isPlanUnavailable) return
+          if (deploymentEdition === 'CLOUD' && plan === 'sandbox') {
             setIsRestorePlanUpgradeModalOpen(true)
             break
           }
@@ -178,7 +188,7 @@ export const VersionHistoryPanel = ({
           break
       }
     },
-    [canUseWorkflowVersionAction, canImportExportDSL, t, handleExportDSL],
+    [isPlanUnavailable, deploymentEdition, plan, canImportExportDSL, t, handleExportDSL],
   )
 
   const handleCancel = useCallback((operation: VersionHistoryContextMenuOptions) => {
@@ -376,7 +386,7 @@ export const VersionHistoryPanel = ({
           onClickFilterItem={handleClickFilterItem}
           handleSwitch={handleSwitch}
         />
-        <Divider type="vertical" className="mx-1 h-3.5" />
+        <Separator decorative orientation="vertical" className="mx-1 h-3.5" />
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}

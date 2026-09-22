@@ -7,6 +7,7 @@ import {
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectLabel,
   SelectList,
   SelectPopup,
   SelectPortal,
@@ -24,6 +25,8 @@ export type Item = {
 }
 
 type Props = Readonly<{
+  label: string
+  labelClassName?: string
   value: string | number
   onSelect: (value: Item) => void
   items: Item[]
@@ -32,7 +35,15 @@ type Props = Readonly<{
   readonly?: boolean
   hideChecked?: boolean
 }>
-const TypeSelector: FC<Props> = ({ value, onSelect, items, popupInnerClassName, readonly }) => {
+const TypeSelector: FC<Props> = ({
+  value,
+  onSelect,
+  items,
+  popupInnerClassName,
+  readonly,
+  label,
+  labelClassName = 'system-sm-semibold leading-8!',
+}) => {
   const selectedItem = value ? items.find((item) => item.value === value) : undefined
 
   return (
@@ -44,6 +55,9 @@ const TypeSelector: FC<Props> = ({ value, onSelect, items, popupInnerClassName, 
         if (selected) onSelect(selected)
       }}
     >
+      <SelectLabel className={cn('block w-full py-0 text-text-secondary', labelClassName)}>
+        {label}
+      </SelectLabel>
       <SelectTrigger
         className={cn(
           'h-9 rounded-lg px-2 text-sm',

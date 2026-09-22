@@ -25,7 +25,9 @@ const VectorSpaceFull: FC = () => {
           </div>
           <UpgradeBtn loc="knowledge-add-file" />
         </div>
-        <VectorSpaceInfo className="pt-4" />
+        <React.Suspense fallback={null}>
+          <VectorSpaceInfo className="pt-4" />
+        </React.Suspense>
       </div>
     </GridMask>
   )

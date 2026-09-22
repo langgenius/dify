@@ -7,7 +7,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import FeaturesTrigger from '../features-trigger'
 
@@ -28,7 +28,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),

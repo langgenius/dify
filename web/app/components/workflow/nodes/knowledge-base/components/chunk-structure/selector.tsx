@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { ChunkStructureEnum } from '../../types'
 import type { Option } from './type'
 import { Button } from '@langgenius/dify-ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import OptionCard from '../option-card'
@@ -12,7 +12,7 @@ type SelectorProps = {
   value?: ChunkStructureEnum
   onChange: (key: ChunkStructureEnum) => void
   readonly?: boolean
-  trigger?: ReactNode
+  trigger?: ReactElement
 }
 const Selector = ({ options, value, onChange, readonly, trigger }: SelectorProps) => {
   const { t } = useTranslation()
@@ -35,12 +35,15 @@ const Selector = ({ options, value, onChange, readonly, trigger }: SelectorProps
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
+      {/* Keep Space activation outside React Flow's document-level pan shortcut. */}
       {trigger ? (
-        <PopoverTrigger nativeButton={false} render={<div />}>
-          {trigger}
-        </PopoverTrigger>
+        <PopoverTrigger className="nokey" disabled={readonly} render={trigger} />
       ) : (
-        <PopoverTrigger render={<Button size="small" variant="ghost-accent" />}>
+        <PopoverTrigger
+          className="nokey"
+          disabled={readonly}
+          render={<Button size="small" variant="ghost-accent" />}
+        >
           {t(($) => $['panel.change'], { ns: 'workflow' })}
         </PopoverTrigger>
       )}
@@ -51,9 +54,9 @@ const Selector = ({ options, value, onChange, readonly, trigger }: SelectorProps
         className="border-none bg-transparent shadow-none"
       >
         <div className="w-101 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
-          <div className="px-3 pt-3.5 system-sm-semibold text-text-primary">
+          <PopoverTitle className="px-3 pt-3.5 system-sm-semibold text-text-primary">
             {t(($) => $['nodes.knowledgeBase.changeChunkStructure'], { ns: 'workflow' })}
-          </div>
+          </PopoverTitle>
           <div className="space-y-1 p-3 pt-2">
             {options.map((option) => (
               <OptionCard

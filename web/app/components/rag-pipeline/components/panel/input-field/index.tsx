@@ -3,11 +3,11 @@ import type { Node } from '@/app/components/workflow/types'
 import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiEyeLine } from '@remixicon/react'
 import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
@@ -114,7 +114,7 @@ const InputFieldPanel = () => {
           <RiEyeLine className="size-3.5" />
           <span>{t(($) => $['operations.preview'], { ns: 'datasetPipeline' })}</span>
         </Button>
-        <Divider type="vertical" className="mx-1 h-3" />
+        <Separator decorative orientation="vertical" className="mx-1 h-3" />
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}

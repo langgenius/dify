@@ -17,7 +17,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -31,7 +30,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
 import {
   agentComposerSkillsAtom,
   removeAgentSkillAtom,
@@ -44,7 +43,7 @@ import {
 } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -467,7 +466,11 @@ export function AgentSkills() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentConfigApiContext()
-  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
   const skills = useAtomValue(agentComposerSkillsAtom)
   const upsertAgentSkill = useSetAtom(upsertAgentSkillAtom)
   const removeAgentSkill = useSetAtom(removeAgentSkillAtom)
@@ -487,7 +490,7 @@ export function AgentSkills() {
     })
   const agentSkillBindingsQuery = useQuery({
     ...agentSkillBindingsQueryOptions,
-    enabled: enableSkill,
+    enabled: enableSkill === true,
   })
   const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =

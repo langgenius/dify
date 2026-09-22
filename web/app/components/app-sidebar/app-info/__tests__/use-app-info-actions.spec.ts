@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { useAppInfoActions } from '../use-app-info-actions'
@@ -66,7 +66,7 @@ vi.mock('@/app/components/app/use-export-app-dsl', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.api, {
     success: vi.fn((message, options) => toastMocks.call({ type: 'success', message, ...options })),
     error: vi.fn((message, options) => toastMocks.call({ type: 'error', message, ...options })),

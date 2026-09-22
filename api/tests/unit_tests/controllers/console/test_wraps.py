@@ -784,7 +784,7 @@ class TestBillingPaidPlanRequired:
         def paid_view():
             return "paid_success"
 
-        billing_info = {"enabled": True, "subscription": {"plan": plan}}
+        billing_info = {"subscription": {"plan": plan}}
         with (
             patch(
                 "controllers.console.wraps.current_account_with_tenant",
@@ -797,18 +797,15 @@ class TestBillingPaidPlanRequired:
         assert result == "paid_success"
         get_info.assert_called_once_with("tenant123", exclude_vector_space=True)
 
-    @pytest.mark.parametrize(
-        ("enabled", "plan"),
-        [(False, "professional"), (True, "sandbox"), (True, "unknown")],
-    )
-    def test_should_reject_non_paid_plan(self, enabled: bool, plan: str):
+    @pytest.mark.parametrize("plan", ["sandbox", "unknown"])
+    def test_should_reject_non_paid_plan(self, plan: str):
         app = create_app_with_login()
 
         @cloud_edition_billing_paid_plan_required
         def paid_view():
             return "paid_success"
 
-        billing_info = {"enabled": enabled, "subscription": {"plan": plan}}
+        billing_info = {"subscription": {"plan": plan}}
         with app.test_request_context():
             with (
                 patch(
@@ -827,11 +824,11 @@ class TestBillingPaidPlanRequired:
 class TestBillingResourceLimits:
     """Test billing resource limit decorators"""
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_should_allow_when_under_resource_limit(self):
         """Test that requests are allowed when under resource limits"""
         # Arrange
         mock_features = MagicMock()
-        mock_features.billing.enabled = True
         mock_features.members.limit = 10
         mock_features.members.size = 5
 
@@ -881,12 +878,12 @@ class TestBillingResourceLimits:
         get_vector_space.assert_called_once_with("tenant123")
         get_features.assert_not_called()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_should_reject_when_over_resource_limit(self):
         """Test that requests are rejected when over resource limits"""
         # Arrange
         app = create_app_with_login()
         mock_features = MagicMock()
-        mock_features.billing.enabled = True
         mock_features.members.limit = 10
         mock_features.members.size = 10
 
@@ -906,12 +903,12 @@ class TestBillingResourceLimits:
                     assert exc_info.value.code == 403
                     assert "members has reached the limit" in str(exc_info.value.description)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_should_check_source_for_documents_limit(self):
         """Test document limit checks request source"""
         # Arrange
         app = create_app_with_login()
         mock_features = MagicMock()
-        mock_features.billing.enabled = True
         mock_features.documents_upload_quota.limit = 100
         mock_features.documents_upload_quota.size = 100
 

@@ -183,7 +183,7 @@ export const WithDelay: Story = {
     docs: {
       description: {
         story:
-          '`TooltipProvider` controls hover `delay` (and `closeDelay`) for the tooltips nested inside it. Adjacent tooltips under the same provider open instantly after the first has been shown. The Dify app root sets `delay={300} closeDelay={200}` — override locally only when the surrounding UX demands it.',
+          '`TooltipProvider` shares hover `delay` and `closeDelay` settings among nested tooltips. This example uses a separate provider for each delay preset. See the [Base UI Provider reference](https://base-ui.com/react/components/tooltip#provider) for timing and grouping behavior.',
       },
     },
   },

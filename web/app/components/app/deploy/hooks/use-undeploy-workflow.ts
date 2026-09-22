@@ -1,11 +1,11 @@
 'use client'
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 
 export function useUndeployWorkflow(appId: string) {
   const { t } = useTranslation('deployments')

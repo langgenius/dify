@@ -53,6 +53,9 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
+    node_execution_response_source,
+    workflow_run_pagination_response_source,
+    workflow_run_response_source,
 )
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
@@ -198,12 +201,12 @@ class DraftRagPipelineApi(Resource):
     @get_rag_pipeline
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
-    def get(self, pipeline: Pipeline):
+    @with_session(write=False)
+    def get(self, session: Session, pipeline: Pipeline):
         """
         Get draft rag pipeline's workflow
         """
         # fetch draft workflow by app_model
-        session = db.session()
         rag_pipeline_service = RagPipelineService(session)
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
 
@@ -506,7 +509,7 @@ class RagPipelineDraftNodeRunApi(Resource):
             raise ValueError("Workflow node execution not found")
 
         return WorkflowRunNodeExecutionResponse.model_validate(
-            workflow_node_execution, from_attributes=True
+            node_execution_response_source(workflow_node_execution, session=db.session()), from_attributes=True
         ).model_dump(mode="json")
 
 
@@ -912,7 +915,8 @@ class RagPipelineWorkflowRunListApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def get(self, pipeline: Pipeline):
+    @with_session(write=False)
+    def get(self, session: Session, pipeline: Pipeline):
         """
         Get workflow run list
         """
@@ -927,10 +931,12 @@ class RagPipelineWorkflowRunListApi(Resource):
             "limit": query.limit,
         }
 
-        rag_pipeline_service = RagPipelineService(db.session())
+        rag_pipeline_service = RagPipelineService(session)
         result = rag_pipeline_service.get_rag_pipeline_paginate_workflow_runs(pipeline=pipeline, args=args)
 
-        return WorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunPaginationResponse.model_validate(
+            workflow_run_pagination_response_source(result, session=session), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>")
@@ -944,18 +950,21 @@ class RagPipelineWorkflowRunDetailApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def get(self, pipeline: Pipeline, run_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, pipeline: Pipeline, run_id: UUID):
         """
         Get workflow run detail
         """
         run_id_str = str(run_id)
 
-        rag_pipeline_service = RagPipelineService(db.session())
+        rag_pipeline_service = RagPipelineService(session)
         workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=run_id_str)
         if workflow_run is None:
             raise NotFound("Workflow run not found")
 
-        return WorkflowRunDetailResponse.model_validate(workflow_run, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunDetailResponse.model_validate(
+            workflow_run_response_source(workflow_run, session=session), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>/node-executions")
@@ -1023,7 +1032,9 @@ class RagPipelineWorkflowLastRunApi(Resource):
         )
         if node_exec is None:
             raise NotFound("last run not found")
-        return WorkflowRunNodeExecutionResponse.model_validate(node_exec, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunNodeExecutionResponse.model_validate(
+            node_execution_response_source(node_exec, session=db.session()), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/transform/datasets/<uuid:dataset_id>")
@@ -1085,7 +1096,7 @@ class RagPipelineDatasourceVariableApi(Resource):
             current_user=current_user,
         )
         return WorkflowRunNodeExecutionResponse.model_validate(
-            workflow_node_execution, from_attributes=True
+            node_execution_response_source(workflow_node_execution, session=db.session()), from_attributes=True
         ).model_dump(mode="json")
 
 

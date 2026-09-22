@@ -19,7 +19,8 @@ import {
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'
-import { consoleQuery } from '@/service/client'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -119,7 +120,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const { t } = useTranslation()
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const inputsRef = useRef(inputs)
-  const promptOutputNamesRef = useRef(extractAgentOutputNames(inputs.agent_task || ''))
+  const promptOutputNamesRef = useRefWithInit(extractAgentOutputNames, inputs.agent_task || '')
   const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
   const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] =
     useState(false)
@@ -208,7 +209,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   useEffect(() => {
     inputsRef.current = inputs
     promptOutputNamesRef.current = extractAgentOutputNames(inputs.agent_task || '')
-  }, [inputs])
+  }, [inputs, promptOutputNamesRef])
 
   useEffect(() => {
     if (!inputs._openInlineAgentPanel || !isInlineAgentReady) return
@@ -268,7 +269,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         setLocalDeclaredOutputs(getAgentV2DeclaredOutputs(newInputs))
       setInputs(newInputs)
     },
-    [setInputs],
+    [setInputs, promptOutputNamesRef],
   )
 
   const handleRosterChange = useCallback(
@@ -606,7 +607,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         },
       )
     },
-    [handleNodeDataUpdateWithSyncDraft, id],
+    [handleNodeDataUpdateWithSyncDraft, id, promptOutputNamesRef],
   )
 
   const handleEditTaskOutput = useCallback(
