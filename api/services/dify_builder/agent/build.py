@@ -11,6 +11,7 @@ import re
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from core.app.app_config.entities import ModelConfig
 from core.dify_builder.contract import ResourceOption
@@ -574,21 +575,40 @@ def build_nodes(
 
 # Hosts / tokens an LLM writes when it does not know the real endpoint. A Dify
 # template (``{{#node.var#}}``) is a real reference and is NOT a placeholder;
-# a bare ``{tenant}`` or ``<your-domain>`` is.
+# a bare ``{tenant}`` or ``<your-domain>`` is. ``localhost`` is deliberately NOT
+# here -- it names the *host*, not any substring, so it is checked separately
+# against the parsed hostname (see ``_is_localhost_host``): a real tunnel host
+# like ``abc123.localhost.run`` must not match just because "localhost" is a
+# substring of it.
 _PLACEHOLDER_URL_RE = re.compile(
     r"(^|[./-])example\.(com|org|net)\b"  # api.example.com, example.org
     r"|your[-_]?(api|domain|server|host|company)"  # your-api.com
-    r"|placeholder|localhost"
+    r"|placeholder"
     r"|<[^>]+>"  # <your-domain>
     r"|(?<!\{)\{(?!\{)[^{}#]*\}(?!\})",  # {tenant}, but not {{#s.x#}}
     re.IGNORECASE,
 )
 
 
+def _is_localhost_host(url: str) -> bool:
+    """True when the URL's HOST -- not merely a substring of the URL -- is
+    ``localhost`` or a ``*.localhost`` name, ignoring any port. A hostname
+    like ``abc123.localhost.run`` is a real, routable tunnel domain (the
+    reserved ``.localhost`` TLD requires it to be the final label) and must
+    not match."""
+    try:
+        host = urlsplit(url).hostname
+    except ValueError:
+        return False
+    return host is not None and (host == "localhost" or host.endswith(".localhost"))
+
+
 def _is_placeholder_endpoint(url: str) -> bool:
     """True for a URL the model invented rather than one the user supplied."""
     text = (url or "").strip()
-    return not text or _PLACEHOLDER_URL_RE.search(text) is not None
+    if not text:
+        return True
+    return _PLACEHOLDER_URL_RE.search(text) is not None or _is_localhost_host(text)
 
 
 def _ground_placeholder_endpoints(intents: list[MutationIntent]) -> list[str]:
