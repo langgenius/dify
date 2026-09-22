@@ -63,7 +63,9 @@ export const VersionHistoryPanel = ({
   updateVersionUrl,
   latestVersionId,
 }: VersionHistoryPanelProps) => {
-  const [filterValue, setFilterValue] = useState(WorkflowVersionFilterOptions.all)
+  const [filterValue, setFilterValue] = useState<WorkflowVersionFilterOptions>(
+    WorkflowVersionFilterOptions.all,
+  )
   const [isOnlyShowNamedVersions, setIsOnlyShowNamedVersions] = useState(false)
   const [operatedItem, setOperatedItem] = useState<VersionHistory>()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)

@@ -6,8 +6,6 @@ import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine } from '@remixicon/react'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
@@ -75,7 +73,10 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
       </div>
       <div className="w-full max-w-120">
         <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
-          <ApiConnectionMod className="size-4 text-text-secondary" />
+          <span
+            aria-hidden
+            className="i-custom-vender-solid-development-api-connection-mod size-4 text-text-secondary"
+          />
           <div className="overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
             {currentDataset?.external_knowledge_info.external_knowledge_api_name}
           </div>
@@ -232,7 +233,10 @@ export const RetrievalChangeTip: FC<RetrievalChangeTipProps> = ({
   return (
     <div className="absolute right-7.5 bottom-19 left-7.5 z-10 flex h-10 items-center justify-between rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 shadow-lg">
       <div className="flex items-center">
-        <AlertTriangle className="mr-1 h-3 w-3 text-[#F79009]" />
+        <span
+          aria-hidden
+          className="mr-1 i-custom-vender-solid-alertsAndFeedback-alert-triangle h-3 w-3 text-[#F79009]"
+        />
         <div className="text-xs leading-4.5 font-medium text-gray-700">{message}</div>
       </div>
       <button

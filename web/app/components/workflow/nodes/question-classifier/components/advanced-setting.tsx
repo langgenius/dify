@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import MemoryConfig from '../../_base/components/memory-config'
 
@@ -50,12 +50,17 @@ const AdvancedSetting: FC<Props> = ({
             <span className="uppercase">
               {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflow' })}
             </span>
-            <Infotip
-              aria-label={t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
-              className="ml-0.5 size-3.5"
-              popupClassName="w-[120px]"
-            >
-              {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
+                className="ml-0.5 size-3.5"
+              />
+              <InfotipContent
+                aria-label={t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
+                className="w-30"
+              >
+                {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
+              </InfotipContent>
             </Infotip>
           </div>
         }

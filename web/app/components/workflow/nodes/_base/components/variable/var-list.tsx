@@ -11,7 +11,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { toast } from '@/app/notifications'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import RemoveButton from '../remove-button'
@@ -177,7 +177,7 @@ const VarList: FC<Props> = ({
               {canDrag && (
                 <IconButton
                   {...keyboardSort.getHandleProps(index)}
-                  className="handle pointer-events-none absolute top-1 -left-6 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                  className="handle pointer-events-none absolute top-1 -left-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
                 >
                   <span aria-hidden="true" className="i-ri-draggable size-3" />
                 </IconButton>

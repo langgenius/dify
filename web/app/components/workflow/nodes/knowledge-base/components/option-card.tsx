@@ -4,21 +4,26 @@ import { Toggle } from '@langgenius/dify-ui/toggle'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import {
-  OptionCardEffectBlue,
-  OptionCardEffectBlueLight,
-  OptionCardEffectOrange,
-  OptionCardEffectPurple,
-  OptionCardEffectTeal,
-} from '@/app/components/base/icons/src/public/knowledge'
-import { ArrowShape } from '@/app/components/base/icons/src/vender/knowledge'
 
 const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
-  blue: <OptionCardEffectBlue />,
-  'blue-light': <OptionCardEffectBlueLight />,
-  orange: <OptionCardEffectOrange />,
-  purple: <OptionCardEffectPurple />,
-  teal: <OptionCardEffectTeal />,
+  blue: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-blue h-31 w-53.5" />
+  ),
+  'blue-light': (
+    <span
+      aria-hidden
+      className="i-custom-public-knowledge-option-card-effect-blue-light h-18.5 w-53"
+    />
+  ),
+  orange: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-orange h-55 w-55" />
+  ),
+  purple: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-purple h-55 w-55" />
+  ),
+  teal: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-teal h-23 w-53" />
+  ),
 }
 type OptionCardProps<T> = {
   id?: T
@@ -153,7 +158,10 @@ const OptionCard = memo(
         </Header>
         {!!(children && isActive) && (
           <div className="relative rounded-b-xl bg-components-panel-bg p-3">
-            <ArrowShape className="absolute -top-2.75 left-3.5 h-4 w-4 text-components-panel-bg" />
+            <span
+              aria-hidden
+              className="absolute -top-2.75 left-3.5 i-custom-vender-knowledge-arrow-shape h-4 w-4 text-components-panel-bg"
+            />
             {children}
           </div>
         )}

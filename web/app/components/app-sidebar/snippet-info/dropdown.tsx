@@ -131,7 +131,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
           render={
             <IconButton
               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-              className="rounded-md data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+              className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
             >
               <span aria-hidden className="i-ri-more-fill size-4" />
             </IconButton>

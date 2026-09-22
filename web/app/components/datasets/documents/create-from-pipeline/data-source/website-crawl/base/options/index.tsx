@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import {
   useConfigurations,
   useInitialData,
@@ -81,8 +80,12 @@ const Options = ({ variables, step, runDisabled, onSubmit }: OptionsProps) => {
           <span className="system-sm-semibold-uppercase text-text-secondary">
             {t(($) => $[`${I18N_PREFIX}.options`], { ns: 'datasetCreation' })}
           </span>
-          <ArrowDownRoundFill
-            className={cn('size-4 shrink-0 text-text-quaternary', fold && '-rotate-90')}
+          <span
+            aria-hidden
+            className={cn(
+              'i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4',
+              cn('size-4 shrink-0 text-text-quaternary', fold && '-rotate-90'),
+            )}
           />
         </div>
         <Button

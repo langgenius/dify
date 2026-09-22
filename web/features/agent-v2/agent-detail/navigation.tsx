@@ -1,9 +1,7 @@
 'use client'
 
 import type { AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
-import type { ComponentProps } from 'react'
 import type { AgentDetailSectionKey } from './section'
-import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -20,7 +18,6 @@ import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
-import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
@@ -43,57 +40,40 @@ type AgentDetailSectionProps = {
 type AgentDetailNavItem = {
   labelKey: `agentDetail.sections.${AgentDetailSectionKey}`
   href: string
-  icon: NavIcon
-  activeIcon: NavIcon
+  icon: string
+  activeIcon: string
 }
-
-const createAgentNavIcon = (iconClassName: string) => {
-  function AgentNavIcon({ className }: ComponentProps<'svg'>) {
-    return <span aria-hidden className={cn(iconClassName, className)} />
-  }
-
-  return AgentNavIcon
-}
-
-const configureIcon = createAgentNavIcon('i-custom-vender-agent-v2-configure')
-const configureActiveIcon = createAgentNavIcon('i-custom-vender-agent-v2-configure-active')
-const accessPointIcon = createAgentNavIcon('i-custom-vender-agent-v2-access-point')
-const fileListLineIcon = createAgentNavIcon('i-ri-file-list-3-line')
-const fileListFillIcon = createAgentNavIcon('i-ri-file-list-3-fill')
-const dashboardLineIcon = createAgentNavIcon('i-ri-dashboard-2-line')
-const dashboardFillIcon = createAgentNavIcon('i-ri-dashboard-2-fill')
-const accessConfigIcon = createAgentNavIcon('i-ri-shield-user-line')
 
 const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   {
     labelKey: 'agentDetail.sections.configure',
     href: getAgentDetailPath(agentId, 'configure'),
-    icon: configureIcon,
-    activeIcon: configureActiveIcon,
+    icon: 'i-custom-vender-agent-v2-configure',
+    activeIcon: 'i-custom-vender-agent-v2-configure-active',
   },
   {
     labelKey: 'agentDetail.sections.access',
     href: getAgentDetailPath(agentId, 'access'),
-    icon: accessPointIcon,
-    activeIcon: accessPointIcon,
+    icon: 'i-custom-vender-agent-v2-access-point',
+    activeIcon: 'i-custom-vender-agent-v2-access-point',
   },
   {
     labelKey: 'agentDetail.sections.logs',
     href: getAgentDetailPath(agentId, 'logs'),
-    icon: fileListLineIcon,
-    activeIcon: fileListFillIcon,
+    icon: 'i-ri-file-list-3-line',
+    activeIcon: 'i-ri-file-list-3-fill',
   },
   {
     labelKey: 'agentDetail.sections.monitoring',
     href: getAgentDetailPath(agentId, 'monitoring'),
-    icon: dashboardLineIcon,
-    activeIcon: dashboardFillIcon,
+    icon: 'i-ri-dashboard-2-line',
+    activeIcon: 'i-ri-dashboard-2-fill',
   },
   {
     labelKey: 'agentDetail.sections.access-config',
     href: getAgentDetailPath(agentId, 'access-config'),
-    icon: accessConfigIcon,
-    activeIcon: accessConfigIcon,
+    icon: 'i-ri-shield-user-line',
+    activeIcon: 'i-ri-shield-user-line',
   },
 ]
 
@@ -108,7 +88,9 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
           <DetailSidebarToggleButton
             expand={expand}
             onToggle={onToggle}
-            icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+            icon={
+              <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+            }
           />
         )}
       </div>
@@ -173,7 +155,9 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
         <DetailSidebarToggleButton
           expand={expand}
           onToggle={onToggle}
-          icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+          icon={
+            <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+          }
         />
       )}
     </div>

@@ -3,8 +3,6 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
-import { Group } from '@/app/components/base/icons/src/vender/other'
 
 type Props = Readonly<{
   className: string
@@ -14,9 +12,12 @@ type Props = Readonly<{
 const NoDataPlaceholder: FC<Props> = ({ className, noPlugins }) => {
   const { t } = useTranslation()
   const icon = noPlugins ? (
-    <Group className="size-6 text-text-quaternary" />
+    <span aria-hidden className="i-custom-vender-other-group size-6 text-text-quaternary" />
   ) : (
-    <SearchMenu className="size-8 text-text-tertiary" />
+    <span
+      aria-hidden
+      className="i-custom-vender-line-general-search-menu size-8 text-text-tertiary"
+    />
   )
   const text = t(
     ($) => $[`autoUpdate.noPluginPlaceholder.${noPlugins ? 'noInstalled' : 'noFound'}`],

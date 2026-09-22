@@ -1,3 +1,4 @@
+import type { DatasourceProviderEntity } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -130,7 +131,6 @@ describe('PluginDetailPanel', () => {
     ['agent strategy', { agent_strategy: {} }, 'Agent strategies'],
     ['endpoint', { endpoint: {} }, 'Endpoints'],
     ['model', { model: {} }, 'Models'],
-    ['data source', { datasource: {} }, 'Data sources'],
   ] as const)('renders the %s section declared by the plugin', (_, declaration, section) => {
     render(
       <PluginDetailPanel
@@ -142,6 +142,38 @@ describe('PluginDetailPanel', () => {
 
     expect(screen.getByText(section)).toBeInTheDocument()
     expect(screen.getByText('Readme')).toBeInTheDocument()
+  })
+
+  it('renders the datasource section only for a present generated declaration', () => {
+    const datasource = {
+      provider_type: 'local_file',
+      identity: {
+        author: 'Dify',
+        name: 'file',
+        icon: 'file.svg',
+        label: { en_US: 'Local File' },
+        description: { en_US: 'Read local files' },
+        tags: [],
+      },
+      oauth_schema: null,
+    } satisfies DatasourceProviderEntity
+    const { rerender } = render(
+      <PluginDetailPanel
+        detail={createPluginDetail({ datasource })}
+        onUpdate={onUpdate}
+        onHide={onHide}
+      />,
+    )
+    expect(screen.getByText('Data sources')).toBeInTheDocument()
+
+    rerender(
+      <PluginDetailPanel
+        detail={createPluginDetail({ datasource: null })}
+        onUpdate={onUpdate}
+        onHide={onHide}
+      />,
+    )
+    expect(screen.queryByText('Data sources')).not.toBeInTheDocument()
   })
 
   it('renders subscription and event sections for trigger plugins', () => {

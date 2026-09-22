@@ -18,7 +18,6 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -136,7 +135,10 @@ const ConfigCredential: FC<Props> = ({
                             className="inline-flex items-center text-xs text-text-accent"
                           >
                             {t(($) => $.howToGet, { ns: 'tools' })}
-                            <LinkExternal02 className="ml-1 size-3" />
+                            <span
+                              aria-hidden
+                              className="ml-1 i-custom-vender-line-general-link-external-02 size-3"
+                            />
                           </a>
                         ) : null
                       }

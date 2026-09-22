@@ -21,6 +21,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { produce } from 'immer'
@@ -29,7 +30,6 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import { Infotip } from '@/app/components/base/infotip'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
@@ -88,8 +88,11 @@ type WorkflowToolDrawerFrameProps = {
 
 const InfoTooltip = ({ children }: { children: string }) => {
   return (
-    <Infotip aria-label={children} className="ml-1 size-3.5" popupClassName="w-[180px]">
-      {children}
+    <Infotip>
+      <InfotipTrigger aria-label={children} className="ml-1 size-3.5" />
+      <InfotipContent aria-label={children} className="w-45">
+        {children}
+      </InfotipContent>
     </Infotip>
   )
 }
@@ -182,33 +185,38 @@ const WorkflowToolOutputName = React.memo(
             </span>
           )}
           {hasReservedNameConflict || hasDuplicateNameConflict ? (
-            <Infotip
-              aria-label={issueLabel}
-              className="text-text-warning-secondary"
-              iconSize="small"
-              iconVariant="warning"
-              popupClassName={hasDuplicateNameConflict ? 'w-60' : 'w-45'}
-            >
-              <div className="space-y-2">
-                {hasReservedNameConflict ? <p>{reservedOutputDuplicateTip}</p> : null}
-                {hasDuplicateNameConflict ? (
-                  <div className="space-y-1.5">
-                    <p>{duplicateOutputTip}</p>
-                    {sources.length > 0 ? (
-                      <ul className="space-y-1">
-                        {sources.map((source) => {
-                          const sourceTitle = getSourceNodeDisplayName(source, sources)
-                          return (
-                            <li key={source.nodeId} className="wrap-break-word">
-                              {sourceNodeLabel}: <span translate="no">{sourceTitle}</span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+            <Infotip>
+              <InfotipTrigger
+                aria-label={issueLabel}
+                className="text-text-warning-secondary"
+                iconSize="small"
+                iconVariant="warning"
+              />
+              <InfotipContent
+                aria-label={issueLabel}
+                className={hasDuplicateNameConflict ? 'w-60' : 'w-45'}
+              >
+                <div className="space-y-2">
+                  {hasReservedNameConflict ? <p>{reservedOutputDuplicateTip}</p> : null}
+                  {hasDuplicateNameConflict ? (
+                    <div className="space-y-1.5">
+                      <p>{duplicateOutputTip}</p>
+                      {sources.length > 0 ? (
+                        <ul className="space-y-1">
+                          {sources.map((source) => {
+                            const sourceTitle = getSourceNodeDisplayName(source, sources)
+                            return (
+                              <li key={source.nodeId}>
+                                {sourceNodeLabel}: <span translate="no">{sourceTitle}</span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </InfotipContent>
             </Infotip>
           ) : null}
         </div>

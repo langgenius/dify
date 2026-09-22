@@ -7,11 +7,11 @@ import type {
 } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiAlertFill, RiSearchEyeLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
@@ -189,11 +189,16 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     onSelect={onDocLanguageChange}
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
-                  <Infotip
-                    aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
-                    className="size-3.5"
-                  >
-                    {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
+                      className="size-3.5"
+                    />
+                    <InfotipContent
+                      aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
+                    >
+                      {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
+                    </InfotipContent>
                   </Infotip>
                 </div>
                 {currentDocForm === ChunkingMode.qa && (

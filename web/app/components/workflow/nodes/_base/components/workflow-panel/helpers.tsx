@@ -1,3 +1,4 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { ReactNode } from 'react'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
@@ -63,7 +64,7 @@ export const getCurrentToolCollection = (
 
 export const getCurrentDataSource = (
   data: Node['data'],
-  dataSourceList: Array<{ plugin_id?: string; is_authorized?: boolean }> | undefined,
+  dataSourceList: RagPipelineDatasourceProviderResponse[] | undefined,
 ) => {
   if (
     data.type !== BlockEnum.DataSource ||

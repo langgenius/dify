@@ -8,6 +8,7 @@ import type {
   CrawlOptions,
   CrawlResultItem,
   CustomFile,
+  DataSet,
   FileIndexingEstimateResponse,
   FullDocumentDetail,
   PreProcessingRule,
@@ -57,7 +58,15 @@ vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
   return { ...actual, default: vi.fn(() => actual.MediaType.pc) }
 })
 
-const mockDataset = {
+const mockDataset: Pick<
+  DataSet,
+  | 'id'
+  | 'doc_form'
+  | 'data_source_type'
+  | 'embedding_model'
+  | 'embedding_model_provider'
+  | 'retrieval_model_dict'
+> = {
   id: 'test-dataset-id',
   doc_form: ChunkingMode.text,
   data_source_type: DataSourceType.FILE,

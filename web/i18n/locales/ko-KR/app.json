@@ -200,7 +200,6 @@
   "openInExplore": "왼쪽 Web App 열기",
   "publishApp.notSet": "설정되지 않음",
   "removeOriginal": "원본 앱 제거하기",
-  "structOutput.LLMResponse": "LLM 응답",
   "structOutput.configure": "설정",
   "structOutput.modelNotSupported": "모델이 지원되지 않습니다.",
   "structOutput.modelNotSupportedTip": "현재 모델은 이 기능을 지원하지 않으며 자동으로 프롬프트 주입으로 다운그레이드됩니다.",

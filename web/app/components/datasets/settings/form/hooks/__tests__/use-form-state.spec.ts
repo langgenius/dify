@@ -7,6 +7,7 @@ import {
   ChunkingMode,
   DatasetPermission,
   DataSourceType,
+  RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
@@ -178,7 +179,8 @@ vi.mock('@/service/use-common', () => ({
   }),
 }))
 
-vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
+vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()),
   isReRankModelSelected: () => true,
 }))
 
@@ -755,6 +757,126 @@ describe('useFormState', () => {
                 embedding_model_name: 'text-embedding-ada-002',
               }),
             }),
+          }),
+        }),
+      })
+    })
+
+    it('should send the configured score threshold when score_threshold_enabled is true', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setRetrievalConfig({
+          ...result.current.retrievalConfig,
+          score_threshold_enabled: true,
+          score_threshold: 0.62,
+        })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            score_threshold_enabled: true,
+            score_threshold: 0.62,
+          }),
+        }),
+      })
+    })
+  })
+
+  describe('Hybrid Search reranking_enable derivation', () => {
+    const hybridConfigWithRerankModel = (
+      base: RetrievalConfig,
+      rerankingEnable: boolean,
+    ): RetrievalConfig => ({
+      ...base,
+      search_method: RETRIEVE_METHOD.hybrid,
+      reranking_enable: rerankingEnable,
+      reranking_mode: RerankingModeEnum.RerankingModel,
+      reranking_model: {
+        reranking_provider_name: 'langgenius/xinference/xinference',
+        reranking_model_name: 'bge-reranker-v2-m3',
+      },
+    })
+
+    it('should persist reranking_enable=true when a rerank model is configured but the stale flag is false', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      // Reproduces the reported bug: Hybrid Search renders no rerank switch, so the flag keeps
+      // the stale `false` default even though a rerank model is selected.
+      act(() => {
+        result.current.setRetrievalConfig(
+          hybridConfigWithRerankModel(result.current.retrievalConfig, false),
+        )
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            search_method: RETRIEVE_METHOD.hybrid,
+            reranking_enable: true,
+          }),
+        }),
+      })
+    })
+
+    it('should leave reranking_enable untouched when Hybrid Search uses weighted score', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setRetrievalConfig({
+          ...hybridConfigWithRerankModel(result.current.retrievalConfig, false),
+          reranking_mode: RerankingModeEnum.WeightedScore,
+        })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            reranking_enable: false,
+          }),
+        }),
+      })
+    })
+
+    it('should leave reranking_enable untouched for semantic search', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setRetrievalConfig({
+          ...hybridConfigWithRerankModel(result.current.retrievalConfig, false),
+          search_method: RETRIEVE_METHOD.semantic,
+        })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            reranking_enable: false,
           }),
         }),
       })

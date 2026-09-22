@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
 import {
   ENABLE_WEBSITE_FIRECRAWL,
   ENABLE_WEBSITE_JINAREADER,
@@ -72,7 +71,10 @@ const NoData: FC<Props> = ({ onConfig, provider }) => {
         <div className="mt-2 mb-1 flex flex-col gap-y-1 pt-1 pb-3">
           <span className="system-md-semibold text-text-secondary">
             {currentProvider.title}
-            <Icon3Dots className="relative -top-2.5 -left-1.5 inline" />
+            <span
+              aria-hidden
+              className="relative -top-2.5 -left-1.5 i-custom-vender-line-others-icon-3-dots inline-block h-4 w-4 align-middle"
+            />
           </span>
           <div className="system-sm-regular text-text-tertiary">{currentProvider.description}</div>
         </div>

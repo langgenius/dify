@@ -2,7 +2,8 @@ import type { SelectorParam } from 'i18next'
 import type { ReactElement } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { Infotip } from '@/app/components/base/infotip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 
 type HeaderMetaProps = {
@@ -19,6 +20,7 @@ export type WorkflowTranslator = (
 ) => string
 
 export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: HeaderMetaProps) => {
+  const titleId = useId()
   return (
     <>
       {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
@@ -26,14 +28,18 @@ export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: H
           <span className="rounded-[5px] border border-text-warning px-1.25 py-0.75 system-2xs-medium-uppercase text-text-warning">
             {t(($) => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
           </span>
-          <Infotip
-            aria-label={t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
-            popupClassName="w-45"
-          >
-            <div className="font-semibold text-text-primary">
-              {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
-            </div>
-            {t(($) => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['nodes.iteration.parallelModeEnableTitle'], {
+                ns: 'workflow',
+              })}
+            />
+            <InfotipContent aria-labelledby={titleId} className="w-45">
+              <div id={titleId} className="font-semibold text-text-primary">
+                {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
+              </div>
+              {t(($) => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
+            </InfotipContent>
           </Infotip>
         </div>
       )}

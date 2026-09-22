@@ -29,7 +29,7 @@ export function HomeRecommendations({
         className="pb-0"
         forceVisible={forceShowLearnDify}
         onCreate={onCreate}
-        onTry={({ app }) => onTry(app)}
+        onTry={onTry}
         stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.home}
       />
     </>

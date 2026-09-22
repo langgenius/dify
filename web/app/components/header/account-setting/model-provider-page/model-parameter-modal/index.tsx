@@ -19,7 +19,6 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
@@ -288,7 +287,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             {debugWithMultipleModel
               ? t(($) => $.debugAsSingleModel, { ns: 'appDebug' })
               : t(($) => $.debugAsMultipleModel, { ns: 'appDebug' })}
-            <ArrowNarrowLeft aria-hidden className="size-3 rotate-180" />
+            <span
+              aria-hidden
+              className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180"
+            />
           </button>
         )}
       </PopoverContent>

@@ -3,13 +3,13 @@ import type { FC } from 'react'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { Field, FieldItem } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Infotip } from '@/app/components/base/infotip'
 import ParamItem from '@/app/components/base/param-item'
 import { Resolution, TransferMethod } from '@/types/app'
 
@@ -70,17 +70,20 @@ const ParamConfigContent: FC = () => {
             <FieldsetLegend className="m-0 py-0 text-[13px] leading-4.5 font-semibold text-text-secondary">
               {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
             </FieldsetLegend>
-            <Infotip
-              aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                ns: 'appDebug',
-              })}
-              popupClassName="w-[180px]"
-            >
-              {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })
-                .split('\n')
-                .map((item) => (
-                  <div key={item}>{item}</div>
-                ))}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
+                  ns: 'appDebug',
+                })}
+              />
+              <InfotipContent
+                aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
+                  ns: 'appDebug',
+                })}
+                className="w-45 whitespace-pre-wrap"
+              >
+                {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <div className="flex items-center gap-1">

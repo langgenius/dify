@@ -1,3 +1,4 @@
+import type { VariableAssignerNodeType } from '../../types'
 import { fireEvent, screen } from '@testing-library/react'
 import {
   createNode,
@@ -22,7 +23,7 @@ vi.mock('../../hooks', () => ({
   useGetAvailableVars: () => mockGetAvailableVars,
 }))
 
-const createData = () => ({
+const createData = (): VariableAssignerNodeType => ({
   title: 'Variable Assigner',
   desc: '',
   type: BlockEnum.VariableAssigner,

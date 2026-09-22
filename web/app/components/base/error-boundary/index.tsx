@@ -220,9 +220,9 @@ const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
 
   return (
     <ErrorBoundaryInner
+      key={errorBoundaryKey}
       {...props}
       copy={copy}
-      key={errorBoundaryKey}
       resetErrorBoundary={resetErrorBoundary}
       onResetKeysChange={onResetKeysChange}
     />

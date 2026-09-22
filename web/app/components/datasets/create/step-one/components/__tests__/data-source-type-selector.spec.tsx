@@ -55,7 +55,7 @@ describe('DataSourceTypeSelector', () => {
   it('changes source with the keyboard and exposes the selected option', async () => {
     const user = userEvent.setup()
     const Example = () => {
-      const [value, setValue] = useState(DataSourceType.FILE)
+      const [value, setValue] = useState<DataSourceType>(DataSourceType.FILE)
       return <DataSourceTypeSelector {...defaultProps} currentType={value} onChange={setValue} />
     }
     render(<Example />)

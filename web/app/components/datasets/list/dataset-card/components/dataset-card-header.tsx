@@ -5,7 +5,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { useKnowledge } from '@/hooks/use-knowledge'
-import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
+import { DOC_FORM_ICON_CLASS_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 
 const EXTERNAL_PROVIDER = 'external'
 const docModeInfoClassName =
@@ -94,9 +94,9 @@ const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
   )
 
   const chunkingModeIcon = dataset.doc_form
-    ? DOC_FORM_ICON_WITH_BG[dataset.doc_form]
+    ? DOC_FORM_ICON_CLASS_WITH_BG[dataset.doc_form]
     : React.Fragment
-  const Icon = isExternalProvider ? DOC_FORM_ICON_WITH_BG.external : chunkingModeIcon
+  const iconClassName = isExternalProvider ? DOC_FORM_ICON_CLASS_WITH_BG.external : chunkingModeIcon
 
   const iconInfo = useMemo(
     () =>
@@ -126,7 +126,7 @@ const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
         />
         {(isShowChunkingModeIcon || isExternalProvider) && (
           <div className="absolute -right-1 -bottom-1 z-5">
-            <Icon className="size-4" />
+            <span aria-hidden className={cn(iconClassName, 'size-4')} />
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   NumberField,
   NumberFieldControls,
@@ -19,7 +20,6 @@ import {
 } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 
 type Props = Readonly<{
   className?: string
@@ -76,8 +76,11 @@ const ParamItem: FC<Props> = ({
             {name}
           </span>
           {!noTooltip && tip && (
-            <Infotip aria-label={tip} popupClassName="w-[200px]">
-              {tip}
+            <Infotip>
+              <InfotipTrigger aria-label={tip} />
+              <InfotipContent aria-label={tip} className="w-50">
+                {tip}
+              </InfotipContent>
             </Infotip>
           )}
         </div>

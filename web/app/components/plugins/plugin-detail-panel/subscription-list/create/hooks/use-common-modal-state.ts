@@ -37,10 +37,12 @@ import {
 // Types
 // ============================================================================
 
-export enum ApiKeyStep {
-  Verify = 'verify',
-  Configuration = 'configuration',
-}
+export const ApiKeyStep = {
+  Verify: 'verify',
+  Configuration: 'configuration',
+} as const
+
+export type ApiKeyStep = (typeof ApiKeyStep)[keyof typeof ApiKeyStep]
 
 const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialType> = {
   [SupportedCreationMethods.APIKEY]: TriggerCredentialType.ApiKey,

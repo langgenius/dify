@@ -39,6 +39,7 @@ from repositories.account_oauth_repository import (
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
@@ -135,7 +136,12 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.app_audio_adapters import AppAudioRuntime
+from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_preview_details_adapters import AppPreviewDetailsRuntime
+from services.app_preview_details_service import AppPreviewDetails
+from services.app_preview_query_service import AppPreviewQueryService
 from services.app_site_service import AppSiteService
 from services.app_statistic_query import AppStatisticQuery
 from services.app_task_service import AppTaskControlService
@@ -163,6 +169,8 @@ from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.message_file_preview_service import MessageFilePreviewService
+from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
+from services.message_suggested_questions_service import MessageSuggestedQuestions
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
@@ -258,6 +266,8 @@ class ApplicationServices:
     accounts: AccountServices
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
+    app_preview_details: AppPreviewDetails
+    app_previews: AppPreviewQueryService
     app_sites: AppSiteService
     app_statistics: AppStatisticQuery
     app_tracing_configs: AppTracingConfigService
@@ -275,6 +285,7 @@ class ApplicationServices:
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
     message_file_previews: MessageFilePreviewService
+    message_suggested_questions: MessageSuggestedQuestions
     plugin_file_uploads: PluginFileUploadService
     tool_file_downloads: ToolFileDownloadService
     upload_file_delivery: UploadFileDeliveryService
@@ -287,6 +298,7 @@ class ApplicationServices:
     remote_files: RemoteFileService
     app_tasks: AppTaskControlService
     trial_app_access: TrialAppAccessService
+    app_audio: AppAudio
     trial_app_generation: TrialAppGenerationService
     trial_app_usage: TrialAppUsageRecorder
     workflow_run_archives: WorkflowRunArchiveService
@@ -430,6 +442,7 @@ def build_application_services(
     installation_state = InstallationStateRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
+    app_preview_repository = AppPreviewQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
     integrations = SQLAlchemyAccountIntegrationRepository(session_factory=database_client)
@@ -442,6 +455,11 @@ def build_application_services(
         remote=remote_catalog,
         database=database_catalog,
         builtin=builtin_catalog,
+    )
+    recommended_app_queries = RecommendedAppQueryService(
+        catalog=recommended_app_catalog,
+        trial_apps=trial_apps,
+        trial_enabled=trial_app_enabled,
     )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
     file_service = FileService(session_factory=database_client)
@@ -615,6 +633,11 @@ def build_application_services(
                 dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
             ),
         ),
+        app_preview_details=AppPreviewDetailsRuntime(details=app_preview_repository),
+        app_previews=AppPreviewQueryService(
+            apps=app_preview_repository,
+            is_previewable=recommended_app_queries.is_previewable,
+        ),
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
@@ -685,6 +708,7 @@ def build_application_services(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,
         ),
+        message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=database_client),
         plugin_file_uploads=PluginFileUploadService(
             owners=SQLAlchemyPluginFileUploadOwnerRepository(session_factory=database_client),
             files=ToolFilePluginUploadGateway(tool_files=ToolFileManager()),
@@ -712,14 +736,11 @@ def build_application_services(
         partner_tenant_bindings=PartnerTenantBindingService(
             sync_bindings=BillingService.sync_partner_tenants_bindings,
         ),
-        recommended_app_queries=RecommendedAppQueryService(
-            catalog=recommended_app_catalog,
-            trial_apps=trial_apps,
-            trial_enabled=trial_app_enabled,
-        ),
+        recommended_app_queries=recommended_app_queries,
         remote_files=remote_file_service,
         app_tasks=AppTaskControlService(redis_client=redis),
         trial_app_access=TrialAppAccessService(apps=trial_apps),
+        app_audio=AppAudioRuntime(session_factory=database_client),
         trial_app_generation=TrialAppGenerationService(
             runtime=AppGenerateServiceRuntime(session_factory=database_client), usage=trial_apps
         ),

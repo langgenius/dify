@@ -5,10 +5,9 @@ import type {
   AppPartial,
   GetAppsData,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RefObject } from 'react'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
@@ -43,11 +42,11 @@ type AppListCatalogProps = Readonly<{
   dragging: boolean
   hasActiveFilters: boolean
   onCreateBlank: () => void
-  onCreateLearnDify?: (app: App) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onCreateTemplate: () => void
   onImportDSL: () => void
   onOpenTagManagement: () => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
   scrollViewportRef: RefObject<HTMLDivElement | null>
 }>
 

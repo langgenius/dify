@@ -5,8 +5,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
-import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -65,7 +63,12 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
                   'flex h-6 items-center space-x-1 rounded-md px-2',
                 )}
               >
-                {!readOnly && <Settings01 className="size-3 text-text-tertiary" />}
+                {!readOnly && (
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-general-settings-01 size-3 text-text-tertiary"
+                  />
+                )}
                 <div className="text-xs font-medium text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.authorization.authorization`], { ns: 'workflow' })}
                   <span className="ml-1 text-text-secondary">
@@ -82,7 +85,12 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
                   'flex h-6 items-center space-x-1 rounded-md px-2',
                 )}
               >
-                {!readOnly && <FileArrow01 className="size-3 text-text-tertiary" />}
+                {!readOnly && (
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-files-file-arrow-01 size-3 text-text-tertiary"
+                  />
+                )}
                 <div className="text-xs font-medium text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.curl.title`], { ns: 'workflow' })}
                 </div>

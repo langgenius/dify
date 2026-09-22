@@ -4,7 +4,6 @@ import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@r
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
 import { useWorkflowStartRun } from '@/app/components/workflow/hooks/use-workflow-start-run'
@@ -107,7 +106,10 @@ export function RunMode({ text }: RunModeProps) {
           aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
           onClick={handleStop}
         >
-          <StopCircle aria-hidden="true" className="size-4 text-text-accent" />
+          <span
+            aria-hidden="true"
+            className="i-custom-vender-line-mediaAndDevices-stop-circle size-4 text-text-accent"
+          />
         </button>
       )}
       {isPreparingDataSource && (
