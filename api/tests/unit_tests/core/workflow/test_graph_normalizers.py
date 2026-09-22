@@ -527,6 +527,22 @@ def _if_else(node_id: str, case_ids: tuple[str, ...] = ("true",)) -> dict:
     }
 
 
+def _legacy_if_else(node_id: str) -> dict:
+    # The pre-``cases`` shape: top-level ``logical_operator`` + ``conditions``
+    # and no ``cases`` key. graphon's ``IfElseNodeData.iter_cases`` runs it as
+    # ONE case whose id is "true" (``if_else_node.py``: ``"true" if
+    # uses_legacy_shape``), and the canvas migrates it to case_id "true"
+    # (``workflow-init.ts``).
+    return {
+        "id": node_id,
+        "data": {
+            "type": "if-else",
+            "logical_operator": "and",
+            "conditions": [{"variable_selector": ["s", "x"], "comparison_operator": "=", "value": "1"}],
+        },
+    }
+
+
 def _edges(source: str, pairs: list[tuple]) -> list[dict]:
     return [{"source": source, "target": target, "sourceHandle": handle} for handle, target in pairs]
 
@@ -579,6 +595,29 @@ class TestDeclaredBranchHandles:
         from core.workflow.graph_normalizers import declared_branch_handles
 
         assert declared_branch_handles({"id": "l", "data": {"type": "llm"}}) == []
+
+    def test_a_legacy_if_else_without_cases_declares_true_and_false_like_graphon_routes_it(self):
+        # graphon routes a node whose ``cases`` is absent or None on "true"
+        # (iter_cases' legacy case) or "false"; declaring only "false" made
+        # the engine's own "true" arm look undeclared.
+        from core.workflow.graph_normalizers import declared_branch_handles
+
+        assert declared_branch_handles(_legacy_if_else("n")) == ["true", "false"]
+
+        explicit_none = _legacy_if_else("n")
+        explicit_none["data"]["cases"] = None
+        assert declared_branch_handles(explicit_none) == ["true", "false"]
+
+        with_fail_branch = _legacy_if_else("n")
+        with_fail_branch["data"]["error_strategy"] = "fail-branch"
+        assert declared_branch_handles(with_fail_branch) == ["true", "false", "fail-branch"]
+
+    def test_an_explicitly_empty_cases_list_is_not_the_legacy_shape(self):
+        # ``cases: []`` is not None: graphon iterates zero cases and always
+        # takes the ELSE arm, so only "false" is declared.
+        from core.workflow.graph_normalizers import declared_branch_handles
+
+        assert declared_branch_handles(_if_else("n", ())) == ["false"]
 
 
 class TestRepairBranchEdgeHandles:
@@ -899,6 +938,37 @@ class TestRepairBranchEdgeHandles:
         edges = _edges("n", [("yes", "a")])
         assert repair_branch_edge_handles([node], edges) == []
         assert _handles(edges) == [("a", "true")]
+
+    def test_a_legacy_if_else_wired_true_and_false_is_untouched_and_fully_declared(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles, undeclared_branch_handles
+
+        nodes = [_legacy_if_else("n")]
+        edges = _edges("n", [("true", "a"), ("false", "b")])
+
+        assert repair_branch_edge_handles(nodes, edges) == []
+        assert _handles(edges) == [("a", "true"), ("b", "false")]
+        assert undeclared_branch_handles(nodes, edges) == []
+
+    def test_a_legacy_if_else_with_only_its_true_arm_wired_keeps_it_on_true(self):
+        # Before: "true" looked undeclared, the one unused declared handle was
+        # "false", and the fan-out rule re-homed the IF arm onto ELSE.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = _edges("n", [("true", "a")])
+
+        assert repair_branch_edge_handles([_legacy_if_else("n")], edges) == []
+        assert _handles(edges) == [("a", "true")]
+
+    def test_a_legacy_if_else_counts_as_one_case_for_the_if_alias(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = _edges("n", [("yes", "a")])
+        assert repair_branch_edge_handles([_legacy_if_else("n")], edges) == []
+        assert _handles(edges) == [("a", "true")]  # not eliminated onto the unused "false"
+
+        edges = _edges("n", [("yes", "a"), ("else", "b")])
+        assert repair_branch_edge_handles([_legacy_if_else("n")], edges) == []
+        assert _handles(edges) == [("a", "true"), ("b", "false")]
 
 
 class TestUndeclaredBranchHandles:
