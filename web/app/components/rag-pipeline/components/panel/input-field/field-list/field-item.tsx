@@ -78,7 +78,7 @@ const FieldItem = ({
         {!readonly && dragHandleProps && (
           <IconButton
             {...dragHandleProps}
-            className="handle pointer-events-none absolute -top-1 -left-1 size-6 cursor-grab opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 aria-pressed:bg-state-accent-hover"
+            className="handle pointer-events-none absolute -top-1 -left-1 cursor-grab opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 aria-pressed:bg-state-accent-hover"
           >
             <RiDraggable aria-hidden="true" className="size-4 text-text-quaternary" />
           </IconButton>

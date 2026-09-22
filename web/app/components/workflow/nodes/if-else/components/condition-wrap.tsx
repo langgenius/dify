@@ -140,7 +140,7 @@ const ConditionWrap: FC<Props> = ({
                   {!readOnly && casesLength > 1 && (
                     <IconButton
                       {...keyboardSort.getHandleProps(index)}
-                      className="handle pointer-events-none absolute top-1 -left-2 z-10 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                      className="handle pointer-events-none absolute top-1 -left-2 z-10 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
                     >
                       <span aria-hidden="true" className="i-ri-draggable size-3" />
                     </IconButton>
