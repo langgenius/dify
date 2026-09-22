@@ -978,3 +978,105 @@ def test_build_nodes_grounds_both_an_invented_url_and_an_invented_header_on_the_
     assert http.args["config"]["url"] == "{{#s.h_url#}}"
     assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.h_api_key#}}"
     assert {v["variable"] for v in start.args["config"]["variables"]} == {"h_url", "h_api_key"}
+
+
+# ---- Final review F1: a templated path/query must not hide an invented host --
+
+_NO_URL_GOAL = "Build a workflow that renders a slide deck from bullet points and returns a download link."
+
+
+def _as_graph(intents) -> dict:
+    """The node dicts ``endpoint_variable_names`` reads, built from the intents."""
+    nodes = [
+        {"id": i.args["node_id"], "data": {"type": i.args["node_type"], **(i.args.get("config") or {})}}
+        for i in intents
+        if i.op == "create_node"
+    ]
+    return {"nodes": nodes, "edges": []}
+
+
+def test_build_nodes_grounds_only_the_origin_of_an_invented_url_with_a_templated_query():
+    """The S5b URL with the topic in its query string: the host is still
+    invented, so it must be grounded -- but only ``scheme://host`` becomes the
+    input; the path, the query and the data template in it stay verbatim."""
+    intents = _build_with(
+        _gen_graph_with_http("https://api.pptrender.io/v1/render?topic={{#node1.topic#}}"),
+        trusted_text=_NO_URL_GOAL,
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}/v1/render?topic={{#node1.topic#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_url")
+    assert var["required"] is True
+    assert var["label"] == "Call PPT API base URL"
+
+
+def test_build_nodes_grounds_only_the_origin_of_an_invented_url_with_a_templated_path():
+    intents = _build_with(
+        _gen_graph_with_http("https://api.pptrender.io/v1/{{#node1.topic#}}/render"),
+        trusted_text=_NO_URL_GOAL,
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}/v1/{{#node1.topic#}}/render"
+
+
+def test_build_nodes_grounds_only_the_origin_of_a_placeholder_url_with_a_templated_path():
+    """Placeholder-only mode (no trusted text) too: the whole-URL replacement
+    would silently drop the data template the node reads."""
+    intents = _build_with(_gen_graph_with_http("https://api.example.com/ppt/{{#s.topic#}}"))
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}/ppt/{{#s.topic#}}"
+
+
+def test_build_nodes_keeps_the_whole_url_label_for_a_url_without_templates():
+    intents = _build_with(_gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=_NO_URL_GOAL)
+
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_url")
+    assert var["label"] == "Call PPT API URL"
+
+
+def test_build_nodes_leaves_a_url_whose_host_is_a_template_alone():
+    for url in ("{{#s.h_url#}}/v1/render", "https://{{#s.host#}}/v1", "{{#s.h_url#}}/{tenant}/x"):
+        intents = _build_with(_gen_graph_with_http(url), trusted_text=_NO_URL_GOAL)
+        http = next(i for i in intents if i.args.get("node_type") == "http-request")
+        start = next(i for i in intents if i.args.get("node_type") == "start")
+        assert http.args["config"]["url"] == url
+        assert start.args["config"]["variables"] == []
+
+
+def test_grounding_a_templated_url_is_idempotent():
+    intents = _build_with(
+        _gen_graph_with_http("https://api.pptrender.io/v1/render?topic={{#node1.topic#}}"),
+        trusted_text=_NO_URL_GOAL,
+    )
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    url_before = http.args["config"]["url"]
+    variables_before = list(start.args["config"]["variables"])
+
+    assert build._ground_placeholder_endpoints(intents, trusted_text=_NO_URL_GOAL) == []
+    assert http.args["config"]["url"] == url_before
+    assert start.args["config"]["variables"] == variables_before
+
+
+def test_every_variable_url_grounding_creates_is_excluded_from_mocks_and_path_data_is_not():
+    """Reviewer check (a): the grounding side and ``endpoint_variable_names``
+    agree after the origin-only substitution -- the grounded ``h_url`` is a
+    value a human must supply, the ``topic`` in the path/query stays mockable."""
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    for url in (
+        "https://api.pptrender.io/v1/render?topic={{#s.topic#}}",
+        "https://api.pptrender.io/v1/{{#s.topic#}}/render",
+        "https://api.pptrender.io/v1/render",
+    ):
+        intents = _build_with(_gen_graph_with_http(url), trusted_text=_NO_URL_GOAL)
+        start = next(i for i in intents if i.args.get("node_type") == "start")
+        created = {v["variable"] for v in start.args["config"]["variables"]}
+
+        assert created == {"h_url"}
+        assert endpoint_variable_names(_as_graph(intents)) == created
