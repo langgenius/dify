@@ -189,6 +189,11 @@ describe('AccessControlEntry', () => {
       })
 
       expect(within(getChip()).getByText('PRO')).toBeInTheDocument()
+      await user.hover(getChip())
+      expect(
+        await screen.findByText('No longer protected — available on Professional and Team plans'),
+      ).toBeInTheDocument()
+      await user.unhover(getChip())
       await user.click(getChip())
       expect(screen.getByText('This app is no longer protected')).toBeInTheDocument()
       expect(
@@ -200,7 +205,7 @@ describe('AccessControlEntry', () => {
       expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('switch', { name: 'Enable access control' }),
+        screen.queryByRole('switch', { name: 'Restrict by IP address' }),
       ).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Turn on Access Control' }))
@@ -208,14 +213,42 @@ describe('AccessControlEntry', () => {
     },
   )
 
-  it('renders a single chip with a non-interactive PRO badge for Cloud sandbox', () => {
+  it('shows the plan requirement for an unconfigured Cloud sandbox app', async () => {
+    const user = userEvent.setup()
     renderEntry({ plan: 'sandbox' })
 
     const chip = getChip()
     expect(chip).toBeInTheDocument()
     expect(within(chip).getByText('PRO')).toBeInTheDocument()
     expect(within(chip).queryByRole('button')).not.toBeInTheDocument()
+    await user.hover(chip)
+    expect(
+      await screen.findByText('Access control is available on Professional and Team plans.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/No longer protected/)).not.toBeInTheDocument()
   })
+
+  it.each([
+    { accessPoints: ['webapp', 'service_api', 'mcp'], protectedCount: 3 },
+    { accessPoints: ['webapp', 'service_api', 'mcp', 'trigger'], protectedCount: 4 },
+  ] as const)(
+    'shows $protectedCount of 4 protected access points on hover',
+    async ({ accessPoints, protectedCount }) => {
+      const user = userEvent.setup()
+      renderEntry({
+        plan: 'professional',
+        groups: [createNetworkAccessGroupFixture()],
+        binding: createBinding({ access_points: [...accessPoints] }),
+        availableAccessPoints: ['webapp', 'service_api', 'mcp', 'trigger'],
+      })
+
+      await user.hover(getChip())
+      expect(
+        await screen.findByText(`${protectedCount} of 4 access points are protected`),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
 
   it.each(['professional', 'team'] as const)(
     'renders the unpaid-config Off chip on Cloud %s',
@@ -428,7 +461,7 @@ describe('AccessControlEntry', () => {
     expect(within(getChip()).getByText('ON')).toBeInTheDocument()
     await user.click(getChip())
     expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
   })
 
   it('discards an unsaved first-time draft on Cancel', async () => {
@@ -851,10 +884,13 @@ describe('supported access points and binding permission', () => {
     try {
       renderEntry({ plan: 'professional', groups: [createNetworkAccessGroupFixture()], binding })
       await user.click(getChip())
-      await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
-      expect(screen.getByRole('alertdialog')).toHaveTextContent(
-        'Web App, MCP Server will be reachable from any IP.',
+      await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+      expect(
+        screen.getByRole('alertdialog', { name: 'Turn off IP access control?' }),
+      ).toHaveAccessibleDescription(
+        'All access points will be reachable from any IP address. Your configuration will be kept.',
       )
+      expect(payloads).toHaveLength(0)
       await user.click(screen.getByRole('button', { name: 'Turn off' }))
       await waitFor(() =>
         expect(payloads).toEqual([
@@ -869,14 +905,14 @@ describe('supported access points and binding permission', () => {
       await waitFor(() =>
         expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
       )
-      expect(screen.getByRole('switch', { name: 'Enable access control' })).not.toBeChecked()
+      expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).not.toBeChecked()
       expect(
         screen.getByText('Paused — Internal Network is configured but not enforcing'),
       ).toBeInTheDocument()
       expect(within(getChip()).getByText('Pause')).toBeInTheDocument()
       expect(screen.queryByText(/Protecting/)).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
-      await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
+      await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
       await waitFor(() => expect(payloads).toHaveLength(2))
       expect(payloads[1]).toEqual({
         enabled: true,
@@ -885,6 +921,8 @@ describe('supported access points and binding permission', () => {
         expected_version: 3,
       })
       await waitFor(() => expect(within(getChip()).getByText('2 of 3')).toBeInTheDocument())
+      expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       await waitFor(() =>
         expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
       )
@@ -905,7 +943,7 @@ describe('supported access points and binding permission', () => {
       })
       await user.click(getChip())
       expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
-      expect(screen.getByRole('switch', { name: 'Enable access control' })).toHaveAttribute(
+      expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toHaveAttribute(
         'aria-disabled',
         'true',
       )
@@ -915,7 +953,7 @@ describe('supported access points and binding permission', () => {
       expect(
         screen.queryByRole('button', { name: 'Turn on Access Control' }),
       ).not.toBeInTheDocument()
-      await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
+      await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       expect(fetchSpy).not.toHaveBeenCalled()
     } finally {
@@ -949,7 +987,7 @@ describe('supported access points and binding permission', () => {
     expect(screen.getByText('Protecting all 3 access points in service.')).toBeInTheDocument()
     expect(screen.queryByText('Office')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Enable access control' })).toHaveAttribute(
+    expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
@@ -976,7 +1014,7 @@ describe('supported access points and binding permission', () => {
       binding: createBinding(),
     })
     await user.click(getChip())
-    await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
+    await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
     rendered.rerender(
@@ -984,7 +1022,7 @@ describe('supported access points and binding permission', () => {
     )
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     await user.click(getChip())
-    expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
 
     rendered.rerender(
@@ -992,7 +1030,7 @@ describe('supported access points and binding permission', () => {
     )
     await user.click(getChip())
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   })
 
@@ -1151,6 +1189,48 @@ const openSelectedConfig = async (user: ReturnType<typeof userEvent.setup>) => {
 const lockoutWarning = "Your IP (203.0.113.42) isn't in this policy. You may lose access."
 
 describe('trusted IP checks before saving', () => {
+  it('applies policy and scope edits to a live app only after Save', async () => {
+    const user = userEvent.setup()
+    const server = setupBindingServer(createBinding())
+    server.groups.push(createNetworkAccessGroupFixture({ id: 'group-2', name: 'Office' }))
+    server.check.allowed = true
+    renderEntry({
+      plan: 'professional',
+      groups: server.groups,
+      binding: server.binding,
+      isPublished: true,
+    })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(screen.queryByRole('switch', { name: 'Restrict by IP address' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
+    await user.click(screen.getByRole('option', { name: /Office/ }))
+    await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+
+    expect(server.writes).toHaveLength(0)
+    expect(server.binding).toMatchObject({
+      enabled: true,
+      group_id: 'group-1',
+      access_points: ['webapp', 'service_api', 'mcp'],
+    })
+    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(server.writes).toEqual([
+        {
+          enabled: true,
+          group_id: 'group-2',
+          access_points: ['webapp', 'service_api'],
+          expected_version: 2,
+        },
+      ]),
+    )
+    expect(await screen.findByText('Restricted to Office')).toBeInTheDocument()
+  })
+
   it.each([true, false])(
     'enables a paused policy after saving edits with a fresh IP check (allowed: %s)',
     async (allowed) => {
@@ -1188,7 +1268,7 @@ describe('trusted IP checks before saving', () => {
         ]),
       )
       expect(server.checks).toBeGreaterThan(checksBeforeSave)
-      expect(await screen.findByRole('switch', { name: 'Enable access control' })).toBeChecked()
+      expect(await screen.findByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
       expect(within(getChip()).getByText('2 of 3')).toBeInTheDocument()
     },
   )
@@ -1292,11 +1372,11 @@ describe('immediate pause and resume', () => {
     const server = setupBindingServer(createBinding())
     renderEntry({ plan: 'professional', groups: server.groups, binding: server.binding })
     await user.click(getChip())
-    await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
+    await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
     await user.click(
       within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }),
     )
-    expect(screen.getByRole('switch', { name: 'Enable access control' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
     expect(server.writes).toHaveLength(0)
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   })
@@ -1313,9 +1393,9 @@ describe('immediate pause and resume', () => {
         })
       renderEntry({ plan: 'professional', groups: server.groups, binding: server.binding })
       await user.click(getChip())
-      await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
+      await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
       await user.click(screen.getByRole('button', { name: 'Turn off' }))
-      const toggle = screen.getByRole('switch', { name: 'Enable access control' })
+      const toggle = screen.getByRole('switch', { name: 'Restrict by IP address' })
       await waitFor(() => expect(toggle).toHaveAttribute('aria-disabled', 'true'))
       await user.click(toggle)
       expect(server.writes).toEqual([

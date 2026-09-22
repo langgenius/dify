@@ -14,6 +14,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { PopoverTitle } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useState } from 'react'
@@ -62,9 +63,6 @@ export function AccessControlStatusPanel({
     mcp: t(($) => $['mcp.server.title'], { ns: 'tools' }),
     trigger: t(($) => $['settings.trigger'], { ns: 'common' }),
   }
-  const exposedNames = availableAccessPoints
-    .filter((scope) => draft.scopes[scope])
-    .map((scope) => labels[scope])
   const policyName = selectedPolicy?.name
 
   return (
@@ -86,11 +84,11 @@ export function AccessControlStatusPanel({
       </div>
 
       <div className="flex flex-col gap-5 overflow-hidden px-4 pt-2 pb-4">
-        <div className="flex items-center justify-between gap-2">
+        <Field className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="system-md-medium text-text-primary">
+            <FieldLabel className="system-md-medium text-text-primary">
               {t(($) => $['studio.accessControl.restrictByIp'], { ns: 'deployments' })}
-            </p>
+            </FieldLabel>
             <p className="system-xs-regular text-text-tertiary">
               {!enabled
                 ? t(($) => $['studio.accessControl.tooltipPaused'], {
@@ -112,9 +110,6 @@ export function AccessControlStatusPanel({
           <Switch
             checked={enabled}
             disabled={updating || readOnly}
-            aria-label={t(($) => $['studio.accessControl.enableAccessControl'], {
-              ns: 'deployments',
-            })}
             onCheckedChange={(next) => {
               if (readOnly || updating) return
               if (next) {
@@ -124,7 +119,7 @@ export function AccessControlStatusPanel({
               setConfirmPause(true)
             }}
           />
-        </div>
+        </Field>
 
         {selectedPolicy && summary && (
           <div className="flex flex-col gap-0.5">
@@ -213,7 +208,6 @@ export function AccessControlStatusPanel({
             <AlertDialogDescription className="system-sm-regular text-text-secondary">
               {t(($) => $['studio.accessControl.turnOffDescription'], {
                 ns: 'deployments',
-                points: exposedNames.join(', '),
               })}
             </AlertDialogDescription>
           </div>
