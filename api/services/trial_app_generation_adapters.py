@@ -46,7 +46,7 @@ class AppGenerateServiceRuntime(TrialAppGenerationRuntime):
             # Release context reads before quota/provider I/O. Legacy generation
             # receives its own session, never the admission or usage transaction.
             with self._session_factory(expire_on_commit=False) as session:
-                response = AppGenerateService.generate(
+                generated_response: GenerationResponse = AppGenerateService.generate(
                     app_model=app_model,
                     user=account,
                     args=args,
@@ -54,8 +54,7 @@ class AppGenerateServiceRuntime(TrialAppGenerationRuntime):
                     session=session,
                     streaming=streaming,
                 )
-                if response is None:
-                    raise RuntimeError(f"Trial generation returned no response for app {app.app_id}")
+                response = generated_response
                 session.commit()
         except BaseException:
             if response is not None and not isinstance(response, Mapping):
@@ -64,4 +63,4 @@ class AppGenerateServiceRuntime(TrialAppGenerationRuntime):
                 except BaseException:
                     logger.exception("Failed to close trial generation response for app %s", app.app_id)
             raise
-        return response
+        return generated_response

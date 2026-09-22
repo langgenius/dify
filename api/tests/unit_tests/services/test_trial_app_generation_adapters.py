@@ -225,26 +225,6 @@ def test_generation_failure_preserves_error_and_rolls_back_writes(
         assert app.name == "Trial app"
 
 
-def test_missing_generation_response_rolls_back_writes_and_identifies_app(
-    harness: _Harness, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
-) -> None:
-    def generate(*, session: Session, **_kwargs: object) -> None:
-        session.execute(update(App).where(App.id == harness.app.app_id).values(name="Uncommitted app"))
-
-    monkeypatch.setattr(AppGenerateService, "generate", generate)
-
-    with pytest.raises(RuntimeError, match=harness.app.app_id):
-        harness.runtime.generate(app=harness.app, account_id=harness.account_id, args=_ARGS, streaming=True)
-
-    assert len(harness.closed_sessions) == 2
-    assert all(not session.in_transaction() for session in harness.closed_sessions)
-    assert harness.committed_sessions == []
-    with sqlite_session_factory() as session:
-        app = session.get(App, harness.app.app_id)
-        assert app is not None
-        assert app.name == "Trial app"
-
-
 @pytest.mark.parametrize("close_failure", [False, True])
 def test_commit_failure_closes_created_stream_and_preserves_commit_error(
     harness: _Harness,
