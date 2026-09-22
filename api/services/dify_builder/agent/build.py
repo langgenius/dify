@@ -363,9 +363,11 @@ _WORKFLOW_TOPOLOGY_DIRECTIVE = (
     "reference. Do not wire a container's body as sibling top-level nodes.\n"
     "- Compare like with like in 'if-else': a numeric variable needs a numeric operator, a "
     "string variable a string operator.\n"
-    "- Use a 'tool' node for a third-party service only when the plan names an installed tool; "
-    "otherwise use 'http-request' and expose its changing inputs as start-node variables rather "
-    "than hardcoding them."
+    "- Prefer a 'tool' node whenever an installed tool covers the step (the installed tools are "
+    "listed for you). 'http-request' is only for an endpoint the user actually supplied: never "
+    "invent one and never use a placeholder such as example.com -- when no real URL is known, read "
+    "it from a start-node variable. Expose an http-request's changing inputs as start-node "
+    "variables rather than hardcoding them."
 )
 
 

@@ -378,3 +378,25 @@ def test_build_nodes_sends_the_directive_to_the_generator(monkeypatch):
     instruction = seen["instruction"]
     assert instruction.startswith(build._WORKFLOW_TOPOLOGY_DIRECTIVE)
     assert "llm node drafts a reply" in instruction
+
+
+# ---- ESQ1-302: tool grounding ------------------------------------------------
+
+
+def test_topology_directive_no_longer_steers_away_from_installed_tools():
+    """fe3f8154b5 added "use a 'tool' node ... only when the plan names an
+    installed tool; otherwise use 'http-request'". That contradicts the SHARED
+    planner prompt (INSTALLED-TOOL-FIRST) and the Builder's own planner cannot
+    name tools it was never shown -- so every third-party step fell through to
+    an http-request with an invented endpoint (api.example.com, ESQ1-302)."""
+    lowered = build._WORKFLOW_TOPOLOGY_DIRECTIVE.lower()
+
+    assert "only when the plan names an installed tool" not in lowered
+    assert "otherwise use 'http-request'" not in lowered
+    # the half that earned its place (ESQ1-286) stays
+    assert "start-node variables" in lowered
+    # tool-first, in agreement with the shared planner prompt
+    assert "installed tool" in lowered
+    # and an invented / placeholder endpoint is forbidden outright
+    assert "never invent" in lowered
+    assert "example.com" in lowered
