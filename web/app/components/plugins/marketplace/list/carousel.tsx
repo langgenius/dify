@@ -21,6 +21,7 @@ type CarouselProps = {
   'aria-labelledby'?: string
   className?: string
   showNavigation?: boolean
+  showSinglePageNavigation?: boolean
   showPagination?: boolean
   autoPlay?: boolean
   autoPlayInterval?: number
@@ -29,15 +30,17 @@ type CarouselProps = {
 }
 
 type NavButtonProps = {
+  disabled: boolean
   label: string
   onClick: () => void
   iconClassName: string
 }
 
-const NavButton = ({ label, onClick, iconClassName }: NavButtonProps) => (
+const NavButton = ({ disabled, label, onClick, iconClassName }: NavButtonProps) => (
   <button
     type="button"
-    className="flex cursor-pointer items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] transition-all hover:bg-components-button-secondary-bg-hover"
+    className="flex cursor-pointer items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] transition-all enabled:hover:bg-components-button-secondary-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+    disabled={disabled}
     onClick={onClick}
     aria-label={label}
   >
@@ -49,6 +52,7 @@ const NavButton = ({ label, onClick, iconClassName }: NavButtonProps) => (
 )
 
 type CarouselControlsProps = {
+  showSinglePageNavigation: boolean
   showPagination: boolean
   selectedIndex: number
   scrollNext: () => void
@@ -58,6 +62,7 @@ type CarouselControlsProps = {
 }
 
 const CarouselControls = ({
+  showSinglePageNavigation,
   showPagination,
   selectedIndex,
   scrollNext,
@@ -72,7 +77,7 @@ const CarouselControls = ({
   }))
   const totalPages = scrollSnaps.length
 
-  if (totalPages <= 1) return null
+  if (totalPages === 0 || (totalPages === 1 && !showSinglePageNavigation)) return null
 
   return (
     <div className="absolute -top-10 right-0 flex items-center gap-3">
@@ -81,6 +86,8 @@ const CarouselControls = ({
           {paginationItems.map((item, index) => (
             <button
               key={item.id}
+              type="button"
+              aria-current={selectedIndex === index ? 'page' : undefined}
               className={cn(
                 'h-1.25 w-1.25 rounded-full transition-all',
                 selectedIndex === index
@@ -98,11 +105,13 @@ const CarouselControls = ({
       )}
       <div className="flex items-center gap-1">
         <NavButton
+          disabled={totalPages <= 1}
           label={t(($) => $['marketplace.carousel.scrollPrevious'], { ns: 'plugin' })}
           onClick={scrollPrev}
           iconClassName="i-ri-arrow-left-s-line"
         />
         <NavButton
+          disabled={totalPages <= 1}
           label={t(($) => $['marketplace.carousel.scrollNext'], { ns: 'plugin' })}
           onClick={scrollNext}
           iconClassName="i-ri-arrow-right-s-line"
@@ -129,6 +138,7 @@ const Carousel = ({
   'aria-labelledby': ariaLabelledBy,
   className,
   showNavigation = true,
+  showSinglePageNavigation = false,
   showPagination = true,
   autoPlay = false,
   autoPlayInterval = 5000,
@@ -352,6 +362,7 @@ const Carousel = ({
     >
       {showNavigation && (
         <CarouselControls
+          showSinglePageNavigation={showSinglePageNavigation}
           showPagination={showPagination}
           selectedIndex={selectedIndex}
           scrollNext={scrollNext}
