@@ -937,6 +937,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         fc.verify_run_id = ""
         fc.repair_attempts = 0
         fc.last_repair_error = ""
+        fc.unknown_outcome_count = 0
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
         form_items = append_card(
             fc,
@@ -1030,6 +1031,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     fc.verify_run_id = ""
     fc.repair_attempts = 0
     fc.last_repair_error = ""
+    fc.unknown_outcome_count = 0
     progress.activate("edit-create-checkpoint")
     checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
     plan_items = append_card(fc, PlanCard(title="Change plan", version_tag="v1", items=list(fc.plan_items)))
