@@ -400,3 +400,66 @@ def test_topology_directive_no_longer_steers_away_from_installed_tools():
     # and an invented / placeholder endpoint is forbidden outright
     assert "never invent" in lowered
     assert "example.com" in lowered
+
+
+def test_ready_tool_catalogue_lists_only_ready_tools_and_is_capped(monkeypatch):
+    tools = [resources.ResourceRef(id=f"p/t{i}", label=f"Tool {i}") for i in range(60)]
+    tools.append(resources.ResourceRef(id="p/nope", label="Nope", readiness="missing_config"))
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(models=[], datasets=[], tools=tools),  # noqa: ARG005
+    )
+
+    out = build.ready_tool_catalogue("t1")
+
+    assert len(out) == build._MAX_PLANNER_TOOLS
+    assert all(t.readiness == "ready" for t in out)
+    assert all(t.id != "p/nope" for t in out)
+
+
+def test_ready_tool_catalogue_degrades_to_empty_when_the_listing_fails(monkeypatch):
+    def boom(_tenant_id):
+        raise RuntimeError("plugin daemon down")
+
+    monkeypatch.setattr(build.resources, "list_tenant_resources", boom)
+
+    assert build.ready_tool_catalogue("t1") == []
+
+
+def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch):
+    """The ESQ1-302 tenant had a ready 'Markdown ⮕ PPTX' tool. Its plan still
+    said "http-request节点：调用外部PPT生成API" because propose_plan_v1 was shown
+    REQUIREMENTS only -- it could not name a tool it had never seen."""
+    captured = {}
+
+    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+        captured["system"] = system
+        return {"plan": ["tool node converts the outline to a PPTX"]}
+
+    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    tools = [resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX")]
+
+    build.propose_plan_v1(_FakeInstance([]), {"goal": "make a deck"}, tools=tools)
+
+    system = captured["system"]
+    assert "bowenliang123/md_exporter/md_exporter/md_to_pptx" in system
+    assert "Markdown ⮕ PPTX" in system
+    assert "installed tools" in system.lower()
+    # http-request survives, but only for an endpoint the user actually supplied
+    assert "http-request" in system
+    assert "invent" in system.lower()
+
+
+def test_plan_prompt_without_tools_has_no_tool_section(monkeypatch):
+    captured = {}
+
+    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+        captured["system"] = system
+        return {"plan": ["step"]}
+
+    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+
+    build.propose_plan_v1(_FakeInstance([]), {})
+
+    assert "# Installed tools" not in captured["system"]
