@@ -1374,9 +1374,19 @@ def test_product_modules_do_not_import_dify_dataset_or_document_services() -> No
 
     for path in paths:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        imported_modules = {
-            node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module is not None
-        }
+        imported_modules = set()
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom) or node.module is None:
+                continue
+            # Native vector credentials share the legacy models.dataset module.
+            # This bridge may read the tenant binding, never Dataset/Document data.
+            if (
+                path == _API_ROOT / "services/knowledge_fs/vector_store.py"
+                and node.module == "models.dataset"
+                and {alias.name for alias in node.names} == {"TidbAuthBinding"}
+            ):
+                continue
+            imported_modules.add(node.module)
         assert not any(
             module == forbidden or module.startswith(f"{forbidden}.")
             for module in imported_modules
