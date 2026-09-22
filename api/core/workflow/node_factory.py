@@ -74,6 +74,7 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
+from services.file_upload_service import FileUploadWriter
 
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
@@ -311,18 +312,24 @@ class DifyNodeFactory(NodeFactory):
         *,
         graph_init_context: DifyGraphInitContext,
         graph_runtime_state: "GraphRuntimeState",
+        file_uploads: FileUploadWriter | None = None,
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
             graph_init_params=graph_init_context.to_graph_init_params(),
             graph_runtime_state=graph_runtime_state,
+            file_uploads=file_uploads,
         )
 
     def __init__(
         self,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
+        *,
+        file_uploads: FileUploadWriter | None = None,
     ) -> None:
+        # None is valid for graphs without Knowledge Index nodes.
+        self._file_uploads = file_uploads
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
         self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
@@ -389,6 +396,7 @@ class DifyNodeFactory(NodeFactory):
         return DifyNodeFactory(
             graph_init_params=self.graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            file_uploads=self._file_uploads,
         )
 
     @staticmethod
@@ -495,9 +503,9 @@ class DifyNodeFactory(NodeFactory):
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         if node_type == KNOWLEDGE_INDEX_NODE_TYPE:
-            from extensions.ext_application_services import application_services
-
-            node_init_kwargs["file_uploads"] = application_services().file_uploads
+            if self._file_uploads is None:
+                raise ValueError("file_uploads is required for knowledge-index nodes")
+            node_init_kwargs["file_uploads"] = self._file_uploads
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
         node = node_class(
             node_id=node_id,

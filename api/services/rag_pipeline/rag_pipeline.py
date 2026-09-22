@@ -599,6 +599,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
+                file_uploads=application_services().file_uploads,
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs=user_inputs,
@@ -1398,6 +1399,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
+                file_uploads=application_services().file_uploads,
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs={},

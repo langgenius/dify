@@ -1214,6 +1214,7 @@ class WorkflowService:
             enclosing_node_id = None
 
         run = WorkflowEntry.single_step_run(
+            file_uploads=application_services().file_uploads,
             workflow=draft_workflow,
             node_id=node_id,
             user_inputs=user_inputs,

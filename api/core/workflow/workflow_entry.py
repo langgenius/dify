@@ -48,6 +48,7 @@ from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
+from services.file_upload_service import FileUploadWriter
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -208,9 +209,12 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
+        file_uploads: FileUploadWriter | None = None,
     ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]]:
         """
-        Single step run workflow node
+        Single step run workflow node.
+
+        file_uploads is required for Knowledge Index; other nodes may omit it.
         :param workflow: Workflow instance
         :param node_id: node id
         :param user_id: user id
@@ -298,6 +302,7 @@ class WorkflowEntry:
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
+            file_uploads=file_uploads,
         )
         node = node_factory.create_node(node_config)
 

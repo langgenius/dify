@@ -1,9 +1,21 @@
 """Tests for Celery SSL configuration."""
 
 import ssl
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
+import pytest
+from celery import current_app
+from celery.contrib.testing.app import setup_default_app
+
 from enums import DeploymentEdition
+
+
+@pytest.fixture(autouse=True)
+def restore_celery_app_state() -> Iterator[None]:
+    # init_app replaces both current and default apps used by shared task proxies.
+    with setup_default_app(current_app._get_current_object()):
+        yield
 
 
 class TestCelerySSLConfiguration:

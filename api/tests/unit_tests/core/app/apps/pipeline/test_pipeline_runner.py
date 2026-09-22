@@ -34,6 +34,7 @@ from models.dataset import Dataset, Document, Pipeline
 from models.enums import DocumentCreatedFrom
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
+from services.file_upload_service import FileUploadService
 from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
 
@@ -122,7 +123,7 @@ def _build_app_generate_entity() -> SimpleNamespace:
 
 
 @pytest.fixture
-def runner():
+def runner(file_uploads: FileUploadService):
     app_generate_entity = _build_app_generate_entity()
     queue_manager = MagicMock()
     variable_loader = MagicMock()
@@ -133,6 +134,7 @@ def runner():
     )
 
     return PipelineRunner(
+        file_uploads=file_uploads,
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
         variable_loader=variable_loader,
@@ -221,13 +223,14 @@ def test_update_document_status_skips_without_document_ref(runner, sqlite_engine
     assert checkouts == 0
 
 
-def test_run_pipeline_not_found():
+def test_run_pipeline_not_found(file_uploads: FileUploadService):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.invoke_from = InvokeFrom.WEB_APP
     app_generate_entity.single_iteration_run = None
     app_generate_entity.single_loop_run = None
 
     runner = PipelineRunner(
+        file_uploads=file_uploads,
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
@@ -308,7 +311,7 @@ def test_run_rejects_original_document_outside_pipeline_dataset_after_async_boun
     runner.get_workflow.assert_not_called()
 
 
-def test_run_workflow_not_initialized(sqlite_session: Session):
+def test_run_workflow_not_initialized(sqlite_session: Session, file_uploads: FileUploadService):
     app_generate_entity = _build_app_generate_entity()
 
     pipeline = _pipeline()
@@ -318,6 +321,7 @@ def test_run_workflow_not_initialized(sqlite_session: Session):
     sqlite_session.commit()
 
     runner = PipelineRunner(
+        file_uploads=file_uploads,
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
@@ -332,7 +336,7 @@ def test_run_workflow_not_initialized(sqlite_session: Session):
         runner.run()
 
 
-def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Session):
+def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Session, file_uploads: FileUploadService):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.single_iteration_run = MagicMock()
 
@@ -341,6 +345,7 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
     document_ref = module.DatasetRefService.create_document_ref_from_id(dataset_ref, "doc")
 
     runner = PipelineRunner(
+        file_uploads=file_uploads,
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
@@ -372,7 +377,9 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
     runner._handle_event.assert_called()
 
 
-def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
+def test_run_normal_path_builds_graph(
+    mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine, file_uploads: FileUploadService
+):
     app_generate_entity = _build_app_generate_entity()
 
     events = []
@@ -394,6 +401,7 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
     )
 
     runner = PipelineRunner(
+        file_uploads=file_uploads,
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),

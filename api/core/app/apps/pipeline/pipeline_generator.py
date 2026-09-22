@@ -639,6 +639,7 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id = application_generate_entity.user_id
                     # workflow app
                     runner = PipelineRunner(
+                        file_uploads=self._file_uploads,
                         application_generate_entity=application_generate_entity,
                         queue_manager=queue_manager,
                         workflow_thread_pool_id=workflow_thread_pool_id,

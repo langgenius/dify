@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
+from flask import has_app_context
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -15,6 +16,8 @@ from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
+from core.workflow.system_variables import default_system_variables
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -25,10 +28,11 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
-from services.file_upload_service import FileUploadService
+from services.file_upload_service import FileUploadService, FileUploadWriter
 
 
 @pytest.fixture
@@ -317,6 +321,7 @@ class TestDifyNodeFactoryInit:
             factory = node_factory.DifyNodeFactory.from_graph_init_context(
                 graph_init_context=graph_init_context,
                 graph_runtime_state=sentinel.graph_runtime_state,
+                file_uploads=sentinel.file_uploads,
             )
 
         assert isinstance(factory, node_factory.DifyNodeFactory)
@@ -324,11 +329,13 @@ class TestDifyNodeFactoryInit:
         init.assert_called_once_with(
             graph_init_params=sentinel.graph_init_params,
             graph_runtime_state=sentinel.graph_runtime_state,
+            file_uploads=sentinel.file_uploads,
         )
 
     def test_with_runtime_state_rebinds_factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
+        factory._file_uploads = sentinel.file_uploads
 
         with patch.object(node_factory, "DifyNodeFactory", return_value=sentinel.factory) as factory_cls:
             rebound = factory.with_runtime_state(sentinel.graph_runtime_state)
@@ -337,6 +344,7 @@ class TestDifyNodeFactoryInit:
         factory_cls.assert_called_once_with(
             graph_init_params=sentinel.graph_init_params,
             graph_runtime_state=sentinel.graph_runtime_state,
+            file_uploads=sentinel.file_uploads,
         )
 
     def test_init_builds_default_dependencies(self):
@@ -422,6 +430,7 @@ class TestDifyNodeFactoryInit:
         renderer_factory.assert_called_once_with()
         assert factory.graph_init_params is graph_init_params
         assert factory.graph_runtime_state is graph_runtime_state
+        assert factory._file_uploads is None
         assert factory._dify_context is dify_context
         assert factory._jinja2_template_renderer is jinja2_template_renderer
         assert factory._document_extractor_unstructured_api_config is unstructured_api_config
@@ -434,6 +443,88 @@ class TestDifyNodeFactoryInit:
         assert factory._tool_runtime is tool_runtime
         assert factory._llm_credentials_provider is credentials_provider
         assert factory._llm_model_factory is model_factory
+
+
+class TestKnowledgeIndexNodeWithoutAppContext:
+    @pytest.fixture(autouse=True)
+    def _provide_app_context(self) -> None:
+        """Override the suite's Flask context so hidden service lookups fail."""
+
+    @pytest.fixture
+    def graph_init_context(self) -> node_factory.DifyGraphInitContext:
+        return node_factory.DifyGraphInitContext(
+            workflow_id="workflow-id",
+            graph_config={
+                "nodes": [
+                    {
+                        "id": "index-node",
+                        "data": {
+                            "type": KNOWLEDGE_INDEX_NODE_TYPE,
+                            "title": "Knowledge Index",
+                            "chunk_structure": "text_model",
+                            "index_chunk_variable_selector": ["source", "chunks"],
+                        },
+                    }
+                ],
+                "edges": [],
+            },
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: DifyRunContext(
+                    tenant_id="tenant-id",
+                    app_id="app-id",
+                    user_id="user-id",
+                    user_from=UserFrom.ACCOUNT,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
+            },
+            call_depth=0,
+        )
+
+    @pytest.fixture
+    def graph_runtime_state(self) -> GraphRuntimeState:
+        return GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables(), user_inputs={}),
+            start_at=0.0,
+        )
+
+    @pytest.mark.parametrize("rebind_runtime_state", [False, True])
+    def test_constructs_real_node_with_injected_uploads(
+        self,
+        graph_init_context: node_factory.DifyGraphInitContext,
+        graph_runtime_state: GraphRuntimeState,
+        rebind_runtime_state: bool,
+    ) -> None:
+        assert not has_app_context()
+        file_uploads = Mock(spec=FileUploadWriter)
+        factory = node_factory.DifyNodeFactory.from_graph_init_context(
+            graph_init_context=graph_init_context,
+            graph_runtime_state=graph_runtime_state,
+            file_uploads=file_uploads,
+        )
+        if rebind_runtime_state:
+            graph_runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=1.0)
+            factory = factory.with_runtime_state(graph_runtime_state)
+
+        node = factory.create_node(graph_init_context.graph_config["nodes"][0])
+
+        assert isinstance(node, KnowledgeIndexNode)
+        assert node.graph_runtime_state is graph_runtime_state
+        assert node.index_processor._file_uploads is file_uploads
+        file_uploads.upload_file_for_actor.assert_not_called()
+
+    def test_missing_uploads_reports_explicit_dependency(
+        self,
+        graph_init_context: node_factory.DifyGraphInitContext,
+        graph_runtime_state: GraphRuntimeState,
+    ) -> None:
+        assert not has_app_context()
+        factory = node_factory.DifyNodeFactory.from_graph_init_context(
+            graph_init_context=graph_init_context,
+            graph_runtime_state=graph_runtime_state,
+        )
+
+        with pytest.raises(ValueError, match="file_uploads is required for knowledge-index nodes"):
+            factory.create_node(graph_init_context.graph_config["nodes"][0])
 
 
 class TestDifyNodeFactoryResolveContext:
@@ -477,6 +568,7 @@ class TestDifyNodeFactoryCreateNode:
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
         factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        factory._file_uploads = None
         factory._dify_context = SimpleNamespace(
             tenant_id="tenant-id",
             app_id="app-id",
@@ -586,10 +678,10 @@ class TestDifyNodeFactoryCreateNode:
             (BuiltinNodeTypes.DOCUMENT_EXTRACTOR, "DocumentExtractorNode"),
         ],
     )
-    @pytest.mark.usefixtures("file_upload_services")
     def test_creates_specialized_nodes(
         self, monkeypatch: pytest.MonkeyPatch, factory, node_type, constructor_name, file_uploads: FileUploadService
     ) -> None:
+        factory._file_uploads = file_uploads
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
         constructor._mock_name = constructor_name

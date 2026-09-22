@@ -5,13 +5,13 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.index_processor.processor.qa_index_processor import QAIndexProcessor
-from services.file_upload_service import FileUploadService
+from services.file_upload_service import FileUploadWriter
 
 
 class IndexProcessorFactory:
     """IndexProcessorInit."""
 
-    def __init__(self, index_type: str | None, *, file_uploads: FileUploadService) -> None:
+    def __init__(self, index_type: str | None, *, file_uploads: FileUploadWriter) -> None:
         self._index_type = index_type
         self._file_uploads = file_uploads
 

@@ -370,6 +370,7 @@ def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     assert "data" in response.get_data(as_text=True)
 
 
+@pytest.mark.usefixtures("file_upload_services")
 def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow_run = _workflow_run()
     app_model = _app()
@@ -393,7 +394,7 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
     )
     monkeypatch.setattr(
         "controllers.console.human_input_form.WorkflowAppGenerator",
-        lambda: workflow_generator,
+        lambda *, file_uploads: workflow_generator,
     )
     monkeypatch.setattr(
         "controllers.console.human_input_form.build_workflow_event_stream",

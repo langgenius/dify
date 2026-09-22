@@ -57,10 +57,12 @@ ignore_imports =
     core.app.apps.pipeline.pipeline_generator -> services.file_upload_service
     core.app.apps.pipeline.pipeline_generator -> services.workflow_draft_variable_service
     core.app.apps.pipeline.pipeline_runner -> services.dataset_ref_service
+    core.app.apps.pipeline.pipeline_runner -> services.file_upload_service
     core.app.apps.workflow.app_generator -> controllers.console.app.workflow
     core.app.apps.workflow.app_generator -> services.file_upload_service
     core.app.apps.workflow.app_generator -> services.snippet_generate_service
     core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
+    core.app.apps.workflow_app_runner -> services.file_upload_service
     core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
     core.app.features.annotation_reply.annotation_reply -> services.dataset_service
@@ -97,7 +99,8 @@ ignore_imports =
     core.repositories.sqlalchemy_workflow_node_execution_write_repository -> services.variable_truncator
     extensions.logstore.repositories.logstore_workflow_node_execution_write_repository -> services.file_upload_service
     core.tools.tool_manager -> services
-    core.workflow.node_factory -> extensions.ext_application_services
+    core.workflow.node_factory -> services.file_upload_service
+    core.workflow.workflow_entry -> services.file_upload_service
     core.workflow.node_runtime -> services
     core.workflow.nodes.agent.message_transformer -> services
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions

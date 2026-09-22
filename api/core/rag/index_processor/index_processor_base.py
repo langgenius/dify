@@ -31,7 +31,7 @@ from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.file_upload_service import FileUploadActor, FileUploadService
+from services.file_upload_service import FileUploadActor, FileUploadWriter
 
 if TYPE_CHECKING:
     from core.model_manager import ModelInstance
@@ -47,7 +47,7 @@ class SummaryIndexSettingDict(TypedDict):
 class BaseIndexProcessor(ABC):
     """Interface for extract files."""
 
-    def __init__(self, *, file_uploads: FileUploadService) -> None:
+    def __init__(self, *, file_uploads: FileUploadWriter) -> None:
         self._file_uploads = file_uploads
 
     @abstractmethod

@@ -16,7 +16,7 @@ from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
-from services.file_upload_service import FileUploadService
+from services.file_upload_service import FileUploadWriter
 from services.vector_space_admission_service import VectorSpaceAdmissionService
 
 from .index_processor_factory import IndexProcessorFactory
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class IndexProcessor:
-    def __init__(self, *, file_uploads: FileUploadService) -> None:
+    def __init__(self, *, file_uploads: FileUploadWriter) -> None:
         self._file_uploads = file_uploads
 
     def format_preview(self, chunk_structure: str, chunks: Any) -> Preview:

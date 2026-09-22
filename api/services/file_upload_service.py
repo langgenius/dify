@@ -50,6 +50,20 @@ class FileUploadResult(FileUploadData):
     id: str
 
 
+class FileUploadWriter(Protocol):
+    """Upload capability used by indexing without depending on service assembly."""
+
+    def upload_file_for_actor(
+        self,
+        *,
+        actor: FileUploadActor,
+        resource_tenant_id: str,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+    ) -> FileUploadResult: ...
+
+
 class FileUploadRepository(Protocol):
     def create(self, *, upload: FileUploadData) -> FileUploadResult: ...
 

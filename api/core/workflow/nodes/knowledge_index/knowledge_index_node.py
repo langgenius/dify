@@ -16,7 +16,7 @@ from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.template import Template
-from services.file_upload_service import FileUploadService
+from services.file_upload_service import FileUploadWriter
 
 from .entities import KnowledgeIndexNodeData
 from .exc import (
@@ -42,7 +42,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        file_uploads: FileUploadService,
+        file_uploads: FileUploadWriter,
     ) -> None:
         super().__init__(
             node_id=node_id,

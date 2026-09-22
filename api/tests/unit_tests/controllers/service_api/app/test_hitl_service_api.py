@@ -324,6 +324,7 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
 
 class TestHitlServiceApi:
     # Service API event-stream continuation
+    @pytest.mark.usefixtures("file_upload_services")
     def test_workflow_events_continue_on_pause_keeps_stream_open(
         self,
         app: Flask,
@@ -342,7 +343,7 @@ class TestHitlServiceApi:
         workflow_generator = Mock()
         workflow_generator.convert_to_event_stream.return_value = iter(["data: streamed\n\n"])
         monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
-        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
+        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda *, file_uploads: workflow_generator)
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
@@ -360,6 +361,7 @@ class TestHitlServiceApi:
         )
         workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
+    @pytest.mark.usefixtures("file_upload_services")
     def test_workflow_events_snapshot_continue_on_pause_keeps_pause_open(
         self,
         app: Flask,
@@ -378,7 +380,7 @@ class TestHitlServiceApi:
         workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
         snapshot_builder = Mock(return_value=["snapshot-events"])
         monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
-        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
+        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda *, file_uploads: workflow_generator)
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()
@@ -408,6 +410,7 @@ class TestHitlServiceApi:
         assert snapshot_session_maker.kw["bind"] is sqlite_engine
         workflow_generator.convert_to_event_stream.assert_called_once_with(["snapshot-events"])
 
+    @pytest.mark.usefixtures("file_upload_services")
     def test_advanced_chat_blocking_injects_pause_state_config(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -424,7 +427,7 @@ class TestHitlServiceApi:
         generator_instance = MagicMock()
         generator_instance.generate.return_value = {"result": "advanced-blocking"}
         generator_instance.convert_to_event_stream.side_effect = lambda payload: payload
-        monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", lambda: generator_instance)
+        monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", lambda *, file_uploads: generator_instance)
 
         app_model = _app(app_id="app-id", tenant_id="tenant-id", mode=AppMode.ADVANCED_CHAT)
         user = _end_user(user_id="user-id", app_id="app-id", tenant_id="tenant-id")

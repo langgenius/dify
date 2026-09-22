@@ -32,6 +32,7 @@ from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
 from services.dataset_ref_service import DatasetRefService, DocumentRef
+from services.file_upload_service import FileUploadWriter
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         workflow_thread_pool_id: str | None = None,
+        *,
+        file_uploads: FileUploadWriter,
     ) -> None:
         """
         :param application_generate_entity: application generate entity
@@ -61,6 +64,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             queue_manager=queue_manager,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,
+            file_uploads=file_uploads,
         )
         self.application_generate_entity = application_generate_entity
         self.workflow_thread_pool_id = workflow_thread_pool_id
@@ -316,6 +320,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
+            file_uploads=self._file_uploads,
         )
         if start_node_id is None:
             start_node_id = get_default_root_node_id(graph_config)
