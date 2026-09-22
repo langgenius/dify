@@ -261,6 +261,9 @@ export function AgentWorkingDirectoryPanel({
   const [pendingOpenFolderPaths, setPendingOpenFolderPaths] = useState<string[]>([])
   const [downloadActionLoadingTarget, setDownloadActionLoadingTarget] =
     useState<AgentSkillDetailDownloadAction | null>(null)
+  const [pendingDownloadFileIds, setPendingDownloadFileIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
   const directoryPath = selectedDirectoryPath
   const selectedRootPath = getSandboxRootPath(directoryPath)
   const getFileListQueryOptions = (path: string) =>
@@ -439,8 +442,6 @@ export function AgentWorkingDirectoryPanel({
   const isImagePreviewFile = selectedWorkingDirectoryFile?.icon === 'image'
   const selectedWorkingDirectoryFilePath = selectedWorkingDirectoryFile?.id
   const { mutateAsync: downloadWorkflowSandboxFile } = workflowSandboxDownloadMutation
-  const isFileDownloadPending =
-    agentSandboxDownloadMutation.isPending || workflowSandboxDownloadMutation.isPending
   const isFileReadLoading =
     !!selectedWorkingDirectoryFile && !isImagePreviewFile && fileReadQuery.isPending
   const imagePreviewQuery = useQuery({
@@ -490,11 +491,13 @@ export function AgentWorkingDirectoryPanel({
   })
   const handleDownloadFile = useCallback(
     async (action: AgentSkillDetailDownloadAction, targetFile = selectedWorkingDirectoryFile) => {
-      if (!targetFile || isFileDownloadPending) return
+      if (!targetFile || pendingDownloadFileIds.has(targetFile.id)) return
 
-      if (source.type === 'agent') {
-        setDownloadActionLoadingTarget(action)
-        try {
+      const targetFileId = targetFile.id
+      setPendingDownloadFileIds((ids) => new Set(ids).add(targetFileId))
+      setDownloadActionLoadingTarget(action)
+      try {
+        if (source.type === 'agent') {
           const result = await downloadAgentSandboxFile({
             params: {
               agent_id: source.agentId,
@@ -507,16 +510,9 @@ export function AgentWorkingDirectoryPanel({
           })
           downloadUrl({ url: result.url, fileName: targetFile.name })
           toast.success(tCommon(($) => $['operation.downloadSuccess']))
-        } catch {
-          // The generated client reports the mutation failure through its shared error handler.
-        } finally {
-          setDownloadActionLoadingTarget(null)
+          return
         }
-        return
-      }
 
-      setDownloadActionLoadingTarget(action)
-      try {
         const result = await downloadWorkflowSandboxFile({
           params: {
             app_id: source.appId,
@@ -534,10 +530,16 @@ export function AgentWorkingDirectoryPanel({
         // The generated client reports the mutation failure through its shared error handler.
       } finally {
         setDownloadActionLoadingTarget(null)
+        setPendingDownloadFileIds((ids) => {
+          if (!ids.has(targetFileId)) return ids
+          const nextIds = new Set(ids)
+          nextIds.delete(targetFileId)
+          return nextIds
+        })
       }
     },
     [
-      isFileDownloadPending,
+      pendingDownloadFileIds,
       selectedWorkingDirectoryFile,
       source,
       tCommon,

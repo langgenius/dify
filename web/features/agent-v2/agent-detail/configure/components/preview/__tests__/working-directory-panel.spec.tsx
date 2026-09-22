@@ -451,6 +451,50 @@ describe('AgentWorkingDirectoryPanel', () => {
     })
   })
 
+  it('should download a newly selected file even while a previous row-triggered download is still pending', async () => {
+    const user = userEvent.setup()
+    const notesDownload = createDeferred<{ url: string }>()
+    const reportDownload = createDeferred<{ url: string }>()
+    mocks.sandboxFileDownloadMutationFn
+      .mockReturnValueOnce(notesDownload.promise)
+      .mockReturnValueOnce(reportDownload.promise)
+    renderWorkingDirectoryPanel()
+
+    await user.click(await screen.findByText('notes.md'))
+    await waitFor(() => {
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
+    })
+
+    await user.click(await screen.findByText('report.md'))
+    await waitFor(() => {
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(2)
+    })
+    expect(mocks.sandboxFileDownloadMutationFn.mock.calls[1]?.[0]).toEqual({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: {
+        caller_type: 'conversation',
+        caller_id: 'conversation-1',
+        path: '~/report.md',
+      },
+    })
+
+    notesDownload.resolve({ url: 'https://example.com/sandbox-file-notes' })
+    reportDownload.resolve({ url: 'https://example.com/sandbox-file-report' })
+
+    await waitFor(() => {
+      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/sandbox-file-notes',
+        fileName: 'notes.md',
+      })
+      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/sandbox-file-report',
+        fileName: 'report.md',
+      })
+    })
+  })
+
   it('should download the selected working directory file from the preview header download action', async () => {
     const user = userEvent.setup()
     const selectDownload = createDeferred<{ url: string }>()
