@@ -28,12 +28,9 @@ const Features = dynamic(() => import('@/app/components/workflow/features'), {
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
   ssr: false,
 })
-const DSLExportConfirmModal = dynamic(
-  () => import('@/app/components/workflow/dsl-export-confirm-modal'),
-  {
-    ssr: false,
-  },
-)
+const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
+  ssr: false,
+})
 const WorkflowOnboardingModal = dynamic(() => import('./workflow-onboarding-modal'), {
   ssr: false,
 })
@@ -180,7 +177,7 @@ const WorkflowChildren = () => {
         />
       )}
       {canImportExportDSL && secretEnvList.length > 0 && (
-        <DSLExportConfirmModal
+        <AppExportConfirmModal
           envList={secretEnvList}
           onConfirm={handleExportDSL!}
           onClose={() => setSecretEnvList([])}

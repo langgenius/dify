@@ -29,7 +29,7 @@ import { FlowType } from '@/types/common'
 
 type SaveInlineAgentToRosterDialogProps = {
   flowId: string
-  flowType: FlowType.appFlow | FlowType.snippet
+  flowType: typeof FlowType.appFlow | typeof FlowType.snippet
   initialAgent: AgentComposerAgentResponse
   nodeId: string
   open: boolean

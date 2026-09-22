@@ -1,5 +1,4 @@
-import type { Features } from '../../../types'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type { Features, OnFeaturesChange } from '../../../types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import AnnotationReply from '../index'

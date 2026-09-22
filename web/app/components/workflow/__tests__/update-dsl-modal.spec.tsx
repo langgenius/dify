@@ -234,6 +234,7 @@ describe('UpdateDSLModal', () => {
     mockImportDSL.mockResolvedValue({
       id: 'import-1',
       status: DSLImportStatus.FAILED,
+      error: 'Invalid workflow package',
       app_id: 'app-1',
     })
 
@@ -246,7 +247,9 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('workflow.common.importFailure', {
+        description: 'Invalid workflow package',
+      })
     })
   })
 
@@ -404,7 +407,9 @@ describe('UpdateDSLModal', () => {
   })
 
   it('should show an error notification when import throws', async () => {
-    mockImportDSL.mockRejectedValue(new Error('boom'))
+    mockImportDSL.mockRejectedValue(
+      Response.json({ message: 'Invalid app package' }, { status: 400 }),
+    )
 
     renderModal()
 
@@ -415,7 +420,9 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('workflow.common.importFailure', {
+        description: 'Invalid app package',
+      })
     })
   })
 
@@ -446,6 +453,7 @@ describe('UpdateDSLModal', () => {
     })
     mockImportDSLConfirm.mockResolvedValue({
       status: DSLImportStatus.FAILED,
+      error: 'Import session expired',
     })
 
     renderModal()
@@ -462,7 +470,9 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('workflow.common.importFailure', {
+        description: 'Import session expired',
+      })
     })
   })
 
@@ -473,7 +483,9 @@ describe('UpdateDSLModal', () => {
       imported_dsl_version: '1.0.0',
       current_dsl_version: '2.0.0',
     })
-    mockImportDSLConfirm.mockRejectedValue(new Error('boom'))
+    mockImportDSLConfirm.mockRejectedValue(
+      Response.json({ message: 'Invalid app package' }, { status: 400 }),
+    )
 
     renderModal()
 
@@ -489,7 +501,9 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('workflow.common.importFailure', {
+        description: 'Invalid app package',
+      })
     })
   })
 

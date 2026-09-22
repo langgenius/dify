@@ -7,12 +7,14 @@ import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
+import robotAvatar from '../../assets/robot-avatar.svg'
 
-export enum EditItemType {
-  Query = 'query',
-  Answer = 'answer',
-}
+export const EditItemType = {
+  Query: 'query',
+  Answer: 'answer',
+} as const
+
+export type EditItemType = (typeof EditItemType)[keyof typeof EditItemType]
 type Props = Readonly<{
   type: EditItemType
   content: string
@@ -37,7 +39,11 @@ const EditItem: FC<Props> = ({ type, readonly, content, onSave }) => {
   const [newContent, setNewContent] = useState('')
   const showNewContent = newContent && newContent !== content
   const avatar =
-    type === EditItemType.Query ? <User className="size-6" /> : <Robot className="size-6" />
+    type === EditItemType.Query ? (
+      <span aria-hidden className="i-custom-public-avatar-user size-6" />
+    ) : (
+      <img aria-hidden src={robotAvatar.src} alt="" width={24} height={24} className="size-6" />
+    )
   const name =
     type === EditItemType.Query
       ? t(($) => $['editModal.queryName'], { ns: 'appAnnotation' })

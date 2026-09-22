@@ -21,7 +21,6 @@ import { useQueryState } from 'nuqs'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import {
   pricingQueryParamName,
@@ -343,9 +342,9 @@ export function Popup({
             {deploymentEdition === 'CLOUD' &&
               isAllowPublishAsCustomKnowledgePipelineTemplate === false && (
                 <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
-                  <SparklesSoft
+                  <span
                     aria-hidden="true"
-                    className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0"
+                    className="i-custom-public-common-sparkles-soft flex size-3 items-center text-components-premium-badge-indigo-text-stop-0"
                   />
                   <span className="p-0.5 system-2xs-medium">
                     {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}

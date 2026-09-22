@@ -144,7 +144,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     modelModeTypeRef.current = resolvedModelModeType
   }, [modelModeTypeRef, resolvedModelModeType])
 
-  const [promptMode, setPromptMode] = useState(PromptMode.simple)
+  const [promptMode, setPromptMode] = useState<PromptMode>(PromptMode.simple)
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
 

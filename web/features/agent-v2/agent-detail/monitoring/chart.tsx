@@ -2,9 +2,9 @@
 
 import type { AgentMonitoringChartRow, AgentMonitoringChartType } from './chart-utils'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import ReactECharts from 'echarts-for-react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { buildChartOptions, getChartValueField, getTokenSummary } from './chart-utils'
 
 type AgentMonitoringChartProps = {
@@ -51,7 +51,12 @@ export function AgentMonitoringChart({
           <h3 className="truncate system-md-semibold text-text-secondary">
             {t(($) => $[titleKey])}
           </h3>
-          <Infotip aria-label={t(($) => $[explanationKey])}>{t(($) => $[explanationKey])}</Infotip>
+          <Infotip>
+            <InfotipTrigger aria-label={t(($) => $[explanationKey])} />
+            <InfotipContent aria-label={t(($) => $[explanationKey])}>
+              {t(($) => $[explanationKey])}
+            </InfotipContent>
+          </Infotip>
         </div>
       </div>
 

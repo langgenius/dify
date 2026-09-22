@@ -131,7 +131,7 @@ const createMockPluginDeclaration = (
   endpoint: { settings: [], endpoints: [] },
   model: {},
   tags: [],
-  agent_strategy: {},
+  agent_strategy: null,
   meta: { version: '1.0.0' },
   trigger: {
     events: [],

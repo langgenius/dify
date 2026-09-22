@@ -1,11 +1,12 @@
+import type { AgentStrategyParameter } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { AgentNodeType } from '../types'
 import type useConfig from '../use-config'
-import type { StrategyParamItem } from '@/app/components/plugins/types'
+import { zAgentStrategyParameter } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { render, screen } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { VarType } from '../../tool/types'
 import Node from '../node'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
@@ -73,20 +74,21 @@ vi.mock('../../_base/components/setting-item', () => ({
   ),
 }))
 
-const createStrategyParam = (overrides: Partial<StrategyParamItem> = {}): StrategyParamItem => ({
-  name: 'requiredModel',
-  type: FormTypeEnum.modelSelector,
-  required: true,
-  label: { en_US: 'Required Model' } as StrategyParamItem['label'],
-  help: { en_US: 'Required model help' } as StrategyParamItem['help'],
-  placeholder: { en_US: 'Required model placeholder' } as StrategyParamItem['placeholder'],
-  scope: 'global',
-  default: null,
-  options: [],
-  template: { enabled: false },
-  auto_generate: { type: 'none' },
-  ...overrides,
-})
+const createStrategyParam = (overrides: Partial<AgentStrategyParameter> = {}) =>
+  zAgentStrategyParameter.parse({
+    name: 'requiredModel',
+    type: FormTypeEnum.modelSelector,
+    required: true,
+    label: { en_US: 'Required Model' },
+    help: { en_US: 'Required model help' },
+    placeholder: { en_US: 'Required model placeholder' },
+    scope: 'global',
+    default: null,
+    options: [],
+    template: { enabled: false },
+    auto_generate: null,
+    ...overrides,
+  })
 
 const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   title: 'Agent',
@@ -99,15 +101,15 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   plugin_unique_identifier: 'provider/agent:1.0.0',
   agent_parameters: {
     optionalModel: {
-      type: VarType.constant,
+      type: VarKindType.constant,
       value: { provider: 'openai', model: 'gpt-4o' },
     },
     toolParam: {
-      type: VarType.constant,
+      type: VarKindType.constant,
       value: { provider_name: 'author/tool-a' },
     },
     multiToolParam: {
-      type: VarType.constant,
+      type: VarKindType.constant,
       value: [{ provider_name: 'author/tool-b' }, { provider_name: 'author/tool-c' }],
     },
   },
@@ -127,7 +129,7 @@ const createConfigResult = (
       author: 'provider',
       name: 'react',
       icon: 'icon',
-      label: { en_US: 'React Agent' } as StrategyParamItem['label'],
+      label: { en_US: 'React Agent' },
       provider: 'provider/agent',
     },
     parameters: [
@@ -137,17 +139,12 @@ const createConfigResult = (
         required: false,
       }),
       createStrategyParam({
-        name: 'toolParam',
-        type: FormTypeEnum.toolSelector,
-        required: false,
-      }),
-      createStrategyParam({
         name: 'multiToolParam',
         type: FormTypeEnum.multiToolSelector,
         required: false,
       }),
     ],
-    description: { en_US: 'agent description' } as StrategyParamItem['label'],
+    description: { en_US: 'agent description' },
     output_schema: {},
     features: [],
   },
@@ -207,11 +204,10 @@ describe('agent/node', () => {
     )
     expect(screen.getByText('requiredModel:empty-model')).toBeInTheDocument()
     expect(screen.getByText('optionalModel:openai/gpt-4o')).toBeInTheDocument()
-    expect(screen.getByText('tool:author/tool-a')).toBeInTheDocument()
     expect(screen.getByText('tool:author/tool-b')).toBeInTheDocument()
     expect(screen.getByText('tool:author/tool-c')).toBeInTheDocument()
     expect(mockModelBar).toHaveBeenCalledTimes(2)
-    expect(mockToolIcon).toHaveBeenCalledTimes(3)
+    expect(mockToolIcon).toHaveBeenCalledTimes(2)
   })
 
   it('skips optional models and empty tool values when no configuration is provided', () => {
@@ -225,11 +221,6 @@ describe('agent/node', () => {
           parameters: [
             createStrategyParam({
               name: 'optionalModel',
-              required: false,
-            }),
-            createStrategyParam({
-              name: 'toolParam',
-              type: FormTypeEnum.toolSelector,
               required: false,
             }),
           ],

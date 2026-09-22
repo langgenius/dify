@@ -12,11 +12,20 @@ const mocks = vi.hoisted(() => ({
   toastPromise: vi.fn(
     async (
       promise: Promise<unknown>,
-      options: { success: (format: unknown) => { title: string }; error: { title: string } },
+      options: {
+        success: (format: unknown) => { title: string }
+        error: (error: unknown) => { title: string; description?: string }
+      },
     ) => {
-      const format = await promise
-      mocks.toastSuccess(options.success(format).title)
-      return format
+      try {
+        const format = await promise
+        mocks.toastSuccess(options.success(format).title)
+        return format
+      } catch (error) {
+        const { title, description } = options.error(error)
+        mocks.toastError(title, { description })
+        throw error
+      }
     },
   ),
 }))
@@ -174,6 +183,18 @@ describe('useExportAppDsl', () => {
     })
   })
 
+  it('keeps the localized fallback when the export response has no readable message', async () => {
+    mocks.exportAppDsl.mockRejectedValue(new Response('Bad gateway', { status: 502 }))
+    const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
+    await act(async () => {
+      await result.current.exportAppDsl({ appId: 'app-id', appName: 'App' })
+    })
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportAppFailed', {
+      description: undefined,
+    })
+    expect(mocks.downloadBlob).not.toHaveBeenCalled()
+  })
+
   it('exports through the generated client and hands the YAML file to the browser', async () => {
     mocks.exportAppDsl.mockResolvedValue({ data: 'kind: app\nversion: 0.1.5\n' })
     const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
@@ -241,10 +262,15 @@ describe('useExportAppDsl', () => {
     )
   })
 
-  it.each([undefined, 'ifpkg'] as const)(
+  it.each([undefined, 'ifpkg', 'yaml'] as const)(
     'lets the promise toast own %s export errors without triggering a download',
     async (format) => {
-      mocks.exportAppDsl.mockRejectedValue(new Error('Export failed'))
+      mocks.exportAppDsl.mockRejectedValue(
+        Response.json(
+          { message: "Package contains unusable Skill 'news-source-verification'" },
+          { status: 500 },
+        ),
+      )
       const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
 
       await act(async () => {
@@ -260,8 +286,12 @@ describe('useExportAppDsl', () => {
       expect(mocks.toastPromise).toHaveBeenCalledWith(
         expect.any(Promise),
         expect.objectContaining({
-          error: { title: format === 'ifpkg' ? 'app.exportAppFailed' : 'app.exportFailed' },
+          error: expect.any(Function),
         }),
+      )
+      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith(
+        format === 'yaml' ? 'app.exportFailed' : 'app.exportAppFailed',
+        { description: "Package contains unusable Skill 'news-source-verification'" },
       )
       expect(mocks.downloadBlob).not.toHaveBeenCalled()
     },
@@ -342,7 +372,9 @@ describe('useExportWorkflowAppDsl', () => {
       ).resolves.toEqual({ status: 'failed' })
     })
 
-    expect(mocks.toastError).toHaveBeenCalledWith('app.exportFailed')
+    expect(mocks.toastError).toHaveBeenCalledWith('app.exportAppFailed', {
+      description: 'Draft unavailable',
+    })
     expect(mocks.exportAppDsl).not.toHaveBeenCalled()
   })
 

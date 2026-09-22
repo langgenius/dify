@@ -1,11 +1,11 @@
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/console'
@@ -73,11 +73,16 @@ const SummaryIndexSetting = ({
         <div className="flex h-6 items-center justify-between">
           <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
             {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
-            <Infotip
-              aria-label={t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
-              className="ml-1"
-            >
-              {t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
+                className="ml-1"
+              />
+              <InfotipContent
+                aria-label={t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
+              >
+                {t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <Switch

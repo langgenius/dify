@@ -1,6 +1,7 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   Select,
   SelectItem,
@@ -19,7 +20,6 @@ import { useTranslation } from 'react-i18next'
 import { replace } from 'string-ts'
 import { AudioBtn } from '@/app/components/base/audio-btn'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Infotip } from '@/app/components/base/infotip'
 import { languages } from '@/i18n/language'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -107,15 +107,16 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
       <div className="mb-3">
         <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
           {t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
-          <Infotip
-            aria-label={t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
-            popupClassName="w-[180px]"
-          >
-            {t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })
-              .split('\n')
-              .map((item) => (
-                <div key={item}>{item}</div>
-              ))}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
+            />
+            <InfotipContent
+              aria-label={t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
+              className="w-45 whitespace-pre-wrap"
+            >
+              {t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
+            </InfotipContent>
           </Infotip>
         </div>
         <Select

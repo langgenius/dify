@@ -7,11 +7,11 @@ import type {
 import type { AccessMode } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessMode as AccessModeValue } from '@/models/access-control'
-import { Infotip } from '../../base/infotip'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
 import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
@@ -111,15 +111,22 @@ export function AccessControlForm({
                 {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
               </p>
               {publicAccessDisabled && (
-                <Infotip
-                  aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
-                    ns: 'app',
-                  })}
-                  className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
-                >
-                  {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
-                    ns: 'app',
-                  })}
+                <Infotip>
+                  <InfotipTrigger
+                    aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                      ns: 'app',
+                    })}
+                    className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+                  />
+                  <InfotipContent
+                    aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                      ns: 'app',
+                    })}
+                  >
+                    {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                      ns: 'app',
+                    })}
+                  </InfotipContent>
                 </Infotip>
               )}
             </div>

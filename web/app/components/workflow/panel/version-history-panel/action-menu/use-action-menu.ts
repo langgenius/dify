@@ -48,7 +48,7 @@ const useActionMenu = (props: ActionMenuProps) => {
         ? [
             {
               key: VersionHistoryContextMenuOptions.exportDSL,
-              name: t(($) => $.export, { ns: 'app' }),
+              name: t(($) => $.exportApp, { ns: 'app' }),
               disabled: deploymentEdition === 'CLOUD' && plan === undefined,
               ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
             },
