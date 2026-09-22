@@ -85,7 +85,7 @@ function HeadingHint() {
     <Infotip defaultOpen>
       <InfotipTrigger aria-label="Processing priority" />
       <InfotipContent>
-        <InfotipTitle render={<h3 />}>Processing priority</InfotipTitle>
+        <InfotipTitle>Processing priority</InfotipTitle>
         <p>Priority determines which documents are processed first.</p>
       </InfotipContent>
     </Infotip>
