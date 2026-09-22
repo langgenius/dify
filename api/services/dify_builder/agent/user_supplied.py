@@ -19,6 +19,7 @@ from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlsplit
 
+from core.dify_builder import urls
 from core.dify_builder.credentials import is_credential_key, is_credential_param_key
 
 __all__ = [
@@ -85,20 +86,21 @@ def is_user_supplied_url(url: str, trusted_text: str) -> bool:
     """True iff ``url`` is something the user actually gave: its host
     appears among the URLs literally present in ``trusted_text``.
 
-    A Dify template reference (contains ``{{#``) is a variable, not a
-    literal, so it is never a fabrication and always returns True.
+    A Dify template in the HOST position (``urls.host_is_templated``: the url
+    starts with one, or its host contains one) is a variable, not a literal,
+    so it is never a fabrication and returns True. A template only in the
+    path or query does NOT exempt the url -- ``https://api.pptrender.io/v1/
+    render?topic={{#node1.topic#}}`` still names a literal host, which is
+    checked like any other.
     """
     if not url:
         return False
-    if _TEMPLATE_MARKER in url:
+    if urls.host_is_templated(url):
         return True
-    try:
-        host = urlsplit(url).hostname
-    except ValueError:
+    parts = urls.split_origin(url)
+    if parts is None or not parts.host:
         return False
-    if not host:
-        return False
-    return host.lower() in url_hosts(trusted_text)
+    return parts.host.lower() in url_hosts(trusted_text)
 
 
 def strip_auth_scheme(value: str) -> str:
