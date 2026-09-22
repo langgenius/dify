@@ -1,58 +1,66 @@
-import type { FeatureStoreState } from '@/app/components/base/features/store'
-import type { FileUpload } from '@/app/components/base/features/types'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { FeaturesProvider } from '@/app/components/base/features/context'
 import { Resolution, TransferMethod } from '@/types/app'
 import ParamConfig from '../param-config'
 
-const mockUseFeatures = vi.fn()
-const mockUseFeaturesStore = vi.fn()
-
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: FeatureStoreState) => unknown) => mockUseFeatures(selector),
-  useFeaturesStore: () => mockUseFeaturesStore(),
-}))
-
-const setupFeatureStore = (fileOverrides: Partial<FileUpload> = {}) => {
-  const file: FileUpload = {
-    enabled: true,
-    allowed_file_types: [],
-    allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-    number_limits: 3,
-    image: {
-      enabled: true,
-      detail: Resolution.low,
-      number_limits: 3,
-      transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-    },
-    ...fileOverrides,
-  }
-  const featureStoreState = {
-    features: { file },
-    setFeatures: vi.fn(),
-    showFeaturesModal: false,
-    setShowFeaturesModal: vi.fn(),
-  } as unknown as FeatureStoreState
-  mockUseFeatures.mockImplementation((selector) => selector(featureStoreState))
-  mockUseFeaturesStore.mockReturnValue({
-    getState: () => featureStoreState,
-  })
-}
+const renderConfig = () =>
+  render(
+    <FeaturesProvider
+      features={{
+        file: {
+          enabled: true,
+          allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+          number_limits: 3,
+          image: { enabled: true, detail: Resolution.low },
+        },
+      }}
+    >
+      <ParamConfig />
+    </FeaturesProvider>,
+  )
 
 describe('ParamConfig', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setupFeatureStore()
-  })
-
-  it('should toggle the settings panel when clicking the trigger', async () => {
+  it('opens a named settings panel and exposes named, keyboard-operable radio groups', async () => {
     const user = userEvent.setup()
-    render(<ParamConfig />)
+    renderConfig()
 
-    expect(screen.queryByText('appDebug.vision.visionSettings.title')).not.toBeInTheDocument()
-
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'appDebug.voice.settings' }))
 
-    expect(await screen.findByText('appDebug.vision.visionSettings.title')).toBeInTheDocument()
+    const panel = await screen.findByRole('dialog', {
+      name: 'appDebug.vision.visionSettings.title',
+    })
+    const resolution = within(panel).getByRole('radiogroup', {
+      name: 'appDebug.vision.visionSettings.resolution',
+    })
+    const low = within(resolution).getByRole('radio', {
+      name: 'appDebug.vision.visionSettings.low',
+    })
+    expect(low).toBeChecked()
+    await user.click(low)
+    await user.keyboard('{ArrowLeft}')
+    expect(
+      within(resolution).getByRole('radio', { name: 'appDebug.vision.visionSettings.high' }),
+    ).toBeChecked()
+
+    const uploadMethods = within(panel).getByRole('radiogroup', {
+      name: 'appDebug.vision.visionSettings.uploadMethod',
+    })
+    const both = within(uploadMethods).getByRole('radio', {
+      name: 'appDebug.vision.visionSettings.both',
+    })
+    expect(both).toBeChecked()
+    await user.click(both)
+    await user.keyboard('{ArrowRight}')
+    expect(
+      within(uploadMethods).getByRole('radio', {
+        name: 'appDebug.vision.visionSettings.localUpload',
+      }),
+    ).toBeChecked()
+    await user.keyboard('{ArrowRight}')
+    expect(
+      within(uploadMethods).getByRole('radio', { name: 'appDebug.vision.visionSettings.url' }),
+    ).toBeChecked()
   })
 })

@@ -14,7 +14,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
@@ -608,8 +609,9 @@ export function AddSourcePage({
   const { t } = useTranslation('dataset')
   const router = useRouter()
   const queryClient = useQueryClient()
-  const initialDraftRef = useRef<NewKnowledgeSourceDraft>(
-    initialSourceDraft ??
+  const initialDraftRef = useRefWithInit<NewKnowledgeSourceDraft>(
+    () =>
+      initialSourceDraft ??
       createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
   )
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(initialDraftRef.current)
@@ -954,7 +956,7 @@ export function AddSourcePage({
   )
     return (
       <div className="flex min-h-64 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
 
@@ -1034,7 +1036,7 @@ export function AddSourcePage({
                 />
               ) : connection?.status === 'active' ? (
                 <div className="flex min-h-64 items-center justify-center">
-                  <Loading />
+                  <LoadingPlaceholder />
                 </div>
               ) : connection?.status === 'provisioning' ? (
                 <ProvisioningConnection onReconcile={reconcileConnection} />

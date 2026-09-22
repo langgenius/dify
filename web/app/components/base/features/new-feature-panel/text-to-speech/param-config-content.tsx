@@ -20,8 +20,8 @@ import { replace } from 'string-ts'
 import { AudioBtn } from '@/app/components/base/audio-btn'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Infotip } from '@/app/components/base/infotip'
-import { languages } from '@/i18n-config/language'
-import { usePathname } from '@/next/navigation'
+import { languages } from '@/i18n/language'
+import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { TtsAutoPlay } from '@/types/app'
 
@@ -36,9 +36,7 @@ type VoiceParamConfigProps = {
 }
 const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
   const { t } = useTranslation()
-  const pathname = usePathname()
-  const matched = /\/app\/([^/]+)/.exec(pathname)
-  const appId = matched?.length && matched[1] ? matched[1] : ''
+  const params = useParams<{ appId?: string; agentId?: string }>()
   const text2speech = useFeatures((state) => state.features.text2speech)
   const featuresStore = useFeaturesStore()
   const formatLanguageName = (item: SelectOption) => {
@@ -56,14 +54,21 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
 
   const language = languageItem?.value
   const { data: voiceItems } = useQuery(
-    consoleQuery.apps.byAppId.textToAudio.voices.get.queryOptions({
-      input: appId
-        ? {
-            params: { app_id: appId },
+    params.agentId
+      ? consoleQuery.agent.byAgentId.textToAudio.voices.get.queryOptions({
+          input: {
+            params: { agent_id: params.agentId },
             query: { language: language || 'en-US' },
-          }
-        : skipToken,
-    }),
+          },
+        })
+      : consoleQuery.apps.byAppId.textToAudio.voices.get.queryOptions({
+          input: params.appId
+            ? {
+                params: { app_id: params.appId },
+                query: { language: language || 'en-US' },
+              }
+            : skipToken,
+        }),
   )
   let voiceItem = voiceItems?.find((item) => item.value === text2speech?.voice)
   if (voiceItems && !voiceItem) voiceItem = voiceItems[0]
@@ -188,7 +193,7 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
               role="group"
               aria-label={t(($) => $.play, { ns: 'appApi', defaultValue: 'Play' })}
             >
-              <AudioBtn value={languageItem?.example} isAudition voice={text2speech?.voice} />
+              <AudioBtn value={languageItem?.example} isAudition voice={voiceItem?.value} />
             </div>
           )}
         </div>

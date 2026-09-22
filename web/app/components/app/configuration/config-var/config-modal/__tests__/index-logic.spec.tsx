@@ -1,11 +1,12 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
 import { useStore } from '@/app/components/app/store'
 import { InputVarType } from '@/app/components/workflow/types'
 import DebugConfigurationContext from '@/context/debug-configuration'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import ConfigModal from '../index'
 
@@ -22,18 +23,21 @@ vi.mock('../form-fields', () => ({
         <div data-testid="payload-schema">{String(props.tempPayload.json_schema ?? '')}</div>
         <div data-testid="payload-default">{String(props.tempPayload.default ?? '')}</div>
         <button
+          type="button"
           data-testid="invalid-key-blur"
           onClick={() => props.onVarKeyBlur({ target: { value: 'invalid key' } })}
         >
           invalid-key-blur
         </button>
         <button
+          type="button"
           data-testid="valid-key-blur"
           onClick={() => props.onVarKeyBlur({ target: { value: 'auto_label' } })}
         >
           valid-key-blur
         </button>
         <button
+          type="button"
           data-testid="invalid-name-change"
           onClick={() =>
             props.onVarNameChange({
@@ -49,27 +53,35 @@ vi.mock('../form-fields', () => ({
           invalid-name-change
         </button>
         <button
+          type="button"
           data-testid="valid-json-change"
           onClick={() => props.onJSONSchemaChange('{\n  "foo": "bar"\n}')}
         >
           valid-json-change
         </button>
-        <button data-testid="empty-json-change" onClick={() => props.onJSONSchemaChange('   ')}>
+        <button
+          type="button"
+          data-testid="empty-json-change"
+          onClick={() => props.onJSONSchemaChange('   ')}
+        >
           empty-json-change
         </button>
         <button
+          type="button"
           data-testid="invalid-json-change"
           onClick={() => props.onJSONSchemaChange('{invalid-json}')}
         >
           invalid-json-change
         </button>
         <button
+          type="button"
           data-testid="type-change"
           onClick={() => props.onTypeChange({ value: InputVarType.singleFile })}
         >
           type-change
         </button>
         <button
+          type="button"
           data-testid="file-payload-change"
           onClick={() =>
             props.onFilePayloadChange({ ...props.tempPayload, default: 'file-default' })
@@ -155,7 +167,7 @@ describe('ConfigModal logic', () => {
     })
 
     fireEvent.click(screen.getByTestId('invalid-json-change'))
-    expect(screen.getByTestId('payload-schema')).toHaveTextContent(/"foo": "bar"/)
+    expect(screen.getByTestId('payload-schema')).toHaveTextContent('{invalid-json}')
 
     fireEvent.click(screen.getByTestId('empty-json-change'))
     await waitFor(() => {

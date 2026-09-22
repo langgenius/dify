@@ -99,7 +99,7 @@ When(
   async function (this: DifyWorld, versionNumber: number) {
     const page = this.getPage()
     const versionButton = page.getByRole('button', {
-      name: new RegExp(`\\bVersion ${versionNumber}\\b`),
+      name: new RegExp(`^Version ${versionNumber}\\b`),
     })
 
     await expect(versionButton).toBeVisible({ timeout: 30_000 })
@@ -120,6 +120,11 @@ Then(
 When('I restore the selected Agent v2 version', async function (this: DifyWorld) {
   const page = this.getPage()
   const agentId = getCurrentAgentId(this)
+
+  await page.getByRole('button', { name: 'Restore', exact: true }).click()
+  const confirmDialog = page.getByRole('alertdialog', { name: /^Restore / })
+  await expect(confirmDialog).toBeVisible()
+
   const restoreResponse = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
@@ -127,7 +132,7 @@ When('I restore the selected Agent v2 version', async function (this: DifyWorld)
       response.url().endsWith('/restore'),
   )
 
-  await page.getByRole('button', { name: 'Restore' }).click()
+  await confirmDialog.getByRole('button', { name: 'Restore', exact: true }).click()
   const response = await restoreResponse
   expect(response.ok()).toBe(true)
 })

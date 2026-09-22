@@ -131,7 +131,7 @@ services:
   # Exposes port 5004 on the host so a locally-run agent backend can reach it
   # at http://localhost:5004 (DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT).
   local_sandbox:
-    image: langgenius/dify-agent-local-sandbox:1.17.0
+    image: langgenius/dify-agent-local-sandbox:1.17.1
     restart: always
     env_file:
       - ./middleware.env

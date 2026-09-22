@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { Field } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowDropDownLine, RiArrowDropRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
-import Divider from '@/app/components/base/divider'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { Type } from '../../../types'
 import { getFieldType, getHasChildren } from '../../../utils'
@@ -146,8 +146,9 @@ const SchemaNode: FC<SchemaNodeProps> = ({
           indentLeft[depth],
         )}
       >
-        <Divider
-          type="vertical"
+        <Separator
+          decorative
+          orientation="vertical"
           className={cn('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}
         />
       </div>

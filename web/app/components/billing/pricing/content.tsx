@@ -1,13 +1,13 @@
 import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleQuery } from '@/service/console'
 import Cloud from './assets/cloud'
@@ -77,7 +77,7 @@ export function PricingContent() {
               <Cloud />
               {t(($) => $['plansCommon.cloud'], { ns: 'billing' })}
             </TabsTab>
-            <Divider type="vertical" className="mx-2 h-4 bg-divider-accent" />
+            <Separator decorative orientation="vertical" className="mx-2 h-4 bg-divider-accent" />
             <TabsTab
               value="self-hosted"
               className="appearance-none justify-center gap-x-2 border-b-0 px-5 py-3 system-xl-semibold text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible"
@@ -133,9 +133,9 @@ export function PricingContent() {
             )
           )}
           <CloudPlanItem plan="sandbox" billingInterval={billingInterval} billing={billing} />
-          <Divider type="vertical" className="mx-0 shrink-0 bg-divider-accent" />
+          <Separator orientation="vertical" className="mx-0 bg-divider-accent" />
           <CloudPlanItem plan="professional" billingInterval={billingInterval} billing={billing} />
-          <Divider type="vertical" className="mx-0 shrink-0 bg-divider-accent" />
+          <Separator orientation="vertical" className="mx-0 bg-divider-accent" />
           <CloudPlanItem plan="team" billingInterval={billingInterval} billing={billing} />
         </TabsPanel>
         <TabsPanel
@@ -143,9 +143,9 @@ export function PricingContent() {
           className="flex max-w-[1680px] grow border-x border-divider-accent"
         >
           <SelfHostedPlanItem plan="community" />
-          <Divider type="vertical" className="mx-0 shrink-0 bg-divider-accent" />
+          <Separator orientation="vertical" className="mx-0 bg-divider-accent" />
           <SelfHostedPlanItem plan="premium" />
-          <Divider type="vertical" className="mx-0 shrink-0 bg-divider-accent" />
+          <Separator orientation="vertical" className="mx-0 bg-divider-accent" />
           <SelfHostedPlanItem plan="enterprise" />
         </TabsPanel>
       </div>

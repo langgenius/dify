@@ -2,6 +2,14 @@
 
 import type { SnippetPublishStatus } from './components/snippet-publish-status-filter'
 import type { SnippetListItem } from '@/types/snippet'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounce } from 'ahooks'
@@ -180,18 +188,23 @@ const SnippetList = () => {
     >
       <StudioListHeader
         title={
-          <>
-            <Link
-              href="/apps"
-              className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            >
-              {t(($) => $['menus.apps'], { ns: 'common' })}
-            </Link>
-            <span className="mx-1.5 shrink-0 font-light text-divider-deep">/</span>
-            <h1 className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-              {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
-            </h1>
-          </>
+          <Breadcrumb aria-label={t(($) => $['tabs.snippets'], { ns: 'workflow' })}>
+            <BreadcrumbList className="text-[18px]/[21.6px] font-semibold">
+              <BreadcrumbItem>
+                <BreadcrumbLink render={<Link href="/apps" />} className="block truncate">
+                  {t(($) => $['menus.apps'], { ns: 'common' })}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="text-base/6 font-light text-divider-deep" />
+              <BreadcrumbItem>
+                <h1 className="min-w-0 truncate">
+                  <BreadcrumbPage>
+                    {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
+                  </BreadcrumbPage>
+                </h1>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
         }
       >
         <div className="flex flex-wrap items-center justify-between gap-2">

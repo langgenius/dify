@@ -11,7 +11,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
@@ -177,7 +177,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   if (isLoading) {
     return (
       <div className="flex h-16 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -257,16 +257,20 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 const providerType = providerMap.get(key)
                 const isLoadingPlugin = loadingPluginId === providerKeyToPluginId[key]
                 const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0
-                const getTooltipKey = () => {
-                  if (!providerType) return 'modelProvider.card.modelNotSupported'
-                  if (isConfigured && providerType === PreferredProviderTypeEnum.custom)
-                    return 'modelProvider.card.modelAPI'
-                  return 'modelProvider.card.modelSupported'
-                }
-                const tooltipText = t(($) => $[getTooltipKey()], {
-                  modelName: modelNameMap[key],
-                  ns: 'common',
-                })
+                const tooltipText = !providerType
+                  ? t(($) => $['modelProvider.card.modelNotSupported'], {
+                      modelName: modelNameMap[key],
+                      ns: 'common',
+                    })
+                  : isConfigured && providerType === PreferredProviderTypeEnum.custom
+                    ? t(($) => $['modelProvider.card.modelAPI'], {
+                        modelName: modelNameMap[key],
+                        ns: 'common',
+                      })
+                    : t(($) => $['modelProvider.card.modelSupported'], {
+                        modelName: modelNameMap[key],
+                        ns: 'common',
+                      })
                 return (
                   <Tooltip key={key}>
                     <TooltipTrigger

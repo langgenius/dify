@@ -5,11 +5,11 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
@@ -76,7 +76,7 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
         </div>
         <div className={s.tip}>{t(($) => $['stepOne.modal.tip'], { ns: 'datasetCreation' })}</div>
         <Form onFormSubmit={() => void submit()}>
-          <Field name="datasetName" className={cn(s.form, 'gap-2')}>
+          <Field name="datasetName" className={s.form}>
             <FieldLabel className={s.label}>
               {t(($) => $['stepOne.modal.input'], { ns: 'datasetCreation' })}
             </FieldLabel>

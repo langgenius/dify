@@ -1,7 +1,7 @@
 import type { MockedFunction } from 'vite-plus/test'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailValidity, useSendMail } from '@/service/use-common'
 import CheckCode from '../page'
@@ -20,7 +20,8 @@ vi.mock('@/app/components/signin/countdown', () => ({
   ),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 

@@ -367,7 +367,7 @@ function AgentBuildNoteInfotip() {
       aria-label={t(($) => $['agentDetail.configure.files.buildNote.tooltip'])}
       className="size-5 text-text-quaternary hover:text-text-quaternary"
       iconSize="large"
-      popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
+      popupClassName="w-[230px] rounded-xl px-4 py-3.5"
     >
       <p className="body-xs-regular text-text-secondary">
         <Trans

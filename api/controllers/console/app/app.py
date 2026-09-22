@@ -2,8 +2,9 @@ import logging
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
+from flask import send_file
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, ValidationInfo, computed_field, field_validator, model_validator
 from sqlalchemy import select
@@ -43,15 +44,19 @@ from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
-from models.model import IconType
+from models.model import AppMode, IconType
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app_dsl_service import AppDslService
+from services.app_package_service import AppPackageService
 from services.app_service import (
     AppListParams,
     AppListSortBy,
@@ -77,6 +82,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightVectorSetting,
 )
 from services.errors.account import NoPermissionError
+from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
@@ -180,8 +186,24 @@ class CopyAppPayload(BaseModel):
 
 
 class AppExportQuery(BaseModel):
+    format: Literal["yaml", "ifpkg"] | None = Field(
+        default=None, description="Export format; defaults to ifpkg for all Apps"
+    )
     include_secret: bool = Field(default=False, description="Include secrets in export")
     workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
+    version_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "Published Agent version ID to export; requires a paid plan on Cloud. "
+            "If omitted, exports the shared draft, falling back to the active snapshot when no draft exists."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_version_selectors(self) -> Self:
+        if self.version_id is not None and self.workflow_id is not None:
+            raise ValueError("version_id and workflow_id cannot be used together")
+        return self
 
 
 class AppNamePayload(BaseModel):
@@ -1027,6 +1049,10 @@ class AppExportApi(Resource):
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
     @console_ns.doc(params=query_params_from_model(AppExportQuery))
+    @console_ns.doc(
+        produces=["application/json", "application/zip"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/zip"]},
+    )
     @console_ns.response(200, "App exported successfully", console_ns.models[AppExportResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -1042,12 +1068,46 @@ class AppExportApi(Resource):
     def get(self, req_data: AppExportQuery, app_model: App):
         """Export app"""
 
+        if req_data.version_id is not None:
+            if app_model.mode != AppMode.AGENT:
+                raise BadRequest("version_id is only available for Agent Apps")
+            if (
+                dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+                and not FeatureService.get_workspace_plan(app_model.tenant_id).is_paid
+            ):
+                raise Forbidden("This feature requires a paid plan.")
+
+        if req_data.format != "yaml":
+            if app_model.mode == AppMode.AGENT:
+                agent_id = app_model.bound_agent_id_with_session(session=db.session())
+                if agent_id is None:
+                    raise NotFound("Agent not found")
+                exported = RosterAgentPackageExporter().export(
+                    tenant_id=app_model.tenant_id, agent_id=agent_id, version_id=req_data.version_id
+                )
+            else:
+                exported = AppPackageService().export_app(
+                    app_model=app_model,
+                    include_secret=req_data.include_secret,
+                    workflow_id=req_data.workflow_id,
+                )
+            try:
+                archive_response = send_file(
+                    exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
+                )
+            except Exception:
+                exported.close()
+                raise
+            archive_response.call_on_close(exported.close)
+            return archive_response
+
         response = AppExportResponse(
             data=AppDslService.export_dsl(
                 app_model=app_model,
                 session=db.session(),
                 include_secret=req_data.include_secret,
                 workflow_id=req_data.workflow_id,
+                version_id=req_data.version_id,
             )
         )
         return response.model_dump(mode="json")

@@ -1,8 +1,9 @@
 import type { WorkflowHistoryEventMeta } from '../store/workflow/history-slice'
 import { debounce } from 'es-toolkit/compat'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 
 /**
@@ -63,7 +64,7 @@ export const useWorkflowHistory = () => {
   // Some events may be triggered multiple times in a short period of time.
   // We debounce the history state update to avoid creating multiple history states
   // with minimal changes.
-  const saveStateToHistoryRef = useRef(
+  const saveStateToHistoryRef = useRefWithInit(() =>
     debounce((event: WorkflowHistoryEventT, meta?: WorkflowHistoryEventMeta) => {
       workflowHistoryStore.setState({
         workflowHistoryEvent: event,
@@ -105,7 +106,7 @@ export const useWorkflowHistory = () => {
           break
       }
     },
-    [],
+    [saveStateToHistoryRef],
   )
 
   const getHistoryLabel = useCallback(

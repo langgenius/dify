@@ -24,12 +24,12 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTitle,
   DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
@@ -48,9 +48,10 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -450,11 +451,11 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       {/* Panel Header */}
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="shrink-0">
-          <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
+          <DrawerTitle className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
             {isChatMode
               ? t(($) => $['detail.conversationId'], { ns: 'appLog' })
               : t(($) => $['detail.time'], { ns: 'appLog' })}
-          </div>
+          </DrawerTitle>
           {isChatMode && (
             <div className="flex items-center system-2xs-regular-uppercase text-text-secondary">
               <Tooltip>
@@ -695,7 +696,13 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
     }
   }
 
-  if (!conversationDetail) return null
+  if (!conversationDetail) {
+    return (
+      <DrawerTitle className="sr-only">
+        {t(($) => $['runDetail.title'], { ns: 'appLog' })}
+      </DrawerTitle>
+    )
+  }
 
   return (
     <DetailPanel
@@ -750,7 +757,13 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
     }
   }
 
-  if (!conversationDetail) return null
+  if (!conversationDetail) {
+    return (
+      <DrawerTitle className="sr-only">
+        {t(($) => $['runDetail.title'], { ns: 'appLog' })}
+      </DrawerTitle>
+    )
+  }
 
   return (
     <DetailPanel
@@ -885,7 +898,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     annotation?: LogAnnotation,
   ) => {
     return (
-      <Tooltip>
+      <Tooltip disabled={!isHighlight || isChatMode}>
         <TooltipTrigger
           render={
             <div
@@ -899,9 +912,9 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             </div>
           }
         />
-        <TooltipContent className={isHighlight && !isChatMode ? '' : 'hidden!'}>
-          <span className="inline-flex items-center text-xs text-text-tertiary">
-            <RiEditFill className="mr-1 size-3" />
+        <TooltipContent className="flex items-center gap-1">
+          <RiEditFill aria-hidden className="size-3 shrink-0" />
+          <span>
             {`${t(($) => $['detail.annotationTip'], { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         </TooltipContent>
@@ -909,7 +922,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     )
   }
 
-  if (!logs) return <Loading />
+  if (!logs) return <LoadingPlaceholder />
 
   return (
     <div className="relative mt-2 grow overflow-x-auto">
@@ -925,36 +938,36 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
               <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {isChatMode
                   ? t(($) => $['table.header.summary'], { ns: 'appLog' })
                   : t(($) => $['table.header.input'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.endUser'], { ns: 'appLog' })}
-              </td>
+              </th>
               {isChatflow && (
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.status'], { ns: 'appLog' })}
-                </td>
+                </th>
               )}
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {isChatMode
                   ? t(($) => $['table.header.messageCount'], { ns: 'appLog' })
                   : t(($) => $['table.header.output'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.userRate'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.adminRate'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.updatedTime'], { ns: 'appLog' })}
-              </td>
-              <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.time'], { ns: 'appLog' })}
-              </td>
+              </th>
             </tr>
           </thead>
           <tbody className="system-sm-regular text-text-secondary">
@@ -983,7 +996,13 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   <td className="h-4">
                     {!log.read_at && (
                       <div className="flex items-center p-3 pr-0.5">
-                        <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
+                        <span
+                          aria-hidden="true"
+                          className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"
+                        ></span>
+                        <span className="sr-only">
+                          {t(($) => $['table.unread'], { ns: 'appLog' })}
+                        </span>
                       </div>
                     )}
                   </td>
