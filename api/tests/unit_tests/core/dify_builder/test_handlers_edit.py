@@ -929,3 +929,33 @@ def test_a_launch_error_frame_is_diagnosed_not_bounced_as_unknown():
     assert res.run.status == "failed"
     assert res.run.error == launch_error
     assert "notice" not in [i.kind for i in res.items]
+
+
+def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing():
+    """Same preflight rejection as Build's: ``apply_repair`` raises a
+    ``ValueError`` for an edit whose result would fail at Graph.init. The edit
+    session must survive it as a card and stay at the plan gate."""
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    dify = FakeEditDifyPort()
+
+    def would_not_start(*_a, **_k):
+        raise ValueError("the draft would not start: node 'llm' (llm): 1 validation error for LLMNodeData")
+
+    dify.apply_repair = would_not_start
+    env, repo = _new_env(dify=dify)
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        checkpoint_id="cp-1",
+    )
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+
+    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
+
+    assert res.next == PcState.EDIT_PLAN_APPROVAL
+    error = next(i for i in res.items if i.kind == "error")
+    assert error.payload["title"] == "The workflow can't start"
+    assert "node 'llm' (llm)" in error.payload["body"]
