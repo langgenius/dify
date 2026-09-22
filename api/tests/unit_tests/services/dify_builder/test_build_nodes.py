@@ -516,3 +516,88 @@ def test_build_nodes_keeps_the_applicable_intents_and_records_a_partial_reject(c
     assert "connect" in warnings[0]
     assert "'maybe'" in warnings[0]
     assert "has no handle" in warnings[0]
+
+
+# ---- ESQ1-302: placeholder endpoints -----------------------------------------
+
+_HTTP_BODY = {"type": "json", "data": [{"type": "text", "key": "", "value": "{}"}]}
+
+
+def _gen_graph_with_http(url: str) -> dict:
+    return {
+        "graph": {
+            "nodes": [
+                {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "h",
+                    "type": "custom",
+                    "data": {
+                        "type": "http-request",
+                        "title": "Call PPT API",
+                        "method": "post",
+                        "url": url,
+                        "authorization": {"type": "no-auth", "config": None},
+                        "headers": "",
+                        "params": "",
+                        "body": _HTTP_BODY,
+                    },
+                },
+                {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
+            ],
+            "edges": [{"id": "e1", "source": "s", "target": "h"}, {"id": "e2", "source": "h", "target": "e"}],
+        },
+        "error": "",
+        "errors": [],
+    }
+
+
+def _build_with(gen_graph: dict):
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value=gen_graph,
+        ),
+        patch.object(
+            build.resources,
+            "list_tenant_resources",
+            return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
+        ),
+    ):
+        return build.build_nodes("t1", {}, ["Call the PPT API"]).intents
+
+
+def test_build_nodes_grounds_a_placeholder_endpoint_into_a_required_start_variable():
+    """The ESQ1-302 draft called ``https://api.example.com/ppt/generate`` -- an
+    endpoint the model invented. A placeholder URL now becomes a required start
+    variable, so the test-data gate asks the user for the real endpoint instead
+    of the run failing against a host that does not exist."""
+    intents = _build_with(_gen_graph_with_http("https://api.example.com/ppt/generate"))
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_url")
+    assert var["type"] == "text-input"
+    assert var["required"] is True
+    assert "Call PPT API" in var["label"]
+
+
+def test_build_nodes_leaves_a_real_endpoint_and_a_templated_url_alone():
+    for url in ("https://api.openai.com/v1/chat", "{{#s.endpoint#}}/generate"):
+        intents = _build_with(_gen_graph_with_http(url))
+        http = next(i for i in intents if i.args.get("node_type") == "http-request")
+        start = next(i for i in intents if i.args.get("node_type") == "start")
+        assert http.args["config"]["url"] == url
+        assert start.args["config"]["variables"] == []
+
+
+def test_is_placeholder_endpoint_recognises_the_usual_inventions():
+    assert build._is_placeholder_endpoint("https://api.example.com/ppt/generate")
+    assert build._is_placeholder_endpoint("http://example.org/x")
+    assert build._is_placeholder_endpoint("https://your-api.com/v1")
+    assert build._is_placeholder_endpoint("https://<your-domain>/generate")
+    assert build._is_placeholder_endpoint("https://api.acme.com/{tenant}/x")
+    assert build._is_placeholder_endpoint("")
+    assert not build._is_placeholder_endpoint("https://api.openai.com/v1")
+    assert not build._is_placeholder_endpoint("{{#s.endpoint#}}/x")  # a Dify template is a real reference

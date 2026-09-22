@@ -7,6 +7,7 @@ rather than crashing the advance. build_nodes lives in the same module
 
 import json
 import logging
+import re
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any
@@ -510,6 +511,8 @@ def build_nodes(
         # runtime model follows the user's choice.
         grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
         _ground(intents, grounding_mc, tenant_id, plan_items)
+        for node_id in _ground_placeholder_endpoints(intents):
+            logger.info("Dify Builder: http-request %s had a placeholder URL; now read from a start variable", node_id)
         applicable, rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
         if not applicable:
             reason = rejected[0][1] if rejected else "no applicable node intents"
@@ -567,6 +570,73 @@ def build_nodes(
             error=message,
             diagnostics=[_diagnostic(source="build_nodes", message=message, exception=type(exc).__name__)],
         )
+
+
+# Hosts / tokens an LLM writes when it does not know the real endpoint. A Dify
+# template (``{{#node.var#}}``) is a real reference and is NOT a placeholder;
+# a bare ``{tenant}`` or ``<your-domain>`` is.
+_PLACEHOLDER_URL_RE = re.compile(
+    r"(^|[./-])example\.(com|org|net)\b"  # api.example.com, example.org
+    r"|your[-_]?(api|domain|server|host|company)"  # your-api.com
+    r"|placeholder|localhost"
+    r"|<[^>]+>"  # <your-domain>
+    r"|(?<!\{)\{(?!\{)[^{}#]*\}(?!\})",  # {tenant}, but not {{#s.x#}}
+    re.IGNORECASE,
+)
+
+
+def _is_placeholder_endpoint(url: str) -> bool:
+    """True for a URL the model invented rather than one the user supplied."""
+    text = (url or "").strip()
+    return not text or _PLACEHOLDER_URL_RE.search(text) is not None
+
+
+def _ground_placeholder_endpoints(intents: list[MutationIntent]) -> list[str]:
+    """Replace every http-request placeholder URL with a REQUIRED start-node
+    variable and a template reference to it.
+
+    ESQ1-302 called ``https://api.example.com/ppt/generate``: the model had no
+    endpoint, so it invented one, and every test run failed against a host that
+    does not exist. Turning the URL into an input makes the test-data gate ask
+    the user for the real endpoint -- or, when they have none, tells them what
+    the step needs. Builder-only; the shared generator's own http-request
+    example is ``https://example.com``, so cmd+K keeps its placeholders.
+    Returns the ids of the http-request nodes it re-pointed.
+    """
+    start = next((i for i in intents if i.op == "create_node" and i.args.get("node_type") == "start"), None)
+    if start is None:
+        return []
+    start_id = str(start.args.get("node_id") or "")
+    if not start_id:
+        return []
+    config = dict(start.args.get("config") or {})
+    variables = list(config.get("variables") or [])
+    grounded: list[str] = []
+    for intent in intents:
+        if intent.op != "create_node" or intent.args.get("node_type") != "http-request":
+            continue
+        node_config = dict(intent.args.get("config") or {})
+        if not _is_placeholder_endpoint(str(node_config.get("url") or "")):
+            continue
+        node_id = str(intent.args.get("node_id") or "")
+        var_name = f"{node_id}_url"
+        if not any(v.get("variable") == var_name for v in variables if isinstance(v, dict)):
+            variables.append(
+                {
+                    "variable": var_name,
+                    "label": f"{node_config.get('title') or node_id} URL",
+                    "type": "text-input",
+                    "required": True,
+                    "max_length": 2048,
+                }
+            )
+        node_config["url"] = f"{{{{#{start_id}.{var_name}#}}}}"
+        intent.args["config"] = node_config
+        grounded.append(node_id)
+    if grounded:
+        config["variables"] = variables
+        start.args["config"] = config
+    return grounded
 
 
 def _ground(intents: list[MutationIntent], mc: ModelConfig, tenant_id: str, plan_items: list[str]) -> None:
