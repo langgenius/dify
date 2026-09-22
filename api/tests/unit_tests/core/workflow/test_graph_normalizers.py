@@ -9,6 +9,8 @@ import copy
 import json
 from pathlib import Path
 
+import pytest
+
 from core.workflow.graph_normalizers import (
     normalize_condition_value,
     normalize_condition_values,
@@ -78,6 +80,27 @@ class TestNormalizeFilterConditionValue:
         # Unlike Condition, we don't wrap in a list—we keep the list but normalize items
         assert normalize_filter_condition_value(["a", 2]) == ["a", "2"]
         assert normalize_filter_condition_value([1.0, "b"]) == ["1", "b"]
+
+    def test_takes_the_shared_value_operator_signature_and_ignores_the_operator(self):
+        # Same ``(value, operator)`` shape as normalize_condition_value, so the
+        # conditions walker calls both one way -- but a list operator never
+        # wraps a FilterCondition scalar into a list.
+        assert normalize_filter_condition_value(3, "in") == "3"
+        assert normalize_filter_condition_value("x", "all of") == "x"
+        assert normalize_filter_condition_value(None, "empty") == ""
+
+
+class TestNormalizeConditionsDispatch:
+    def test_a_type_error_inside_a_value_normalizer_is_not_masked(self):
+        # The walker used to retry any TypeError as a one-argument call, which
+        # replaced a genuine bug's error with an unrelated "missing argument".
+        from core.workflow.graph_normalizers import _normalize_conditions
+
+        def broken(_value, _operator):
+            raise TypeError("genuine bug")
+
+        with pytest.raises(TypeError, match="genuine bug"):
+            _normalize_conditions([{"comparison_operator": "=", "value": 1}], broken)
 
 
 class TestNormalizeConditionValues:
