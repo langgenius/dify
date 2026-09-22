@@ -80,6 +80,110 @@ def test_analyze_goal_degrades_to_generic_field_on_boom():
     assert out["values"].get(out["fields"][0]["key"]) == "some goal"
 
 
+# The real S5b goal (ESQ1-302 / F2): no URL, no credential anywhere in it.
+_S5B_GOAL = (
+    "Generate a PowerPoint presentation from a topic the user provides: an LLM writes the "
+    "slide content, then the workflow POSTs the slides as JSON to our company's PPT rendering "
+    "HTTP API, which returns the .pptx download link."
+)
+
+
+def test_scrub_invented_defaults_blanks_the_real_s5b_invented_endpoint_and_credential():
+    values = {
+        "tone": "Professional",
+        "slide_count": 10,
+        "render_api_url": "https://api.yourcompany.com/v1/ppt/render",
+        "api_auth_header": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer YOUR_API_KEY",
+        },
+        "include_speaker_notes": True,
+    }
+
+    out = build._scrub_invented_defaults(values, _S5B_GOAL)
+
+    assert out["render_api_url"] == ""
+    assert out["api_auth_header"] == ""
+    assert out["tone"] == "Professional"
+    assert out["slide_count"] == 10
+    assert out["include_speaker_notes"] is True
+
+
+def test_scrub_invented_defaults_blanks_a_plausible_invented_host():
+    values = {"render_api_url": "https://api.pptrender.io/v1/render"}
+
+    out = build._scrub_invented_defaults(values, _S5B_GOAL)
+
+    assert out["render_api_url"] == ""
+
+
+def test_scrub_invented_defaults_keeps_a_url_whose_host_the_goal_names():
+    goal = "POST the finished slides to https://render.acme.internal/v2 and return the link"
+    values = {"render_api_url": "https://render.acme.internal/v2/pptx"}
+
+    out = build._scrub_invented_defaults(values, goal)
+
+    assert out["render_api_url"] == "https://render.acme.internal/v2/pptx"
+
+
+def test_scrub_invented_defaults_keeps_a_credential_the_goal_states():
+    goal = "Authenticate with the API key sk-live-abc123"
+    values = {"api_key": "sk-live-abc123"}
+
+    out = build._scrub_invented_defaults(values, goal)
+
+    assert out["api_key"] == "sk-live-abc123"
+
+
+def test_scrub_invented_defaults_blanks_a_credential_the_goal_does_not_state():
+    values = {"api_key": "sk-live-abc123"}
+
+    out = build._scrub_invented_defaults(values, _S5B_GOAL)
+
+    assert out["api_key"] == ""
+
+
+def test_analyze_goal_scrubs_invented_defaults_end_to_end(monkeypatch):
+    captured: dict[str, str] = {}
+    raw = {
+        "fields": [
+            {"key": "tone", "label": "Tone", "type": "text"},
+            {"key": "slide_count", "label": "Slide count", "type": "number"},
+            {"key": "render_api_url", "label": "Render API URL", "type": "text"},
+            {"key": "api_auth_header", "label": "Auth header", "type": "json_object"},
+            {"key": "include_speaker_notes", "label": "Include speaker notes", "type": "bool"},
+        ],
+        "values": {
+            "tone": "Professional",
+            "slide_count": 10,
+            "render_api_url": "https://api.yourcompany.com/v1/ppt/render",
+            "api_auth_header": {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer YOUR_API_KEY",
+            },
+            "include_speaker_notes": True,
+        },
+    }
+
+    def fake_invoke_json(model, *, system, user, on_reasoning=None):  # noqa: ARG001
+        captured["system"] = system
+        return raw
+
+    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+
+    out = build.analyze_goal(object(), _S5B_GOAL)
+
+    assert out["values"]["render_api_url"] == ""
+    assert out["values"]["api_auth_header"] == ""
+    assert out["values"]["tone"] == "Professional"
+    assert out["values"]["slide_count"] == 10
+    assert out["values"]["include_speaker_notes"] is True
+    assert (
+        "Never invent a URL/endpoint, API key, token, password, or account/resource id the goal does not state"
+        in captured["system"]
+    )
+
+
 def test_propose_plan_v1_returns_bullets():
     m = _FakeInstance([json.dumps({"plan": ["Ingest", "Summarize", "Emit"]})])
     assert build.propose_plan_v1(m, {"x": 1}) == ["Ingest", "Summarize", "Emit"]
