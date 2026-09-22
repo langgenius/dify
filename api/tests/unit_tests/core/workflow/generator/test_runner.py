@@ -4412,6 +4412,32 @@ class TestWorkflowGeneratorBranchHandleRepair:
 
         assert edges[0]["sourceHandle"] == "source"
 
+    def test_logs_each_re_homed_edge_and_not_the_ones_left_as_they_were(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        nodes = [
+            self._if_else_node(),
+            {"id": "qc", "data": {"type": "question-classifier", "classes": [{"id": "1"}, {"id": "2"}]}},
+            {"id": "branch2", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}},
+        ]
+        edges = [
+            {"source": "branch", "target": "a", "sourceHandle": "true"},  # already declared
+            {"source": "branch", "target": "b", "sourceHandle": "else"},  # alias -> "false"
+            {"source": "qc", "target": "c"},  # no handle -> first unused class
+            {"source": "branch2", "target": "d", "sourceHandle": "maybe"},  # two free arms: ambiguous
+        ]
+
+        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
+
+        infos = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+        assert len(infos) == 2
+        assert "branch -> b" in infos[0]
+        assert "from handle 'else' onto branch handle 'false'" in infos[0]
+        assert "qc -> c" in infos[1]
+        assert "from handle None onto branch handle '1'" in infos[1]
+        warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1
+        assert "branch2 -> d" in warnings[0]
+
 
 class TestWorkflowGeneratorGraphCycleValidation:
     """A workflow graph must be a DAG; cycles hang or error the run."""

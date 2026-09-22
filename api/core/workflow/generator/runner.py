@@ -2247,7 +2247,19 @@ class WorkflowGenerator:
         that swaps the IF and ELSE arms is worse than an edge left for that
         check.
         """
+        # The shared repair reports only what it could NOT re-home; snapshot
+        # the handles (by edge object) so every edge it did move is logged too.
+        before = [(edge, edge.get("sourceHandle")) for edge in edges if isinstance(edge, dict)]
         unresolved = graph_normalizers.repair_branch_edge_handles(nodes, edges)
+        for edge, old_handle in before:
+            if edge.get("sourceHandle") != old_handle:
+                logger.info(
+                    "Workflow generator: re-homed edge %s -> %s from handle %r onto branch handle %r",
+                    edge.get("source"),
+                    edge.get("target"),
+                    old_handle,
+                    edge.get("sourceHandle"),
+                )
         for item in unresolved:
             logger.warning(
                 "Workflow generator: cannot re-home edge %s -> %s (handle %r; node declares %s)",
