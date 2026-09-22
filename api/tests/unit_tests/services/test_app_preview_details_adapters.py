@@ -420,7 +420,7 @@ def test_detail_rejects_missing_site(harness: _Harness) -> None:
 def test_detail_rejects_config_link_to_another_app(harness: _Harness) -> None:
     with harness.factory.begin() as session:
         session.execute(
-            update(App).where(App.id == harness.target.id).values(app_model_config_id=harness.decoy_config.id)
+            update(App).where(App.id == harness.target.id).values({App.app_model_config_id: harness.decoy_config.id})
         )
     with harness.flask_app.app_context(), pytest.raises(AppDefinitionUnavailableError):
         harness.detail()
@@ -508,7 +508,7 @@ def test_workflow_secret_decryption_happens_after_query_session_closes(
         session.execute(
             update(Workflow)
             .where(Workflow.id == harness.workflow.id)
-            .values(_environment_variables=json.dumps({secret.name: secret.model_dump(mode="json")}))
+            .values({Workflow._environment_variables: json.dumps({secret.name: secret.model_dump(mode="json")})})
         )
     calls: list[str] = []
 

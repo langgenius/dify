@@ -773,7 +773,7 @@ def test_missing_model_config_retains_nullable_detail(harness: _Harness) -> None
 def test_missing_workflow_is_app_unavailable(harness: _Harness, missing: str) -> None:
     with harness.factory.begin() as session:
         if missing == "reference":
-            session.execute(update(App).where(App.id == harness.target.id).values(workflow_id=None))
+            session.execute(update(App).where(App.id == harness.target.id).values({App.workflow_id: None}))
         else:
             session.execute(delete(Workflow).where(Workflow.id == harness.workflow.id))
     _assert_error(harness.get("workflows"), 400, "app_unavailable")
