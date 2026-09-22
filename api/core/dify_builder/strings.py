@@ -52,6 +52,9 @@ PLAIN: frozenset[str] = frozenset(
         "Test failed — no safe automatic fix; edit or keep draft.",
         "No automatic fix found — review the diagnosis and edit the canvas manually, or reject.",
         "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test.",
+        "The run finished but reached no End node, so it produced no output. Check the branch handles "
+        "and the edges after the last node that ran, then edit the canvas, keep the draft, or revert.",
+        "The test finished without producing any output — see the notice.",
         "No fix is staged for this failure -- keep the draft or revert.",
         "I didn't apply the workflow: it would fail before its first node. Adjust the plan and approve again.",
         "I didn't apply the change: the workflow would fail before its first node. Adjust it and approve again.",
@@ -74,6 +77,8 @@ PLAIN: frozenset[str] = frozenset(
         "Proceeding with sensible defaults",
         "Repeated failure",
         "The workflow can't start",
+        "No output produced",
+        "Finished without output",
         "Test failed",
         "Validation",
         # model-config-failure surface (build + edit)
