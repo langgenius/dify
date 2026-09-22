@@ -245,14 +245,18 @@ _SINGLE_ITEM_BODY_TYPES = frozenset({"json", "raw-text", "binary"})
 
 
 def normalize_http_request_bodies(nodes: list[Any]) -> list[str]:
-    """Fill what graphon's ``BodyData`` model cannot default.
+    """Fill what graphon's http-request models cannot default: body item
+    types and a missing ``authorization.type``.
 
     ``BodyData.type`` is ``Literal["file", "text"]`` with NO default, and the
     shared builder prompt only ever shows ``"body": {"type": "none", "data": []}``,
     so the LLM writes ``{key, value}`` items (ESQ1-302) and the graph fails at
     ``Graph.init``. An item with a non-empty ``file`` selector is a file item;
-    every other item is text. A ``none`` body carries no items. Returns the ids
-    of the nodes that changed.
+    every other item is text. A ``none`` body carries no items.
+
+    An ``authorization`` dict with no ``type`` is healed too (see
+    ``_normalize_http_authorization``). Returns the ids of the nodes that
+    changed.
     """
     changed: list[str] = []
     for node in nodes:
@@ -261,12 +265,10 @@ def normalize_http_request_bodies(nodes: list[Any]) -> list[str]:
         data = node.get("data")
         if not isinstance(data, Mapping) or data.get("type") != "http-request":
             continue
+        touched = _normalize_http_authorization(data.get("authorization"))
         body = data.get("body")
-        if not isinstance(body, MutableMapping):
-            continue
-        items = body.get("data")
-        touched = False
-        if body.get("type") == "none" and items:
+        items = body.get("data") if isinstance(body, MutableMapping) else None
+        if isinstance(body, MutableMapping) and body.get("type") == "none" and items:
             body["data"] = []
             touched = True
         elif isinstance(items, list):
@@ -278,6 +280,31 @@ def normalize_http_request_bodies(nodes: list[Any]) -> list[str]:
         if touched:
             changed.append(str(node.get("id") or ""))
     return changed
+
+
+def _normalize_http_authorization(authorization: Any) -> bool:
+    """Give an http-request ``authorization`` dict that has no ``type`` the
+    one it evidently means: ``api-key`` when its ``config`` is a dict carrying
+    a non-empty ``api_key``, otherwise ``no-auth`` (with ``config: None``).
+    Returns True when it changed anything.
+
+    graphon's ``HttpRequestNodeAuthorization.type`` is required, and its
+    ``check_config`` validator then reads ``values.data["type"]`` -- absent,
+    because the required field failed -- so a generated authorization without
+    ``type`` raises KeyError out of validation (pydantic does not wrap it) and
+    crashed a live Builder session. This only turns that engine-refused shape
+    into an accepted one; an authorization that already has a ``type`` is
+    left exactly as written.
+    """
+    if not isinstance(authorization, MutableMapping) or authorization.get("type"):
+        return False
+    config = authorization.get("config")
+    if isinstance(config, Mapping) and config.get("api_key"):
+        authorization["type"] = "api-key"
+    else:
+        authorization["type"] = "no-auth"
+        authorization["config"] = None
+    return True
 
 
 def http_request_body_errors(nodes: list[Any]) -> list[tuple[str, str]]:
