@@ -115,7 +115,6 @@ export const zPublishWorkflowPayload = z.object({
 export const zWorkflowPublishResponse = z.object({
   created_at: z.int(),
   result: z.string(),
-  warning: z.string().nullish(),
 })
 
 /**

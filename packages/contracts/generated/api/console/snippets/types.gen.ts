@@ -267,7 +267,6 @@ export type PublishWorkflowPayload = {
 export type WorkflowPublishResponse = {
   created_at: number
   result: string
-  warning?: string | null
 }
 
 export type WorkflowUpdatePayload = {
