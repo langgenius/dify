@@ -42,7 +42,7 @@ const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
       />
       <InfotipContent className="w-45">
         <div className="space-y-1">
-          <InfotipTitle className="font-semibold text-text-primary" render={<h3 />}>
+          <InfotipTitle className="font-semibold text-text-primary">
             {title}
           </InfotipTitle>
           <p>{description}</p>
