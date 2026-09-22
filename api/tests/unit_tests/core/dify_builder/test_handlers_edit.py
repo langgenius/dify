@@ -959,3 +959,41 @@ def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing
     error = next(i for i in res.items if i.kind == "error")
     assert error.payload["title"] == "The workflow can't start"
     assert "node 'llm' (llm)" in error.payload["body"]
+
+
+def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.models import NodeOutput, Run, TestInput
+
+    dify = FakeEditDifyPort()
+    dify.graph = {
+        "nodes": [
+            {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "node2",
+                "data": {"type": "question-classifier", "title": "Route", "classes": [{"id": "1", "name": "A"}]},
+            },
+            {"id": "node6", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"source": "node1", "target": "node2"},
+            {"source": "node2", "target": "node6", "sourceHandle": "billing"},
+        ],
+    }
+    dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify",
+        immutable=True,
+        dify_run_id="run-e",
+        status="succeeded",
+        per_node=[NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")],
+    )
+    env, repo = _new_env(dify=dify)
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+
+    res = handle_test_affected_paths(env, Turn(actor=_actor()), s, DifyBuilderContext(test_input_ref="ti-1"))
+
+    assert res.next == PcState.EDIT_AWAIT_REPAIR
+    assert res.context.staged_repair == []
+    assert next(i for i in res.items if i.kind == "test_result").payload["subtitle"] == "Finished without output"
+    assert next(i for i in res.items if i.kind == "error").payload["node_id"] == "node2"

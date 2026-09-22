@@ -30,6 +30,8 @@ from core.dify_builder.contract import (
     TestStat,
 )
 from core.dify_builder.handlers_fix import (
+    NO_OUTPUT_BODY,
+    NO_OUTPUT_REPLY,
     UNKNOWN_TEST_OUTCOME_NOTICE,
     action_kind,
     action_string,
@@ -39,11 +41,13 @@ from core.dify_builder.handlers_fix import (
     emit_canvas,
     first_failed_node,
     is_input_failure,
+    last_branch_node_id,
     launch_error_text,
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
     perform_revert,
+    run_finished_without_output,
     start_schema,
     testdata_form_fields,
 )
@@ -450,6 +454,47 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    if status == "succeeded" and run_finished_without_output(graph, per_node):
+        # Same as Build's: a branch was taken and no End ran. Not green, not an
+        # engine error to diagnose; wait at the gate with no staged repair.
+        fc.verify_run_id = run.id
+        fc.diagnosis = None
+        fc.staged_repair = []
+        run.culprit_node_id = last_branch_node_id(graph, per_node)
+        emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
+        test_items = append_card(
+            fc,
+            TestResultCard(
+                title="Affected-path tests",
+                subtitle="Finished without output",
+                tone="error",
+                stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
+                run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
+            ),
+        )
+        error_items = append_card(
+            fc, ErrorCard(title="No output produced", body=NO_OUTPUT_BODY, tone="danger", node_id=run.culprit_node_id)
+        )
+        execution = progress.finish()
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                execution=execution,
+                reply_text=NO_OUTPUT_REPLY,
+                cards=["test_result", "error"],
+            ),
+        )
+        return StepResult(
+            next=PcState.EDIT_AWAIT_REPAIR,
+            context=fc,
+            items=[*test_items, *error_items, *turn_items],
+            run=run,
+            run_id_sink=[run.id],
+        )
 
     if status == "succeeded":
         emit_canvas(env, "mark_test_success", dify_run_id=run.dify_run_id)
