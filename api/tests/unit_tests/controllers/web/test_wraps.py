@@ -9,6 +9,7 @@ from werkzeug.exceptions import NotFound, Unauthorized
 
 from core.logging.context import clear_request_context, get_identity_context
 from models import App, EndUser
+from models.model import AppModelConfig
 
 
 @pytest.fixture(autouse=True)
@@ -68,6 +69,11 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
         enable_api=True,
     )
     sqlite_session.add(app_model)
+    sqlite_session.flush()
+    config = AppModelConfig(app_id=app_model.id)
+    config.id = str(uuid4())
+    app_model.app_model_config_id = config.id
+    sqlite_session.add(config)
     sqlite_session.commit()
 
     site = Site(
@@ -108,7 +114,7 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
     assert result_end_user.id == end_user.id
 
 
-@pytest.mark.parametrize("missing", ["app", "site", "code", "disabled", "end_user", "resource"])
+@pytest.mark.parametrize("missing", ["app", "site", "code", "disabled", "unpublished", "end_user", "resource"])
 def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, missing: str
 ) -> None:
@@ -120,6 +126,7 @@ def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
     from models.model import AppMode, CustomizeTokenStrategy, Site
 
     app_id, tenant_id, end_user_id = str(uuid4()), str(uuid4()), str(uuid4())
+    config_id = str(uuid4())
     if missing != "app":
         sqlite_session.add(
             App(
@@ -129,8 +136,13 @@ def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
                 mode=AppMode.CHAT,
                 enable_site=missing != "disabled",
                 enable_api=True,
+                app_model_config_id=config_id if missing != "unpublished" else None,
             )
         )
+        if missing != "unpublished":
+            config = AppModelConfig(app_id=app_id)
+            config.id = config_id
+            sqlite_session.add(config)
     if missing != "site":
         sqlite_session.add(
             Site(
@@ -185,7 +197,7 @@ def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
         )
 
     assert response.status_code == 404
-    if missing in {"app", "site", "code", "disabled"}:
+    if missing in {"app", "site", "code", "disabled", "unpublished"}:
         assert (
             response.data
             == b'{"client_ip":"203.0.113.42","code":"app_not_found","message":"App not found.","status":404}'

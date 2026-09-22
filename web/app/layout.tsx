@@ -4,11 +4,14 @@ import { ToastHost } from '@langgenius/dify-ui/toast'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { HydrationBoundary } from '@tanstack/react-query'
 import { Provider as JotaiProvider } from 'jotai/react'
+import Negotiator from 'negotiator'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { IS_PROD } from '@/config'
 import { getDatasetMap } from '@/env'
 import AppAccessBoundary from '@/features/app-access-error/boundary'
+import { APP_UNAVAILABLE_PATH } from '@/features/app-access-error/document-response'
+import { getBrowserLocale } from '@/features/app-access-error/locale'
 import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/bootstrap-boundary'
 import {
   dehydrateSystemFeatures,
@@ -35,6 +38,8 @@ export const viewport: Viewport = {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
+  if ((await headers()).get('x-dify-pathname') === APP_UNAVAILABLE_PATH)
+    return { icons: { icon: `${basePath}/favicon.ico` } }
   const systemFeatures = await getOptionalSystemFeatures()
   const branding = systemFeatures?.branding
   const applicationTitle = getApplicationTitle(branding)
@@ -53,12 +58,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const datasetMap = getDatasetMap()
-  const [locale, requestHeaders] = await Promise.all([
-    getLocaleOnServer(),
-    headers(),
-    getOptionalSystemFeatures(),
-  ])
-  const dehydratedState = dehydrateSystemFeatures()
+  const requestHeaders = await headers()
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
   const themeProviderProps: Omit<ThemeProviderProps, 'children'> = {
     attribute: 'data-theme',
@@ -67,6 +67,28 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     disableTransitionOnChange: true,
   }
   if (nonce !== undefined) themeProviderProps.nonce = nonce
+
+  // Proxy always overwrites this header. The terminal error document must not
+  // depend on console bootstrap APIs or render application-specific providers.
+  if (requestHeaders.get('x-dify-pathname') === APP_UNAVAILABLE_PATH) {
+    const documentLocale = getBrowserLocale(
+      new Negotiator({
+        headers: { 'accept-language': requestHeaders.get('accept-language') ?? '' },
+      }).languages(),
+    )
+    return (
+      <html lang={documentLocale} className="h-full" suppressHydrationWarning>
+        <body className="h-full bg-background-body" {...datasetMap}>
+          <ThemeProvider {...themeProviderProps}>
+            <NuqsAdapter>{children}</NuqsAdapter>
+          </ThemeProvider>
+        </body>
+      </html>
+    )
+  }
+
+  const [locale] = await Promise.all([getLocaleOnServer(), getOptionalSystemFeatures()])
+  const dehydratedState = dehydrateSystemFeatures()
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>

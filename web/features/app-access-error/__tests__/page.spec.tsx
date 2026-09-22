@@ -1,9 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
+import { renderToString } from 'react-dom/server'
 import { I18nextProvider } from 'react-i18next'
+import enCommon from '@/i18n/en-US/common.json'
 import enLogin from '@/i18n/en-US/login.json'
 import enShare from '@/i18n/en-US/share.json'
+import jaCommon from '@/i18n/ja-JP/common.json'
 import jaLogin from '@/i18n/ja-JP/login.json'
 import jaShare from '@/i18n/ja-JP/share.json'
 import zhLogin from '@/i18n/zh-Hans/login.json'
@@ -24,6 +27,22 @@ beforeEach(() => {
   document.cookie = 'locale=zh-Hans'
 })
 afterEach(() => vi.restoreAllMocks())
+
+it('server-renders the document title text and IP from preloaded browser-language resources', () => {
+  const html = renderToString(
+    <AppNotAccessible
+      clientIp="192.0.2.81"
+      initialLocale="ja-JP"
+      initialResources={{
+        'en-US': { share: enShare, common: enCommon, login: enLogin },
+        'ja-JP': { share: jaShare, common: jaCommon, login: jaLogin },
+      }}
+    />,
+  )
+  expect(html).toMatch(new RegExp(`<h1[^>]*>${jaShare['appNotAccessible.title']}</h1>`))
+  expect(html).toMatch(/<code[^>]*>192\.0\.2\.81<\/code>/)
+  expect(html).not.toContain(enShare['appNotAccessible.title'])
+})
 
 it.each([
   ['en-GB', enShare, enLogin],

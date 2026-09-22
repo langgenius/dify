@@ -5,7 +5,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import AppStatus, CustomizeTokenStrategy
-from models.model import App, Site
+from models.model import App, AppModelConfig, Site
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 
@@ -14,7 +14,20 @@ _APP_ID = "11111111-1111-1111-1111-111111111111"
 
 def test_find_app_id_by_code_returns_matching_site_app(sqlite_session_factory: sessionmaker[Session]) -> None:
     with sqlite_session_factory.begin() as session:
-        session.add(App(id=_APP_ID, tenant_id=_APP_ID, name="Test App", mode="chat", enable_site=True, enable_api=True))
+        config = AppModelConfig(app_id=_APP_ID)
+        config.id = "22222222-2222-2222-2222-222222222222"
+        session.add(config)
+        session.add(
+            App(
+                id=_APP_ID,
+                tenant_id=_APP_ID,
+                name="Test App",
+                mode="chat",
+                enable_site=True,
+                enable_api=True,
+                app_model_config_id=config.id,
+            )
+        )
         session.add(
             Site(
                 app_id=_APP_ID,
