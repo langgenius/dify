@@ -48,6 +48,12 @@ vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () =>
   useCollaboration: () => ({ nodePanelPresence: {} }),
 }))
 
+// BaseNode reads plugin permissions even when rendering an Agent node.
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({ workspacePermissionKeys: [] }))
+})
+
 const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType => ({
   title: 'Agent',
   desc: '',
