@@ -114,6 +114,9 @@ jobs:
     name: External Runtime E2E
     needs: check-changes
     if: needs.check-changes.outputs.external-e2e-changed == 'true'
+    permissions:
+      actions: read
+      contents: read
     uses: ./.github/workflows/web-e2e.yml
     with:
       run-external-runtime: true
