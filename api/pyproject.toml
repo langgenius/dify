@@ -225,6 +225,7 @@ tools = ["cloudscraper>=1.2.71,<2.0.0", "nltk>=3.10.4,<4.0.0"]
 # Installed in API/worker images; pinned to the adapter API used here.
 ############################################################
 evaluation = [
+    "deepeval==4.2.0",
     "ragas==0.3.2",
     # RAGAS 0.3.2 still imports integrations removed by LangChain 1.x.
     "langchain>=0.3.27,<0.4.0",

@@ -1770,7 +1770,7 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
 class EvaluationConfig(BaseSettings):
     """Configuration for the evaluation runtime."""
 
-    EVALUATION_FRAMEWORK: Literal["ragas", "none"] = Field(
+    EVALUATION_FRAMEWORK: Literal["ragas", "deepeval", "none"] = Field(
         description="Evaluation framework to use.",
         default="none",
     )

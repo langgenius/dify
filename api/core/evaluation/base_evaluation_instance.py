@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from core.evaluation.entities.evaluation_entity import (
+    AgentEvaluationItem,
     CustomizedMetrics,
     EvaluationCategory,
     EvaluationItemInput,
@@ -45,9 +46,33 @@ class BaseEvaluationInstance(ABC):
         ...
 
     @abstractmethod
+    def evaluate_agent(
+        self,
+        items: list[AgentEvaluationItem],
+        metric_names: list[str],
+        model_provider: str,
+        model_name: str,
+        tenant_id: str,
+    ) -> list[EvaluationItemResult]:
+        """Evaluate legacy Agent tool-use behavior using the configured framework."""
+        ...
+
+    @abstractmethod
     def get_supported_metrics(self, category: EvaluationCategory) -> list[str]:
         """Return the list of supported metric names for a given evaluation category."""
         ...
+
+    def metric_requires_embeddings(self, metric_name: str) -> bool:
+        """Return whether a metric needs the tenant's default embedding model."""
+        return False
+
+    def metric_requires_expected_output(self, metric_name: str) -> bool:
+        """Return whether a metric requires a reference answer in the dataset."""
+        return False
+
+    def metric_requires_expected_tool_calls(self, metric_name: str) -> bool:
+        """Return whether a metric requires reference tool calls in the dataset."""
+        return False
 
     def evaluate_with_customized_workflow(
         self,

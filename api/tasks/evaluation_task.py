@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
+from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import (
     EvaluationCategory,
     EvaluationDatasetInput,
@@ -33,6 +34,7 @@ from core.evaluation.entities.judgment_entity import JudgmentConfig, JudgmentRes
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.judgment.processor import JudgmentProcessor
+from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
@@ -316,17 +318,21 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData, lease: Ev
     evaluation_run.error = None
     session.commit()
 
+    persisted_framework = EvaluationFrameworkEnum(
+        evaluation_run.config_snapshot_dict.get("evaluation_framework", EvaluationFrameworkEnum.RAGAS)
+    )
     if (
         evaluation_run.tenant_id != run_data.tenant_id
         or EvaluationTargetType(evaluation_run.target_type).value != run_data.target_type
         or evaluation_run.target_id != run_data.target_id
         or evaluation_run.target_workflow_version_id != run_data.target_workflow_version_id
+        or persisted_framework != run_data.evaluation_framework
     ):
         raise ValueError("Evaluation task payload does not match the persisted run.")
     if run_data.target_type != EvaluationTargetType.KNOWLEDGE_BASE.value and not run_data.target_workflow_version_id:
         raise ValueError("Evaluation task payload is missing target_workflow_version_id.")
 
-    evaluation_instance = EvaluationManager.get_evaluation_instance()
+    evaluation_instance = EvaluationManager.get_evaluation_instance(run_data.evaluation_framework)
     if evaluation_instance is None:
         raise ValueError("Evaluation framework not configured")
 
@@ -1214,6 +1220,8 @@ def _create_runner(
 ) -> BaseEvaluationRunner:
     if category == EvaluationCategory.LLM:
         return LLMEvaluationRunner(evaluation_instance)
+    if category == EvaluationCategory.AGENT:
+        return AgentEvaluationRunner(evaluation_instance)
     if category in {EvaluationCategory.RETRIEVAL, EvaluationCategory.KNOWLEDGE_BASE}:
         return RetrievalEvaluationRunner(evaluation_instance)
     raise ValueError(f"Unsupported evaluation category: {category}")

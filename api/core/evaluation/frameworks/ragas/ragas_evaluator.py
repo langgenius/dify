@@ -3,14 +3,17 @@ from __future__ import annotations
 import logging
 import math
 from importlib import import_module
-from typing import TYPE_CHECKING, Any
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, override
 
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.config_entity import RagasConfig
 from core.evaluation.entities.evaluation_entity import (
+    AGENT_METRIC_NAMES,
     LLM_METRIC_NAMES,
     RETRIEVAL_METRIC_NAMES,
     WORKFLOW_METRIC_NAMES,
+    AgentEvaluationItem,
     EvaluationCategory,
     EvaluationItemInput,
     EvaluationItemResult,
@@ -33,6 +36,20 @@ _RAGAS_METRIC_MAP: dict[EvaluationMetricName, str] = {
     EvaluationMetricName.CONTEXT_PRECISION: "ContextPrecision",
     EvaluationMetricName.CONTEXT_RECALL: "ContextRecall",
     EvaluationMetricName.CONTEXT_RELEVANCE: "ContextRelevance",
+    EvaluationMetricName.TOOL_CALL_ACCURACY: "ToolCallAccuracy",
+}
+
+_RAGAS_EMBEDDING_METRICS = {
+    EvaluationMetricName.ANSWER_RELEVANCY.value,
+    EvaluationMetricName.ANSWER_CORRECTNESS.value,
+    EvaluationMetricName.SEMANTIC_SIMILARITY.value,
+}
+
+_RAGAS_REFERENCE_METRICS = {
+    EvaluationMetricName.ANSWER_CORRECTNESS.value,
+    EvaluationMetricName.SEMANTIC_SIMILARITY.value,
+    EvaluationMetricName.CONTEXT_PRECISION.value,
+    EvaluationMetricName.CONTEXT_RECALL.value,
 }
 
 
@@ -48,11 +65,25 @@ class RagasEvaluator(BaseEvaluationInstance):
                 candidates = LLM_METRIC_NAMES
             case EvaluationCategory.RETRIEVAL:
                 candidates = RETRIEVAL_METRIC_NAMES
+            case EvaluationCategory.AGENT:
+                candidates = AGENT_METRIC_NAMES
             case EvaluationCategory.WORKFLOW | EvaluationCategory.SNIPPET:
                 candidates = WORKFLOW_METRIC_NAMES
             case _:
                 return []
         return [m.value for m in candidates if m in _RAGAS_METRIC_MAP]
+
+    @override
+    def metric_requires_embeddings(self, metric_name: str) -> bool:
+        return metric_name in _RAGAS_EMBEDDING_METRICS
+
+    @override
+    def metric_requires_expected_output(self, metric_name: str) -> bool:
+        return metric_name in _RAGAS_REFERENCE_METRICS
+
+    @override
+    def metric_requires_expected_tool_calls(self, metric_name: str) -> bool:
+        return metric_name == EvaluationMetricName.TOOL_CALL_ACCURACY.value
 
     def evaluate_llm(
         self,
@@ -74,6 +105,55 @@ class RagasEvaluator(BaseEvaluationInstance):
     ) -> list[EvaluationItemResult]:
         return self._evaluate(items, metric_names, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL)
 
+    def evaluate_agent(
+        self,
+        items: list[AgentEvaluationItem],
+        metric_names: list[str],
+        model_provider: str,
+        model_name: str,
+        tenant_id: str,
+    ) -> list[EvaluationItemResult]:
+        del model_provider, model_name, tenant_id
+        requested_metrics = metric_names or self.get_supported_metrics(EvaluationCategory.AGENT)
+        supported_metrics = [
+            name for name in requested_metrics if name == EvaluationMetricName.TOOL_CALL_ACCURACY.value
+        ]
+        unsupported_metrics = [name for name in requested_metrics if name not in supported_metrics]
+        if not supported_metrics:
+            raise ValueError(f"RAGAS does not support any requested Agent metrics: {requested_metrics}")
+
+        components = _load_ragas_agent_components()
+        metric = components.ToolCallAccuracy(name=EvaluationMetricName.TOOL_CALL_ACCURACY.value)
+        results: list[EvaluationItemResult] = []
+        for item in items:
+            errors = [
+                f"Metric '{name}' is not supported by RAGAS for Agent evaluation." for name in unsupported_metrics
+            ]
+            evaluated_metrics: list[EvaluationMetric] = []
+            if not item.expected_tool_calls:
+                errors.append("Metric 'tool_call_accuracy' requires non-empty expected_tool_calls.")
+            else:
+                try:
+                    score = float(metric.multi_turn_score(self._build_agent_sample(item, components)))
+                    if not math.isfinite(score):
+                        raise ValueError(f"RAGAS returned a non-finite score: {score}")
+                    evaluated_metrics.append(
+                        EvaluationMetric(name=EvaluationMetricName.TOOL_CALL_ACCURACY.value, value=score)
+                    )
+                except Exception as exc:
+                    logger.exception("RAGAS Agent metric failed for item %d", item.index)
+                    errors.append(f"Metric 'tool_call_accuracy' failed: {exc}")
+
+            results.append(
+                EvaluationItemResult(
+                    index=item.index,
+                    actual_output=item.output,
+                    metrics=evaluated_metrics,
+                    error="; ".join(errors) if errors else None,
+                )
+            )
+        return results
+
     def evaluate_workflow(
         self,
         items: list[EvaluationItemInput],
@@ -83,6 +163,23 @@ class RagasEvaluator(BaseEvaluationInstance):
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
         return self._evaluate(items, metric_names, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW)
+
+    @staticmethod
+    def _build_agent_sample(item: AgentEvaluationItem, components: SimpleNamespace | None = None) -> Any:
+        """Build the MultiTurnSample required by RAGAS ToolCallAccuracy."""
+        components = components or _load_ragas_agent_components()
+
+        actual_tool_calls = [components.ToolCall(name=call.name, args=call.arguments) for call in item.tool_calls]
+        expected_tool_calls = [
+            components.ToolCall(name=call.name, args=call.arguments) for call in (item.expected_tool_calls or [])
+        ]
+        return components.MultiTurnSample(
+            user_input=[
+                components.HumanMessage(content=_format_input(item.inputs, EvaluationCategory.AGENT)),
+                components.AIMessage(content=item.output, tool_calls=actual_tool_calls),
+            ],
+            reference_tool_calls=expected_tool_calls,
+        )
 
     def _evaluate(
         self,
@@ -251,6 +348,20 @@ def _import_ragas_metrics_module() -> Any:
         return import_module("ragas.metrics.collections")
 
 
+def _load_ragas_agent_components() -> SimpleNamespace:
+    from ragas.dataset_schema import MultiTurnSample
+    from ragas.messages import AIMessage, HumanMessage, ToolCall
+    from ragas.metrics import ToolCallAccuracy
+
+    return SimpleNamespace(
+        AIMessage=AIMessage,
+        HumanMessage=HumanMessage,
+        MultiTurnSample=MultiTurnSample,
+        ToolCall=ToolCall,
+        ToolCallAccuracy=ToolCallAccuracy,
+    )
+
+
 def _format_input(inputs: dict[str, Any], category: EvaluationCategory) -> str:
     """Extract the user-facing input string from the inputs dict."""
     match category:
@@ -258,5 +369,7 @@ def _format_input(inputs: dict[str, Any], category: EvaluationCategory) -> str:
             return str(inputs.get("prompt", ""))
         case EvaluationCategory.RETRIEVAL:
             return str(inputs.get("query", ""))
+        case EvaluationCategory.AGENT:
+            return str(inputs.get("task", ""))
         case _:
             return str(next(iter(inputs.values()), "")) if inputs else ""
