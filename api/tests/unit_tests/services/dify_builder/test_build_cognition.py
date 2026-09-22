@@ -304,6 +304,78 @@ def test_bind_resources_falls_back_to_the_last_step_when_nothing_matches(monkeyp
     assert out == ["start node: inputs", "end node: output (using Some Tool)"]
 
 
+def test_bind_resources_rebind_with_the_same_selection_is_idempotent(monkeypatch):
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[resources.ResourceRef(id="model-a", label="Model A")],
+            datasets=[],
+            tools=[resources.ResourceRef(id="tool-b", label="Tool B")],
+        ),
+    )
+    plan = ["llm node: draft", "tool node: run something"]
+
+    first = build.bind_resources(None, "t1", plan, ["model-a", "tool-b"])
+    second = build.bind_resources(None, "t1", first, ["model-a", "tool-b"])
+
+    assert second == first
+
+
+def test_bind_resources_rebind_with_a_changed_selection_drops_the_deselected_label(monkeypatch):
+    """A loop-back (build.review / build.reverted -> re-walk resources ->
+    approve_plan) feeds the already-bound plan back into bind_resources. The
+    old, purely-additive binder kept a deselected resource's suffix and piled
+    the new one on top of it -- that accumulated text is what the generator
+    is handed."""
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[resources.ResourceRef(id="model-a", label="Model A")],
+            datasets=[],
+            tools=[
+                resources.ResourceRef(id="tool-b", label="Code Interpreter"),
+                resources.ResourceRef(id="tool-c", label="Markdown Exporter"),
+            ],
+        ),
+    )
+    plan = ["llm node: draft", "tool node: run something"]
+
+    first = build.bind_resources(None, "t1", plan, ["model-a", "tool-b"])
+    second = build.bind_resources(None, "t1", first, ["model-a", "tool-c"])
+
+    assert second[1] == "tool node: run something (using Markdown Exporter)"
+    assert "Code Interpreter" not in second[1]
+    assert second[1].count("(using") == 1
+
+
+def test_bind_resources_cleans_an_old_aggregate_suffix_before_rebinding(monkeypatch):
+    """A plan bound by the pre-Task-4 binder (every label appended to the
+    LAST step) loops back in; its stale aggregate suffix must not survive
+    into the re-bind, and must not be mistaken for the step's own content."""
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[resources.ResourceRef(id="model-a", label="deepseek-v4-flash")],
+            datasets=[],
+            tools=[resources.ResourceRef(id="tool-b", label="Code Interpreter")],
+        ),
+    )
+    plan = [
+        "llm node: draft",
+        "tool node: run something",
+        "end node: return output (using deepseek-v4-flash, Code Interpreter)",
+    ]
+
+    out = build.bind_resources(None, "t1", plan, ["model-a", "tool-b"])
+
+    assert out[0] == "llm node: draft (using deepseek-v4-flash)"
+    assert out[1] == "tool node: run something (using Code Interpreter)"
+    assert out[2] == "end node: return output"
+
+
 def test_learn_from_build_degrades_to_generic():
     assert isinstance(build.learn_from_build(None, "g", {}, ["p"], ["n"]), str)
 
