@@ -59,6 +59,7 @@ from core.dify_builder.models import (
     NodeOutput,
     Run,
 )
+from core.workflow import graph_normalizers
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
@@ -287,6 +288,14 @@ class WorkflowServiceDifyPort:
                     scope="",
                     structure_fingerprint=graph_ops.structural_fingerprint(before_graph),
                 )
+
+            # The same pure value repairs the generator's postprocess applies
+            # (core.workflow.graph_normalizers), for the intents the generator
+            # never saw: a Fix/Edit repair that writes a condition value as a
+            # JSON number (ESQ1-285's flip-flop) or an http body item without
+            # ``type``. Must run BEFORE the preflight, which would reject them.
+            graph_normalizers.normalize_condition_values(graph.get("nodes", []))
+            graph_normalizers.normalize_http_request_bodies(graph.get("nodes", []))
 
             # Dry-validate what the draft would become. Whatever raises here
             # would raise at Graph.init and kill the very first test run
