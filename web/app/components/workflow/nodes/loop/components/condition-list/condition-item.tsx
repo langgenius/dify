@@ -77,6 +77,16 @@ const ConditionItem = ({
   numberVariables,
   availableVars,
 }: ConditionItemProps) => {
+  const containmentOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.contains,
+    ComparisonOperator.notContains,
+    ComparisonOperator.allOf,
+  ]
+  const membershipOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.in,
+    ComparisonOperator.notIn,
+  ]
+
   const { t } = useTranslation()
 
   const [isHovered, setIsHovered] = useState(false)
@@ -122,11 +132,7 @@ const ConditionItem = ({
 
   const isSubVariable =
     condition.varType === VarType.arrayFile &&
-    [
-      ComparisonOperator.contains,
-      ComparisonOperator.notContains,
-      ComparisonOperator.allOf,
-    ].includes(condition.comparison_operator!)
+    containmentOperators.includes(condition.comparison_operator!)
   const fileAttr = useMemo(() => {
     if (file) return file
     if (isSubVariableKey) {
@@ -156,8 +162,7 @@ const ConditionItem = ({
   )
 
   const isSelect =
-    condition.comparison_operator &&
-    [ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
+    condition.comparison_operator && membershipOperators.includes(condition.comparison_operator)
   const selectOptions = useMemo<Array<{ name: string; value: string }>>(() => {
     if (isSelect) {
       if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {

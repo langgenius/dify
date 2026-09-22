@@ -37,7 +37,7 @@ from services.app_dsl_service import (
     PendingData,
 )
 from services.app_import_source import download_app_import_source, try_read_yaml
-from services.app_package_service import AppPackageService
+from services.app_package_service import AppPackageService, PreparedAppPackage
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
@@ -165,14 +165,16 @@ class AppImportApi(Resource):
             if not uploaded.filename.lower().endswith(".ifpkg"):
                 raise InvalidRosterAgentPackageError("App package file must use the .ifpkg extension")
             source = cast(BinaryIO, uploaded.stream)
-        dsl = AppPackageService().read_dsl(source)
-        if dsl is not None:
-            if payload is None:
-                payload = AppImportPayload.model_validate({**request.form.to_dict(), "mode": "yaml-content"})
-            return self._import_dsl(
-                payload.model_copy(update={"mode": "yaml-content", "yaml_content": dsl, "yaml_url": None}),
-                current_user,
-            )
+        package = AppPackageService().read_package(source)
+        if package is not None:
+            with package:
+                if payload is None:
+                    payload = AppImportPayload.model_validate({**request.form.to_dict(), "mode": "yaml-content"})
+                return self._import_dsl(
+                    payload.model_copy(update={"mode": "yaml-content", "yaml_content": package.dsl, "yaml_url": None}),
+                    current_user,
+                    package=package,
+                )
         return self._import_agent_package(current_user, source, payload)
 
     @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
@@ -196,7 +198,13 @@ class AppImportApi(Resource):
 
     @cloud_edition_billing_resource_check("apps")
     @rbac_permission_required(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()))
-    def _import_dsl(self, req_data: AppImportPayload, current_user: Account | None = None):
+    def _import_dsl(
+        self,
+        req_data: AppImportPayload,
+        current_user: Account | None = None,
+        *,
+        package: PreparedAppPackage | None = None,
+    ):
         current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
 
         # AppDslService performs internal commits for some creation paths, so use a plain
@@ -217,6 +225,7 @@ class AppImportApi(Resource):
                     icon=req_data.icon,
                     icon_background=req_data.icon_background,
                     app_id=req_data.app_id,
+                    package=package,
                 )
             except NoPermissionError as e:
                 raise Forbidden(str(e))

@@ -4,6 +4,7 @@ import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -16,7 +17,6 @@ import AutomaticBtn from '@/app/components/app/configuration/config/automatic/au
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { toast } from '@/app/components/app/configuration/toast'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
@@ -206,12 +206,17 @@ const Prompt: FC<ISimplePromptInput> = ({
                 {title}
               </h2>
               {!readonly && (
-                <Infotip
-                  aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                  className="ml-1"
-                  popupClassName="w-[180px]"
-                >
-                  {t(($) => $.promptTip, { ns: 'appDebug' })}
+                <Infotip>
+                  <InfotipTrigger
+                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
+                    className="ml-1"
+                  />
+                  <InfotipContent
+                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
+                    className="w-45"
+                  >
+                    {t(($) => $.promptTip, { ns: 'appDebug' })}
+                  </InfotipContent>
                 </Infotip>
               )}
             </div>

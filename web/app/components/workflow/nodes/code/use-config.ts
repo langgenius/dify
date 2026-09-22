@@ -188,7 +188,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   })
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [
+    const supportedVariableTypes: readonly VarType[] = [
       VarType.string,
       VarType.number,
       VarType.boolean,
@@ -201,7 +201,9 @@ const useConfig = (id: string, payload: CodeNodeType) => {
       VarType.arrayBoolean,
       VarType.file,
       VarType.arrayFile,
-    ].includes(varPayload.type)
+    ]
+
+    return supportedVariableTypes.includes(varPayload.type)
   }, [])
 
   const handleCodeAndVarsChange = useCallback(

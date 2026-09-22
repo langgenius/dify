@@ -6,16 +6,18 @@ import type {
   VisionSetting,
 } from '@/app/components/workflow/types'
 
-export enum ParamType {
-  string = 'string',
-  number = 'number',
-  bool = 'boolean',
-  select = 'select',
-  arrayString = 'array[string]',
-  arrayNumber = 'array[number]',
-  arrayObject = 'array[object]',
-  arrayBool = 'array[boolean]',
-}
+export const ParamType = {
+  string: 'string',
+  number: 'number',
+  bool: 'boolean',
+  select: 'select',
+  arrayString: 'array[string]',
+  arrayNumber: 'array[number]',
+  arrayObject: 'array[object]',
+  arrayBool: 'array[boolean]',
+} as const
+
+export type ParamType = (typeof ParamType)[keyof typeof ParamType]
 
 export type Param = {
   name: string
@@ -25,10 +27,12 @@ export type Param = {
   required?: boolean
 }
 
-export enum ReasoningModeType {
-  prompt = 'prompt',
-  functionCall = 'function_call',
-}
+export const ReasoningModeType = {
+  prompt: 'prompt',
+  functionCall: 'function_call',
+} as const
+
+export type ReasoningModeType = (typeof ReasoningModeType)[keyof typeof ReasoningModeType]
 
 export type ParameterExtractorNodeType = CommonNodeType & {
   model: ModelConfig

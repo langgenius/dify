@@ -4,9 +4,9 @@ import type { SegmentListContextValue } from './segment-list-context'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import {
   useChunkListAllKey,
   useChunkListDisabledKey,
@@ -241,7 +241,11 @@ const Completed: FC<ICompletedProps> = ({
       )}
 
       {/* Pagination */}
-      <Divider type="horizontal" className="mx-6 my-0 h-px w-auto bg-divider-subtle" />
+      <Separator
+        decorative
+        orientation="horizontal"
+        className="mx-6 my-0 w-auto bg-divider-subtle"
+      />
       <Pagination
         page={currentPage}
         totalPages={totalPages}

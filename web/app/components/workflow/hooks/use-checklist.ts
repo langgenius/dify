@@ -18,7 +18,6 @@ import type { ModelItem } from '@/app/components/header/account-setting/model-pr
 import type { Emoji } from '@/app/components/tools/types'
 import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
 import type { DataSet } from '@/models/datasets'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import isDeepEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -557,22 +556,22 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
       }
     }
 
-    const isRequiredNodesType = Object.keys(nodesExtraData!).filter(
-      (key: any) => (nodesExtraData as any)[key].metaData.isRequired,
-    )
+    const isRequiredNodesType = Object.entries(nodesExtraData!)
+      .filter(([, node]) => node.metaData.isRequired)
+      .map(([type]) => type as BlockEnum)
 
-    isRequiredNodesType.forEach((type: string) => {
+    isRequiredNodesType.forEach((type) => {
       if (!filteredNodes.some((node) => node.data.type === type)) {
         list.push({
           id: `${type}-need-added`,
           type,
-          title: t(($) => $[`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>], {
+          title: t(($) => $[`blocks.${type}`], {
             ns: 'workflow',
           }),
           errorMessages: [
             t(($) => $['common.needAdd'], {
               ns: 'workflow',
-              node: t(($) => $[`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>], {
+              node: t(($) => $[`blocks.${type}`], {
                 ns: 'workflow',
               }),
             }),
@@ -896,18 +895,16 @@ export const useChecklistBeforePublish = () => {
       }
     }
 
-    const isRequiredNodesType = Object.keys(nodesExtraData!).filter(
-      (key: any) => (nodesExtraData as any)[key].metaData.isRequired,
-    )
+    const isRequiredNodesType = Object.entries(nodesExtraData!)
+      .filter(([, node]) => node.metaData.isRequired)
+      .map(([type]) => type as BlockEnum)
 
-    for (let i = 0; i < isRequiredNodesType.length; i++) {
-      const type = isRequiredNodesType[i]
-
+    for (const type of isRequiredNodesType) {
       if (!filteredNodes.some((node) => node.data.type === type)) {
         toast.error(
           t(($) => $['common.needAdd'], {
             ns: 'workflow',
-            node: t(($) => $[`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>], {
+            node: t(($) => $[`blocks.${type}`], {
               ns: 'workflow',
             }),
           }),

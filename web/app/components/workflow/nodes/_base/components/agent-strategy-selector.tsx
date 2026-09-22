@@ -7,10 +7,10 @@ import type {
   ListRef,
 } from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
@@ -30,34 +30,33 @@ import { SwitchPluginVersion } from './switch-plugin-version'
 
 const DEFAULT_TAGS: ListProps['tags'] = []
 
-const NotFoundWarn = (props: { title: ReactNode; description: ReactNode }) => {
+const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
   const { title, description } = props
+  const titleId = useId()
 
   const { t } = useTranslation()
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <div>
-            <span
-              className="i-ri-error-warning-fill size-4 text-text-destructive"
-              aria-hidden="true"
-            />
-          </div>
-        }
+    <Infotip>
+      <InfotipTrigger
+        aria-label={title}
+        iconVariant="warning"
+        iconSize="large"
+        className="text-text-destructive"
       />
-      <TooltipContent className="w-45">
-        <div className="space-y-1 text-xs">
-          <h3 className="font-semibold text-text-primary">{title}</h3>
-          <p className="tracking-tight text-text-secondary">{description}</p>
+      <InfotipContent aria-labelledby={titleId} className="w-45">
+        <div className="space-y-1">
+          <h3 id={titleId} className="font-semibold text-text-primary">
+            {title}
+          </h3>
+          <p>{description}</p>
           <p>
-            <Link href="/plugins" className="tracking-tight text-text-accent">
+            <Link href="/plugins" className="text-text-accent">
               {t(($) => $['nodes.agent.linkToPlugin'], { ns: 'workflow' })}
             </Link>
           </p>
         </div>
-      </TooltipContent>
-    </Tooltip>
+      </InfotipContent>
+    </Infotip>
   )
 }
 

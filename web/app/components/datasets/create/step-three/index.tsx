@@ -1,11 +1,11 @@
 'use client'
 import type { createDocumentResponse, FullDocumentDetail } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Divider from '@/app/components/base/divider'
 import { useDocLink } from '@/context/i18n'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import EmbeddingProcess from '../embedding-process'
@@ -69,7 +69,7 @@ const StepThree = ({
                   </div>
                 </div>
               </div>
-              <Divider type="horizontal" className="my-6 bg-divider-subtle" />
+              <Separator orientation="horizontal" className="my-6 h-[0.5px] bg-divider-subtle" />
             </>
           )}
           {datasetId && (

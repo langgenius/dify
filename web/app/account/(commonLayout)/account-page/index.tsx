@@ -303,11 +303,11 @@ export default function AccountPage() {
               : t(($) => $['account.setPassword'], { ns: 'common' })}
           </div>
           {userProfile.is_password_set && (
-            <Field name="current-password" className="gap-0">
-              <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+            <Field name="current-password">
+              <FieldLabel className="system-sm-semibold">
                 {t(($) => $['account.currentPassword'], { ns: 'common' })}
               </FieldLabel>
-              <InputGroup className="mt-2">
+              <InputGroup>
                 <InputGroupInput
                   type={showCurrentPassword ? 'text' : 'password'}
                   value={currentPassword}
@@ -329,13 +329,13 @@ export default function AccountPage() {
               </InputGroup>
             </Field>
           )}
-          <Field name="new-password" className="mt-8 gap-0">
-            <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+          <Field name="new-password" className="mt-8">
+            <FieldLabel className="system-sm-semibold">
               {userProfile.is_password_set
                 ? t(($) => $['account.newPassword'], { ns: 'common' })
                 : t(($) => $['account.password'], { ns: 'common' })}
             </FieldLabel>
-            <InputGroup className="mt-2">
+            <InputGroup>
               <InputGroupInput
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -356,11 +356,11 @@ export default function AccountPage() {
               </InputGroupAddon>
             </InputGroup>
           </Field>
-          <Field name="confirm-password" className="mt-8 gap-0">
-            <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+          <Field name="confirm-password" className="mt-8">
+            <FieldLabel className="system-sm-semibold">
               {t(($) => $['account.confirmPassword'], { ns: 'common' })}
             </FieldLabel>
-            <InputGroup className="mt-2">
+            <InputGroup>
               <InputGroupInput
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}

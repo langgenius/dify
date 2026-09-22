@@ -16,12 +16,14 @@ export type Task = {
   params: TaskParam
 }
 
-export enum TaskStatus {
-  pending = 'pending',
-  running = 'running',
-  completed = 'completed',
-  failed = 'failed',
-}
+export const TaskStatus = {
+  pending: 'pending',
+  running: 'running',
+  completed: 'completed',
+  failed: 'failed',
+} as const
+
+export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus]
 
 export type InputValueTypes =
   | string

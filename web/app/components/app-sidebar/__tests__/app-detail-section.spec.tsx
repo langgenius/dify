@@ -58,10 +58,6 @@ vi.mock('../app-info/use-app-info-actions', () => ({
   useAppInfoActions: vi.fn(() => ({})),
 }))
 
-vi.mock('../../base/divider', () => ({
-  default: ({ className }: { className?: string }) => <hr className={className} />,
-}))
-
 vi.mock('../nav-link', () => ({
   default: ({ name, href }: { name: string; href: string }) => <a href={href}>{name}</a>,
 }))

@@ -13,6 +13,7 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
@@ -24,7 +25,6 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useCallback, useState } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
@@ -158,8 +158,11 @@ function Form<
     const infotip = formSchema.tooltip
     const infotipText = infotip?.[language] || infotip?.en_US
     const infotipContent = infotipText && (
-      <Infotip aria-label={infotipText} className="ml-1" popupClassName="w-[200px] max-w-[200px]">
-        {infotipText}
+      <Infotip>
+        <InfotipTrigger aria-label={infotipText} className="ml-1" />
+        <InfotipContent aria-label={infotipText} className="w-50">
+          {infotipText}
+        </InfotipContent>
       </Infotip>
     )
     if (override) {
