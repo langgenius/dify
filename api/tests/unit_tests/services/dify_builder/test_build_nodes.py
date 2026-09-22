@@ -295,12 +295,14 @@ def test_build_nodes_dataset_ids_are_independent_lists_per_node():
 
 
 def test_build_nodes_logs_when_generator_reports_error(caplog):
-    with patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")), \
-         patch(
-             "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
-             return_value={"graph": {}, "error": "generator boom", "errors": []},
-         ), \
-         caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.build"):
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value={"graph": {}, "error": "generator boom", "errors": []},
+        ),
+        caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.build"),
+    ):
         out = build.build_nodes("t1", {}, ["do a thing"]).intents
 
     assert out == []
@@ -311,12 +313,14 @@ def test_build_nodes_logs_when_generator_reports_error(caplog):
 
 
 def test_build_nodes_logs_traceback_when_generation_raises(caplog):
-    with patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")), \
-         patch(
-             "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
-             side_effect=RuntimeError("kaboom"),
-         ), \
-         caplog.at_level(logging.ERROR, logger="services.dify_builder.agent.build"):
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            side_effect=RuntimeError("kaboom"),
+        ),
+        caplog.at_level(logging.ERROR, logger="services.dify_builder.agent.build"),
+    ):
         out = build.build_nodes("t1", {}, ["do a thing"]).intents
 
     assert out == []
@@ -442,3 +446,73 @@ def test_build_nodes_records_diagnostic_when_generation_raises():
     assert d["exception"] == "RuntimeError"
     assert "credit_balance_exhausted" in d["message"]
     datetime.fromisoformat(d["at"])
+
+
+def test_build_nodes_keeps_the_applicable_intents_and_records_a_partial_reject(caplog):
+    """An edge the generator's postprocess could not re-home (the if-else below
+    declares only "true" / "false") is refused by apply_connect in the dry run.
+    The rest of the build still applies, but the dropped connect must leave a
+    warning and a debug-export diagnostic instead of vanishing."""
+    graph = {
+        "graph": {
+            "nodes": [
+                {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "branch",
+                    "type": "custom",
+                    "data": {
+                        "type": "if-else",
+                        "title": "Check",
+                        "cases": [{"case_id": "true", "logical_operator": "and", "conditions": []}],
+                    },
+                },
+                {"id": "yes", "type": "custom", "data": {"type": "end", "title": "Yes", "outputs": []}},
+                {"id": "no", "type": "custom", "data": {"type": "end", "title": "No", "outputs": []}},
+            ],
+            "edges": [
+                {"source": "s", "target": "branch"},
+                {"source": "branch", "target": "yes", "sourceHandle": "true"},
+                {"source": "branch", "target": "no", "sourceHandle": "maybe"},
+            ],
+        },
+        "error": "",
+        "errors": [],
+    }
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value=graph,
+        ),
+        patch.object(
+            build.resources,
+            "list_tenant_resources",
+            return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
+        ),
+        caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.build"),
+    ):
+        result = build.build_nodes("t1", {}, ["Branch on a check"])
+
+    # the applicable intents survive: 4 creates + the 2 connects on declared handles
+    assert result.error == ""
+    assert [i.op for i in result.intents].count("create_node") == 4
+    connects = [(i.args["from_node"], i.args["to_node"]) for i in result.intents if i.op == "connect"]
+    assert connects == [("s", "branch"), ("branch", "yes")]
+
+    # ...and the dropped connect is named in a diagnostic
+    assert len(result.diagnostics) == 1
+    diagnostic = result.diagnostics[0]
+    assert diagnostic["source"] == "build_nodes"
+    datetime.fromisoformat(diagnostic["at"])
+    assert len(diagnostic["rejected"]) == 1
+    rejected = diagnostic["rejected"][0]
+    assert rejected["intent"] == "connect"
+    assert rejected["args"] == {"from_node": "branch", "to_node": "no", "source_handle": "maybe"}
+    assert "has no handle 'maybe'" in rejected["reason"]
+
+    # ...and in a server warning
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "connect" in warnings[0]
+    assert "'maybe'" in warnings[0]
+    assert "has no handle" in warnings[0]
