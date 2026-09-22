@@ -5,10 +5,6 @@ import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import { SnippetPlaceholderIcon } from './snippet-placeholder-icon'
 
-const NodeTreeIcon = ({ className }: { className?: string }) => (
-  <span className={cn('i-ri-node-tree', className)} />
-)
-
 export function SnippetCollapsedPreview({
   inputFieldCount,
   snippetId,
@@ -32,12 +28,12 @@ export function SnippetCollapsedPreview({
           name={sectionLabel}
           href={`/snippets/${snippetId}/orchestrate`}
           active
-          iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
+          iconMap={{ selected: 'i-ri-node-tree', normal: 'i-ri-node-tree' }}
         />
       ) : (
         <div className="flex size-8 items-center justify-center rounded-lg border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active p-1.5 text-text-accent-light-mode-only">
           <div className="flex size-5 items-center justify-center">
-            <NodeTreeIcon className="size-4.5 shrink-0" />
+            <span aria-hidden className="i-ri-node-tree size-4.5 shrink-0" />
           </div>
           <span className="sr-only">{sectionLabel}</span>
         </div>

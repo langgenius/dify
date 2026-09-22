@@ -458,8 +458,8 @@ function AgentKnowledgeRetrievalDialogContent({
           render={
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="sm"
-              className="static size-7 shrink-0 rounded-md"
+              size="lg"
+              className="-my-0.5 shrink-0"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
             </IconButton>

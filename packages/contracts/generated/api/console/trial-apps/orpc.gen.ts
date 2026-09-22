@@ -310,7 +310,7 @@ export const tasks = {
 }
 
 /**
- * Get workflow detail
+ * Get a detached workflow definition after catalog preview admission
  */
 export const get5 = oc
   .route({
@@ -318,7 +318,7 @@ export const get5 = oc
     method: 'GET',
     operationId: 'getTrialAppsByAppIdWorkflows',
     path: '/trial-apps/{app_id}/workflows',
-    summary: 'Get workflow detail',
+    summary: 'Get a detached workflow definition after catalog preview admission',
     tags: ['console'],
   })
   .input(z.object({ params: zGetTrialAppsByAppIdWorkflowsPath }))
@@ -331,7 +331,7 @@ export const workflows = {
 }
 
 /**
- * Get app detail
+ * Get app detail using the viewer's workspace for tool configuration
  */
 export const get6 = oc
   .route({
@@ -339,7 +339,7 @@ export const get6 = oc
     method: 'GET',
     operationId: 'getTrialAppsByAppId',
     path: '/trial-apps/{app_id}',
-    summary: 'Get app detail',
+    summary: "Get app detail using the viewer's workspace for tool configuration",
     tags: ['console'],
   })
   .input(z.object({ params: zGetTrialAppsByAppIdPath }))

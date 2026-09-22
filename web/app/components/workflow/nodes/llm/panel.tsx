@@ -19,6 +19,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
@@ -26,7 +27,6 @@ import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import { VarType } from '../tool/types'
 import ConfigPrompt from './components/config-prompt'
 import PanelMemorySection from './components/panel-memory-section'
 import PanelOutputSection from './components/panel-output-section'
@@ -215,10 +215,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           operations={
             flowType === FlowType.snippet && !isEnvironmentModelSource ? undefined : (
               <FormInputTypeSwitch
-                value={isEnvironmentModelSource ? VarType.variable : VarType.constant}
+                value={isEnvironmentModelSource ? VarKindType.variable : VarKindType.constant}
                 readonly={readOnly}
                 onChange={(value) => {
-                  const useEnvironmentVariable = value === VarType.variable
+                  const useEnvironmentVariable = value === VarKindType.variable
                   if (useEnvironmentVariable === isEnvironmentModelSource) return
                   modelSelectionRequestGenerationRef.current++
                   handleModelSourceChange(useEnvironmentVariable)

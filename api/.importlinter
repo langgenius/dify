@@ -589,6 +589,7 @@ name = App preview queries are framework and persistence neutral
 type = forbidden
 source_modules =
     services.app_preview_query_service
+    services.app_preview_details_service
 forbidden_modules =
     controllers
     extensions
@@ -646,4 +647,20 @@ forbidden_modules =
     repositories
     sqlalchemy
     tasks
+    werkzeug
+
+[importlinter:contract:app-audio-boundary]
+name = App audio operations and values are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.app_audio_service
+    services.audio_types
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.audio_service
+    sqlalchemy
     werkzeug

@@ -1,5 +1,6 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { ReactNode, Ref } from 'react'
-import type { BlockEnum, NodeDefault, OnNodeAdd, OnSelectBlock, ToolWithProvider } from '../types'
+import type { BlockEnum, NodeDefault, OnNodeAdd, OnSelectBlock } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -30,7 +31,7 @@ type BlockSelectorPanelsProps = {
   onRequestClose: () => void
   availableBlocksTypes?: BlockEnum[]
   blocks: NodeDefault[]
-  dataSources?: ToolWithProvider[]
+  dataSources?: RagPipelineDatasourceProviderResponse[]
   allowStartNodeSelection?: boolean
   hasUserInputNode?: boolean
   hasTriggerNode?: boolean

@@ -237,7 +237,13 @@ function ContextMenuSubContent({
         className="z-50 outline-hidden"
       >
         <BaseContextMenu.Popup
-          className={cn(menuPopupClassName, floatingPopupAnimationClassName, className)}
+          className={(state) =>
+            cn(
+              menuPopupClassName,
+              floatingPopupAnimationClassName,
+              resolveClassName(className, state),
+            )
+          }
           {...props}
         >
           {children}

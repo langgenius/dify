@@ -11,8 +11,11 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { VarType } from '@/app/components/workflow/types'
 import { VarKindType } from '../types'
 
-type FormInputSchema = CredentialFormSchema &
+export type FormInputSchema = Omit<CredentialFormSchema, 'default'> &
   Partial<{
+    default: unknown
+    min: number
+    max: number
     _type: FormTypeEnum
     multiple: boolean
     options: FormOption[]

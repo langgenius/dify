@@ -1,23 +1,22 @@
 import json
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
+from pydantic import JsonValue
 from sqlalchemy import ColumnElement, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.model_template import default_app_templates
-from core.agent.entities import AgentToolEntity
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from core.agent.tool_configuration import mask_agent_tool_parameters
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ToolParameterConfigurationManager
 from enums import DeploymentEdition
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db  # noqa: F401
@@ -276,13 +275,6 @@ class AppService:
         session: Session,
     ) -> App | None:
         return session.get(App, app_id)
-
-    @staticmethod
-    def get_normal_app_by_id(
-        app_id: str,
-        session: Session,
-    ) -> App | None:
-        return session.scalar(select(App).where(App.id == app_id, App.status == "normal").limit(1))
 
     @staticmethod
     def get_visible_app_by_id(
@@ -575,11 +567,11 @@ class AppService:
             model_config = app.app_model_config_with_session(session=session)
             if not model_config:
                 return app
-            agent_mode = self.mask_tool_parameters(
-                tenant_id=current_user.current_tenant_id,
+            agent_mode = mask_agent_tool_parameters(
+                agent_mode=cast(Mapping[str, JsonValue], model_config.agent_mode_dict),
                 app_id=app.id,
-                account_id=current_user.id,
-                agent_mode=dict(model_config.agent_mode_dict),
+                tenant_id=current_user.current_tenant_id,
+                user_id=current_user.id,
             )
 
             # override agent mode
@@ -901,48 +893,6 @@ class AppService:
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(app.tenant_id)
-
-    @staticmethod
-    def mask_tool_parameters(
-        *, tenant_id: str, app_id: str, account_id: str, agent_mode: dict[str, Any]
-    ) -> dict[str, Any]:
-        # decrypt agent tool parameters if it's secret-input
-        for tool in agent_mode.get("tools") or []:
-            if not isinstance(tool, dict) or len(tool.keys()) <= 3:
-                continue
-            typed_tool = {key: value for key, value in tool.items() if isinstance(key, str)}
-            if len(typed_tool) != len(tool):
-                continue
-            agent_tool_entity = AgentToolEntity.model_validate(typed_tool)
-            # get tool
-            try:
-                tool_runtime = ToolManager.get_agent_tool_runtime(
-                    tenant_id=tenant_id,
-                    app_id=app_id,
-                    agent_tool=agent_tool_entity,
-                    user_id=account_id,
-                )
-                manager = ToolParameterConfigurationManager(
-                    tenant_id=tenant_id,
-                    tool_runtime=tool_runtime,
-                    provider_name=agent_tool_entity.provider_id,
-                    provider_type=agent_tool_entity.provider_type,
-                    identity_id=f"AGENT.{app_id}",
-                )
-
-                # get decrypted parameters
-                if agent_tool_entity.tool_parameters:
-                    parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
-                    masked_parameter = manager.mask_tool_parameters(parameters or {})
-                else:
-                    masked_parameter = {}
-
-                # override tool parameters
-                tool["tool_parameters"] = masked_parameter
-            except Exception:
-                logger.exception("Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name)
-
-        return agent_mode
 
     @staticmethod
     def prepare_creation(tenant_id: str, params: CreateAppParams) -> AppCreationSettings:

@@ -13,7 +13,6 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
-import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
@@ -36,7 +35,9 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
           <DetailSidebarToggleButton
             expand={expand}
             onToggle={onToggle}
-            icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+            icon={
+              <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+            }
           />
         )}
       </div>
@@ -104,7 +105,9 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
         <DetailSidebarToggleButton
           expand={expand}
           onToggle={onToggle}
-          icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+          icon={
+            <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+          }
         />
       )}
     </div>

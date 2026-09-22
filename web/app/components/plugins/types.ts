@@ -1,3 +1,8 @@
+import type {
+  AgentStrategyProviderEntity,
+  DatasourceProviderEntity,
+  EndpointProviderDeclarationResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
@@ -38,32 +43,6 @@ type PluginToolDeclaration = {
   credentials_schema: ToolCredential[] // TODO
 }
 
-type PluginEndpointDeclaration = {
-  settings: ToolCredential[]
-  endpoints?: EndpointItem[] | null
-}
-
-type EndpointItem = {
-  path: string
-  method: string
-  hidden?: boolean
-}
-
-export type EndpointListItem = {
-  id: string
-  created_at: string
-  updated_at: string
-  settings: Record<string, any>
-  tenant_id: string
-  plugin_id: string
-  expired_at: string
-  declaration: PluginEndpointDeclaration
-  name: string
-  enabled: boolean
-  url: string
-  hook_id: string
-}
-
 type PluginDeclarationMeta = {
   version: string
   minimum_dify_version?: string
@@ -84,12 +63,12 @@ export type PluginDeclaration = {
   resource: any // useless in frontend
   plugins: any // useless in frontend
   verified: boolean
-  endpoint?: PluginEndpointDeclaration | null
+  endpoint?: EndpointProviderDeclarationResponse | null
   tool?: PluginToolDeclaration
-  datasource?: PluginToolDeclaration
+  datasource?: DatasourceProviderEntity | null
   model: any
   tags: string[]
-  agent_strategy: any
+  agent_strategy?: AgentStrategyProviderEntity | null
   meta: PluginDeclarationMeta
   trigger: PluginTriggerDefinition
 }
@@ -349,14 +328,6 @@ export type GitHubUrlInfo = {
   repo?: string
 }
 
-// endpoint
-export type EndpointsResponse = {
-  endpoints: EndpointListItem[]
-  has_more: boolean
-  limit: number
-  total: number
-  page: number
-}
 export const InstallStep = {
   uploading: 'uploading',
   uploadFailed: 'uploadFailed',
@@ -510,44 +481,6 @@ export type VersionProps = {
   toInstallVersion: string
 }
 
-export type StrategyParamItem = {
-  name: string
-  label: Record<Locale | PluginLanguage, string>
-  help: Record<Locale | PluginLanguage, string>
-  placeholder: Record<Locale | PluginLanguage, string>
-  type: string
-  scope: string
-  required: boolean
-  default: any
-  options: any[]
-  template: {
-    enabled: boolean
-  }
-  auto_generate: {
-    type: string
-  }
-}
-
-export type StrategyDetail = {
-  identity: {
-    author: string
-    name: string
-    icon: string
-    label: Record<Locale | PluginLanguage, string>
-    provider: string
-  }
-  parameters: StrategyParamItem[]
-  description: Record<Locale | PluginLanguage, string>
-  output_schema: Record<string, any>
-  features: AgentFeature[]
-}
-
-const AgentFeature = {
-  HISTORY_MESSAGES: 'history-messages',
-} as const
-
-type AgentFeature = (typeof AgentFeature)[keyof typeof AgentFeature]
-
 type Identity = {
   author: string
   name: string
@@ -558,20 +491,6 @@ type Identity = {
   tags: string[]
 }
 
-type StrategyDeclaration = {
-  identity: Identity
-  plugin_id: string
-  strategies: StrategyDetail[]
-}
-
 export type PluginMeta = {
   version: string // the version of dify sdk
-}
-
-export type StrategyPluginDetail = {
-  provider: string
-  plugin_unique_identifier: string
-  plugin_id: string
-  declaration: StrategyDeclaration
-  meta: PluginMeta
 }

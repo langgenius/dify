@@ -200,7 +200,6 @@
   "openInExplore": "Sidebar Web App openen",
   "publishApp.notSet": "Not set",
   "removeOriginal": "Delete the original app",
-  "structOutput.LLMResponse": "LLM Response",
   "structOutput.configure": "Configure",
   "structOutput.modelNotSupported": "Model not supported",
   "structOutput.modelNotSupportedTip": "The current model does not support this feature and is automatically downgraded to prompt injection.",

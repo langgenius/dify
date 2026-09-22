@@ -200,7 +200,6 @@
   "openInExplore": "Web App نوار کناری را باز کنید",
   "publishApp.notSet": "تنظیم نشده است",
   "removeOriginal": "حذف برنامه اصلی",
-  "structOutput.LLMResponse": "پاسخ مدل زبان بزرگ",
   "structOutput.configure": "تنظیمات",
   "structOutput.modelNotSupported": "مدل پشتیبانی نمی شود",
   "structOutput.modelNotSupportedTip": "مدل فعلی این ویژگی را پشتیبانی نمی‌کند و به‌طور خودکار به تزریق درخواست تنزل پیدا می‌کند.",

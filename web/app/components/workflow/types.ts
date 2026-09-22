@@ -1,3 +1,4 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { Edge as ReactFlowEdge, Node as ReactFlowNode, Viewport, XYPosition } from 'reactflow'
 import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
@@ -11,8 +12,8 @@ import type {
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { Resolution, TransferMethod } from '@/types/app'
@@ -122,7 +123,12 @@ export type CommonNodeType<T = {}> = {
   provider_id?: string
   _dimmed?: boolean
 } & T &
-  Partial<PluginDefaultValue>
+  Partial<
+    Pick<
+      PluginDefaultValue,
+      'provider_type' | 'provider_name' | 'plugin_id' | 'plugin_unique_identifier'
+    >
+  >
 
 export type CommonEdgeType = {
   _hovering?: boolean
@@ -353,6 +359,14 @@ export type NodeOutPutVar = {
   isFlat?: boolean
 }
 
+export type WorkflowPluginCatalogs = {
+  buildInTools?: ToolWithProvider[]
+  customTools?: ToolWithProvider[]
+  workflowTools?: ToolWithProvider[]
+  mcpTools?: ToolWithProvider[]
+  dataSourceList?: RagPipelineDatasourceProviderResponse[]
+}
+
 export type NodeDefault<T = {}> = {
   metaData: {
     classification: BlockClassification
@@ -377,7 +391,7 @@ export type NodeDefault<T = {}> = {
   ) => { isValid: boolean; errorMessage?: string }
   getOutputVars?: (
     payload: T,
-    allPluginInfoList: Record<string, ToolWithProvider[]>,
+    allPluginInfoList: WorkflowPluginCatalogs,
     ragVariables?: Var[],
     utils?: {
       schemaTypeDefinitions?: SchemaTypeDefinition[]
@@ -499,7 +513,7 @@ export type MoreInfo = {
 
 export type ToolWithProvider = Collection & {
   tools: Tool[]
-  meta: PluginMeta
+  meta?: PluginMeta
   plugin_unique_identifier?: string
 }
 

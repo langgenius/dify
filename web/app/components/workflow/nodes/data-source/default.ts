@@ -1,10 +1,13 @@
 import type { TFunction } from 'i18next'
-import type { NodeDefault } from '../../types'
+import type { NodeDefault, Var } from '../../types'
+import type { getDataSourceCheckParams } from '../../utils/data-source'
 import type { DataSourceNodeType } from './types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
+import { matchDataSource } from '../../utils/plugin-install-check'
+import { resolveVarType } from '../tool/output-schema-utils'
 import { COMMON_OUTPUT, LOCAL_FILE_OUTPUT } from './constants'
 import { DataSourceClassification } from './types'
 
@@ -16,23 +19,54 @@ const metaData = genNodeMetaData({
   isStart: true,
   isRequired: true,
 })
+const getOutputProperties = (
+  schema: unknown,
+  schemaTypeDefinitions?: SchemaTypeDefinition[],
+): Var[] => {
+  if (!schema || typeof schema !== 'object' || !('properties' in schema)) return []
+  const properties = schema.properties
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return []
+  return Object.entries(properties).map(([variable, value]: [string, unknown]) => {
+    const schemaValue =
+      value && typeof value === 'object' && !Array.isArray(value) ? value : undefined
+    const { type, schemaType } = resolveVarType(schemaValue, schemaTypeDefinitions)
+    return {
+      variable,
+      type,
+      schemaType,
+      des:
+        value &&
+        typeof value === 'object' &&
+        'description' in value &&
+        typeof value.description === 'string'
+          ? value.description
+          : undefined,
+      children: type === 'object' ? getOutputProperties(value, schemaTypeDefinitions) : undefined,
+    }
+  })
+}
+
 const nodeDefault: NodeDefault<DataSourceNodeType> = {
   metaData,
   defaultValue: {
     datasource_parameters: {},
     datasource_configurations: {},
   },
-  checkValid(payload, t: TFunction<'workflow'>, moreDataForCheckValid) {
+  checkValid(
+    payload,
+    t: TFunction<'workflow'>,
+    moreDataForCheckValid: ReturnType<typeof getDataSourceCheckParams>,
+  ) {
     const { dataSourceInputsSchema, notAuthed } = moreDataForCheckValid
     let errorMessage = ''
     if (notAuthed) errorMessage = t(($) => $[`${i18nPrefix}.authRequired`], { ns: 'workflow' })
 
     if (!errorMessage) {
       dataSourceInputsSchema
-        .filter((field: any) => {
+        .filter((field) => {
           return field.required
         })
-        .forEach((field: any) => {
+        .forEach((field) => {
           const targetVar = payload.datasource_parameters[field.variable]
           if (!targetVar) {
             errorMessage = t(($) => $[`${i18nPrefix}.fieldRequired`], {
@@ -69,47 +103,16 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
     ragVars = [],
     { schemaTypeDefinitions } = { schemaTypeDefinitions: [] },
   ) {
-    const { plugin_id, datasource_name, provider_type } = payload
-
+    const { datasource_name, provider_type } = payload
     const isLocalFile = provider_type === DataSourceClassification.localFile
-    const currentDataSource = allPluginInfoList.dataSourceList?.find(
-      (ds: any) => ds.plugin_id === plugin_id,
+    const provider = matchDataSource(allPluginInfoList.dataSourceList ?? [], payload)
+    const datasource = provider?.declaration.datasources?.find(
+      (item) => item.identity.name === datasource_name,
     )
-    const currentDataSourceItem = currentDataSource?.tools?.find(
-      (tool: any) => tool.name === datasource_name,
+    const dynamicOutputSchema = getOutputProperties(
+      datasource?.output_schema,
+      schemaTypeDefinitions,
     )
-    const output_schema = currentDataSourceItem?.output_schema
-    const dynamicOutputSchema: any[] = []
-
-    if (output_schema?.properties) {
-      Object.keys(output_schema.properties).forEach((outputKey) => {
-        const output = output_schema.properties[outputKey]
-        const dataType = output.type
-        let type =
-          dataType === 'array'
-            ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
-            : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`
-        const schemaType = getMatchedSchemaType?.(output, schemaTypeDefinitions)
-
-        if (type === 'object' && schemaType === 'file') type = 'file'
-
-        dynamicOutputSchema.push({
-          variable: outputKey,
-          type,
-          description: output.description,
-          schemaType,
-          children:
-            output.type === 'object'
-              ? {
-                  schema: {
-                    type: 'object',
-                    properties: output.properties,
-                  },
-                }
-              : undefined,
-        })
-      })
-    }
     return [
       ...COMMON_OUTPUT.map((item) => ({ variable: item.name, type: item.type })),
       ...(isLocalFile

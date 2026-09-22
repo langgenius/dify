@@ -3,8 +3,6 @@ import type { SelfHostedPlan } from '../../../config'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import AwsMarketplaceDark from '@/app/components/base/icons/src/public/billing/AwsMarketplaceDark'
-import AwsMarketplaceLight from '@/app/components/base/icons/src/public/billing/AwsMarketplaceLight'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { SELF_HOSTED_PLAN_URLS } from '../../../config'
@@ -89,9 +87,15 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
             {isPremiumPlan && (
               <span aria-hidden className="pt-1.75 pb-px">
                 {theme === Theme.light ? (
-                  <AwsMarketplaceLight className="h-6" />
+                  <span
+                    aria-hidden
+                    className="i-custom-public-billing-aws-marketplace-light h-6 w-31.5"
+                  />
                 ) : (
-                  <AwsMarketplaceDark className="h-6" />
+                  <span
+                    aria-hidden
+                    className="i-custom-public-billing-aws-marketplace-dark h-6 w-31.5"
+                  />
                 )}
               </span>
             )}

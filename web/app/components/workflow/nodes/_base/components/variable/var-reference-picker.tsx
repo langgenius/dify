@@ -1,8 +1,9 @@
 'use client'
+
 import type { FC } from 'react'
+import type { FormInputSchema } from '../form-input-item.helpers'
 import type { HoverPopup } from './var-reference-picker.trigger'
 import type {
-  CredentialFormSchema,
   CredentialFormSchemaSelect,
   FormOption,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -26,7 +27,7 @@ import { useTranslation } from 'react-i18next'
 import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 // import type { BaseResource, BaseResourceProvider } from '@/app/components/workflow/nodes/_base/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
@@ -74,7 +75,7 @@ type Props = Readonly<{
   isAddBtnTrigger?: boolean
   trigger?: React.ReactNode
   isJustShowValue?: boolean
-  schema?: Partial<CredentialFormSchema>
+  schema?: Partial<Omit<FormInputSchema, 'default'>>
   valueTypePlaceHolder?: string
   isInTable?: boolean
   onRemove?: () => void

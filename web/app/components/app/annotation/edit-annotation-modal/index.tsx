@@ -21,7 +21,6 @@ import {
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { editAnnotation } from '@/service/annotation'
@@ -161,7 +160,10 @@ const EditAnnotationModal: FC<Props> = ({
                       className="flex cursor-pointer items-center space-x-2 pl-3"
                       onClick={() => setShowModal(true)}
                     >
-                      <MessageCheckRemove />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-line-communication-message-check-remove h-6 w-6"
+                      />
                       <div>{t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}</div>
                     </div>
                     {!!createdAt && (

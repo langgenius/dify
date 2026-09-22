@@ -7,7 +7,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import {
   pricingQueryParamName,
   pricingQueryParser,
@@ -87,9 +86,9 @@ const UpgradeBtn: FC<Props> = ({
       className={className}
       style={style}
     >
-      <SparklesSoft
+      <span
         aria-hidden="true"
-        className="flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+        className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
       />
       <div className="system-xs-medium">
         <span className="p-1">{label}</span>

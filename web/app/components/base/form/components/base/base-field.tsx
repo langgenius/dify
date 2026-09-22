@@ -337,11 +337,8 @@ const BaseField = ({
                   )}
                 >
                   <InputGroupInput {...textInputProps} />
-                  <InputGroupAddon align="inline-end" className="pe-0">
-                    <CopyFeedback
-                      content={stringValue ?? ''}
-                      className="size-7 hover:bg-transparent"
-                    />
+                  <InputGroupAddon align="inline-end" className="pe-0.5">
+                    <CopyFeedback content={stringValue ?? ''} className="hover:bg-transparent" />
                   </InputGroupAddon>
                 </InputGroup>
               ) : (
@@ -385,7 +382,7 @@ const BaseField = ({
                   {showCopy && (
                     <CopyFeedback
                       content={value == null ? '' : String(value)}
-                      className="size-7 shrink-0 hover:bg-transparent"
+                      className="me-0.5 shrink-0 self-center hover:bg-transparent"
                     />
                   )}
                 </NumberFieldGroup>

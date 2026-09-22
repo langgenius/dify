@@ -5,7 +5,6 @@ import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/plugins/card/base/placeholder'
-import { Group } from '../../../base/icons/src/vender/other'
 
 const LoadingError: FC = () => {
   const { t } = useTranslation()
@@ -16,7 +15,10 @@ const LoadingError: FC = () => {
         <div className="flex">
           <div className="relative flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-state-destructive-hover p-1 backdrop-blur-xs">
             <div className="flex size-5 items-center justify-center">
-              <Group className="text-text-quaternary" />
+              <span
+                aria-hidden
+                className="i-custom-vender-other-group h-4 w-3.5 text-text-quaternary"
+              />
             </div>
             <div className="absolute -right-1 -bottom-1 rounded-full border-2 border-components-panel-bg bg-state-destructive-solid">
               <RiCloseLine className="size-3 text-text-primary-on-surface" />

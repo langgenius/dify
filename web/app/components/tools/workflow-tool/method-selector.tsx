@@ -4,7 +4,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
 
 type MethodSelectorProps = {
   value?: string
@@ -52,7 +51,10 @@ const MethodSelector: FC<MethodSelectorProps> = ({ value, onChange }) => {
                 <div className="flex items-center gap-1">
                   <div className="size-4 shrink-0">
                     {value === 'llm' && (
-                      <Check className="size-4 shrink-0 text-text-accent" aria-hidden />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-line-general-check size-4 shrink-0 text-text-accent"
+                      />
                     )}
                   </div>
                   <div className="text-[13px] leading-4.5 font-medium text-text-secondary">
@@ -71,7 +73,10 @@ const MethodSelector: FC<MethodSelectorProps> = ({ value, onChange }) => {
                 <div className="flex items-center gap-1">
                   <div className="size-4 shrink-0">
                     {value === 'form' && (
-                      <Check className="size-4 shrink-0 text-text-accent" aria-hidden />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-line-general-check size-4 shrink-0 text-text-accent"
+                      />
                     )}
                   </div>
                   <div className="text-[13px] leading-4.5 font-medium text-text-secondary">

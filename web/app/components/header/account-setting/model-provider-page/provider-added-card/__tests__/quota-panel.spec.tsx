@@ -62,18 +62,6 @@ vi.mock('@/service/plugins', () => ({
     mockFetchPluginInfoFromMarketPlace(params),
 }))
 
-vi.mock('@/app/components/base/icons/src/public/llm', () => {
-  const Icon = ({ label }: { label: string }) => <span>{label}</span>
-  return {
-    OpenaiSmall: () => <Icon label="openai" />,
-    AnthropicShortLight: () => <Icon label="anthropic" />,
-    Gemini: () => <Icon label="gemini" />,
-    Grok: () => <Icon label="x" />,
-    Deepseek: () => <Icon label="deepseek" />,
-    Tongyi: () => <Icon label="tongyi" />,
-  }
-})
-
 vi.mock('../use-trial-credits', () => ({
   useTrialCredits: () => {
     const isUnlimited = mockWorkspaceData?.is_unlimited ?? false
@@ -253,7 +241,7 @@ describe('QuotaPanel', () => {
   it('should open install modal when clicking an unsupported trial provider', async () => {
     renderQuotaPanel(<QuotaPanel providers={[]} />)
 
-    fireEvent.click(screen.getByText('openai'))
+    fireEvent.click(screen.getByRole('button', { name: /modelNotSupported/ }))
 
     await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
     expect(mockFetchManifestFromMarketPlace).toHaveBeenCalledWith('openai@1.0.0')
@@ -305,7 +293,7 @@ describe('QuotaPanel', () => {
   it('should close install modal when provider becomes installed', async () => {
     const { rerender } = renderQuotaPanel(<QuotaPanel providers={[]} />)
 
-    fireEvent.click(screen.getByText('openai'))
+    fireEvent.click(screen.getByRole('button', { name: /modelNotSupported/ }))
     await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
 
     rerender(<QuotaPanel providers={mockProviders} />)
@@ -320,7 +308,9 @@ describe('QuotaPanel', () => {
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
-    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /model(?:NotSupported|Supported|API)/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('should render installed custom providers without opening the install modal', () => {
@@ -328,7 +318,7 @@ describe('QuotaPanel', () => {
 
     expect(screen.getByLabelText(/modelAPI/)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('openai'))
+    fireEvent.click(screen.getByRole('button', { name: /modelAPI/ }))
 
     expect(screen.queryByText('install modal')).not.toBeInTheDocument()
   })

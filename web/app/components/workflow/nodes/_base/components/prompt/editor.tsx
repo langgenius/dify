@@ -12,9 +12,6 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
@@ -234,7 +231,10 @@ const Editor: FC<Props> = ({
                             type="button"
                             className="flex h-4 w-7 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                           >
-                            <Jinja className="h-3 w-6 text-text-quaternary" />
+                            <span
+                              aria-hidden
+                              className="i-custom-vender-workflow-jinja h-3 w-6 text-text-quaternary"
+                            />
                           </button>
                         }
                       />
@@ -269,7 +269,10 @@ const Editor: FC<Props> = ({
                           aria-label={t(($) => $['common.insertVarTip'], { ns: 'workflow' })}
                           onClick={handleInsertVariable}
                         >
-                          <Variable02 aria-hidden="true" className="size-4" />
+                          <span
+                            aria-hidden="true"
+                            className="i-custom-vender-solid-development-variable-02 size-4"
+                          />
                         </IconButton>
                       }
                     />
@@ -291,11 +294,14 @@ const Editor: FC<Props> = ({
                     aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                     onClick={handleCopy}
                   >
-                    <Copy aria-hidden="true" className="size-4" />
+                    <span aria-hidden="true" className="i-custom-vender-line-files-copy size-4" />
                   </IconButton>
                 ) : (
                   <IconButton aria-label={t(($) => $['operation.copy'], { ns: 'common' })}>
-                    <CopyCheck aria-hidden="true" className="size-4" />
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-line-files-copy-check size-4"
+                    />
                   </IconButton>
                 )}
                 <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
