@@ -447,3 +447,67 @@ class TestHttpRequestBodyErrors:
         ]
 
         assert [nid for nid, _ in http_request_body_errors(nodes)] == ["raw0", "bin2"]
+
+    def test_empty_string_bodies_are_rejected_as_having_no_items(self):
+        from core.workflow.graph_normalizers import http_request_body_errors
+
+        nodes = [
+            {
+                "id": "raw_empty",
+                "data": {
+                    "type": "http-request",
+                    "body": {"type": "raw-text", "data": ""},
+                },
+            },
+            {
+                "id": "json_empty",
+                "data": {
+                    "type": "http-request",
+                    "body": {"type": "json", "data": ""},
+                },
+            },
+            {
+                "id": "bin_empty",
+                "data": {
+                    "type": "http-request",
+                    "body": {"type": "binary", "data": ""},
+                },
+            },
+            {
+                "id": "raw_nonempty",
+                "data": {
+                    "type": "http-request",
+                    "body": {"type": "raw-text", "data": "valid"},
+                },
+            },
+        ]
+
+        errors = http_request_body_errors(nodes)
+        error_ids = [nid for nid, _ in errors]
+        assert error_ids == ["raw_empty", "json_empty", "bin_empty"]
+
+    def test_normalize_http_request_bodies_handles_empty_string_data_safely(self):
+        from core.workflow.graph_normalizers import normalize_http_request_bodies
+
+        nodes = [
+            {
+                "id": "raw_empty",
+                "data": {
+                    "type": "http-request",
+                    "body": {"type": "raw-text", "data": ""},
+                },
+            },
+            {
+                "id": "json_empty",
+                "data": {
+                    "type": "http-request",
+                    "body": {"type": "json", "data": ""},
+                },
+            },
+        ]
+        before = copy.deepcopy(nodes)
+
+        # Should not crash and should leave empty strings alone
+        result = normalize_http_request_bodies(nodes)
+        assert result == []
+        assert nodes == before

@@ -301,9 +301,12 @@ def http_request_body_errors(nodes: list[Any]) -> list[tuple[str, str]]:
             continue
         body_type = str(body.get("type") or "")
         items = body.get("data")
-        if body_type not in _SINGLE_ITEM_BODY_TYPES or isinstance(items, str):
+        if body_type not in _SINGLE_ITEM_BODY_TYPES:
             continue
-        count = len(items) if isinstance(items, list) else 0
+        if isinstance(items, str):
+            count = 1 if items else 0
+        else:
+            count = len(items) if isinstance(items, list) else 0
         if count != 1:
             errors.append(
                 (
