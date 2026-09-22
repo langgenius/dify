@@ -36,13 +36,8 @@ Use generated options and types directly. A feature-owned options factory is
 appropriate only when it owns a shared request policy or a composed query;
 forwarding hooks and handwritten API DTOs create a second owner.
 
-Module contracts record backend ownership, affected caches, and call-site choices:
-
-- [Plugin endpoints]
-
 [Browser transport]: ./browser.ts
 [Instrumentation]: ../../instrumentation.ts
-[Plugin endpoints]: ../../app/components/plugins/plugin-detail-panel/endpoints.md
 [QueryClient factory]: ../../app/get-query-client.ts
 [Server transport]: ./server.ts
 [query-policies.ts]: ./query-policies.ts
