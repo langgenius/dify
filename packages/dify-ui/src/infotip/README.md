@@ -25,8 +25,8 @@ function ProcessingHint() {
 }
 ```
 
-If the popup has its own visible heading, use `InfotipTitle`. Base UI wires it to the dialog's
-accessible name:
+If the popup has its own visible title, use `InfotipTitle`. It is unstyled and only wires the title
+to the dialog's accessible name; use `render` to preserve the existing element semantics:
 
 ```tsx
 <Infotip>
