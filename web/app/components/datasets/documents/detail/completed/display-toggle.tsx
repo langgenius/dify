@@ -3,7 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiLineHeight } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Collapse } from '@/app/components/base/icons/src/vender/knowledge'
+import Collapse from '@/app/components/base/icons/src/vender/knowledge/Collapse'
 
 type DisplayToggleProps = {
   isCollapsed: boolean

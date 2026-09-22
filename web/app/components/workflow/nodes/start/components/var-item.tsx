@@ -10,8 +10,8 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Badge from '@/app/components/base/badge'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
+import Variable02 from '@/app/components/base/icons/src/vender/solid/development/Variable02'
+import Edit03 from '@/app/components/base/icons/src/vender/solid/general/Edit03'
 import InputVarTypeIcon from '../../_base/components/input-var-type-icon'
 
 type Props = Readonly<{

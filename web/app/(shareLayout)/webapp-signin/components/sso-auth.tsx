@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import Lock01 from '@/app/components/base/icons/src/vender/solid/security/Lock01'
 import { toast } from '@/app/notifications'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import {

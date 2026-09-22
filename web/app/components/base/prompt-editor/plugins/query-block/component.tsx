@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
+import UserEdit02 from '@/app/components/base/icons/src/vender/solid/users/UserEdit02'
 import { useSelectOrDelete } from '../../hooks'
 import { DELETE_QUERY_BLOCK_COMMAND } from './index'
 

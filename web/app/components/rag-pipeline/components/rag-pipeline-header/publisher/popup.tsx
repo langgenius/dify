@@ -21,7 +21,7 @@ import { useQueryState } from 'nuqs'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
+import SparklesSoft from '@/app/components/base/icons/src/public/common/SparklesSoft'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import {
   pricingQueryParamName,

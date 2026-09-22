@@ -1,10 +1,8 @@
 import type { Option } from './types'
 import { useTranslation } from 'react-i18next'
-import {
-  GeneralChunk,
-  ParentChildChunk,
-  QuestionAndAnswer,
-} from '@/app/components/base/icons/src/vender/knowledge'
+import GeneralChunk from '@/app/components/base/icons/src/vender/knowledge/GeneralChunk'
+import ParentChildChunk from '@/app/components/base/icons/src/vender/knowledge/ParentChildChunk'
+import QuestionAndAnswer from '@/app/components/base/icons/src/vender/knowledge/QuestionAndAnswer'
 import { ChunkingMode } from '@/models/datasets'
 import { EffectColor } from './types'
 

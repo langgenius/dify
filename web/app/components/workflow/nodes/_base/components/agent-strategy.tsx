@@ -28,7 +28,7 @@ import {
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Agent } from '@/app/components/base/icons/src/vender/workflow'
+import Agent from '@/app/components/base/icons/src/vender/workflow/Agent'
 import ListEmpty from '@/app/components/base/list-empty'
 import {
   FormTypeEnum,

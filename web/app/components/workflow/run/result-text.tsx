@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'
-import { ImageIndentLeft } from '@/app/components/base/icons/src/vender/line/editor'
+import ImageIndentLeft from '@/app/components/base/icons/src/vender/line/editor/ImageIndentLeft'
 import { Markdown } from '@/app/components/base/markdown'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 

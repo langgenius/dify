@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { Chunk } from '@/app/components/base/icons/src/vender/knowledge'
+import Chunk from '@/app/components/base/icons/src/vender/knowledge/Chunk'
 
 type ISegmentIndexTagProps = {
   positionId?: string | number

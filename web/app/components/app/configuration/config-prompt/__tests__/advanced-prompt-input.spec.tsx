@@ -30,9 +30,12 @@ vi.mock('@remixicon/react', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/base/icons/src/vender/line/files', () => ({
-  Copy: ({ onClick }: { onClick: () => void }) => <button onClick={onClick}>copy-prompt</button>,
-  CopyCheck: () => <span>copy-checked</span>,
+vi.mock('@/app/components/base/icons/src/vender/line/files/Copy', () => ({
+  default: ({ onClick }: { onClick: () => void }) => <button onClick={onClick}>copy-prompt</button>,
+}))
+
+vi.mock('@/app/components/base/icons/src/vender/line/files/CopyCheck', () => ({
+  default: () => <span>copy-checked</span>,
 }))
 
 vi.mock('@/context/event-emitter', () => ({

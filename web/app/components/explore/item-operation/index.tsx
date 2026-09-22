@@ -8,7 +8,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pin02 } from '../../base/icons/src/vender/line/general'
+import Pin02 from '../../base/icons/src/vender/line/general/Pin02'
 import s from './style.module.css'
 
 type IItemOperationProps = {

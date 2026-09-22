@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import Tag03 from '@/app/components/base/icons/src/vender/line/financeAndECommerce/Tag03'
 import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '@/app/components/plugins/hooks'
 

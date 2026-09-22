@@ -12,7 +12,7 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import FollowUpSettingModal from '@/app/components/base/features/new-feature-panel/follow-up-setting-modal'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
+import VirtualAssistant from '@/app/components/base/icons/src/vender/features/VirtualAssistant'
 
 type Props = Readonly<{
   disabled?: boolean

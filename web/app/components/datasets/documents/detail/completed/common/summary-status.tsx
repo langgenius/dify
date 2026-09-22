@@ -2,7 +2,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
+import SearchLinesSparkle from '@/app/components/base/icons/src/vender/knowledge/SearchLinesSparkle'
 
 type SummaryStatusProps = {
   status: string

@@ -4,7 +4,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
+import ApiAggregate from '@/app/components/base/icons/src/vender/knowledge/ApiAggregate'
 import Card from './card'
 
 type ApiAccessProps = {

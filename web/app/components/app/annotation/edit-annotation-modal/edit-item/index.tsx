@@ -7,7 +7,8 @@ import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
+import Robot from '@/app/components/base/icons/src/public/avatar/Robot'
+import User from '@/app/components/base/icons/src/public/avatar/User'
 
 export const EditItemType = {
   Query: 'query',

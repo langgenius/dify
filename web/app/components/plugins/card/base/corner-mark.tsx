@@ -1,5 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { LeftCorner } from '../../../base/icons/src/vender/plugin'
+import LeftCorner from '../../../base/icons/src/vender/plugin/LeftCorner'
 
 const CornerMark = ({ className, text }: { className?: string; text: string }) => {
   return (

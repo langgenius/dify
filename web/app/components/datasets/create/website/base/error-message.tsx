@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 
 type Props = Readonly<{
   className?: string

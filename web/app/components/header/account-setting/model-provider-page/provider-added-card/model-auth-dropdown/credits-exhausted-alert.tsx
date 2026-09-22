@@ -2,7 +2,7 @@ import { Meter, MeterIndicator, MeterLabel, MeterTrack } from '@langgenius/dify-
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { Trans, useTranslation } from 'react-i18next'
-import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import CreditsCoin from '@/app/components/base/icons/src/vender/line/financeAndECommerce/CreditsCoin'
 import {
   pricingQueryParamName,
   pricingQueryParser,
@@ -75,7 +75,7 @@ export default function CreditsExhaustedAlert({
             {t(($) => $['modelProvider.card.usageLabel'], { ns: 'common' })}
           </MeterLabel>
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
-            {/* oxlint-disable-next-line dify/prefer-tailwind-icons -- This generated icon class is not available to Tailwind. */}
+            {/* oxlint-disable-next-line dify/prefer-tailwind-icons -- Preserve the existing SVG rendering in the usage meter until the Tailwind replacement is visually verified. */}
             <CreditsCoin className="size-3" />
             <span>
               {formatNumber(usedCredits)}/{formatNumber(totalCredits)}

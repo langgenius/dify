@@ -3,7 +3,7 @@ import type { StartNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import Variable02 from '@/app/components/base/icons/src/vender/solid/development/Variable02'
 import InputVarTypeIcon from '../_base/components/input-var-type-icon'
 
 const i18nPrefix = 'nodes.start'

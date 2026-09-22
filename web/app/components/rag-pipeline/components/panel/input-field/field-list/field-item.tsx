@@ -15,7 +15,7 @@ import * as React from 'react'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
+import InputField from '@/app/components/base/icons/src/vender/pipeline/InputField'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 
 type FieldItemProps = {

@@ -2,10 +2,18 @@
 
 import type { OxlintConfig } from 'vite-plus/lint'
 import path from 'node:path'
+import customPublicIcons from './packages/iconify-collections/custom-public/icons.json' with { type: 'json' }
+import customVenderIcons from './packages/iconify-collections/custom-vender/icons.json' with { type: 'json' }
 
 const rootDir = import.meta.dirname
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
+const customIconClasses = [customPublicIcons, customVenderIcons].flatMap(
+  (collection: { prefix: string; icons: object; aliases?: object }) =>
+    Object.keys({ ...collection.icons, ...collection.aliases }).map(
+      (name) => `i-${collection.prefix}-${name}`,
+    ),
+)
 
 export const hintContentRules = {
   'shadcn/no-restyle': [
@@ -880,6 +888,7 @@ export const lintConfig = {
                 prefix: 'i-custom-',
                 source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
                 name: '^(?<name>.*)$',
+                availableClasses: customIconClasses,
               },
               {
                 source: '^@remixicon/react$',

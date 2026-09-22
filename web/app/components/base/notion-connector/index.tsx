@@ -1,8 +1,8 @@
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Notion } from '../icons/src/public/common'
-import { Icon3Dots } from '../icons/src/vender/line/others'
+import Notion from '../icons/src/public/common/Notion'
+import Icon3Dots from '../icons/src/vender/line/others/Icon3Dots'
 
 type NotionConnectorProps = {
   onSetting: () => void

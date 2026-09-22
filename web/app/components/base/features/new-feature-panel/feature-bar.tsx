@@ -7,16 +7,14 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
-import {
-  Citations,
-  ContentModeration,
-  FolderUpload,
-  LoveMessage,
-  MessageFast,
-  Microphone01,
-  TextToAudio,
-  VirtualAssistant,
-} from '@/app/components/base/icons/src/vender/features'
+import Citations from '@/app/components/base/icons/src/vender/features/Citations'
+import ContentModeration from '@/app/components/base/icons/src/vender/features/ContentModeration'
+import FolderUpload from '@/app/components/base/icons/src/vender/features/FolderUpload'
+import LoveMessage from '@/app/components/base/icons/src/vender/features/LoveMessage'
+import MessageFast from '@/app/components/base/icons/src/vender/features/MessageFast'
+import Microphone01 from '@/app/components/base/icons/src/vender/features/Microphone01'
+import TextToAudio from '@/app/components/base/icons/src/vender/features/TextToAudio'
+import VirtualAssistant from '@/app/components/base/icons/src/vender/features/VirtualAssistant'
 
 type Props = Readonly<{
   isChatMode?: boolean

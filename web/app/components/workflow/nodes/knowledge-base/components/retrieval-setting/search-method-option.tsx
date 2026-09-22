@@ -12,13 +12,11 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import Badge from '@/app/components/base/badge'
-import {
-  OptionCardEffectBlue,
-  OptionCardEffectBlueLight,
-  OptionCardEffectOrange,
-  OptionCardEffectPurple,
-  OptionCardEffectTeal,
-} from '@/app/components/base/icons/src/public/knowledge'
+import OptionCardEffectBlue from '@/app/components/base/icons/src/public/knowledge/OptionCardEffectBlue'
+import OptionCardEffectBlueLight from '@/app/components/base/icons/src/public/knowledge/OptionCardEffectBlueLight'
+import OptionCardEffectOrange from '@/app/components/base/icons/src/public/knowledge/OptionCardEffectOrange'
+import OptionCardEffectPurple from '@/app/components/base/icons/src/public/knowledge/OptionCardEffectPurple'
+import OptionCardEffectTeal from '@/app/components/base/icons/src/public/knowledge/OptionCardEffectTeal'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 import { HybridSearchModeEnum, RetrievalSearchMethodEnum } from '../../types'
 import RerankingModelSelector from './reranking-model-selector'

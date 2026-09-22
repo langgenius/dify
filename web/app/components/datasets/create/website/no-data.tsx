@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
+import Icon3Dots from '@/app/components/base/icons/src/vender/line/others/Icon3Dots'
 import {
   ENABLE_WEBSITE_FIRECRAWL,
   ENABLE_WEBSITE_JINAREADER,

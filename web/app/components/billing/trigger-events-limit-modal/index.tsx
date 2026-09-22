@@ -1,6 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
+import TriggerAll from '@/app/components/base/icons/src/vender/workflow/TriggerAll'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import UsageInfo from '@/app/components/billing/usage-info'
 

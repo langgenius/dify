@@ -4,7 +4,7 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/d
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import ArrowDownRoundFill from '@/app/components/base/icons/src/vender/solid/general/ArrowDownRoundFill'
 
 const i18nPrefix = 'generate'
 

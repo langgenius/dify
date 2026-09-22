@@ -11,7 +11,7 @@ import {
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { SquareChecklist } from '../../base/icons/src/vender/other'
+import SquareChecklist from '../../base/icons/src/vender/other/SquareChecklist'
 
 type Props = Readonly<{
   Icon?: ComponentType<{ className?: string }>

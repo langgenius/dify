@@ -2,7 +2,7 @@ import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/w
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import Variable02 from '@/app/components/base/icons/src/vender/solid/development/Variable02'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'

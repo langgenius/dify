@@ -62,15 +62,45 @@ vi.mock('@/service/plugins', () => ({
     mockFetchPluginInfoFromMarketPlace(params),
 }))
 
-vi.mock('@/app/components/base/icons/src/public/llm', () => {
+vi.mock('@/app/components/base/icons/src/public/llm/OpenaiSmall', () => {
   const Icon = ({ label }: { label: string }) => <span>{label}</span>
   return {
-    OpenaiSmall: () => <Icon label="openai" />,
-    AnthropicShortLight: () => <Icon label="anthropic" />,
-    Gemini: () => <Icon label="gemini" />,
-    Grok: () => <Icon label="x" />,
-    Deepseek: () => <Icon label="deepseek" />,
-    Tongyi: () => <Icon label="tongyi" />,
+    default: () => <Icon label="openai" />,
+  }
+})
+
+vi.mock('@/app/components/base/icons/src/public/llm/AnthropicShortLight', () => {
+  const Icon = ({ label }: { label: string }) => <span>{label}</span>
+  return {
+    default: () => <Icon label="anthropic" />,
+  }
+})
+
+vi.mock('@/app/components/base/icons/src/public/llm/Gemini', () => {
+  const Icon = ({ label }: { label: string }) => <span>{label}</span>
+  return {
+    default: () => <Icon label="gemini" />,
+  }
+})
+
+vi.mock('@/app/components/base/icons/src/public/llm/Grok', () => {
+  const Icon = ({ label }: { label: string }) => <span>{label}</span>
+  return {
+    default: () => <Icon label="x" />,
+  }
+})
+
+vi.mock('@/app/components/base/icons/src/public/llm/Deepseek', () => {
+  const Icon = ({ label }: { label: string }) => <span>{label}</span>
+  return {
+    default: () => <Icon label="deepseek" />,
+  }
+})
+
+vi.mock('@/app/components/base/icons/src/public/llm/Tongyi', () => {
+  const Icon = ({ label }: { label: string }) => <span>{label}</span>
+  return {
+    default: () => <Icon label="tongyi" />,
   }
 })
 

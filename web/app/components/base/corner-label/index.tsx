@@ -1,5 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { Corner } from '../icons/src/vender/solid/shapes'
+import Corner from '../icons/src/vender/solid/shapes/Corner'
 
 type CornerLabelProps = {
   label: string

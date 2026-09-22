@@ -5,19 +5,17 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  AliyunIconBig,
-  ArizeIconBig,
-  DatabricksIconBig,
-  LangfuseIconBig,
-  LangsmithIconBig,
-  MlflowIconBig,
-  OpikIconBig,
-  PhoenixIconBig,
-  TencentIconBig,
-  WeaveIconBig,
-} from '@/app/components/base/icons/src/public/tracing'
-import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
+import AliyunIconBig from '@/app/components/base/icons/src/public/tracing/AliyunIconBig'
+import ArizeIconBig from '@/app/components/base/icons/src/public/tracing/ArizeIconBig'
+import DatabricksIconBig from '@/app/components/base/icons/src/public/tracing/DatabricksIconBig'
+import LangfuseIconBig from '@/app/components/base/icons/src/public/tracing/LangfuseIconBig'
+import LangsmithIconBig from '@/app/components/base/icons/src/public/tracing/LangsmithIconBig'
+import MlflowIconBig from '@/app/components/base/icons/src/public/tracing/MlflowIconBig'
+import OpikIconBig from '@/app/components/base/icons/src/public/tracing/OpikIconBig'
+import PhoenixIconBig from '@/app/components/base/icons/src/public/tracing/PhoenixIconBig'
+import TencentIconBig from '@/app/components/base/icons/src/public/tracing/TencentIconBig'
+import WeaveIconBig from '@/app/components/base/icons/src/public/tracing/WeaveIconBig'
+import View from '@/app/components/base/icons/src/vender/solid/general/Eye'
 import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'tracing'

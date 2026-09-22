@@ -16,7 +16,7 @@ import {
   isParagraphFormInput,
   isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
-import { VariableX } from '../../../icons/src/vender/workflow'
+import VariableX from '../../../icons/src/vender/workflow/VariableX'
 import InputField from './input-field'
 import VariableBlock from './variable-block'
 

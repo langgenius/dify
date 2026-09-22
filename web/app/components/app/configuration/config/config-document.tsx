@@ -8,7 +8,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Document } from '@/app/components/base/icons/src/vender/features'
+import Document from '@/app/components/base/icons/src/vender/features/Document'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 

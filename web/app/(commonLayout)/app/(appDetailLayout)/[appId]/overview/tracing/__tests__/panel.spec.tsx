@@ -49,18 +49,48 @@ vi.mock('@langgenius/dify-ui/status-dot', () => ({
   StatusDot: ({ status }: { status: string }) => <span data-testid="status-dot">{status}</span>,
 }))
 
-vi.mock('@/app/components/base/icons/src/public/tracing', () => ({
-  AliyunIcon: () => <span data-testid="aliyun-icon" />,
-  ArizeIcon: () => <span data-testid="arize-icon" />,
-  DatabricksIcon: () => <span data-testid="databricks-icon" />,
-  LangfuseIcon: () => <span data-testid="langfuse-icon" />,
-  LangsmithIcon: () => <span data-testid="langsmith-icon" />,
-  MlflowIcon: () => <span data-testid="mlflow-icon" />,
-  OpikIcon: () => <span data-testid="opik-icon" />,
-  PhoenixIcon: () => <span data-testid="phoenix-icon" />,
-  TencentIcon: () => <span data-testid="tencent-icon" />,
-  TracingIcon: () => <span data-testid="tracing-icon" />,
-  WeaveIcon: () => <span data-testid="weave-icon" />,
+vi.mock('@/app/components/base/icons/src/public/tracing/AliyunIcon', () => ({
+  default: () => <span data-testid="aliyun-icon" />,
+}))
+
+vi.mock('@/app/components/base/icons/src/public/tracing/ArizeIcon', () => ({
+  default: () => <span data-testid="arize-icon" />,
+}))
+
+vi.mock('@/app/components/base/icons/src/public/tracing/DatabricksIcon', () => ({
+  default: () => <span data-testid="databricks-icon" />,
+}))
+
+vi.mock('@/app/components/base/icons/src/public/tracing/LangfuseIcon', () => ({
+  default: () => <span data-testid="langfuse-icon" />,
+}))
+
+vi.mock('@/app/components/base/icons/src/public/tracing/LangsmithIcon', () => ({
+  default: () => <span data-testid="langsmith-icon" />,
+}))
+
+vi.mock('@/app/components/base/icons/src/public/tracing/MlflowIcon', () => ({
+  default: () => <span data-testid="mlflow-icon" />,
+}))
+
+vi.mock('@/app/components/base/icons/src/public/tracing/OpikIcon', () => ({
+  default: () => <span data-testid="opik-icon" />,
+}))
+
+vi.mock('@/app/components/base/icons/src/public/tracing/PhoenixIcon', () => ({
+  default: () => <span data-testid="phoenix-icon" />,
+}))
+
+vi.mock('@/app/components/base/icons/src/public/tracing/TencentIcon', () => ({
+  default: () => <span data-testid="tencent-icon" />,
+}))
+
+vi.mock('@/app/components/base/icons/src/public/tracing/TracingIcon', () => ({
+  default: () => <span data-testid="tracing-icon" />,
+}))
+
+vi.mock('@/app/components/base/icons/src/public/tracing/WeaveIcon', () => ({
+  default: () => <span data-testid="weave-icon" />,
 }))
 
 vi.mock('../config-button', () => ({

@@ -4,7 +4,7 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
-import { Message3Fill } from '@/app/components/base/icons/src/public/other'
+import Message3Fill from '@/app/components/base/icons/src/public/other/Message3Fill'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = Readonly<{

@@ -5,11 +5,9 @@ import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  FullTextSearch,
-  HybridSearch,
-  VectorSearch,
-} from '@/app/components/base/icons/src/vender/knowledge'
+import FullTextSearch from '@/app/components/base/icons/src/vender/knowledge/FullTextSearch'
+import HybridSearch from '@/app/components/base/icons/src/vender/knowledge/HybridSearch'
+import VectorSearch from '@/app/components/base/icons/src/vender/knowledge/VectorSearch'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'

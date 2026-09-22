@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ClockFastForward } from '@/app/components/base/icons/src/vender/line/time'
+import ClockFastForward from '@/app/components/base/icons/src/vender/line/time/ClockFastForward'
 
 const HitHistoryNoData: FC = () => {
   const { t } = useTranslation()

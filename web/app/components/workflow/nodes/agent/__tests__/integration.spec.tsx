@@ -64,8 +64,8 @@ vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ icon, background }: any) => <div>{`app-icon:${background}:${icon}`}</div>,
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/other', () => ({
-  Group: () => <div>group-icon</div>,
+vi.mock('@/app/components/base/icons/src/vender/other/Group', () => ({
+  default: () => <div>group-icon</div>,
 }))
 
 vi.mock('@/utils/get-icon', () => ({

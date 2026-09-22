@@ -4,7 +4,7 @@ import type { Param } from '../../types'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import Variable02 from '@/app/components/base/icons/src/vender/solid/development/Variable02'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 

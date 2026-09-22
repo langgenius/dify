@@ -1,6 +1,6 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { QA } from '@/models/datasets'
-import { SelectionMod } from '../base/icons/src/public/knowledge'
+import SelectionMod from '../base/icons/src/public/knowledge/SelectionMod'
 
 type ChunkLabelProps = {
   label: string

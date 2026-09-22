@@ -11,7 +11,7 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import { MessageFast } from '@/app/components/base/icons/src/vender/features'
+import MessageFast from '@/app/components/base/icons/src/vender/features/MessageFast'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { ANNOTATION_DEFAULT } from '@/config'
 import Link from '@/next/link'

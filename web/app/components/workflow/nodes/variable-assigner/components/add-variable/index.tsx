@@ -3,7 +3,7 @@ import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflo
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useState } from 'react'
-import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
+import Plus02 from '@/app/components/base/icons/src/vender/line/general/Plus02'
 import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
 import { useVariableAssigner } from '../../hooks'
 

@@ -6,7 +6,7 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
+import CSVIcon from '@/app/components/base/icons/src/public/files/Csv'
 import { toast } from '@/app/notifications'
 
 export type Props = Readonly<{

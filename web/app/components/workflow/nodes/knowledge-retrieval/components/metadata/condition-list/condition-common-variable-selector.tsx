@@ -2,7 +2,7 @@ import type { VarType } from '@/app/components/workflow/types'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import Variable02 from '@/app/components/base/icons/src/vender/solid/development/Variable02'
 
 type ConditionCommonVariableSelectorProps = {
   variables?: { name: string; type: string; value: string }[]

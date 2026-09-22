@@ -4,14 +4,12 @@ import { Toggle } from '@langgenius/dify-ui/toggle'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import {
-  OptionCardEffectBlue,
-  OptionCardEffectBlueLight,
-  OptionCardEffectOrange,
-  OptionCardEffectPurple,
-  OptionCardEffectTeal,
-} from '@/app/components/base/icons/src/public/knowledge'
-import { ArrowShape } from '@/app/components/base/icons/src/vender/knowledge'
+import OptionCardEffectBlue from '@/app/components/base/icons/src/public/knowledge/OptionCardEffectBlue'
+import OptionCardEffectBlueLight from '@/app/components/base/icons/src/public/knowledge/OptionCardEffectBlueLight'
+import OptionCardEffectOrange from '@/app/components/base/icons/src/public/knowledge/OptionCardEffectOrange'
+import OptionCardEffectPurple from '@/app/components/base/icons/src/public/knowledge/OptionCardEffectPurple'
+import OptionCardEffectTeal from '@/app/components/base/icons/src/public/knowledge/OptionCardEffectTeal'
+import ArrowShape from '@/app/components/base/icons/src/vender/knowledge/ArrowShape'
 
 const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
   blue: <OptionCardEffectBlue />,

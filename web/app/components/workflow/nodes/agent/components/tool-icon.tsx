@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { Group } from '@/app/components/base/icons/src/vender/other'
+import Group from '@/app/components/base/icons/src/vender/other/Group'
 import {
   useAllBuiltInTools,
   useAllCustomTools,

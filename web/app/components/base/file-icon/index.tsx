@@ -1,17 +1,15 @@
 import type { FC } from 'react'
-import { Notion } from '@/app/components/base/icons/src/public/common'
-import {
-  Csv,
-  Doc,
-  Docx,
-  Html,
-  Json,
-  Md,
-  Pdf,
-  Txt,
-  Unknown,
-  Xlsx,
-} from '@/app/components/base/icons/src/public/files'
+import Notion from '@/app/components/base/icons/src/public/common/Notion'
+import Csv from '@/app/components/base/icons/src/public/files/Csv'
+import Doc from '@/app/components/base/icons/src/public/files/Doc'
+import Docx from '@/app/components/base/icons/src/public/files/Docx'
+import Html from '@/app/components/base/icons/src/public/files/Html'
+import Json from '@/app/components/base/icons/src/public/files/Json'
+import Md from '@/app/components/base/icons/src/public/files/Md'
+import Pdf from '@/app/components/base/icons/src/public/files/Pdf'
+import Txt from '@/app/components/base/icons/src/public/files/Txt'
+import Unknown from '@/app/components/base/icons/src/public/files/Unknown'
+import Xlsx from '@/app/components/base/icons/src/public/files/Xlsx'
 
 type FileIconProps = {
   type: string

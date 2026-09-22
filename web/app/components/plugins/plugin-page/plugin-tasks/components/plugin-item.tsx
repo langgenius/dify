@@ -1,7 +1,7 @@
 import type { FC, ReactNode } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import type { PluginLanguage } from '@/i18n/metadata'
-import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import MagicBox from '@/app/components/base/icons/src/vender/solid/mediaAndDevices/MagicBox'
 import CardIcon from '@/app/components/plugins/card/base/card-icon'
 
 type PluginItemProps = {

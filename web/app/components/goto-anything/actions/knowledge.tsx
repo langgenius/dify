@@ -2,7 +2,7 @@ import type { DatasetListItemResponse } from '@dify/contracts/api/console/datase
 import type { ActionItem, KnowledgeSearchResult } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { consoleQuery } from '@/service/console'
-import { Folder } from '../../base/icons/src/vender/solid/files'
+import Folder from '../../base/icons/src/vender/solid/files/Folder'
 
 const EXTERNAL_PROVIDER = 'external' as const
 const isExternalProvider = (provider: string): boolean => provider === EXTERNAL_PROVIDER

@@ -33,8 +33,8 @@ vi.mock('@/app/components/base/app-icon', () => ({
   }) => <div className={className}>{`app-icon:${background}:${icon}`}</div>,
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/other', () => ({
-  Group: ({ className }: { className?: string }) => <div className={className}>group-icon</div>,
+vi.mock('@/app/components/base/icons/src/vender/other/Group', () => ({
+  default: ({ className }: { className?: string }) => <div className={className}>group-icon</div>,
 }))
 
 vi.mock('@langgenius/dify-ui/status-dot', () => ({

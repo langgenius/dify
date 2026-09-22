@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiMoreFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import MessageClockCircle from '@/app/components/base/icons/src/vender/solid/general/MessageClockCircle'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_HISTORY_EVENT_EMITTER } from '../../constants'
 import { useSelectOrDelete, useTrigger } from '../../hooks'

@@ -6,7 +6,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import ChevronRight from '@/app/components/base/icons/src/vender/line/arrows/ChevronRight'
 
 const I18N_PREFIX = 'stepOne.website'
 

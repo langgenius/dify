@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { TracingIcon as Icon } from '@/app/components/base/icons/src/public/tracing'
+import Icon from '@/app/components/base/icons/src/public/tracing/TracingIcon'
 
 type Props = Readonly<{
   className?: string

@@ -2,10 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import EmptySearchResult from '../empty-search-result'
 
-vi.mock('@/app/components/base/icons/src/vender/knowledge', () => ({
-  SearchMenu: (props: React.SVGProps<SVGSVGElement>) => (
-    <svg data-testid="search-icon" {...props} />
-  ),
+vi.mock('@/app/components/base/icons/src/vender/knowledge/SearchMenu', () => ({
+  default: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="search-icon" {...props} />,
 }))
 
 describe('EmptySearchResult', () => {

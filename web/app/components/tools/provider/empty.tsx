@@ -6,7 +6,7 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import Link from '@/next/link'
-import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
+import NoToolPlaceholder from '../../base/icons/src/vender/other/NoToolPlaceholder'
 import { ToolType } from '../../workflow/block-selector/types'
 
 type Props = Readonly<{

@@ -102,8 +102,8 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/icons/src/public/common', () => ({
-  SparklesSoft: () => <span data-testid="sparkles" />,
+vi.mock('@/app/components/base/icons/src/public/common/SparklesSoft', () => ({
+  default: () => <span data-testid="sparkles" />,
 }))
 
 vi.mock('@/app/components/base/premium-badge', () => ({

@@ -7,12 +7,10 @@ import type { MetadataFilteringVariableType } from '@/app/components/workflow/no
 import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { SegmentImportStatus } from '@/types/dataset'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import {
-  ExternalKnowledgeBase,
-  General,
-  ParentChild,
-  Qa,
-} from '@/app/components/base/icons/src/public/knowledge/dataset-card'
+import ExternalKnowledgeBase from '@/app/components/base/icons/src/public/knowledge/dataset-card/ExternalKnowledgeBase'
+import General from '@/app/components/base/icons/src/public/knowledge/dataset-card/General'
+import ParentChild from '@/app/components/base/icons/src/public/knowledge/dataset-card/ParentChild'
+import Qa from '@/app/components/base/icons/src/public/knowledge/dataset-card/Qa'
 import { PermissionLevel } from './permission'
 
 export const DataSourceType = {

@@ -21,7 +21,7 @@ import {
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
+import MessageCheckRemove from '@/app/components/base/icons/src/vender/line/communication/MessageCheckRemove'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { editAnnotation } from '@/service/annotation'

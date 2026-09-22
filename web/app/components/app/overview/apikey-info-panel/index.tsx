@@ -8,7 +8,7 @@ import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
+import LinkExternal02 from '@/app/components/base/icons/src/vender/line/general/LinkExternal02'
 import {
   settingsQueryParamName,
   settingsQueryParser,

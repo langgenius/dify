@@ -2,32 +2,30 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
-import {
-  Agent,
-  Answer,
-  Assigner,
-  Code,
-  Datasource,
-  DocsExtractor,
-  End,
-  Home,
-  Http,
-  HumanInLoop,
-  IfElse,
-  Iteration,
-  KnowledgeBase,
-  KnowledgeRetrieval,
-  ListFilter,
-  Llm,
-  Loop,
-  LoopEnd,
-  ParameterExtractor,
-  QuestionClassifier,
-  Schedule,
-  TemplatingTransform,
-  VariableX,
-  WebhookLine,
-} from '@/app/components/base/icons/src/vender/workflow'
+import Agent from '@/app/components/base/icons/src/vender/workflow/Agent'
+import Answer from '@/app/components/base/icons/src/vender/workflow/Answer'
+import Assigner from '@/app/components/base/icons/src/vender/workflow/Assigner'
+import Code from '@/app/components/base/icons/src/vender/workflow/Code'
+import Datasource from '@/app/components/base/icons/src/vender/workflow/Datasource'
+import DocsExtractor from '@/app/components/base/icons/src/vender/workflow/DocsExtractor'
+import End from '@/app/components/base/icons/src/vender/workflow/End'
+import Home from '@/app/components/base/icons/src/vender/workflow/Home'
+import Http from '@/app/components/base/icons/src/vender/workflow/Http'
+import HumanInLoop from '@/app/components/base/icons/src/vender/workflow/HumanInLoop'
+import IfElse from '@/app/components/base/icons/src/vender/workflow/IfElse'
+import Iteration from '@/app/components/base/icons/src/vender/workflow/Iteration'
+import KnowledgeBase from '@/app/components/base/icons/src/vender/workflow/KnowledgeBase'
+import KnowledgeRetrieval from '@/app/components/base/icons/src/vender/workflow/KnowledgeRetrieval'
+import ListFilter from '@/app/components/base/icons/src/vender/workflow/ListFilter'
+import Llm from '@/app/components/base/icons/src/vender/workflow/Llm'
+import Loop from '@/app/components/base/icons/src/vender/workflow/Loop'
+import LoopEnd from '@/app/components/base/icons/src/vender/workflow/LoopEnd'
+import ParameterExtractor from '@/app/components/base/icons/src/vender/workflow/ParameterExtractor'
+import QuestionClassifier from '@/app/components/base/icons/src/vender/workflow/QuestionClassifier'
+import Schedule from '@/app/components/base/icons/src/vender/workflow/Schedule'
+import TemplatingTransform from '@/app/components/base/icons/src/vender/workflow/TemplatingTransform'
+import VariableX from '@/app/components/base/icons/src/vender/workflow/VariableX'
+import WebhookLine from '@/app/components/base/icons/src/vender/workflow/WebhookLine'
 import { API_PREFIX } from '@/config'
 import { BlockEnum } from './types'
 

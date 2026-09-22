@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCSVReader } from 'react-papaparse'
-import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
+import CSVIcon from '@/app/components/base/icons/src/public/files/Csv'
 
 type Props = Readonly<{
   onParsed: (data: string[][]) => void

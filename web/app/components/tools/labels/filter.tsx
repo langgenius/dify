@@ -5,9 +5,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import Tag03 from '@/app/components/base/icons/src/vender/line/financeAndECommerce/Tag03'
+import Check from '@/app/components/base/icons/src/vender/line/general/Check'
+import XCircle from '@/app/components/base/icons/src/vender/solid/general/XCircle'
 import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '@/app/components/plugins/hooks'
 

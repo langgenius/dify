@@ -5,7 +5,7 @@ import {
   SkeletonRectangle,
   SkeletonRow,
 } from '@/app/components/base/skeleton'
-import { Group } from '../../../base/icons/src/vender/other'
+import Group from '../../../base/icons/src/vender/other/Group'
 import Title from './title'
 
 type Props = Readonly<{

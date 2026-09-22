@@ -3,7 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Corner } from '@/app/components/base/icons/src/vender/solid/shapes'
+import Corner from '@/app/components/base/icons/src/vender/solid/shapes/Corner'
 
 type TextareaProps = {
   text: string

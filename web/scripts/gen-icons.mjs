@@ -1,4 +1,4 @@
-import { access, appendFile, mkdir, open, readdir, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, open, readdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseXml } from '@rgrove/parse-xml'
@@ -87,17 +87,6 @@ export default Icon
     path.resolve(currentPath, `${fileName}.tsx`),
     `${componentRender({ svgName: fileName })}\n`,
   )
-
-  const indexingRender = template(
-    `
-export { default as <%= svgName %> } from './<%= svgName %>'
-`.trim(),
-  )
-
-  await appendFile(
-    path.resolve(currentPath, 'index.ts'),
-    `${indexingRender({ svgName: fileName })}\n`,
-  )
 }
 
 const generateImageComponent = async (entry, relativeSegments) => {
@@ -156,14 +145,6 @@ export default Icon
     path.resolve(currentPath, `${fileName}.tsx`),
     `${componentRender({ fileName })}\n`,
   )
-
-  const indexingRender = template(
-    `
-export { default as <%= fileName %> } from './<%= fileName %>'
-`.trim(),
-  )
-
-  await appendFile(path.resolve(currentPath, 'index.ts'), `${indexingRender({ fileName })}\n`)
 }
 
 const walk = async (basePath, entry, relativeSegments, replaceFillOrStrokeColor) => {

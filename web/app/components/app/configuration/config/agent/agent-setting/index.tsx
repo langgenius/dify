@@ -14,8 +14,8 @@ import {
 } from '@langgenius/dify-ui/slider'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
-import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
+import CuteRobot from '@/app/components/base/icons/src/vender/solid/communication/CuteRobot'
+import Unblur from '@/app/components/base/icons/src/vender/solid/education/Unblur'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 import ItemPanel from './item-panel'
 

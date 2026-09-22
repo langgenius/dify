@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCSVDownloader } from 'react-papaparse'
-import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
+import DownloadIcon from '@/app/components/base/icons/src/vender/solid/general/Download02'
 
 type ICSVDownloadProps = {
   vars: { name: string }[]

@@ -24,18 +24,16 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  AliyunIcon,
-  ArizeIcon,
-  DatabricksIcon,
-  LangfuseIcon,
-  LangsmithIcon,
-  MlflowIcon,
-  OpikIcon,
-  PhoenixIcon,
-  TencentIcon,
-  WeaveIcon,
-} from '@/app/components/base/icons/src/public/tracing'
+import AliyunIcon from '@/app/components/base/icons/src/public/tracing/AliyunIcon'
+import ArizeIcon from '@/app/components/base/icons/src/public/tracing/ArizeIcon'
+import DatabricksIcon from '@/app/components/base/icons/src/public/tracing/DatabricksIcon'
+import LangfuseIcon from '@/app/components/base/icons/src/public/tracing/LangfuseIcon'
+import LangsmithIcon from '@/app/components/base/icons/src/public/tracing/LangsmithIcon'
+import MlflowIcon from '@/app/components/base/icons/src/public/tracing/MlflowIcon'
+import OpikIcon from '@/app/components/base/icons/src/public/tracing/OpikIcon'
+import PhoenixIcon from '@/app/components/base/icons/src/public/tracing/PhoenixIcon'
+import TencentIcon from '@/app/components/base/icons/src/public/tracing/TencentIcon'
+import WeaveIcon from '@/app/components/base/icons/src/public/tracing/WeaveIcon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'

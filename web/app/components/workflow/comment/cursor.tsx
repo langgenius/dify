@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
-import { Comment } from '@/app/components/base/icons/src/public/other'
+import Comment from '@/app/components/base/icons/src/public/other/Comment'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 

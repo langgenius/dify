@@ -16,8 +16,8 @@ const mockState: {
   },
 }
 
-vi.mock('@/app/components/base/icons/src/public/other', () => ({
-  Comment: (props: { className?: string }) => <svg data-testid="comment-icon" {...props} />,
+vi.mock('@/app/components/base/icons/src/public/other/Comment', () => ({
+  default: (props: { className?: string }) => <svg data-testid="comment-icon" {...props} />,
 }))
 
 vi.mock('../store', () => ({

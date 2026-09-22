@@ -10,7 +10,7 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
-import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'
+import ApiConnection from '@/app/components/base/icons/src/vender/solid/development/ApiConnection'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { InputVarType } from '@/app/components/workflow/types'
 

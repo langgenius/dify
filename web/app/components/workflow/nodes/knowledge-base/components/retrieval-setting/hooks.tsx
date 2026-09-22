@@ -1,11 +1,9 @@
 import type { HybridSearchModeOption, Option } from './type'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  FullTextSearch,
-  HybridSearch,
-  VectorSearch,
-} from '@/app/components/base/icons/src/vender/knowledge'
+import FullTextSearch from '@/app/components/base/icons/src/vender/knowledge/FullTextSearch'
+import HybridSearch from '@/app/components/base/icons/src/vender/knowledge/HybridSearch'
+import VectorSearch from '@/app/components/base/icons/src/vender/knowledge/VectorSearch'
 import { HybridSearchModeEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../../types'
 
 export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {

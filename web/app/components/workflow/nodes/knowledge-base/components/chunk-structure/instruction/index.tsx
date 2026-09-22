@@ -1,7 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { AddChunks } from '@/app/components/base/icons/src/vender/knowledge'
+import AddChunks from '@/app/components/base/icons/src/vender/knowledge/AddChunks'
 import { useDocLink } from '@/context/i18n'
 import Line from './line'
 

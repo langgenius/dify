@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { RiPlayLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
+import ClockPlay from '@/app/components/base/icons/src/vender/line/time/ClockPlay'
 
 type Props = Readonly<{
   canSingleRun: boolean

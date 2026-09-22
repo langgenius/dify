@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RowStruct } from '@/app/components/base/icons/src/public/other'
+import RowStruct from '@/app/components/base/icons/src/public/other/RowStruct'
 
 type Props = Readonly<{
   className?: string

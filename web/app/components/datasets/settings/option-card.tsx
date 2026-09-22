@@ -3,7 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { ArrowShape } from '../../base/icons/src/vender/knowledge'
+import ArrowShape from '../../base/icons/src/vender/knowledge/ArrowShape'
 import { EffectColor } from './chunk-structure/types'
 
 const HEADER_EFFECT_MAP: Record<EffectColor, string> = {

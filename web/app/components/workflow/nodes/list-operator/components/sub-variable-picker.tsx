@@ -14,7 +14,7 @@ import {
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import Variable02 from '@/app/components/base/icons/src/vender/solid/development/Variable02'
 import { SUB_VARIABLES } from '../../constants'
 
 type Props = Readonly<{

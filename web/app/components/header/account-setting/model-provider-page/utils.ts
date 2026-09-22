@@ -12,14 +12,12 @@ import type {
   ModelItem,
   TypeWithI18N,
 } from './declarations'
-import {
-  AnthropicShortLight,
-  Deepseek,
-  Gemini,
-  Grok,
-  OpenaiSmall,
-  Tongyi,
-} from '@/app/components/base/icons/src/public/llm'
+import AnthropicShortLight from '@/app/components/base/icons/src/public/llm/AnthropicShortLight'
+import Deepseek from '@/app/components/base/icons/src/public/llm/Deepseek'
+import Gemini from '@/app/components/base/icons/src/public/llm/Gemini'
+import Grok from '@/app/components/base/icons/src/public/llm/Grok'
+import OpenaiSmall from '@/app/components/base/icons/src/public/llm/OpenaiSmall'
+import Tongyi from '@/app/components/base/icons/src/public/llm/Tongyi'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import {
   ConfigurationMethodEnum,

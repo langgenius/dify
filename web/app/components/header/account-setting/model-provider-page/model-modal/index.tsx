@@ -21,8 +21,8 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import LinkExternal02 from '@/app/components/base/icons/src/vender/line/general/LinkExternal02'
+import Lock01 from '@/app/components/base/icons/src/vender/solid/security/Lock01'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   useAuth,

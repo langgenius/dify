@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
+import LoveMessage from '@/app/components/base/icons/src/vender/features/LoveMessage'
 import { useModalContext } from '@/context/modal-context'
 
 type Props = Readonly<{

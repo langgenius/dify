@@ -5,7 +5,7 @@ import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/plugins/card/base/placeholder'
-import { Group } from '../../../base/icons/src/vender/other'
+import Group from '../../../base/icons/src/vender/other/Group'
 
 const LoadingError: FC = () => {
   const { t } = useTranslation()

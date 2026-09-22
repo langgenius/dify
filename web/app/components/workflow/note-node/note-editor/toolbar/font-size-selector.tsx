@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiFontSize } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
+import Check from '@/app/components/base/icons/src/vender/line/general/Check'
 import { useFontSize } from './hooks'
 
 const FontSizeSelector = () => {

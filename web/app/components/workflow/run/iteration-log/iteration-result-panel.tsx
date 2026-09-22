@@ -11,7 +11,7 @@ import {
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
+import Iteration from '@/app/components/base/icons/src/vender/workflow/Iteration'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 

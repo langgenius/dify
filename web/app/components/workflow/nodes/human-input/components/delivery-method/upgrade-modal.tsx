@@ -3,7 +3,7 @@ import { RiMailSendFill } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
+import SparklesSoft from '@/app/components/base/icons/src/public/common/SparklesSoft'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import { UpgradeModal as BaseUpgradeModal } from '@/app/components/base/upgrade-modal'
 import {

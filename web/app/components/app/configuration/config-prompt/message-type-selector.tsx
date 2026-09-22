@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean, useClickAway } from 'ahooks'
 import * as React from 'react'
-import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
+import ChevronSelectorVertical from '@/app/components/base/icons/src/vender/line/arrows/ChevronSelectorVertical'
 import { PromptRole } from '@/models/debug'
 
 type Props = Readonly<{

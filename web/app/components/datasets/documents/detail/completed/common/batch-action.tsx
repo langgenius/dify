@@ -24,7 +24,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
+import SearchLinesSparkle from '@/app/components/base/icons/src/vender/knowledge/SearchLinesSparkle'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 const i18nPrefix = 'batchAction'

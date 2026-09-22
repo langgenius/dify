@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { TransferMethod } from '@/types/app'
 

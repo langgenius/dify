@@ -4,13 +4,11 @@ import type { FC } from 'react'
 import type { TriggerMetadata } from '@/models/log'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Code,
-  KnowledgeRetrieval,
-  Schedule,
-  WebhookLine,
-  WindowCursor,
-} from '@/app/components/base/icons/src/vender/workflow'
+import Code from '@/app/components/base/icons/src/vender/workflow/Code'
+import KnowledgeRetrieval from '@/app/components/base/icons/src/vender/workflow/KnowledgeRetrieval'
+import Schedule from '@/app/components/base/icons/src/vender/workflow/Schedule'
+import WebhookLine from '@/app/components/base/icons/src/vender/workflow/WebhookLine'
+import WindowCursor from '@/app/components/base/icons/src/vender/workflow/WindowCursor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useTheme from '@/hooks/use-theme'

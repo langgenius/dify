@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCSVDownloader } from 'react-papaparse'
 import { useLocale } from '#i18n'
-import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
+import DownloadIcon from '@/app/components/base/icons/src/vender/solid/general/Download02'
 import { LanguagesSupported } from '@/i18n/language'
 import { ChunkingMode } from '@/models/datasets'
 

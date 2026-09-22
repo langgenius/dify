@@ -2,7 +2,7 @@
 import type { DataSet } from '@/models/datasets'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
+import ApiConnectionMod from '@/app/components/base/icons/src/vender/solid/development/ApiConnectionMod'
 import RetrievalSettings from '../../../external-knowledge-base/create/RetrievalSettings'
 
 const rowClass = 'flex gap-x-1'

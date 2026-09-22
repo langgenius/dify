@@ -1,7 +1,7 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
-import { Group } from '@/app/components/base/icons/src/vender/other'
+import Group from '@/app/components/base/icons/src/vender/other/Group'
 import Line from './line'
 
 type Props = Readonly<{

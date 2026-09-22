@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
+import BracketsX from '@/app/components/base/icons/src/vender/line/development/BracketsX'
 import VarPicker from './var-picker'
 
 const ContextVar: FC<Props> = (props) => {

@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
-import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import MessageClockCircle from '@/app/components/base/icons/src/vender/solid/general/MessageClockCircle'
 
 type Props = Readonly<{
   showWarning: boolean

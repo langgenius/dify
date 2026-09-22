@@ -9,7 +9,7 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { TextToAudio } from '@/app/components/base/icons/src/vender/features'
+import TextToAudio from '@/app/components/base/icons/src/vender/features/TextToAudio'
 import { languages } from '@/i18n/language'
 import { TtsAutoPlay } from '@/types/app'
 

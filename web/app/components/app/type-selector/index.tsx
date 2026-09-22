@@ -8,12 +8,10 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  BubbleTextMod,
-  ChatBot,
-  ListSparkle,
-  Logic,
-} from '@/app/components/base/icons/src/vender/solid/communication'
+import BubbleTextMod from '@/app/components/base/icons/src/vender/solid/communication/BubbleTextMod'
+import ChatBot from '@/app/components/base/icons/src/vender/solid/communication/ChatBot'
+import ListSparkle from '@/app/components/base/icons/src/vender/solid/communication/ListSparkle'
+import Logic from '@/app/components/base/icons/src/vender/solid/communication/Logic'
 import { AppModeEnum } from '@/types/app'
 
 type AppSelectorProps = {

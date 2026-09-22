@@ -1,11 +1,9 @@
 import type { Option } from './type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import {
-  GeneralChunk,
-  ParentChildChunk,
-  QuestionAndAnswer,
-} from '@/app/components/base/icons/src/vender/knowledge'
+import GeneralChunk from '@/app/components/base/icons/src/vender/knowledge/GeneralChunk'
+import ParentChildChunk from '@/app/components/base/icons/src/vender/knowledge/ParentChildChunk'
+import QuestionAndAnswer from '@/app/components/base/icons/src/vender/knowledge/QuestionAndAnswer'
 import { ChunkStructureEnum } from '../../types'
 
 export const useChunkStructure = () => {

@@ -7,7 +7,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
+import SparklesSoft from '@/app/components/base/icons/src/public/common/SparklesSoft'
 import {
   pricingQueryParamName,
   pricingQueryParser,

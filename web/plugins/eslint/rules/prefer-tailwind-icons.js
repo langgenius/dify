@@ -7,6 +7,7 @@ const REPEATED_DASH_REGEX = /-+/gu
 const EDGE_DASH_REGEX = /^-|-$/gu
 const REGEX_FLAGS_PATTERN = /^[a-z]*$/iu
 const NORMALIZE_SEGMENT_SPACES_REGEX = /\s+/gu
+const ICON_LEAF_NAME_REGEX = /^[A-Za-z_$][\w$]*$/u
 const warned = new Set()
 
 function warnOnce(message) {
@@ -104,10 +105,12 @@ function getIconClass(importName, source, config, globalPrefix) {
   const iconNamePart =
     camelToKebab(getGroup('name', 'icon') || importName) || camelToKebab(importName)
   const variantPart = normalizeSegment(getGroup('variant'))
-  return [prefix, iconSetPart, iconNamePart, variantPart]
+  const iconClass = [prefix, iconSetPart, iconNamePart, variantPart]
     .filter(Boolean)
     .join('-')
     .replace(REPEATED_DASH_REGEX, '-')
+  if (config.availableClasses === null) return iconClass
+  return config.availableClasses.get(iconClass.toLowerCase()) ?? null
 }
 
 function normalizeLibraryConfig(config) {
@@ -115,10 +118,18 @@ function normalizeLibraryConfig(config) {
   if (!sourceRegex) return null
   const nameRegex = createRegex(config.name ?? '.*', 'libraries[].name')
   if (!nameRegex) return null
+  const availableClasses = config.availableClasses ? new Map() : null
+  if (availableClasses) {
+    for (const iconClass of new Set(config.availableClasses)) {
+      const key = iconClass.toLowerCase()
+      availableClasses.set(key, availableClasses.has(key) ? null : iconClass)
+    }
+  }
   return {
     sourceRegex,
     nameRegex,
     prefix: config.prefix,
+    availableClasses,
   }
 }
 
@@ -227,6 +238,10 @@ export default {
                 source: { type: 'string' },
                 name: { type: 'string' },
                 prefix: { type: 'string' },
+                availableClasses: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
               },
               required: ['source'],
               additionalProperties: false,
@@ -266,14 +281,24 @@ export default {
       ImportDeclaration(node) {
         if (node.importKind === 'type' || typeof node.source.value !== 'string') return
         const source = node.source.value
-        const matchedConfig = resolvedConfigs.find((config) =>
-          hasRegexMatch(source, config.sourceRegex),
-        )
-        if (!matchedConfig) return
-
         for (const specifier of node.specifiers) {
-          if (!isNamedImportSpecifier(specifier) || specifier.importKind === 'type') continue
-          const importedName = specifier.imported.name
+          if (specifier.importKind === 'type') continue
+          let importedName
+          let librarySource = source
+          if (isNamedImportSpecifier(specifier)) {
+            importedName = specifier.imported.name
+          } else if (specifier.type === 'ImportDefaultSpecifier') {
+            const separatorIndex = source.lastIndexOf('/')
+            importedName = source.slice(separatorIndex + 1)
+            if (separatorIndex <= 0 || !ICON_LEAF_NAME_REGEX.test(importedName)) continue
+            librarySource = source.slice(0, separatorIndex)
+          } else {
+            continue
+          }
+          const matchedConfig = resolvedConfigs.find((config) =>
+            hasRegexMatch(librarySource, config.sourceRegex),
+          )
+          if (!matchedConfig) continue
           if (!hasRegexMatch(importedName, matchedConfig.nameRegex)) continue
           const localName = specifier.local.name
           iconImports.set(localName, {
@@ -282,6 +307,7 @@ export default {
             localName,
             config: matchedConfig,
             source,
+            librarySource,
             used: false,
           })
         }
@@ -294,10 +320,11 @@ export default {
         iconInfo.used = true
         const iconClass = getIconClass(
           iconInfo.importedName,
-          iconInfo.source,
+          iconInfo.librarySource,
           iconInfo.config,
           globalPrefix,
         )
+        if (!iconClass) return
         const classNameAttribute = node.attributes.find((attribute) =>
           isJsxAttributeNamed(attribute, 'className'),
         )
@@ -366,10 +393,11 @@ export default {
           if (iconInfo.used || !hasRuntimeReference(sourceCode, iconInfo.node)) continue
           const iconClass = getIconClass(
             iconInfo.importedName,
-            iconInfo.source,
+            iconInfo.librarySource,
             iconInfo.config,
             globalPrefix,
           )
+          if (!iconClass) continue
           context.report({
             node: iconInfo.node,
             messageId: 'preferTailwindIconImport',
