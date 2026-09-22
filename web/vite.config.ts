@@ -66,16 +66,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
         tailwindcss(),
         react(),
         vinext({ react: false }),
-        {
-          name: 'dify-css-asset-alias',
-          enforce: 'post',
-          // Prepend after Vinext's tsconfig aliases, which skip CSS resolution.
-          config: () => ({
-            resolve: {
-              alias: [{ find: '~@', replacement: projectRoot }],
-            },
-          }),
-        },
         customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
         // reactGrabOpenFilePlugin({
         //   injectTarget: rootClientInjectTarget,
@@ -86,6 +76,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
     resolve: {
       tsconfigPaths: true,
       alias: [
+        { find: '~@', replacement: projectRoot },
         // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
         { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
       ],

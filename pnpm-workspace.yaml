@@ -260,7 +260,7 @@ catalog:
   unist-util-visit: 5.1.0
   use-context-selector: 2.0.0
   uuid: 14.0.2
-  vinext: 1.0.0-beta.10
+  vinext: 1.0.0-beta.11
   vite: npm:@voidzero-dev/vite-plus-core@0.3.3
   vite-plugin-inspect: 12.0.2
   vite-plus: 0.3.3
