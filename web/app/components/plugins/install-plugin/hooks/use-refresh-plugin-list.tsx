@@ -10,7 +10,6 @@ import {
   useInvalidateCheckInstalled,
   useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
-import { useInvalidateStrategyProviders } from '@/service/use-strategy'
 import {
   useInvalidateAllBuiltInTools,
   useInvalidateAllToolProviders,
@@ -68,8 +67,6 @@ const useRefreshPluginList = () => {
 
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
 
-  const invalidateStrategyProviders = useInvalidateStrategyProviders()
-
   const invalidateAllTriggerPlugins = useInvalidateAllTriggerPlugins()
 
   const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
@@ -117,8 +114,14 @@ const useRefreshPluginList = () => {
       }
 
       // agent select
-      if ((manifest && PluginCategoryEnum.agent.includes(manifest.category)) || refreshAllType)
-        invalidateStrategyProviders()
+      if ((manifest && PluginCategoryEnum.agent.includes(manifest.category)) || refreshAllType) {
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.agentProviders.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.agentProvider.byProviderName.get.key(),
+        })
+      }
     },
   }
 }

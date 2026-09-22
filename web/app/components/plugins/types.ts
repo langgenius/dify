@@ -1,4 +1,7 @@
-import type { EndpointProviderDeclarationResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  AgentStrategyProviderEntity,
+  EndpointProviderDeclarationResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
@@ -64,7 +67,7 @@ export type PluginDeclaration = {
   datasource?: PluginToolDeclaration
   model: any
   tags: string[]
-  agent_strategy: any
+  agent_strategy?: AgentStrategyProviderEntity | null
   meta: PluginDeclarationMeta
   trigger: PluginTriggerDefinition
 }
@@ -477,44 +480,6 @@ export type VersionProps = {
   toInstallVersion: string
 }
 
-export type StrategyParamItem = {
-  name: string
-  label: Record<Locale | PluginLanguage, string>
-  help: Record<Locale | PluginLanguage, string>
-  placeholder: Record<Locale | PluginLanguage, string>
-  type: string
-  scope: string
-  required: boolean
-  default: any
-  options: any[]
-  template: {
-    enabled: boolean
-  }
-  auto_generate: {
-    type: string
-  }
-}
-
-export type StrategyDetail = {
-  identity: {
-    author: string
-    name: string
-    icon: string
-    label: Record<Locale | PluginLanguage, string>
-    provider: string
-  }
-  parameters: StrategyParamItem[]
-  description: Record<Locale | PluginLanguage, string>
-  output_schema: Record<string, any>
-  features: AgentFeature[]
-}
-
-const AgentFeature = {
-  HISTORY_MESSAGES: 'history-messages',
-} as const
-
-type AgentFeature = (typeof AgentFeature)[keyof typeof AgentFeature]
-
 type Identity = {
   author: string
   name: string
@@ -525,20 +490,6 @@ type Identity = {
   tags: string[]
 }
 
-type StrategyDeclaration = {
-  identity: Identity
-  plugin_id: string
-  strategies: StrategyDetail[]
-}
-
 export type PluginMeta = {
   version: string // the version of dify sdk
-}
-
-export type StrategyPluginDetail = {
-  provider: string
-  plugin_unique_identifier: string
-  plugin_id: string
-  declaration: StrategyDeclaration
-  meta: PluginMeta
 }

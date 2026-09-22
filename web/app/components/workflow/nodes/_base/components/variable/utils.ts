@@ -59,6 +59,7 @@ import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/d
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
+import { resolveVarType } from '@/app/components/workflow/nodes/tool/output-schema-utils'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { VAR_REGEX } from '@/config'
@@ -571,16 +572,14 @@ const formatItem = (
 
       const payload = data as AgentNodeType
       const outputs: Var[] = []
-      Object.keys(payload.output_schema?.properties || {}).forEach((outputKey) => {
-        const output = payload.output_schema.properties[outputKey]
-        outputs.push({
-          variable: outputKey,
-          type:
-            output.type === 'array'
-              ? (`Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]` as VarType)
-              : (`${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}` as VarType),
+      const properties = payload.output_schema?.properties
+      if (properties && typeof properties === 'object' && !Array.isArray(properties)) {
+        Object.entries(properties).forEach(([variable, output]: [string, unknown]) => {
+          const schema =
+            output && typeof output === 'object' && !Array.isArray(output) ? output : {}
+          outputs.push({ variable, type: resolveVarType(schema).type })
         })
-      })
+      }
       res.vars = [...outputs, ...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT]
       break
     }

@@ -14397,6 +14397,14 @@ Stable Agent Soul reference to one normalized skill archive.
 | value | string<br>integer<br>number<br>boolean<br>[ string ]<br>[ integer ]<br>[ number ]<br>[ boolean ] |  | No |
 | variable | string |  | No |
 
+#### AgentFeature
+
+Agent Feature, used to describe the features of the agent strategy.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentFeature | string | Agent Feature, used to describe the features of the agent strategy. |  |
+
 #### AgentFeatureToggleConfig
 
 | Name | Type | Description | Required |
@@ -14856,6 +14864,14 @@ section may be empty, which is how callers express "no knowledge layer".
 | state | string |  | No |
 | status | string |  | No |
 
+#### AgentProviderEntityWithPlugin
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| identity | [AgentStrategyProviderIdentity](#agentstrategyprovideridentity) |  | Yes |
+| plugin_id | string | The id of the plugin | No |
+| strategies | [ [AgentStrategyEntity](#agentstrategyentity) ] |  | No |
+
 #### AgentProviderListResponse
 
 | Name | Type | Description | Required |
@@ -14866,7 +14882,11 @@ section may be empty, which is how callers express "no knowledge layer".
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| AgentProviderResponse | object |  |  |
+| declaration | [AgentProviderEntityWithPlugin](#agentproviderentitywithplugin) |  | Yes |
+| meta | [Meta](#meta) |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| provider | string |  | Yes |
 
 #### AgentPublicationCountsResponse
 
@@ -15287,6 +15307,56 @@ Soft lifecycle state for Agent records.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AgentStatus | string | Soft lifecycle state for Agent records. |  |
+
+#### AgentStrategyEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | [I18nObject](#i18nobject) | The description of the agent strategy | Yes |
+| features | [ [AgentFeature](#agentfeature) ] |  | No |
+| identity | [AgentStrategyIdentity](#agentstrategyidentity) |  | Yes |
+| meta_version | string |  | No |
+| output_schema | object |  | No |
+| parameters | [ [AgentStrategyParameter](#agentstrategyparameter) ] |  | No |
+
+#### AgentStrategyIdentity
+
+Inherits from ToolIdentity, without any additional fields.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the tool | Yes |
+| icon | string |  | No |
+| label | [I18nObject](#i18nobject) | The label of the tool | Yes |
+| name | string | The name of the tool | Yes |
+| provider | string | The provider of the tool | Yes |
+
+#### AgentStrategyParameter
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) |  | No |
+| default | number<br>integer<br>string<br>boolean<br>[ object ]<br>object |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
+| max | number<br>integer |  | No |
+| min | number<br>integer |  | No |
+| name | string | The name of the parameter | Yes |
+| options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |
+| precision | integer |  | No |
+| required | boolean |  | No |
+| scope | string |  | No |
+| template | [PluginParameterTemplate](#pluginparametertemplate) |  | No |
+| type | [AgentStrategyParameterType](#agentstrategyparametertype) | The type of the parameter | Yes |
+
+#### AgentStrategyParameterType
+
+Keep all the types from PluginParameterType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentStrategyParameterType | string | Keep all the types from PluginParameterType |  |
 
 #### AgentStrategyProviderEntity
 

@@ -499,7 +499,7 @@ export type MoreInfo = {
 
 export type ToolWithProvider = Collection & {
   tools: Tool[]
-  meta: PluginMeta
+  meta?: PluginMeta
   plugin_unique_identifier?: string
 }
 

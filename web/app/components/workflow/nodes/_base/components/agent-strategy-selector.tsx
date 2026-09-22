@@ -1,7 +1,7 @@
+import type { AgentProviderResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { ToolWithProvider } from '../../../types'
 import type { Strategy } from './agent-strategy'
-import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type {
   ListProps,
   ListRef,
@@ -9,7 +9,7 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -18,9 +18,11 @@ import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hook
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
+import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { renderI18nObject } from '@/i18n/metadata'
 import Link from '@/next/link'
-import { useStrategyProviders } from '@/service/use-strategy'
+import { consoleQuery } from '@/service/console'
 import Tools from '../../../block-selector/tools'
 import { ViewType } from '../../../block-selector/types'
 import ViewTypeSelect from '../../../block-selector/view-type-select'
@@ -61,28 +63,33 @@ const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
 }
 
 function formatStrategy(
-  input: StrategyPluginDetail[],
+  input: AgentProviderResponse[],
+  language: string,
   getIcon: (i: string) => string,
 ): ToolWithProvider[] {
+  const label = (value: Parameters<typeof renderI18nObject>[0]) => ({
+    en_US: renderI18nObject(value, 'en_US'),
+    zh_Hans: renderI18nObject(value, 'zh_Hans'),
+    [language]: renderI18nObject(value, language),
+  })
   return input.map((item) => {
     const res: ToolWithProvider = {
       id: item.plugin_unique_identifier,
       author: item.declaration.identity.author,
       name: item.declaration.identity.name,
-      description: item.declaration.identity.description as ToolWithProvider['description'],
+      description: label(item.declaration.identity.description),
       plugin_id: item.plugin_id,
-      icon: getIcon(item.declaration.identity.icon),
-      label: item.declaration.identity.label as ToolWithProvider['label'],
+      icon: item.declaration.identity.icon ? getIcon(item.declaration.identity.icon) : '',
+      label: label(item.declaration.identity.label),
       type: CollectionType.all,
-      meta: item.meta,
-      tools: item.declaration.strategies.map((strategy) => ({
+      meta: typeof item.meta.version === 'string' ? { version: item.meta.version } : undefined,
+      tools: (item.declaration.strategies ?? []).map((strategy) => ({
         name: strategy.identity.name,
         author: strategy.identity.author,
-        label: strategy.identity.label as ToolWithProvider['tools'][number]['label'],
-        description: strategy.description,
-        parameters:
-          strategy.parameters as unknown as ToolWithProvider['tools'][number]['parameters'],
-        output_schema: strategy.output_schema,
+        label: label(strategy.identity.label),
+        description: label(strategy.description),
+        parameters: [],
+        output_schema: strategy.output_schema ?? {},
         labels: [],
       })),
       team_credentials: {},
@@ -109,9 +116,10 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   const [open, setOpen] = useState(false)
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
   const [query, setQuery] = useState('')
-  const stra = useStrategyProviders()
+  const providers = useQuery(consoleQuery.workspaces.current.agentProviders.get.queryOptions())
+  const language = useGetLanguage()
   const { getIconUrl } = useGetIcon()
-  const list = stra.data ? formatStrategy(stra.data, getIconUrl) : undefined
+  const list = providers.data ? formatStrategy(providers.data, language, getIconUrl) : undefined
   const filteredTools = useMemo(() => {
     if (!list) return []
     return list.filter((tool) => tool.name.toLowerCase().includes(query.toLowerCase()))
@@ -139,9 +147,12 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     !strategyStatus.plugin.installed &&
     !!value
 
-  const icon = list?.find((coll) =>
-    coll.tools?.find((tool) => tool.name === value?.agent_strategy_name),
-  )?.icon as string | undefined
+  const selectedProvider = providers.data?.find(
+    (provider) => provider.declaration.identity.name === value?.agent_strategy_provider_name,
+  )
+  const icon = selectedProvider?.declaration.identity.icon
+    ? getIconUrl(selectedProvider.declaration.identity.icon)
+    : undefined
   const { t } = useTranslation()
 
   const wrapElemRef = useRef<HTMLDivElement>(null)
@@ -189,7 +200,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 t(($) => $['nodes.agent.strategy.selectTip'], { ns: 'workflow' })}
             </p>
             <div className="ml-auto flex items-center gap-1">
-              {showInstallButton && value && (
+              {showInstallButton && value?.plugin_unique_identifier && (
                 <InstallPluginButton
                   onClick={(e) => e.stopPropagation()}
                   size="small"
@@ -214,7 +225,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                   aria-hidden="true"
                 />
               )}
-              {showSwitchVersion && value && (
+              {showSwitchVersion && value?.plugin_unique_identifier && (
                 <SwitchPluginVersion
                   uniqueIdentifier={value.plugin_unique_identifier}
                   tooltip={
@@ -263,13 +274,20 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               tools={filteredTools}
               viewType={viewType}
               onSelect={(_, tool) => {
+                const provider = providers.data?.find(
+                  (item) => item.declaration.identity.name === tool.provider_name,
+                )
+                const strategy = provider?.declaration.strategies?.find(
+                  (item) => item.identity.name === tool.tool_name,
+                )
+                if (!provider || !strategy) return
                 onChange({
-                  agent_strategy_name: tool!.tool_name,
-                  agent_strategy_provider_name: tool!.provider_name,
-                  agent_strategy_label: tool!.tool_label,
-                  agent_output_schema: tool!.output_schema || {},
-                  plugin_unique_identifier: tool!.provider_id,
-                  meta: tool!.meta,
+                  agent_strategy_name: strategy.identity.name,
+                  agent_strategy_provider_name: provider.declaration.identity.name,
+                  agent_strategy_label: renderI18nObject(strategy.identity.label, language),
+                  agent_output_schema: strategy.output_schema,
+                  plugin_unique_identifier: provider.plugin_unique_identifier,
+                  meta: provider.meta,
                 })
                 setOpen(false)
               }}

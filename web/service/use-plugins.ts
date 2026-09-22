@@ -34,7 +34,10 @@ import type {
   VersionListResponse,
 } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
-import { zEndpointProviderDeclarationResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import {
+  zAgentStrategyProviderEntity,
+  zEndpointProviderDeclarationResponse,
+} from '@dify/contracts/api/console/workspaces/zod.gen'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { useAtomValue } from 'jotai'
@@ -435,7 +438,10 @@ const normalizePluginDeclaration = (plugin: InstalledPluginResponse): PluginDecl
     datasource: normalizePluginToolDeclaration(declaration.datasource),
     model: declaration.model,
     tags: declaration.tags ?? [],
-    agent_strategy: declaration.agent_strategy,
+    agent_strategy:
+      declaration.agent_strategy == null
+        ? declaration.agent_strategy
+        : zAgentStrategyProviderEntity.parse(declaration.agent_strategy),
     meta: {
       version: getString(declaration.meta.version) || declaration.version,
       minimum_dify_version: getString(declaration.meta.minimum_dify_version) || undefined,

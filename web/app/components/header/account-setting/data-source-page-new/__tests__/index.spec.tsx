@@ -179,9 +179,7 @@ describe('DataSourcePage Component', () => {
     vi.mocked(useTheme).mockReturnValue({ theme: 'light' } as unknown as ReturnType<
       typeof useTheme
     >)
-    vi.mocked(useRenderI18nObject).mockReturnValue(
-      (obj: Record<string, string>) => obj?.en_US || '',
-    )
+    vi.mocked(useRenderI18nObject).mockReturnValue((obj) => obj?.en_US || '')
     vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({
       mutateAsync: vi.fn(),
     } as unknown as ReturnType<typeof useGetDataSourceOAuthUrl>)
