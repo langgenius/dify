@@ -20,7 +20,7 @@ const createApp = (mode: string): TryAppInfo =>
   }) as TryAppInfo
 
 describe('TryApp', () => {
-  it.each(['chat', 'advanced-chat', 'agent-chat'])(
+  it.each(['chat', 'advanced-chat', 'agent-chat', 'agent'])(
     'uses the chat experience for %s apps',
     (mode) => {
       render(<TryApp appId="app-id" appDetail={createApp(mode)} />)

@@ -29,6 +29,12 @@ class AppTaskControlService:
             self._redis_client.setex(app_task_stop_flag_key(task_id), 600, 1)
         GraphEngineManager(self._redis_client).send_stop_command(task_id)
 
+    def stop_chat_task(self, *, task_id: str, account_id: str, app_mode: str) -> None:
+        """Bridge admitted Console trial requests to the existing account-owned cancellation runtime."""
+        AppTaskService.stop_task(
+            task_id=task_id, invoke_from=InvokeFrom.EXPLORE, user_id=account_id, app_mode=AppMode.value_of(app_mode)
+        )
+
 
 class AppTaskService:
     """Service for managing application task operations."""

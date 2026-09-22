@@ -136,6 +136,7 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -183,6 +184,7 @@ from services.recommended_app_catalog_gateway import (
     RecommendedAppCatalogRouter,
     RemoteRecommendedAppCatalogGateway,
 )
+from services.recommended_app_package_service import RecommendedAppPackageService
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.retention.workflow_run.archive_download_adapters import (
@@ -295,6 +297,7 @@ class ApplicationServices:
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
+    recommended_app_packages: RecommendedAppPackageService
     remote_files: RemoteFileService
     app_tasks: AppTaskControlService
     trial_app_access: TrialAppAccessService
@@ -737,6 +740,9 @@ def build_application_services(
             sync_bindings=BillingService.sync_partner_tenants_bindings,
         ),
         recommended_app_queries=recommended_app_queries,
+        recommended_app_packages=RecommendedAppPackageService(
+            sources=database_catalog, exporter=RosterAgentPackageExporter()
+        ),
         remote_files=remote_file_service,
         app_tasks=AppTaskControlService(redis_client=redis),
         trial_app_access=TrialAppAccessService(apps=trial_apps),

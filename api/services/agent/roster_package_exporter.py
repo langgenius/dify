@@ -65,7 +65,13 @@ class RosterAgentPackageExporter:
         self._dependency_provider = dependency_provider or DependenciesAnalysisService.generate_dependencies
 
     def export(self, *, tenant_id: str, agent_id: str, version_id: UUID | None) -> RosterAgentPackageExport:
-        """Export a visible version, or the shared draft with an active snapshot fallback."""
+        app, resources, audit = self.collect(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
+        return self._build_archive(app=app, audit=audit, resources=resources)
+
+    def collect(
+        self, *, tenant_id: str, agent_id: str, version_id: UUID | None
+    ) -> tuple[AgentAppDsl, AgentPackageResourceExporter, RosterAgentPackageAudit]:
+        """Collect configuration and resource references without serializing a package."""
         resources = AgentPackageResourceExporter(storage_backend=self._storage)
         with session_factory.create_session() as session:
             row = session.execute(
@@ -141,11 +147,7 @@ class RosterAgentPackageExporter:
 
         resources.collect_workspace_skills()
         app.dependencies = self._dependency_provider(tenant_id, dependency_ids)
-        return self._build_archive(
-            app=app,
-            audit=audit,
-            resources=resources,
-        )
+        return app, resources, audit
 
     def _build_archive(
         self,

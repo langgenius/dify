@@ -47,6 +47,7 @@ vi.mock('../../chat', () => ({
     switchSibling,
     onHumanInputFormSubmit,
     onStopResponding,
+    renderAgentContent,
   }: {
     chatNode: React.ReactNode
     chatList: ChatItem[]
@@ -64,6 +65,7 @@ vi.mock('../../chat', () => ({
       formData: { inputs: Record<string, HumanInputFieldValue>; action: string },
     ) => Promise<void>
     onStopResponding: () => void
+    renderAgentContent?: unknown
   }) => (
     <div>
       <div>{chatNode}</div>
@@ -99,6 +101,7 @@ vi.mock('../../chat', () => ({
       <button onClick={() => switchSibling('sibling-2')}>switch sibling</button>
       <button disabled={inputDisabled}>send message</button>
       <button onClick={onStopResponding}>stop responding</button>
+      <div>agent response renderer: {renderAgentContent ? 'enabled' : 'disabled'}</div>
       <button
         onClick={() =>
           onHumanInputFormSubmit('form-token', { inputs: { answer: 'ok' }, action: 'approve' })
@@ -225,6 +228,26 @@ describe('EmbeddedChatbot chat-wrapper', () => {
     vi.clearAllMocks()
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue())
     vi.mocked(useChat).mockReturnValue(createUseChatReturn())
+  })
+
+  it('uses new agent stream semantics and response rendering for agent apps', () => {
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
+      createContextValue({
+        appData: {
+          ...createContextValue().appData!,
+          mode: 'agent',
+        },
+        appSourceType: AppSourceType.tryApp,
+      }),
+    )
+
+    render(<ChatWrapper />)
+
+    expect(vi.mocked(useChat).mock.calls[0]?.[7]).toEqual({
+      isNewAgent: true,
+      timezone: undefined,
+    })
+    expect(screen.getByText('agent response renderer: enabled')).toBeInTheDocument()
   })
 
   describe('Welcome behavior', () => {

@@ -22,6 +22,13 @@ export const zChatRequest = z.object({
 })
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * CompletionRequest
  */
 export const zCompletionRequest = z.object({
@@ -128,13 +135,6 @@ export const zWorkflowRunRequest = z.object({
 })
 
 /**
- * SimpleResultResponse
- */
-export const zSimpleResultResponse = z.object({
-  result: z.string(),
-})
-
-/**
  * TrialDeletedToolResponse
  */
 export const zTrialDeletedToolResponse = z.object({
@@ -147,6 +147,7 @@ export const zTrialIconType = z.enum(['emoji', 'image', 'link'])
 
 export const zTrialAppMode = z.enum([
   'advanced-chat',
+  'agent',
   'agent-chat',
   'chat',
   'completion',
@@ -202,6 +203,34 @@ export const zTrialWorkflowPartialResponse = z.object({
   id: z.string(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
+})
+
+/**
+ * TrialAgentResourcePreview
+ */
+export const zTrialAgentResourcePreview = z.object({
+  description: z.string().optional().default(''),
+  name: z.string(),
+})
+
+/**
+ * TrialAgentModelPreview
+ */
+export const zTrialAgentModelPreview = z.object({
+  model: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * TrialAgentPreviewResponse
+ */
+export const zTrialAgentPreviewResponse = z.object({
+  files: z.array(zTrialAgentResourcePreview),
+  knowledge: z.array(zTrialAgentResourcePreview),
+  model: zTrialAgentModelPreview.nullable(),
+  skills: z.array(zTrialAgentResourcePreview),
+  system_prompt: z.string(),
+  tools: z.array(zTrialAgentResourcePreview),
 })
 
 /**
@@ -734,6 +763,15 @@ export const zGetTrialAppsByAppIdPath = z.object({
  */
 export const zGetTrialAppsByAppIdResponse = zTrialAppDetailResponse
 
+export const zGetTrialAppsByAppIdAgentPreviewPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Published Agent configuration
+ */
+export const zGetTrialAppsByAppIdAgentPreviewResponse = zTrialAgentPreviewResponse
+
 export const zPostTrialAppsByAppIdAudioToTextPath = z.object({
   app_id: z.uuid(),
 })
@@ -753,6 +791,16 @@ export const zPostTrialAppsByAppIdChatMessagesPath = z.object({
  * Success
  */
 export const zPostTrialAppsByAppIdChatMessagesResponse = z.record(z.string(), z.unknown())
+
+export const zPostTrialAppsByAppIdChatMessagesByTaskIdStopPath = z.object({
+  app_id: z.uuid(),
+  task_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostTrialAppsByAppIdChatMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zPostTrialAppsByAppIdCompletionMessagesBody = zCompletionRequest
 
@@ -804,6 +852,21 @@ export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.o
  */
 export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
   zSuggestedQuestionsResponse
+
+export const zGetTrialAppsByAppIdPackagePath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetTrialAppsByAppIdPackageQuery = z.object({
+  version_id: z.uuid(),
+})
+
+/**
+ * Published Agent template package
+ */
+export const zGetTrialAppsByAppIdPackageResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zGetTrialAppsByAppIdParametersPath = z.object({
   app_id: z.uuid(),

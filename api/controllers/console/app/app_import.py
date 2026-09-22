@@ -1,5 +1,5 @@
 from typing import BinaryIO, Literal, cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from flask import request
 from flask_restx import Resource
@@ -11,6 +11,7 @@ from configs import dify_config
 from controllers.common.rbac import PlainApp, RBACCheck, Workspace
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
+from controllers.console.explore.error import RecommendedAppNotFoundError as RecommendedAppNotFoundHttpError
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -22,6 +23,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.plugin.entities.plugin import PluginDependency
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
@@ -41,6 +43,7 @@ from services.app_package_service import AppPackageService, PreparedAppPackage
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
+from services.recommended_app_query_service import RecommendedAppNotFoundError
 from services.system_feature_service import SystemFeatureService
 
 from .. import console_ns
@@ -48,7 +51,10 @@ from .permission_keys import get_app_permission_keys
 
 
 class AppImportPayload(BaseModel):
-    mode: str = Field(..., description="Import mode")
+    mode: str = Field(..., description="Import mode: yaml-content, yaml-url, ifpkg-url, or template")
+    template_id: UUID | None = None
+    version_id: UUID | None = None
+    package_url: str | None = Field(None, description="New Agent template .ifpkg download URL for ifpkg-url mode")
     yaml_content: str | None = Field(None)
     yaml_url: str | None = Field(None)
     name: str | None = Field(None)
@@ -137,9 +143,53 @@ class AppImportApi(Resource):
         if request.mimetype == "multipart/form-data":
             return self._import_package(current_user)
         payload = validate_request(AppImportPayload)
+        if payload.mode == "template":
+            return self._import_template(payload, current_user)
+        if payload.mode == "ifpkg-url":
+            return self._import_package_url(payload, current_user)
         if payload.mode == "yaml-url" and payload.yaml_url:
             return self._import_url(payload, current_user)
         return self._import_dsl(payload, current_user)
+
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()))
+    def _import_template(self, payload: AppImportPayload, current_user: Account):
+        if (
+            payload.template_id is None
+            or payload.version_id is None
+            or payload.app_id
+            or any(item is not None for item in (payload.package_url, payload.yaml_content, payload.yaml_url))
+        ):
+            raise InvalidRosterAgentPackageError(
+                "template mode requires template_id and version_id without other sources"
+            )
+        account, tenant_id = _current_user_and_tenant_id(current_user)
+        if tenant_id is None:
+            raise Forbidden("Current workspace is required")
+        try:
+            source = application_services().recommended_app_packages.get_source(
+                app_id=str(payload.template_id),
+                version_id=payload.version_id,
+            )
+        except RecommendedAppNotFoundError:
+            raise RecommendedAppNotFoundHttpError() from None
+        result = RosterAgentPackageImporter().import_template(
+            source=source,
+            tenant_id=tenant_id,
+            account=account,
+            name=payload.name,
+            description=payload.description,
+            icon_type=payload.icon_type,
+            icon=payload.icon,
+            icon_background=payload.icon_background,
+        )
+        return Import(
+            id=str(uuid4()),
+            status=ImportStatus.COMPLETED_WITH_WARNINGS if result.warnings else ImportStatus.COMPLETED,
+            app_id=result.app_id,
+            app_mode=AppMode.AGENT,
+            warnings=result.warnings,
+        ).model_dump(mode="json"), 200
 
     @rbac_permission_required(
         RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()),
@@ -154,6 +204,37 @@ class AppImportApi(Resource):
                     current_user,
                 )
             return self._import_package(current_user, payload, source)
+
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()))
+    def _import_package_url(self, payload: AppImportPayload, current_user: Account):
+        if (
+            not payload.package_url
+            or payload.app_id
+            or payload.yaml_content is not None
+            or payload.yaml_url is not None
+        ):
+            raise InvalidRosterAgentPackageError("ifpkg-url requires package_url and does not accept YAML or app_id")
+        account, tenant_id = _current_user_and_tenant_id(current_user)
+        if tenant_id is None:
+            raise Forbidden("Current workspace is required")
+        result = RosterAgentPackageImporter().import_package_url(
+            url=payload.package_url,
+            tenant_id=tenant_id,
+            account=account,
+            name=payload.name,
+            description=payload.description,
+            icon_type=payload.icon_type,
+            icon=payload.icon,
+            icon_background=payload.icon_background,
+        )
+        return Import(
+            id=str(uuid4()),
+            status=ImportStatus.COMPLETED_WITH_WARNINGS if result.warnings else ImportStatus.COMPLETED,
+            app_id=result.app_id,
+            app_mode=AppMode.AGENT,
+            warnings=result.warnings,
+        ).model_dump(mode="json"), 200
 
     def _import_package(
         self, current_user: Account, payload: AppImportPayload | None = None, source: BinaryIO | None = None

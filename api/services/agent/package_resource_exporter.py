@@ -163,6 +163,79 @@ class AgentPackageResourceExporter:
                 )
         self._workspace_sources.clear()
 
+    def read_local_resources(
+        self, package_ref: str
+    ) -> tuple[dict[str, bytes], AgentPackageResources, list[PackageIcon]]:
+        """Read bounded local assets without building an outer archive."""
+        skill_sources, file_sources = self.sources[package_ref]
+        if len(skill_sources) + len(file_sources) + len(self.icon_sources) + 2 > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
+            raise RosterAgentPackageTooLargeError("Agent template has too many resources")
+        payloads: dict[str, bytes] = {}
+        total_size = 0
+
+        def read(path: str, storage_key: str, limit: int) -> tuple[int, str]:
+            nonlocal total_size
+            content = bytearray()
+            try:
+                for chunk in self._storage.load_stream(storage_key):
+                    if len(content) + len(chunk) > min(limit, dify_config.AGENT_PACKAGE_MAX_BYTES - total_size):
+                        raise RosterAgentPackageTooLargeError("Agent template resources exceed the size limit")
+                    content.extend(chunk)
+            except RosterAgentPackageTooLargeError:
+                raise
+            except Exception as exc:
+                raise RosterAgentPackageExportFailedError(f"Unable to read template resource {path!r}") from exc
+            payload = bytes(content)
+            payloads[path] = payload
+            total_size += len(payload)
+            return len(payload), hashlib.sha256(payload).hexdigest()
+
+        resources = AgentPackageResources()
+        nested_uncompressed_size = 0
+        skill_packages = SkillPackageService()
+        for item in skill_sources:
+            size, digest = read(item.path, item.storage_key, dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024)
+            try:
+                inspection = skill_packages.inspect(content=payloads[item.path], filename=item.path)
+            except SkillPackageError as exc:
+                raise RosterAgentPackageExportFailedError(
+                    f"Agent template contains unusable Skill {item.name!r}"
+                ) from exc
+            if inspection.name != item.name:
+                raise RosterAgentPackageExportFailedError(f"Agent template Skill {item.name!r} has a name mismatch")
+            nested_uncompressed_size += inspection.uncompressed_size
+            if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
+                raise RosterAgentPackageTooLargeError("Agent template nested Skill contents exceed the size limit")
+            resources.skills.append(
+                RosterAgentPackageSkill(
+                    id=item.id,
+                    scope=item.scope,
+                    name=item.name,
+                    path=item.path,
+                    size=size,
+                    sha256=digest,
+                    audit=RosterAgentPackageAudit(ref=item.audit_ref),
+                )
+            )
+        for item in file_sources:
+            size, digest = read(item.path, item.storage_key, dify_config.AGENT_PACKAGE_MAX_BYTES)
+            resources.files.append(
+                RosterAgentPackageFile(
+                    id=item.id,
+                    path=item.path,
+                    size=size,
+                    sha256=digest,
+                    audit=RosterAgentPackageAudit(ref=item.audit_ref),
+                )
+            )
+        icons = []
+        for path, key in self.icon_sources.values():
+            size, digest = read(path, key, dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024)
+            icons.append(PackageIcon(id=path.split(".")[0], path=path, size=size, sha256=digest))
+        resources = AgentPackageResources.model_validate(resources.model_dump())
+        resources.validate_packages([self.packages[package_ref]])
+        return payloads, resources, icons
+
     def write_resources(self, archive: zipfile.ZipFile) -> tuple[dict[str, AgentPackageResources], int]:
         entry_count = sum(len(skills) + len(files) for skills, files in self.sources.values()) + 2
         if entry_count > dify_config.AGENT_PACKAGE_MAX_ENTRIES:

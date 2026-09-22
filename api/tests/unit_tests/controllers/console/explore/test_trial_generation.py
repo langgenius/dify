@@ -16,6 +16,7 @@ import controllers.console.explore.trial as trial_module
 import controllers.console.explore.trial_app_admission as admission_module
 import controllers.console.wraps as console_wraps
 import libs.login as login_module
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import (
     AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
@@ -106,6 +107,10 @@ class _Runtime:
 @dataclass
 class _Tasks:
     calls: list[str] = field(default_factory=list)
+    chat_calls: list[tuple[str, str, str]] = field(default_factory=list)
+
+    def stop_chat_task(self, *, task_id: str, account_id: str, app_mode: str) -> None:
+        self.chat_calls.append((task_id, account_id, app_mode))
 
     def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
         self.calls.append(task_id)
@@ -207,6 +212,7 @@ def harness(
     for resource, endpoint in (
         (trial_module.TrialAppWorkflowRunApi, "workflows/run"),
         (trial_module.TrialChatApi, "chat-messages"),
+        (trial_module.TrialChatTaskStopApi, "chat-messages/<string:task_id>/stop"),
         (trial_module.TrialCompletionApi, "completion-messages"),
         (trial_module.TrialAppWorkflowTaskStopApi, "workflows/tasks/<string:task_id>/stop"),
     ):
@@ -260,6 +266,7 @@ def test_completion_blocking_preserves_response_and_uses_app_owner(
     [
         ("workflows/run", AppMode.WORKFLOW, {"inputs": {"number": 0}, "files": []}),
         ("chat-messages", AppMode.CHAT, {"inputs": {}, "query": "hello"}),
+        ("chat-messages", AppMode.AGENT, {"inputs": {}, "query": "hello"}),
         ("chat-messages", AppMode.ADVANCED_CHAT, {"inputs": {}, "query": "hello"}),
         ("chat-messages", AppMode.AGENT_CHAT, {"inputs": {}, "query": "hello"}),
         ("completion-messages", AppMode.COMPLETION, {"inputs": {}, "response_mode": "streaming"}),
@@ -391,6 +398,34 @@ def test_chat_rejects_invalid_uuid_before_runtime(harness: _Harness, field: str)
     _assert_error(response, 400, "invalid_param")
     assert harness.runtime.calls == []
     assert harness.usage() is None
+
+
+def test_unpublished_agent_remains_unavailable_after_service_migration(harness: _Harness) -> None:
+    harness.set_mode(AppMode.AGENT)
+    harness.runtime.error = AgentAppNotPublishedError("Agent has not been published")
+    response = harness.post("chat-messages", payload={"inputs": {}, "query": "hello"})
+    _assert_error(response, 400, "app_unavailable")
+    assert harness.usage() is None
+
+
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.ADVANCED_CHAT])
+def test_stop_chat_uses_admitted_account_without_consuming_usage(harness: _Harness, mode: AppMode):
+    harness.set_mode(mode)
+    response = harness.post("chat-messages/task-1/stop")
+    assert response.status_code == 200
+    assert response.json == {"result": "success"}
+    assert harness.services.app_tasks.chat_calls == [("task-1", harness.account.id, mode)]
+    assert harness.usage() is None
+    harness.state.enabled = False
+    response = harness.post("chat-messages/task-2/stop")
+    _assert_error(response, 403, "trial_app_feature_disabled")
+    assert len(harness.services.app_tasks.chat_calls) == 1
+
+
+def test_stop_chat_rejects_workflow(harness: _Harness):
+    harness.set_mode(AppMode.WORKFLOW)
+    _assert_error(harness.post("chat-messages/task-1/stop"), 400, "not_chat_app")
+    assert harness.services.app_tasks.chat_calls == []
 
 
 def test_chat_normalizes_uuid_and_preserves_empty_ids(harness: _Harness) -> None:

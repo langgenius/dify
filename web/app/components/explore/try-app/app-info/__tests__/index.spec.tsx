@@ -96,8 +96,8 @@ describe('AppInfo', () => {
       expect(screen.getByText('APP.TYPES.CHATBOT')).toBeInTheDocument()
     })
 
-    it('displays AGENT for agent-chat mode', () => {
-      const appDetail = createMockAppDetail('agent-chat')
+    it.each(['agent-chat', 'agent'])('displays AGENT for %s mode', (mode) => {
+      const appDetail = createMockAppDetail(mode)
       const mockOnCreate = vi.fn()
 
       render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)

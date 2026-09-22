@@ -50,7 +50,7 @@ describe('useGetRequirements', () => {
     vi.clearAllMocks()
   })
 
-  describe('basic app modes (chat, completion, agent-chat)', () => {
+  describe('basic app modes (chat, completion, agent-chat, agent)', () => {
     it('returns model provider for chat mode', () => {
       mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
 
@@ -162,6 +162,29 @@ describe('useGetRequirements', () => {
 
       expect(result.current.requirements).toHaveLength(1)
       expect(result.current.requirements[0]!.name).toBe('openai')
+    })
+
+    it('does not inspect workflow data for new agent requirements', () => {
+      mockUseGetTryAppFlowPreview.mockReturnValue({
+        data: {
+          graph: {
+            nodes: [
+              {
+                data: {
+                  type: 'llm',
+                  model: { name: 'gpt-4', provider: 'langgenius/openai/openai' },
+                },
+              },
+            ],
+          },
+        },
+      })
+      const appDetail = createMockAppDetail('agent', { model_config: null })
+
+      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
+
+      expect(result.current.requirements).toEqual([])
+      expect(mockUseGetTryAppFlowPreview).toHaveBeenCalledWith('test-app-id', true)
     })
   })
 

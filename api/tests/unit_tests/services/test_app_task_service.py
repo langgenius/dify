@@ -1,10 +1,18 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import AppMode
-from services.app_task_service import AppTaskService
+from services.app_task_service import AppTaskControlService, AppTaskService
+
+
+def test_trial_chat_control_preserves_legacy_ownership_and_stop_runtime():
+    with patch.object(AppTaskService, "stop_task") as stop:
+        AppTaskControlService(redis_client=Mock()).stop_chat_task(task_id="task", account_id="viewer", app_mode="agent")
+    stop.assert_called_once_with(
+        task_id="task", invoke_from=InvokeFrom.EXPLORE, user_id="viewer", app_mode=AppMode.AGENT
+    )
 
 
 class TestAppTaskService:

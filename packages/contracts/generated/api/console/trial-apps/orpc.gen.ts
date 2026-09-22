@@ -3,11 +3,16 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zGetTrialAppsByAppIdAgentPreviewPath,
+  zGetTrialAppsByAppIdAgentPreviewResponse,
   zGetTrialAppsByAppIdDatasetsPath,
   zGetTrialAppsByAppIdDatasetsQuery,
   zGetTrialAppsByAppIdDatasetsResponse,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse,
+  zGetTrialAppsByAppIdPackagePath,
+  zGetTrialAppsByAppIdPackageQuery,
+  zGetTrialAppsByAppIdPackageResponse,
   zGetTrialAppsByAppIdParametersPath,
   zGetTrialAppsByAppIdParametersResponse,
   zGetTrialAppsByAppIdPath,
@@ -19,6 +24,8 @@ import {
   zPostTrialAppsByAppIdAudioToTextPath,
   zPostTrialAppsByAppIdAudioToTextResponse,
   zPostTrialAppsByAppIdChatMessagesBody,
+  zPostTrialAppsByAppIdChatMessagesByTaskIdStopPath,
+  zPostTrialAppsByAppIdChatMessagesByTaskIdStopResponse,
   zPostTrialAppsByAppIdChatMessagesPath,
   zPostTrialAppsByAppIdChatMessagesResponse,
   zPostTrialAppsByAppIdCompletionMessagesBody,
@@ -40,6 +47,21 @@ import {
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse,
 } from './zod.gen'
 
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentPreview',
+    path: '/trial-apps/{app_id}/agent-preview',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetTrialAppsByAppIdAgentPreviewPath }))
+  .output(zGetTrialAppsByAppIdAgentPreviewResponse)
+
+export const agentPreview = {
+  get,
+}
+
 export const post = oc
   .route({
     inputStructure: 'detailed',
@@ -59,6 +81,25 @@ export const post2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
+    operationId: 'postTrialAppsByAppIdChatMessagesByTaskIdStop',
+    path: '/trial-apps/{app_id}/chat-messages/{task_id}/stop',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostTrialAppsByAppIdChatMessagesByTaskIdStopPath }))
+  .output(zPostTrialAppsByAppIdChatMessagesByTaskIdStopResponse)
+
+export const stop = {
+  post: post2,
+}
+
+export const byTaskId = {
+  stop,
+}
+
+export const post3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
     operationId: 'postTrialAppsByAppIdChatMessages',
     path: '/trial-apps/{app_id}/chat-messages',
     tags: ['console'],
@@ -72,10 +113,11 @@ export const post2 = oc
   .output(zPostTrialAppsByAppIdChatMessagesResponse)
 
 export const chatMessages = {
-  post: post2,
+  post: post3,
+  byTaskId,
 }
 
-export const post3 = oc
+export const post4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -92,10 +134,10 @@ export const post3 = oc
   .output(zPostTrialAppsByAppIdCompletionMessagesResponse)
 
 export const completionMessages = {
-  post: post3,
+  post: post4,
 }
 
-export const get = oc
+export const get2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -112,13 +154,13 @@ export const get = oc
   .output(zGetTrialAppsByAppIdDatasetsResponse)
 
 export const datasets = {
-  get,
+  get: get2,
 }
 
 /**
  * Upload a file into the tenant that owns the trial app
  */
-export const post4 = oc
+export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -137,14 +179,14 @@ export const post4 = oc
   .output(zPostTrialAppsByAppIdFilesUploadResponse)
 
 export const upload = {
-  post: post4,
+  post: post5,
 }
 
 export const files = {
   upload,
 }
 
-export const get2 = oc
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -156,7 +198,7 @@ export const get2 = oc
   .output(zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse)
 
 export const suggestedQuestions = {
-  get: get2,
+  get: get3,
 }
 
 export const byMessageId = {
@@ -167,10 +209,27 @@ export const messages = {
   byMessageId,
 }
 
+export const get4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdPackage',
+    path: '/trial-apps/{app_id}/package',
+    tags: ['console'],
+  })
+  .input(
+    z.object({ params: zGetTrialAppsByAppIdPackagePath, query: zGetTrialAppsByAppIdPackageQuery }),
+  )
+  .output(zGetTrialAppsByAppIdPackageResponse)
+
+export const package_ = {
+  get: get4,
+}
+
 /**
  * Retrieve app parameters
  */
-export const get3 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -183,13 +242,13 @@ export const get3 = oc
   .output(zGetTrialAppsByAppIdParametersResponse)
 
 export const parameters = {
-  get: get3,
+  get: get5,
 }
 
 /**
  * Upload a remote file into the tenant that owns the trial app
  */
-export const post5 = oc
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -208,7 +267,7 @@ export const post5 = oc
   .output(zPostTrialAppsByAppIdRemoteFilesUploadResponse)
 
 export const upload2 = {
-  post: post5,
+  post: post6,
 }
 
 export const remoteFiles = {
@@ -220,7 +279,7 @@ export const remoteFiles = {
  *
  * Returns the site configuration for the application including theme, icons, and text.
  */
-export const get4 = oc
+export const get6 = oc
   .route({
     description:
       'Returns the site configuration for the application including theme, icons, and text.',
@@ -235,10 +294,10 @@ export const get4 = oc
   .output(zGetTrialAppsByAppIdSiteResponse)
 
 export const site = {
-  get: get4,
+  get: get6,
 }
 
-export const post6 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -255,13 +314,13 @@ export const post6 = oc
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
 
 export const textToAudio = {
-  post: post6,
+  post: post7,
 }
 
 /**
  * Run workflow
  */
-export const post7 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -279,13 +338,13 @@ export const post7 = oc
   .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
 
 export const run = {
-  post: post7,
+  post: post8,
 }
 
 /**
  * Stop workflow task
  */
-export const post8 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -297,22 +356,22 @@ export const post8 = oc
   .input(z.object({ params: zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath }))
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
 
-export const stop = {
-  post: post8,
+export const stop2 = {
+  post: post9,
 }
 
-export const byTaskId = {
-  stop,
+export const byTaskId2 = {
+  stop: stop2,
 }
 
 export const tasks = {
-  byTaskId,
+  byTaskId: byTaskId2,
 }
 
 /**
  * Get a detached workflow definition after catalog preview admission
  */
-export const get5 = oc
+export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -325,7 +384,7 @@ export const get5 = oc
   .output(zGetTrialAppsByAppIdWorkflowsResponse)
 
 export const workflows = {
-  get: get5,
+  get: get7,
   run,
   tasks,
 }
@@ -333,7 +392,7 @@ export const workflows = {
 /**
  * Get app detail using the viewer's workspace for tool configuration
  */
-export const get6 = oc
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -346,13 +405,15 @@ export const get6 = oc
   .output(zGetTrialAppsByAppIdResponse)
 
 export const byAppId = {
-  get: get6,
+  get: get8,
+  agentPreview,
   audioToText,
   chatMessages,
   completionMessages,
   datasets,
   files,
   messages,
+  package: package_,
   parameters,
   remoteFiles,
   site,

@@ -62,6 +62,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from core.errors.error import (
     AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
@@ -90,6 +91,7 @@ from services.app_preview_query_service import (
     AppPreviewRef,
     AppPreviewSiteUnavailableError,
     AppPreviewUnavailableError,
+    TrialAgentPreview,
 )
 from services.audio_types import AudioAppRef, AudioUpload
 from services.errors.audio import (
@@ -152,7 +154,7 @@ class TrialDatasetListQuery(BaseModel):
     ids: list[str] = Field(default_factory=list, description="Dataset IDs")
 
 
-type TrialAppMode = Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+type TrialAppMode = Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
 type TrialIconType = Literal["emoji", "image", "link"]
 type JsonObject = dict[str, Any]
 
@@ -162,6 +164,10 @@ class TrialAppModel(ResponseModel):
     name: str
     mode: str | None = None
     completion_params: JsonObject = Field(default_factory=dict)
+
+
+class TrialAgentPreviewResponse(TrialAgentPreview, ResponseModel):
+    pass
 
 
 class TrialAppAgentMode(ResponseModel):
@@ -447,6 +453,7 @@ register_response_schema_models(
     SiteResponse,
     SuggestedQuestionsResponse,
     TrialAppDetailResponse,
+    TrialAgentPreviewResponse,
     TrialDatasetListResponse,
     TrialWorkflowResponse,
 )
@@ -583,6 +590,8 @@ class TrialChatApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except (AgentAppGeneratorError, AgentAppNotPublishedError):
+            raise AppUnavailableError() from None
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -600,12 +609,28 @@ class TrialChatApi(Resource):
             raise InternalServerError()
 
 
+class TrialChatTaskStopApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission()
+    @get_trial_app
+    def post(self, request_context: RequestContext, trial_app: TrialAppRef, task_id: str):
+        if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
+            raise NotChatAppError()
+
+        application_services().app_tasks.stop_chat_task(
+            task_id=task_id,
+            account_id=request_context.account_id,
+            app_mode=trial_app.app_mode,
+        )
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+
+
 class TrialMessageSuggestedQuestionApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_trial_app
     def get(self, request_context: RequestContext, trial_app: TrialAppRef, message_id: UUID) -> dict[str, object]:
-        if trial_app.app_mode not in {"chat", "agent-chat", "advanced-chat"}:
+        if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
             raise NotChatAppError()
 
         try:
@@ -796,7 +821,7 @@ class TrialAppParameterApi(Resource):
         """Retrieve app parameters."""
 
         try:
-            parameters = application_services().app_definitions.get_parameters(app.app_id)
+            parameters = application_services().app_definitions.get_public_parameters(app.app_id)
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
 
@@ -831,6 +856,18 @@ class AppApi(Resource):
             "app_base_url": dify_config.APP_WEB_URL or request.url_root.rstrip("/"),
         }
         return dump_response(TrialAppDetailResponse, source)
+
+
+@console_ns.route("/trial-apps/<uuid:app_id>/agent-preview")
+class TrialAgentPreviewApi(Resource):
+    @console_ns.response(200, "Published Agent configuration", console_ns.models[TrialAgentPreviewResponse.__name__])
+    @get_preview_app
+    def get(self, app: AppPreviewRef):
+        try:
+            preview = application_services().app_previews.get_agent_preview(app=app)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        return dump_response(TrialAgentPreviewResponse, preview)
 
 
 class AppWorkflowApi(Resource):
@@ -876,6 +913,11 @@ class DatasetListApi(Resource):
 
 
 console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
+console_ns.add_resource(
+    TrialChatTaskStopApi,
+    "/trial-apps/<uuid:app_id>/chat-messages/<string:task_id>/stop",
+    endpoint="trial_app_stop_chat_completion",
+)
 
 console_ns.add_resource(
     TrialAppFileUploadApi,

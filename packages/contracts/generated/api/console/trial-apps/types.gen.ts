@@ -31,6 +31,15 @@ export type TrialAppDetailResponse = {
   workflow?: TrialWorkflowPartialResponse | null
 }
 
+export type TrialAgentPreviewResponse = {
+  files: Array<TrialAgentResourcePreview>
+  knowledge: Array<TrialAgentResourcePreview>
+  model: TrialAgentModelPreview | null
+  skills: Array<TrialAgentResourcePreview>
+  system_prompt: string
+  tools: Array<TrialAgentResourcePreview>
+}
+
 export type AudioTranscriptResponse = {
   text: string
 }
@@ -44,6 +53,10 @@ export type ChatRequest = {
   parent_message_id?: string | null
   query: string
   retriever_from?: string
+}
+
+export type SimpleResultResponse = {
+  result: string
 }
 
 export type CompletionRequest = {
@@ -477,10 +490,6 @@ export type WorkflowRunRequest = {
   }
 }
 
-export type SimpleResultResponse = {
-  result: string
-}
-
 export type TrialDeletedToolResponse = {
   provider_id: string
   tool_name: string
@@ -489,7 +498,13 @@ export type TrialDeletedToolResponse = {
 
 export type TrialIconType = 'emoji' | 'image' | 'link'
 
-export type TrialAppMode = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+export type TrialAppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'chat'
+  | 'completion'
+  | 'workflow'
 
 export type TrialAppModelConfigResponse = {
   agent_mode?: TrialAppAgentMode | null
@@ -558,6 +573,16 @@ export type TrialWorkflowPartialResponse = {
   id: string
   updated_at?: number | null
   updated_by?: string | null
+}
+
+export type TrialAgentResourcePreview = {
+  description?: string
+  name: string
+}
+
+export type TrialAgentModelPreview = {
+  model: string
+  provider: string
 }
 
 export type TrialDatasetResponse = {
@@ -644,6 +669,22 @@ export type GetTrialAppsByAppIdResponses = {
 export type GetTrialAppsByAppIdResponse =
   GetTrialAppsByAppIdResponses[keyof GetTrialAppsByAppIdResponses]
 
+export type GetTrialAppsByAppIdAgentPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/agent-preview'
+}
+
+export type GetTrialAppsByAppIdAgentPreviewResponses = {
+  200: TrialAgentPreviewResponse
+}
+
+export type GetTrialAppsByAppIdAgentPreviewResponse =
+  GetTrialAppsByAppIdAgentPreviewResponses[keyof GetTrialAppsByAppIdAgentPreviewResponses]
+
 export type PostTrialAppsByAppIdAudioToTextData = {
   body?: never
   path: {
@@ -677,6 +718,23 @@ export type PostTrialAppsByAppIdChatMessagesResponses = {
 
 export type PostTrialAppsByAppIdChatMessagesResponse =
   PostTrialAppsByAppIdChatMessagesResponses[keyof PostTrialAppsByAppIdChatMessagesResponses]
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/chat-messages/{task_id}/stop'
+}
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopResponse =
+  PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses[keyof PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses]
 
 export type PostTrialAppsByAppIdCompletionMessagesData = {
   body: CompletionRequest
@@ -751,6 +809,28 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses = 
 
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
   GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses]
+
+export type GetTrialAppsByAppIdPackageData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    version_id: string
+  }
+  url: '/trial-apps/{app_id}/package'
+}
+
+export type GetTrialAppsByAppIdPackageErrors = {
+  404: unknown
+}
+
+export type GetTrialAppsByAppIdPackageResponses = {
+  200: Blob | File
+}
+
+export type GetTrialAppsByAppIdPackageResponse =
+  GetTrialAppsByAppIdPackageResponses[keyof GetTrialAppsByAppIdPackageResponses]
 
 export type GetTrialAppsByAppIdParametersData = {
   body?: never

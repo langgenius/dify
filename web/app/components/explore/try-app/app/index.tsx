@@ -13,7 +13,7 @@ type Props = Readonly<{
 
 function TryApp({ appId, appDetail }: Props) {
   const mode = appDetail?.mode
-  const isChat = ['chat', 'advanced-chat', 'agent-chat'].includes(mode!)
+  const isChat = ['chat', 'advanced-chat', 'agent-chat', 'agent'].includes(mode!)
   const isCompletion = !isChat
 
   return (

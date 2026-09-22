@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
+import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
@@ -83,6 +84,7 @@ const ChatWrapper = () => {
     appSourceType === AppSourceType.webApp
       ? new Intl.DateTimeFormat().resolvedOptions().timeZone
       : undefined
+  const isNewAgent = appData?.mode === 'agent'
   const {
     chatList,
     handleSend,
@@ -102,7 +104,7 @@ const ChatWrapper = () => {
     clearChatList,
     setClearChatList,
     undefined,
-    { timezone },
+    { isNewAgent, timezone },
   )
   const inputsFormValue = currentConversationId
     ? currentConversationInputs
@@ -470,6 +472,7 @@ const ChatWrapper = () => {
       theme={theme}
       switchSibling={doSwitchSibling}
       inputDisabled={inputDisabled}
+      renderAgentContent={isNewAgent ? AgentRosterResponseContent : undefined}
       sendOnEnter={sendOnEnter}
       questionIcon={
         initUserVariables?.avatar_url ? (

@@ -1,14 +1,19 @@
 from inspect import unwrap
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
 
 import controllers.console.explore.recommended_app as module
+from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from models.model import AppMode, IconType
+from services.agent.roster_package_entities import RosterAgentPackageExport
+from services.recommended_app_package_service import RecommendedAgentPackageSource, RecommendedAppPackageService
 from services.recommended_app_query_service import (
     LearnDifyAppListResult,
     RecommendedAppDetailSummary,
@@ -19,6 +24,33 @@ from services.recommended_app_query_service import (
 from services.recommended_app_query_service import (
     RecommendedAppNotFoundError as RecommendedAppQueryNotFoundError,
 )
+
+
+def test_package_download_works_without_browser_credentials(app: Flask, monkeypatch):
+    app_id, version_id = uuid4(), uuid4()
+    artifact = RosterAgentPackageExport(archive=BytesIO(b"package-bytes"), filename="sample.ifpkg", size=13)
+    sources, exporter = MagicMock(), MagicMock()
+    sources.get_package_source.return_value = RecommendedAgentPackageSource("source-tenant", "source-agent", version_id)
+    exporter.export.return_value = artifact
+    packages = RecommendedAppPackageService(sources=sources, exporter=exporter)
+    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(recommended_app_packages=packages))
+    ExternalApi(app).add_resource(module.RecommendedAgentPackageApi, "/public-package/<uuid:app_id>")
+    response = app.test_client().get(f"/public-package/{app_id}?version_id={version_id}")
+    assert response.status_code == 200
+    assert response.data == b"package-bytes"
+    assert response.mimetype == "application/zip"
+    assert response.headers["Cache-Control"] == "no-store"
+    sources.get_package_source.assert_called_once_with(str(app_id), version_id)
+    exporter.export.assert_called_once_with(tenant_id="source-tenant", agent_id="source-agent", version_id=version_id)
+    response.close()
+    assert artifact.archive.closed
+
+    exporter.reset_mock()
+    sources.get_package_source.return_value = None
+    response = app.test_client().get(f"/public-package/{app_id}?version_id={version_id}")
+    assert response.status_code == 404
+    assert response.json["code"] == "recommended_app_not_found"
+    exporter.export.assert_not_called()
 
 
 def _request_context() -> RequestContext:
@@ -113,6 +145,8 @@ class TestRecommendedAppApi:
             "mode": "chat",
             "export_data": "{}",
             "can_trial": False,
+            "package_url": None,
+            "version_id": None,
         }
 
     def test_get_missing_raises_stable_not_found_error(self, app: Flask) -> None:

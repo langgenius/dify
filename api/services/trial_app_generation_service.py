@@ -52,7 +52,7 @@ class TrialAppGenerationService:
     def generate_chat(
         self, *, trial_app: TrialAppRef, account_id: str, args: Mapping[str, object]
     ) -> GenerationResponse:
-        if trial_app.app_mode not in {"chat", "agent-chat", "advanced-chat"}:
+        if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
             raise TrialAppNotChatError(f"App {trial_app.app_id} is not a chat app")
         return self._generate(
             trial_app=trial_app, account_id=account_id, args={**args, "auto_generate_name": False}, streaming=True

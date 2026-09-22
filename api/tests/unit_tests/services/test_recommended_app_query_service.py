@@ -179,8 +179,10 @@ def test_get_detail_uses_catalog_result_id_for_trial_status(existing_ids: frozen
         name="App",
         icon=None,
         icon_background=None,
-        mode="chat",
-        export_data="{}",
+        mode="agent",
+        export_data="",
+        package_url="https://templates.example/agent.ifpkg",
+        version_id="published-version",
     )
     trial_apps = MagicMock()
     trial_apps.existing_ids.return_value = existing_ids
@@ -193,4 +195,6 @@ def test_get_detail_uses_catalog_result_id_for_trial_status(existing_ids: frozen
     result = service.get_detail("route-app-id")
 
     assert result.can_trial is expected
+    assert result.package_url == "https://templates.example/agent.ifpkg"
+    assert result.version_id == "published-version"
     trial_apps.existing_ids.assert_called_once_with(("catalog-app-id",))

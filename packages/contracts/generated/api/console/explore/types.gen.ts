@@ -21,6 +21,8 @@ export type RecommendedAppDetailResponse = {
   id: string
   mode: string
   name: string
+  package_url?: string | null
+  version_id?: string | null
 }
 
 export type BannerListResponse = Array<BannerResponse>
