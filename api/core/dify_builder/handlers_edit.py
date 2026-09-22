@@ -397,7 +397,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
 
     try:
         raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
-        status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, ""
+        status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, raw.error
     except Exception as exc:
         # Never crash the advance; capture the launch error (log + store) instead
         # of swallowing it, so diagnose/routing have something to act on.

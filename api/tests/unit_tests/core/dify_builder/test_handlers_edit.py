@@ -904,3 +904,28 @@ def test_revert_then_retry_after_revert_reapprove_is_idempotent():
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.EDIT_APPLY_CHANGES
     assert len(dify.graph["nodes"]) == 4
+
+
+def test_a_launch_error_frame_is_diagnosed_not_bounced_as_unknown():
+    """Edit discarded ``Run.error`` exactly like Build did. With the port now
+    reporting the ESQ1-302 error frame as a failed Run, the failure must reach
+    diagnose and the repair gate, carrying its error."""
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.models import Run, TestInput
+
+    launch_error = "node 'node4' (http-request): body.data.0.type Field required [invalid_param]"
+
+    def launch_failed(*_a, **_k) -> Run:
+        return Run(kind="verify", immutable=True, dify_run_id="", status="failed", per_node=[], error=launch_error)
+
+    env, repo = _new_env(agent=StubAgent())
+    env.dify.run_draft = launch_failed
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+
+    res = handle_test_affected_paths(env, Turn(actor=_actor()), s, DifyBuilderContext(test_input_ref="ti-1"))
+
+    assert res.next == PcState.EDIT_AWAIT_REPAIR
+    assert res.run.status == "failed"
+    assert res.run.error == launch_error
+    assert "notice" not in [i.kind for i in res.items]
