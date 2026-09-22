@@ -24,5 +24,6 @@ runs:
           pnpm: false
           npm: false
         cache: true
-        cache-save: ${{ inputs.cache-save }}
+        # Nested composite post actions can evaluate inputs in the outer scope.
+        cache-save: ${{ inputs.cache-save || 'true' }}
         run-install: ${{ inputs.run-install }}
