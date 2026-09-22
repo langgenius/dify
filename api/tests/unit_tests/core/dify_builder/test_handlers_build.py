@@ -2516,3 +2516,85 @@ def test_a_succeeded_run_that_took_a_branch_and_reached_the_end_is_still_a_pass(
 
     assert res.next == PcState.BUILD_REVIEW
     assert next(i for i in res.items if i.kind == "test_result").payload["subtitle"] == "All checks passed"
+
+
+# Fix round 1 (reviewer Important #1): a legitimate side-effect-only arm that
+# ran to completion is NOT a dead end, even though it has no End node of its
+# own -- its nodes show up in per_node, so the branch node (node2) did route
+# somewhere. Two arms: node2 -> node3 -> node4 (side effect, no End) and
+# node2 -> node5 (End).
+_SIDE_EFFECT_ARM_GRAPH = {
+    "nodes": [
+        {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+        {
+            "id": "node2",
+            "data": {"type": "if-else", "title": "Check", "cases": [{"case_id": "true", "conditions": []}]},
+        },
+        {"id": "node3", "data": {"type": "template-transform", "title": "Prep", "template": "a", "variables": []}},
+        {"id": "node4", "data": {"type": "http-request", "title": "Notify", "method": "get", "url": "https://x"}},
+        {"id": "node5", "data": {"type": "end", "title": "End", "outputs": []}},
+    ],
+    "edges": [
+        {"source": "node1", "target": "node2", "sourceHandle": "source"},
+        {"source": "node2", "target": "node3", "sourceHandle": "true"},
+        {"source": "node3", "target": "node4", "sourceHandle": "source"},
+        {"source": "node2", "target": "node5", "sourceHandle": "false"},
+    ],
+}
+
+
+def test_a_side_effect_only_arm_that_ran_to_completion_is_still_a_pass():
+    """Reviewer Important #1: the run took node2's true-arm through to node4
+    (a side-effect node with no End of its own) and never touched node5's End
+    -- but node3/node4 DO appear in per_node, so node2 did not route nowhere.
+    This must stay green, unlike the genuine ESQ1-303 dead end above."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    dify.graph = _SIDE_EFFECT_ARM_GRAPH
+    dify.run_draft = _succeeded_run(["node1", "node2", "node3", "node4"])
+    env, _ = _new_env(dify=dify)
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+
+    res = handle_test_and_repair(env, Turn(actor=_actor()), s, DifyBuilderContext(test_input_ref="ti-1"))
+
+    assert res.next == PcState.BUILD_REVIEW
+    assert next(i for i in res.items if i.kind == "test_result").payload["subtitle"] == "All checks passed"
+
+
+# Reviewer Important #2: error_strategy == "fail-branch" is not a router --
+# a node that actually took its fail branch reports "exception", not
+# "succeeded". A succeeded fail-branch node in an otherwise-linear graph must
+# not be treated as a branch node at all.
+_FAIL_BRANCH_LINEAR_GRAPH = {
+    "nodes": [
+        {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+        {"id": "node2", "data": {"type": "llm", "title": "LLM", "error_strategy": "fail-branch"}},
+        {"id": "node6", "data": {"type": "end", "title": "End", "outputs": []}},
+    ],
+    "edges": [
+        {"source": "node1", "target": "node2", "sourceHandle": "source"},
+        {"source": "node2", "target": "node6", "sourceHandle": "source"},
+    ],
+}
+
+
+def test_a_succeeded_fail_branch_node_in_a_linear_graph_is_still_a_pass():
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    dify.graph = _FAIL_BRANCH_LINEAR_GRAPH
+    dify.run_draft = _succeeded_run(["node1", "node2", "node6"])
+    env, _ = _new_env(dify=dify)
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+
+    res = handle_test_and_repair(env, Turn(actor=_actor()), s, DifyBuilderContext(test_input_ref="ti-1"))
+
+    assert res.next == PcState.BUILD_REVIEW
+    assert next(i for i in res.items if i.kind == "test_result").payload["subtitle"] == "All checks passed"
