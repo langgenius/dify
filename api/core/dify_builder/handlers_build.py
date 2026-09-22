@@ -43,10 +43,10 @@ from core.dify_builder.handlers_fix import (
     append_card,
     build_change_set,
     build_form_fields,
+    dead_end_branch_node_id,
     emit_canvas,
     first_failed_node,
     is_input_failure,
-    last_branch_node_id,
     launch_error_text,
     merge_known_keys,
     mint_checkpoint,
@@ -809,15 +809,16 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
 
     if status == "succeeded" and run_finished_without_output(graph, per_node):
-        # A branch was taken and no End node ran: the run "succeeded" with
-        # nothing to show (ESQ1-303 -- both if-else edges on undeclared
-        # handles, both arms skipped, outputs={}). Not green; not an engine
-        # error to diagnose either, so it waits at the gate with no staged
-        # repair for the user to edit, keep, or revert.
+        # A branch node ran and none of its arms did -- the engine skipped
+        # every one (ESQ1-303: both if-else edges on undeclared handles) --
+        # and no End node ran either, so the run "succeeded" with nothing to
+        # show. Not green; not an engine error to diagnose either, so it
+        # waits at the gate with no staged repair for the user to edit,
+        # keep, or revert.
         fc.verify_run_id = run.id
         fc.diagnosis = None
         fc.staged_repair = []
-        run.culprit_node_id = last_branch_node_id(graph, per_node)
+        run.culprit_node_id = dead_end_branch_node_id(graph, per_node)
         emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
         test_items = append_card(
             fc,
