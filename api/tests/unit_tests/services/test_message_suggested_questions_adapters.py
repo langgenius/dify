@@ -297,7 +297,7 @@ def test_advanced_chat_debugger_uses_draft_while_explore_uses_published_workflow
             session.add(workflow)
             session.flush()
             if version != Workflow.VERSION_DRAFT:
-                session.execute(update(App).where(App.id == harness.target.id).values(workflow_id=workflow.id))
+                session.execute(update(App).where(App.id == harness.target.id).values({App.workflow_id: workflow.id}))
         session.execute(update(App).where(App.id == harness.target.id).values(mode=AppMode.ADVANCED_CHAT))
         for model, record_id in ((Message, harness.message.id), (Conversation, harness.conversation.id)):
             session.execute(
