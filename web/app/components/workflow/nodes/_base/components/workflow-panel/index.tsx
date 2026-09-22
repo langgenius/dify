@@ -14,7 +14,6 @@ import { cloneElement, memo, useCallback, useEffect, useId, useMemo, useRef, use
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -613,7 +612,10 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                         }}
                       >
                         {isSingleRunning ? (
-                          <Stop aria-hidden className="size-4" />
+                          <span
+                            aria-hidden
+                            className="i-custom-vender-line-mediaAndDevices-stop size-4"
+                          />
                         ) : (
                           <RiPlayLargeLine aria-hidden className="size-4" />
                         )}

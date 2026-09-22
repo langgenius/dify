@@ -1,6 +1,5 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { QA } from '@/models/datasets'
-import { SelectionMod } from '../base/icons/src/public/knowledge'
 
 type ChunkLabelProps = {
   label: string
@@ -11,7 +10,7 @@ const ChunkLabel: FC<ChunkLabelProps> = (props) => {
   const { label, characterCount } = props
   return (
     <div className="flex items-center text-xs font-medium text-text-tertiary">
-      <SelectionMod className="size-2.5" />
+      <span aria-hidden className="i-custom-public-knowledge-selection-mod size-2.5" />
       <p className="ml-0.5 flex gap-2">
         <span>{label}</span>
         <span>·</span>

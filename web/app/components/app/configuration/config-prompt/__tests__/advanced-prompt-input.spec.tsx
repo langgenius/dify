@@ -30,11 +30,6 @@ vi.mock('@remixicon/react', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/base/icons/src/vender/line/files', () => ({
-  Copy: ({ onClick }: { onClick: () => void }) => <button onClick={onClick}>copy-prompt</button>,
-  CopyCheck: () => <span>copy-checked</span>,
-}))
-
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
@@ -135,7 +130,13 @@ describe('AdvancedPromptInput', () => {
 
     fireEvent.click(screen.getByText('change-advanced'))
     fireEvent.click(screen.getByText('selector:user'))
-    fireEvent.click(screen.getByText('copy-prompt'))
+    const copyButton = screen.getByRole('button', { name: 'common.operation.copy' })
+    copyButton.focus()
+    fireEvent.click(copyButton)
+    expect(copyButton).toHaveFocus()
+    expect(copyButton).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(copyButton)
+    expect(mockCopy).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByText('delete-prompt'))
 
     expect(mockOnChange).toHaveBeenCalledWith('Updated {{new_var}}')
