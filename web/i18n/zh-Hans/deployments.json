@@ -40,6 +40,7 @@
   "studio.accessControl.chipOff": "关闭",
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} / {{m}}",
+  "studio.accessControl.chipPaused": "暂停",
   "studio.accessControl.createIpPolicy": "添加 IP 策略",
   "studio.accessControl.description": "通过应用 IP 策略来控制对当前应用的访问。",
   "studio.accessControl.downgradeDescription": "访问控制需要 Pro 套餐。",

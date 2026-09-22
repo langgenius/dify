@@ -40,6 +40,7 @@
   "studio.accessControl.chipOff": "Off",
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} of {{m}}",
+  "studio.accessControl.chipPaused": "Pauză",
   "studio.accessControl.createIpPolicy": "Adăugați o politică IP",
   "studio.accessControl.description": "Controlați accesul la această aplicație aplicând o politică IP.",
   "studio.accessControl.downgradeDescription": "Access control needs the Pro plan.",

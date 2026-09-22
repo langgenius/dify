@@ -40,6 +40,7 @@
   "studio.accessControl.chipOff": "Off",
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} of {{m}}",
+  "studio.accessControl.chipPaused": "Tạm dừng",
   "studio.accessControl.createIpPolicy": "Thêm chính sách IP",
   "studio.accessControl.description": "Kiểm soát quyền truy cập ứng dụng này bằng cách áp dụng chính sách IP.",
   "studio.accessControl.downgradeDescription": "Access control needs the Pro plan.",

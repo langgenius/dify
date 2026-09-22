@@ -40,6 +40,7 @@
   "studio.accessControl.chipOff": "Off",
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} of {{m}}",
+  "studio.accessControl.chipPaused": "ຢຸດຊົ່ວຄາວ",
   "studio.accessControl.createIpPolicy": "ເພີ່ມນະໂຍບາຍ IP",
   "studio.accessControl.description": "ຄວບຄຸມການເຂົ້າເຖິງແອັບນີ້ໂດຍນຳໃຊ້ນະໂຍບາຍ IP.",
   "studio.accessControl.downgradeDescription": "Access control needs the Pro plan.",

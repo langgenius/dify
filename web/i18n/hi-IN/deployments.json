@@ -40,6 +40,7 @@
   "studio.accessControl.chipOff": "Off",
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} of {{m}}",
+  "studio.accessControl.chipPaused": "रुका हुआ",
   "studio.accessControl.createIpPolicy": "IP नीति जोड़ें",
   "studio.accessControl.description": "IP नीति लागू करके इस ऐप तक पहुँच नियंत्रित करें।",
   "studio.accessControl.downgradeDescription": "Access control needs the Pro plan.",

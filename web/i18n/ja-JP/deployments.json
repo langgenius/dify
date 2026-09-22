@@ -40,6 +40,7 @@
   "studio.accessControl.chipOff": "オフ",
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} / {{m}}",
+  "studio.accessControl.chipPaused": "一時停止",
   "studio.accessControl.createIpPolicy": "IP ポリシーを追加",
   "studio.accessControl.description": "IP ポリシーを適用して、このアプリへのアクセスを制御します。",
   "studio.accessControl.downgradeDescription": "アクセス制御には Pro プランが必要です。",
