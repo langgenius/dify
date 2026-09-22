@@ -183,7 +183,9 @@ describe('RunMode', () => {
     it('should call handleStopRun with task_id when stop clicked', () => {
       render(<RunMode />)
 
-      fireEvent.click(screen.getByTestId('stop-icon').closest('button')!)
+      fireEvent.click(
+        screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+      )
 
       expect(mockHandleStopRun).toHaveBeenCalledWith('task-1')
     })
@@ -227,7 +229,7 @@ describe('RunMode', () => {
     it('should cancel preparing when close clicked', () => {
       render(<RunMode />)
 
-      fireEvent.click(screen.getByTestId('close-icon').closest('button')!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(false)
       expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(false)

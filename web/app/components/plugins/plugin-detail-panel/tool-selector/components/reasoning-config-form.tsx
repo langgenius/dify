@@ -4,6 +4,7 @@ import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -19,7 +20,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -148,8 +148,11 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const fieldTitle = getFieldTitle(label, language)
     const tooltipText = tooltip?.[language] || tooltip?.en_US
     const tooltipContent = tooltipText && (
-      <Infotip aria-label={tooltipText} className="ml-0.5 size-4" popupClassName="w-[200px]">
-        {tooltipText}
+      <Infotip>
+        <InfotipTrigger aria-label={tooltipText} className="ml-0.5" />
+        <InfotipContent aria-label={tooltipText} className="w-50">
+          {tooltipText}
+        </InfotipContent>
       </Infotip>
     )
     const varInput = value[variable]!.value
@@ -208,7 +211,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                     </button>
                   }
                 />
-                <TooltipContent className="system-xs-medium text-text-secondary">
+                <TooltipContent>
                   {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>

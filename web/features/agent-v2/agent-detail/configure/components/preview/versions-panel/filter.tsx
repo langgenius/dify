@@ -2,7 +2,6 @@
 
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type AgentVersionFilter = 'all' | 'onlyYours'
@@ -39,11 +38,10 @@ export function VersionFilter({
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tWorkflow } = useTranslation('workflow')
-  const [open, setOpen] = useState(false)
   const isFiltering = filterValue !== 'all'
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         nativeButton={false}
         render={

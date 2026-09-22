@@ -176,7 +176,7 @@ export const InTooltip: Story = {
         }
       />
       <TooltipContent className="flex items-center gap-1">
-        <span>Collapse sidebar</span>
+        <span className="px-0.5">Collapse sidebar</span>
         <HotkeyKbdGroup hotkey="Mod+B" />
       </TooltipContent>
     </Tooltip>

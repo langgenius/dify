@@ -1086,14 +1086,10 @@ class AppExportApi(Resource):
                     tenant_id=app_model.tenant_id, agent_id=agent_id, version_id=req_data.version_id
                 )
             else:
-                exported = AppPackageService().export(
-                    dsl=AppDslService.export_dsl(
-                        app_model=app_model,
-                        session=db.session(),
-                        include_secret=req_data.include_secret,
-                        workflow_id=req_data.workflow_id,
-                    ),
-                    name=app_model.name,
+                exported = AppPackageService().export_app(
+                    app_model=app_model,
+                    include_secret=req_data.include_secret,
+                    workflow_id=req_data.workflow_id,
                 )
             try:
                 archive_response = send_file(

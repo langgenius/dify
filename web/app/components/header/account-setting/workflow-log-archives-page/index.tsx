@@ -7,7 +7,7 @@ import type {
 } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -408,34 +408,33 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
         {formatBytes(archive.archive_bytes)}
       </td>
       <td className="px-2 py-3 text-center">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                size="small"
-                variant="secondary"
-                loading={isPreparing}
-                className="px-2"
-                aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
-                onClick={onAction}
-              >
-                {!isPreparing && (
-                  <span className={cn(buttonIconClassName, 'size-3.5')} aria-hidden="true" />
-                )}
-                <span id={downloadActionLabelId}>{buttonContent}</span>
-              </Button>
-            }
-          />
-          <TooltipContent
-            placement="top"
-            className={cn(
-              'max-w-65 text-center text-text-tertiary',
-              isFailed && 'max-w-75 text-start wrap-anywhere whitespace-pre-wrap',
-            )}
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            size="small"
+            variant="secondary"
+            loading={isPreparing}
+            className="px-2"
+            aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
+            onClick={onAction}
           >
-            {downloadHint}
-          </TooltipContent>
-        </Tooltip>
+            {!isPreparing && (
+              <span className={cn(buttonIconClassName, 'size-3.5')} aria-hidden="true" />
+            )}
+            <span id={downloadActionLabelId}>{buttonContent}</span>
+          </Button>
+          <Infotip>
+            <InfotipTrigger
+              aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
+              iconVariant={isFailed ? 'warning' : 'information'}
+            />
+            <InfotipContent
+              aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
+              className="whitespace-pre-wrap"
+            >
+              {downloadHint}
+            </InfotipContent>
+          </Infotip>
+        </div>
       </td>
     </tr>
   )

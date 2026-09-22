@@ -1,7 +1,7 @@
 'use client'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Infotip } from '@/app/components/base/infotip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 
 type Props = Readonly<{
   className?: string
@@ -35,8 +35,11 @@ export default function CheckboxWithLabel({
       </label>
       <div className="ml-1 flex min-w-0 items-center">
         {tooltip && (
-          <Infotip aria-label={tooltip} popupClassName="w-[200px]">
-            {tooltip}
+          <Infotip>
+            <InfotipTrigger aria-label={tooltip} />
+            <InfotipContent aria-label={tooltip} className="w-50">
+              {tooltip}
+            </InfotipContent>
           </Infotip>
         )}
       </div>

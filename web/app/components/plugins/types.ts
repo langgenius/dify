@@ -6,21 +6,25 @@ import type { ToolCredential } from '@/app/components/tools/types'
 import type { Locale } from '@/i18n/locale'
 import type { PluginLanguage } from '@/i18n/metadata'
 
-export enum PluginCategoryEnum {
-  tool = 'tool',
-  model = 'model',
-  extension = 'extension',
-  agent = 'agent-strategy',
-  datasource = 'datasource',
-  trigger = 'trigger',
-}
+export const PluginCategoryEnum = {
+  tool: 'tool',
+  model: 'model',
+  extension: 'extension',
+  agent: 'agent-strategy',
+  datasource: 'datasource',
+  trigger: 'trigger',
+} as const
 
-export enum PluginSource {
-  marketplace = 'marketplace',
-  github = 'github',
-  local = 'package',
-  debugging = 'remote',
-}
+export type PluginCategoryEnum = (typeof PluginCategoryEnum)[keyof typeof PluginCategoryEnum]
+
+export const PluginSource = {
+  marketplace: 'marketplace',
+  github: 'github',
+  local: 'package',
+  debugging: 'remote',
+} as const
+
+export type PluginSource = (typeof PluginSource)[keyof typeof PluginSource]
 
 type PluginToolDeclaration = {
   identity: {
@@ -197,11 +201,14 @@ export type PluginManifestInMarket = {
   from: Dependency['type']
 }
 
-export enum SupportedCreationMethods {
-  OAUTH = 'OAUTH',
-  APIKEY = 'APIKEY',
-  MANUAL = 'MANUAL',
-}
+export const SupportedCreationMethods = {
+  OAUTH: 'OAUTH',
+  APIKEY: 'APIKEY',
+  MANUAL: 'MANUAL',
+} as const
+
+export type SupportedCreationMethods =
+  (typeof SupportedCreationMethods)[keyof typeof SupportedCreationMethods]
 
 export type PluginDetail = {
   id: string
@@ -264,11 +271,13 @@ export type Plugin = {
   from: Dependency['type']
 }
 
-export enum PermissionType {
-  everyone = 'everyone',
-  admin = 'admins',
-  noOne = 'noone',
-}
+export const PermissionType = {
+  everyone: 'everyone',
+  admin: 'admins',
+  noOne: 'noone',
+} as const
+
+export type PermissionType = (typeof PermissionType)[keyof typeof PermissionType]
 
 export type Permissions = {
   install_permission: PermissionType
@@ -314,14 +323,17 @@ export type UpdatePluginModalType = UpdatePluginPayload & {
   onSave: () => void | Promise<void>
 }
 
-export enum InstallStepFromGitHub {
-  setUrl = 'url',
-  selectPackage = 'selecting',
-  readyToInstall = 'readyToInstall',
-  uploadFailed = 'uploadFailed',
-  installed = 'installed',
-  installFailed = 'failed',
-}
+export const InstallStepFromGitHub = {
+  setUrl: 'url',
+  selectPackage: 'selecting',
+  readyToInstall: 'readyToInstall',
+  uploadFailed: 'uploadFailed',
+  installed: 'installed',
+  installFailed: 'failed',
+} as const
+
+export type InstallStepFromGitHub =
+  (typeof InstallStepFromGitHub)[keyof typeof InstallStepFromGitHub]
 
 export type InstallState = {
   step: InstallStepFromGitHub
@@ -345,14 +357,16 @@ export type EndpointsResponse = {
   total: number
   page: number
 }
-export enum InstallStep {
-  uploading = 'uploading',
-  uploadFailed = 'uploadFailed',
-  readyToInstall = 'readyToInstall',
-  installing = 'installing',
-  installed = 'installed',
-  installFailed = 'failed',
-}
+export const InstallStep = {
+  uploading: 'uploading',
+  uploadFailed: 'uploadFailed',
+  readyToInstall: 'readyToInstall',
+  installing: 'installing',
+  installed: 'installed',
+  installFailed: 'failed',
+} as const
+
+export type InstallStep = (typeof InstallStep)[keyof typeof InstallStep]
 
 type GitHubAsset = {
   id: number
@@ -400,12 +414,14 @@ export type DebugInfo = {
   port: number
 }
 
-export enum TaskStatus {
-  pending = 'pending',
-  running = 'running',
-  success = 'success',
-  failed = 'failed',
-}
+export const TaskStatus = {
+  pending: 'pending',
+  running: 'running',
+  success: 'success',
+  failed: 'failed',
+} as const
+
+export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus]
 
 export type PluginStatus = {
   plugin_unique_identifier: string

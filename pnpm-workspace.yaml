@@ -96,6 +96,7 @@ catalog:
   '@remixicon/react': 4.9.0
   '@rgrove/parse-xml': 5.0.0
   '@sentry/react': 10.75.0
+  '@shadcn/lint': 0.1.3
   '@storybook/addon-a11y': 10.6.0
   '@storybook/addon-docs': 10.6.0
   '@storybook/addon-links': 10.6.0
@@ -129,6 +130,7 @@ catalog:
   '@types/lockfile': 1.0.4
   '@types/negotiator': 0.6.5
   '@types/node': 25.9.7
+  '@types/picomatch': 4.0.3
   '@types/qs': 6.15.1
   '@types/react': 19.3.0
   '@types/react-dom': 19.3.0
@@ -139,6 +141,7 @@ catalog:
   '@vitejs/plugin-rsc': 0.5.35
   '@vitest/browser-playwright': 4.1.11
   '@vitest/coverage-v8': 4.1.11
+  '@xmldom/xmldom': 0.9.12
   abcjs: 6.7.0
   agentation: 3.0.2
   ahooks: 3.10.0
@@ -219,6 +222,7 @@ catalog:
   open: 11.0.4
   ora: 9.4.1
   picocolors: 1.1.1
+  picomatch: 4.0.7
   pinyin-pro: 3.29.4
   playwright: 1.63.0
   postcss: 8.5.28
@@ -238,6 +242,7 @@ catalog:
   remark-directive: 4.0.0
   scheduler: 0.28.0
   server-only: 0.0.1
+  sharp: 0.35.4
   shiki: 4.4.3
   socket.io-client: 4.8.3
   sortablejs: 1.15.7
@@ -245,6 +250,7 @@ catalog:
   storybook: 10.6.0
   streamdown: 2.6.0
   string-ts: 2.3.1
+  svgo: 4.1.0
   tailwindcss: 4.3.3
   tldts: 7.4.13
   tsx: 4.23.13

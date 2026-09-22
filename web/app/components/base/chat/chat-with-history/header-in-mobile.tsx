@@ -82,12 +82,11 @@ const HeaderInMobile = () => {
     },
     [showRename, handleRenameConversation, handleCancelRename],
   )
-  const [showSidebar, setShowSidebar] = useState(false)
   const [showChatSettings, setShowChatSettings] = useState(false)
 
   return (
     <>
-      <Dialog open={showSidebar} onOpenChange={setShowSidebar}>
+      <Dialog>
         <div className="flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3">
           <DialogTrigger
             render={

@@ -18,13 +18,15 @@ import {
 import { useTranslation } from 'react-i18next'
 import { OptionRow, SingleOptionTrigger, useShortcutMenu } from './test-run-menu-helpers'
 
-export enum TriggerType {
-  UserInput = 'user_input',
-  Schedule = 'schedule',
-  Webhook = 'webhook',
-  Plugin = 'plugin',
-  All = 'all',
-}
+export const TriggerType = {
+  UserInput: 'user_input',
+  Schedule: 'schedule',
+  Webhook: 'webhook',
+  Plugin: 'plugin',
+  All: 'all',
+} as const
+
+export type TriggerType = (typeof TriggerType)[keyof typeof TriggerType]
 
 export type TriggerOption = {
   id: string

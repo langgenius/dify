@@ -165,8 +165,8 @@ export function OutputEditCard({
             </CollapsibleTrigger>
             <CollapsiblePanel className="border-t border-divider-subtle">
               <div className="px-3 py-2">
-                <Field name="defaultValue" className="gap-1">
-                  <FieldLabel className="py-0 system-xs-medium text-text-secondary">
+                <Field name="defaultValue">
+                  <FieldLabel className="system-xs-medium">
                     {t(($) => $['nodes.agent.outputVars.defaultValueLabel'], { ns: 'workflow' })}
                   </FieldLabel>
                   <Textarea
@@ -175,7 +175,7 @@ export function OutputEditCard({
                     placeholder={t(($) => $['nodes.agent.outputVars.defaultValuePlaceholder'], {
                       ns: 'workflow',
                     })}
-                    className="mt-1 min-h-6"
+                    className="min-h-6"
                     onValueChange={(defaultValue) => updateDraft({ defaultValue })}
                   />
                   {defaultValueErrorKey && (

@@ -7,6 +7,7 @@ import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { formLabelClassName, textControlCompoundInputFocusClassName } from '../form-control-shared'
+import { resolveClassName } from '../internals/resolve-class-name'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
@@ -113,9 +114,8 @@ const comboboxTriggerVariants = cva(
   },
 )
 
-type ComboboxTriggerProps = Omit<BaseCombobox.Trigger.Props, 'className'> &
+type ComboboxTriggerProps = BaseCombobox.Trigger.Props &
   VariantProps<typeof comboboxTriggerVariants> & {
-    className?: string
     icon?: React.ReactNode | false
   }
 
@@ -130,7 +130,9 @@ function ComboboxTrigger({
   return (
     <BaseCombobox.Trigger
       type={type}
-      className={cn(comboboxTriggerVariants({ size, className }))}
+      className={(state) =>
+        cn(comboboxTriggerVariants({ size, className: resolveClassName(className, state) }))
+      }
       {...props}
     >
       <span className="min-w-0 grow truncate">{children}</span>
@@ -169,13 +171,15 @@ const comboboxInputGroupVariants = cva(
   },
 )
 
-type ComboboxInputGroupProps = Omit<BaseCombobox.InputGroup.Props, 'className'> &
-  VariantProps<typeof comboboxInputGroupVariants> & { className?: string }
+type ComboboxInputGroupProps = BaseCombobox.InputGroup.Props &
+  VariantProps<typeof comboboxInputGroupVariants>
 
 function ComboboxInputGroup({ className, size = 'medium', ...props }: ComboboxInputGroupProps) {
   return (
     <BaseCombobox.InputGroup
-      className={cn(comboboxInputGroupVariants({ size }), className)}
+      className={(state) =>
+        cn(comboboxInputGroupVariants({ size }), resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -202,8 +206,8 @@ const comboboxInputVariants = cva(
   },
 )
 
-type ComboboxInputProps = Omit<BaseCombobox.Input.Props, 'className' | 'size'> &
-  VariantProps<typeof comboboxInputVariants> & { className?: string }
+type ComboboxInputProps = Omit<BaseCombobox.Input.Props, 'size'> &
+  VariantProps<typeof comboboxInputVariants>
 
 function ComboboxInput({
   className,
@@ -214,7 +218,7 @@ function ComboboxInput({
   return (
     <BaseCombobox.Input
       autoComplete={autoComplete}
-      className={cn(comboboxInputVariants({ size }), className)}
+      className={(state) => cn(comboboxInputVariants({ size }), resolveClassName(className, state))}
       {...props}
     />
   )
@@ -244,8 +248,7 @@ const comboboxControlVariants = cva(
   },
 )
 
-type ComboboxClearProps = Omit<BaseCombobox.Clear.Props, 'className'> &
-  VariantProps<typeof comboboxControlVariants> & { className?: string }
+type ComboboxClearProps = BaseCombobox.Clear.Props & VariantProps<typeof comboboxControlVariants>
 
 function ComboboxClear({
   className,
@@ -258,11 +261,13 @@ function ComboboxClear({
     <BaseCombobox.Clear
       type={type}
       aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Clear combobox')}
-      className={cn(
-        comboboxControlVariants({ size }),
-        'data-ending-style:opacity-0 data-starting-style:opacity-0',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          comboboxControlVariants({ size }),
+          'data-ending-style:opacity-0 data-starting-style:opacity-0',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     >
       {children ?? <span className="i-ri-close-line size-4" aria-hidden="true" />}
@@ -270,8 +275,8 @@ function ComboboxClear({
   )
 }
 
-type ComboboxInputTriggerProps = Omit<BaseCombobox.Trigger.Props, 'className'> &
-  VariantProps<typeof comboboxControlVariants> & { className?: string }
+type ComboboxInputTriggerProps = BaseCombobox.Trigger.Props &
+  VariantProps<typeof comboboxControlVariants>
 
 function ComboboxInputTrigger({
   className,
@@ -286,7 +291,9 @@ function ComboboxInputTrigger({
       aria-label={
         props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Open combobox options')
       }
-      className={cn(comboboxControlVariants({ size }), className)}
+      className={(state) =>
+        cn(comboboxControlVariants({ size }), resolveClassName(className, state))
+      }
       {...props}
     >
       {children ?? <span className="i-ri-arrow-down-s-line size-4" aria-hidden="true" />}
@@ -294,14 +301,14 @@ function ComboboxInputTrigger({
   )
 }
 
-type ComboboxIconProps = Omit<BaseCombobox.Icon.Props, 'className'> & {
-  className?: string
-}
+type ComboboxIconProps = BaseCombobox.Icon.Props
 
 function ComboboxIcon({ className, children, ...props }: ComboboxIconProps) {
   return (
     <BaseCombobox.Icon
-      className={cn('flex shrink-0 items-center text-text-tertiary', className)}
+      className={(state) =>
+        cn('flex shrink-0 items-center text-text-tertiary', resolveClassName(className, state))
+      }
       {...props}
     >
       {children ?? <span className="i-ri-arrow-down-s-line size-4" aria-hidden="true" />}
@@ -312,11 +319,7 @@ function ComboboxIcon({ className, children, ...props }: ComboboxIconProps) {
 const ComboboxPortal = BaseCombobox.Portal
 type ComboboxPortalProps = BaseCombobox.Portal.Props
 
-type ComboboxPositionerProps = Omit<
-  BaseCombobox.Positioner.Props,
-  'className' | 'side' | 'align'
-> & {
-  className?: string
+type ComboboxPositionerProps = Omit<BaseCombobox.Positioner.Props, 'side' | 'align'> & {
   placement?: Placement
 }
 
@@ -333,41 +336,53 @@ function ComboboxPositioner({
       side={side}
       align={align}
       sideOffset={sideOffset}
-      className={cn('z-50 outline-hidden', className)}
+      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
-type ComboboxPopupProps = Omit<BaseCombobox.Popup.Props, 'className'> & {
-  className?: string
-}
+type ComboboxPopupProps = BaseCombobox.Popup.Props
 
 function ComboboxPopup({ className, ...props }: ComboboxPopupProps) {
   return (
     <BaseCombobox.Popup
-      className={cn(comboboxPopupClassName, floatingPopupAnimationClassName, className)}
+      className={(state) =>
+        cn(
+          comboboxPopupClassName,
+          floatingPopupAnimationClassName,
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type ComboboxListProps<Item = unknown> = Omit<BaseCombobox.List.Props, 'children' | 'className'> & {
-  className?: string
+type ComboboxListProps<Item = unknown> = Omit<BaseCombobox.List.Props, 'children'> & {
   children?: React.ReactNode | ((item: Item, index: number) => React.ReactNode)
 }
 
 function ComboboxList<Item = unknown>({ className, ...props }: ComboboxListProps<Item>) {
-  return <BaseCombobox.List className={cn(comboboxListClassName, className)} {...props} />
+  return (
+    <BaseCombobox.List
+      className={(state) => cn(comboboxListClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
-type ComboboxItemProps<Value = unknown> = Omit<BaseCombobox.Item.Props, 'className' | 'value'> & {
-  className?: string
+type ComboboxItemProps<Value = unknown> = Omit<BaseCombobox.Item.Props, 'value'> & {
   value?: Value
 }
 
 function ComboboxItem<Value = unknown>({ className, ...props }: ComboboxItemProps<Value>) {
-  return <BaseCombobox.Item className={cn(comboboxItemClassName, className)} {...props} />
+  return (
+    <BaseCombobox.Item
+      className={(state) => cn(comboboxItemClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
 type ComboboxItemTextProps = React.ComponentProps<'span'>
@@ -381,7 +396,7 @@ function ComboboxItemText({ className, ...props }: ComboboxItemTextProps) {
 function ComboboxItemIndicator({ className, children, ...props }: ComboboxItemIndicatorProps) {
   return (
     <BaseCombobox.ItemIndicator
-      className={cn(floatingItemIndicatorClassName, className)}
+      className={(state) => cn(floatingItemIndicatorClassName, resolveClassName(className, state))}
       {...props}
     >
       {children ?? <span className="i-ri-check-line h-4 w-4" aria-hidden="true" />}
@@ -389,93 +404,102 @@ function ComboboxItemIndicator({ className, children, ...props }: ComboboxItemIn
   )
 }
 
-type ComboboxItemIndicatorProps = Omit<
-  BaseCombobox.ItemIndicator.Props,
-  'children' | 'className'
-> & {
+type ComboboxItemIndicatorProps = Omit<BaseCombobox.ItemIndicator.Props, 'children'> & {
   children?: React.ReactNode
-  className?: string
 }
 
-type ComboboxLabelProps = Omit<BaseCombobox.Label.Props, 'className'> & {
-  className?: string
-}
+type ComboboxLabelProps = BaseCombobox.Label.Props
 
 function ComboboxLabel({ className, ...props }: ComboboxLabelProps) {
-  return <BaseCombobox.Label className={cn(formLabelClassName, className)} {...props} />
-}
-
-type ComboboxGroupLabelProps = Omit<BaseCombobox.GroupLabel.Props, 'className'> & {
-  className?: string
-}
-
-function ComboboxGroupLabel({ className, ...props }: ComboboxGroupLabelProps) {
   return (
-    <BaseCombobox.GroupLabel className={cn(floatingGroupLabelClassName, className)} {...props} />
+    <BaseCombobox.Label
+      className={(state) => cn(formLabelClassName, resolveClassName(className, state))}
+      {...props}
+    />
   )
 }
 
-type ComboboxSeparatorProps = Omit<BaseCombobox.Separator.Props, 'className'> & {
-  className?: string
+type ComboboxGroupLabelProps = BaseCombobox.GroupLabel.Props
+
+function ComboboxGroupLabel({ className, ...props }: ComboboxGroupLabelProps) {
+  return (
+    <BaseCombobox.GroupLabel
+      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
+
+type ComboboxSeparatorProps = BaseCombobox.Separator.Props
 
 function ComboboxSeparator({ className, ...props }: ComboboxSeparatorProps) {
-  return <BaseCombobox.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
+  return (
+    <BaseCombobox.Separator
+      className={(state) => cn(floatingSeparatorClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
-type ComboboxEmptyProps = Omit<BaseCombobox.Empty.Props, 'className'> & {
-  className?: string
-}
+type ComboboxEmptyProps = BaseCombobox.Empty.Props
 
 function ComboboxEmpty({ className, ...props }: ComboboxEmptyProps) {
   return (
     <BaseCombobox.Empty
-      className={cn(
-        'px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type ComboboxStatusProps = Omit<BaseCombobox.Status.Props, 'className'> & {
-  className?: string
-}
+type ComboboxStatusProps = BaseCombobox.Status.Props
 
 function ComboboxStatus({ className, ...props }: ComboboxStatusProps) {
   return (
     <BaseCombobox.Status
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary empty:p-0', className)}
+      className={(state) =>
+        cn(
+          'px-3 py-2 system-sm-regular text-text-tertiary empty:p-0',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type ComboboxChipsProps = Omit<BaseCombobox.Chips.Props, 'className'> & {
-  className?: string
-}
+type ComboboxChipsProps = BaseCombobox.Chips.Props
 
 function ComboboxChips({ className, ...props }: ComboboxChipsProps) {
   return (
     <BaseCombobox.Chips
-      className={cn('flex w-full min-w-0 flex-wrap items-center gap-1 px-1', className)}
+      className={(state) =>
+        cn(
+          'flex w-full min-w-0 flex-wrap items-center gap-1 px-1',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type ComboboxChipProps = Omit<BaseCombobox.Chip.Props, 'className'> & {
-  className?: string
-}
+type ComboboxChipProps = BaseCombobox.Chip.Props
 
 function ComboboxChip({ className, ...props }: ComboboxChipProps) {
   return (
     <BaseCombobox.Chip
-      className={cn(
-        'inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-state-base-hover px-1.5 py-0.5 system-xs-medium text-text-secondary',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-state-base-hover px-1.5 py-0.5 system-xs-medium text-text-secondary',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
@@ -493,10 +517,12 @@ function ComboboxChipRemove({
       aria-label={
         props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Remove selected item')
       }
-      className={cn(
-        'flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     >
       {children ?? <span className="i-ri-close-line size-3" aria-hidden="true" />}
@@ -504,9 +530,7 @@ function ComboboxChipRemove({
   )
 }
 
-type ComboboxChipRemoveProps = Omit<BaseCombobox.ChipRemove.Props, 'className'> & {
-  className?: string
-}
+type ComboboxChipRemoveProps = BaseCombobox.ChipRemove.Props
 
 export {
   Combobox,

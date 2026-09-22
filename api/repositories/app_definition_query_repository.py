@@ -25,7 +25,7 @@ from services.app_definition_query_service import (
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
 
 
-def _map_site_configuration(site: Site) -> AppSiteConfiguration:
+def map_site_configuration(site: Site) -> AppSiteConfiguration:
     return AppSiteConfiguration(
         title=site.title,
         chat_color_theme=site.chat_color_theme,
@@ -175,7 +175,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             if site is None:
                 return None
 
-            return _map_site_configuration(site)
+            return map_site_configuration(site)
 
     def get_runtime_record(self, app_id: str) -> WebAppRuntimeRecord | None:
         with self._session_factory() as session:
@@ -194,7 +194,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             app_id = app.id
             tenant_id = app.tenant_id
             enable_site = app.enable_site
-            site_configuration = _map_site_configuration(site)
+            site_configuration = map_site_configuration(site)
             plan = tenant.plan
             tenant_status = tenant.status.value
             tenant_custom_config_json = tenant.custom_config

@@ -1,5 +1,6 @@
 import json
 from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -26,6 +27,7 @@ from models.agent_config_entities import AgentConfigFileRefConfig, AgentConfigSk
 from models.dataset import Dataset
 from models.enums import AppStatus
 from models.model import App, AppMode
+from models.tools import ToolFile
 from models.workflow import Workflow, WorkflowType
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
@@ -36,6 +38,7 @@ from services.agent.dsl_entities import (
 )
 from services.agent.dsl_service import AgentDslService, AgentPackageImportResult, is_agent_v2_graph
 from services.entities.dsl_entities import DslImportWarning
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _agent(
@@ -415,7 +418,7 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(
     soul = AgentSoulConfig(config_note="portable")
     warning = DslImportWarning(code="setup", path="agent.soul", message="setup required")
     service.resolve_package_soul = Mock(return_value=(soul, [warning]))
-    service._unique_roster_name = Mock(return_value="Portable Agent import")
+    service.unique_roster_name = Mock(return_value="Portable Agent import")
     agent = _agent()
     agent.active_config_snapshot_id = "snapshot-1"
     agent.active_config_is_published = True
@@ -906,6 +909,56 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(
     }
 
 
+@pytest.mark.parametrize(
+    ("field", "file_kind"),
+    [("config_skills", "tool_file"), ("config_files", "tool_file"), ("config_files", "upload_file")],
+)
+@pytest.mark.parametrize("availability", ["local", "foreign", "deleted", "invalid_id"])
+def test_resolve_legacy_package_asset_references(
+    sqlite_session: Session, field: str, file_kind: str, availability: str
+) -> None:
+    tenant_id = "tenant-2" if availability == "foreign" else "tenant-1"
+    file_id = "legacy-file-id" if availability == "invalid_id" else str(uuid4())
+    if availability in {"local", "foreign"}:
+        if file_kind == "upload_file":
+            row = make_upload_file(file_id=file_id, tenant_id=tenant_id)
+        else:
+            row = ToolFile(
+                tenant_id=tenant_id,
+                user_id="account-1",
+                conversation_id=None,
+                file_key="tools/asset.zip",
+                mimetype="application/zip",
+            )
+            row.id = file_id
+        sqlite_session.add(row)
+        sqlite_session.flush()
+    package = AgentPackage.model_validate(
+        {
+            "metadata": {"name": "Legacy Agent"},
+            "soul": {field: [{"name": "asset", "file_kind": file_kind, "file_id": file_id, "size": 42}]},
+        }
+    )
+
+    resolved, warnings = AgentDslService(sqlite_session).resolve_package_soul(
+        tenant_id="tenant-1", package=package, package_path="agent_packages.agent_1"
+    )
+
+    ref = (resolved.config_skills if field == "config_skills" else resolved.config_files)[0]
+    assert ref.is_missing is (availability != "local")
+    assert ref.file_id == (file_id if availability == "local" else "")
+    assert ref.name == "asset"
+    assert ref.size == 42
+    original_ref = (package.soul.config_skills if field == "config_skills" else package.soul.config_files)[0]
+    assert original_ref.file_id == file_id
+    if availability == "local":
+        assert warnings == []
+    else:
+        kind = "skill" if field == "config_skills" else "file"
+        assert [warning.code for warning in warnings] == [f"agent_{kind}_missing"]
+        assert warnings[0].path == f"agent_packages.agent_1.soul.{field}.0"
+
+
 def test_create_snapshot_increments_version_and_records_revision(sqlite_session: Session) -> None:
     agent = _agent()
     sqlite_session.add_all(
@@ -946,7 +999,7 @@ def test_unique_roster_name_uses_first_available_suffix(sqlite_session: Session)
     )
     sqlite_session.commit()
 
-    result = AgentDslService(sqlite_session)._unique_roster_name(tenant_id="tenant-1", requested="Agent")
+    result = AgentDslService(sqlite_session).unique_roster_name(tenant_id="tenant-1", requested="Agent")
 
     assert result == "Agent import 2"
 

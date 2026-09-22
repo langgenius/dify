@@ -1544,7 +1544,7 @@ describe('MainNav', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('separates pinned and unpinned installed web apps', async () => {
+  it('keeps pinned and unpinned installed web apps in one accessible list', async () => {
     mockInstalledApps = [
       createInstalledApp({
         id: 'installed-1',
@@ -1562,7 +1562,7 @@ describe('MainNav', () => {
 
     expect(await screen.findByText('Pinned App')).toBeInTheDocument()
     expect(screen.getByText('Unpinned App')).toBeInTheDocument()
-    expect(screen.getByTestId('divider')).toBeInTheDocument()
+
     const rows = within(
       screen.getByRole('navigation', { name: 'explore.sidebar.webApps' }),
     ).getAllByRole('listitem')

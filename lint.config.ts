@@ -6,6 +6,33 @@ import path from 'node:path'
 const rootDir = import.meta.dirname
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
+
+export const hintContentRules = {
+  'shadcn/no-restyle': [
+    'error',
+    {
+      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip)$'],
+      allow: ['*'],
+      contracts: [
+        {
+          pattern: '^TooltipContent$',
+          allow: ['flex', 'items-center', 'gap-1', 'w-*', 'max-w-*'],
+          // `flex` also names a shadcn class group; allow display flex without flex sizing.
+          deny: ['flex-*'],
+          message:
+            '"{{className}}" is outside the TooltipContent styling contract. Use the default surface, spacing, and typography from packages/dify-ui/src/tooltip/index.tsx; callers may compose a label/shortcut row or constrain width.',
+        },
+        {
+          pattern: '^InfotipContent$',
+          allow: ['w-*', 'max-w-*', 'whitespace-pre-wrap'],
+          message:
+            '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
+        },
+      ],
+    },
+  ],
+} satisfies NonNullable<OxlintConfig['rules']>
+
 const tailwindCanonicalClassesOverride = {
   files: [
     'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
@@ -174,6 +201,7 @@ export const lintConfig = {
   // Keep JavaScript plugins ordered by rule namespace. The `-js` aliases distinguish
   // plugins that supplement an active native Oxlint plugin with the same namespace.
   jsPlugins: [
+    '@shadcn/lint',
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
@@ -807,6 +835,10 @@ export const lintConfig = {
     {
       files: ['web/**/*.{jsx,tsx}', 'packages/dify-ui/**/*.{jsx,tsx}'],
       rules: jsxA11yRules,
+    },
+    {
+      files: ['web/**/*.{jsx,tsx}'],
+      rules: hintContentRules,
     },
     {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],

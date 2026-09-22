@@ -40,8 +40,8 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
     (providerUnavailable && providerQuery.isError)
 
   return (
-    <Field name="model" className="gap-1 pb-4">
-      <FieldLabel className="py-0 system-sm-semibold-uppercase! text-text-secondary">
+    <Field name="model" className="gap-0 pb-4">
+      <FieldLabel className="system-sm-semibold-uppercase! text-text-secondary">
         {t(($) => $['agentDetail.configure.model.label'])}
       </FieldLabel>
       {readOnly ? (

@@ -51,7 +51,7 @@ type SnippetMainContentProps = {
   onSaved: (syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void) => void
 }
 
-const unsupportedSnippetBlockTypes = new Set([
+const unsupportedSnippetBlockTypes = new Set<BlockEnum>([
   BlockEnum.HumanInput,
   BlockEnum.End,
   BlockEnum.KnowledgeRetrieval,

@@ -34,6 +34,8 @@ ensure_backend_test_environment(_REPO_ROOT)
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("dify")
+    group.addoption("--file-shard-plan", type=Path, help="Shared pre-collection file/partition assignment.")
+    group.addoption("--write-test-durations", type=Path, help="Write successful-run file durations for CI history.")
     group.addoption(
         "--middleware-stop-timeout",
         type=int,
@@ -87,13 +89,37 @@ def pytest_configure(config: pytest.Config) -> None:
     if stop_timeout is not None and stop_timeout < 0:
         raise pytest.UsageError("--middleware-stop-timeout must be nonnegative")
 
+    durations_path = config.getoption("write_test_durations")
+    if durations_path is not None and not hasattr(config, "workerinput"):
+        from tests.pytest_timing import TestDurationsPlugin
+
+        config.pluginmanager.register(TestDurationsPlugin(durations_path), "dify-test-durations")
+
     config.stash[_DIFY_COMPOSE_STACKS_KEY] = []
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Select a deterministic, evenly sized slice of collected tests for this shard."""
+    """Apply the shared file plan, or the legacy round-robin testcase shard."""
     shard_index = config.getoption("shard_index")
     shard_total = config.getoption("shard_total")
+    if plan_path := config.getoption("file_shard_plan"):
+        import json
+
+        from dev.pytest_sharding import case_shard
+
+        plan = json.loads(plan_path.read_text())
+        selected_items: list[pytest.Item] = []
+        deselected_items: list[pytest.Item] = []
+        for item in items:
+            filename = item.path.relative_to(_REPO_ROOT).as_posix()
+            # Missing files are a broken plan, not an excuse to silently drop tests.
+            targets = plan[filename]
+            case = item.nodeid.split("::", 1)[1]
+            destination = selected_items if case_shard(case, targets) == shard_index else deselected_items
+            destination.append(item)
+        config.hook.pytest_deselected(items=deselected_items)
+        items[:] = selected_items
+        return
     if shard_total == 1:
         return
 

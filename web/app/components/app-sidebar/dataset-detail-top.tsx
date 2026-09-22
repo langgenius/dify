@@ -87,10 +87,7 @@ export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopPr
               />
             }
           />
-          <TooltipContent
-            placement="bottom"
-            className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
-          >
+          <TooltipContent placement="bottom" className="flex items-center gap-1">
             <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
             <KbdGroup>
               {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (

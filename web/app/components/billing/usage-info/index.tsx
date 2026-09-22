@@ -2,11 +2,11 @@
 import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { ComponentType, FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { NUM_INFINITE } from '../config'
 
 type Props = Readonly<{
@@ -167,8 +167,11 @@ const UsageInfo: FC<Props> = ({
         <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
           {name}
           {tooltip && (
-            <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
-              {tooltip}
+            <Infotip>
+              <InfotipTrigger aria-label={tooltip} />
+              <InfotipContent aria-label={tooltip} className="w-45">
+                {tooltip}
+              </InfotipContent>
             </Infotip>
           )}
         </dt>

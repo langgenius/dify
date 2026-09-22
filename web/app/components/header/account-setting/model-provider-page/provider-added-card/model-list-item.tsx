@@ -51,6 +51,7 @@ const ModelListItem = ({
     }),
   )
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const configurableStatuses: ModelStatusEnum[] = [ModelStatusEnum.active, ModelStatusEnum.disabled]
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
@@ -140,7 +141,7 @@ const ModelListItem = ({
             features?.model_load_balancing_enabled ||
             features?.plan === 'sandbox') &&
           !model.deprecated &&
-          [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) && (
+          configurableStatuses.includes(model.status) && (
             <ConfigModel
               onClick={() => onModifyLoadBalancing?.(model)}
               loading={isLoadingLoadBalancing}
@@ -170,7 +171,7 @@ const ModelListItem = ({
             <Switch
               className="ml-2"
               checked={model?.status === ModelStatusEnum.active}
-              disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
+              disabled={!configurableStatuses.includes(model.status)}
               size="md"
               onCheckedChange={onEnablingStateChange}
             />

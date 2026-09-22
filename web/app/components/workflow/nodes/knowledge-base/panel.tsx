@@ -28,6 +28,11 @@ import { ChunkStructureEnum, IndexMethodEnum } from './types'
 import { getKnowledgeBaseValidationIssue, KnowledgeBaseValidationIssueCode } from './utils'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({ id, data }) => {
+  const rerankingChunkStructures: readonly ChunkStructureEnum[] = [
+    ChunkStructureEnum.general,
+    ChunkStructureEnum.parent_child,
+  ]
+
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -254,9 +259,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({ id, data }) => {
                 <Split className="h-px" />
               </div>
               {data.indexing_technique === IndexMethodEnum.QUALIFIED &&
-                [ChunkStructureEnum.general, ChunkStructureEnum.parent_child].includes(
-                  data.chunk_structure,
-                ) &&
+                rerankingChunkStructures.includes(data.chunk_structure) &&
                 isNonCloudEdition && (
                   <>
                     <SummaryIndexSetting
