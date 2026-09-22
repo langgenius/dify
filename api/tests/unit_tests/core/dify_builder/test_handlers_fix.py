@@ -806,6 +806,37 @@ def test_endpoint_variable_names_ignores_a_url_template_not_in_host_position():
     assert endpoint_variable_names(graph) == set()
 
 
+def test_endpoint_variable_names_finds_a_leading_start_template_before_a_path():
+    """``{{#s.h_url#}}/v1/render`` -- what grounding writes for an invented
+    host with a templated path/query -- reads its endpoint from ``h_url``."""
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "h_url", "type": "text-input"}]}},
+            {"id": "h", "data": {"type": "http-request", "url": "{{#s.h_url#}}/v1/render?topic={{#s.topic#}}"}},
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"h_url"}
+
+
+def test_endpoint_variable_names_finds_a_start_template_inside_the_host():
+    """M4: a template in the parsed HOST (not only a leading one) is the
+    endpoint; a template in the same url's path stays an ordinary data input."""
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": []}},
+            {"id": "h", "data": {"type": "http-request", "url": "https://{{#s.host#}}/v1"}},
+            {"id": "h2", "data": {"type": "http-request", "url": "https://api.{{#s.env#}}.acme.com/v1/{{#s.topic#}}"}},
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"host", "env"}
+
+
 def test_endpoint_variable_names_ignores_non_credential_header_and_param_keys():
     """Review fix round 1 (item 1): an ordinary data input read via a header
     or param -- not a secret -- must stay mockable. Before this fix, ANY

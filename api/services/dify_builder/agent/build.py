@@ -860,6 +860,10 @@ def _ground_placeholder_endpoints(intents: list[MutationIntent], *, trusted_text
 # not empty.
 _BARE_SCHEME_WORDS = frozenset({"bearer", "basic", "token"})
 
+# The only keys whose value is ``<scheme> <credentials>``, so the only ones on
+# which a bare scheme word is kept when grounding (``_replace_credential_value``).
+_AUTHORIZATION_KEYS = frozenset({"authorization", "proxy-authorization"})
+
 # Mirrors user_supplied._TEMPLATE_MARKER: a Dify template reference names a
 # variable, not a literal, so it is never "invented" and must never be
 # re-grounded -- checked BEFORE the placeholder-shape check below, since a
@@ -896,21 +900,26 @@ def _is_invented_credential(value: str, trusted_text: str) -> bool:
     return bool(trusted_text) and not user_supplied.is_user_supplied_secret(stripped_value, trusted_text)
 
 
-def _replace_credential_value(value: str, template_ref: str) -> str:
+def _replace_credential_value(value: str, template_ref: str, *, keep_bare_scheme: bool) -> str:
     """Rebuild a header/param 'Value' half with its secret swapped for
     ``template_ref``, preserving surrounding whitespace (including a ``\\r``
     left by a ``\\r\\n`` line ending) and a leading ``Bearer ``/``Basic ``/
     ``Token `` auth-scheme prefix exactly as written (e.g. ``" Bearer
-    YOUR_API_KEY"`` -> ``" Bearer {{#s.h_api_key#}}"``). A BARE scheme word
-    with nothing after it (``"Bearer"``) keeps the word, adding the
-    separating space the grounded value now needs."""
+    YOUR_API_KEY"`` -> ``" Bearer {{#s.h_api_key#}}"``).
+
+    A BARE scheme word with nothing after it (``"Bearer"``) is an auth scheme
+    only on an ``Authorization``/``Proxy-Authorization`` line
+    (``keep_bare_scheme``): there it keeps the word, adding the separating
+    space the grounded value now needs. Under any other credential key
+    (``X-Auth-Token: token``, ``api_key: token``) the word IS the invented
+    value, so it is replaced whole."""
     lstripped = value.lstrip(" \t\r")
     leading_ws = value[: len(value) - len(lstripped)]
     core = lstripped.rstrip(" \t\r")
     trailing_ws = lstripped[len(core) :]
     remainder = user_supplied.strip_auth_scheme(core)
     if remainder == core and core.lower() in _BARE_SCHEME_WORDS:
-        scheme_prefix = f"{core} "
+        scheme_prefix = f"{core} " if keep_bare_scheme else ""
     else:
         scheme_prefix = core[: len(core) - len(remainder)]
     return f"{leading_ws}{scheme_prefix}{template_ref}{trailing_ws}"
@@ -940,7 +949,8 @@ def _ground_credential_text(text: str, template_ref: str, *, trusted_text: str, 
         if not key_is_credential(key.strip()) or not _is_invented_credential(value, trusted_text):
             new_lines.append(line)
             continue
-        new_lines.append(f"{key}:{_replace_credential_value(value, template_ref)}")
+        keep_bare_scheme = key.strip().lower() in _AUTHORIZATION_KEYS
+        new_lines.append(f"{key}:{_replace_credential_value(value, template_ref, keep_bare_scheme=keep_bare_scheme)}")
         changed = True
     return "\n".join(new_lines), changed
 

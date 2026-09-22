@@ -15,12 +15,25 @@ import re
 # A dict/field key's last word-segment that, by itself, names a credential
 # regardless of what comes before it (so "access_token" and "auth" both
 # qualify, but "token_limit" does not -- "limit" is the last segment).
-_CREDENTIAL_LAST_SEGMENTS = {"authorization", "auth", "token", "secret", "password", "passwd"}
+_CREDENTIAL_LAST_SEGMENTS = {
+    "authorization",
+    "auth",
+    "token",
+    "secret",
+    "password",
+    "passwd",
+    "cookie",
+    "credential",
+    "credentials",
+    "bearer",
+}
 
 # A last segment of "key" only counts as a credential when the segment (or
 # merged word) before it names what kind of key it is -- otherwise ordinary
-# fields like "key_points" would match on "key" alone.
-_CREDENTIAL_KEY_PREFIXES = {"api", "access", "secret", "private", "auth"}
+# fields like "key_points" would match on "key" alone. ("subscription" is
+# Azure API Management's ``Ocp-Apim-Subscription-Key``.) There is
+# deliberately no "header" last segment: ``accept_header`` is not a secret.
+_CREDENTIAL_KEY_PREFIXES = {"api", "access", "secret", "private", "auth", "subscription"}
 
 # Splits an identifier into camelCase words: an uppercase run immediately
 # followed by "Xy" (e.g. the "API" in "APIKey"), or an optional leading
@@ -45,7 +58,8 @@ def is_credential_key(key: str) -> bool:
     not by containing a credential-ish substring anywhere. So
     ``password_policy``, ``token_limit``, ``session_token_expiry`` and
     ``max_tokens`` are NOT credential keys, but ``api_key``, ``apiKey``,
-    ``x-api-key``, ``access_token`` and ``Authorization`` are.
+    ``x-api-key``, ``access_token``, ``Authorization``, ``Cookie`` and
+    ``Ocp-Apim-Subscription-Key`` are.
     """
     segments = _key_segments(key)
     if not segments:
