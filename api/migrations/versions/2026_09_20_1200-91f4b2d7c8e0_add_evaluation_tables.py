@@ -72,6 +72,7 @@ def upgrade() -> None:
         sa.Column("metrics_summary", models.types.LongText(), nullable=True),
         sa.Column("error", sa.Text(), nullable=True),
         sa.Column("celery_task_id", sa.String(length=255), nullable=True),
+        sa.Column("execution_token", models.types.StringUUID(), nullable=True),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
         sa.Column("started_at", sa.DateTime(), nullable=True),
         sa.Column("heartbeat_at", sa.DateTime(), nullable=True),

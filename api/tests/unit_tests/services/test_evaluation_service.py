@@ -21,6 +21,7 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
+from libs.datetime_utils import naive_utc_now
 from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
@@ -416,6 +417,8 @@ def test_cancel_run_stops_each_possible_workflow_task(monkeypatch: pytest.Monkey
         status="running",
         total_items=2,
         celery_task_id="celery-1",
+        execution_token="40000000-0000-0000-0000-000000000001",
+        heartbeat_at=naive_utc_now(),
         completed_at=None,
         progress_rate=0.4,
     )
@@ -436,6 +439,8 @@ def test_cancel_run_stops_each_possible_workflow_task(monkeypatch: pytest.Monkey
 
     stop_workflow_tasks.assert_called_once_with("run-1", 2)
     celery_control.revoke.assert_called_once_with("celery-1", terminate=False)
+    assert run.execution_token is None
+    assert run.heartbeat_at is None
 
 
 def test_stop_workflow_tasks_sends_graph_commands_when_queue_stop_flags_fail(

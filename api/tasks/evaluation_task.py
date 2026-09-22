@@ -1,8 +1,10 @@
 import io
 import json
 import logging
+import uuid
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import timedelta
 from numbers import Real
 from threading import Event, Thread
@@ -59,6 +61,18 @@ class EvaluationRunCancelledError(Exception):
     """Raised when cooperative cancellation stops an evaluation task."""
 
 
+class EvaluationRunOwnershipLostError(Exception):
+    """Raised when a task invocation no longer owns the evaluation run lease."""
+
+
+@dataclass(frozen=True)
+class EvaluationRunLease:
+    """Fencing token owned by one Celery invocation of an evaluation run."""
+
+    run_id: str
+    token: str
+
+
 def _workflow_task_id(evaluation_run_id: str, phase: str, position: int) -> str:
     return EvaluationService.workflow_task_id(evaluation_run_id, phase, position)
 
@@ -78,20 +92,27 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
     backoff, resuming from the persisted checkpoints.
     """
     run_data = EvaluationRunData.model_validate(run_data_dict)
+    lease = EvaluationRunLease(run_id=run_data.evaluation_run_id, token=str(uuid.uuid4()))
     with session_factory.create_session() as session:
         try:
-            _execute_evaluation(session, run_data)
+            _execute_evaluation(session, run_data, lease)
         except EvaluationRunCancelledError:
             logger.info("Evaluation run %s stopped after cancellation", run_data.evaluation_run_id)
+        except EvaluationRunOwnershipLostError:
+            logger.info(
+                "Evaluation run %s stopped because execution lease %s is no longer current",
+                run_data.evaluation_run_id,
+                lease.token,
+            )
         except EvaluationWorkflowVersionNotFoundError as exc:
             logger.exception(
                 "Evaluation run %s cannot continue because a pinned workflow version is missing",
                 run_data.evaluation_run_id,
             )
-            _mark_run_failed(session, run_data.evaluation_run_id, str(exc))
+            _mark_run_failed(session, lease, str(exc))
         except ValueError as exc:
             logger.exception("Evaluation run %s failed validation", run_data.evaluation_run_id)
-            _mark_run_failed(session, run_data.evaluation_run_id, str(exc))
+            _mark_run_failed(session, lease, str(exc))
         except Exception as exc:
             retry_number = task.request.retries + 1
             max_retries = dify_config.EVALUATION_RUN_MAX_RETRIES
@@ -103,7 +124,7 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
                 )
                 _mark_run_failed(
                     session,
-                    run_data.evaluation_run_id,
+                    lease,
                     f"Evaluation failed after {task.request.retries + 1} attempts: {exc}",
                 )
                 return
@@ -121,7 +142,7 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
             try:
                 retry_scheduled = _mark_run_pending_for_retry(
                     session,
-                    run_data.evaluation_run_id,
+                    lease,
                     str(exc),
                     retry_number,
                     max_retries,
@@ -135,7 +156,7 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
             raise retry_signal
 
 
-def _renew_evaluation_run_heartbeat(evaluation_run_id: str) -> bool:
+def _renew_evaluation_run_heartbeat(lease: EvaluationRunLease) -> bool:
     """Renew the lease only while the evaluation remains executable."""
     with session_factory.create_session() as session:
         result = cast(
@@ -143,8 +164,9 @@ def _renew_evaluation_run_heartbeat(evaluation_run_id: str) -> bool:
             session.execute(
                 update(EvaluationRun)
                 .where(
-                    EvaluationRun.id == evaluation_run_id,
+                    EvaluationRun.id == lease.run_id,
                     EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                    EvaluationRun.execution_token == lease.token,
                 )
                 .values(heartbeat_at=naive_utc_now())
             ),
@@ -153,24 +175,24 @@ def _renew_evaluation_run_heartbeat(evaluation_run_id: str) -> bool:
         return result.rowcount == 1
 
 
-def _renew_evaluation_run_heartbeat_while_running(evaluation_run_id: str, stop_event: Event) -> None:
+def _renew_evaluation_run_heartbeat_while_running(lease: EvaluationRunLease, stop_event: Event) -> None:
     interval = dify_config.EVALUATION_RUN_HEARTBEAT_INTERVAL
     while not stop_event.wait(interval):
         try:
-            if not _renew_evaluation_run_heartbeat(evaluation_run_id):
+            if not _renew_evaluation_run_heartbeat(lease):
                 return
         except Exception:
-            logger.exception("Failed to renew heartbeat for evaluation run %s", evaluation_run_id)
+            logger.exception("Failed to renew heartbeat for evaluation run %s", lease.run_id)
 
 
 @contextmanager
-def _maintain_evaluation_run_heartbeat(evaluation_run_id: str) -> Generator[None, None, None]:
+def _maintain_evaluation_run_heartbeat(lease: EvaluationRunLease) -> Generator[None, None, None]:
     stop_event = Event()
     heartbeat_thread = Thread(
         target=_renew_evaluation_run_heartbeat_while_running,
-        args=(evaluation_run_id, stop_event),
+        args=(lease, stop_event),
         daemon=True,
-        name=f"EvaluationRunHeartbeat({evaluation_run_id})",
+        name=f"EvaluationRunHeartbeat({lease.run_id})",
     )
     heartbeat_thread.start()
     try:
@@ -179,7 +201,7 @@ def _maintain_evaluation_run_heartbeat(evaluation_run_id: str) -> Generator[None
         stop_event.set()
         heartbeat_thread.join(timeout=_HEARTBEAT_JOIN_TIMEOUT_SECONDS)
         if heartbeat_thread.is_alive():
-            logger.warning("Evaluation run %s heartbeat thread did not stop", evaluation_run_id)
+            logger.warning("Evaluation run %s heartbeat thread did not stop", lease.run_id)
 
 
 @shared_task(queue="evaluation")
@@ -211,11 +233,14 @@ def reconcile_stale_evaluation_runs() -> int:
                     .where(
                         EvaluationRun.id == run.id,
                         EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                        EvaluationRun.execution_token == run.execution_token,
                         EvaluationRun.heartbeat_at.is_not(None),
                         EvaluationRun.heartbeat_at < cutoff,
                     )
                     .values(
                         status=EvaluationRunStatus.FAILED,
+                        execution_token=None,
+                        heartbeat_at=None,
                         completed_at=naive_utc_now(),
                         error="Evaluation run heartbeat lease expired.",
                     )
@@ -244,40 +269,41 @@ def reconcile_stale_evaluation_runs() -> int:
     return len(stale_runs)
 
 
-def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
+def _execute_evaluation(session: Session, run_data: EvaluationRunData, lease: EvaluationRunLease) -> None:
+    if lease.run_id != run_data.evaluation_run_id:
+        raise ValueError("Evaluation run lease does not match the task payload.")
+
     evaluation_run = session.scalar(
         select(EvaluationRun).where(EvaluationRun.id == run_data.evaluation_run_id).with_for_update()
     )
     if evaluation_run is None:
         logger.error("EvaluationRun %s not found", run_data.evaluation_run_id)
         return
-    if (
-        evaluation_run.tenant_id != run_data.tenant_id
-        or EvaluationTargetType(evaluation_run.target_type).value != run_data.target_type
-        or evaluation_run.target_id != run_data.target_id
-        or evaluation_run.target_workflow_version_id != run_data.target_workflow_version_id
-    ):
-        raise ValueError("Evaluation task payload does not match the persisted run.")
-    if run_data.target_type != EvaluationTargetType.KNOWLEDGE_BASE.value and not run_data.target_workflow_version_id:
-        raise ValueError("Evaluation task payload is missing target_workflow_version_id.")
     if evaluation_run.status in {
         EvaluationRunStatus.COMPLETED,
         EvaluationRunStatus.FAILED,
         EvaluationRunStatus.CANCELLED,
     }:
+        session.rollback()
         return
+    if evaluation_run.status != EvaluationRunStatus.PENDING or evaluation_run.execution_token is not None:
+        logger.info(
+            "Skipping duplicate delivery for evaluation run %s; current status=%s owner=%s",
+            evaluation_run.id,
+            evaluation_run.status,
+            evaluation_run.execution_token,
+        )
+        session.rollback()
+        return
+
     run_created_by = evaluation_run.created_by
-
-    evaluation_instance = EvaluationManager.get_evaluation_instance()
-    if evaluation_instance is None:
-        raise ValueError("Evaluation framework not configured")
-
     completed_items, failed_items, checkpointed_items = _get_completed_checkpoint_counts(
         session,
         evaluation_run.id,
     )
     now = naive_utc_now()
     evaluation_run.status = EvaluationRunStatus.RUNNING
+    evaluation_run.execution_token = lease.token
     evaluation_run.started_at = evaluation_run.started_at or now
     evaluation_run.heartbeat_at = now
     evaluation_run.completed_at = None
@@ -290,8 +316,22 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
     evaluation_run.error = None
     session.commit()
 
-    with _maintain_evaluation_run_heartbeat(run_data.evaluation_run_id):
-        _execute_running_evaluation(session, run_data, evaluation_instance, run_created_by)
+    if (
+        evaluation_run.tenant_id != run_data.tenant_id
+        or EvaluationTargetType(evaluation_run.target_type).value != run_data.target_type
+        or evaluation_run.target_id != run_data.target_id
+        or evaluation_run.target_workflow_version_id != run_data.target_workflow_version_id
+    ):
+        raise ValueError("Evaluation task payload does not match the persisted run.")
+    if run_data.target_type != EvaluationTargetType.KNOWLEDGE_BASE.value and not run_data.target_workflow_version_id:
+        raise ValueError("Evaluation task payload is missing target_workflow_version_id.")
+
+    evaluation_instance = EvaluationManager.get_evaluation_instance()
+    if evaluation_instance is None:
+        raise ValueError("Evaluation framework not configured")
+
+    with _maintain_evaluation_run_heartbeat(lease):
+        _execute_running_evaluation(session, run_data, evaluation_instance, run_created_by, lease)
 
 
 def _execute_running_evaluation(
@@ -299,6 +339,7 @@ def _execute_running_evaluation(
     run_data: EvaluationRunData,
     evaluation_instance: BaseEvaluationInstance,
     run_created_by: str,
+    lease: EvaluationRunLease,
 ) -> None:
     if run_data.target_type == EvaluationTargetType.KNOWLEDGE_BASE.value:
         _resume_retrieval_rows(
@@ -306,15 +347,17 @@ def _execute_running_evaluation(
             run_data,
             evaluation_instance,
             run_created_by,
+            lease,
         )
     else:
         _resume_workflow_rows(
             session,
             run_data,
             evaluation_instance,
+            lease,
         )
 
-    _raise_if_cancelled(session, run_data.evaluation_run_id)
+    _assert_execution_lease(session, lease)
     results = _load_completed_checkpoint_results(session, run_data)
     # The cancellation check starts a read transaction. End it before writing
     # the result object to external storage; the final status update below is
@@ -322,7 +365,7 @@ def _execute_running_evaluation(
     session.rollback()
     metrics_summary = _compute_metrics_summary(results, run_data.judgment_config)
     result_xlsx = _generate_result_xlsx(run_data.input_list, results)
-    _update_run_progress(session, run_data.evaluation_run_id, 0.98)
+    _update_run_progress(session, lease, 0.98)
     session.rollback()
     result_file = _store_result_file(
         run_data.tenant_id,
@@ -339,9 +382,12 @@ def _execute_running_evaluation(
         .where(
             EvaluationRun.id == run_data.evaluation_run_id,
             EvaluationRun.status == EvaluationRunStatus.RUNNING,
+            EvaluationRun.execution_token == lease.token,
         )
         .values(
             status=EvaluationRunStatus.COMPLETED,
+            execution_token=None,
+            heartbeat_at=None,
             completed_at=naive_utc_now(),
             completed_items=completed_items,
             failed_items=failed_items,
@@ -359,7 +405,8 @@ def _execute_running_evaluation(
     if result.rowcount != 1:
         session.rollback()
         _delete_stored_result_file(result_file.key)
-        raise EvaluationRunCancelledError()
+        _assert_execution_lease(session, lease)
+        raise EvaluationRunOwnershipLostError(f"Evaluation run {lease.run_id} completion lease was rejected.")
     session.commit()
     logger.info("Evaluation run %s completed successfully", run_data.evaluation_run_id)
 
@@ -369,6 +416,7 @@ def _resume_retrieval_rows(
     run_data: EvaluationRunData,
     evaluation_instance: BaseEvaluationInstance,
     run_created_by: str,
+    lease: EvaluationRunLease,
 ) -> None:
     """Resume knowledge-base evaluation from completed row checkpoints."""
     completed_indices = _get_completed_checkpoint_indices(session, run_data.evaluation_run_id)
@@ -381,14 +429,14 @@ def _resume_retrieval_rows(
         dataset_id=run_data.target_id,
         account_id=run_created_by,
         input_list=pending_items,
-        cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
+        cancellation_check=lambda: _cooperative_checkpoint(session, lease),
         progress_callback=lambda completed, total: _update_run_progress(
             session,
-            run_data.evaluation_run_id,
+            lease,
             0.05 + 0.45 * (len(completed_indices) + completed) / max(len(run_data.input_list), 1),
         ),
     )
-    _raise_if_cancelled(session, run_data.evaluation_run_id)
+    _assert_execution_lease(session, lease)
     for position, item in enumerate(pending_items):
         item_run_data = run_data.model_copy(update={"input_list": [item]})
         _evaluate_retrieval_results(
@@ -397,6 +445,7 @@ def _resume_retrieval_rows(
             evaluation_instance=evaluation_instance,
             node_run_results=[node_run_results[position]],
             retrieval_errors=[retrieval_errors[position]],
+            lease=lease,
             report_progress=False,
         )
 
@@ -405,6 +454,7 @@ def _resume_workflow_rows(
     session: Session,
     run_data: EvaluationRunData,
     evaluation_instance: BaseEvaluationInstance,
+    lease: EvaluationRunLease,
 ) -> None:
     """Resume target execution and scoring without replaying durable row checkpoints."""
     checkpoint_by_index = {
@@ -452,7 +502,7 @@ def _resume_workflow_rows(
     if pending_items:
         _clear_workflow_cancellation_signals(
             session,
-            run_data.evaluation_run_id,
+            lease,
             "target",
             pending_positions,
         )
@@ -466,7 +516,7 @@ def _resume_workflow_rows(
             if workflow_run_id:
                 _persist_target_checkpoint(
                     session,
-                    run_data.evaluation_run_id,
+                    lease,
                     pending_items[local_position],
                     workflow_run_id,
                     error,
@@ -479,10 +529,10 @@ def _resume_workflow_rows(
             target_id=run_data.target_id,
             target_workflow_version_id=run_data.target_workflow_version_id or "",
             input_list=pending_items,
-            cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
+            cancellation_check=lambda: _cooperative_checkpoint(session, lease),
             progress_callback=lambda completed, total: _update_run_progress(
                 session,
-                run_data.evaluation_run_id,
+                lease,
                 0.05 + 0.45 * (target_ready_count + completed) / max(len(run_data.input_list), 1),
             ),
             result_callback=_checkpoint_target_result,
@@ -499,13 +549,13 @@ def _resume_workflow_rows(
         checkpoint = checkpoint_by_index.get(item.index)
         if checkpoint is not None and checkpoint.status == EvaluationRunItemStatus.COMPLETED:
             continue
-        _cooperative_checkpoint(session, run_data.evaluation_run_id)
+        _cooperative_checkpoint(session, lease)
         row_node_results, workflow_run_id, target_error = evaluation_inputs[position]
         item_run_data = run_data.model_copy(update={"input_list": [item]})
         if item_run_data.customized_metrics is not None:
             _clear_workflow_cancellation_signals(
                 session,
-                run_data.evaluation_run_id,
+                lease,
                 "evaluator",
                 [position],
             )
@@ -517,22 +567,23 @@ def _resume_workflow_rows(
             workflow_run_id_map={item.index: workflow_run_id} if workflow_run_id else None,
             target_errors=[target_error],
             task_positions=[position],
+            lease=lease,
             report_progress=False,
         )
 
 
 def _persist_target_checkpoint(
     session: Session,
-    evaluation_run_id: str,
+    lease: EvaluationRunLease,
     item_input: EvaluationDatasetInput,
     workflow_run_id: str,
     target_error: str | None = None,
 ) -> None:
     """Persist enough target state to avoid replaying a completed workflow on retry."""
-    _raise_if_cancelled(session, evaluation_run_id)
+    _assert_execution_lease(session, lease)
     run_item = session.scalar(
         select(EvaluationRunItem).where(
-            EvaluationRunItem.evaluation_run_id == evaluation_run_id,
+            EvaluationRunItem.evaluation_run_id == lease.run_id,
             EvaluationRunItem.item_index == item_input.index,
         )
     )
@@ -541,7 +592,7 @@ def _persist_target_checkpoint(
         return
     if run_item is None:
         run_item = EvaluationRunItem(
-            evaluation_run_id=evaluation_run_id,
+            evaluation_run_id=lease.run_id,
             item_index=item_input.index,
         )
         session.add(run_item)
@@ -550,22 +601,23 @@ def _persist_target_checkpoint(
     run_item.inputs = json.dumps(item_input.inputs, ensure_ascii=False)
     run_item.expected_output = item_input.serialize_expected_output()
     run_item.error = target_error
+    _touch_execution_lease(session, lease)
     session.commit()
 
 
 def _clear_workflow_cancellation_signals(
     session: Session,
-    evaluation_run_id: str,
+    lease: EvaluationRunLease,
     phase: str,
     positions: Sequence[int],
 ) -> None:
     """Clear signals from an earlier attempt without erasing a concurrent user cancellation."""
     from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 
-    _cooperative_checkpoint(session, evaluation_run_id)
+    _cooperative_checkpoint(session, lease)
     for position in positions:
-        clear_app_task_cancellation_signals(_workflow_task_id(evaluation_run_id, phase, position))
-    _cooperative_checkpoint(session, evaluation_run_id)
+        clear_app_task_cancellation_signals(_workflow_task_id(lease.run_id, phase, position))
+    _cooperative_checkpoint(session, lease)
 
 
 def _get_completed_checkpoint_indices(session: Session, evaluation_run_id: str) -> set[int]:
@@ -633,6 +685,7 @@ def _execute_evaluation_runner(
     run_data: EvaluationRunData,
     evaluation_instance: BaseEvaluationInstance,
     node_run_result_mapping_list: list[dict[str, NodeRunResult]],
+    lease: EvaluationRunLease,
     workflow_run_id_map: dict[int, str] | None = None,
     target_errors: Sequence[str | None] | None = None,
     task_positions: Sequence[int] | None = None,
@@ -652,7 +705,7 @@ def _execute_evaluation_runner(
     completed_steps = 0
     for default_metric in run_data.default_metrics:
         for node_info in default_metric.node_info_list:
-            _cooperative_checkpoint(session, run_data.evaluation_run_id)
+            _cooperative_checkpoint(session, lease)
             node_run_results: list[NodeRunResult] = []
             dataset_items: list[EvaluationDatasetInput] = []
             dataset_indices: list[int] = []
@@ -702,12 +755,12 @@ def _execute_evaluation_runner(
             if report_progress:
                 _update_run_progress(
                     session,
-                    run_data.evaluation_run_id,
+                    lease,
                     0.6 + 0.25 * completed_steps / max(total_steps, 1),
                 )
 
     if run_data.customized_metrics:
-        _cooperative_checkpoint(session, run_data.evaluation_run_id)
+        _cooperative_checkpoint(session, lease)
         successful_positions = [
             position for position, node_results in enumerate(node_run_result_mapping_list) if node_results
         ]
@@ -719,7 +772,7 @@ def _execute_evaluation_runner(
                     node_run_result_mapping_list=customized_node_results,
                     customized_metrics=run_data.customized_metrics,
                     tenant_id=run_data.tenant_id,
-                    cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
+                    cancellation_check=lambda: _cooperative_checkpoint(session, lease),
                     task_id_factory=lambda position: _workflow_task_id(
                         run_data.evaluation_run_id,
                         "evaluator",
@@ -741,7 +794,7 @@ def _execute_evaluation_runner(
         if report_progress:
             _update_run_progress(
                 session,
-                run_data.evaluation_run_id,
+                lease,
                 0.6 + 0.25 * completed_steps / max(total_steps, 1),
             )
 
@@ -759,7 +812,7 @@ def _execute_evaluation_runner(
     results = [_with_overall_score(result) for result in results]
     _persist_results(
         session,
-        run_data.evaluation_run_id,
+        lease,
         results,
         run_data.input_list,
         workflow_run_id_map,
@@ -772,6 +825,7 @@ def _execute_retrieval_test(
     account_id: str,
     run_data: EvaluationRunData,
     evaluation_instance: BaseEvaluationInstance,
+    lease: EvaluationRunLease,
     report_progress: bool = True,
 ) -> list[EvaluationItemResult]:
     node_run_results, retrieval_errors = EvaluationService.execute_retrieval_test_targets(
@@ -779,18 +833,18 @@ def _execute_retrieval_test(
         dataset_id=run_data.target_id,
         account_id=account_id,
         input_list=run_data.input_list,
-        cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
+        cancellation_check=lambda: _cooperative_checkpoint(session, lease),
         progress_callback=(
             lambda completed, total: _update_run_progress(
                 session,
-                run_data.evaluation_run_id,
+                lease,
                 0.05 + 0.45 * completed / max(total, 1),
             )
         )
         if report_progress
         else None,
     )
-    _raise_if_cancelled(session, run_data.evaluation_run_id)
+    _assert_execution_lease(session, lease)
 
     return _evaluate_retrieval_results(
         session=session,
@@ -798,6 +852,7 @@ def _execute_retrieval_test(
         evaluation_instance=evaluation_instance,
         node_run_results=node_run_results,
         retrieval_errors=retrieval_errors,
+        lease=lease,
         report_progress=report_progress,
     )
 
@@ -808,6 +863,7 @@ def _evaluate_retrieval_results(
     evaluation_instance: BaseEvaluationInstance,
     node_run_results: Sequence[NodeRunResult | None],
     retrieval_errors: Sequence[str | None],
+    lease: EvaluationRunLease,
     report_progress: bool = True,
 ) -> list[EvaluationItemResult]:
     """Score retrieval outputs and checkpoint each supplied dataset row."""
@@ -825,7 +881,7 @@ def _evaluate_retrieval_results(
     successful_items = [run_data.input_list[position] for position in successful_positions]
     dataset_indices = [item.index for item in successful_items]
     for metric_position, default_metric in enumerate(run_data.default_metrics, start=1):
-        _cooperative_checkpoint(session, run_data.evaluation_run_id)
+        _cooperative_checkpoint(session, lease)
         try:
             evaluated = runner.evaluate_metrics(
                 node_run_result_list=typed_successful_results,
@@ -851,7 +907,7 @@ def _evaluate_retrieval_results(
         if report_progress:
             _update_run_progress(
                 session,
-                run_data.evaluation_run_id,
+                lease,
                 0.5 + 0.35 * metric_position / max(len(run_data.default_metrics), 1),
             )
 
@@ -870,7 +926,7 @@ def _evaluate_retrieval_results(
     if run_data.judgment_config:
         results = _apply_judgment(results, run_data.judgment_config)
     results = [_with_overall_score(result) for result in results]
-    _persist_results(session, run_data.evaluation_run_id, results, run_data.input_list)
+    _persist_results(session, lease, results, run_data.input_list)
     return results
 
 
@@ -1011,7 +1067,7 @@ def _with_overall_score(result: EvaluationItemResult) -> EvaluationItemResult:
 
 def _persist_results(
     session: Session,
-    evaluation_run_id: str,
+    lease: EvaluationRunLease,
     results: Sequence[EvaluationItemResult],
     input_list: Sequence[EvaluationDatasetInput],
     workflow_run_id_map: dict[int, str] | None = None,
@@ -1021,14 +1077,14 @@ def _persist_results(
     workflow_run_ids = workflow_run_id_map or {}
 
     for position, item_input in enumerate(input_list, start=1):
-        _raise_if_cancelled(session, evaluation_run_id)
+        _assert_execution_lease(session, lease)
         result = result_map.get(
             item_input.index,
             EvaluationItemResult(index=item_input.index, error="Missing evaluation result."),
         )
         run_item = session.scalar(
             select(EvaluationRunItem).where(
-                EvaluationRunItem.evaluation_run_id == evaluation_run_id,
+                EvaluationRunItem.evaluation_run_id == lease.run_id,
                 EvaluationRunItem.item_index == item_input.index,
             )
         )
@@ -1054,7 +1110,7 @@ def _persist_results(
         }
         if run_item is None:
             run_item = EvaluationRunItem(
-                evaluation_run_id=evaluation_run_id,
+                evaluation_run_id=lease.run_id,
                 item_index=item_input.index,
                 **values,
             )
@@ -1065,13 +1121,14 @@ def _persist_results(
 
         if position % _PERSIST_BATCH_SIZE == 0 or position == len(input_list):
             session.flush()
-            completed, failed, checkpointed = _get_completed_checkpoint_counts(session, evaluation_run_id)
-            total_items = session.scalar(select(EvaluationRun.total_items).where(EvaluationRun.id == evaluation_run_id))
+            completed, failed, checkpointed = _get_completed_checkpoint_counts(session, lease.run_id)
+            total_items = session.scalar(select(EvaluationRun.total_items).where(EvaluationRun.id == lease.run_id))
             progress_update = (
                 update(EvaluationRun)
                 .where(
-                    EvaluationRun.id == evaluation_run_id,
+                    EvaluationRun.id == lease.run_id,
                     EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                    EvaluationRun.execution_token == lease.token,
                 )
                 .values(
                     completed_items=completed,
@@ -1082,40 +1139,72 @@ def _persist_results(
             update_result = cast(CursorResult[Any], session.execute(progress_update))
             if update_result.rowcount != 1:
                 session.rollback()
-                raise EvaluationRunCancelledError()
+                _assert_execution_lease(session, lease)
+                raise EvaluationRunOwnershipLostError(f"Evaluation run {lease.run_id} checkpoint lease was rejected.")
             session.commit()
 
 
-def _raise_if_cancelled(session: Session, evaluation_run_id: str) -> None:
+def _assert_execution_lease(session: Session, lease: EvaluationRunLease) -> None:
+    """Reject work from cancelled runs and stale task invocations."""
     session.expire_all()
-    status = session.scalar(select(EvaluationRun.status).where(EvaluationRun.id == evaluation_run_id))
+    row = session.execute(
+        select(EvaluationRun.status, EvaluationRun.execution_token).where(EvaluationRun.id == lease.run_id)
+    ).one_or_none()
+    if row is None:
+        raise EvaluationRunOwnershipLostError(f"Evaluation run {lease.run_id} no longer exists.")
+
+    status, execution_token = row
     if status == EvaluationRunStatus.CANCELLED:
         raise EvaluationRunCancelledError()
-    if status != EvaluationRunStatus.RUNNING:
-        raise RuntimeError(f"Evaluation run is no longer executable: {status}")
+    if status != EvaluationRunStatus.RUNNING or execution_token != lease.token:
+        raise EvaluationRunOwnershipLostError(
+            f"Evaluation run {lease.run_id} is owned by another execution or is no longer executable."
+        )
 
 
-def _cooperative_checkpoint(session: Session, evaluation_run_id: str) -> None:
-    """Check status and close the read transaction before external work."""
-    _raise_if_cancelled(session, evaluation_run_id)
+def _cooperative_checkpoint(session: Session, lease: EvaluationRunLease) -> None:
+    """Check ownership and close the read transaction before external work."""
+    _assert_execution_lease(session, lease)
     session.rollback()
 
 
-def _update_run_progress(session: Session, evaluation_run_id: str, progress_rate: float) -> None:
+def _touch_execution_lease(session: Session, lease: EvaluationRunLease) -> None:
+    """Fence a pending transaction by locking and renewing its current owner."""
     result = cast(
         CursorResult[Any],
         session.execute(
             update(EvaluationRun)
             .where(
-                EvaluationRun.id == evaluation_run_id,
+                EvaluationRun.id == lease.run_id,
                 EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                EvaluationRun.execution_token == lease.token,
+            )
+            .values(heartbeat_at=naive_utc_now())
+        ),
+    )
+    if result.rowcount != 1:
+        session.rollback()
+        _assert_execution_lease(session, lease)
+        raise EvaluationRunOwnershipLostError(f"Evaluation run {lease.run_id} lease update was rejected.")
+
+
+def _update_run_progress(session: Session, lease: EvaluationRunLease, progress_rate: float) -> None:
+    result = cast(
+        CursorResult[Any],
+        session.execute(
+            update(EvaluationRun)
+            .where(
+                EvaluationRun.id == lease.run_id,
+                EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                EvaluationRun.execution_token == lease.token,
             )
             .values(progress_rate=min(max(progress_rate, 0.0), 0.99))
         ),
     )
     if result.rowcount != 1:
         session.rollback()
-        raise EvaluationRunCancelledError()
+        _assert_execution_lease(session, lease)
+        raise EvaluationRunOwnershipLostError(f"Evaluation run {lease.run_id} progress lease was rejected.")
     session.commit()
 
 
@@ -1135,30 +1224,33 @@ def _create_runner(
 # ---------------------------------------------------------------------------
 
 
-def _mark_run_failed(session: Session, run_id: str, error: str) -> None:
-    """Mark only a non-terminal run as failed; cancellation always wins."""
+def _mark_run_failed(session: Session, lease: EvaluationRunLease, error: str) -> None:
+    """Fail the run only while this invocation still owns it."""
     try:
         session.rollback()
         session.execute(
             update(EvaluationRun)
             .where(
-                EvaluationRun.id == run_id,
-                EvaluationRun.status.in_([EvaluationRunStatus.PENDING, EvaluationRunStatus.RUNNING]),
+                EvaluationRun.id == lease.run_id,
+                EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                EvaluationRun.execution_token == lease.token,
             )
             .values(
                 status=EvaluationRunStatus.FAILED,
+                execution_token=None,
+                heartbeat_at=None,
                 error=error[:2000],
                 completed_at=naive_utc_now(),
             )
         )
         session.commit()
     except Exception:
-        logger.exception("Failed to mark run %s as failed", run_id)
+        logger.exception("Failed to mark run %s as failed", lease.run_id)
 
 
 def _mark_run_pending_for_retry(
     session: Session,
-    run_id: str,
+    lease: EvaluationRunLease,
     error: str,
     retry_number: int,
     max_retries: int,
@@ -1170,11 +1262,13 @@ def _mark_run_pending_for_retry(
         session.execute(
             update(EvaluationRun)
             .where(
-                EvaluationRun.id == run_id,
-                EvaluationRun.status.in_([EvaluationRunStatus.PENDING, EvaluationRunStatus.RUNNING]),
+                EvaluationRun.id == lease.run_id,
+                EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                EvaluationRun.execution_token == lease.token,
             )
             .values(
                 status=EvaluationRunStatus.PENDING,
+                execution_token=None,
                 heartbeat_at=None,
                 completed_at=None,
                 error=f"Retry {retry_number}/{max_retries} scheduled after: {error}"[:2000],
