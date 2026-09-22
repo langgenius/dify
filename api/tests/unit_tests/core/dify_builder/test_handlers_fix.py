@@ -993,3 +993,40 @@ def test_verify_survives_a_run_draft_that_raises():
     assert res.run.status == "failed"
     assert res.run.error == "kaboom-provider"
     assert res.run.culprit_node_id == ""
+
+
+def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output():
+    from core.dify_builder.models import NodeOutput
+
+    env, _ = _new_env()
+    env.dify.graph = {
+        "nodes": [
+            {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "node2",
+                "data": {"type": "if-else", "title": "Check", "cases": [{"case_id": "true", "conditions": []}]},
+            },
+            {"id": "node6", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"source": "node1", "target": "node2"},
+            {"source": "node2", "target": "node6", "sourceHandle": "else"},
+        ],
+    }
+    env.dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify",
+        immutable=True,
+        dify_run_id="run-f",
+        status="succeeded",
+        per_node=[NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")],
+    )
+    s = _session(current_state=PcState.FIX_VERIFY)
+
+    res = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+
+    assert res.next == PcState.FIX_AWAIT_DECISION
+    assert res.run.culprit_node_id == "node2"
+    test_result = next(i for i in res.items if i.kind == "test_result")
+    assert test_result.payload["subtitle"] == "Finished without output"
+    assert test_result.payload["tone"] == "error"
+    assert next(i for i in res.items if i.kind == "error").payload["title"] == "No output produced"
