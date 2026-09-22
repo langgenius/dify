@@ -1307,11 +1307,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/image-uploader/__tests__/image-preview.spec.tsx": {
-    "erasable-syntax-only/parameter-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/base/image-uploader/__tests__/utils.spec.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -1503,11 +1498,6 @@
   },
   "web/app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/prompt-editor/plugins/component-picker-block/menu.tsx": {
-    "erasable-syntax-only/parameter-properties": {
       "count": 1
     }
   },
