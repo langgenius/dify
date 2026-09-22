@@ -41,9 +41,7 @@ def _provider_entry(*, other_keys: list[str] | None = None) -> TracingProviderCo
     }
 
 
-def test_validate_provider_rejects_unknown_provider(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gateway_module, "provider_config_map", {})
-
+def test_validate_provider_rejects_unknown_provider() -> None:
     with pytest.raises(AppTracingConfigInvalidProviderError, match="Invalid tracing provider: unknown"):
         OpsTraceManagerGateway().validate_provider("unknown")
 
@@ -51,8 +49,6 @@ def test_validate_provider_rejects_unknown_provider(monkeypatch: pytest.MonkeyPa
 @pytest.mark.parametrize("provider", TracingProviderEnum)
 def test_validate_provider_does_not_load_optional_dependencies(provider: TracingProviderEnum) -> None:
     with patch.object(OpsTraceManagerGateway, "_provider_config") as load_provider:
-        load_provider.side_effect = AssertionError("Provider validation must not load an SDK")
-
         OpsTraceManagerGateway().validate_provider(provider.value)
 
     load_provider.assert_not_called()

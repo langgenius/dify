@@ -35,10 +35,8 @@ _PROJECT_URL_FALLBACKS = {
 class OpsTraceManagerGateway(TracingConfigProviderGateway):
     @override
     def validate_provider(self, tracing_provider: str) -> None:
-        try:
-            TracingProviderEnum(tracing_provider)
-        except ValueError as error:
-            raise AppTracingConfigInvalidProviderError(tracing_provider) from error
+        if tracing_provider not in TracingProviderEnum:
+            raise AppTracingConfigInvalidProviderError(tracing_provider)
 
     @override
     def prepare_new_config(

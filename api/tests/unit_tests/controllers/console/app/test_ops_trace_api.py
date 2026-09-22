@@ -127,15 +127,13 @@ def test_trace_config_without_sdk_can_be_read_when_absent_or_deleted(
         lambda: SimpleNamespace(app_tracing_configs=service),
     )
 
-    with patch.object(OpsTraceManagerGateway, "_provider_config") as load_provider:
-        load_provider.side_effect = TraceProviderNotInstalledError("weave", "wandb")
-        with app.test_request_context("/"):
-            result = _original(_CONTROLLER_METHODS[method_name])(
-                ops_trace_module.TraceAppConfigApi(),
-                ops_trace_module.TraceProviderQuery(tracing_provider="weave"),
-                _request_context(),
-                UUID(APP_ID),
-            )
+    with patch.object(OpsTraceManagerGateway, "_provider_config") as load_provider, app.test_request_context("/"):
+        result = _original(_CONTROLLER_METHODS[method_name])(
+            ops_trace_module.TraceAppConfigApi(),
+            ops_trace_module.TraceProviderQuery(tracing_provider="weave"),
+            _request_context(),
+            UUID(APP_ID),
+        )
 
     assert result == ({"has_not_configured": True} if method_name == "get" else ("", 204))
     load_provider.assert_not_called()
@@ -145,14 +143,16 @@ def test_trace_config_without_sdk_can_be_read_when_absent_or_deleted(
 
 def test_enable_tracing_maps_missing_dependency_to_unavailable(app: Flask) -> None:
     missing_dependency = TraceProviderNotInstalledError("weave", "wandb")
-    with patch.object(app_module.OpsTraceManager, "update_app_tracing_config", side_effect=missing_dependency):
-        with app.test_request_context("/"):
-            with pytest.raises(TracingProviderUnavailableError) as caught:
-                _original(app_module.AppTraceApi.post)(
-                    app_module.AppTraceApi(),
-                    app_module.AppTracePayload(enabled=True, tracing_provider="weave"),
-                    SimpleNamespace(id=APP_ID),
-                )
+    with (
+        patch.object(app_module.OpsTraceManager, "update_app_tracing_config", side_effect=missing_dependency),
+        app.test_request_context("/"),
+        pytest.raises(TracingProviderUnavailableError) as caught,
+    ):
+        _original(app_module.AppTraceApi.post)(
+            app_module.AppTraceApi(),
+            app_module.AppTracePayload(enabled=True, tracing_provider="weave"),
+            SimpleNamespace(id=APP_ID),
+        )
 
     assert caught.value.code == 400
     assert caught.value.error_code == "tracing_provider_unavailable"

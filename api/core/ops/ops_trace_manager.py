@@ -584,19 +584,10 @@ class OpsTraceManager:
 
     @classmethod
     def update_app_tracing_config(cls, app_id: str, enabled: bool, tracing_provider: str | None):
-        """
-        Update app tracing config
-        :param app_id: app id
-        :param enabled: enabled
-        :param tracing_provider: tracing provider (None when disabling)
-        :return:
-        """
-        # auth check
+        """Persist tracing state; the provider may be None when disabling."""
         if tracing_provider is not None:
-            try:
-                TracingProviderEnum(tracing_provider)
-            except ValueError as error:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}") from error
+            if tracing_provider not in TracingProviderEnum:
+                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
             if enabled:
                 provider_config_map[tracing_provider]
 

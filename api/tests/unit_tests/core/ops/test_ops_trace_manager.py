@@ -494,20 +494,15 @@ def test_update_and_get_app_tracing_config_persist_state(
 def test_provider_loader_identifies_missing_optional_dependency(
     monkeypatch: pytest.MonkeyPatch, module_name: str
 ) -> None:
-    missing_dependency = ModuleNotFoundError(f"No module named '{module_name}'", name=module_name)
-    original_import = builtins.__import__
-
-    def import_without_dependency(name, *args, **kwargs):
-        if name.startswith("dify_trace_weave."):
-            raise missing_dependency
-        return original_import(name, *args, **kwargs)
-
+    monkeypatch.delitem(sys.modules, "dify_trace_weave.weave_trace", raising=False)
     monkeypatch.setitem(sys.modules, module_name, None)
-    with patch("builtins.__import__", side_effect=import_without_dependency):
-        with pytest.raises(TraceProviderNotInstalledError, match=f"weave.*{module_name}") as caught:
-            module.OpsTraceProviderConfigMap()["weave"]
+    with pytest.raises(TraceProviderNotInstalledError, match=f"weave.*{module_name}") as caught:
+        module.OpsTraceProviderConfigMap()["weave"]
 
-    assert caught.value.__cause__ is missing_dependency
+    cause = caught.value.__cause__
+    assert isinstance(cause, ModuleNotFoundError)
+    assert cause.name is not None
+    assert cause.name.partition(".")[0] == module_name
 
 
 @pytest.mark.parametrize(
@@ -526,9 +521,8 @@ def test_provider_loader_preserves_import_errors_in_installed_packages(failure: 
             raise failure
         return original_import(name, *args, **kwargs)
 
-    with patch("builtins.__import__", side_effect=broken_import):
-        with pytest.raises(ImportError) as caught:
-            module.OpsTraceProviderConfigMap()["weave"]
+    with patch("builtins.__import__", side_effect=broken_import), pytest.raises(ImportError) as caught:
+        module.OpsTraceProviderConfigMap()["weave"]
 
     assert caught.value is failure
 
@@ -539,7 +533,6 @@ def test_disable_tracing_does_not_load_provider(
 ) -> None:
     app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "weave"}))
     providers = MagicMock()
-    providers.__getitem__.side_effect = TraceProviderNotInstalledError("weave", "wandb")
     monkeypatch.setattr(module, "provider_config_map", providers)
 
     OpsTraceManager.update_app_tracing_config(app.id, False, provider)
