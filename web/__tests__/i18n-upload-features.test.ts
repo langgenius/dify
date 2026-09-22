@@ -7,7 +7,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 // Get all supported locales from the i18n directory
-const I18N_DIR = path.join(__dirname, '../i18n')
+const I18N_DIR = path.join(__dirname, '../i18n/locales')
 const getSupportedLocales = (): string[] => {
   return fs
     .readdirSync(I18N_DIR)
@@ -17,11 +17,9 @@ const getSupportedLocales = (): string[] => {
 
 // Helper function to load translation file content
 const loadTranslationContent = (locale: string): string => {
-  const filePath = path.join(I18N_DIR, locale, 'app-debug.json')
-
-  if (!fs.existsSync(filePath)) throw new Error(`Translation file not found: ${filePath}`)
-
-  return fs.readFileSync(filePath, 'utf-8')
+  return ['app-debug.json', 'file-upload.json']
+    .map((namespace) => fs.readFileSync(path.join(I18N_DIR, locale, namespace), 'utf-8'))
+    .join('\n')
 }
 
 // Helper function to check if upload features exist (supports flattened JSON)

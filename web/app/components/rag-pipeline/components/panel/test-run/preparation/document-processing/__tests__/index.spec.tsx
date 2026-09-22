@@ -61,7 +61,7 @@ vi.mock('@/app/components/base/form/form-scenarios/base/utils', () => ({
 
 const mockToastNotify = vi.fn()
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockToastNotify({ type: 'error', message }),
   },

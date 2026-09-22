@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import posixpath
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 import logging
 from typing import cast
@@ -191,7 +191,7 @@ class _ControlPlane:
 
 def _mock_http(
     monkeypatch: pytest.MonkeyPatch,
-    handler: Callable[[httpx.Request], httpx.Response],
+    handler: Callable[[httpx.Request], httpx.Response | Awaitable[httpx.Response]],
 ) -> list[httpx.AsyncClient]:
     original_async_client = httpx.AsyncClient
     transport = httpx.MockTransport(handler)
@@ -1081,4 +1081,118 @@ async def test_e2b_acquire_preserves_health_failure_when_close_and_pause_fail(
 
     assert client.calls == 3
     assert data_plane.close_calls == 1
+    assert sandbox.pauses == [True]
+
+
+@pytest.mark.anyio
+async def test_create_task_cancellation_during_initialization_kills_sandbox(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entered = asyncio.Event()
+
+    async def blocked_make_dir(_self: _Files, _path: str) -> bool:
+        entered.set()
+        await asyncio.Event().wait()
+        return True
+
+    monkeypatch.setattr(_Files, "make_dir", blocked_make_dir)
+    control = _ControlPlane()
+    backend = _binding_backend(control)
+    task = asyncio.create_task(
+        backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant",
+                agent_id="agent",
+                binding_id="binding",
+                workspace_id="workspace",
+                existing_workspace_ref=None,
+            )
+        )
+    )
+    async with asyncio.timeout(2):
+        await entered.wait()
+        task.cancel("cancel initialization")
+        with pytest.raises(asyncio.CancelledError, match="cancel initialization"):
+            await task
+    assert len(control.created) == 1
+    assert control.sandboxes["sandbox-1"].killed == 1
+
+
+@pytest.mark.anyio
+async def test_acquire_task_cancellation_during_health_closes_transport_and_pauses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entered = asyncio.Event()
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        entered.set()
+        await asyncio.Event().wait()
+        return httpx.Response(200, json={"status": "ok"})
+
+    clients = _mock_http(monkeypatch, handler)
+    backend, sandbox = _connected_backend()
+    task = asyncio.create_task(backend.acquire(sandbox.sandbox_id))
+    async with asyncio.timeout(2):
+        await entered.wait()
+        task.cancel("cancel acquisition")
+        with pytest.raises(asyncio.CancelledError, match="cancel acquisition"):
+            await task
+    assert clients[0].is_closed
+    assert sandbox.pauses == [True]
+
+
+@pytest.mark.anyio
+async def test_release_task_cancellation_keeps_pause_retries_and_original_cancel(
+    sleep_delays: list[float],
+) -> None:
+    entered = asyncio.Event()
+
+    class BlockingCloseDataPlane:
+        async def close(self) -> None:
+            entered.set()
+            await asyncio.Event().wait()
+
+    backend, sandbox = _connected_backend()
+    sandbox.pause_errors = [_transport_error(e2b_httpx.ReadTimeout), _transport_error(e2b_httpx.ReadTimeout)]
+    lease = E2BRuntimeLease(
+        sandbox=sandbox,  # pyright: ignore[reportArgumentType]
+        data_plane=cast(ShellctlRuntimeLease, cast(object, BlockingCloseDataPlane())),
+    )
+    task = asyncio.create_task(backend.release(lease))
+    async with asyncio.timeout(2):
+        await entered.wait()
+        task.cancel("cancel release")
+        with pytest.raises(asyncio.CancelledError, match="cancel release"):
+            await task
+    assert sandbox.pauses == [True, True]
+    assert sleep_delays == [0.25]
+
+
+@pytest.mark.anyio
+async def test_acquire_primary_health_error_survives_task_cancel_during_compensation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Preserve the pre-metering best-effort compensation contract: a failure in
+    # cleanup must not replace the primary acquisition error.
+    entered = asyncio.Event()
+
+    async def blocked_pause(sandbox: _Sandbox, keep_memory: bool = True) -> bool:
+        sandbox.pauses.append(keep_memory)
+        entered.set()
+        await asyncio.Event().wait()
+        return True
+
+    monkeypatch.setattr(_Sandbox, "pause", blocked_pause)
+    clients = _mock_http(
+        monkeypatch,
+        lambda _request: httpx.Response(401, json={"error": {"code": "unauthorized", "message": "bad token"}}),
+    )
+    backend, sandbox = _connected_backend()
+    task = asyncio.create_task(backend.acquire(sandbox.sandbox_id))
+    async with asyncio.timeout(2):
+        await entered.wait()
+        task.cancel("cancel compensation")
+        with pytest.raises(BindingAcquireError, match="bad token"):
+            await task
+    assert clients[0].is_closed
     assert sandbox.pauses == [True]

@@ -1,10 +1,10 @@
 'use client'
 
 import type { MotionValue } from 'motion/react'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { motion, useMotionValue, useSpring, useTransform } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocale, useTranslation } from '#i18n'
-import Divider from '@/app/components/base/divider'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { SubmitRequestDropdown } from '@/app/components/plugins/plugin-page/nav-operations'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
@@ -30,8 +30,8 @@ const Description = ({
   marketplaceNav,
   scrollContainerId = MARKETPLACE_CONTAINER_ID,
 }: DescriptionProps) => {
-  const { t } = useTranslation('plugin')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['plugin'])
+  const { t: tCommon } = useTranslation(['common', 'navigation'])
   const locale = useLocale()
   const isZhHans = locale === 'zh-Hans'
   const rafRef = useRef<number | null>(null)
@@ -234,7 +234,7 @@ const Description = ({
           <div className="flex shrink-0 items-center gap-1.5">
             <DifyLogo alt="Dify" className="h-6 w-13" />
             <span className="max-w-0 overflow-hidden title-3xl-semi-bold whitespace-nowrap text-text-primary opacity-0 transition-all duration-200 md:max-w-37.5 md:opacity-100">
-              {tCommon(($) => $['mainNav.marketplace'])}
+              {tCommon(($) => $['mainNav.marketplace'], { ns: 'navigation' })}
             </span>
           </div>
         </div>
@@ -248,7 +248,7 @@ const Description = ({
           usedInMarketplace={false}
         />
         <div className="flex h-full shrink-0 items-center justify-end gap-4 pr-3.5 pl-4">
-          <Divider type="vertical" className="mx-0 h-4 bg-divider-regular" />
+          <Separator decorative orientation="vertical" className="mx-0 h-4" />
           <SubmitRequestDropdown dividerAfterFirst />
         </div>
       </div>

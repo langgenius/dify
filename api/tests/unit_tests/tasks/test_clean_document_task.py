@@ -20,9 +20,10 @@ from models.dataset import (
     DocumentSegment,
     SegmentAttachmentBinding,
 )
-from models.enums import DataSourceType, DocumentCreatedFrom
+from models.enums import DataSourceType
 from models.model import UploadFile
 from tasks.clean_document_task import clean_document_task
+from tests.unit_tests.model_factories import make_document
 
 SQLITE_MODELS = (
     Dataset,
@@ -87,15 +88,11 @@ def mock_index_processor_factory():
 
 
 def _document(*, document_id: str, dataset_id: str, tenant_id: str, created_by: str) -> Document:
-    return Document(
-        id=document_id,
+    return make_document(
+        document_id=document_id,
         tenant_id=tenant_id,
         dataset_id=dataset_id,
-        position=1,
-        data_source_type=DataSourceType.UPLOAD_FILE,
-        batch="batch-1",
         name=f"{document_id}.txt",
-        created_from=DocumentCreatedFrom.WEB,
         created_by=created_by,
     )
 

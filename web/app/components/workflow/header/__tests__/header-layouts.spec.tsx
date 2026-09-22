@@ -86,7 +86,7 @@ vi.mock('../../collaboration/core/collaboration-manager', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -326,7 +326,7 @@ describe('Header layout components', () => {
         expect(mockInvalidAllLastRun).toHaveBeenCalledTimes(1)
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'success',
-          message: 'workflow.versionHistory.action.restoreSuccess',
+          message: 'workflowHistory.versionHistory.action.restoreSuccess',
         })
       })
       expect(mockEmitRestoreIntent).toHaveBeenCalledWith({

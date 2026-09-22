@@ -30,9 +30,8 @@ from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
-from services import dataset_api_key_service
+from repositories.knowledge import dataset_api_key_bindings
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
-from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
@@ -147,7 +146,11 @@ def validate_app_token[**P, R](
                 if user_id:
                     user_id = str(user_id)
 
-                end_user = EndUserService.get_or_create_end_user(app_model, user_id)
+                end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(
+                    app_model.tenant_id,
+                    app_model.id,
+                    user_id,
+                )
                 kwargs["end_user"] = end_user
 
                 # Set EndUser as current logged-in user for flask_login.current_user
@@ -340,7 +343,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         # per request (not cached) so scope changes take effect immediately.
         # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
         # typed helper accepts it (runtime proxies every Session method through unchanged).
-        bound_dataset_ids = dataset_api_key_service.get_bound_dataset_ids(cast(Session, db.session), api_token.id)
+        bound_dataset_ids = dataset_api_key_bindings.get_bound_dataset_ids(cast(Session, db.session), api_token.id)
         if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
             raise Forbidden("The API key is not authorized to access this knowledge base.")
 

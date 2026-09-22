@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
@@ -296,6 +297,39 @@ def test_get_plugin_provider_raises_when_provider_missing():
         with patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context):
             with patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls:
                 mock_manager_cls.return_value.fetch_tool_provider.return_value = None
+                with pytest.raises(ToolProviderNotFoundError, match="plugin provider provider-a not found"):
+                    ToolManager.get_plugin_provider("provider-a", "tenant-1")
+
+
+@pytest.mark.parametrize(
+    "daemon_error",
+    [
+        # The plugin daemon's typed "plugin not found" — happens when the
+        # builtin credential endpoint is hit with a provider name that
+        # neither the builtin nor the plugin manager owns.
+        PluginNotFoundError("plugin not found"),
+        # The lower-level daemon unreachable variant.
+        PluginDaemonNotFoundError("daemon not reachable"),
+    ],
+)
+def test_get_plugin_provider_translates_plugin_not_found_to_domain_error(daemon_error):
+    """#41805: ``ToolManager.get_builtin_provider`` falls back to
+    ``PluginToolManager.fetch_tool_provider``. The pre-fix code let the
+    plugin daemon's ``PluginNotFoundError`` bubble up to the console API
+    generic exception handler as a 500. Translate it to
+    ``ToolProviderNotFoundError`` at this boundary so the API returns a
+    controlled 4xx, consistent with the missing-provider path the
+    existing ``test_get_plugin_provider_raises_when_provider_missing``
+    test already covers.
+    """
+    provider_context = _SimpleContextVar()
+    lock_context = _SimpleContextVar()
+    lock_context.set(threading.Lock())
+
+    with patch("core.tools.tool_manager.contexts.plugin_tool_providers", provider_context):
+        with patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context):
+            with patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls:
+                mock_manager_cls.return_value.fetch_tool_provider.side_effect = daemon_error
                 with pytest.raises(ToolProviderNotFoundError, match="plugin provider provider-a not found"):
                     ToolManager.get_plugin_provider("provider-a", "tenant-1")
 
@@ -1043,7 +1077,7 @@ def test_get_mcp_provider_controller_returns_controller(monkeypatch: pytest.Monk
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
         mock_service = mock_service_cls.return_value
-        mock_service.get_provider.return_value = provider_entity
+        mock_service.get_provider_by_persisted_reference.return_value = provider_entity
         with patch("core.tools.tool_manager.MCPToolProviderController.from_db", return_value=controller):
             built = ToolManager.get_mcp_provider_controller("tenant-1", "mcp-1")
         assert built is controller
@@ -1057,7 +1091,7 @@ def test_generate_mcp_tool_icon_url_returns_provider_icon(
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
         mock_service = mock_service_cls.return_value
-        mock_service.get_provider_entity.return_value = provider_entity
+        mock_service.get_provider_entity_by_persisted_reference.return_value = provider_entity
         assert ToolManager.generate_mcp_tool_icon_url("tenant-1", "mcp-1") == provider_entity.provider_icon
         assert isinstance(mock_service_cls.call_args.kwargs["session"], Session)
 
@@ -1065,7 +1099,7 @@ def test_generate_mcp_tool_icon_url_returns_provider_icon(
 def test_get_mcp_provider_controller_missing_raises(monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase):
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
-        mock_service_cls.return_value.get_provider.side_effect = ValueError("missing")
+        mock_service_cls.return_value.get_provider_by_persisted_reference.side_effect = ValueError("missing")
         with pytest.raises(ToolProviderNotFoundError, match="mcp provider mcp-1 not found"):
             ToolManager.get_mcp_provider_controller("tenant-1", "mcp-1")
 

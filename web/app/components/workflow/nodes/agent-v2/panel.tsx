@@ -19,6 +19,7 @@ import {
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
@@ -27,6 +28,7 @@ import {
   WorkflowInlineAgentConfigureWorkspace,
   WorkflowRosterAgentOrchestratePanelContent,
 } from './components/agent-orchestrate-panel-content'
+import { AgentOutputRoutes } from './components/agent-output-routes'
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { OutputEditCard } from './components/agent-output-variables/edit-card'
 import { createDraft, isDefaultOutput } from './components/agent-output-variables/utils'
@@ -116,10 +118,10 @@ function FloatingOutputEditor({
 }
 
 export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowAgent', 'agentRoster'])
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const inputsRef = useRef(inputs)
-  const promptOutputNamesRef = useRef(extractAgentOutputNames(inputs.agent_task || ''))
+  const promptOutputNamesRef = useRefWithInit(extractAgentOutputNames, inputs.agent_task || '')
   const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
   const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] =
     useState(false)
@@ -139,11 +141,14 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const [localDeclaredOutputs, setLocalDeclaredOutputs] = useState<DeclaredOutputConfig[] | null>(
     null,
   )
-  const normalizedDeclaredOutputs = useMemo(
-    () => normalizeAgentV2DeclaredOutputs(inputs.agent_declared_outputs ?? []),
-    [inputs.agent_declared_outputs],
+  const declaredOutputs = useMemo(
+    () =>
+      normalizeAgentV2DeclaredOutputs(
+        localDeclaredOutputs ?? inputs.agent_declared_outputs ?? [],
+        inputs.agent_output_routes,
+      ),
+    [localDeclaredOutputs, inputs.agent_declared_outputs, inputs.agent_output_routes],
   )
-  const declaredOutputs = localDeclaredOutputs ?? normalizedDeclaredOutputs
   const rosterAgentId =
     inputs.agent_binding?.binding_type === 'roster_agent'
       ? inputs.agent_binding.agent_id
@@ -199,16 +204,16 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           id: inlineAgentId ?? id,
           name:
             inlineAgent?.name ||
-            t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflow' }),
+            t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflowAgent' }),
           description: inlineAgent?.description,
-          role: t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflow' }),
+          role: t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflowAgent' }),
         }
       : undefined)
 
   useEffect(() => {
     inputsRef.current = inputs
     promptOutputNamesRef.current = extractAgentOutputNames(inputs.agent_task || '')
-  }, [inputs])
+  }, [inputs, promptOutputNamesRef])
 
   useEffect(() => {
     if (!inputs._openInlineAgentPanel || !isInlineAgentReady) return
@@ -268,7 +273,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         setLocalDeclaredOutputs(getAgentV2DeclaredOutputs(newInputs))
       setInputs(newInputs)
     },
-    [setInputs],
+    [setInputs, promptOutputNamesRef],
   )
 
   const handleRosterChange = useCallback(
@@ -543,7 +548,10 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       setIsOutputVariablesCollapsed(false)
       const previousOutputs = getAgentV2DeclaredOutputs(inputsRef.current)
       let nextAgentTask = agentTask
-      let nextOutputs = normalizeAgentV2DeclaredOutputs(outputs)
+      let nextOutputs = normalizeAgentV2DeclaredOutputs(
+        outputs,
+        inputsRef.current.agent_output_routes,
+      )
       if (agentTask !== undefined) {
         const nextPromptOutputNames = extractAgentOutputNames(agentTask)
         const removedPromptOutputNames = [...promptOutputNamesRef.current].filter(
@@ -606,7 +614,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         },
       )
     },
-    [handleNodeDataUpdateWithSyncDraft, id],
+    [handleNodeDataUpdateWithSyncDraft, id, promptOutputNamesRef],
   )
 
   const handleEditTaskOutput = useCallback(
@@ -651,7 +659,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           canOpenPanel={!isInlineAgentWaitingForCreation}
           errorMessage={
             isInlineAgentLoadError
-              ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentV2' })
+              ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' })
               : undefined
           }
           isInlineSetup={isInlineAgentReady || isInlineAgentPending}
@@ -726,6 +734,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onOutputsChange={handleDeclaredOutputsChange}
           />
         </div>
+        <AgentOutputRoutes id={id} data={inputs} />
         <div>
           <AgentOutputVariables
             collapsed={isOutputVariablesCollapsed}

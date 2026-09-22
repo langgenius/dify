@@ -216,7 +216,7 @@ import {
   zPutConversationsByConversationIdVariablesByVariableIdBody,
   zPutConversationsByConversationIdVariablesByVariableIdPath,
   zPutConversationsByConversationIdVariablesByVariableIdResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Return public Service API metadata without requiring an API key

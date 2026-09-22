@@ -1,12 +1,22 @@
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { DocExtractorNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { BlockEnum } from '../../../types'
 import Panel from '../panel'
 import useConfig from '../use-config'
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.files.supportType.get.queryOptions().queryKey, {
+    allowed_extensions: ['PDF', 'md', 'md', 'DOCX'],
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 let mockLocale = 'en-US'
 
@@ -44,15 +54,8 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-help-link', () => 
   useNodeHelpLink: () => 'https://docs.example.com/document-extractor',
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useFileSupportTypes: () => ({
-    data: {
-      allowed_extensions: ['PDF', 'md', 'md', 'DOCX'],
-    },
-  }),
-}))
-
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale,
 }))
 

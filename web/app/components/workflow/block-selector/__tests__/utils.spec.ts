@@ -1,109 +1,45 @@
-import type { DataSourceItem } from '../types'
-import { transformDataSourceToTool } from '../utils'
+import { pinyin } from 'pinyin-pro'
+import { describe, expect, it } from 'vitest'
+import { compareProviderLetters, getProviderLetter } from '../utils'
 
-const createLocalizedText = (text: string) => ({
-  en_US: text,
-  zh_Hans: text,
-})
-
-const createDataSourceItem = (overrides: Partial<DataSourceItem> = {}): DataSourceItem => ({
-  plugin_id: 'plugin-1',
-  plugin_unique_identifier: 'plugin-1@provider',
-  provider: 'provider-a',
-  declaration: {
-    credentials_schema: [{ name: 'api_key' }],
-    provider_type: 'local_file',
-    identity: {
-      author: 'Dify',
-      description: createLocalizedText('Datasource provider'),
-      icon: 'provider-icon',
-      label: createLocalizedText('Provider A'),
-      name: 'provider-a',
-      tags: ['retrieval', 'storage'],
-    },
-    datasources: [
-      {
-        description: createLocalizedText('Search in documents'),
-        identity: {
-          author: 'Dify',
-          label: createLocalizedText('Document Search'),
-          name: 'document_search',
-          provider: 'provider-a',
-        },
-        parameters: [{ name: 'query', type: 'string' }],
-        output_schema: {
-          type: 'object',
-          properties: {
-            result: { type: 'string' },
-          },
-        },
-      },
-    ],
-  },
-  is_authorized: true,
-  ...overrides,
-})
-
-describe('transformDataSourceToTool', () => {
-  it('should map datasource provider fields to tool shape', () => {
-    const dataSourceItem = createDataSourceItem()
-
-    const result = transformDataSourceToTool(dataSourceItem)
-
-    expect(result).toMatchObject({
-      id: 'plugin-1',
-      provider: 'provider-a',
-      name: 'provider-a',
-      author: 'Dify',
-      description: createLocalizedText('Datasource provider'),
-      icon: 'provider-icon',
-      label: createLocalizedText('Provider A'),
-      type: 'local_file',
-      allow_delete: true,
-      is_authorized: true,
-      is_team_authorization: true,
-      labels: ['retrieval', 'storage'],
-      plugin_id: 'plugin-1',
-      plugin_unique_identifier: 'plugin-1@provider',
-      credentialsSchema: [{ name: 'api_key' }],
-      meta: { version: '' },
-    })
-    expect(result.team_credentials).toEqual({})
-    expect(result.tools).toEqual([
-      {
-        name: 'document_search',
-        author: 'Dify',
-        label: createLocalizedText('Document Search'),
-        description: createLocalizedText('Search in documents'),
-        parameters: [{ name: 'query', type: 'string' }],
-        labels: [],
-        output_schema: {
-          type: 'object',
-          properties: {
-            result: { type: 'string' },
-          },
-        },
-      },
-    ])
+describe('provider letter grouping', () => {
+  it('preserves the pinyin-pro grouping of every supported Chinese character', () => {
+    const differences: string[] = []
+    for (let code = 0x4e00; code <= 0x9fa5; code++) {
+      const character = String.fromCharCode(code)
+      const initial = (
+        pinyin(character, { pattern: 'first', toneType: 'none' })[0] || character
+      ).toUpperCase()
+      const expected = /[A-Z]/.test(initial) ? initial : '#'
+      if (getProviderLetter(character) !== expected) differences.push(character)
+    }
+    expect(differences).toEqual([])
   })
 
-  it('should fallback to empty arrays when tags and credentials schema are missing', () => {
-    const baseDataSourceItem = createDataSourceItem()
-    const dataSourceItem = createDataSourceItem({
-      declaration: {
-        ...baseDataSourceItem.declaration,
-        credentials_schema:
-          undefined as unknown as DataSourceItem['declaration']['credentials_schema'],
-        identity: {
-          ...baseDataSourceItem.declaration.identity,
-          tags: undefined as unknown as DataSourceItem['declaration']['identity']['tags'],
-        },
-      },
-    })
+  it.each([
+    ['a', 'A'],
+    ['Z', 'Z'],
+    ['1', '#'],
+    ['-', '#'],
+    ['', '#'],
+    ['é', '#'],
+    ['〇', '#'],
+    ['龦', '#'],
+    ['😀', '#'],
+    ['重', 'Z'],
+    ['长', 'C'],
+    ['行', 'X'],
+  ])('groups %j under %s', (character, expected) => {
+    expect(getProviderLetter(character)).toBe(expected)
+  })
 
-    const result = transformDataSourceToTool(dataSourceItem)
-
-    expect(result.labels).toEqual([])
-    expect(result.credentialsSchema).toEqual([])
+  it('sorts letters alphabetically and places the fallback group last', () => {
+    expect(['#', 'Z', 'A', 'C', 'A'].sort(compareProviderLetters)).toEqual([
+      'A',
+      'A',
+      'C',
+      'Z',
+      '#',
+    ])
   })
 })

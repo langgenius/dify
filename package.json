@@ -25,6 +25,7 @@
     "@eslint/markdown": "catalog:",
     "@iconify-json/heroicons": "catalog:",
     "@iconify-json/ri": "catalog:",
+    "@shadcn/lint": "catalog:",
     "@tanstack/eslint-plugin-query": "catalog:",
     "@types/node": "catalog:",
     "@typescript-eslint/parser": "catalog:",
@@ -36,7 +37,6 @@
     "eslint-plugin-antfu": "catalog:",
     "eslint-plugin-better-tailwindcss": "catalog:",
     "eslint-plugin-command": "catalog:",
-    "eslint-plugin-erasable-syntax-only": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
     "eslint-plugin-jsonc": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
@@ -57,12 +57,12 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "24.20.0",
+      "version": "24.21.0",
       "onFail": "download"
     }
   },
   "engines": {
     "node": "^24.20.0"
   },
-  "packageManager": "pnpm@12.3.4"
+  "packageManager": "pnpm@12.6.0"
 }
