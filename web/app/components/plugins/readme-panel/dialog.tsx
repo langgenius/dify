@@ -30,8 +30,8 @@ export function ReadmeDialog({ detail, open, onOpenChange, triggerId }: ReadmeDi
               render={
                 <IconButton
                   aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  size="sm"
-                  className="static size-8 rounded-lg"
+                  size="lg"
+                  className="static"
                 >
                   <span aria-hidden className="i-ri-close-line size-4" />
                 </IconButton>

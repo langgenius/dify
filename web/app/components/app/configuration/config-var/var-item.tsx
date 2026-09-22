@@ -59,7 +59,7 @@ const VarItem: FC<ItemProps> = ({
         <IconButton
           {...dragHandleProps}
           aria-label={dragHandleProps?.['aria-label'] ?? name}
-          className="handle pointer-events-none absolute left-1.5 size-6 cursor-grab opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 aria-pressed:bg-state-accent-hover"
+          className="handle pointer-events-none absolute left-1.5 cursor-grab opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 aria-pressed:bg-state-accent-hover"
         >
           <RiDraggable aria-hidden="true" className="size-4 text-text-tertiary" />
         </IconButton>
