@@ -27,10 +27,23 @@ def test_stage_error_to_envelope_code():
 def test_declares_variable():
     # BuiltinNodeTypes is not imported directly, we need to mock or just use the generator method
 
-    # LLM node
+    # LLM node. This used to assert that a structured-output SCHEMA PROPERTY
+    # (``json_var``) was a declared output -- it never was: graphon's LLM node
+    # publishes ``structured_output`` as one object addressed with a
+    # 3-segment reference, so a flat ``<llm>.json_var`` is unresolvable at run
+    # time and accepting it only let a broken graph reach the canvas silently.
+    # See TestLlmNodeDeclaresTheEngineOutputs in test_runner.py for the full
+    # truth table.
     assert WorkflowGenerator._declares_variable({"data": {"type": "llm"}}, "text") == True
-    llm_so = {"data": {"type": "llm", "structured_output": {"schema": {"properties": {"json_var": {}}}}}}
-    assert WorkflowGenerator._declares_variable(llm_so, "json_var") == True
+    llm_so = {
+        "data": {
+            "type": "llm",
+            "structured_output_enabled": True,
+            "structured_output": {"schema": {"properties": {"json_var": {}}}},
+        }
+    }
+    assert WorkflowGenerator._declares_variable(llm_so, "structured_output") == True
+    assert WorkflowGenerator._declares_variable(llm_so, "json_var") == False
     assert WorkflowGenerator._declares_variable(llm_so, "other_var") == False
 
     # Code node

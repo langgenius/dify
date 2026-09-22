@@ -8,6 +8,7 @@ import pytest
 from core.workflow.generator.prompts.builder_prompts import _NODE_SNIPPETS
 from core.workflow.generator.prompts.node_builder_prompts import (
     format_mode_section,
+    format_node_outputs_section,
     format_parallel_plan,
     format_start_inputs_section,
     get_node_builder_system_prompt,
@@ -36,6 +37,38 @@ class TestPlannerSystemPrompt:
         assert "INSTALLED-TOOL-FIRST" in PLANNER_SYSTEM_PROMPT
         assert 'you MUST use a "tool" node' in PLANNER_SYSTEM_PROMPT
         assert '"tool": {"provider_id": "<provider>", "tool_name": "<tool>"}' in PLANNER_SYSTEM_PROMPT
+
+    def test_declares_each_producers_output_names(self):
+        """B1 root cause: node configs are generated in isolated parallel calls
+        that share the plan but not the producers' chosen output names, so a
+        consumer references ``node3.deck`` against a code node that declared
+        ``slides_json``. The plan must name them -- and only for the node types
+        that choose their own names; every other type has fixed outputs."""
+        assert "node_outputs" in PLANNER_SYSTEM_PROMPT
+        assert '"node_outputs": {"<producer node id>": ["<output name>"]}' in PLANNER_SYSTEM_PROMPT
+
+        # ESQ1-300: the planner's output budget runs out from the end, and a
+        # truncated node list or edge list destroys the plan outright while a
+        # truncated declaration only costs the contract. Spend these tokens last.
+        schema = PLANNER_SYSTEM_PROMPT.partition("# Output schema")[2]
+        assert schema.index('"node_outputs"') > schema.index('"edges"') > schema.index('"nodes"')
+
+        rule = PLANNER_SYSTEM_PROMPT[PLANNER_SYSTEM_PROMPT.index("node_outputs") :][:900]
+        for producer in ('"code"', '"parameter-extractor"', '"human-input"', '"llm"'):
+            assert producer in rule
+        assert "ONLY the names declared here" in rule
+
+    def test_the_declaration_is_bounded(self):
+        """``node_outputs`` is an unbounded map on the stage with the known
+        live truncation failure (ESQ1-300: planner output-budget exhaustion,
+        masked by ``json_repair``). The ceiling must not move before the stage
+        is instrumented, so the DECLARATION is bounded instead: the fail-open
+        parse already makes a truncated or absent value harmless, and a bounded
+        one rarely truncates at all."""
+        rule = PLANNER_SYSTEM_PROMPT[PLANNER_SYSTEM_PROMPT.index("node_outputs") :][:900]
+
+        assert "at most 6" in rule
+        assert "at most 10" in rule
 
 
 class TestFormatIdealOutputSection:
@@ -84,6 +117,23 @@ class TestNodeBuilderPrompt:
         assert "- if-else:" not in prompt
         assert '"viewport":' not in prompt
         assert '"positionAbsolute":' not in prompt
+
+    def test_every_builder_learns_how_an_upstream_llm_is_referenced(self):
+        """A consumer only ever sees its OWN node's schema snippet, so the llm
+        snippet's structured-output rule never reaches the node referencing it.
+        Since a flat ``<llm>.<schema-field>`` reference is now a hard
+        generation failure (the engine cannot resolve it), the shared head has
+        to name the real outputs and the 3-segment form."""
+        prompt = get_node_builder_system_prompt("code")
+
+        assert '"reasoning_content"' in prompt
+        # Both reference forms: a 2-element selector IS harvested by the
+        # reference walker, so ``["node4", "title"]`` fails exactly like the
+        # flat placeholder does. Teaching only the placeholder form would
+        # leave every selector field pointing at an unresolvable name.
+        assert "{{#node_id.structured_output.field#}}" in prompt
+        assert '["node_id", "structured_output", "field"]' in prompt
+        assert 'never the\n  flat ``{{#node_id.field#}}`` / ``["node_id", "field"]``' in prompt
 
     def test_supports_main_human_input_and_assigner_contracts(self):
         human_input = get_node_builder_system_prompt("human-input")
@@ -137,6 +187,79 @@ class TestNodeBuilderUserSections:
         )
 
         assert json.loads(rendered)["start_inputs"] == [{"variable": "url", "label": "URL", "type": "text-input"}]
+
+    def test_parallel_plan_never_carries_declared_node_outputs(self):
+        """The declarations must NOT ride in the shared payload.
+
+        Serialising the planner's raw ``{"<id>": ["<name>"]}`` would hand every
+        consumer an llm producer's schema fields FLAT — the one reference form
+        the engine cannot resolve — right underneath the section that renders
+        the same node correctly. ``format_node_outputs_section`` already lists
+        every declared node, type-aware, so the payload has nothing to add."""
+        rendered = format_parallel_plan(
+            [{"id": "node2", "node_type": "code"}],
+            [{"source": "node1", "target": "node2"}],
+            [{"variable": "url", "label": "URL", "type": "text-input"}],
+        )
+
+        assert "node_outputs" not in rendered
+        assert set(json.loads(rendered)) == {"nodes", "edges", "start_inputs"}
+        with pytest.raises(TypeError):
+            format_parallel_plan([], [], None, {"node2": ["slides_json"]})  # type: ignore[call-arg]
+
+
+class TestNodeOutputsSection:
+    """The planner declares the output names of every node that chooses its
+    own (code / parameter-extractor / human-input / structured-output llm);
+    this section is how one isolated builder call learns them."""
+
+    _DECLARED = {"node2": ["slides_json"], "node4": ["title", "bullets"]}
+    _TYPES = {"node2": "code", "node3": "end", "node4": "llm"}
+
+    def test_producer_is_told_to_declare_exactly_its_planned_names(self):
+        out = format_node_outputs_section(self._DECLARED, "node2", self._TYPES)
+
+        assert "'slides_json'" in out
+        assert "exactly" in out
+
+    def test_consumer_may_reference_only_the_declared_names(self):
+        out = format_node_outputs_section(self._DECLARED, "node3", self._TYPES)
+
+        assert "node2: 'slides_json'" in out
+        assert "no other name" in out
+
+    def test_an_llm_producers_names_are_listed_as_structured_output_fields(self):
+        """An llm's declared names are schema fields, and the engine publishes
+        them under one ``structured_output`` object. Listing them flat would
+        hand the consumer ``{{#node4.title#}}`` -- the one reference the engine
+        cannot resolve, and now a hard generation failure."""
+        out = format_node_outputs_section(self._DECLARED, "node3", self._TYPES)
+
+        assert "node4 (llm structured output): 'structured_output.title', 'structured_output.bullets'" in out
+        assert "node4: 'title'" not in out
+
+    def test_an_unknown_node_type_is_listed_as_declared(self):
+        # Fail-open: only the four declaring types reach here and three of them
+        # name their outputs flat, so a missing type map degrades to that.
+        out = format_node_outputs_section(self._DECLARED, "node3")
+
+        assert "node4: 'title', 'bullets'" in out
+
+    def test_a_producer_does_not_see_its_own_entry_twice(self):
+        out = format_node_outputs_section(self._DECLARED, "node2", self._TYPES)
+
+        assert "node2: 'slides_json'" not in out
+        assert "node4 (llm structured output):" in out
+
+    def test_nothing_declared_renders_nothing(self):
+        assert format_node_outputs_section(None, "node2", self._TYPES) == ""
+        assert format_node_outputs_section({}, "node2", self._TYPES) == ""
+
+    def test_a_declaration_with_no_usable_content_renders_nothing(self):
+        """A header with nothing under it is worse than silence -- it spends
+        tokens telling the model a contract exists and then names none of it."""
+        assert format_node_outputs_section({"node2": []}, "node2", self._TYPES) == ""
+        assert format_node_outputs_section({"node2": []}, "node3", self._TYPES) == ""
 
 
 class TestModeSection:
