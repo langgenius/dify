@@ -14,7 +14,9 @@ from core.dify_builder.models import NodeEvent, NodeOutput, Run
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from services.dify_builder.run_mapping import (
     TRUNCATED_STREAM_ERROR,
+    error_from_stream_chunk,
     is_unfinished_run_status,
+    map_error_frame_run,
     map_run_result,
     map_unknown_run_outcome,
     node_event_from_stream_chunk,
@@ -437,3 +439,78 @@ def test_a_node_event_without_a_run_id_still_maps() -> None:
 
     assert event is not None
     assert event.run_id == ""
+
+
+# ---- error frames (ESQ1-302) --------------------------------------------------
+
+# The exact frame the ESQ1-302 session received on every run (trace seq 52,
+# docs/superpowers/drivers/esq1-302-trace.json): Graph.init rejected the
+# http-request node BEFORE workflow_started, so there is no run id and no data.
+ESQ1_302_ERROR_FRAME = {
+    "event": "error",
+    "workflow_run_id": None,
+    "code": "invalid_param",
+    "status": 400,
+    "message": (
+        "2 validation errors for HttpRequestNodeData\nbody.data.0.type\n  Field required "
+        "[type=missing, input_value={'value': '{{#node3.text#}}', 'key': 'slides'}, input_type=dict]\n"
+        "    For further information visit https://errors.pydantic.dev/2.12/v/missing\nbody.data.1.type\n"
+        "  Field required [type=missing, input_value={'value': '{{#node1.outpu...#}}', 'key': 'filename'}, "
+        "input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+    ),
+}
+
+
+def test_error_from_stream_chunk_reads_the_esq1_302_frame():
+    assert error_from_stream_chunk(ESQ1_302_ERROR_FRAME) == {
+        "message": ESQ1_302_ERROR_FRAME["message"],
+        "code": "invalid_param",
+    }
+
+
+def test_error_from_stream_chunk_ignores_every_other_frame():
+    assert error_from_stream_chunk({"event": "workflow_finished", "data": {"id": "run-1"}}) is None
+    assert error_from_stream_chunk({"event": "node_finished", "data": {"error": "x"}}) is None
+    assert error_from_stream_chunk({}) is None
+
+
+def test_map_error_frame_run_is_a_failed_launch_with_a_stable_signature_text():
+    run = map_error_frame_run(error_from_stream_chunk(ESQ1_302_ERROR_FRAME), "", [])
+
+    assert run.status == "failed"
+    assert run.dify_run_id == ""
+    assert run.per_node == []
+    assert run.culprit_node_id == ""
+    # newlines collapsed so the text is a stable repair-breaker key; code kept
+    assert "\n" not in run.error
+    assert "body.data.0.type Field required" in run.error
+    assert run.error.endswith("[invalid_param]")
+
+
+def test_map_error_frame_run_keeps_the_rows_of_a_mid_run_error():
+    rows = [_node_exec("node4", "http-request", "Call", WorkflowNodeExecutionStatus.FAILED, error="timeout")]
+
+    run = map_error_frame_run({"message": "Run failed: timeout", "code": "internal"}, "run-9", rows)
+
+    assert run.status == "failed"
+    assert run.dify_run_id == "run-9"
+    assert [n.node_id for n in run.per_node] == ["node4"]
+    assert run.culprit_node_id == "node4"
+    assert run.error == "Run failed: timeout [internal]"
+
+
+def test_map_error_frame_run_without_a_message_still_names_the_code():
+    assert map_error_frame_run({"message": "", "code": "invalid_param"}, "", []).error == (
+        "workflow run failed (invalid_param)"
+    )
+    assert map_error_frame_run({"message": "", "code": ""}, "", []).error == "workflow run failed"
+
+
+def test_map_run_result_keeps_the_run_level_error_of_a_failed_run():
+    failed = map_run_result({"id": "run-1", "status": "failed", "error": "node4: timeout"}, [])
+    assert failed.error == "node4: timeout"
+
+
+def test_map_run_result_never_carries_an_error_on_a_succeeded_run():
+    ok = map_run_result({"id": "run-1", "status": "succeeded", "error": "stale text"}, [])
+    assert ok.error == ""

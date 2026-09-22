@@ -96,7 +96,11 @@ class Run:
     status: str = ""  # running | succeeded | failed
     per_node: list[NodeOutput] = field(default_factory=list)
     culprit_node_id: str = ""
-    # Launch-failure text (run threw before any node executed); "" once a node ran.
+    # The run-level error text: the launch failure when the run threw before
+    # any node executed (then ``per_node`` is empty and this is the only
+    # evidence), or the engine's run error for a failed run. "" for a
+    # succeeded run and for an unknown outcome other than the truncated-stream
+    # notice (``run_mapping.TRUNCATED_STREAM_ERROR``).
     error: str = ""
     inputs_ref: str = ""
     tokens: int = 0
