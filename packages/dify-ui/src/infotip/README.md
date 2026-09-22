@@ -26,13 +26,13 @@ function ProcessingHint() {
 ```
 
 If the popup has its own visible title, use `InfotipTitle`. It is unstyled and gives the dialog its
-accessible name. Use `render` only when the surrounding heading hierarchy calls for a different heading level:
+accessible name. Use `render` only when the surrounding heading hierarchy requires a different heading level:
 
 ```tsx
 <Infotip>
   <InfotipTrigger aria-label="Processing priority" />
   <InfotipContent>
-    <InfotipTitle render={<h3 />}>Processing priority</InfotipTitle>
+    <InfotipTitle>Processing priority</InfotipTitle>
     <p>Priority determines which documents are processed first.</p>
   </InfotipContent>
 </Infotip>
