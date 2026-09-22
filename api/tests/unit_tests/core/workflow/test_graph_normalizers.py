@@ -206,3 +206,106 @@ class TestNormalizeConditionValues:
         assert nodes[0]["data"]["filter_by"]["conditions"][0]["value"] == ""
         assert nodes[1]["data"]["filter_by"]["conditions"][0]["value"] is True
         assert nodes[2]["data"]["filter_by"]["conditions"][0]["value"] == ["a", "2"]
+
+
+class TestDeriveIfElseVarTypes:
+    """``varType`` is a frontend-only hint the canvas uses to pick the operator
+    list; the runtime ignores it. Builder-made if-else nodes never carried it
+    (ESQ1-303: all three on dev lacked it, none of 14 human-made ones did), which
+    steers the panel to string operators on a number. Derive it only when it is
+    certain -- from a declared start-variable type -- and never guess."""
+
+    def test_derives_number_from_the_esq1_303_start_variable(self):
+        from core.workflow.graph_normalizers import derive_if_else_var_types
+
+        nodes = _esq1_303_nodes()
+        condition = next(n for n in nodes if n["id"] == "node2")["data"]["cases"][0]["conditions"][0]
+        assert "varType" not in condition
+
+        assert derive_if_else_var_types(nodes) == ["node2"]
+        assert condition["varType"] == "number"
+
+    def test_maps_every_certain_start_type_and_nothing_else(self):
+        from core.workflow.graph_normalizers import derive_if_else_var_types
+
+        def cond(var: str) -> dict:
+            return {"id": var, "variable_selector": ["start", var], "comparison_operator": "is", "value": ""}
+
+        nodes = [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "n", "type": "number"},
+                        {"variable": "t", "type": "text-input"},
+                        {"variable": "p", "type": "paragraph"},
+                        {"variable": "s", "type": "select"},
+                        {"variable": "u", "type": "url"},
+                        {"variable": "c", "type": "checkbox"},
+                        {"variable": "f", "type": "file"},
+                        {"variable": "fl", "type": "file-list"},
+                        {"variable": "j", "type": "json"},
+                    ],
+                },
+            },
+            {
+                "id": "branch",
+                "data": {
+                    "type": "if-else",
+                    "cases": [
+                        {
+                            "case_id": "true",
+                            "conditions": [cond(v) for v in ["n", "t", "p", "s", "u", "c", "f", "fl", "j"]],
+                        }
+                    ],
+                },
+            },
+        ]
+
+        derive_if_else_var_types(nodes)
+
+        got = {c["id"]: c.get("varType") for c in nodes[1]["data"]["cases"][0]["conditions"]}
+        assert got == {
+            "n": "number",
+            "t": "string",
+            "p": "string",
+            "s": "string",
+            "u": "string",
+            "c": "boolean",
+            "f": "file",
+            "fl": "array[file]",
+            "j": None,  # not certain -> omitted
+        }
+
+    def test_leaves_existing_non_start_and_sys_selectors_alone(self):
+        from core.workflow.graph_normalizers import derive_if_else_var_types
+
+        nodes = [
+            {"id": "start", "data": {"type": "start", "variables": [{"variable": "n", "type": "number"}]}},
+            {"id": "llm", "data": {"type": "llm"}},
+            {
+                "id": "branch",
+                "data": {
+                    "type": "if-else",
+                    "cases": [
+                        {
+                            "case_id": "true",
+                            "conditions": [
+                                {"id": "a", "variable_selector": ["start", "n"], "varType": "string", "value": "1"},
+                                {"id": "b", "variable_selector": ["llm", "text"], "value": "x"},
+                                {"id": "c", "variable_selector": ["sys", "query"], "value": "x"},
+                                {"id": "d", "variable_selector": ["start", "missing"], "value": "x"},
+                            ],
+                        }
+                    ],
+                },
+            },
+        ]
+
+        assert derive_if_else_var_types(nodes) == []
+        conds = {c["id"]: c for c in nodes[2]["data"]["cases"][0]["conditions"]}
+        assert conds["a"]["varType"] == "string"  # explicit values are never overwritten
+        assert "varType" not in conds["b"]
+        assert "varType" not in conds["c"]
+        assert "varType" not in conds["d"]
