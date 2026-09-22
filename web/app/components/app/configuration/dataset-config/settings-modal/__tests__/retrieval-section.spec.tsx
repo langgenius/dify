@@ -264,6 +264,7 @@ describe('RetrievalSection', () => {
     expect(screen.getByText('External API'))!.toBeInTheDocument()
     expect(screen.getByText('https://api.external.com'))!.toBeInTheDocument()
     expect(screen.getByText('ext-id-999'))!.toBeInTheDocument()
+    expect(screen.getAllByRole('separator')).toHaveLength(2)
     expect(handleExternalChange).toHaveBeenCalledWith(expect.objectContaining({ top_k: 4 }))
   })
 

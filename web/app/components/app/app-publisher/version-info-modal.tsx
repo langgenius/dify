@@ -5,9 +5,9 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 
 type VersionInfoModalProps = {
   isOpen: boolean
@@ -90,8 +90,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           </button>
         </div>
         <div className="flex flex-col gap-y-4 px-6 py-3">
-          <Field name="title" invalid={titleError} className="gap-y-1">
-            <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
+          <Field name="title" invalid={titleError}>
+            <FieldLabel className="system-sm-semibold">
               {t(($) => $['versionHistory.editField.title'], { ns: 'workflow' })}
             </FieldLabel>
             <Input
@@ -100,8 +100,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
               onValueChange={setTitle}
             />
           </Field>
-          <Field name="releaseNotes" invalid={releaseNotesError} className="gap-y-1">
-            <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
+          <Field name="releaseNotes" invalid={releaseNotesError}>
+            <FieldLabel className="system-sm-semibold">
               {t(($) => $['versionHistory.editField.releaseNotes'], { ns: 'workflow' })}
             </FieldLabel>
             <Textarea

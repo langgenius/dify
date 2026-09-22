@@ -90,6 +90,13 @@ class RemoteFileService:
         user: Account | EndUser | FileUploadActor,
         tenant_id: str | None = None,
     ) -> RemoteFileUploadResult:
+        """Fetch and persist a remote file under the requested tenant.
+
+        For Account or EndUser, tenant_id=None (including when omitted) uses
+        the account's current workspace or the end user's tenant. An explicit
+        tenant_id takes precedence. FileUploadActor requires an explicit
+        tenant_id; it is checked before fetching the remote file.
+        """
         if isinstance(user, FileUploadActor) and tenant_id is None:
             raise TypeError("tenant_id is required when uploading with FileUploadActor")
 

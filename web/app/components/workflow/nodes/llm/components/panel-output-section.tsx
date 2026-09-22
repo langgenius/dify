@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../types'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
@@ -41,23 +40,20 @@ const PanelOutputSection: FC<Props> = ({
         operations={
           <div className="mr-4 flex shrink-0 items-center">
             {!isModelSupportStructuredOutput && !!inputs.structured_output_enabled && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <div>
-                      <span className="mr-1 i-ri-alert-fill size-4 text-text-warning-secondary" />
-                    </div>
-                  }
-                />
-                <TooltipContent className="w-58 rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
-                  <div className="title-xs-semi-bold text-text-primary">
-                    {t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
-                  </div>
-                  <div className="mt-1 body-xs-regular text-text-secondary">
-                    {t(($) => $['structOutput.modelNotSupportedTip'], { ns: 'app' })}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
+              <Infotip
+                aria-label={t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
+                iconVariant="warning"
+                iconSize="large"
+                className="mr-1 text-text-warning-secondary"
+                popupClassName="w-58"
+              >
+                <div className="title-xs-semi-bold text-text-primary">
+                  {t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
+                </div>
+                <div className="mt-1">
+                  {t(($) => $['structOutput.modelNotSupportedTip'], { ns: 'app' })}
+                </div>
+              </Infotip>
             )}
             <div className="mr-0.5 system-xs-medium-uppercase text-text-tertiary">
               {t(($) => $['structOutput.structured'], { ns: 'app' })}

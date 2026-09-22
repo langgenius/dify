@@ -500,6 +500,38 @@ class TestAuthorizationFlow:
             headers={"Content-Type": "application/json"},
         )
 
+    @patch("core.helper.ssrf_proxy.post")
+    def test_register_client_rejected_by_server(self, mock_post):
+        """A rejected dynamic registration must raise ValueError, not httpx.HTTPStatusError.
+
+        `auth()` lets anything that is not a RequestError propagate, and the
+        console MCP auth endpoint only turns MCPError/ValueError into a 4xx, so
+        a raw HTTPStatusError here surfaces as an opaque 500.
+        """
+        mock_response = Mock()
+        mock_response.is_success = False
+        mock_response.status_code = 400
+        mock_response.text = '{"error":"invalid_redirect_uri"}'
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Bad Request", request=Mock(), response=mock_response
+        )
+        mock_post.return_value = mock_response
+
+        metadata = OAuthMetadata(
+            authorization_endpoint="https://auth.example.com/authorize",
+            token_endpoint="https://auth.example.com/token",
+            registration_endpoint="https://auth.example.com/register",
+            response_types_supported=["code"],
+        )
+        client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://redirect.example.com"])
+
+        with pytest.raises(ValueError) as exc_info:
+            register_client("https://api.example.com", metadata, client_metadata)
+
+        message = str(exc_info.value)
+        assert "400" in message
+        assert "invalid_redirect_uri" in message
+
     def test_register_client_no_endpoint(self):
         """Test client registration when no endpoint available."""
         metadata = OAuthMetadata(
@@ -1244,13 +1276,13 @@ class TestAuthOrchestration:
         with pytest.raises(ValueError, match="does not support dynamic client registration"):
             register_client("https://api", metadata, client_metadata)
 
-        # Failure: HTTP
+        # Failure: HTTP. A rejected registration must be reported as a ValueError so
+        # callers can turn it into a user-facing error instead of a bare 500.
         res.is_success = False
-        res.raise_for_status = Mock()
         res.status_code = 400
-        # If is_success is false, it should call raise_for_status
-        register_client("https://api", None, client_metadata)
-        res.raise_for_status.assert_called_once()
+        res.text = '{"error":"invalid_redirect_uri"}'
+        with pytest.raises(ValueError, match="Client registration failed: HTTP 400"):
+            register_client("https://api", None, client_metadata)
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     def test_auth_orchestration_failures(self, mock_discover):

@@ -61,7 +61,9 @@ describe('node sections', () => {
     )
 
     expect(screen.getByText('nodes.iteration.parallelModeUpper')).toBeInTheDocument()
-    await user.hover(screen.getByText('nodes.iteration.parallelModeUpper'))
+    await user.click(
+      screen.getByRole('button', { name: 'nodes.iteration.parallelModeEnableTitle' }),
+    )
     expect(await screen.findByText('nodes.iteration.parallelModeEnableTitle')).toBeInTheDocument()
     expect(screen.getByText('nodes.iteration.parallelModeEnableDesc')).toBeInTheDocument()
     expect(screen.getByText('3/3')).toBeInTheDocument()

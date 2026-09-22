@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCSVDownloader } from 'react-papaparse'
+import { useLocale } from '#i18n'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
-import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
 import { ChunkingMode } from '@/models/datasets'
 
 const CSV_TEMPLATE_QA_EN = [
@@ -45,12 +45,12 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
           <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-subtle text-xs">
             <thead className="text-text-secondary">
               <tr>
-                <td className="h-9 border-b border-divider-subtle pr-2 pl-3">
+                <th className="h-9 border-b border-divider-subtle pr-2 pl-3 text-left font-[weight:inherit]">
                   {t(($) => $['list.batchModal.question'], { ns: 'datasetDocuments' })}
-                </td>
-                <td className="h-9 border-b border-divider-subtle pr-2 pl-3">
+                </th>
+                <th className="h-9 border-b border-divider-subtle pr-2 pl-3 text-left font-[weight:inherit]">
                   {t(($) => $['list.batchModal.answer'], { ns: 'datasetDocuments' })}
-                </td>
+                </th>
               </tr>
             </thead>
             <tbody className="text-text-tertiary">
@@ -77,9 +77,9 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
           <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-subtle text-xs">
             <thead className="text-text-secondary">
               <tr>
-                <td className="h-9 border-b border-divider-subtle pr-2 pl-3">
+                <th className="h-9 border-b border-divider-subtle pr-2 pl-3 text-left font-[weight:inherit]">
                   {t(($) => $['list.batchModal.contentTitle'], { ns: 'datasetDocuments' })}
-                </td>
+                </th>
               </tr>
             </thead>
             <tbody className="text-text-tertiary">

@@ -5,6 +5,7 @@ import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { consoleClient } from '@/service/console'
 import {
   del as consoleDel,
   get as consoleGet,
@@ -408,8 +409,21 @@ export const textToAudioStream = (
     message_id?: string
     text?: string | null | undefined
   },
-) => {
-  return getAction('post', appSourceType)(url, { body }, { needAllResponseContent: true })
+): Promise<Response> => {
+  const agentId =
+    appSourceType !== AppSourceType.webApp && /^\/agent\/([^/]+)\/text-to-audio$/.exec(url)?.[1]
+  if (agentId) {
+    return (
+      consoleClient.agent.byAgentId.textToAudio
+        .post({
+          params: { agent_id: agentId },
+          body: { ...body, text: body.text ?? '' },
+        })
+        // The shared player consumes Response streams; generated binary calls return Blobs.
+        .then((audio) => new Response(audio))
+    )
+  }
+  return getAction('post', appSourceType)<Response>(url, { body }, { needAllResponseContent: true })
 }
 
 type AccessTokenResponse = { access_token: string }

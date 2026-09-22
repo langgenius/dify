@@ -4,20 +4,21 @@ import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryState } from 'nuqs'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
+import { useLocale } from '#i18n'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useDocLink, useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { toast } from '@/app/notifications'
+import { useDocLink } from '@/context/i18n'
+import { LanguagesSupported } from '@/i18n/language'
 import { useCodeBasedExtensions, useModelProviderDetails } from '@/service/use-common'
 import FormGeneration from './form-generation'
 import ModerationContent from './moderation-content'
@@ -44,7 +45,7 @@ function LabeledDivider({ children }: { children: ReactNode }) {
   return (
     <div className="flex w-full items-center gap-2">
       <span className="shrink-0 system-xs-medium-uppercase text-text-tertiary">{children}</span>
-      <Divider bgStyle="gradient" className="my-0 h-px flex-1" />
+      <Separator decorative variant="gradient" className="my-0 flex-1" />
     </div>
   )
 }

@@ -76,6 +76,13 @@ export type Import = {
   warnings?: Array<DslImportWarning>
 }
 
+export type RosterAgentPackageConflictResponse = {
+  code: string
+  leaked_dependencies?: Array<PluginDependency>
+  message: string
+  status?: 409
+}
+
 export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
 }
@@ -3147,7 +3154,17 @@ export type PostAppsResponses = {
 export type PostAppsResponse = PostAppsResponses[keyof PostAppsResponses]
 
 export type PostAppsImportsData = {
-  body: AppImportPayload
+  body:
+    | AppImportPayload
+    | {
+        app_id?: string
+        description?: string
+        file: Blob | File
+        icon?: string
+        icon_background?: string
+        icon_type?: string
+        name?: string
+      }
   path?: never
   query?: never
   url: '/apps/imports'
@@ -3155,6 +3172,9 @@ export type PostAppsImportsData = {
 
 export type PostAppsImportsErrors = {
   400: Import
+  403: unknown
+  409: RosterAgentPackageConflictResponse
+  413: unknown
 }
 
 export type PostAppsImportsError = PostAppsImportsErrors[keyof PostAppsImportsErrors]
@@ -4417,7 +4437,9 @@ export type GetAppsByAppIdExportData = {
     app_id: string
   }
   query?: {
+    format?: 'ifpkg' | 'yaml'
     include_secret?: boolean
+    version_id?: string
     workflow_id?: string
   }
   url: '/apps/{app_id}/export'
@@ -4428,7 +4450,7 @@ export type GetAppsByAppIdExportErrors = {
 }
 
 export type GetAppsByAppIdExportResponses = {
-  200: AppExportResponse
+  200: AppExportResponse | Blob | File
 }
 
 export type GetAppsByAppIdExportResponse =

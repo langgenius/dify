@@ -58,6 +58,9 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         def close(self) -> None:
             super().close()
             closed_sessions.append(self)
+            failure = self.info.get("close_failure")
+            if isinstance(failure, BaseException):
+                raise failure
 
     factory = sessionmaker(bind=sqlite_engine, class_=TrackedSession, expire_on_commit=True)
     return _Harness(
@@ -251,6 +254,28 @@ def test_commit_failure_closes_created_stream_and_preserves_commit_error(
         app = session.get(App, harness.app.app_id)
         assert app is not None
         assert app.name == "Trial app"
+
+
+def test_session_close_failure_closes_created_stream_and_preserves_session_error(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    failure = RuntimeError("Session close failed")
+    stream = _Stream()
+
+    def generate(session: Session) -> GenerationResponse:
+        session.info["close_failure"] = failure
+        return stream
+
+    _patch_generation(monkeypatch, harness, generate, streaming=True)
+
+    with pytest.raises(RuntimeError) as raised:
+        harness.runtime.generate(app=harness.app, account_id=harness.account_id, args=_ARGS, streaming=True)
+
+    assert raised.value is failure
+    assert stream.close_calls == 1
+    assert stream.read_calls == 0
+    assert len(harness.closed_sessions) == 2
+    assert harness.committed_sessions == [harness.closed_sessions[1]]
 
 
 @pytest.mark.parametrize("invalid", ["missing-app", "wrong-owner", "missing-account"])

@@ -34,6 +34,7 @@ from services.agent.workspace_service import (
     AgentWorkspaceBindingGenerationMismatchError,
     AgentWorkspaceService,
 )
+from tests.unit_tests.model_factories import make_account, make_app, make_conversation
 
 _SOUL_DICT = {
     "model": {
@@ -84,24 +85,22 @@ def _snapshot(
 
 
 def _app() -> App:
-    return App(
-        id="app-1",
+    return make_app(
         tenant_id="t1",
         name="Agent App",
         mode=AppMode.AGENT_CHAT,
+        icon_type=None,
         enable_site=False,
         enable_api=False,
     )
 
 
 def _account() -> Account:
-    account = Account(name="Agent User", email="agent-user@example.com")
-    account.id = "user-1"
-    return account
+    return make_account(account_id="user-1", name="Agent User", email="agent-user@example.com")
 
 
 def _conversation(*, binding_id: str) -> Conversation:
-    return Conversation(id="conversation-1", app_id="app-1", agent_workspace_binding_id=binding_id)
+    return make_conversation(agent_workspace_binding_id=binding_id)
 
 
 def _binding(

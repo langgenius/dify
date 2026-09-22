@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import type { ProcessRuleResponse } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { ProcessMode } from '@/models/datasets'
 import { indexMethodIcon, retrievalIcon } from '../../../../create/icons'
 import { IndexingType } from '../../../../create/step-two'
@@ -98,7 +98,7 @@ const RuleDetail: FC<RuleDetailProps> = React.memo(
             />
           ))}
         </div>
-        <Divider type="horizontal" className="bg-divider-subtle" />
+        <Separator orientation="horizontal" className="my-2 h-[0.5px] bg-divider-subtle" />
         <FieldInfo
           label={t(($) => $['stepTwo.indexMode'], { ns: 'datasetCreation' })}
           displayedValue={
