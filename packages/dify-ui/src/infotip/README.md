@@ -43,12 +43,13 @@ turning the whole body into the dialog description.
 A few rules:
 
 - The trigger's name must exist while the popup is closed.
-- Prefer `aria-labelledby` when a suitable visible topic already exists; otherwise use a short localized `aria-label`.
-- Sharing one short topic between the trigger and dialog is valid. Do not copy the full explanation into their accessible names.
+- Prefer `aria-labelledby` when a suitable visible topic already exists; otherwise use a short
+  localized `aria-label`.
+- Sharing one short topic between the trigger and dialog is valid. Do not copy the full explanation
+  into their accessible names.
 - Do not derive names from React children or automatically describe the dialog with its entire body.
 
 ## Visual ownership
 
 Infotip owns its hint surface, spacing, typography, radius, and shadow. Callers may constrain width
 or preserve intentional line breaks.
-
