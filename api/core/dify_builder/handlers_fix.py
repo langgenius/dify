@@ -930,6 +930,7 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         fc.change_set = None
         fc.test_input_ref = ""
         fc.verify_run_id = ""
+        fc.unknown_outcome_count = 0
         return StepResult(next=PcState.FIX_DIAGNOSE, context=fc)
     if kind == "undo":
         perform_revert(env, turn, s, fc)
