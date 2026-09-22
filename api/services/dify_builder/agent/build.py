@@ -360,10 +360,11 @@ def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: l
     """Name each selected resource on the plan step it covers.
 
     Used to append every label to the LAST step -- in the ESQ1-302 session the
-    end-node step read "(using deepseek-v4-flash, Code Interpreter)" while the
-    step that needed a tool said nothing. The last step is now only the
-    fallback for a resource no step names. A tool is named with its id
-    (``_bound_name``) so the generator pins exactly that tool.
+    end-node step read "(using langgenius/tokener/tokener/deepseek-v4-flash,
+    Code Interpreter)" while the step that needed a tool said nothing. The
+    last step is now only the fallback for a resource no step names. A tool
+    is named with its id (``_bound_name``) so the generator pins exactly that
+    tool.
 
     A loop-back (build.review / build.reverted -> re-walk resources ->
     approve_plan) feeds the already-bound plan back in here, so every item's
