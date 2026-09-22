@@ -80,6 +80,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
+from libs.login import login_required
 from libs.stream import close_stream
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
@@ -809,6 +810,7 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SiteResponse.__name__])
+    @login_required
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app site info.
@@ -832,6 +834,7 @@ class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ParametersResponse.__name__])
+    @login_required
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app parameters."""
@@ -881,6 +884,7 @@ class AppApi(Resource):
 )
 class AppWorkflowApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialWorkflowResponse.__name__])
+    @login_required
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Get a detached workflow definition after catalog preview admission."""
@@ -900,6 +904,7 @@ class AppWorkflowApi(Resource):
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialDatasetListResponse.__name__])
+    @login_required
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         # These legacy fields are response metadata: the query returns all
