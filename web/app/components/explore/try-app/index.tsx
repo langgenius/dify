@@ -15,25 +15,22 @@ import Preview from './preview'
 import { TypeEnum } from './types'
 
 type Props = Readonly<{
-  appId: string
   app: RecommendedAppResponse
   canCreate?: boolean
-  categories?: string[]
   createButtonStepByStepTourTarget?: string
   onClose: () => void
   onCreate: () => void
 }>
 
 function TryApp({
-  appId,
   app,
   canCreate = true,
-  categories,
   createButtonStepByStepTourTarget,
   onClose,
   onCreate,
 }: Props) {
   const { t } = useTranslation()
+  const appId = app.app_id
   const canUseTryTab = app.can_trial
   const [type, setType] = useState<TypeEnum>(() => (canUseTryTab ? TypeEnum.TRY : TypeEnum.DETAIL))
   const activeType = canUseTryTab ? type : TypeEnum.DETAIL
@@ -111,7 +108,7 @@ function TryApp({
                 appDetail={appDetail}
                 appId={appId}
                 canCreate={canCreate}
-                categories={categories}
+                categories={app.categories ?? []}
                 createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
                 onCreate={onCreate}
               />
