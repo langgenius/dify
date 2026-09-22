@@ -10,6 +10,7 @@ as a compact fixture for state-machine tests that do not exercise model calls.
 from collections.abc import Callable
 from typing import Any
 
+from core.dify_builder import node_defaults
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import (
     BuildNodesResult,
@@ -27,7 +28,6 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
-from services.dify_builder import node_defaults
 
 __all__ = [
     "BUILD_END_ID",
