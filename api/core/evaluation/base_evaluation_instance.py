@@ -11,6 +11,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationMetric,
     NodeInfo,
 )
+from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from graphon.node_events.base import NodeRunResult
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,11 @@ class BaseEvaluationInstance(ABC):
                 )
             else:
                 published_workflow = workflow_service.get_published_workflow(app_model=app, session=session)
+        if not published_workflow and customized_metrics.evaluation_workflow_version_id:
+            raise EvaluationWorkflowVersionNotFoundError(
+                "Pinned evaluation workflow version "
+                f"{customized_metrics.evaluation_workflow_version_id} no longer exists."
+            )
         if not published_workflow:
             raise ValueError(f"No published workflow found for evaluation app {workflow_id}")
 

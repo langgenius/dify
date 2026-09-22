@@ -29,6 +29,7 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
+from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.node_events.base import NodeRunResult
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
@@ -39,6 +40,7 @@ from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
     EvaluationRunItem,
+    EvaluationRunItemStatus,
     EvaluationRunStatus,
     EvaluationTargetType,
 )
@@ -990,7 +992,10 @@ class EvaluationService:
         cls.get_evaluation_run_detail(session, tenant_id, target_type, target_id, run_id)
         query = (
             session.query(EvaluationRunItem)
-            .filter_by(evaluation_run_id=run_id)
+            .filter_by(
+                evaluation_run_id=run_id,
+                status=EvaluationRunItemStatus.COMPLETED,
+            )
             .order_by(EvaluationRunItem.item_index.asc())
         )
         total = query.count()
@@ -1036,6 +1041,11 @@ class EvaluationService:
 
     @classmethod
     def _stop_workflow_tasks(cls, evaluation_run_id: str, total_items: int) -> None:
+        cls._stop_workflow_task_positions(evaluation_run_id, range(total_items))
+
+    @classmethod
+    def _stop_workflow_task_positions(cls, evaluation_run_id: str, positions: Sequence[int]) -> None:
+        """Stop target and evaluator workflows for the selected original row positions."""
         from core.app.apps.base_app_queue_manager import AppQueueManager
         from extensions.ext_redis import redis_client
         from graphon.graph_engine.manager import GraphEngineManager
@@ -1047,7 +1057,7 @@ class EvaluationService:
                 "Failed to initialize graph engine manager while stopping evaluation run %s", evaluation_run_id
             )
             manager = None
-        for position in range(total_items):
+        for position in positions:
             for phase in ("target", "evaluator"):
                 task_id = cls.workflow_task_id(evaluation_run_id, phase, position)
                 try:
@@ -1564,6 +1574,8 @@ class EvaluationService:
         max_workers: int | None = None,
         cancellation_check: Callable[[], None] | None = None,
         progress_callback: Callable[[int, int], None] | None = None,
+        result_callback: Callable[[int, dict[str, NodeRunResult], str | None, str | None], None] | None = None,
+        task_positions: Sequence[int] | None = None,
     ) -> tuple[list[dict[str, NodeRunResult]], list[str | None], list[str | None]]:
         """Execute the evaluation target for every test-data item in parallel.
 
@@ -1572,6 +1584,8 @@ class EvaluationService:
         :param target_id: ID of the App or CustomizedSnippet.
         :param input_list: All test-data items parsed from the dataset.
         :param max_workers: Maximum number of parallel worker threads.
+        :param result_callback: Coordinator-thread hook invoked as each target result arrives.
+        :param task_positions: Original dataset positions used to keep workflow task IDs stable across retries.
         :return: Tuple of (node_results, workflow_run_ids).
             node_results: ordered list of ``{node_id: NodeRunResult}`` mappings;
             the *i*-th element corresponds to ``input_list[i]``.
@@ -1584,8 +1598,12 @@ class EvaluationService:
 
         flask_app: Flask = current_app._get_current_object()  # type: ignore
 
+        resolved_task_positions = list(task_positions) if task_positions is not None else list(range(len(input_list)))
+        if len(resolved_task_positions) != len(input_list):
+            raise ValueError("task_positions must align with input_list.")
+
         def _worker(
-            position: int,
+            task_position: int,
             item: EvaluationDatasetInput,
         ) -> tuple[dict[str, NodeRunResult], str | None, str | None]:
             with flask_app.app_context():
@@ -1598,7 +1616,7 @@ class EvaluationService:
                             target_id=target_id,
                             target_workflow_version_id=target_workflow_version_id,
                             item=item,
-                            task_id=cls.workflow_task_id(evaluation_run_id, "target", position),
+                            task_id=cls.workflow_task_id(evaluation_run_id, "target", task_position),
                         )
 
                         workflow_run_id = cls._extract_workflow_run_id(response)
@@ -1619,6 +1637,8 @@ class EvaluationService:
                         if not node_results:
                             return {}, workflow_run_id, "Target execution produced no successful node results."
                         return node_results, workflow_run_id, None
+                    except EvaluationWorkflowVersionNotFoundError:
+                        raise
                     except Exception as exc:
                         logger.exception(
                             "Target execution failed for item %d (target=%s)",
@@ -1630,7 +1650,8 @@ class EvaluationService:
         worker_count = max_workers or dify_config.EVALUATION_MAX_PARALLEL_TARGETS
         executor = ThreadPoolExecutor(max_workers=worker_count)
         future_positions: dict[Future[tuple[dict[str, NodeRunResult], str | None, str | None]], int] = {
-            executor.submit(_worker, position, item): position for position, item in enumerate(input_list)
+            executor.submit(_worker, resolved_task_positions[position], item): position
+            for position, item in enumerate(input_list)
         }
         ordered_results: list[dict[str, NodeRunResult]] = [{} for _ in input_list]
         ordered_workflow_run_ids: list[str | None] = [None for _ in input_list]
@@ -1646,20 +1667,24 @@ class EvaluationService:
                     position = future_positions[future]
                     try:
                         node_result, workflow_run_id, error = future.result()
+                    except EvaluationWorkflowVersionNotFoundError:
+                        raise
                     except Exception as exc:
                         logger.exception("Unexpected error collecting target execution result")
                         node_result, workflow_run_id, error = {}, None, str(exc) or type(exc).__name__
                     ordered_results[position] = node_result
                     ordered_workflow_run_ids[position] = workflow_run_id
                     ordered_errors[position] = error
+                    if result_callback is not None:
+                        result_callback(position, node_result, workflow_run_id, error)
                     completed += 1
                     if progress_callback is not None:
                         progress_callback(completed, len(input_list))
         except Exception:
             for future in pending:
                 future.cancel()
-            cls._stop_workflow_tasks(evaluation_run_id, len(input_list))
-            executor.shutdown(wait=False, cancel_futures=True)
+            cls._stop_workflow_task_positions(evaluation_run_id, resolved_task_positions)
+            executor.shutdown(wait=True, cancel_futures=True)
             raise
         else:
             executor.shutdown(wait=True)
@@ -1686,7 +1711,8 @@ class EvaluationService:
         * ``"apps"`` → :meth:`WorkflowAppGenerator().generate` (blocking mode)
 
         :returns: The blocking response mapping from the workflow engine.
-        :raises ValueError: If the target is not found or not published.
+        :raises ValueError: If the target itself is invalid or missing.
+        :raises EvaluationWorkflowVersionNotFoundError: If the pinned published version was deleted.
         """
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
         from core.app.entities.app_invoke_entities import InvokeFrom
@@ -1706,15 +1732,32 @@ class EvaluationService:
 
             service_account = get_service_account_for_snippet(session, target_id, tenant_id)
 
-            return SnippetGenerateService.run_published(
-                snippet=snippet,
-                user=service_account,
-                args={"inputs": item.inputs},
-                invoke_from=InvokeFrom.SERVICE_API,
-                session_maker=session_factory.get_session_maker(),
-                workflow_id=target_workflow_version_id,
-                task_id=task_id,
+            pinned_workflow = SnippetService(session=session).get_published_workflow_by_id(
+                snippet,
+                target_workflow_version_id,
             )
+            if pinned_workflow is None:
+                raise EvaluationWorkflowVersionNotFoundError(
+                    f"Pinned workflow version {target_workflow_version_id} no longer exists for snippet {target_id}."
+                )
+
+            try:
+                return SnippetGenerateService.run_published(
+                    snippet=snippet,
+                    user=service_account,
+                    args={"inputs": item.inputs},
+                    invoke_from=InvokeFrom.SERVICE_API,
+                    session_maker=session_factory.get_session_maker(),
+                    workflow_id=target_workflow_version_id,
+                    task_id=task_id,
+                )
+            except ValueError as exc:
+                if "No published workflow found" in str(exc):
+                    raise EvaluationWorkflowVersionNotFoundError(
+                        f"Pinned workflow version {target_workflow_version_id} no longer exists "
+                        f"for snippet {target_id}."
+                    ) from exc
+                raise
         if target_type == EvaluationTargetType.APPS.value:
             # target_type == "apps"
             app = session.scalar(
@@ -1737,8 +1780,8 @@ class EvaluationService:
                 session=session,
             )
             if not workflow:
-                raise ValueError(
-                    f"Published workflow version {target_workflow_version_id} was not found for app {target_id}"
+                raise EvaluationWorkflowVersionNotFoundError(
+                    f"Pinned workflow version {target_workflow_version_id} no longer exists for app {target_id}."
                 )
 
             response: Mapping[str, object] = WorkflowAppGenerator().generate(

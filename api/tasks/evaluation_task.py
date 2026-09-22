@@ -8,7 +8,7 @@ from numbers import Real
 from threading import Event, Thread
 from typing import Any, cast
 
-from celery import shared_task
+from celery import Task, shared_task
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -27,8 +27,9 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationRunData,
     NodeInfo,
 )
-from core.evaluation.entities.judgment_entity import JudgmentConfig
+from core.evaluation.entities.judgment_entity import JudgmentConfig, JudgmentResult
 from core.evaluation.evaluation_manager import EvaluationManager
+from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.judgment.processor import JudgmentProcessor
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
@@ -41,6 +42,7 @@ from models.enums import CreatorUserRole
 from models.evaluation import (
     EvaluationRun,
     EvaluationRunItem,
+    EvaluationRunItemStatus,
     EvaluationRunStatus,
     EvaluationTargetType,
 )
@@ -61,18 +63,76 @@ def _workflow_task_id(evaluation_run_id: str, phase: str, position: int) -> str:
     return EvaluationService.workflow_task_id(evaluation_run_id, phase, position)
 
 
-@shared_task(queue="evaluation", acks_late=True, reject_on_worker_lost=True)
-def run_evaluation(run_data_dict: dict[str, Any]) -> None:
-    """Execute one evaluation run while preserving terminal state transitions."""
+@shared_task(
+    queue="evaluation",
+    bind=True,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    max_retries=dify_config.EVALUATION_RUN_MAX_RETRIES,
+)
+def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
+    """Execute a run with bounded retries and durable row checkpoints.
+
+    Dataset-row evaluation errors remain terminal item results. Unexpected
+    orchestration or infrastructure failures retry the task with exponential
+    backoff, resuming from the persisted checkpoints.
+    """
     run_data = EvaluationRunData.model_validate(run_data_dict)
     with session_factory.create_session() as session:
         try:
             _execute_evaluation(session, run_data)
         except EvaluationRunCancelledError:
             logger.info("Evaluation run %s stopped after cancellation", run_data.evaluation_run_id)
-        except Exception as exc:
-            logger.exception("Evaluation run %s failed", run_data.evaluation_run_id)
+        except EvaluationWorkflowVersionNotFoundError as exc:
+            logger.exception(
+                "Evaluation run %s cannot continue because a pinned workflow version is missing",
+                run_data.evaluation_run_id,
+            )
             _mark_run_failed(session, run_data.evaluation_run_id, str(exc))
+        except ValueError as exc:
+            logger.exception("Evaluation run %s failed validation", run_data.evaluation_run_id)
+            _mark_run_failed(session, run_data.evaluation_run_id, str(exc))
+        except Exception as exc:
+            retry_number = task.request.retries + 1
+            max_retries = dify_config.EVALUATION_RUN_MAX_RETRIES
+            if task.request.retries >= max_retries:
+                logger.exception(
+                    "Evaluation run %s exhausted its retry budget after %d attempts",
+                    run_data.evaluation_run_id,
+                    task.request.retries + 1,
+                )
+                _mark_run_failed(
+                    session,
+                    run_data.evaluation_run_id,
+                    f"Evaluation failed after {task.request.retries + 1} attempts: {exc}",
+                )
+                return
+
+            countdown = dify_config.EVALUATION_RUN_RETRY_DELAY * (2**task.request.retries)
+            logger.warning(
+                "Evaluation run %s failed; scheduling retry %d/%d in %d seconds",
+                run_data.evaluation_run_id,
+                retry_number,
+                max_retries,
+                countdown,
+                exc_info=True,
+            )
+            retry_signal = task.retry(exc=exc, countdown=countdown, throw=False)
+            try:
+                retry_scheduled = _mark_run_pending_for_retry(
+                    session,
+                    run_data.evaluation_run_id,
+                    str(exc),
+                    retry_number,
+                    max_retries,
+                )
+            except Exception:
+                logger.exception("Failed to persist retry state for evaluation run %s", run_data.evaluation_run_id)
+                retry_scheduled = True
+            if not retry_scheduled:
+                logger.info("Evaluation run %s became terminal before retry", run_data.evaluation_run_id)
+                return
+            raise retry_signal
 
 
 def _renew_evaluation_run_heartbeat(evaluation_run_id: str) -> bool:
@@ -212,16 +272,21 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData) -> None:
     if evaluation_instance is None:
         raise ValueError("Evaluation framework not configured")
 
-    # Redelivery is idempotent at the result boundary: discard a partial prior attempt.
-    session.query(EvaluationRunItem).filter_by(evaluation_run_id=evaluation_run.id).delete()
+    completed_items, failed_items, checkpointed_items = _get_completed_checkpoint_counts(
+        session,
+        evaluation_run.id,
+    )
     now = naive_utc_now()
     evaluation_run.status = EvaluationRunStatus.RUNNING
     evaluation_run.started_at = evaluation_run.started_at or now
     evaluation_run.heartbeat_at = now
     evaluation_run.completed_at = None
-    evaluation_run.completed_items = 0
-    evaluation_run.failed_items = 0
-    evaluation_run.progress_rate = 0.01
+    evaluation_run.completed_items = completed_items
+    evaluation_run.failed_items = failed_items
+    evaluation_run.progress_rate = max(
+        evaluation_run.progress_rate,
+        _checkpoint_progress(checkpointed_items, evaluation_run.total_items),
+    )
     evaluation_run.error = None
     session.commit()
 
@@ -236,43 +301,21 @@ def _execute_running_evaluation(
     run_created_by: str,
 ) -> None:
     if run_data.target_type == EvaluationTargetType.KNOWLEDGE_BASE.value:
-        results = _execute_retrieval_test(
-            session=session,
-            account_id=run_created_by,
-            run_data=run_data,
-            evaluation_instance=evaluation_instance,
+        _resume_retrieval_rows(
+            session,
+            run_data,
+            evaluation_instance,
+            run_created_by,
         )
     else:
-        node_results, workflow_run_ids, target_errors = EvaluationService.execute_targets(
-            evaluation_run_id=run_data.evaluation_run_id,
-            tenant_id=run_data.tenant_id,
-            target_type=run_data.target_type,
-            target_id=run_data.target_id,
-            target_workflow_version_id=run_data.target_workflow_version_id or "",
-            input_list=run_data.input_list,
-            cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
-            progress_callback=lambda completed, total: _update_run_progress(
-                session,
-                run_data.evaluation_run_id,
-                0.05 + 0.55 * completed / max(total, 1),
-            ),
-        )
-        _raise_if_cancelled(session, run_data.evaluation_run_id)
-        workflow_run_id_map = {
-            item.index: workflow_run_id
-            for item, workflow_run_id in zip(run_data.input_list, workflow_run_ids)
-            if workflow_run_id
-        }
-        results = _execute_evaluation_runner(
-            session=session,
-            run_data=run_data,
-            evaluation_instance=evaluation_instance,
-            node_run_result_mapping_list=node_results,
-            workflow_run_id_map=workflow_run_id_map,
-            target_errors=target_errors,
+        _resume_workflow_rows(
+            session,
+            run_data,
+            evaluation_instance,
         )
 
     _raise_if_cancelled(session, run_data.evaluation_run_id)
+    results = _load_completed_checkpoint_results(session, run_data)
     # The cancellation check starts a read transaction. End it before writing
     # the result object to external storage; the final status update below is
     # the database-side compare-and-set that publishes the file atomically.
@@ -321,6 +364,270 @@ def _execute_running_evaluation(
     logger.info("Evaluation run %s completed successfully", run_data.evaluation_run_id)
 
 
+def _resume_retrieval_rows(
+    session: Session,
+    run_data: EvaluationRunData,
+    evaluation_instance: BaseEvaluationInstance,
+    run_created_by: str,
+) -> None:
+    """Resume knowledge-base evaluation from completed row checkpoints."""
+    completed_indices = _get_completed_checkpoint_indices(session, run_data.evaluation_run_id)
+    pending_items = [item for item in run_data.input_list if item.index not in completed_indices]
+    if not pending_items:
+        return
+
+    node_run_results, retrieval_errors = EvaluationService.execute_retrieval_test_targets(
+        tenant_id=run_data.tenant_id,
+        dataset_id=run_data.target_id,
+        account_id=run_created_by,
+        input_list=pending_items,
+        cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
+        progress_callback=lambda completed, total: _update_run_progress(
+            session,
+            run_data.evaluation_run_id,
+            0.05 + 0.45 * (len(completed_indices) + completed) / max(len(run_data.input_list), 1),
+        ),
+    )
+    _raise_if_cancelled(session, run_data.evaluation_run_id)
+    for position, item in enumerate(pending_items):
+        item_run_data = run_data.model_copy(update={"input_list": [item]})
+        _evaluate_retrieval_results(
+            session=session,
+            run_data=item_run_data,
+            evaluation_instance=evaluation_instance,
+            node_run_results=[node_run_results[position]],
+            retrieval_errors=[retrieval_errors[position]],
+            report_progress=False,
+        )
+
+
+def _resume_workflow_rows(
+    session: Session,
+    run_data: EvaluationRunData,
+    evaluation_instance: BaseEvaluationInstance,
+) -> None:
+    """Resume target execution and scoring without replaying durable row checkpoints."""
+    checkpoint_by_index = {
+        checkpoint.item_index: checkpoint
+        for checkpoint in session.scalars(
+            select(EvaluationRunItem).where(EvaluationRunItem.evaluation_run_id == run_data.evaluation_run_id)
+        ).all()
+    }
+    session.rollback()
+
+    evaluation_inputs: dict[int, tuple[dict[str, NodeRunResult], str | None, str | None]] = {}
+    pending_items: list[EvaluationDatasetInput] = []
+    pending_positions: list[int] = []
+    target_ready_count = 0
+
+    for position, item in enumerate(run_data.input_list):
+        checkpoint = checkpoint_by_index.get(item.index)
+        if checkpoint is not None and checkpoint.status == EvaluationRunItemStatus.COMPLETED:
+            target_ready_count += 1
+            continue
+        if checkpoint is not None and checkpoint.status == EvaluationRunItemStatus.TARGET_COMPLETED:
+            target_ready_count += 1
+            if checkpoint.workflow_run_id:
+                checkpoint_node_results = EvaluationService._query_node_run_results(
+                    session=session,
+                    tenant_id=run_data.tenant_id,
+                    app_id=run_data.target_id,
+                    workflow_run_id=checkpoint.workflow_run_id,
+                )
+                session.rollback()
+                target_error = checkpoint.error
+                if not checkpoint_node_results and target_error is None:
+                    target_error = "Checkpointed target workflow results are no longer available."
+                evaluation_inputs[position] = (
+                    checkpoint_node_results,
+                    checkpoint.workflow_run_id,
+                    target_error,
+                )
+            else:
+                evaluation_inputs[position] = ({}, None, "Checkpointed target workflow run ID is missing.")
+            continue
+        pending_items.append(item)
+        pending_positions.append(position)
+
+    if pending_items:
+        _clear_workflow_cancellation_signals(
+            session,
+            run_data.evaluation_run_id,
+            "target",
+            pending_positions,
+        )
+
+        def _checkpoint_target_result(
+            local_position: int,
+            node_results: dict[str, NodeRunResult],
+            workflow_run_id: str | None,
+            error: str | None,
+        ) -> None:
+            if workflow_run_id:
+                _persist_target_checkpoint(
+                    session,
+                    run_data.evaluation_run_id,
+                    pending_items[local_position],
+                    workflow_run_id,
+                    error,
+                )
+
+        node_results_list, workflow_run_ids, target_errors = EvaluationService.execute_targets(
+            evaluation_run_id=run_data.evaluation_run_id,
+            tenant_id=run_data.tenant_id,
+            target_type=run_data.target_type,
+            target_id=run_data.target_id,
+            target_workflow_version_id=run_data.target_workflow_version_id or "",
+            input_list=pending_items,
+            cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
+            progress_callback=lambda completed, total: _update_run_progress(
+                session,
+                run_data.evaluation_run_id,
+                0.05 + 0.45 * (target_ready_count + completed) / max(len(run_data.input_list), 1),
+            ),
+            result_callback=_checkpoint_target_result,
+            task_positions=pending_positions,
+        )
+        for local_position, original_position in enumerate(pending_positions):
+            evaluation_inputs[original_position] = (
+                node_results_list[local_position],
+                workflow_run_ids[local_position],
+                target_errors[local_position],
+            )
+
+    for position, item in enumerate(run_data.input_list):
+        checkpoint = checkpoint_by_index.get(item.index)
+        if checkpoint is not None and checkpoint.status == EvaluationRunItemStatus.COMPLETED:
+            continue
+        _cooperative_checkpoint(session, run_data.evaluation_run_id)
+        row_node_results, workflow_run_id, target_error = evaluation_inputs[position]
+        item_run_data = run_data.model_copy(update={"input_list": [item]})
+        if item_run_data.customized_metrics is not None:
+            _clear_workflow_cancellation_signals(
+                session,
+                run_data.evaluation_run_id,
+                "evaluator",
+                [position],
+            )
+        _execute_evaluation_runner(
+            session=session,
+            run_data=item_run_data,
+            evaluation_instance=evaluation_instance,
+            node_run_result_mapping_list=[row_node_results],
+            workflow_run_id_map={item.index: workflow_run_id} if workflow_run_id else None,
+            target_errors=[target_error],
+            task_positions=[position],
+            report_progress=False,
+        )
+
+
+def _persist_target_checkpoint(
+    session: Session,
+    evaluation_run_id: str,
+    item_input: EvaluationDatasetInput,
+    workflow_run_id: str,
+    target_error: str | None = None,
+) -> None:
+    """Persist enough target state to avoid replaying a completed workflow on retry."""
+    _raise_if_cancelled(session, evaluation_run_id)
+    run_item = session.scalar(
+        select(EvaluationRunItem).where(
+            EvaluationRunItem.evaluation_run_id == evaluation_run_id,
+            EvaluationRunItem.item_index == item_input.index,
+        )
+    )
+    if run_item is not None and run_item.status == EvaluationRunItemStatus.COMPLETED:
+        session.rollback()
+        return
+    if run_item is None:
+        run_item = EvaluationRunItem(
+            evaluation_run_id=evaluation_run_id,
+            item_index=item_input.index,
+        )
+        session.add(run_item)
+    run_item.status = EvaluationRunItemStatus.TARGET_COMPLETED
+    run_item.workflow_run_id = workflow_run_id
+    run_item.inputs = json.dumps(item_input.inputs, ensure_ascii=False)
+    run_item.expected_output = item_input.serialize_expected_output()
+    run_item.error = target_error
+    session.commit()
+
+
+def _clear_workflow_cancellation_signals(
+    session: Session,
+    evaluation_run_id: str,
+    phase: str,
+    positions: Sequence[int],
+) -> None:
+    """Clear signals from an earlier attempt without erasing a concurrent user cancellation."""
+    from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
+
+    _cooperative_checkpoint(session, evaluation_run_id)
+    for position in positions:
+        clear_app_task_cancellation_signals(_workflow_task_id(evaluation_run_id, phase, position))
+    _cooperative_checkpoint(session, evaluation_run_id)
+
+
+def _get_completed_checkpoint_indices(session: Session, evaluation_run_id: str) -> set[int]:
+    return set(
+        session.scalars(
+            select(EvaluationRunItem.item_index).where(
+                EvaluationRunItem.evaluation_run_id == evaluation_run_id,
+                EvaluationRunItem.status == EvaluationRunItemStatus.COMPLETED,
+            )
+        ).all()
+    )
+
+
+def _get_completed_checkpoint_counts(session: Session, evaluation_run_id: str) -> tuple[int, int, int]:
+    rows = session.execute(
+        select(EvaluationRunItem.status, EvaluationRunItem.error).where(
+            EvaluationRunItem.evaluation_run_id == evaluation_run_id,
+        )
+    ).all()
+    completed = sum(1 for status, error in rows if status == EvaluationRunItemStatus.COMPLETED and error is None)
+    failed = sum(1 for status, error in rows if status == EvaluationRunItemStatus.COMPLETED and error is not None)
+    return completed, failed, completed + failed
+
+
+def _checkpoint_progress(checkpointed_items: int, total_items: int) -> float:
+    if checkpointed_items <= 0 or total_items <= 0:
+        return 0.01
+    return min(0.95, 0.05 + 0.9 * checkpointed_items / total_items)
+
+
+def _load_completed_checkpoint_results(
+    session: Session,
+    run_data: EvaluationRunData,
+) -> list[EvaluationItemResult]:
+    checkpoints = list(
+        session.scalars(
+            select(EvaluationRunItem).where(
+                EvaluationRunItem.evaluation_run_id == run_data.evaluation_run_id,
+                EvaluationRunItem.status == EvaluationRunItemStatus.COMPLETED,
+            )
+        ).all()
+    )
+    checkpoint_by_index = {checkpoint.item_index: checkpoint for checkpoint in checkpoints}
+    missing_indices = [item.index for item in run_data.input_list if item.index not in checkpoint_by_index]
+    if missing_indices:
+        raise RuntimeError(f"Evaluation row checkpoints are incomplete: {missing_indices[:10]}")
+
+    return [_checkpoint_to_result(checkpoint_by_index[item.index]) for item in run_data.input_list]
+
+
+def _checkpoint_to_result(checkpoint: EvaluationRunItem) -> EvaluationItemResult:
+    return EvaluationItemResult(
+        index=checkpoint.item_index,
+        actual_output=checkpoint.actual_output,
+        metrics=[EvaluationMetric.model_validate(metric) for metric in checkpoint.metrics_list],
+        metadata=checkpoint.metadata_dict,
+        judgment=JudgmentResult.model_validate(checkpoint.judgment_dict),
+        overall_score=checkpoint.overall_score,
+        error=checkpoint.error,
+    )
+
+
 def _execute_evaluation_runner(
     session: Session,
     run_data: EvaluationRunData,
@@ -328,9 +635,16 @@ def _execute_evaluation_runner(
     node_run_result_mapping_list: list[dict[str, NodeRunResult]],
     workflow_run_id_map: dict[int, str] | None = None,
     target_errors: Sequence[str | None] | None = None,
+    task_positions: Sequence[int] | None = None,
+    report_progress: bool = True,
 ) -> list[EvaluationItemResult]:
     """Evaluate configured node/metric pairs and persist one result per row."""
     results_by_index: dict[int, EvaluationItemResult] = {}
+    resolved_task_positions = (
+        list(task_positions) if task_positions is not None else list(range(len(run_data.input_list)))
+    )
+    if len(resolved_task_positions) != len(run_data.input_list):
+        raise ValueError("task_positions must align with input_list.")
 
     total_steps = sum(len(metric.node_info_list) for metric in run_data.default_metrics) + bool(
         run_data.customized_metrics
@@ -385,11 +699,12 @@ def _execute_evaluation_runner(
                         ),
                     )
             completed_steps += 1
-            _update_run_progress(
-                session,
-                run_data.evaluation_run_id,
-                0.6 + 0.25 * completed_steps / max(total_steps, 1),
-            )
+            if report_progress:
+                _update_run_progress(
+                    session,
+                    run_data.evaluation_run_id,
+                    0.6 + 0.25 * completed_steps / max(total_steps, 1),
+                )
 
     if run_data.customized_metrics:
         _cooperative_checkpoint(session, run_data.evaluation_run_id)
@@ -408,10 +723,12 @@ def _execute_evaluation_runner(
                     task_id_factory=lambda position: _workflow_task_id(
                         run_data.evaluation_run_id,
                         "evaluator",
-                        successful_positions[position],
+                        resolved_task_positions[successful_positions[position]],
                     ),
                 )
                 _merge_customized_results(results_by_index, customized_results, customized_input_items)
+        except EvaluationWorkflowVersionNotFoundError:
+            raise
         except Exception as exc:
             logger.exception("Failed customized metrics for run %s", run_data.evaluation_run_id)
             for item in customized_input_items:
@@ -421,11 +738,12 @@ def _execute_evaluation_runner(
                     EvaluationItemResult(index=item.index, error=f"Customized evaluation failed: {exc}"),
                 )
         completed_steps += 1
-        _update_run_progress(
-            session,
-            run_data.evaluation_run_id,
-            0.6 + 0.25 * completed_steps / max(total_steps, 1),
-        )
+        if report_progress:
+            _update_run_progress(
+                session,
+                run_data.evaluation_run_id,
+                0.6 + 0.25 * completed_steps / max(total_steps, 1),
+            )
 
     results = _finalize_results(
         input_list=run_data.input_list,
@@ -454,6 +772,7 @@ def _execute_retrieval_test(
     account_id: str,
     run_data: EvaluationRunData,
     evaluation_instance: BaseEvaluationInstance,
+    report_progress: bool = True,
 ) -> list[EvaluationItemResult]:
     node_run_results, retrieval_errors = EvaluationService.execute_retrieval_test_targets(
         tenant_id=run_data.tenant_id,
@@ -461,13 +780,37 @@ def _execute_retrieval_test(
         account_id=account_id,
         input_list=run_data.input_list,
         cancellation_check=lambda: _cooperative_checkpoint(session, run_data.evaluation_run_id),
-        progress_callback=lambda completed, total: _update_run_progress(
-            session,
-            run_data.evaluation_run_id,
-            0.05 + 0.45 * completed / max(total, 1),
-        ),
+        progress_callback=(
+            lambda completed, total: _update_run_progress(
+                session,
+                run_data.evaluation_run_id,
+                0.05 + 0.45 * completed / max(total, 1),
+            )
+        )
+        if report_progress
+        else None,
     )
     _raise_if_cancelled(session, run_data.evaluation_run_id)
+
+    return _evaluate_retrieval_results(
+        session=session,
+        run_data=run_data,
+        evaluation_instance=evaluation_instance,
+        node_run_results=node_run_results,
+        retrieval_errors=retrieval_errors,
+        report_progress=report_progress,
+    )
+
+
+def _evaluate_retrieval_results(
+    session: Session,
+    run_data: EvaluationRunData,
+    evaluation_instance: BaseEvaluationInstance,
+    node_run_results: Sequence[NodeRunResult | None],
+    retrieval_errors: Sequence[str | None],
+    report_progress: bool = True,
+) -> list[EvaluationItemResult]:
+    """Score retrieval outputs and checkpoint each supplied dataset row."""
 
     results_by_index: dict[int, EvaluationItemResult] = {}
     runner = RetrievalEvaluationRunner(evaluation_instance)
@@ -505,11 +848,12 @@ def _execute_retrieval_test(
                         error=f"Retrieval metric '{default_metric.metric}' failed: {exc}",
                     ),
                 )
-        _update_run_progress(
-            session,
-            run_data.evaluation_run_id,
-            0.5 + 0.35 * metric_position / max(len(run_data.default_metrics), 1),
-        )
+        if report_progress:
+            _update_run_progress(
+                session,
+                run_data.evaluation_run_id,
+                0.5 + 0.35 * metric_position / max(len(run_data.default_metrics), 1),
+            )
 
     results = _finalize_results(
         input_list=run_data.input_list,
@@ -675,8 +1019,6 @@ def _persist_results(
     """Upsert results in small batches and expose cooperative progress."""
     result_map = {result.index: result for result in results}
     workflow_run_ids = workflow_run_id_map or {}
-    completed = 0
-    failed = 0
 
     for position, item_input in enumerate(input_list, start=1):
         _raise_if_cancelled(session, evaluation_run_id)
@@ -691,7 +1033,11 @@ def _persist_results(
             )
         )
         values = {
-            "workflow_run_id": workflow_run_ids.get(item_input.index),
+            "status": EvaluationRunItemStatus.COMPLETED,
+            "workflow_run_id": workflow_run_ids.get(
+                item_input.index,
+                run_item.workflow_run_id if run_item is not None else None,
+            ),
             "inputs": json.dumps(item_input.inputs, ensure_ascii=False),
             "expected_output": item_input.serialize_expected_output(),
             "actual_output": result.actual_output,
@@ -717,12 +1063,10 @@ def _persist_results(
             for field_name, value in values.items():
                 setattr(run_item, field_name, value)
 
-        if result.error is None:
-            completed += 1
-        else:
-            failed += 1
-
         if position % _PERSIST_BATCH_SIZE == 0 or position == len(input_list):
+            session.flush()
+            completed, failed, checkpointed = _get_completed_checkpoint_counts(session, evaluation_run_id)
+            total_items = session.scalar(select(EvaluationRun.total_items).where(EvaluationRun.id == evaluation_run_id))
             progress_update = (
                 update(EvaluationRun)
                 .where(
@@ -732,7 +1076,7 @@ def _persist_results(
                 .values(
                     completed_items=completed,
                     failed_items=failed,
-                    progress_rate=0.86 + 0.1 * position / max(len(input_list), 1),
+                    progress_rate=_checkpoint_progress(checkpointed, total_items or 0),
                 )
             )
             update_result = cast(CursorResult[Any], session.execute(progress_update))
@@ -810,6 +1154,35 @@ def _mark_run_failed(session: Session, run_id: str, error: str) -> None:
         session.commit()
     except Exception:
         logger.exception("Failed to mark run %s as failed", run_id)
+
+
+def _mark_run_pending_for_retry(
+    session: Session,
+    run_id: str,
+    error: str,
+    retry_number: int,
+    max_retries: int,
+) -> bool:
+    """Release the running lease while retaining row checkpoints for the next attempt."""
+    session.rollback()
+    result = cast(
+        CursorResult[Any],
+        session.execute(
+            update(EvaluationRun)
+            .where(
+                EvaluationRun.id == run_id,
+                EvaluationRun.status.in_([EvaluationRunStatus.PENDING, EvaluationRunStatus.RUNNING]),
+            )
+            .values(
+                status=EvaluationRunStatus.PENDING,
+                heartbeat_at=None,
+                completed_at=None,
+                error=f"Retry {retry_number}/{max_retries} scheduled after: {error}"[:2000],
+            )
+        ),
+    )
+    session.commit()
+    return result.rowcount == 1
 
 
 def _compute_metrics_summary(

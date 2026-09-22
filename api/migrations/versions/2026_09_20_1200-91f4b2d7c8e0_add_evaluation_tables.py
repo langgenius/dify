@@ -95,6 +95,7 @@ def upgrade() -> None:
         sa.Column("evaluation_run_id", models.types.StringUUID(), nullable=False),
         sa.Column("workflow_run_id", models.types.StringUUID(), nullable=True),
         sa.Column("item_index", sa.Integer(), nullable=False),
+        sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column("inputs", models.types.LongText(), nullable=True),
         sa.Column("expected_output", models.types.LongText(), nullable=True),
         sa.Column("actual_output", models.types.LongText(), nullable=True),

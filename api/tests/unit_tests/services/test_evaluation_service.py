@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from openpyxl import load_workbook
+from sqlalchemy.orm import Session
 
 from core.evaluation.entities.evaluation_entity import (
     CustomizedMetricOutputField,
@@ -19,7 +20,14 @@ from core.evaluation.entities.evaluation_entity import (
     NodeInfo,
 )
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig
-from models.evaluation import EvaluationConfiguration, EvaluationRun, EvaluationRunItem, EvaluationRunStatus
+from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
+from models.evaluation import (
+    EvaluationConfiguration,
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunItemStatus,
+    EvaluationRunStatus,
+)
 from models.model import AppMode
 from models.workflow import WorkflowKind, WorkflowType
 from services.errors.evaluation import EvaluationDatasetInvalidError
@@ -510,6 +518,48 @@ def test_stage_target_cleanup_removes_target_rows_and_preserves_evaluator_defaul
     assert preserved.metrics_config_dict["customized_metrics"] is None
 
 
+def test_get_run_items_hides_incomplete_target_checkpoints(sqlite_session: Session) -> None:
+    run = EvaluationRun(
+        id="10000000-0000-0000-0000-000000000012",
+        tenant_id="10000000-0000-0000-0000-000000000010",
+        target_type="apps",
+        target_id="10000000-0000-0000-0000-000000000100",
+        target_workflow_version_id="10000000-0000-0000-0000-000000000003",
+        evaluation_config_id="10000000-0000-0000-0000-000000000001",
+        config_snapshot="{}",
+        status=EvaluationRunStatus.RUNNING,
+        total_items=2,
+        created_by="10000000-0000-0000-0000-000000001000",
+    )
+    sqlite_session.add_all(
+        [
+            run,
+            EvaluationRunItem(
+                evaluation_run_id=run.id,
+                item_index=1,
+                status=EvaluationRunItemStatus.TARGET_COMPLETED,
+            ),
+            EvaluationRunItem(
+                evaluation_run_id=run.id,
+                item_index=2,
+                status=EvaluationRunItemStatus.COMPLETED,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+
+    items, total = EvaluationService.get_evaluation_run_items(
+        sqlite_session,
+        run.tenant_id,
+        "apps",
+        run.target_id,
+        run.id,
+    )
+
+    assert total == 1
+    assert [item.item_index for item in items] == [2]
+
+
 def test_stage_target_cleanup_does_not_stop_tasks_after_rollback(
     sqlite_session,
     monkeypatch: pytest.MonkeyPatch,
@@ -640,3 +690,33 @@ def test_run_single_app_target_loads_pinned_workflow_version(monkeypatch: pytest
     )
     assert generator.generate.call_args.kwargs["workflow"] is workflow
     assert generator.generate.call_args.kwargs["task_id"] == "evaluation:run-1:target:0"
+
+
+def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+    session = MagicMock()
+    session.scalar.return_value = app
+    workflow_service = MagicMock()
+    workflow_service.get_published_workflow_by_id.return_value = None
+    monkeypatch.setattr("services.evaluation_service.WorkflowService", MagicMock(return_value=workflow_service))
+    monkeypatch.setattr(
+        "core.evaluation.runners.get_service_account_for_app",
+        MagicMock(return_value=SimpleNamespace(id="account-1")),
+    )
+    generator = MagicMock()
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator", MagicMock(return_value=generator))
+
+    with pytest.raises(EvaluationWorkflowVersionNotFoundError, match="workflow-version-7"):
+        EvaluationService._run_single_target(
+            session=session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="app-1",
+            target_workflow_version_id="workflow-version-7",
+            item=EvaluationDatasetInput(index=1, inputs={"query": "hello"}),
+            task_id="evaluation:run-1:target:0",
+        )
+
+    generator.generate.assert_not_called()
