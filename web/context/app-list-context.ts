@@ -1,19 +1,13 @@
-import type { SetTryAppPanel, TryAppSelection } from '@/types/try-app'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { noop } from 'es-toolkit/function'
 import { createContext } from 'use-context-selector'
 
 type Props = Readonly<{
-  currentApp?: TryAppSelection
-  isShowTryAppPanel: boolean
-  setShowTryAppPanel: SetTryAppPanel
-  controlHideCreateFromTemplatePanel: number
+  openTryAppPanel: (app: RecommendedAppResponse) => void
 }>
 
 const AppListContext = createContext<Props>({
-  isShowTryAppPanel: false,
-  setShowTryAppPanel: noop,
-  currentApp: undefined,
-  controlHideCreateFromTemplatePanel: 0,
+  openTryAppPanel: noop,
 })
 
 export default AppListContext

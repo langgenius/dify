@@ -1,12 +1,11 @@
 'use client'
 import type { NotionPage } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Notion } from '@/app/components/base/icons/src/public/common'
 import { Markdown } from '@/app/components/base/markdown'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { usePreviewOnlineDocument } from '@/service/use-pipeline'
 import { formatNumberAbbreviated } from '@/utils/format'
@@ -26,40 +25,45 @@ const OnlineDocumentPreview = ({
 }: OnlineDocumentPreviewProps) => {
   const { t } = useTranslation()
   const [content, setContent] = useState('')
-  const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
+  const pipelineId = useDatasetDetailContextWithSelector((state) => state.dataset?.pipeline_id)
   const { mutateAsync: getOnlineDocumentContent, isPending } = usePreviewOnlineDocument()
   const dataSourceStore = useDataSourceStore()
 
   useEffect(() => {
     const { currentCredentialId } = dataSourceStore.getState()
-    getOnlineDocumentContent({
-      workspaceID: currentPage.workspace_id,
-      pageID: currentPage.page_id,
-      pageType: currentPage.type,
-      pipelineId: pipelineId || '',
-      datasourceNodeId,
-      credentialId: currentCredentialId,
-    }, {
-      onSuccess(data) {
-        setContent(data.content)
+    getOnlineDocumentContent(
+      {
+        workspaceID: currentPage.workspace_id,
+        pageID: currentPage.page_id,
+        pageType: currentPage.type,
+        pipelineId: pipelineId || '',
+        datasourceNodeId,
+        credentialId: currentCredentialId,
       },
-      onError(error) {
-        toast.error(error.message)
+      {
+        onSuccess(data) {
+          setContent(data.content)
+        },
+        onError(error) {
+          toast.error(error.message)
+        },
       },
-    })
+    )
   }, [currentPage.page_id])
 
   return (
     <div className="flex size-full flex-col rounded-t-xl border-t border-l border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5">
       <div className="flex gap-x-2 border-b border-divider-subtle pt-4 pr-4 pb-3 pl-6">
         <div className="flex grow flex-col gap-y-1">
-          <div className="system-2xs-semibold-uppercase text-text-accent">{t('addDocuments.stepOne.preview', { ns: 'datasetPipeline' })}</div>
-          <div className="text-tex-primary title-md-semi-bold">{currentPage?.page_name}</div>
+          <div className="system-2xs-semibold-uppercase text-text-accent">
+            {t(($) => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}
+          </div>
+          <div className="title-md-semi-bold">{currentPage?.page_name}</div>
           <div className="flex items-center gap-x-1 system-xs-medium text-text-tertiary">
-            <Notion className="size-3.5" />
+            <span aria-hidden className="i-custom-public-common-notion size-3.5" />
             <span>{currentPage.type}</span>
             <span>·</span>
-            <span>{`${formatNumberAbbreviated(content.length)} ${t('addDocuments.characters', { ns: 'datasetPipeline' })}`}</span>
+            <span>{`${formatNumberAbbreviated(content.length)} ${t(($) => $['addDocuments.characters'], { ns: 'datasetPipeline' })}`}</span>
           </div>
         </div>
         <button
@@ -67,7 +71,7 @@ const OnlineDocumentPreview = ({
           className="flex size-8 shrink-0 items-center justify-center"
           onClick={hidePreview}
         >
-          <RiCloseLine className="size-[18px]" />
+          <RiCloseLine className="size-4.5" />
         </button>
       </div>
       {isPending && (

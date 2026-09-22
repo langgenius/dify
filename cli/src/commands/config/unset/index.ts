@@ -10,9 +10,7 @@ export default class ConfigUnset extends DifyCommand {
 
   static override effect: CommandEffect = 'write'
 
-  static override examples = [
-    '<%= config.bin %> config unset defaults.format',
-  ]
+  static override examples = ['<%= config.bin %> config unset defaults.format']
 
   static override args = {
     key: Args.string({ description: 'config key', required: true }),

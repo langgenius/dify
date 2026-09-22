@@ -33,5 +33,5 @@ export type GetAppPromptTemplatesResponses = {
   200: AdvancedPromptTemplateResponse
 }
 
-export type GetAppPromptTemplatesResponse
-  = GetAppPromptTemplatesResponses[keyof GetAppPromptTemplatesResponses]
+export type GetAppPromptTemplatesResponse =
+  GetAppPromptTemplatesResponses[keyof GetAppPromptTemplatesResponses]

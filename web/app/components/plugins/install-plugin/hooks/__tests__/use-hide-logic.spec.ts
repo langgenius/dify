@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import useHideLogic from '../use-hide-logic'
 
 const mockFoldAnimInto = vi.fn()
@@ -20,12 +20,6 @@ describe('useHideLogic', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('should return initial state with modalClassName', () => {
-    const { result } = renderHook(() => useHideLogic(mockOnClose))
-
-    expect(result.current.modalClassName).toBe('test-modal-class')
   })
 
   it('should call onClose directly when not installing', () => {

@@ -46,7 +46,10 @@ export async function loadAppInfoCache(opts: AppInfoCacheOptions = {}): Promise<
   return {
     get: (host, appId) => state.entries.get(key(host, appId)),
     set: async (host, appId, meta) => {
-      const record: AppMetaCacheRecord = { meta, fetchedAt: (opts.now ?? (() => new Date()))().toISOString() }
+      const record: AppMetaCacheRecord = {
+        meta,
+        fetchedAt: (opts.now ?? (() => new Date()))().toISOString(),
+      }
       state.entries.set(key(host, appId), record)
       await writeEntries(store, state.entries)
     },
@@ -70,12 +73,19 @@ async function readEntries(store: Store): Promise<Map<string, AppMetaCacheRecord
   let raw: Record<string, DiskEntry>
   try {
     raw = await store.get(ENTRIES_KEY)
-  }
-  catch {
+  } catch {
     return out
   }
-  for (const [k, e] of Object.entries(raw))
-    out.set(k, deserialize(e))
+  // A scalar/array survives Object.entries as garbage rather than throwing.
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return out
+
+  for (const [k, e] of Object.entries(raw)) {
+    try {
+      out.set(k, deserialize(e))
+    } catch {
+      // Drop unreadable entry → becomes a cache miss → consumer refetches.
+    }
+  }
   return out
 }
 
@@ -93,10 +103,11 @@ function deserialize(e: DiskEntry): AppMetaCacheRecord {
 }
 
 function filterFields(input: unknown): AppMetaFieldKey[] {
-  if (!Array.isArray(input))
-    return []
+  if (!Array.isArray(input)) return []
   const valid = new Set<AppMetaFieldKey>([FieldInfo, FieldParameters, FieldInputSchema])
-  return input.filter((s): s is AppMetaFieldKey => typeof s === 'string' && valid.has(s as AppMetaFieldKey))
+  return input.filter(
+    (s): s is AppMetaFieldKey => typeof s === 'string' && valid.has(s as AppMetaFieldKey),
+  )
 }
 
 function serialize(record: AppMetaCacheRecord): DiskEntry {

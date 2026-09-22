@@ -13,8 +13,10 @@ handlers do redirects + cookie kwargs that don't fit the Resource shape.
 from __future__ import annotations
 
 import logging
+import re
 import secrets
 from dataclasses import dataclass
+from urllib.parse import urlencode
 
 from flask import jsonify, make_response, redirect, request
 from pydantic import ValidationError
@@ -44,7 +46,7 @@ from libs.device_flow_security import (
     mint_approval_grant,
     verify_approval_grant,
 )
-from libs.oauth_bearer import MINTABLE_PROFILES, SubjectType
+from libs.oauth_bearer import SubjectType, TokenType
 from libs.rate_limit import (
     LIMIT_APPROVE_EXT_PER_EMAIL,
     LIMIT_SSO_INITIATE_PER_IP,
@@ -62,7 +64,6 @@ from services.oauth_device_flow import (
     mint_oauth_token,
     oauth_ttl_days,
 )
-from services.openapi.mint_policy import MintPolicyViolation, validate_mint_policy
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,21 @@ STATE_ENVELOPE_TTL_SECONDS = 15 * 60
 
 # Canonical sso-complete path. IdP-side ACS callback URL must point here.
 _SSO_COMPLETE_PATH = "/openapi/v1/oauth/device/sso-complete"
+
+_ALLOWED_SSO_ERRORS = {"sso_failed", "email_belongs_to_dify_account"}
+
+# user_code only ever reaches the redirect as a urlencoded query value; the
+# charset bound additionally forbids the path/scheme separators a redirection
+# attack would need, so an untrusted value cannot escape the fixed /device path.
+_USER_CODE_RE = re.compile(r"\A[A-Z0-9-]{1,16}\Z")
+
+
+def _device_error_redirect(code: str, user_code: str | None = None):
+    safe_code = code if code in _ALLOWED_SSO_ERRORS else "sso_failed"
+    params: dict[str, str] = {"sso_error": safe_code}
+    if user_code and _USER_CODE_RE.match(user_code):
+        params["user_code"] = user_code
+    return redirect(f"/device?{urlencode(params)}", code=302)
 
 
 def _trusted_origin() -> str:
@@ -134,9 +150,21 @@ def sso_initiate():
 @bp.route("/oauth/device/sso-complete", methods=["GET"])
 @enterprise_only
 def sso_complete():
+    try:
+        return _sso_complete_impl()
+    except Exception:
+        logger.exception("sso-complete: unhandled")
+        return _device_error_redirect("sso_failed")
+
+
+def _sso_complete_impl():
+    inbound_error = request.args.get("sso_error")
+    if inbound_error:
+        return _device_error_redirect(inbound_error, request.args.get("user_code"))
+
     blob = request.args.get("sso_assertion")
     if not blob:
-        raise BadRequest("sso_assertion required")
+        return _device_error_redirect("sso_failed")
 
     keyset = jws.KeySet.from_shared_secret()
 
@@ -144,33 +172,34 @@ def sso_complete():
         raw_claims = jws.verify(keyset, blob, expected_aud=jws.AUD_EXT_SUBJECT_ASSERTION)
     except jws.VerifyError as e:
         logger.warning("sso-complete: rejected assertion: %s", e)
-        raise BadRequest("invalid_sso_assertion") from e
+        return _device_error_redirect("sso_failed")
 
     try:
         claims = ExtSubjectAssertionClaims.model_validate(raw_claims)
     except ValidationError as e:
         logger.warning("sso-complete: claim shape invalid: %s", e)
-        raise BadRequest("invalid_sso_assertion") from e
-
-    if not consume_sso_assertion_nonce(redis_client, claims.nonce):
-        raise BadRequest("invalid_sso_assertion")
+        return _device_error_redirect("sso_failed")
 
     user_code = claims.user_code.strip().upper()
+
+    if not consume_sso_assertion_nonce(redis_client, claims.nonce):
+        return _device_error_redirect("sso_failed", user_code)
+
     store = DeviceFlowRedis(redis_client)
     found = store.load_by_user_code(user_code)
     if found is None:
-        raise Conflict("user_code_not_pending")
+        return _device_error_redirect("sso_failed", user_code)
     _, state = found
     if state.status is not DeviceFlowStatus.PENDING:
-        raise Conflict("user_code_not_pending")
+        return _device_error_redirect("sso_failed", user_code)
 
-    if AccountService.has_active_account_with_email(db.session, claims.email):
+    if AccountService.has_active_account_with_email(claims.email, session=db.session()):
         _emit_external_rejection_audit(
             state,
             _RejectedClaims(subject_email=claims.email, subject_issuer=claims.issuer),
             reason="email_belongs_to_dify_account",
         )
-        return redirect("/device?sso_error=email_belongs_to_dify_account", code=302)
+        return _device_error_redirect("email_belongs_to_dify_account", user_code)
 
     iss = _trusted_origin()
     cookie_value, _ = mint_approval_grant(
@@ -244,34 +273,24 @@ def approve_external():
     if state.status is not DeviceFlowStatus.PENDING:
         raise Conflict("user_code_not_pending")
 
-    if AccountService.has_active_account_with_email(db.session, claims.subject_email):
+    if AccountService.has_active_account_with_email(claims.subject_email, session=db.session()):
         _emit_external_rejection_audit(state, claims, reason="email_belongs_to_dify_account")
         raise Forbidden("email_belongs_to_dify_account")
 
     if not consume_approval_grant_nonce(redis_client, claims.nonce):
         raise Unauthorized("session_already_consumed")
 
-    profile = MINTABLE_PROFILES[SubjectType.EXTERNAL_SSO]
-    try:
-        validate_mint_policy(
-            subject_type=profile.subject_type,
-            prefix=profile.prefix,
-            scopes=profile.scopes,
-        )
-    except MintPolicyViolation as e:
-        raise BadRequest(description=str(e)) from None
-
     ttl_days = oauth_ttl_days(tenant_id=None)
     mint = mint_oauth_token(
-        db.session,
         redis_client,
         subject_email=claims.subject_email,
         subject_issuer=claims.subject_issuer,
         account_id=None,
         client_id=state.client_id,
         device_label=state.device_label,
-        prefix=profile.prefix,
+        token_type=TokenType.OAUTH_EXTERNAL_SSO,
         ttl_days=ttl_days,
+        session=db.session(),
     )
 
     # SSO branch of the shared PollPayload contract: account/workspace

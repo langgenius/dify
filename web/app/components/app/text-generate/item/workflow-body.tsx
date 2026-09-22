@@ -41,21 +41,20 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  if (!workflowProcessData)
-    return null
+  if (!workflowProcessData) return null
 
   return (
     <>
-      <div
-        className={cn(
-          'p-3',
-          showResultTabs && 'border-b border-divider-subtle',
-        )}
-      >
+      <div className={cn('p-3', showResultTabs && 'border-b border-divider-subtle')}>
         {taskId && (
-          <div className={cn('mb-2 flex items-center system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
+          <div
+            className={cn(
+              'mb-2 flex items-center system-2xs-medium-uppercase text-text-accent-secondary',
+              isError && 'text-text-destructive',
+            )}
+          >
             <RiPlayList2Line className="mr-1 size-3" />
-            <span>{t('generation.execution', { ns: 'share' })}</span>
+            <span>{t(($) => $['generation.execution'], { ns: 'share' })}</span>
             <span className="px-1">·</span>
             <span>{getGenerationTaskLabel(taskId, depth)}</span>
           </div>
@@ -74,41 +73,47 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
             <div
               className={cn(
                 'cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
-                currentTab === 'RESULT' && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
+                currentTab === 'RESULT' &&
+                  'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
               )}
               onClick={() => onSwitchTab('RESULT')}
             >
-              {t('result', { ns: 'runLog' })}
+              {t(($) => $.result, { ns: 'runLog' })}
             </div>
             <div
               className={cn(
                 'cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
-                currentTab === 'DETAIL' && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
+                currentTab === 'DETAIL' &&
+                  'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
               )}
               onClick={() => onSwitchTab('DETAIL')}
             >
-              {t('detail', { ns: 'runLog' })}
+              {t(($) => $.detail, { ns: 'runLog' })}
             </div>
           </div>
         )}
       </div>
       {!isError && (
         <>
-          {currentTab === 'RESULT' && workflowProcessData.humanInputFormDataList && workflowProcessData.humanInputFormDataList.length > 0 && (
-            <div className="px-4 pt-4">
-              <HumanInputFormList
-                humanInputFormDataList={workflowProcessData.humanInputFormDataList}
-                onHumanInputFormSubmit={onSubmitHumanInputForm}
-              />
-            </div>
-          )}
-          {currentTab === 'RESULT' && workflowProcessData.humanInputFilledFormDataList && workflowProcessData.humanInputFilledFormDataList.length > 0 && (
-            <div className="px-4 pt-4">
-              <HumanInputFilledFormList
-                humanInputFilledFormDataList={workflowProcessData.humanInputFilledFormDataList}
-              />
-            </div>
-          )}
+          {currentTab === 'RESULT' &&
+            workflowProcessData.humanInputFormDataList &&
+            workflowProcessData.humanInputFormDataList.length > 0 && (
+              <div className="px-4 pt-4">
+                <HumanInputFormList
+                  humanInputFormDataList={workflowProcessData.humanInputFormDataList}
+                  onHumanInputFormSubmit={onSubmitHumanInputForm}
+                />
+              </div>
+            )}
+          {currentTab === 'RESULT' &&
+            workflowProcessData.humanInputFilledFormDataList &&
+            workflowProcessData.humanInputFilledFormDataList.length > 0 && (
+              <div className="px-4 pt-4">
+                <HumanInputFilledFormList
+                  humanInputFilledFormDataList={workflowProcessData.humanInputFilledFormDataList}
+                />
+              </div>
+            )}
           <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} />
         </>
       )}

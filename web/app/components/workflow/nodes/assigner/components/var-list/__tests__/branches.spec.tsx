@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarType } from '@/app/components/workflow/types'
 import { AssignerNodeInputType, WriteMode } from '../../../types'
@@ -23,7 +23,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
       </button>
       <button
         type="button"
-        onClick={() => onChange(popupFor === 'assigned' ? ['node-b', 'total'] : ['node-c', 'result'])}
+        onClick={() =>
+          onChange(popupFor === 'assigned' ? ['node-b', 'total'] : ['node-c', 'result'])
+        }
       >
         select-
         {popupFor}
@@ -34,14 +36,14 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
 
 vi.mock('../../operation-selector', () => ({
   __esModule: true,
-  default: ({
-    onSelect,
-  }: {
-    onSelect: (item: { value: string }) => void
-  }) => (
+  default: ({ onSelect }: { onSelect: (item: { value: string }) => void }) => (
     <div>
-      <button type="button" onClick={() => onSelect({ value: WriteMode.set })}>operation-set</button>
-      <button type="button" onClick={() => onSelect({ value: WriteMode.overwrite })}>operation-overwrite</button>
+      <button type="button" onClick={() => onSelect({ value: WriteMode.set })}>
+        operation-set
+      </button>
+      <button type="button" onClick={() => onSelect({ value: WriteMode.overwrite })}>
+        operation-overwrite
+      </button>
     </div>
   ),
 }))
@@ -91,35 +93,42 @@ describe('assigner/var-list branches', () => {
   it('resets operation metadata when the assigned variable changes', async () => {
     const user = userEvent.setup()
     const { handleChange, handleOpen } = renderVarList({
-      list: [createOperation({
-        operation: WriteMode.set,
-        input_type: AssignerNodeInputType.constant,
-        value: 'stale',
-      })],
+      list: [
+        createOperation({
+          operation: WriteMode.set,
+          input_type: AssignerNodeInputType.constant,
+          value: 'stale',
+        }),
+      ],
     })
 
     await user.click(screen.getByTestId('assigned-picker-trigger'))
     await user.click(screen.getByRole('button', { name: 'select-assigned' }))
 
     expect(handleOpen).toHaveBeenCalledWith(0)
-    expect(handleChange).toHaveBeenLastCalledWith([
-      createOperation({
-        variable_selector: ['node-b', 'total'],
-        operation: WriteMode.overwrite,
-        input_type: AssignerNodeInputType.variable,
-        value: undefined,
-      }),
-    ], ['node-b', 'total'])
+    expect(handleChange).toHaveBeenLastCalledWith(
+      [
+        createOperation({
+          variable_selector: ['node-b', 'total'],
+          operation: WriteMode.overwrite,
+          input_type: AssignerNodeInputType.variable,
+          value: undefined,
+        }),
+      ],
+      ['node-b', 'total'],
+    )
   })
 
   it('switches back to variable mode when the selected operation no longer requires a constant', async () => {
     const user = userEvent.setup()
     const { handleChange } = renderVarList({
-      list: [createOperation({
-        operation: WriteMode.set,
-        input_type: AssignerNodeInputType.constant,
-        value: 'hello',
-      })],
+      list: [
+        createOperation({
+          operation: WriteMode.set,
+          input_type: AssignerNodeInputType.constant,
+          value: 'hello',
+        }),
+      ],
     })
 
     await user.click(screen.getByRole('button', { name: 'operation-overwrite' }))
@@ -133,38 +142,45 @@ describe('assigner/var-list branches', () => {
     ])
   })
 
-  it('updates string and number constant inputs through the inline editors', () => {
+  it('updates string and number constant inputs through the inline editors', async () => {
+    const user = userEvent.setup()
     const { handleChange, rerender } = renderVarList({
-      list: [createOperation({
-        operation: WriteMode.set,
-        input_type: AssignerNodeInputType.constant,
-        value: 1,
-      })],
+      list: [
+        createOperation({
+          operation: WriteMode.set,
+          input_type: AssignerNodeInputType.constant,
+          value: 1,
+        }),
+      ],
       getAssignedVarType: () => VarType.number,
       getToAssignedVarType: () => VarType.number,
     })
 
-    fireEvent.change(screen.getByRole('spinbutton'), {
-      target: { value: '2' },
-    })
+    await user.clear(screen.getByRole('textbox', { name: 'node-a.flag' }))
+    await user.type(screen.getByRole('textbox', { name: 'node-a.flag' }), '2')
 
-    expect(handleChange).toHaveBeenLastCalledWith([
-      createOperation({
-        operation: WriteMode.set,
-        input_type: AssignerNodeInputType.constant,
-        value: 2,
-      }),
-    ], 2)
+    expect(handleChange).toHaveBeenLastCalledWith(
+      [
+        createOperation({
+          operation: WriteMode.set,
+          input_type: AssignerNodeInputType.constant,
+          value: 2,
+        }),
+      ],
+      undefined,
+    )
 
     rerender(
       <VarList
         readonly={false}
         nodeId="node-current"
-        list={[createOperation({
-          operation: WriteMode.set,
-          input_type: AssignerNodeInputType.constant,
-          value: 'hello',
-        })]}
+        list={[
+          createOperation({
+            operation: WriteMode.set,
+            input_type: AssignerNodeInputType.constant,
+            value: 'hello',
+          }),
+        ]}
         onChange={handleChange}
         onOpen={vi.fn()}
         getAssignedVarType={() => VarType.string}
@@ -175,39 +191,46 @@ describe('assigner/var-list branches', () => {
       />,
     )
 
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'updated' },
-    })
+    await user.tripleClick(screen.getByRole('textbox'))
+    await user.paste('updated')
 
-    expect(handleChange).toHaveBeenLastCalledWith([
-      createOperation({
-        operation: WriteMode.set,
-        input_type: AssignerNodeInputType.constant,
-        value: 'updated',
-      }),
-    ], 'updated')
+    expect(handleChange).toHaveBeenLastCalledWith(
+      [
+        createOperation({
+          operation: WriteMode.set,
+          input_type: AssignerNodeInputType.constant,
+          value: 'updated',
+        }),
+      ],
+      undefined,
+    )
   })
 
-  it('updates numeric write-mode inputs through the dedicated number field', () => {
+  it('updates numeric write-mode inputs through the dedicated number field', async () => {
+    const user = userEvent.setup()
     const { handleChange } = renderVarList({
-      list: [createOperation({
-        operation: WriteMode.increment,
-        value: 2,
-      })],
+      list: [
+        createOperation({
+          operation: WriteMode.increment,
+          value: 2,
+        }),
+      ],
       getAssignedVarType: () => VarType.number,
       getToAssignedVarType: () => VarType.number,
       writeModeTypesNum: [WriteMode.increment],
     })
 
-    fireEvent.change(screen.getByRole('spinbutton'), {
-      target: { value: '5' },
-    })
+    await user.clear(screen.getByRole('textbox', { name: 'node-a.flag' }))
+    await user.type(screen.getByRole('textbox', { name: 'node-a.flag' }), '5')
 
-    expect(handleChange).toHaveBeenLastCalledWith([
-      createOperation({
-        operation: WriteMode.increment,
-        value: 5,
-      }),
-    ], 5)
+    expect(handleChange).toHaveBeenLastCalledWith(
+      [
+        createOperation({
+          operation: WriteMode.increment,
+          value: 5,
+        }),
+      ],
+      undefined,
+    )
   })
 })

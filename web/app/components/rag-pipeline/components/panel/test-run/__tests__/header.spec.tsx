@@ -1,26 +1,23 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import Header from '../header'
 
-const {
-  mockSetIsPreparingDataSource,
-  mockHandleCancelDebugAndPreviewPanel,
-  mockWorkflowStore,
-} = vi.hoisted(() => ({
-  mockSetIsPreparingDataSource: vi.fn(),
-  mockHandleCancelDebugAndPreviewPanel: vi.fn(),
-  mockWorkflowStore: {
-    getState: vi.fn(() => ({
-      isPreparingDataSource: true,
-      setIsPreparingDataSource: vi.fn(),
-    })),
-  },
-}))
+const { mockSetIsPreparingDataSource, mockHandleCancelDebugAndPreviewPanel, mockWorkflowStore } =
+  vi.hoisted(() => ({
+    mockSetIsPreparingDataSource: vi.fn(),
+    mockHandleCancelDebugAndPreviewPanel: vi.fn(),
+    mockWorkflowStore: {
+      getState: vi.fn(() => ({
+        isPreparingDataSource: true,
+        setIsPreparingDataSource: vi.fn(),
+      })),
+    },
+  }))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockWorkflowStore,
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({
     handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
   }),
@@ -38,7 +35,7 @@ describe('TestRun header', () => {
   it('should render the title and reset preparing state on close', () => {
     render(<Header />)
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(screen.getByText('datasetPipeline.testRun.title')).toBeInTheDocument()
     expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(false)
@@ -52,7 +49,7 @@ describe('TestRun header', () => {
     })
 
     render(<Header />)
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockSetIsPreparingDataSource).not.toHaveBeenCalled()
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)

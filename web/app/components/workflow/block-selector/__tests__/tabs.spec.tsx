@@ -1,25 +1,22 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import Tabs from '../tabs'
-import { TabsEnum } from '../types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { BlockSelectorPanels } from '../tabs'
+import { TabType } from '../types'
 
 const render = (ui: React.ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
+  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: true } })
 
-const {
-  mockSetState,
-  mockInvalidateBuiltInTools,
-  mockToolsState,
-} = vi.hoisted(() => ({
-  mockSetState: vi.fn(),
+const { mockInvalidateBuiltInTools, mockToolsState } = vi.hoisted(() => ({
   mockInvalidateBuiltInTools: vi.fn(),
   mockToolsState: {
-    buildInTools: [{ icon: '/tool.svg', name: 'tool' }] as Array<{ icon: string | Record<string, string>, name: string }> | undefined,
-    customTools: [] as Array<{ icon: string | Record<string, string>, name: string }> | undefined,
-    workflowTools: [] as Array<{ icon: string | Record<string, string>, name: string }> | undefined,
-    mcpTools: [] as Array<{ icon: string | Record<string, string>, name: string }> | undefined,
+    buildInTools: [{ icon: '/tool.svg', name: 'tool' }] as
+      | Array<{ icon: string | Record<string, string>; name: string }>
+      | undefined,
+    customTools: [] as Array<{ icon: string | Record<string, string>; name: string }> | undefined,
+    workflowTools: [] as Array<{ icon: string | Record<string, string>; name: string }> | undefined,
+    mcpTools: [] as Array<{ icon: string | Record<string, string>; name: string }> | undefined,
   },
 }))
 
@@ -44,7 +41,7 @@ vi.mock('@/utils/var', () => ({
 
 vi.mock('../../store', () => ({
   useWorkflowStore: () => ({
-    setState: mockSetState,
+    setState: vi.fn(),
   }),
 }))
 
@@ -60,19 +57,17 @@ vi.mock('../data-sources', () => ({
   default: () => <div>sources-content</div>,
 }))
 
-vi.mock('../all-tools', () => ({
+vi.mock('../tool-browser', () => ({
   default: (props: {
-    buildInTools: Array<{ icon: string | Record<string, string> }>
+    buildInTools: Array<{ icon: string | Record<string, string>; name: string }>
     showFeatured: boolean
     featuredLoading: boolean
     onFeaturedInstallSuccess: () => Promise<void>
   }) => (
     <div>
       tools-content
-      {props.buildInTools.map((tool, index) => (
-        <span key={index}>
-          {typeof tool.icon === 'string' ? tool.icon : 'object-icon'}
-        </span>
+      {props.buildInTools.map((tool) => (
+        <span key={tool.name}>{typeof tool.icon === 'string' ? tool.icon : 'object-icon'}</span>
       ))}
       <span>{props.showFeatured ? 'featured-on' : 'featured-off'}</span>
       <span>{props.featuredLoading ? 'featured-loading' : 'featured-idle'}</span>
@@ -91,79 +86,102 @@ describe('Tabs', () => {
   })
 
   const baseProps = {
-    activeTab: TabsEnum.Start,
-    onActiveTabChange: vi.fn(),
-    searchText: '',
-    tags: [],
-    onTagsChange: vi.fn(),
+    defaultTab: TabType.Start,
+    searchInputRef: React.createRef<HTMLInputElement>(),
     onSelect: vi.fn(),
+    onRequestClose: vi.fn(),
     blocks: [],
     tabs: [
-      { key: TabsEnum.Start, name: 'Start' },
-      { key: TabsEnum.Blocks, name: 'Blocks', disabled: true },
-      { key: TabsEnum.Tools, name: 'Tools' },
+      { key: TabType.Start, name: 'Start' },
+      { key: TabType.Blocks, name: 'Blocks', disabled: true },
+      { key: TabType.Tools, name: 'Tools' },
     ],
-    filterElem: <div>filter</div>,
   }
 
   it('should render start content and disabled tab tooltip text', async () => {
     const user = userEvent.setup()
-    render(<Tabs {...baseProps} />)
+    render(<BlockSelectorPanels {...baseProps} />)
 
     expect(screen.getByText('start-content'))!.toBeInTheDocument()
-    await user.hover(screen.getByText('Blocks'))
+    await user.hover(screen.getByRole('tab', { name: 'Blocks' }))
     expect(await screen.findByText('workflow.tabs.startDisabledTip'))!.toBeInTheDocument()
   })
 
-  it('should switch tabs through click handlers and render tools content with normalized icons', () => {
-    const onActiveTabChange = vi.fn()
+  it('should expose tab semantics and use manual keyboard activation', async () => {
+    const user = userEvent.setup()
+    render(<BlockSelectorPanels {...baseProps} />)
 
-    render(
-      <Tabs
-        {...baseProps}
-        activeTab={TabsEnum.Tools}
-        onActiveTabChange={onActiveTabChange}
-      />,
-    )
+    const startTab = screen.getByRole('tab', { name: 'Start' })
+    const blocksTab = screen.getByRole('tab', { name: 'Blocks' })
+    const toolsTab = screen.getByRole('tab', { name: 'Tools' })
 
-    fireEvent.click(screen.getByText('Start'))
+    expect(screen.getByRole('tablist', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
+    expect(startTab).toHaveAttribute('aria-selected', 'true')
+    expect(blocksTab).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Start' })).toBeInTheDocument()
 
-    expect(onActiveTabChange).toHaveBeenCalledWith(TabsEnum.Start)
-    expect(screen.getByText('tools-content'))!.toBeInTheDocument()
-    expect(screen.getByText('/console/tool.svg'))!.toBeInTheDocument()
-    expect(screen.getByText('featured-on'))!.toBeInTheDocument()
-    expect(screen.getByText('featured-idle'))!.toBeInTheDocument()
-  })
+    await user.click(startTab)
+    await user.keyboard('{ArrowRight}')
+    expect(blocksTab).toHaveFocus()
+    expect(startTab).toHaveAttribute('aria-selected', 'true')
 
-  it('should sync normalized tools into workflow store state', () => {
-    render(<Tabs {...baseProps} activeTab={TabsEnum.Tools} />)
-
-    expect(mockSetState).toHaveBeenCalled()
+    await user.keyboard('{ArrowRight}')
+    expect(toolsTab).toHaveFocus()
+    expect(startTab).toHaveAttribute('aria-selected', 'true')
   })
 
   it('should ignore clicks on disabled and already active tabs', async () => {
     const user = userEvent.setup()
-    const onActiveTabChange = vi.fn()
+    render(<BlockSelectorPanels {...baseProps} />)
 
-    render(
-      <Tabs
-        {...baseProps}
-        activeTab={TabsEnum.Start}
-        onActiveTabChange={onActiveTabChange}
-      />,
-    )
+    const startTab = screen.getByRole('tab', { name: 'Start' })
+    await user.click(startTab)
+    await user.click(screen.getByRole('tab', { name: 'Blocks' }))
 
-    await user.click(screen.getByText('Start'))
-    await user.click(screen.getByText('Blocks'))
+    expect(startTab).toHaveAttribute('aria-selected', 'true')
+  })
 
-    expect(onActiveTabChange).not.toHaveBeenCalled()
+  it('should fall back to an available tab when the active tab is removed', async () => {
+    const user = userEvent.setup()
+
+    function Harness() {
+      const [tabs, setTabs] = React.useState(baseProps.tabs)
+
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              setTabs((currentTabs) => currentTabs.filter((tab) => tab.key !== TabType.Tools))
+            }
+          >
+            Remove tools
+          </button>
+          <BlockSelectorPanels {...baseProps} tabs={tabs} />
+        </>
+      )
+    }
+
+    render(<Harness />)
+
+    await user.click(screen.getByRole('tab', { name: 'Tools' }))
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Tools' })).toHaveAttribute('aria-selected', 'true')
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Remove tools' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Start' })).toHaveAttribute('aria-selected', 'true')
+    })
   })
 
   it('should render sources content when the sources tab is active and data sources are provided', () => {
     render(
-      <Tabs
+      <BlockSelectorPanels
         {...baseProps}
-        activeTab={TabsEnum.Sources}
+        defaultTab={TabType.Sources}
+        tabs={[...baseProps.tabs, { key: TabType.Sources, name: 'Sources' }]}
         dataSources={[{ name: 'dataset', icon: '/dataset.svg' } as never]}
       />,
     )
@@ -171,74 +189,37 @@ describe('Tabs', () => {
     expect(screen.getByText('sources-content'))!.toBeInTheDocument()
   })
 
-  it('should keep the previous workflow store state when tool references do not change', () => {
-    mockToolsState.buildInTools = [{ icon: '/console/already-prefixed.svg', name: 'tool' }]
+  it('keeps search state independent for each tab during the popup session', async () => {
+    const user = userEvent.setup()
+    render(
+      <BlockSelectorPanels
+        {...baseProps}
+        defaultTab={TabType.Blocks}
+        tabs={[
+          { key: TabType.Blocks, name: 'Blocks' },
+          { key: TabType.Tools, name: 'Tools' },
+        ]}
+      />,
+    )
 
-    render(<Tabs {...baseProps} activeTab={TabsEnum.Tools} />)
+    const blocksSearch = screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })
+    await user.type(blocksSearch, 'llm')
+    await user.click(screen.getByRole('tab', { name: 'Tools' }))
 
-    const previousState = {
-      buildInTools: mockToolsState.buildInTools,
-      customTools: mockToolsState.customTools,
-      workflowTools: mockToolsState.workflowTools,
-      mcpTools: mockToolsState.mcpTools,
-    }
-    const updateState = mockSetState.mock.calls[0]![0] as (state: typeof previousState) => typeof previousState
+    const toolsSearch = screen.getByRole('searchbox', { name: 'plugin.searchTools' })
+    expect(toolsSearch).toHaveValue('')
+    await user.type(toolsSearch, 'slack')
+    await user.click(screen.getByRole('tab', { name: 'Blocks' }))
 
-    expect(updateState(previousState)).toBe(previousState)
-  })
-
-  it('should normalize every tool collection and merge updates into workflow store state', () => {
-    mockToolsState.buildInTools = [{ icon: { light: '/tool.svg' }, name: 'tool' }]
-    mockToolsState.customTools = [{ icon: '/custom.svg', name: 'custom' }]
-    mockToolsState.workflowTools = [{ icon: '/workflow.svg', name: 'workflow' }]
-    mockToolsState.mcpTools = [{ icon: '/mcp.svg', name: 'mcp' }]
-
-    render(<Tabs {...baseProps} activeTab={TabsEnum.Tools} />)
-
-    expect(screen.getByText('object-icon'))!.toBeInTheDocument()
-
-    const updateState = mockSetState.mock.calls[0]![0] as (state: {
-      buildInTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      customTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      workflowTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      mcpTools?: Array<{ icon: string | Record<string, string>, name: string }>
-    }) => {
-      buildInTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      customTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      workflowTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      mcpTools?: Array<{ icon: string | Record<string, string>, name: string }>
-    }
-
-    expect(updateState({
-      buildInTools: [],
-      customTools: [],
-      workflowTools: [],
-      mcpTools: [],
-    })).toEqual({
-      buildInTools: [{ icon: { light: '/tool.svg' }, name: 'tool' }],
-      customTools: [{ icon: '/console/custom.svg', name: 'custom' }],
-      workflowTools: [{ icon: '/console/workflow.svg', name: 'workflow' }],
-      mcpTools: [{ icon: '/console/mcp.svg', name: 'mcp' }],
-    })
-  })
-
-  it('should skip normalization when a tool list is undefined', () => {
-    mockToolsState.buildInTools = undefined
-
-    render(<Tabs {...baseProps} activeTab={TabsEnum.Tools} />)
-
-    expect(screen.getByText('tools-content'))!.toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toHaveValue('llm')
+    await user.click(screen.getByRole('tab', { name: 'Tools' }))
+    expect(screen.getByRole('searchbox', { name: 'plugin.searchTools' })).toHaveValue('slack')
   })
 
   it('should force start content to render and invalidate built-in tools after featured installs', async () => {
     const user = userEvent.setup()
 
-    render(
-      <Tabs
-        {...baseProps}
-        activeTab={TabsEnum.Tools}
-      />,
-    )
+    render(<BlockSelectorPanels {...baseProps} defaultTab={TabType.Tools} />)
 
     await user.click(screen.getByRole('button', { name: 'Install featured tool' }))
 
@@ -246,16 +227,10 @@ describe('Tabs', () => {
     expect(mockInvalidateBuiltInTools).toHaveBeenCalledTimes(1)
   })
 
-  it('should render start content when blocks are hidden but forceShowStartContent is enabled', () => {
-    render(
-      <Tabs
-        {...baseProps}
-        activeTab={TabsEnum.Start}
-        noBlocks
-        forceShowStartContent
-      />,
-    )
+  it('should compose start content directly without tab semantics in standalone mode', () => {
+    render(<BlockSelectorPanels {...baseProps} standalonePanel={TabType.Start} />)
 
     expect(screen.getByText('start-content'))!.toBeInTheDocument()
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
 })

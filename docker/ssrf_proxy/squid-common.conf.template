@@ -1,0 +1,90 @@
+# Shared Squid configuration used by both ssrf_proxy and agent_ssrf_proxy.
+
+################################## ACL Definitions ################################
+acl client_localnet src 0.0.0.1-0.255.255.255	# RFC 1122 "this" network (LAN)
+acl client_localnet src 10.0.0.0/8		# RFC 1918 local private network (LAN)
+acl client_localnet src 100.64.0.0/10		# RFC 6598 shared address space (CGN)
+acl client_localnet src 169.254.0.0/16 	# RFC 3927 link-local (directly plugged) machines
+acl client_localnet src 172.16.0.0/12		# RFC 1918 local private network (LAN)
+acl client_localnet src 192.168.0.0/16		# RFC 1918 local private network (LAN)
+acl client_localnet src fc00::/7       	# RFC 4193 local private network range
+acl client_localnet src fe80::/10      	# RFC 4291 link-local (directly plugged) machines
+
+acl to_private_networks dst 0.0.0.0/8
+acl to_private_networks dst 10.0.0.0/8
+acl to_private_networks dst 100.64.0.0/10
+acl to_private_networks dst 127.0.0.0/8
+acl to_private_networks dst 169.254.0.0/16
+acl to_private_networks dst 172.16.0.0/12
+acl to_private_networks dst 192.168.0.0/16
+acl to_private_networks dst 224.0.0.0/4
+acl to_private_networks dst 240.0.0.0/4
+acl to_private_networks dst ::/128
+acl to_private_networks dst ::1/128
+acl to_private_networks dst ::ffff:0:0/96    # IPv4-mapped
+acl to_private_networks dst ::/96            # deprecated IPv4-compatible
+acl to_private_networks dst fc00::/7
+acl to_private_networks dst fe80::/10
+
+acl SSL_ports port 443
+acl Safe_ports port 80		# http
+acl Safe_ports port 21		# ftp
+acl Safe_ports port 443		# https
+acl Safe_ports port 70		# gopher
+acl Safe_ports port 210		# wais
+acl Safe_ports port 1025-65535	# unregistered ports
+acl Safe_ports port 280		# http-mgmt
+acl Safe_ports port 488		# gss-http
+acl Safe_ports port 591		# filemaker
+acl Safe_ports port 777		# multiling http
+acl CONNECT method CONNECT
+
+################################## Common Parameters ################################
+
+tcp_outgoing_address 0.0.0.0
+
+################################## Proxy Server ################################
+coredump_dir ${COREDUMP_DIR}
+refresh_pattern ^ftp:		1440	20%	10080
+refresh_pattern ^gopher:	1440	0%	1440
+refresh_pattern -i (/cgi-bin/|\?) 0	0%	0
+refresh_pattern \/(Packages|Sources)(|\.bz2|\.gz|\.xz)$ 0 0% 0 refresh-ims
+refresh_pattern \/Release(|\.gpg)$ 0 0% 0 refresh-ims
+refresh_pattern \/InRelease$ 0 0% 0 refresh-ims
+refresh_pattern \/(Translation-.*)(|\.bz2|\.gz|\.xz)$ 0 0% 0 refresh-ims
+refresh_pattern .		0	20%	4320
+
+################################## Request Buffer ################################
+client_request_buffer_max_size 100 MB
+
+################################## Performance & Concurrency ###############################
+max_filedescriptors 65536
+connect_timeout 30 seconds
+request_timeout 2 minutes
+read_timeout 2 minutes
+client_lifetime 5 minutes
+shutdown_lifetime 30 seconds
+
+server_persistent_connections on
+client_persistent_connections on
+persistent_request_timeout 30 seconds
+pconn_timeout 1 minute
+
+client_db on
+server_idle_pconn_timeout 2 minutes
+client_idle_pconn_timeout 2 minutes
+
+quick_abort_min 16 KB
+quick_abort_max 16 MB
+quick_abort_pct 95
+
+memory_cache_mode disk
+cache_mem 256 MB
+maximum_object_size_in_memory 512 KB
+
+dns_timeout 30 seconds
+dns_retransmit_interval 5 seconds
+
+logformat dify_log %ts.%03tu %6tr %>a %Ss/%03>Hs %<st %rm %ru %[un %Sh/%<a %mt
+access_log daemon:/var/log/squid/access.log dify_log
+logfile_rotate 10

@@ -13,11 +13,11 @@ of a separate validation error.
 """
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.rag.entities.metadata_entities import Condition, MetadataFilteringCondition
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
-from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes.llm.entities import ModelConfig
 from models.dataset import Dataset
@@ -38,7 +38,11 @@ from services.errors.knowledge_retrieval import (
 class InnerKnowledgeRetrievalService:
     """Validate inner caller scope and delegate to workflow dataset retrieval."""
 
-    def retrieve(self, request: InnerKnowledgeRetrieveRequest) -> InnerKnowledgeRetrieveResponse:
+    def retrieve(
+        self,
+        request: InnerKnowledgeRetrieveRequest,
+        session: Session,
+    ) -> InnerKnowledgeRetrieveResponse:
         """Run tenant-scoped retrieval for a trusted internal caller.
 
         This method only rejects caller app existence/tenant mismatches and
@@ -56,18 +60,18 @@ class InnerKnowledgeRetrievalService:
             InnerKnowledgeRetrieveDatasetTenantMismatchError:
                 At least one requested dataset is outside the caller tenant.
         """
-        self._validate_caller_app(tenant_id=request.caller.tenant_id, app_id=request.caller.app_id)
-        self._validate_datasets(tenant_id=request.caller.tenant_id, dataset_ids=request.dataset_ids)
+        self._validate_caller_app(tenant_id=request.caller.tenant_id, app_id=request.caller.app_id, session=session)
+        self._validate_datasets(tenant_id=request.caller.tenant_id, dataset_ids=request.dataset_ids, session=session)
 
         rag = DatasetRetrieval()
-        results = rag.knowledge_retrieval(request=self._to_rag_request(request))
+        results = rag.knowledge_retrieval(session=session, request=self._to_rag_request(request))
         return InnerKnowledgeRetrieveResponse(
             results=results,
             usage=InnerKnowledgeRetrieveUsage.model_validate(jsonable_encoder(rag.llm_usage)),
         )
 
-    def _validate_caller_app(self, *, tenant_id: str, app_id: str) -> None:
-        app = db.session.scalar(select(App).where(App.id == app_id).limit(1))
+    def _validate_caller_app(self, *, tenant_id: str, app_id: str, session: Session) -> None:
+        app = session.scalar(select(App).where(App.id == app_id).limit(1))
         if app is None:
             raise InnerKnowledgeRetrieveAppNotFoundError(f"App '{app_id}' not found")
         if app.tenant_id != tenant_id:
@@ -75,8 +79,8 @@ class InnerKnowledgeRetrievalService:
                 f"App '{app_id}' does not belong to tenant '{tenant_id}'"
             )
 
-    def _validate_datasets(self, *, tenant_id: str, dataset_ids: list[str]) -> None:
-        datasets = db.session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
+    def _validate_datasets(self, *, tenant_id: str, dataset_ids: list[str], session: Session) -> None:
+        datasets = session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
 
         found_ids = {dataset.id for dataset in datasets}
         missing_ids = sorted(set(dataset_ids) - found_ids)

@@ -5,8 +5,7 @@ import { FeaturesContext } from './context'
 
 export function useFeatures<T>(selector: (state: FeatureStoreState) => T): T {
   const store = use(FeaturesContext)
-  if (!store)
-    throw new Error('Missing FeaturesContext.Provider in the tree')
+  if (!store) throw new Error('Missing FeaturesContext.Provider in the tree')
 
   return useStore(store, selector)
 }

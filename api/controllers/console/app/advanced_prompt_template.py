@@ -1,6 +1,5 @@
 from typing import Any
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
@@ -10,7 +9,7 @@ from controllers.common.schema import (
     register_response_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, model_validate, setup_required
 from fields.base import ResponseModel
 from libs.login import login_required
 from services.advanced_prompt_template_service import AdvancedPromptTemplateArgs, AdvancedPromptTemplateService
@@ -49,12 +48,12 @@ class AdvancedPromptTemplateList(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        args = AdvancedPromptTemplateQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(AdvancedPromptTemplateQuery)
+    def get(self, req_data: AdvancedPromptTemplateQuery):
         prompt_args: AdvancedPromptTemplateArgs = {
-            "app_mode": args.app_mode,
-            "model_mode": args.model_mode,
-            "model_name": args.model_name,
-            "has_context": args.has_context,
+            "app_mode": req_data.app_mode,
+            "model_mode": req_data.model_mode,
+            "model_name": req_data.model_name,
+            "has_context": req_data.has_context,
         }
         return AdvancedPromptTemplateService.get_prompt(prompt_args)

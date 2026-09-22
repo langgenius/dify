@@ -16,10 +16,10 @@ function NextStepButton({ disabled, onClick }: NextStepButtonProps) {
   const { t } = useTranslation()
 
   return (
-    <div className="flex max-w-[640px] justify-end gap-2">
+    <div className="flex max-w-160 justify-end gap-2">
       <Button disabled={disabled} variant="primary" onClick={onClick}>
-        <span className="flex gap-0.5 px-[10px]">
-          <span className="px-0.5">{t('stepOne.button', { ns: 'datasetCreation' })}</span>
+        <span className="flex gap-0.5 px-2.5">
+          <span className="px-0.5">{t(($) => $['stepOne.button'], { ns: 'datasetCreation' })}</span>
           <RiArrowRightLine className="size-4" />
         </span>
       </Button>

@@ -1,32 +1,35 @@
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { DatasourceType } from './pipeline'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { Tag } from '@/contract/console/tags'
 import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { SegmentImportStatus } from '@/types/dataset'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { PermissionLevel } from './permission'
 
-export enum DataSourceType {
-  FILE = 'upload_file',
-  NOTION = 'notion_import',
-  WEB = 'website_crawl',
-}
+export const DataSourceType = {
+  FILE: 'upload_file',
+  NOTION: 'notion_import',
+  WEB: 'website_crawl',
+} as const
+
+export type DataSourceType = (typeof DataSourceType)[keyof typeof DataSourceType]
 
 // Re-export PermissionLevel as DatasetPermission for backward compatibility
 export const DatasetPermission = PermissionLevel
 
 export type DatasetPermission = PermissionLevel
 
-export enum ChunkingMode {
-  text = 'text_model', // General text
-  qa = 'qa_model', // General QA
-  parentChild = 'hierarchical_model', // Parent-Child
+export const ChunkingMode = {
+  text: 'text_model', // General text
+  qa: 'qa_model', // General QA
+  parentChild: 'hierarchical_model', // Parent-Child
   // graph = 'graph', // todo: Graph RAG
-}
+} as const
+
+export type ChunkingMode = (typeof ChunkingMode)[keyof typeof ChunkingMode]
 
 export type MetadataInDoc = {
   value: string
@@ -110,7 +113,7 @@ export type ExternalAPIItem = {
     endpoint: string
     api_key: string
   }
-  dataset_bindings: { id: string, name: string }[]
+  dataset_bindings: { id: string; name: string }[]
   created_by: string
   created_at: string
 }
@@ -178,11 +181,13 @@ export type CrawlResult = {
   time_consuming: number | string
 }
 
-export enum CrawlStep {
-  init = 'init',
-  running = 'running',
-  finished = 'finished',
-}
+export const CrawlStep = {
+  init: 'init',
+  running: 'running',
+  finished: 'finished',
+} as const
+
+export type CrawlStep = (typeof CrawlStep)[keyof typeof CrawlStep]
 
 export type FileItem = {
   fileID: string
@@ -218,14 +223,6 @@ export type DataSetListResponse = {
   total: number
 }
 
-export type ExternalAPIListResponse = {
-  data: ExternalAPIItem[]
-  has_more: boolean
-  limit: number
-  page: number
-  total: number
-}
-
 export type QA = {
   question: string
   answer: string
@@ -236,7 +233,7 @@ type IndexingEstimateResponse = {
   total_price: number
   currency: string
   total_segments: number
-  preview: Array<{ content: string, child_chunks: string[], summary?: string }>
+  preview: Array<{ content: string; child_chunks: string[]; summary?: string }>
   qa_preview?: QA[]
 }
 
@@ -254,6 +251,9 @@ export type IndexingStatusResponse = {
   completed_at: any
   paused_at: any
   error: any
+  error_code?: 'vector_space_estimate_exceeded' | null
+  estimated_vector_space_mb?: number | null
+  vector_space_limit_mb?: number | null
   stopped_at: any
   completed_segments: number
   total_segments: number
@@ -262,10 +262,12 @@ export type IndexingStatusBatchResponse = {
   data: IndexingStatusResponse[]
 }
 
-export enum ProcessMode {
-  general = 'custom',
-  parentChild = 'hierarchical',
-}
+export const ProcessMode = {
+  general: 'custom',
+  parentChild: 'hierarchical',
+} as const
+
+export type ProcessMode = (typeof ProcessMode)[keyof typeof ProcessMode]
 
 export type ParentMode = 'full-doc' | 'paragraph'
 
@@ -298,15 +300,15 @@ type Segmentation = {
   chunk_overlap?: number
 }
 
-export type DocumentIndexingStatus
-  = | 'waiting'
-    | 'parsing'
-    | 'cleaning'
-    | 'splitting'
-    | 'indexing'
-    | 'paused'
-    | 'error'
-    | 'completed'
+export type DocumentIndexingStatus =
+  | 'waiting'
+  | 'parsing'
+  | 'cleaning'
+  | 'splitting'
+  | 'indexing'
+  | 'paused'
+  | 'error'
+  | 'completed'
 
 export const DisplayStatusList = [
   'queuing',
@@ -319,7 +321,7 @@ export const DisplayStatusList = [
   'archived',
 ] as const
 
-export type DocumentDisplayStatus = typeof DisplayStatusList[number]
+export type DocumentDisplayStatus = (typeof DisplayStatusList)[number]
 
 export type LegacyDataSourceInfo = {
   upload_file: {
@@ -385,7 +387,12 @@ export type UploadFileIdInfo = {
   upload_file_id: string
 }
 
-export type DataSourceInfo = LegacyDataSourceInfo | LocalFileInfo | OnlineDocumentInfo | WebsiteCrawlInfo | UploadFileIdInfo
+export type DataSourceInfo =
+  | LegacyDataSourceInfo
+  | LocalFileInfo
+  | OnlineDocumentInfo
+  | WebsiteCrawlInfo
+  | UploadFileIdInfo
 
 type InitialDocumentDetail = {
   id: string
@@ -449,9 +456,10 @@ export type CreateDocumentReq = DocumentReq & {
   embedding_model_provider: string
 }
 
-export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {
-  dataset_id: string
-}
+export type IndexingEstimateParams = DocumentReq &
+  Partial<DataSource> & {
+    dataset_id: string
+  }
 
 type DataSource = {
   type: DataSourceType
@@ -525,17 +533,14 @@ type DocMetadata = {
   [key: string]: string
 }
 
-export const CUSTOMIZABLE_DOC_TYPES = [
-  'book',
-  'web_page',
-  'paper',
-  'social_media_post',
-  'personal_document',
-  'business_document',
-  'im_chat_log',
-] as const
-
-type CustomizableDocType = typeof CUSTOMIZABLE_DOC_TYPES[number]
+type CustomizableDocType =
+  | 'book'
+  | 'web_page'
+  | 'paper'
+  | 'social_media_post'
+  | 'personal_document'
+  | 'business_document'
+  | 'im_chat_log'
 type FixedDocType = 'synced_from_github' | 'synced_from_notion' | 'wikipedia_entry'
 export type DocType = CustomizableDocType | FixedDocType
 
@@ -722,16 +727,20 @@ export type SelectedDatasetsMode = {
   inconsistentEmbeddingModel: boolean
 }
 
-export enum WeightedScoreEnum {
-  SemanticFirst = 'semantic_first',
-  KeywordFirst = 'keyword_first',
-  Customized = 'customized',
-}
+export const WeightedScoreEnum = {
+  SemanticFirst: 'semantic_first',
+  KeywordFirst: 'keyword_first',
+  Customized: 'customized',
+} as const
 
-export enum RerankingModeEnum {
-  RerankingModel = 'reranking_model',
-  WeightedScore = 'weighted_score',
-}
+export type WeightedScoreEnum = (typeof WeightedScoreEnum)[keyof typeof WeightedScoreEnum]
+
+export const RerankingModeEnum = {
+  RerankingModel: 'reranking_model',
+  WeightedScore: 'weighted_score',
+} as const
+
+export type RerankingModeEnum = (typeof RerankingModeEnum)[keyof typeof RerankingModeEnum]
 
 export const DEFAULT_WEIGHTED_SCORE = {
   allHighQualityVectorSearch: {
@@ -770,14 +779,16 @@ export type ChildSegmentsResponse = {
 }
 
 // Used in api url
-export enum DocumentActionType {
-  enable = 'enable',
-  disable = 'disable',
-  archive = 'archive',
-  unArchive = 'un_archive',
-  delete = 'delete',
-  summary = 'summary',
-}
+export const DocumentActionType = {
+  enable: 'enable',
+  disable: 'disable',
+  archive: 'archive',
+  unArchive: 'un_archive',
+  delete: 'delete',
+  summary: 'summary',
+} as const
+
+export type DocumentActionType = (typeof DocumentActionType)[keyof typeof DocumentActionType]
 
 export type UpdateDocumentBatchParams = {
   datasetId: string
@@ -790,12 +801,12 @@ export type BatchImportResponse = {
   job_status: SegmentImportStatus
 }
 
-export const DOC_FORM_ICON_WITH_BG: Record<ChunkingMode | 'external', React.ComponentType<{ className: string }>> = {
-  [ChunkingMode.text]: General,
-  [ChunkingMode.qa]: Qa,
-  [ChunkingMode.parentChild]: ParentChild,
+export const DOC_FORM_ICON_CLASS_WITH_BG: Record<ChunkingMode | 'external', string> = {
+  [ChunkingMode.text]: 'i-custom-public-knowledge-dataset-card-general',
+  [ChunkingMode.qa]: 'i-custom-public-knowledge-dataset-card-qa',
+  [ChunkingMode.parentChild]: 'i-custom-public-knowledge-dataset-card-parent-child',
   // [ChunkingMode.graph]: Graph, // todo: Graph RAG
-  external: ExternalKnowledgeBase,
+  external: 'i-custom-public-knowledge-dataset-card-external-knowledge-base',
 }
 
 type ChunkingModeText = I18nKeysByPrefix<'dataset', 'chunkingMode.'>

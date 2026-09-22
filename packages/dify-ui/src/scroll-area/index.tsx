@@ -1,27 +1,23 @@
 'use client'
 
-import type * as React from 'react'
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
-export const ScrollAreaRoot = BaseScrollArea.Root
-type ScrollAreaRootProps = BaseScrollArea.Root.Props
+type ScrollAreaProps = BaseScrollArea.Root.Props
 
-export const ScrollAreaContent = BaseScrollArea.Content
-
-type ScrollAreaSlotClassNames = {
-  viewport?: string
-  content?: string
-  scrollbar?: string
+function ScrollArea({ className, ...props }: ScrollAreaProps) {
+  return (
+    <BaseScrollArea.Root
+      {...props}
+      data-dify-scroll-area=""
+      className={(state) => cn('isolate', resolveClassName(className, state))}
+    />
+  )
 }
 
-type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
-  children: React.ReactNode
-  orientation?: 'vertical' | 'horizontal'
-  slotClassNames?: ScrollAreaSlotClassNames
-  label?: string
-  labelledBy?: string
-}
+const ScrollAreaContent = BaseScrollArea.Content
+type ScrollAreaContentProps = BaseScrollArea.Content.Props
 
 const scrollAreaScrollbarClassName = cn(
   'group/scrollbar flex touch-none overflow-clip p-1 opacity-100 transition-opacity select-none motion-reduce:transition-none',
@@ -36,55 +32,42 @@ const scrollAreaThumbClassName = cn(
   'data-[orientation=vertical]:w-1',
   'data-[orientation=horizontal]:h-1',
   'group-data-hovering/scrollbar:bg-state-base-handle-hover',
-  'group-data-scrolling/scrollbar:bg-state-base-handle-hover',
+  'data-scrolling:bg-state-base-handle-hover',
   'active:bg-state-base-handle-hover',
 )
 
-const scrollAreaViewportClassName = cn(
-  'size-full min-h-0 min-w-0',
-  'focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-solid focus-visible:outline-state-accent-solid',
-)
-
-const scrollAreaCornerClassName = 'bg-transparent'
-
 type ScrollAreaViewportProps = BaseScrollArea.Viewport.Props
 
-export function ScrollAreaViewport({
-  className,
-  ...props
-}: ScrollAreaViewportProps) {
+function ScrollAreaViewport({ className, ...props }: ScrollAreaViewportProps) {
   return (
     <BaseScrollArea.Viewport
-      className={cn(scrollAreaViewportClassName, className)}
       {...props}
+      data-dify-scroll-area-viewport=""
+      className={(state) =>
+        cn('isolate size-full rounded-[inherit] outline-none', resolveClassName(className, state))
+      }
     />
   )
 }
 
 type ScrollAreaScrollbarProps = BaseScrollArea.Scrollbar.Props
 
-export function ScrollAreaScrollbar({
-  className,
-  ...props
-}: ScrollAreaScrollbarProps) {
+function ScrollAreaScrollbar({ className, ...props }: ScrollAreaScrollbarProps) {
   return (
     <BaseScrollArea.Scrollbar
-      data-dify-scrollbar=""
-      className={cn(scrollAreaScrollbarClassName, className)}
       {...props}
+      data-dify-scroll-area-scrollbar=""
+      className={(state) => cn(scrollAreaScrollbarClassName, resolveClassName(className, state))}
     />
   )
 }
 
 type ScrollAreaThumbProps = BaseScrollArea.Thumb.Props
 
-export function ScrollAreaThumb({
-  className,
-  ...props
-}: ScrollAreaThumbProps) {
+function ScrollAreaThumb({ className, ...props }: ScrollAreaThumbProps) {
   return (
     <BaseScrollArea.Thumb
-      className={cn(scrollAreaThumbClassName, className)}
+      className={(state) => cn(scrollAreaThumbClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -92,42 +75,29 @@ export function ScrollAreaThumb({
 
 type ScrollAreaCornerProps = BaseScrollArea.Corner.Props
 
-export function ScrollAreaCorner({
-  className,
-  ...props
-}: ScrollAreaCornerProps) {
+function ScrollAreaCorner({ className, ...props }: ScrollAreaCornerProps) {
   return (
     <BaseScrollArea.Corner
-      className={cn(scrollAreaCornerClassName, className)}
+      className={(state) => cn('bg-transparent', resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
-export function ScrollArea({
-  children,
-  className,
-  orientation = 'vertical',
-  slotClassNames,
-  label,
-  labelledBy,
-  ...props
-}: ScrollAreaProps) {
-  return (
-    <ScrollAreaRoot className={className} {...props}>
-      <ScrollAreaViewport
-        aria-label={label}
-        aria-labelledby={labelledBy}
-        className={slotClassNames?.viewport}
-        role={label || labelledBy ? 'region' : undefined}
-      >
-        <ScrollAreaContent className={slotClassNames?.content}>
-          {children}
-        </ScrollAreaContent>
-      </ScrollAreaViewport>
-      <ScrollAreaScrollbar orientation={orientation} className={slotClassNames?.scrollbar}>
-        <ScrollAreaThumb />
-      </ScrollAreaScrollbar>
-    </ScrollAreaRoot>
-  )
+export {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaCorner,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+}
+
+export type {
+  ScrollAreaContentProps,
+  ScrollAreaCornerProps,
+  ScrollAreaProps,
+  ScrollAreaScrollbarProps,
+  ScrollAreaThumbProps,
+  ScrollAreaViewportProps,
 }

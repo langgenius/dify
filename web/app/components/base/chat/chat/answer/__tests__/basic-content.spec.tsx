@@ -91,16 +91,6 @@ describe('BasicContent', () => {
     expect(markdown).toHaveAttribute('data-content', '\\not-a-unc')
   })
 
-  it('applies error class when isError is true', () => {
-    const errorItem = {
-      ...mockItem,
-      isError: true,
-    }
-    render(<BasicContent item={errorItem as ChatItem} />)
-    const markdown = screen.getByTestId('basic-content-markdown')
-    expect(markdown).toHaveClass('text-[#F04438]!')
-  })
-
   it('renders non-string content without attempting to wrap (covers typeof !== "string" branch)', () => {
     const itemWithNonStringContent = {
       ...mockItem,

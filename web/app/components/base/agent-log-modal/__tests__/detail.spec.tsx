@@ -23,22 +23,39 @@ vi.mock('@/service/log', () => ({
   fetchAgentLogDetail: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn(selector => selector({ appDetail: { id: 'app-id' } })),
+  useStore: vi.fn((selector) => selector({ appDetail: { id: 'app-id' } })),
 }))
 
 vi.mock('@/app/components/workflow/run/status', () => ({
-  default: ({ status, time, tokens, error }: { status: string, time?: number, tokens?: number, error?: string }) => (
-    <div data-testid="status-panel" data-status={String(status)} data-time={String(time)} data-tokens={String(tokens)}>{error ? <span>{String(error)}</span> : null}</div>
+  default: ({
+    status,
+    time,
+    tokens,
+    error,
+  }: {
+    status: string
+    time?: number
+    tokens?: number
+    error?: string
+  }) => (
+    <div
+      data-testid="status-panel"
+      data-status={String(status)}
+      data-time={String(time)}
+      data-tokens={String(tokens)}
+    >
+      {error ? <span>{String(error)}</span> : null}
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: ReactNode, value: string | object }) => (
+  default: ({ title, value }: { title: ReactNode; value: string | object }) => (
     <div data-testid="code-editor">
       {title}
       {typeof value === 'string' ? value : JSON.stringify(value)}
@@ -54,10 +71,6 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon" />,
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
-  ChevronRight: (props: { className?: string }) => <div data-testid="chevron-right" className={props.className} />,
-}))
-
 const createMockLog = (overrides: Partial<IChatItem> = {}): IChatItem => ({
   id: 'msg-id',
   content: 'output content',
@@ -67,7 +80,9 @@ const createMockLog = (overrides: Partial<IChatItem> = {}): IChatItem => ({
   ...overrides,
 })
 
-const createMockResponse = (overrides: Partial<AgentLogDetailResponse> = {}): AgentLogDetailResponse => ({
+const createMockResponse = (
+  overrides: Partial<AgentLogDetailResponse> = {},
+): AgentLogDetailResponse => ({
   meta: {
     status: 'succeeded',
     executor: 'User',
@@ -84,7 +99,14 @@ const createMockResponse = (overrides: Partial<AgentLogDetailResponse> = {}): Ag
       thought: '',
       tokens: 0,
       tool_raw: { inputs: '', outputs: '' },
-      tool_calls: [{ tool_name: 'tool1', status: 'success', tool_icon: null, tool_label: { 'en-US': 'Tool 1' } }],
+      tool_calls: [
+        {
+          tool_name: 'tool1',
+          status: 'success',
+          tool_icon: null,
+          tool_label: { 'en-US': 'Tool 1' },
+        },
+      ],
     },
   ],
   files: [],
@@ -101,10 +123,12 @@ describe('AgentLogDetail', () => {
     return render(<AgentLogDetail {...defaultProps} {...props} />)
   }
 
-  const renderAndWaitForData = async (props: Partial<ComponentProps<typeof AgentLogDetail>> = {}) => {
+  const renderAndWaitForData = async (
+    props: Partial<ComponentProps<typeof AgentLogDetail>> = {},
+  ) => {
     const result = renderComponent(props)
     await waitFor(() => {
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
     return result
   }
@@ -115,11 +139,11 @@ describe('AgentLogDetail', () => {
 
   describe('Rendering', () => {
     it('should show loading indicator while fetching data', async () => {
-      vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => { }))
+      vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
 
       renderComponent()
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should display result panel after data loads', async () => {
@@ -205,7 +229,9 @@ describe('AgentLogDetail', () => {
 
   describe('Edge Cases', () => {
     it('should not fetch data when app detail is unavailable', async () => {
-      vi.mocked(useAppStore).mockImplementationOnce(selector => selector({ appDetail: undefined } as never))
+      vi.mocked(useAppStore).mockImplementationOnce((selector) =>
+        selector({ appDetail: undefined } as never),
+      )
       vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
 
       renderComponent()
@@ -213,7 +239,7 @@ describe('AgentLogDetail', () => {
       await waitFor(() => {
         expect(fetchAgentLogDetail).not.toHaveBeenCalled()
       })
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should notify on API error', async () => {
@@ -232,14 +258,12 @@ describe('AgentLogDetail', () => {
       renderComponent()
 
       await waitFor(() => {
-        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
       })
     })
 
     it('should handle response with empty iterations', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(
-        createMockResponse({ iterations: [] }),
-      )
+      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse({ iterations: [] }))
 
       await renderAndWaitForData()
     })
@@ -254,8 +278,18 @@ describe('AgentLogDetail', () => {
             tokens: 0,
             tool_raw: { inputs: '', outputs: '' },
             tool_calls: [
-              { tool_name: 'tool1', status: 'success', tool_icon: null, tool_label: { 'en-US': 'Tool 1' } },
-              { tool_name: 'tool2', status: 'success', tool_icon: null, tool_label: { 'en-US': 'Tool 2' } },
+              {
+                tool_name: 'tool1',
+                status: 'success',
+                tool_icon: null,
+                tool_label: { 'en-US': 'Tool 1' },
+              },
+              {
+                tool_name: 'tool2',
+                status: 'success',
+                tool_icon: null,
+                tool_label: { 'en-US': 'Tool 2' },
+              },
             ],
           },
           {
@@ -265,7 +299,12 @@ describe('AgentLogDetail', () => {
             tokens: 0,
             tool_raw: { inputs: '', outputs: '' },
             tool_calls: [
-              { tool_name: 'tool1', status: 'success', tool_icon: null, tool_label: { 'en-US': 'Tool 1' } },
+              {
+                tool_name: 'tool1',
+                status: 'success',
+                tool_icon: null,
+                tool_label: { 'en-US': 'Tool 1' },
+              },
             ],
           },
         ],

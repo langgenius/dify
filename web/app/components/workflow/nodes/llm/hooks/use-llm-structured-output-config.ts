@@ -1,15 +1,13 @@
 import type { MutableRefObject } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../types'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
-import {
-  useCallback,
-  useState,
-} from 'react'
+import { useCallback, useState } from 'react'
 import {
   ModelFeatureEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { consoleQuery } from '@/service/console'
 
 type Params = {
   id: string
@@ -26,40 +24,51 @@ const useLLMStructuredOutputConfig = ({
   setInputs,
   deleteNodeInspectorVars,
 }: Params) => {
-  const { data: modelList } = useModelList(ModelTypeEnum.textGeneration)
+  const { data: modelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
   const isModelSupportStructuredOutput = modelList
-    ?.find(providerItem => providerItem.provider === model?.provider)
-    ?.models
-    .find(modelItem => modelItem.model === model?.name)
-    ?.features
-    ?.includes(ModelFeatureEnum.StructuredOutput)
+    ?.find((providerItem) => providerItem.provider === model?.provider)
+    ?.models.find((modelItem) => modelItem.model === model?.name)
+    ?.features?.includes(ModelFeatureEnum.StructuredOutput)
 
   const [structuredOutputCollapsed, setStructuredOutputCollapsed] = useState(true)
 
-  const handleStructureOutputEnableChange = useCallback((enabled: boolean) => {
-    const nextInputs = produce(inputRef.current, (draft) => {
-      draft.structured_output_enabled = enabled
-    })
-    setInputs(nextInputs)
-    if (enabled)
-      setStructuredOutputCollapsed(false)
-    deleteNodeInspectorVars(id)
-  }, [deleteNodeInspectorVars, id, inputRef, setInputs])
+  const handleStructureOutputEnableChange = useCallback(
+    (enabled: boolean) => {
+      const nextInputs = produce(inputRef.current, (draft) => {
+        draft.structured_output_enabled = enabled
+      })
+      setInputs(nextInputs)
+      if (enabled) setStructuredOutputCollapsed(false)
+      deleteNodeInspectorVars(id)
+    },
+    [deleteNodeInspectorVars, id, inputRef, setInputs],
+  )
 
-  const handleStructureOutputChange = useCallback((newOutput: StructuredOutput) => {
-    const nextInputs = produce(inputRef.current, (draft) => {
-      draft.structured_output = newOutput
-    })
-    setInputs(nextInputs)
-    deleteNodeInspectorVars(id)
-  }, [deleteNodeInspectorVars, id, inputRef, setInputs])
+  const handleStructureOutputChange = useCallback(
+    (newOutput: StructuredOutput) => {
+      const nextInputs = produce(inputRef.current, (draft) => {
+        draft.structured_output = newOutput
+      })
+      setInputs(nextInputs)
+      deleteNodeInspectorVars(id)
+    },
+    [deleteNodeInspectorVars, id, inputRef, setInputs],
+  )
 
-  const handleReasoningFormatChange = useCallback((reasoningFormat: 'tagged' | 'separated') => {
-    const nextInputs = produce(inputRef.current, (draft) => {
-      draft.reasoning_format = reasoningFormat
-    })
-    setInputs(nextInputs)
-  }, [inputRef, setInputs])
+  const handleReasoningFormatChange = useCallback(
+    (reasoningFormat: 'tagged' | 'separated') => {
+      const nextInputs = produce(inputRef.current, (draft) => {
+        draft.reasoning_format = reasoningFormat
+      })
+      setInputs(nextInputs)
+    },
+    [inputRef, setInputs],
+  )
 
   return {
     isModelSupportStructuredOutput,

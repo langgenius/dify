@@ -24,8 +24,7 @@ const ChatLogModals: FC<ChatLogModalsProps> = ({
   setShowPromptLogModal,
   setShowAgentLogModal,
 }) => {
-  if (hideLogModal)
-    return null
+  if (hideLogModal) return null
 
   return (
     <>

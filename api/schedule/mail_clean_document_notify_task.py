@@ -8,7 +8,7 @@ from sqlalchemy import select
 import app
 from configs import dify_config
 from core.db.session_factory import session_factory
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from extensions.ext_mail import mail
 from libs.email_i18n import EmailType, get_email_i18n_service
 from models import Account, Tenant, TenantAccountJoin

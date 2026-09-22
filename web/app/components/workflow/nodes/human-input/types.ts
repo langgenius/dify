@@ -3,10 +3,7 @@ import type {
   UploadFileSetting,
   ValueSelector,
 } from '@/app/components/workflow/types'
-import {
-  InputVarType,
-  SupportUploadFileTypes,
-} from '@/app/components/workflow/types'
+import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 
 export type HumanInputNodeType = CommonNodeType & {
@@ -18,13 +15,15 @@ export type HumanInputNodeType = CommonNodeType & {
   timeout_unit: 'hour' | 'day'
 }
 
-export enum DeliveryMethodType {
-  WebApp = 'webapp',
-  Email = 'email',
-  Slack = 'slack',
-  Teams = 'teams',
-  Discord = 'discord',
-}
+export const DeliveryMethodType = {
+  WebApp: 'webapp',
+  Email: 'email',
+  Slack: 'slack',
+  Teams: 'teams',
+  Discord: 'discord',
+} as const
+
+export type DeliveryMethodType = (typeof DeliveryMethodType)[keyof typeof DeliveryMethodType]
 
 export type Recipient = {
   type: 'member' | 'external'
@@ -51,12 +50,14 @@ export type DeliveryMethod = {
   config?: EmailConfig
 }
 
-export enum UserActionButtonType {
-  Primary = 'primary',
-  Default = 'default',
-  Accent = 'accent',
-  Ghost = 'ghost',
-}
+export const UserActionButtonType = {
+  Primary: 'primary',
+  Default: 'default',
+  Accent: 'accent',
+  Ghost: 'ghost',
+} as const
+
+export type UserActionButtonType = (typeof UserActionButtonType)[keyof typeof UserActionButtonType]
 
 export type UserAction = {
   id: string
@@ -84,12 +85,12 @@ type BaseFormInputItem = {
 }
 
 export type ParagraphFormInput = BaseFormInputItem & {
-  type: InputVarType.paragraph
+  type: typeof InputVarType.paragraph
   default: StringDefault
 }
 
 export type SelectFormInput = BaseFormInputItem & {
-  type: InputVarType.select
+  type: typeof InputVarType.select
   option_source: StringListSource
 }
 
@@ -98,48 +99,36 @@ type SharedFileFormInput = Pick<
   'allowed_file_extensions' | 'allowed_file_types' | 'allowed_file_upload_methods'
 >
 
-export type FileFormInput = BaseFormInputItem & SharedFileFormInput & {
-  type: InputVarType.singleFile
-}
+export type FileFormInput = BaseFormInputItem &
+  SharedFileFormInput & {
+    type: typeof InputVarType.singleFile
+  }
 
-export type FileListFormInput = BaseFormInputItem & SharedFileFormInput & {
-  type: InputVarType.multiFiles
-  number_limits?: UploadFileSetting['number_limits']
-}
+export type FileListFormInput = BaseFormInputItem &
+  SharedFileFormInput & {
+    type: typeof InputVarType.multiFiles
+    number_limits?: UploadFileSetting['number_limits']
+  }
 
-export type FormInputItem
-  = | ParagraphFormInput
-    | SelectFormInput
-    | FileFormInput
-    | FileListFormInput
+export type FormInputItem = ParagraphFormInput | SelectFormInput | FileFormInput | FileListFormInput
 
-export const isParagraphFormInput = (
-  input: FormInputItem,
-): input is ParagraphFormInput => {
+export const isParagraphFormInput = (input: FormInputItem): input is ParagraphFormInput => {
   return input.type === InputVarType.paragraph
 }
 
-export const isSelectFormInput = (
-  input: FormInputItem,
-): input is SelectFormInput => {
+export const isSelectFormInput = (input: FormInputItem): input is SelectFormInput => {
   return input.type === InputVarType.select
 }
 
-export const isFileFormInput = (
-  input: FormInputItem,
-): input is FileFormInput => {
+export const isFileFormInput = (input: FormInputItem): input is FileFormInput => {
   return input.type === InputVarType.singleFile
 }
 
-export const isFileListFormInput = (
-  input: FormInputItem,
-): input is FileListFormInput => {
+export const isFileListFormInput = (input: FormInputItem): input is FileListFormInput => {
   return input.type === InputVarType.multiFiles
 }
 
-export const createDefaultParagraphFormInput = (
-  output_variable_name = '',
-): ParagraphFormInput => ({
+export const createDefaultParagraphFormInput = (output_variable_name = ''): ParagraphFormInput => ({
   type: InputVarType.paragraph,
   output_variable_name,
   default: {
@@ -149,9 +138,7 @@ export const createDefaultParagraphFormInput = (
   },
 })
 
-const createDefaultSelectFormInput = (
-  output_variable_name = '',
-): SelectFormInput => ({
+const createDefaultSelectFormInput = (output_variable_name = ''): SelectFormInput => ({
   type: InputVarType.select,
   output_variable_name,
   option_source: {
@@ -161,9 +148,7 @@ const createDefaultSelectFormInput = (
   },
 })
 
-const createDefaultFileFormInput = (
-  output_variable_name = '',
-): FileFormInput => ({
+const createDefaultFileFormInput = (output_variable_name = ''): FileFormInput => ({
   type: InputVarType.singleFile,
   output_variable_name,
   allowed_file_extensions: [],
@@ -171,9 +156,7 @@ const createDefaultFileFormInput = (
   allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
 })
 
-const createDefaultFileListFormInput = (
-  output_variable_name = '',
-): FileListFormInput => ({
+const createDefaultFileListFormInput = (output_variable_name = ''): FileListFormInput => ({
   type: InputVarType.multiFiles,
   output_variable_name,
   allowed_file_extensions: [],

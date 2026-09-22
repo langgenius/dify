@@ -5,18 +5,24 @@ import type {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig as NodeModelConfig } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
+import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type {
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
-import type { AgentStrategy, Model, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
+  AgentStrategy,
+  Model,
+  ModelModeType,
+  RETRIEVE_TYPE,
+  ToolItem,
+  TtsAutoPlay,
+} from '@/types/app'
 
 export type Inputs = Record<string, string | number | object | boolean>
 
-export enum PromptMode {
-  simple = 'simple',
-  advanced = 'advanced',
-}
+export const PromptMode = {
+  simple: 'simple',
+  advanced: 'advanced',
+} as const
+
+export type PromptMode = (typeof PromptMode)[keyof typeof PromptMode]
 
 export type PromptItem = {
   role?: PromptRole
@@ -42,11 +48,13 @@ export type BlockStatus = {
   query: boolean
 }
 
-export enum PromptRole {
-  system = 'system',
-  user = 'user',
-  assistant = 'assistant',
-}
+export const PromptRole = {
+  system: 'system',
+  user: 'user',
+  assistant: 'assistant',
+} as const
+
+export type PromptRole = (typeof PromptRole)[keyof typeof PromptRole]
 
 export type PromptVariable = {
   key: string

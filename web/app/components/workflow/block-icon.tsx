@@ -2,96 +2,76 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
-import {
-  Agent,
-  Answer,
-  Assigner,
-  Code,
-  Datasource,
-  DocsExtractor,
-  End,
-  Home,
-  Http,
-  HumanInLoop,
-  IfElse,
-  Iteration,
-  KnowledgeBase,
-  KnowledgeRetrieval,
-  ListFilter,
-  Llm,
-  Loop,
-  LoopEnd,
-  ParameterExtractor,
-  QuestionClassifier,
-  Schedule,
-  TemplatingTransform,
-  VariableX,
-  WebhookLine,
-} from '@/app/components/base/icons/src/vender/workflow'
 import { API_PREFIX } from '@/config'
 import { BlockEnum } from './types'
 
+type BlockIconSize = 'xs' | 'sm' | 'md'
+
 type BlockIconProps = {
   type: BlockEnum
-  size?: string
+  size?: BlockIconSize
   className?: string
-  toolIcon?: string | { content: string, background: string }
+  iconClassName?: string
+  toolIcon?: string | { content: string; background: string }
 }
-const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
+const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<BlockIconSize, string> = {
   xs: 'w-4 h-4 rounded-[5px] shadow-xs',
   sm: 'w-5 h-5 rounded-md shadow-xs',
   md: 'w-6 h-6 rounded-lg shadow-md',
 }
+const ICON_CLASSNAME_SIZE_MAP: Record<BlockIconSize, string> = {
+  xs: 'size-3',
+  sm: 'size-3.5',
+  md: 'size-4',
+}
 
-const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: string }>> = {
-  [BlockEnum.Start]: Home,
-  [BlockEnum.StartPlaceholder]: Home,
-  [BlockEnum.LLM]: Llm,
-  [BlockEnum.Code]: Code,
-  [BlockEnum.End]: End,
-  [BlockEnum.IfElse]: IfElse,
-  [BlockEnum.HttpRequest]: Http,
-  [BlockEnum.Answer]: Answer,
-  [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrieval,
-  [BlockEnum.QuestionClassifier]: QuestionClassifier,
-  [BlockEnum.TemplateTransform]: TemplatingTransform,
-  [BlockEnum.VariableAssigner]: VariableX,
-  [BlockEnum.VariableAggregator]: VariableX,
-  [BlockEnum.Assigner]: Assigner,
-  [BlockEnum.Tool]: VariableX,
-  [BlockEnum.IterationStart]: VariableX,
-  [BlockEnum.Iteration]: Iteration,
-  [BlockEnum.LoopStart]: VariableX,
-  [BlockEnum.Loop]: Loop,
-  [BlockEnum.LoopEnd]: LoopEnd,
-  [BlockEnum.ParameterExtractor]: ParameterExtractor,
-  [BlockEnum.DocExtractor]: DocsExtractor,
-  [BlockEnum.ListFilter]: ListFilter,
-  [BlockEnum.Agent]: Agent,
-  [BlockEnum.AgentV2]: Agent,
-  [BlockEnum.KnowledgeBase]: KnowledgeBase,
-  [BlockEnum.DataSource]: Datasource,
-  [BlockEnum.DataSourceEmpty]: () => null,
-  [BlockEnum.TriggerSchedule]: Schedule,
-  [BlockEnum.TriggerWebhook]: WebhookLine,
-  [BlockEnum.TriggerPlugin]: VariableX,
-  [BlockEnum.HumanInput]: HumanInLoop,
+const DEFAULT_ICON_CLASS_MAP: Record<BlockEnum, string | null> = {
+  [BlockEnum.Start]: 'i-custom-vender-workflow-home',
+  [BlockEnum.StartPlaceholder]: 'i-custom-vender-workflow-home',
+  [BlockEnum.LLM]: 'i-custom-vender-workflow-llm',
+  [BlockEnum.Code]: 'i-custom-vender-workflow-code',
+  [BlockEnum.End]: 'i-custom-vender-workflow-end',
+  [BlockEnum.IfElse]: 'i-custom-vender-workflow-if-else',
+  [BlockEnum.HttpRequest]: 'i-custom-vender-workflow-http',
+  [BlockEnum.Answer]: 'i-custom-vender-workflow-answer',
+  [BlockEnum.KnowledgeRetrieval]: 'i-custom-vender-workflow-knowledge-retrieval',
+  [BlockEnum.QuestionClassifier]: 'i-custom-vender-workflow-question-classifier',
+  [BlockEnum.TemplateTransform]: 'i-custom-vender-workflow-templating-transform',
+  [BlockEnum.VariableAssigner]: 'i-custom-vender-workflow-variable-x',
+  [BlockEnum.VariableAggregator]: 'i-custom-vender-workflow-variable-x',
+  [BlockEnum.Assigner]: 'i-custom-vender-workflow-assigner',
+  [BlockEnum.Tool]: 'i-custom-vender-workflow-variable-x',
+  [BlockEnum.IterationStart]: 'i-custom-vender-workflow-variable-x',
+  [BlockEnum.Iteration]: 'i-custom-vender-workflow-iteration',
+  [BlockEnum.LoopStart]: 'i-custom-vender-workflow-variable-x',
+  [BlockEnum.Loop]: 'i-custom-vender-workflow-loop',
+  [BlockEnum.LoopEnd]: 'i-custom-vender-workflow-loop-end',
+  [BlockEnum.ParameterExtractor]: 'i-custom-vender-workflow-parameter-extractor',
+  [BlockEnum.DocExtractor]: 'i-custom-vender-workflow-docs-extractor',
+  [BlockEnum.ListFilter]: 'i-custom-vender-workflow-list-filter',
+  [BlockEnum.Agent]: 'i-custom-vender-workflow-agent',
+  [BlockEnum.AgentV2]: 'i-custom-vender-workflow-agent',
+  [BlockEnum.KnowledgeBase]: 'i-custom-vender-workflow-knowledge-base',
+  [BlockEnum.DataSource]: 'i-custom-vender-workflow-datasource',
+  [BlockEnum.DataSourceEmpty]: null,
+  [BlockEnum.TriggerSchedule]: 'i-custom-vender-workflow-schedule',
+  [BlockEnum.TriggerWebhook]: 'i-custom-vender-workflow-webhook-line',
+  [BlockEnum.TriggerPlugin]: 'i-custom-vender-workflow-variable-x',
+  [BlockEnum.HumanInput]: 'i-custom-vender-workflow-human-in-loop',
 }
 
 const getIcon = (type: BlockEnum, className: string) => {
-  const DefaultIcon = DEFAULT_ICON_MAP[type]
-  if (!DefaultIcon)
-    return null
+  const iconClassName = DEFAULT_ICON_CLASS_MAP[type]
+  if (!iconClassName) return null
 
-  return <DefaultIcon className={className} />
+  return <span aria-hidden className={cn(iconClassName, className)} />
 }
 
 const normalizeToolIconUrl = (toolIcon: string) => {
   const protectedPluginIconPath = '/workspaces/current/plugin/icon'
   const pathIndex = toolIcon.indexOf(protectedPluginIconPath)
 
-  if (pathIndex < 0)
-    return toolIcon
+  if (pathIndex < 0) return toolIcon
 
   return `${API_PREFIX}${toolIcon.slice(pathIndex)}`
 }
@@ -131,27 +111,32 @@ const BlockIcon: FC<BlockIconProps> = ({
   type,
   size = 'sm',
   className,
+  iconClassName,
   toolIcon,
 }) => {
   const isStart = type === BlockEnum.Start
   const isStartPlaceholder = type === BlockEnum.StartPlaceholder
-  const isToolOrDataSourceOrTriggerPlugin = type === BlockEnum.Tool || type === BlockEnum.DataSource || type === BlockEnum.TriggerPlugin
+  const isToolOrDataSourceOrTriggerPlugin =
+    type === BlockEnum.Tool || type === BlockEnum.DataSource || type === BlockEnum.TriggerPlugin
   const showDefaultIcon = !isToolOrDataSourceOrTriggerPlugin || !toolIcon
-  const resolvedToolIcon = typeof toolIcon === 'string'
-    ? normalizeToolIconUrl(toolIcon)
-    : toolIcon
+  const resolvedToolIcon = typeof toolIcon === 'string' ? normalizeToolIconUrl(toolIcon) : toolIcon
 
   if (isStart) {
     return (
-      <div className={cn(
-        'flex items-center justify-center border-[0.5px] border-white/2 bg-util-colors-blue-brand-blue-brand-500 text-white',
-        ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
-        className,
-      )}
+      <div
+        className={cn(
+          'flex items-center justify-center border-[0.5px] border-white/2 bg-util-colors-blue-brand-blue-brand-500 text-white',
+          ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
+          className,
+        )}
       >
         <span
           aria-hidden
-          className={cn('i-custom-vender-workflow-user-input', size === 'xs' ? 'size-4' : 'size-4')}
+          className={cn(
+            'i-custom-vender-workflow-user-input',
+            ICON_CLASSNAME_SIZE_MAP[size],
+            iconClassName,
+          )}
         />
       </div>
     )
@@ -159,77 +144,61 @@ const BlockIcon: FC<BlockIconProps> = ({
 
   if (isStartPlaceholder) {
     return (
-      <div className={cn(
-        'flex items-center justify-center border border-dashed border-components-panel-border bg-state-base-hover text-text-tertiary shadow-none',
-        ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
-        className,
-      )}
+      <div
+        className={cn(
+          'flex items-center justify-center border border-dashed border-components-panel-border bg-state-base-hover text-text-tertiary shadow-none',
+          ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
+          className,
+        )}
       >
         <span
           aria-hidden
-          className={cn('i-custom-vender-workflow-start-placeholder text-text-primary opacity-30', size === 'xs' ? 'size-3' : 'size-3.5')}
+          className={cn(
+            'i-custom-vender-workflow-start-placeholder text-text-primary opacity-30',
+            ICON_CLASSNAME_SIZE_MAP[size],
+            iconClassName,
+          )}
         />
       </div>
     )
   }
 
   return (
-    <div className={
-      cn(
+    <div
+      className={cn(
         'flex items-center justify-center border-[0.5px] border-white/2 text-white',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
         showDefaultIcon && ICON_CONTAINER_BG_COLOR_MAP[type],
         toolIcon && 'shadow-none!',
         className,
-      )
-    }
+      )}
     >
-      {
-        showDefaultIcon && (
-          getIcon(type, (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
-            ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
-            : (size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'))
-        )
-      }
-      {
-        !showDefaultIcon && (
-          <>
-            {
-              typeof resolvedToolIcon === 'string'
-                ? (
-                    <div
-                      className="size-full shrink-0 rounded-md bg-cover bg-center"
-                      style={{
-                        backgroundImage: `url(${resolvedToolIcon})`,
-                      }}
-                    >
-                    </div>
-                  )
-                : (
-                    <AppIcon
-                      className="size-full! shrink-0"
-                      size="tiny"
-                      icon={resolvedToolIcon?.content}
-                      background={resolvedToolIcon?.background}
-                    />
-                  )
-            }
-          </>
-        )
-      }
+      {showDefaultIcon && getIcon(type, cn(ICON_CLASSNAME_SIZE_MAP[size], iconClassName))}
+      {!showDefaultIcon && (
+        <>
+          {typeof resolvedToolIcon === 'string' ? (
+            <div
+              className="size-full shrink-0 rounded-md bg-cover bg-center"
+              style={{
+                backgroundImage: `url(${resolvedToolIcon})`,
+              }}
+            ></div>
+          ) : (
+            <AppIcon
+              className="size-full! shrink-0"
+              size="tiny"
+              icon={resolvedToolIcon?.content}
+              background={resolvedToolIcon?.background}
+            />
+          )}
+        </>
+      )}
     </div>
   )
 }
 
-export const VarBlockIcon: FC<BlockIconProps> = ({
-  type,
-  className,
-}) => {
-  return (
-    <>
-      {getIcon(type, `w-3 h-3 ${className}`)}
-    </>
-  )
+export const VarBlockIcon: FC<BlockIconProps> = ({ type, className }) => {
+  return <>{getIcon(type, `w-3 h-3 ${className}`)}</>
 }
 
 export default memo(BlockIcon)

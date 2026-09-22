@@ -5,18 +5,20 @@ import type * as React from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlCompoundFocusClassName } from '../form-control-shared'
+import { textControlCompoundInputFocusClassName } from '../form-control-shared'
+import { resolveClassName } from '../internals/resolve-class-name'
 
-export const NumberField = BaseNumberField.Root
-export type NumberFieldRootProps = BaseNumberField.Root.Props
+const NumberField = BaseNumberField.Root
+type NumberFieldProps = BaseNumberField.Root.Props
 
-export const numberFieldGroupVariants = cva(
+const numberFieldGroupVariants = cva(
   [
-    'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
+    'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlCompoundFocusClassName,
+    textControlCompoundInputFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-invalid:border-components-input-border-destructive data-invalid:bg-components-input-bg-destructive',
+    'data-invalid:has-[input:focus]:border-components-input-border-destructive data-invalid:has-[input:focus]:bg-components-input-bg-destructive',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
     'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal motion-reduce:transition-none',
@@ -33,29 +35,23 @@ export const numberFieldGroupVariants = cva(
     },
   },
 )
-export type NumberFieldSize = NonNullable<VariantProps<typeof numberFieldGroupVariants>['size']>
+type NumberFieldSize = NonNullable<VariantProps<typeof numberFieldGroupVariants>['size']>
 
-export type NumberFieldGroupProps
-  = Omit<BaseNumberField.Group.Props, 'className'>
-    & VariantProps<typeof numberFieldGroupVariants>
-    & {
-      className?: string
-    }
+type NumberFieldGroupProps = BaseNumberField.Group.Props &
+  VariantProps<typeof numberFieldGroupVariants>
 
-export function NumberFieldGroup({
-  className,
-  size = 'medium',
-  ...props
-}: NumberFieldGroupProps) {
+function NumberFieldGroup({ className, size = 'medium', ...props }: NumberFieldGroupProps) {
   return (
     <BaseNumberField.Group
-      className={cn(numberFieldGroupVariants({ size }), className)}
+      className={(state) =>
+        cn(numberFieldGroupVariants({ size }), resolveClassName(className, state))
+      }
       {...props}
     />
   )
 }
 
-export const numberFieldInputVariants = cva(
+const numberFieldInputVariants = cva(
   [
     'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
@@ -65,8 +61,8 @@ export const numberFieldInputVariants = cva(
   {
     variants: {
       size: {
-        medium: 'px-3 py-[7px] system-sm-regular',
-        large: 'px-4 py-2 system-md-regular',
+        medium: 'px-3 py-1.75 system-sm-regular',
+        large: 'px-4 py-1.75 system-md-regular',
       },
     },
     defaultVariants: {
@@ -75,33 +71,27 @@ export const numberFieldInputVariants = cva(
   },
 )
 
-export type NumberFieldInputProps
-  = Omit<BaseNumberField.Input.Props, 'className' | 'size'>
-    & VariantProps<typeof numberFieldInputVariants>
-    & {
-      className?: string
-    }
+type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'size'> &
+  VariantProps<typeof numberFieldInputVariants>
 
-export function NumberFieldInput({
-  className,
-  size = 'medium',
-  ...props
-}: NumberFieldInputProps) {
+function NumberFieldInput({ className, size = 'medium', ...props }: NumberFieldInputProps) {
   return (
     <BaseNumberField.Input
-      className={cn(numberFieldInputVariants({ size }), className)}
+      className={(state) =>
+        cn(numberFieldInputVariants({ size }), resolveClassName(className, state))
+      }
       {...props}
     />
   )
 }
 
-export const numberFieldUnitVariants = cva(
+const numberFieldUnitVariants = cva(
   'flex shrink-0 items-center self-stretch system-sm-regular text-text-tertiary',
   {
     variants: {
       size: {
-        medium: 'pr-2',
-        large: 'pr-2.5',
+        medium: 'pe-2',
+        large: 'pe-2.5',
       },
     },
     defaultVariants: {
@@ -110,44 +100,28 @@ export const numberFieldUnitVariants = cva(
   },
 )
 
-export type NumberFieldUnitProps = React.ComponentProps<'span'> & VariantProps<typeof numberFieldUnitVariants>
+type NumberFieldUnitProps = React.ComponentProps<'span'> &
+  VariantProps<typeof numberFieldUnitVariants>
 
-export function NumberFieldUnit({
-  className,
-  size = 'medium',
-  ...props
-}: NumberFieldUnitProps) {
-  return (
-    <span
-      className={cn(numberFieldUnitVariants({ size }), className)}
-      {...props}
-    />
-  )
+function NumberFieldUnit({ className, size = 'medium', ...props }: NumberFieldUnitProps) {
+  return <span className={cn(numberFieldUnitVariants({ size }), className)} {...props} />
 }
 
 const numberFieldControlsVariants = cva(
-  'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
+  'flex w-6 shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
-export type NumberFieldControlsProps = React.ComponentProps<'div'>
+type NumberFieldControlsProps = React.ComponentProps<'div'>
 
-export function NumberFieldControls({
-  className,
-  ...props
-}: NumberFieldControlsProps) {
-  return (
-    <div
-      className={cn(numberFieldControlsVariants(), className)}
-      {...props}
-    />
-  )
+function NumberFieldControls({ className, ...props }: NumberFieldControlsProps) {
+  return <div className={cn(numberFieldControlsVariants(), className)} {...props} />
 }
 
 const numberFieldControlButtonVariants = cva(
   [
-    'flex touch-manipulation items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors select-none',
+    'flex touch-manipulation items-center justify-center text-text-tertiary outline-hidden transition-colors select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
-    'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/number-field:cursor-not-allowed hover:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:ring-0',
     'group-data-readonly/number-field:cursor-default hover:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:ring-0',
@@ -168,22 +142,22 @@ const numberFieldControlButtonVariants = cva(
       {
         size: 'medium',
         direction: 'increment',
-        className: 'pt-1',
+        className: 'pt-0.75',
       },
       {
         size: 'medium',
         direction: 'decrement',
-        className: 'pb-1',
+        className: 'pb-0.75',
       },
       {
         size: 'large',
         direction: 'increment',
-        className: 'pt-1.5',
+        className: 'pt-1.25',
       },
       {
         size: 'large',
         direction: 'decrement',
-        className: 'pb-1.5',
+        className: 'pb-1.25',
       },
     ],
     defaultVariants: {
@@ -198,46 +172,76 @@ type NumberFieldButtonVariantProps = Omit<
   'direction'
 >
 
-export type NumberFieldButtonProps
-  = Omit<BaseNumberField.Increment.Props, 'className'>
-    & NumberFieldButtonVariantProps
-    & {
-      className?: string
-    }
+type NumberFieldIncrementProps = BaseNumberField.Increment.Props & NumberFieldButtonVariantProps
+type NumberFieldDecrementProps = BaseNumberField.Decrement.Props & NumberFieldButtonVariantProps
 
 const incrementAriaLabel = 'Increment value'
 const decrementAriaLabel = 'Decrement value'
 
-export function NumberFieldIncrement({
+function NumberFieldIncrement({
   className,
   children,
   size = 'medium',
   ...props
-}: NumberFieldButtonProps) {
+}: NumberFieldIncrementProps) {
   return (
     <BaseNumberField.Increment
       {...props}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : incrementAriaLabel)}
-      className={cn(numberFieldControlButtonVariants({ size, direction: 'increment' }), className)}
+      aria-label={
+        props['aria-label'] ?? (props['aria-labelledby'] ? undefined : incrementAriaLabel)
+      }
+      className={(state) =>
+        cn(
+          numberFieldControlButtonVariants({ size, direction: 'increment' }),
+          resolveClassName(className, state),
+        )
+      }
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-up-s-line size-3" />}
     </BaseNumberField.Increment>
   )
 }
 
-export function NumberFieldDecrement({
+function NumberFieldDecrement({
   className,
   children,
   size = 'medium',
   ...props
-}: NumberFieldButtonProps) {
+}: NumberFieldDecrementProps) {
   return (
     <BaseNumberField.Decrement
       {...props}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : decrementAriaLabel)}
-      className={cn(numberFieldControlButtonVariants({ size, direction: 'decrement' }), className)}
+      aria-label={
+        props['aria-label'] ?? (props['aria-labelledby'] ? undefined : decrementAriaLabel)
+      }
+      className={(state) =>
+        cn(
+          numberFieldControlButtonVariants({ size, direction: 'decrement' }),
+          resolveClassName(className, state),
+        )
+      }
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-down-s-line size-3" />}
     </BaseNumberField.Decrement>
   )
+}
+
+export {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+  NumberFieldUnit,
+}
+export type {
+  NumberFieldControlsProps,
+  NumberFieldDecrementProps,
+  NumberFieldGroupProps,
+  NumberFieldIncrementProps,
+  NumberFieldInputProps,
+  NumberFieldProps,
+  NumberFieldSize,
+  NumberFieldUnitProps,
 }

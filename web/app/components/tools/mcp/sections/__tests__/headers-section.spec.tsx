@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import HeadersSection from '../headers-section'
 
 describe('HeadersSection', () => {
@@ -10,11 +10,6 @@ describe('HeadersSection', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<HeadersSection {...defaultProps} />)
-      expect(screen.getByText('tools.mcp.modal.headers'))!.toBeInTheDocument()
-    })
-
     it('should render headers label', () => {
       render(<HeadersSection {...defaultProps} />)
       expect(screen.getByText('tools.mcp.modal.headers'))!.toBeInTheDocument()
@@ -57,24 +52,12 @@ describe('HeadersSection', () => {
     })
 
     it('should show masked tip when not isCreate and has headers with content', () => {
-      render(
-        <HeadersSection
-          {...defaultProps}
-          isCreate={false}
-          headers={headersWithItems}
-        />,
-      )
+      render(<HeadersSection {...defaultProps} isCreate={false} headers={headersWithItems} />)
       expect(screen.getByText('tools.mcp.modal.maskedHeadersTip'))!.toBeInTheDocument()
     })
 
     it('should not show masked tip when isCreate is true', () => {
-      render(
-        <HeadersSection
-          {...defaultProps}
-          isCreate={true}
-          headers={headersWithItems}
-        />,
-      )
+      render(<HeadersSection {...defaultProps} isCreate={true} headers={headersWithItems} />)
       expect(screen.queryByText('tools.mcp.modal.maskedHeadersTip')).not.toBeInTheDocument()
     })
   })
@@ -99,11 +82,7 @@ describe('HeadersSection', () => {
       const onHeadersChange = vi.fn()
       const headers = [{ id: '1', key: '', value: '' }]
       render(
-        <HeadersSection
-          {...defaultProps}
-          headers={headers}
-          onHeadersChange={onHeadersChange}
-        />,
+        <HeadersSection {...defaultProps} headers={headers} onHeadersChange={onHeadersChange} />,
       )
 
       const inputs = screen.getAllByRole('textbox')
@@ -117,11 +96,7 @@ describe('HeadersSection', () => {
       const onHeadersChange = vi.fn()
       const headers = [{ id: '1', key: 'X-Custom-Header', value: '' }]
       render(
-        <HeadersSection
-          {...defaultProps}
-          headers={headers}
-          onHeadersChange={onHeadersChange}
-        />,
+        <HeadersSection {...defaultProps} headers={headers} onHeadersChange={onHeadersChange} />,
       )
 
       const inputs = screen.getAllByRole('textbox')
@@ -135,15 +110,12 @@ describe('HeadersSection', () => {
       const onHeadersChange = vi.fn()
       const headers = [{ id: '1', key: 'X-Header', value: 'value' }]
       render(
-        <HeadersSection
-          {...defaultProps}
-          headers={headers}
-          onHeadersChange={onHeadersChange}
-        />,
+        <HeadersSection {...defaultProps} headers={headers} onHeadersChange={onHeadersChange} />,
       )
 
-      // Find and click the delete button
-      const deleteButton = screen.getByRole('button', { name: '' })
+      const deleteButton = screen.getByRole('button', {
+        name: 'common.operation.delete X-Header 1',
+      })
       fireEvent.click(deleteButton)
 
       expect(onHeadersChange).toHaveBeenCalledWith([])

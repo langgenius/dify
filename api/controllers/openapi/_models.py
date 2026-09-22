@@ -2,15 +2,42 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from enum import StrEnum
+from typing import Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
+from libs.oauth_bearer import SubjectType
 from models.model import AppMode
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 200
+
+
+class SupportedAppType(StrEnum):
+    """App types the ``app`` usage face (``get app``) lists and filters.
+
+    A curated subset of :class:`AppMode`: the real, user-facing app categories.
+    Excludes runtime-only mode tags that are not standalone apps
+    (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+    roster-owned ``agent`` type (surfaced through the roster, not this list).
+
+    Members reference ``AppMode.*.value`` so the subset relationship is
+    type-checked: dropping a member from ``AppMode`` breaks this at import.
+    This is the single source for the listable set — params, filters, and the
+    generated CLI whitelist all derive from it.
+    """
+
+    COMPLETION = AppMode.COMPLETION.value
+    CHAT = AppMode.CHAT.value
+    ADVANCED_CHAT = AppMode.ADVANCED_CHAT.value
+    WORKFLOW = AppMode.WORKFLOW.value
+    AGENT_CHAT = AppMode.AGENT_CHAT.value
+
+
+SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
 
 class UsageInfo(BaseModel):
@@ -25,7 +52,7 @@ class MessageMetadata(BaseModel):
 
 
 class PaginationEnvelope[T](BaseModel):
-    """Canonical pagination envelope for `/openapi/v1/*` list endpoints."""
+    """The one shape every paginated list on this surface answers with."""
 
     page: int
     limit: int
@@ -34,12 +61,8 @@ class PaginationEnvelope[T](BaseModel):
     data: list[T]
 
     @classmethod
-    def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> PaginationEnvelope[T]:
+    def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> Self:
         return cls(page=page, limit=limit, total=total, has_more=page * limit < total, data=items)
-
-
-class TagItem(BaseModel):
-    name: str
 
 
 class AppListRow(BaseModel):
@@ -47,39 +70,27 @@ class AppListRow(BaseModel):
     name: str
     description: str | None = None
     mode: AppMode
-    tags: list[TagItem] = []
     updated_at: str | None = None
-    created_by_name: str | None = None
     workspace_id: str | None = None
     workspace_name: str | None = None
 
 
-class AppListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[AppListRow]
+class AppListResponse(PaginationEnvelope[AppListRow]):
+    pass
 
 
-class PermittedExternalAppsListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[AppListRow]
+class PermittedExternalAppsListResponse(PaginationEnvelope[AppListRow]):
+    pass
 
 
-class AppInfoResponse(BaseModel):
+class AppInfo(BaseModel):
     id: str
     name: str
     description: str | None = None
     mode: str
-    author: str | None = None
-    tags: list[TagItem] = []
 
 
-class AppDescribeInfo(AppInfoResponse):
+class AppDescribeInfo(AppInfo):
     updated_at: str | None = None
     service_api_enabled: bool
     is_agent: bool = False
@@ -89,29 +100,6 @@ class AppDescribeResponse(BaseModel):
     info: AppDescribeInfo | None = None
     parameters: dict[str, Any] | None = Field(default=None)
     input_schema: dict[str, Any] | None = Field(default=None)
-
-
-class ChatMessageResponse(BaseModel):
-    event: str
-    task_id: str
-    id: str
-    message_id: str
-    conversation_id: str
-    mode: str
-    answer: str
-    metadata: MessageMetadata = Field(default_factory=MessageMetadata)
-    created_at: int
-
-
-class CompletionMessageResponse(BaseModel):
-    event: str
-    task_id: str
-    id: str
-    message_id: str
-    mode: str
-    answer: str
-    metadata: MessageMetadata = Field(default_factory=MessageMetadata)
-    created_at: int
 
 
 class WorkflowRunData(BaseModel):
@@ -125,13 +113,6 @@ class WorkflowRunData(BaseModel):
     total_steps: int | None = None
     created_at: int | None = None
     finished_at: int | None = None
-
-
-class WorkflowRunResponse(BaseModel):
-    workflow_run_id: str
-    task_id: str
-    mode: Literal["workflow"] = "workflow"
-    data: WorkflowRunData
 
 
 class AccountPayload(BaseModel):
@@ -149,7 +130,7 @@ class WorkspacePayload(BaseModel):
 class DeviceTokenResponse(BaseModel):
     token: str
     expires_at: str
-    subject_type: Literal["account", "external_sso"]
+    subject_type: SubjectType
     account: AccountPayload | None = None
     workspaces: list[WorkspacePayload] = []
     default_workspace_id: str | None = None
@@ -159,7 +140,7 @@ class DeviceTokenResponse(BaseModel):
 
 
 class AccountResponse(BaseModel):
-    subject_type: str
+    subject_type: SubjectType
     subject_email: str | None = None
     subject_issuer: str | None = None
     account: AccountPayload | None = None
@@ -177,12 +158,8 @@ class SessionRow(BaseModel):
     expires_at: str | None = None
 
 
-class SessionListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[SessionRow]
+class SessionListResponse(PaginationEnvelope[SessionRow]):
+    pass
 
 
 class SessionListQuery(BaseModel):
@@ -241,7 +218,7 @@ class ServerVersionResponse(BaseModel):
     """Meta endpoint payload for `GET /openapi/v1/_version` — no auth required."""
 
     version: str
-    edition: Literal["SELF_HOSTED", "CLOUD"]
+    edition: DeploymentEdition
 
 
 class HealthResponse(BaseModel):
@@ -262,7 +239,7 @@ def _csv_string_query_schema(schema: dict[str, Any]) -> None:
 
 
 class AppDescribeQuery(BaseModel):
-    """`?fields=` allow-list for GET /apps/<id>/describe.
+    """`?fields=` allow-list for GET /apps/<id>.
 
     Empty / omitted → all blocks. Unknown member → ValidationError → 422.
     """
@@ -287,14 +264,13 @@ class AppDescribeQuery(BaseModel):
 
 
 class AppListQuery(BaseModel):
-    """mode is a closed enum."""
+    """mode is a closed enum of listable app types."""
 
     workspace_id: UUIDStr
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
-    tag: str | None = Field(None, max_length=100)
 
 
 class AppRunRequest(BaseModel):
@@ -344,7 +320,7 @@ class PermittedExternalAppsListQuery(BaseModel):
 
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
 
 
@@ -381,12 +357,8 @@ class MemberResponse(BaseModel):
     avatar: str | None = None
 
 
-class MemberListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[MemberResponse]
+class MemberListResponse(PaginationEnvelope[MemberResponse]):
+    pass
 
 
 class MemberListQuery(BaseModel):
@@ -425,7 +397,7 @@ class MemberActionResponse(BaseModel):
 
 
 class TaskStopResponse(BaseModel):
-    """200 body for POST /apps/<id>/tasks/<task_id>/stop. The handler always returns
+    """200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
     {"result": "success"}, so `result` is required (no default) — the generated contract
     types it as a required `'success'` rather than an optional field."""
 
@@ -457,7 +429,7 @@ class AppDslImportPayload(BaseModel):
 
 
 class AppDslExportQuery(BaseModel):
-    """Query parameters for GET /apps/<app_id>/export."""
+    """Query parameters for GET /apps/<app_id>/dsl."""
 
     include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
     workflow_id: UUIDStr | None = Field(
@@ -472,7 +444,7 @@ class AppDslExportResponse(BaseModel):
 
 
 class FormSubmitResponse(BaseModel):
-    """Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
+    """Empty 200 body for POST /apps/<id>/human-input-forms/<token>:submit. `extra='forbid'`
     pins `additionalProperties: false` so the generated contract is an exact `{}` rather
     than an under-annotated open object."""
 

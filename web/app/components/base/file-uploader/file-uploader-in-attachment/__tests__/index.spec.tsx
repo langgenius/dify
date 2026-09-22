@@ -21,14 +21,15 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
-const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload => ({
-  enabled: true,
-  allowed_file_types: ['image'],
-  allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-  allowed_file_extensions: [],
-  number_limits: 5,
-  ...overrides,
-} as unknown as FileUpload)
+const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
+  ({
+    enabled: true,
+    allowed_file_types: ['image'],
+    allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+    allowed_file_extensions: [],
+    number_limits: 5,
+    ...overrides,
+  }) as unknown as FileUpload
 
 const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   id: 'file-1',
@@ -46,25 +47,8 @@ describe('FileUploaderInAttachmentWrapper', () => {
     vi.clearAllMocks()
   })
 
-  it('should render without crashing', () => {
-    render(
-      <FileUploaderInAttachmentWrapper
-        onChange={vi.fn()}
-        fileConfig={createFileConfig()}
-      />,
-    )
-
-    // FileContextProvider wraps children with a Zustand context — verify children render
-    expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
-  })
-
   it('should render upload buttons when not disabled', () => {
-    render(
-      <FileUploaderInAttachmentWrapper
-        onChange={vi.fn()}
-        fileConfig={createFileConfig()}
-      />,
-    )
+    render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
 
     const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBeGreaterThan(0)
@@ -83,10 +67,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
   })
 
   it('should render file items for each file', () => {
-    const files = [
-      createFile({ id: 'f1', name: 'a.txt' }),
-      createFile({ id: 'f2', name: 'b.txt' }),
-    ]
+    const files = [createFile({ id: 'f1', name: 'a.txt' }), createFile({ id: 'f2', name: 'b.txt' })]
 
     render(
       <FileUploaderInAttachmentWrapper
@@ -165,12 +146,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
   })
 
   it('should keep upload button layout stable when remote_url popup opens', () => {
-    render(
-      <FileUploaderInAttachmentWrapper
-        onChange={vi.fn()}
-        fileConfig={createFileConfig()}
-      />,
-    )
+    render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
 
     const localButton = screen.getByText(/fileUploader\.uploadFromComputer/).closest('button')
     const linkButton = screen.getByText(/fileUploader\.pasteFileLink/).closest('button')
@@ -205,14 +181,14 @@ describe('FileUploaderInAttachmentWrapper', () => {
     )
 
     const buttons = screen.getAllByRole('button')
-    const disabledButtons = buttons.filter(btn => btn.hasAttribute('disabled'))
+    const disabledButtons = buttons.filter((btn) => btn.hasAttribute('disabled'))
     expect(disabledButtons.length).toBeGreaterThan(0)
   })
 
   it('should call handleReUploadFile when reupload button is clicked', () => {
     const files = [createFile({ id: 'f1', name: 'a.txt', progress: -1 })]
 
-    const { container } = render(
+    render(
       <FileUploaderInAttachmentWrapper
         value={files}
         onChange={vi.fn()}
@@ -220,10 +196,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    // ReplayLine is inside ActionButton (a <button>) with data-icon attribute
-    const replayIcon = container.querySelector('svg[data-icon="ReplayLine"]')
-    const replayBtn = replayIcon!.closest('button')
-    fireEvent.click(replayBtn!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry a.txt' }))
 
     expect(mockHandleReUploadFile).toHaveBeenCalledWith('f1')
   })

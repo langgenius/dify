@@ -3,7 +3,7 @@ name = "dify-vdb-couchbase"
 version = "0.0.1"
 
 dependencies = [
-    "couchbase~=4.6.0",
+    "couchbase~=4.6.2",
 ]
 description = "Dify vector store backend (dify-vdb-couchbase)."
 

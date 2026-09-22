@@ -30,7 +30,9 @@ export type NotificationItemResponse = {
 export type GetNotificationData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: string
+  }
   url: '/notification'
 }
 
@@ -59,5 +61,5 @@ export type PostNotificationDismissResponses = {
   200: SimpleResultResponse
 }
 
-export type PostNotificationDismissResponse
-  = PostNotificationDismissResponses[keyof PostNotificationDismissResponses]
+export type PostNotificationDismissResponse =
+  PostNotificationDismissResponses[keyof PostNotificationDismissResponses]

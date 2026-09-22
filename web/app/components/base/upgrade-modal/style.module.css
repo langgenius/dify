@@ -1,7 +1,11 @@
 .surface {
   border: 0.5px solid var(--color-components-panel-border, rgba(16, 24, 40, 0.08));
   background:
-    linear-gradient(109deg, var(--color-background-section, #f9fafb) 0%, var(--color-background-section-burn, #f2f4f7) 100%),
+    linear-gradient(
+      109deg,
+      var(--color-background-section, #f9fafb) 0%,
+      var(--color-background-section-burn, #f2f4f7) 100%
+    ),
     var(--color-components-panel-bg, #fff);
 }
 
@@ -11,18 +15,30 @@
   background-position: 31px -23px;
   background-repeat: repeat;
   mask-image: linear-gradient(180deg, rgba(255, 255, 255, 1) 45%, rgba(255, 255, 255, 0) 75%);
-  -webkit-mask-image: linear-gradient(180deg, rgba(255, 255, 255, 1) 45%, rgba(255, 255, 255, 0) 75%);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 1) 45%,
+    rgba(255, 255, 255, 0) 75%
+  );
 }
 
 .icon {
   border: 0.5px solid transparent;
   background:
-    linear-gradient(180deg, var(--color-components-avatar-bg-mask-stop-0, rgba(255, 255, 255, 0.12)) 0%, var(--color-components-avatar-bg-mask-stop-100, rgba(255, 255, 255, 0.08)) 100%),
+    linear-gradient(
+      180deg,
+      var(--color-components-avatar-bg-mask-stop-0, rgba(255, 255, 255, 0.12)) 0%,
+      var(--color-components-avatar-bg-mask-stop-100, rgba(255, 255, 255, 0.08)) 100%
+    ),
     var(--color-util-colors-blue-brand-blue-brand-500, #296dff);
 }
 
 .highlight {
-  background: linear-gradient(97deg, var(--color-components-input-border-active-prompt-1, rgba(11, 165, 236, 0.95)) -4%, var(--color-components-input-border-active-prompt-2, rgba(21, 90, 239, 0.95)) 45%);
+  background: linear-gradient(
+    97deg,
+    var(--color-components-input-border-active-prompt-1, rgba(11, 165, 236, 0.95)) -4%,
+    var(--color-components-input-border-active-prompt-2, rgba(21, 90, 239, 0.95)) 45%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

@@ -1,6 +1,7 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem, HitHistoryItem } from '../../type'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { fetchHitHistoryList } from '@/service/annotation'
 import ViewAnnotationModal from '../index'
@@ -23,7 +24,15 @@ vi.mock('../../edit-annotation-modal/edit-item', () => {
     Answer: 'answer',
   }
   return {
-    default: ({ type, content, onSave }: { type: string, content: string, onSave: (value: string) => void }) => (
+    default: ({
+      type,
+      content,
+      onSave,
+    }: {
+      type: string
+      content: string
+      onSave: (value: string) => void
+    }) => (
       <div>
         <div data-testid={`content-${type}`}>{content}</div>
         <button data-testid={`edit-${type}`} onClick={() => onSave(`${type}-updated`)}>
@@ -110,11 +119,11 @@ describe('ViewAnnotationModal', () => {
     // Assert
     await waitFor(() => {
       expect(props.onSave).toHaveBeenCalledWith(props.item.question, 'answer-updated')
-    },
-    )
+    })
   })
 
-  it('should switch to hit history tab and show no data message', async () => {
+  it('switches named panels with the keyboard while preserving the drawer name', async () => {
+    const user = userEvent.setup()
     // Arrange
     const { props } = renderComponent()
 
@@ -123,7 +132,19 @@ describe('ViewAnnotationModal', () => {
     })
 
     // Act
-    fireEvent.click(screen.getByText('appAnnotation.viewModal.hitHistory'))
+    expect(
+      screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.annotatedResponse' }))
+    await user.keyboard('{ArrowRight}{Enter}')
+    expect(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' })).toHaveFocus()
+    expect(
+      screen.getByRole('tabpanel', { name: 'appAnnotation.viewModal.hitHistory' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('edit-query')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
+    ).toBeInTheDocument()
 
     // Assert
     // Assert
@@ -131,8 +152,11 @@ describe('ViewAnnotationModal', () => {
     expect(mockFormatTime).toHaveBeenCalledWith(props.item.created_at, 'appLog.dateTimeFormat')
   })
 
-  it('should render hit history entries with pagination badge when data exists', async () => {
-    const hits = [createHitHistoryItem({ question: 'user input' }), createHitHistoryItem({ id: 'hit-2', question: 'second' })]
+  it('should render hit history entries with their hit count when data exists', async () => {
+    const hits = [
+      createHitHistoryItem({ question: 'user input' }),
+      createHitHistoryItem({ id: 'hit-2', question: 'second' }),
+    ]
     fetchHitHistoryListMock.mockResolvedValue({ data: hits, total: 15 })
 
     renderComponent()
@@ -148,7 +172,9 @@ describe('ViewAnnotationModal', () => {
     const { props } = renderComponent()
 
     fireEvent.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
-    expect(await screen.findByText('appDebug.feature.annotation.removeConfirm'))!.toBeInTheDocument()
+    expect(
+      await screen.findByText('appDebug.feature.annotation.removeConfirm'),
+    )!.toBeInTheDocument()
 
     const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
     fireEvent.click(confirmButton)
@@ -163,12 +189,16 @@ describe('ViewAnnotationModal', () => {
     renderComponent()
 
     fireEvent.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
-    expect(await screen.findByText('appDebug.feature.annotation.removeConfirm'))!.toBeInTheDocument()
+    expect(
+      await screen.findByText('appDebug.feature.annotation.removeConfirm'),
+    )!.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     await waitFor(() => {
-      expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('appDebug.feature.annotation.removeConfirm'),
+      ).not.toBeInTheDocument()
     })
   })
 })

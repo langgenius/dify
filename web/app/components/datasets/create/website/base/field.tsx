@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 import Input from './text-input'
 
 type Props = Readonly<{
@@ -30,24 +30,28 @@ const Field: FC<Props> = ({
 }) => {
   return (
     <div className={cn(className)}>
-      <div className="flex py-[7px]">
-        <div className={cn(labelClassName, 'flex h-[16px] items-center text-[13px] font-semibold text-text-secondary')}>
-          {label}
-          {' '}
+      <div className="flex py-1.75">
+        <div
+          className={cn(
+            labelClassName,
+            'flex h-4 items-center text-[13px] font-semibold text-text-secondary',
+          )}
+        >
+          {label}{' '}
         </div>
-        {isRequired && <span className="ml-0.5 text-xs font-semibold text-text-destructive">*</span>}
+        {isRequired && (
+          <span className="ml-0.5 text-xs font-semibold text-text-destructive">*</span>
+        )}
         {tooltip && (
-          <Infotip aria-label={tooltip} className="ml-0.5" popupClassName="w-[200px]">
-            {tooltip}
+          <Infotip>
+            <InfotipTrigger aria-label={tooltip} className="ml-0.5" />
+            <InfotipContent aria-label={tooltip} className="w-50">
+              {tooltip}
+            </InfotipContent>
           </Infotip>
         )}
       </div>
-      <Input
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        isNumber={isNumber}
-      />
+      <Input value={value} onChange={onChange} placeholder={placeholder} isNumber={isNumber} />
     </div>
   )
 }

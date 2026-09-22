@@ -9,7 +9,14 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude/utils'
 import Chip from '@/app/components/base/chip'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
+import {
+  CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
+  CLOUD_SANDBOX_TIME_PERIOD_KEYS,
+  isLogTimePeriodRestricted,
+  resolveLogTimePeriodOption,
+  useCloudSandboxPlanStatus,
+} from '../log/cloud-sandbox-retention'
 
 dayjs.extend(quarterOfYear)
 
@@ -17,7 +24,7 @@ const today = dayjs()
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
-export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: TimePeriodName } } = {
+export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: TimePeriodName } } = {
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
   3: { value: 28, name: 'last4weeks' },
@@ -36,6 +43,12 @@ type IFilterProps = {
 
 const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
   const { t } = useTranslation()
+  const planState = useCloudSandboxPlanStatus()
+  const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
+  const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING)
+    .filter(([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key))
+    .map(([key, option]) => [key, resolveLogTimePeriodOption(key, option, planState)] as const)
+
   return (
     <div className="mb-2 flex flex-row flex-wrap gap-2">
       <Chip
@@ -47,29 +60,40 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           })
         }}
         onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
-        items={[{ value: 'all', name: 'All' }, { value: 'succeeded', name: 'Success' }, { value: 'failed', name: 'Fail' }, { value: 'stopped', name: 'Stop' }, { value: 'partial-succeeded', name: 'Partial Success' }]}
+        items={[
+          { value: 'all', name: 'All' },
+          { value: 'succeeded', name: 'Success' },
+          { value: 'failed', name: 'Fail' },
+          { value: 'stopped', name: 'Stop' },
+          { value: 'partial-succeeded', name: 'Partial Success' },
+        ]}
       />
       <Chip
-        className="min-w-[150px]"
+        className="min-w-37.5"
         panelClassName="w-[270px]"
         leftIcon={<RiCalendarLine className="size-4 text-text-secondary" />}
         value={queryParams.period}
         onSelect={(item) => {
           setQueryParams({ ...queryParams, period: item.value })
         }}
-        onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
+        onClear={() =>
+          setQueryParams({
+            ...queryParams,
+            period: isTimePeriodRestricted ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9',
+          })
+        }
+        items={timePeriodEntries.map(([k, v]) => ({
+          value: k,
+          name: t(($) => $[`filter.period.${v.name}`], { ns: 'appLog' }),
+        }))}
       />
-      <Input
-        wrapperClassName="w-[200px]"
-        showLeftIcon
-        showClearIcon
+      <SearchInput
+        className="w-50"
         value={queryParams.keyword ?? ''}
-        placeholder={t('operation.search', { ns: 'common' })!}
-        onChange={(e) => {
-          setQueryParams({ ...queryParams, keyword: e.target.value })
+        placeholder={t(($) => $['operation.search'], { ns: 'common' })!}
+        onValueChange={(value) => {
+          setQueryParams({ ...queryParams, keyword: value })
         }}
-        onClear={() => setQueryParams({ ...queryParams, keyword: '' })}
       />
     </div>
   )

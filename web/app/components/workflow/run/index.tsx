@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing } from '@/types/workflow'
-import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
 import { useStore } from '../store'
 import OutputPanel from './output-panel'
@@ -35,11 +35,10 @@ const RunPanel: FC<RunProps> = ({
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
-  const isListening = useStore(s => s.isListening)
+  const isListening = useStore((s) => s.isListening)
 
   const executor = useMemo(() => {
-    if (runDetail?.created_by_role === 'account')
-      return runDetail.created_by_account?.name || ''
+    if (runDetail?.created_by_role === 'account') return runDetail.created_by_account?.name || ''
     if (runDetail?.created_by_role === 'end_user')
       return runDetail.created_by_end_user?.session_id || ''
     return 'N/A'
@@ -49,10 +48,8 @@ const RunPanel: FC<RunProps> = ({
     try {
       const res = await fetchRunDetail(runDetailUrl)
       setRunDetail(res)
-      if (getResultCallback)
-        getResultCallback(res)
-    }
-    catch (err) {
+      if (getResultCallback) getResultCallback(res)
+    } catch (err) {
       toast.error(`${err}`)
     }
   }, [getResultCallback, runDetailUrl])
@@ -63,8 +60,7 @@ const RunPanel: FC<RunProps> = ({
         url: tracingListUrl,
       })
       setList(nodeList)
-    }
-    catch (err) {
+    } catch (err) {
       toast.error(`${err}`)
     }
   }, [tracingListUrl])
@@ -79,30 +75,25 @@ const RunPanel: FC<RunProps> = ({
   const switchTab = async (tab: string) => {
     setCurrentTab(tab)
     if (tab === 'RESULT') {
-      if (runDetailUrl)
-        await getResult()
+      if (runDetailUrl) await getResult()
     }
-    if (tracingListUrl)
-      await getTracingList()
+    if (tracingListUrl) await getTracingList()
   }
 
   useEffect(() => {
-    if (isListening)
-      setCurrentTab('DETAIL')
+    if (isListening) setCurrentTab('DETAIL')
   }, [isListening])
 
   useEffect(() => {
     // fetch data
-    if (runDetailUrl && tracingListUrl)
-      getData()
+    if (runDetailUrl && tracingListUrl) getData()
   }, [runDetailUrl, tracingListUrl])
 
   const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
   const adjustResultHeight = () => {
-    if (ref.current)
-      setHeight(ref.current?.clientHeight - 16 - 16 - 2 - 1)
+    if (ref.current) setHeight(ref.current?.clientHeight - 16 - 16 - 2 - 1)
   }
 
   useEffect(() => {
@@ -110,87 +101,88 @@ const RunPanel: FC<RunProps> = ({
   }, [loading])
 
   return (
-    <div className="relative flex grow flex-col">
+    <Tabs
+      className="relative flex grow flex-col"
+      value={currentTab}
+      onValueChange={(value) => switchTab(value as string)}
+    >
       {/* tab */}
-      <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
+      <TabsList className="shrink-0 items-center gap-6 border-b-[0.5px] border-divider-subtle px-4">
         {!hideResult && (
-          <div
-            className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
-              currentTab === 'RESULT' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
-            )}
-            onClick={() => switchTab('RESULT')}
+          <TabsTab
+            value="RESULT"
+            className="py-3 system-sm-semibold-uppercase!"
+            onClick={() => {
+              if (currentTab === 'RESULT') switchTab('RESULT')
+            }}
           >
-            {t('result', { ns: 'runLog' })}
-          </div>
+            {t(($) => $.result, { ns: 'runLog' })}
+          </TabsTab>
         )}
-        <div
-          className={cn(
-            'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
-            currentTab === 'DETAIL' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
-          )}
-          onClick={() => switchTab('DETAIL')}
+        <TabsTab
+          value="DETAIL"
+          className="py-3 system-sm-semibold-uppercase!"
+          onClick={() => {
+            if (currentTab === 'DETAIL') switchTab('DETAIL')
+          }}
         >
-          {t('detail', { ns: 'runLog' })}
-        </div>
-        <div
-          className={cn(
-            'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
-            currentTab === 'TRACING' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
-          )}
-          onClick={() => switchTab('TRACING')}
+          {t(($) => $.detail, { ns: 'runLog' })}
+        </TabsTab>
+        <TabsTab
+          value="TRACING"
+          className="py-3 system-sm-semibold-uppercase!"
+          onClick={() => {
+            if (currentTab === 'TRACING') switchTab('TRACING')
+          }}
         >
-          {t('tracing', { ns: 'runLog' })}
-        </div>
-      </div>
+          {t(($) => $.tracing, { ns: 'runLog' })}
+        </TabsTab>
+      </TabsList>
       {/* panel detail */}
-      <div ref={ref} className={cn('relative h-0 grow overflow-y-auto rounded-b-xl bg-components-panel-bg')}>
+      <div
+        ref={ref}
+        className="relative h-0 grow overflow-y-auto rounded-b-xl bg-components-panel-bg"
+      >
         {loading && (
           <div className="flex h-full items-center justify-center bg-components-panel-bg">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
-        {!loading && currentTab === 'RESULT' && runDetail && (
-          <OutputPanel
-            outputs={runDetail.outputs}
-            error={runDetail.error}
-            height={height}
-          />
-        )}
-        {!loading && currentTab === 'DETAIL' && runDetail && (
-          <ResultPanel
-            inputs={runDetail.inputs}
-            inputs_truncated={runDetail.inputs_truncated}
-            outputs={runDetail.outputs}
-            outputs_truncated={runDetail.outputs_truncated}
-            outputs_full_content={runDetail.outputs_full_content}
-            status={runDetail.status}
-            error={runDetail.error}
-            elapsed_time={runDetail.elapsed_time}
-            total_tokens={runDetail.total_tokens}
-            created_at={runDetail.created_at}
-            created_by={executor}
-            steps={runDetail.total_steps}
-            exceptionCounts={runDetail.exceptions_count}
-            isListening={isListening}
-            workflowRunId={runDetail.id}
-            onOpenTracingTab={() => switchTab('TRACING')}
-          />
-        )}
-        {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (
-          <StatusPanel
-            status={WorkflowRunningStatus.Running}
-            isListening={true}
-          />
-        )}
-        {!loading && currentTab === 'TRACING' && (
-          <TracingPanel
-            className="bg-background-section-burn"
-            list={list}
-          />
-        )}
+        <TabsPanel value="RESULT">
+          {!loading && runDetail && (
+            <OutputPanel outputs={runDetail.outputs} error={runDetail.error} height={height} />
+          )}
+        </TabsPanel>
+        <TabsPanel value="DETAIL">
+          {!loading && runDetail && (
+            <ResultPanel
+              inputs={runDetail.inputs}
+              inputs_truncated={runDetail.inputs_truncated}
+              outputs={runDetail.outputs}
+              outputs_truncated={runDetail.outputs_truncated}
+              outputs_full_content={runDetail.outputs_full_content}
+              status={runDetail.status}
+              error={runDetail.error}
+              elapsed_time={runDetail.elapsed_time}
+              total_tokens={runDetail.total_tokens}
+              created_at={runDetail.created_at}
+              created_by={executor}
+              steps={runDetail.total_steps}
+              exceptionCounts={runDetail.exceptions_count}
+              isListening={isListening}
+              workflowRunId={runDetail.id}
+              onOpenTracingTab={() => switchTab('TRACING')}
+            />
+          )}
+          {!loading && !runDetail && isListening && (
+            <StatusPanel status={WorkflowRunningStatus.Running} isListening={true} />
+          )}
+        </TabsPanel>
+        <TabsPanel value="TRACING">
+          {!loading && <TracingPanel className="bg-background-section-burn" list={list} />}
+        </TabsPanel>
       </div>
-    </div>
+    </Tabs>
   )
 }
 

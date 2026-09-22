@@ -1,7 +1,9 @@
 import type { Features } from '../../../types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { skipToken } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18next from 'i18next'
 import { TtsAutoPlay } from '@/types/app'
 import { FeaturesProvider } from '../../../context'
 import ParamConfigContent from '../param-config-content'
@@ -11,30 +13,54 @@ let mockLanguages = [
   { value: 'zh-Hans', name: '中文', example: '你好' },
 ]
 
-let mockPathname = '/app/test-app-id/configuration'
+let mockParams: { appId?: string; agentId?: string } = { appId: 'test-app-id' }
 
-let mockVoiceItems: { value: string, name: string }[] | undefined = [
+let mockVoiceItems: { value: string; name: string }[] | undefined = [
   { value: 'alloy', name: 'Alloy' },
   { value: 'echo', name: 'Echo' },
 ]
 
-const mockUseAppVoices = vi.fn((_appId: string, _language?: string) => ({
+type VoicesQueryOptions = {
+  enabled?: boolean
+  input:
+    | typeof skipToken
+    | {
+        params: { app_id: string } | { agent_id: string }
+        query: { language: string }
+      }
+}
+
+const mockVoicesQuery = vi.fn((_options: VoicesQueryOptions) => ({
   data: mockVoiceItems,
 }))
 
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => mockPathname,
-  useParams: () => ({}),
-}))
+const mockGetAudioPlayer = vi.fn(() => ({ playAudio: vi.fn(), pauseAudio: vi.fn() }))
 
-vi.mock('@/i18n-config/language', () => ({
-  get languages() {
-    return mockLanguages
+vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
+  AudioPlayerManager: {
+    getInstance: () => ({ getAudioPlayer: mockGetAudioPlayer }),
   },
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  useAppVoices: (appId: string, language?: string) => mockUseAppVoices(appId, language),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: (options: VoicesQueryOptions) => mockVoicesQuery(options),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: () =>
+    mockParams.appId
+      ? `/app/${mockParams.appId}/configuration`
+      : mockParams.agentId
+        ? `/agents/${mockParams.agentId}/configure`
+        : '/configuration',
+  useParams: () => mockParams,
+}))
+
+vi.mock('@/i18n/language', () => ({
+  get languages() {
+    return mockLanguages
+  },
 }))
 
 const defaultFeatures: Features = {
@@ -50,27 +76,29 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (
-  props: { onClose?: () => void, onChange?: OnFeaturesChange } = {},
+  props: { onClose?: () => void; onChange?: OnFeaturesChange } = {},
   featureOverrides?: Partial<Features>,
 ) => {
   const features = { ...defaultFeatures, ...featureOverrides }
   return render(
     <FeaturesProvider features={features}>
-      <ParamConfigContent
-        onClose={props.onClose ?? vi.fn()}
-        onChange={props.onChange}
-      />
+      <ParamConfigContent onClose={props.onClose ?? vi.fn()} onChange={props.onChange} />
     </FeaturesProvider>,
   )
 }
 
-const getLanguageSelect = () => screen.getByRole('combobox', { name: /voice\.voiceSettings\.language/ })
+const getLanguageSelect = () =>
+  screen.getByRole('combobox', { name: /voice\.voiceSettings\.language/ })
 const getVoiceSelect = () => screen.getByRole('combobox', { name: /voice\.voiceSettings\.voice/ })
 
 describe('ParamConfigContent', () => {
+  beforeAll(async () => {
+    await i18next.init({})
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPathname = '/app/test-app-id/configuration'
+    mockParams = { appId: 'test-app-id' }
     mockLanguages = [
       { value: 'en-US', name: 'English', example: 'Hello world' },
       { value: 'zh-Hans', name: '中文', example: '你好' },
@@ -113,7 +141,9 @@ describe('ParamConfigContent', () => {
 
       const languageLabel = screen.getByText(/voice\.voiceSettings\.language/)
       expect(languageLabel)!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /voice\.voiceSettings\.resolutionTooltip/ }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /voice\.voiceSettings\.resolutionTooltip/ }),
+      )!.toBeInTheDocument()
     })
 
     it('should display language listbox button', () => {
@@ -148,17 +178,28 @@ describe('ParamConfigContent', () => {
     })
 
     it('should render with no language set and use first as default', () => {
-      renderWithProvider({}, {
-        text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
-      })
+      renderWithProvider(
+        {},
+        {
+          text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
+        },
+      )
 
       expect(getLanguageSelect()).toBeInTheDocument()
     })
 
     it('should render with no voice set and use first as default', () => {
-      renderWithProvider({}, {
-        text2speech: { enabled: true, language: 'en-US', voice: 'nonexistent', autoPlay: TtsAutoPlay.disabled },
-      })
+      renderWithProvider(
+        {},
+        {
+          text2speech: {
+            enabled: true,
+            language: 'en-US',
+            voice: 'nonexistent',
+            autoPlay: TtsAutoPlay.disabled,
+          },
+        },
+      )
 
       expect(getVoiceSelect()).toHaveTextContent('Alloy')
     })
@@ -166,6 +207,80 @@ describe('ParamConfigContent', () => {
 
   // User-triggered behavior and callbacks.
   describe('User Interactions', () => {
+    it('should audition the displayed fallback voice on an agent page', async () => {
+      const user = userEvent.setup()
+      mockParams = { agentId: 'agent-1' }
+      renderWithProvider(
+        {},
+        { text2speech: { ...defaultFeatures.text2speech, enabled: true, voice: 'removed-voice' } },
+      )
+
+      expect(getVoiceSelect()).toHaveTextContent('Alloy')
+      await user.click(screen.getByRole('button', { name: /play/i }))
+
+      expect(mockGetAudioPlayer).toHaveBeenCalledWith(
+        '/agent/agent-1/text-to-audio',
+        false,
+        undefined,
+        'Hello world',
+        'alloy',
+        expect.any(Function),
+      )
+    })
+
+    it.each([
+      {
+        route: 'Chatflow',
+        params: { appId: 'test-app-id' },
+        requestParams: { app_id: 'test-app-id' },
+        operation: ['console', 'apps', 'byAppId', 'textToAudio', 'voices', 'get'],
+      },
+      {
+        route: 'Agent',
+        params: { agentId: 'test-agent-id' },
+        requestParams: { agent_id: 'test-agent-id' },
+        operation: ['console', 'agent', 'byAgentId', 'textToAudio', 'voices', 'get'],
+      },
+    ])(
+      'should load and select voices using the $route route ID',
+      async ({ params, requestParams, operation }) => {
+        const user = userEvent.setup()
+        const onChange = vi.fn()
+        mockParams = params
+
+        renderWithProvider({ onChange })
+
+        expect(mockVoicesQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            queryKey: expect.arrayContaining([operation]),
+            input: {
+              params: requestParams,
+              query: { language: 'en-US' },
+            },
+          }),
+        )
+
+        await user.click(getVoiceSelect())
+        await user.click(await screen.findByRole('option', { name: 'Echo' }))
+
+        expect(getVoiceSelect()).toHaveTextContent('Echo')
+        expect(onChange).toHaveBeenCalled()
+
+        await user.click(getLanguageSelect())
+        await user.click(await screen.findByRole('option', { name: /voice\.language\.zhHans/ }))
+
+        expect(mockVoicesQuery).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            queryKey: expect.arrayContaining([operation]),
+            input: {
+              params: requestParams,
+              query: { language: 'zh-Hans' },
+            },
+          }),
+        )
+      },
+    )
+
     it('should call onClose when close button is clicked', async () => {
       const onClose = vi.fn()
       renderWithProvider({ onClose })
@@ -213,7 +328,14 @@ describe('ParamConfigContent', () => {
       const onChange = vi.fn()
       renderWithProvider(
         { onChange },
-        { text2speech: { enabled: true, language: 'en-US', voice: 'alloy', autoPlay: TtsAutoPlay.enabled } },
+        {
+          text2speech: {
+            enabled: true,
+            language: 'en-US',
+            voice: 'alloy',
+            autoPlay: TtsAutoPlay.enabled,
+          },
+        },
       )
 
       const autoPlaySwitch = screen.getByRole('switch')
@@ -271,7 +393,7 @@ describe('ParamConfigContent', () => {
       const options = await screen.findAllByRole('option')
       expect(options.length).toBeGreaterThanOrEqual(1)
 
-      const selectedOption = options.find(opt => opt.textContent?.includes('voice.language.enUS'))
+      const selectedOption = options.find((opt) => opt.textContent?.includes('voice.language.enUS'))
       expect(selectedOption).toBeDefined()
       expect(selectedOption)!.toHaveAttribute('aria-selected', 'true')
     })
@@ -283,7 +405,7 @@ describe('ParamConfigContent', () => {
       const options = await screen.findAllByRole('option')
       expect(options.length).toBeGreaterThanOrEqual(1)
 
-      const selectedOption = options.find(opt => opt.textContent?.includes('Alloy'))
+      const selectedOption = options.find((opt) => opt.textContent?.includes('Alloy'))
       expect(selectedOption).toBeDefined()
       expect(selectedOption)!.toHaveAttribute('aria-selected', 'true')
     })
@@ -295,9 +417,17 @@ describe('ParamConfigContent', () => {
       mockLanguages = []
       mockVoiceItems = undefined
 
-      renderWithProvider({}, {
-        text2speech: { enabled: true, language: 'en-US', voice: 'alloy', autoPlay: TtsAutoPlay.disabled },
-      })
+      renderWithProvider(
+        {},
+        {
+          text2speech: {
+            enabled: true,
+            language: 'en-US',
+            voice: 'alloy',
+            autoPlay: TtsAutoPlay.disabled,
+          },
+        },
+      )
 
       const placeholderTexts = screen.getAllByText(/placeholder\.select/)
       expect(placeholderTexts.length).toBeGreaterThanOrEqual(2)
@@ -305,20 +435,28 @@ describe('ParamConfigContent', () => {
       expect(getVoiceSelect()).toHaveAttribute('data-disabled')
     })
 
-    it('should call useAppVoices with empty appId when pathname has no app segment', () => {
-      mockPathname = '/configuration'
+    it('should disable the voices query when neither an app nor Agent ID is available', () => {
+      mockParams = {}
 
       renderWithProvider()
 
-      expect(mockUseAppVoices).toHaveBeenCalledWith('', 'en-US')
+      expect(mockVoicesQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          enabled: false,
+          input: skipToken,
+        }),
+      )
     })
 
     it('should render language text when selected language value is empty string', () => {
       mockLanguages = [{ value: '' as string, name: 'Unknown Language', example: '' }]
 
-      renderWithProvider({}, {
-        text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
-      })
+      renderWithProvider(
+        {},
+        {
+          text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
+        },
+      )
 
       expect(screen.getByText(/voice\.language\./))!.toBeInTheDocument()
     })

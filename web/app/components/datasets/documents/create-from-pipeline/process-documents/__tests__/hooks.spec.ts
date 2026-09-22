@@ -1,16 +1,18 @@
 import type { PipelineProcessingParamsRequest } from '@/models/pipeline'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useInputVariables } from '../hooks'
 
 const mockUseDatasetDetailContextWithSelector = vi.fn()
 const mockUsePublishedPipelineProcessingParams = vi.fn()
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (value: unknown) => unknown) => mockUseDatasetDetailContextWithSelector(selector),
+  useDatasetDetailContextWithSelector: (selector: (value: unknown) => unknown) =>
+    mockUseDatasetDetailContextWithSelector(selector),
 }))
 vi.mock('@/service/use-pipeline', () => ({
-  usePublishedPipelineProcessingParams: (params: PipelineProcessingParamsRequest) => mockUsePublishedPipelineProcessingParams(params),
+  usePublishedPipelineProcessingParams: (params: PipelineProcessingParamsRequest) =>
+    mockUsePublishedPipelineProcessingParams(params),
 }))
 
 describe('useInputVariables', () => {

@@ -1,21 +1,22 @@
 import type { Memory, Var } from '../../types'
-import type { ToolVarInputs } from '../tool/types'
 import type { AgentNodeType } from './types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { generateAgentToolValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import {
-  useIsChatMode,
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+  generateAgentToolValue,
+  toolParametersToFormSchemas,
+} from '@/app/components/tools/utils/to-form-schema'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { consoleQuery } from '@/service/console'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
-import { useStrategyProviderDetail } from '@/service/use-strategy'
-import { VarType as VarKindType } from '../../types'
+import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
+import { VarType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import useVarList from '../_base/hooks/use-var-list'
-import { VarType } from '../tool/types'
 
 type StrategyStatus = {
   plugin: {
@@ -25,25 +26,27 @@ type StrategyStatus = {
   isExistInPlugin: boolean
 }
 
-export const useStrategyInfo = (
-  strategyProviderName?: string,
-  strategyName?: string,
-) => {
-  const strategyProvider = useStrategyProviderDetail(
-    strategyProviderName || '',
-    { retry: false },
+export const useStrategyInfo = (strategyProviderName?: string, strategyName?: string) => {
+  const strategyProvider = useQuery(
+    consoleQuery.workspaces.current.agentProvider.byProviderName.get.queryOptions({
+      input: strategyProviderName ? { params: { provider_name: strategyProviderName } } : skipToken,
+      retry: false,
+    }),
   )
-  const strategy = strategyProvider.data?.declaration.strategies.find(
-    str => str.identity.name === strategyName,
+  const strategy = strategyProvider.data?.declaration.strategies?.find(
+    (str) => str.identity.name === strategyName,
   )
-  const marketplace = useFetchPluginsInMarketPlaceByIds([strategyProviderName!], {
-    retry: false,
-  })
+  const marketplace = useFetchPluginsInMarketPlaceByIds(
+    strategyProviderName ? [strategyProviderName] : [],
+    {
+      retry: false,
+    },
+  )
   const strategyStatus: StrategyStatus | undefined = useMemo(() => {
-    if (strategyProvider.isLoading || marketplace.isLoading)
+    if (!strategyProviderName || strategyProvider.isLoading || marketplace.isLoading)
       return undefined
     const strategyExist = !!strategy
-    const isPluginInstalled = !strategyProvider.isError
+    const isPluginInstalled = strategyProvider.isSuccess
     const isInMarketplace = !!marketplace.data?.data.plugins.at(0)
     return {
       plugin: {
@@ -52,11 +55,19 @@ export const useStrategyInfo = (
       },
       isExistInPlugin: strategyExist,
     }
-  }, [strategy, marketplace, strategyProvider.isError, strategyProvider.isLoading])
+  }, [
+    strategy,
+    strategyProviderName,
+    marketplace,
+    strategyProvider.isSuccess,
+    strategyProvider.isLoading,
+  ])
+  const { refetch: refetchProvider } = strategyProvider
+  const { refetch: refetchMarketplace } = marketplace
   const refetch = useCallback(() => {
-    strategyProvider.refetch()
-    marketplace.refetch()
-  }, [marketplace, strategyProvider])
+    if (!strategyProviderName) return
+    return Promise.all([refetchProvider(), refetchMarketplace()])
+  }, [refetchMarketplace, refetchProvider, strategyProviderName])
   return {
     strategyProvider,
     strategy,
@@ -77,36 +88,37 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     strategyStatus: currentStrategyStatus,
     strategy: currentStrategy,
     strategyProvider,
-  } = useStrategyInfo(
-    inputs.agent_strategy_provider_name,
-    inputs.agent_strategy_name,
-  )
+  } = useStrategyInfo(inputs.agent_strategy_provider_name, inputs.agent_strategy_name)
   const pluginId = inputs.agent_strategy_provider_name?.split('/').splice(0, 2).join('/')
   const pluginDetail = useCheckInstalled({
-    pluginIds: [pluginId!],
+    pluginIds: pluginId ? [pluginId] : [],
     enabled: Boolean(pluginId),
   })
   const formData = useMemo(() => {
-    const paramNameList = (currentStrategy?.parameters || []).map(item => item.name)
+    const paramNameList = (currentStrategy?.parameters || []).map((item) => item.name)
     const res = Object.fromEntries(
-      Object.entries(inputs.agent_parameters || {}).filter(([name]) => paramNameList.includes(name)).map(([key, value]) => {
-        return [key, value.value]
-      }),
+      Object.entries(inputs.agent_parameters || {})
+        .filter(([name]) => paramNameList.includes(name))
+        .map(([key, value]) => {
+          return [key, value.value]
+        }),
     )
     return res
   }, [inputs.agent_parameters, currentStrategy?.parameters])
 
-  const getParamVarType = useCallback((paramName: string) => {
-    const isVariable = currentStrategy?.parameters.some(
-      param => param.name === paramName && param.type === FormTypeEnum.any,
-    )
-    if (isVariable)
-      return VarType.variable
-    return VarType.constant
-  }, [currentStrategy?.parameters])
+  const getParamVarType = useCallback(
+    (paramName: string) => {
+      const isVariable = currentStrategy?.parameters?.some(
+        (param) => param.name === paramName && param.type === FormTypeEnum.any,
+      )
+      if (isVariable) return VarKindType.variable
+      return VarKindType.constant
+    },
+    [currentStrategy?.parameters],
+  )
 
-  const onFormChange = (value: Record<string, any>) => {
-    const res: ToolVarInputs = {}
+  const onFormChange = (value: Record<string, unknown>) => {
+    const res: ResourceVarInputs = { ...inputs.agent_parameters }
     Object.entries(value).forEach(([key, val]) => {
       res[key] = {
         type: getParamVarType(key),
@@ -120,8 +132,19 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   }
 
   const formattingToolData = (data: any) => {
-    const settingValues = generateAgentToolValue(data.settings, toolParametersToFormSchemas(data.schemas.filter((param: { form: string }) => param.form !== 'llm') as any))
-    const paramValues = generateAgentToolValue(data.parameters, toolParametersToFormSchemas(data.schemas.filter((param: { form: string }) => param.form === 'llm') as any), true)
+    const settingValues = generateAgentToolValue(
+      data.settings,
+      toolParametersToFormSchemas(
+        data.schemas.filter((param: { form: string }) => param.form !== 'llm') as any,
+      ),
+    )
+    const paramValues = generateAgentToolValue(
+      data.parameters,
+      toolParametersToFormSchemas(
+        data.schemas.filter((param: { form: string }) => param.form === 'llm') as any,
+      ),
+      true,
+    )
     const res = produce(data, (draft: any) => {
       draft.settings = settingValues
       draft.parameters = paramValues
@@ -130,16 +153,15 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   }
 
   const formattingLegacyData = () => {
-    if (inputs.version || inputs.tool_node_version)
-      return inputs
+    if (inputs.version || inputs.tool_node_version) return inputs
     const newData = produce(inputs, (draft) => {
       const schemas = currentStrategy?.parameters || []
       Object.keys(draft.agent_parameters || {}).forEach((key) => {
-        const targetSchema = schemas.find(schema => schema.name === key)
-        if (targetSchema?.type === FormTypeEnum.toolSelector)
-          draft.agent_parameters![key]!.value = formattingToolData(draft.agent_parameters![key]!.value)
+        const targetSchema = schemas.find((schema) => schema.name === key)
         if (targetSchema?.type === FormTypeEnum.multiToolSelector)
-          draft.agent_parameters![key]!.value = draft.agent_parameters![key]!.value.map((tool: any) => formattingToolData(tool))
+          draft.agent_parameters![key]!.value = draft.agent_parameters![key]!.value.map(
+            (tool: any) => formattingToolData(tool),
+          )
       })
       draft.tool_node_version = '2'
     })
@@ -148,8 +170,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
 
   // formatting legacy data
   useEffect(() => {
-    if (!currentStrategy)
-      return
+    if (!currentStrategy) return
     const newData = formattingLegacyData()
     setInputs(newData)
   }, [currentStrategy])
@@ -157,23 +178,22 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   // vars
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
-    return [
-      VarKindType.arrayObject,
-      VarKindType.array,
-      VarKindType.number,
-      VarKindType.string,
-      VarKindType.secret,
-      VarKindType.arrayString,
-      VarKindType.arrayNumber,
-      VarKindType.file,
-      VarKindType.arrayFile,
-    ].includes(varPayload.type)
+    const supportedVariableTypes: readonly VarType[] = [
+      VarType.arrayObject,
+      VarType.array,
+      VarType.number,
+      VarType.string,
+      VarType.secret,
+      VarType.arrayString,
+      VarType.arrayNumber,
+      VarType.file,
+      VarType.arrayFile,
+    ]
+
+    return supportedVariableTypes.includes(varPayload.type)
   }, [])
 
-  const {
-    availableVars,
-    availableNodesWithParent,
-  } = useAvailableVarList(id, {
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: filterMemoryPromptVar,
   })
@@ -181,28 +201,44 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   // single run
 
   const outputSchema = useMemo(() => {
-    const res: any[] = []
-    if (!inputs.output_schema || !inputs.output_schema.properties)
-      return []
-    Object.keys(inputs.output_schema.properties).forEach((outputKey) => {
-      const output = inputs.output_schema.properties[outputKey]
-      res.push({
-        name: outputKey,
-        type: output.type === 'array'
-          ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]`
-          : `${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}`,
-        description: output.description,
-      })
+    const properties = inputs.output_schema?.properties
+    if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return []
+    return Object.entries(properties).map(([name, output]: [string, unknown]) => {
+      const schema = output && typeof output === 'object' && !Array.isArray(output) ? output : {}
+      const type =
+        'type' in schema && typeof schema.type === 'string' && schema.type ? schema.type : 'unknown'
+      const items = 'items' in schema ? schema.items : undefined
+      const itemType =
+        items &&
+        typeof items === 'object' &&
+        'type' in items &&
+        typeof items.type === 'string' &&
+        items.type
+          ? items.type
+          : 'unknown'
+      return {
+        name,
+        type:
+          type === 'array'
+            ? `Array[${itemType.charAt(0).toUpperCase()}${itemType.slice(1)}]`
+            : `${type.charAt(0).toUpperCase()}${type.slice(1)}`,
+        description:
+          'description' in schema && typeof schema.description === 'string'
+            ? schema.description
+            : '',
+      }
     })
-    return res
   }, [inputs.output_schema])
 
-  const handleMemoryChange = useCallback((newMemory?: Memory) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.memory = newMemory
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleMemoryChange = useCallback(
+    (newMemory?: Memory) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.memory = newMemory
+      })
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
   const isChatMode = useIsChatMode()
   return {
     readOnly,

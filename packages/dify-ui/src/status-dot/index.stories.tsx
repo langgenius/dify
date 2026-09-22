@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { StatusDotSize, StatusDotStatus } from '.'
+import type { StatusDotProps, StatusDotStatus } from '.'
 import * as React from 'react'
 import { StatusDot, StatusDotSkeleton } from '.'
+
+type StatusDotSize = NonNullable<StatusDotProps['size']>
 
 const statuses: StatusDotStatus[] = ['success', 'warning', 'error', 'normal', 'disabled']
 const sizes: StatusDotSize[] = ['small', 'medium']
@@ -14,7 +16,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Status Dot primitive from the Dify Design Kit. Use it for compact visual status indicators; provide an accessible label only when the dot is the sole status representation.',
+          'Decorative Status Dot primitive from the Dify Design Kit. Pair it with visible status text owned by the surrounding component; the dot itself stays hidden from assistive technology.',
       },
     },
   },
@@ -38,12 +40,10 @@ export const Matrix: Story = {
       <div />
       <div className="system-xs-medium text-text-tertiary">Small</div>
       <div className="system-xs-medium text-text-tertiary">Medium</div>
-      {statuses.map(status => (
+      {statuses.map((status) => (
         <React.Fragment key={status}>
-          <div className="system-xs-semibold-uppercase text-text-secondary">
-            {status}
-          </div>
-          {sizes.map(size => (
+          <div className="system-xs-semibold-uppercase text-text-secondary">{status}</div>
+          {sizes.map((size) => (
             <StatusDot key={`${status}-${size}`} status={status} size={size} />
           ))}
         </React.Fragment>

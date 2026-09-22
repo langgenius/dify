@@ -3,11 +3,7 @@ import type { WorkflowVariableBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { $applyNodeReplacement } from 'lexical'
-import {
-  memo,
-  useCallback,
-  useEffect,
-} from 'react'
+import { memo, useCallback, useEffect } from 'react'
 import { VAR_REGEX as REGEX, resetReg } from '@/config'
 import { decoratorTransform } from '../../utils'
 import { CustomTextNode } from '../custom-text/node'
@@ -24,27 +20,32 @@ const WorkflowVariableBlockReplacementBlock = ({
 
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))
-      throw new Error('WorkflowVariableBlockNodePlugin: WorkflowVariableBlockNode not registered on editor')
+      throw new Error(
+        'WorkflowVariableBlockNodePlugin: WorkflowVariableBlockNode not registered on editor',
+      )
   }, [editor])
 
-  const createWorkflowVariableBlockNode = useCallback((textNode: TextNode): WorkflowVariableBlockNode => {
-    if (onInsert)
-      onInsert()
+  const createWorkflowVariableBlockNode = useCallback(
+    (textNode: TextNode): WorkflowVariableBlockNode => {
+      if (onInsert) onInsert()
 
-    const nodePathString = textNode.getTextContent().slice(3, -3)
-    return $applyNodeReplacement($createWorkflowVariableBlockNode(
-      nodePathString.split('.'),
-      workflowNodesMap,
-      getVarType,
-      variables || [],
-    ))
-  }, [onInsert, workflowNodesMap, getVarType, variables])
+      const nodePathString = textNode.getTextContent().slice(3, -3)
+      return $applyNodeReplacement(
+        $createWorkflowVariableBlockNode(
+          nodePathString.split('.'),
+          workflowNodesMap,
+          getVarType,
+          variables || [],
+        ),
+      )
+    },
+    [onInsert, workflowNodesMap, getVarType, variables],
+  )
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
 
-    if (matchArr === null)
-      return null
+    if (matchArr === null) return null
 
     const startOffset = matchArr.index
     const endOffset = startOffset + matchArr[0].length
@@ -54,16 +55,17 @@ const WorkflowVariableBlockReplacementBlock = ({
     }
   }, [])
 
-  const transformListener = useCallback((textNode: CustomTextNode) => {
-    resetReg()
-    return decoratorTransform(textNode, getMatch, createWorkflowVariableBlockNode)
-  }, [createWorkflowVariableBlockNode, getMatch])
+  const transformListener = useCallback(
+    (textNode: CustomTextNode) => {
+      resetReg()
+      return decoratorTransform(textNode, getMatch, createWorkflowVariableBlockNode)
+    },
+    [createWorkflowVariableBlockNode, getMatch],
+  )
 
   useEffect(() => {
     resetReg()
-    return mergeRegister(
-      editor.registerNodeTransform(CustomTextNode, transformListener),
-    )
+    return mergeRegister(editor.registerNodeTransform(CustomTextNode, transformListener))
   }, [])
 
   return null

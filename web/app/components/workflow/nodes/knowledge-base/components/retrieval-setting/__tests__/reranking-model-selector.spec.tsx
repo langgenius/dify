@@ -1,7 +1,5 @@
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -11,9 +9,9 @@ import {
 import RerankingModelSelector from '../reranking-model-selector'
 
 type MockModelSelectorProps = {
-  defaultModel?: DefaultModel
-  modelList: Model[]
-  onSelect?: (model: DefaultModel) => void
+  value?: DefaultModel
+  models: ProviderWithModelsResponse[]
+  onValueChange?: (model: DefaultModel) => void
 }
 
 const mockUseModelListAndDefaultModel = vi.hoisted(() => vi.fn())
@@ -23,13 +21,16 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel, modelList, onSelect }: MockModelSelectorProps) => (
+  ModelSelector: ({ value, models, onValueChange }: MockModelSelectorProps) => (
     <div>
-      <div data-testid="default-model">
-        {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-default-model'}
+      <div data-testid="model-value">
+        {value ? `${value.provider}/${value.model}` : 'no-model-value'}
       </div>
-      <div data-testid="model-list-count">{modelList.length}</div>
-      <button type="button" onClick={() => onSelect?.({ provider: 'cohere', model: 'rerank-v3' })}>
+      <div data-testid="models-count">{models.length}</div>
+      <button
+        type="button"
+        onClick={() => onValueChange?.({ provider: 'cohere', model: 'rerank-v3' })}
+      >
         select-model
       </button>
     </div>
@@ -40,22 +41,27 @@ describe('RerankingModelSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseModelListAndDefaultModel.mockReturnValue({
-      modelList: [createModel({
-        provider: 'cohere',
-        label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
-        models: [createModelItem({
-          model: 'rerank-v3',
-          model_type: ModelTypeEnum.rerank,
-          label: { en_US: 'Rerank V3', zh_Hans: 'Rerank V3' },
-        })],
-      })],
+      modelList: [
+        createModel({
+          tenant_id: 'test-workspace',
+          provider: 'cohere',
+          label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
+          models: [
+            createModelItem({
+              model: 'rerank-v3',
+              model_type: ModelTypeEnum.rerank,
+              label: { en_US: 'Rerank V3', zh_Hans: 'Rerank V3' },
+            }),
+          ],
+        }),
+      ],
       defaultModel: undefined,
     })
   })
 
   // Rendering behavior for mapped rerank model state.
   describe('Rendering', () => {
-    it('should not pass a default model when reranking model fields are empty strings', () => {
+    it('should not pass a value when reranking model fields are empty strings', () => {
       render(
         <RerankingModelSelector
           rerankingModel={{
@@ -65,11 +71,11 @@ describe('RerankingModelSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('default-model')).toHaveTextContent('no-default-model')
-      expect(screen.getByTestId('model-list-count')).toHaveTextContent('1')
+      expect(screen.getByTestId('model-value')).toHaveTextContent('no-model-value')
+      expect(screen.getByTestId('models-count')).toHaveTextContent('1')
     })
 
-    it('should map reranking model to default model when both fields exist', () => {
+    it('should map reranking model to the selector value when both fields exist', () => {
       render(
         <RerankingModelSelector
           rerankingModel={{
@@ -79,7 +85,7 @@ describe('RerankingModelSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('default-model')).toHaveTextContent('cohere/rerank-v3')
+      expect(screen.getByTestId('model-value')).toHaveTextContent('cohere/rerank-v3')
     })
   })
 

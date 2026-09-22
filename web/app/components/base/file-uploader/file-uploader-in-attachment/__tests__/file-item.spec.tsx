@@ -51,10 +51,11 @@ describe('FileInAttachmentItem', () => {
 
   it('should render FileImageRender for image files', () => {
     render(
-      <FileInAttachmentItem file={createFile({
-        supportFileType: 'image',
-        base64Url: 'data:image/png;base64,abc',
-      })}
+      <FileInAttachmentItem
+        file={createFile({
+          supportFileType: 'image',
+          base64Url: 'data:image/png;base64,abc',
+        })}
       />,
     )
 
@@ -82,7 +83,14 @@ describe('FileInAttachmentItem', () => {
   it('should call onRemove when delete button is clicked', () => {
     const onRemove = vi.fn()
     // Disable download to isolate the delete button
-    render(<FileInAttachmentItem file={createFile()} showDeleteAction showDownloadAction={false} onRemove={onRemove} />)
+    render(
+      <FileInAttachmentItem
+        file={createFile()}
+        showDeleteAction
+        showDownloadAction={false}
+        onRemove={onRemove}
+      />,
+    )
 
     const deleteBtn = screen.getByRole('button')
     fireEvent.click(deleteBtn)
@@ -98,7 +106,9 @@ describe('FileInAttachmentItem', () => {
   })
 
   it('should render progress circle when file is uploading', () => {
-    const { container } = render(<FileInAttachmentItem file={createFile({ progress: 50, uploadedId: undefined })} />)
+    const { container } = render(
+      <FileInAttachmentItem file={createFile({ progress: 50, uploadedId: undefined })} />,
+    )
 
     // ProgressCircle renders an SVG with a <circle> and <path> element
     const svg = container.querySelector('svg')
@@ -107,31 +117,28 @@ describe('FileInAttachmentItem', () => {
     expect(circle)!.toBeInTheDocument()
   })
 
-  it('should render replay icon when upload failed', () => {
-    const { container } = render(<FileInAttachmentItem file={createFile({ progress: -1 })} />)
+  it('should render retry button when upload failed', () => {
+    render(<FileInAttachmentItem file={createFile({ progress: -1 })} />)
 
-    // ReplayLine renders an SVG with data-icon="ReplayLine"
-    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
-    expect(replayIcon)!.toBeInTheDocument()
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry document.pdf' })
+    expect(retryButton)!.toBeInTheDocument()
   })
 
-  it('should call onReUpload when replay icon is clicked', () => {
+  it('should call onReUpload when retry button is clicked', () => {
     const onReUpload = vi.fn()
-    const { container } = render(<FileInAttachmentItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />)
+    render(<FileInAttachmentItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />)
 
-    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
-    const replayBtn = replayIcon!.closest('button')
-    fireEvent.click(replayBtn!)
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry document.pdf' })
+    fireEvent.click(retryButton)
 
     expect(onReUpload).toHaveBeenCalledWith('file-1')
   })
 
   it('should indicate error state when progress is -1', () => {
-    const { container } = render(<FileInAttachmentItem file={createFile({ progress: -1 })} />)
+    render(<FileInAttachmentItem file={createFile({ progress: -1 })} />)
 
-    // Error state is confirmed by the presence of the replay icon
-    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
-    expect(replayIcon)!.toBeInTheDocument()
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry document.pdf' })
+    expect(retryButton)!.toBeInTheDocument()
   })
 
   it('should render eye icon for previewable image files', () => {
@@ -237,9 +244,11 @@ describe('FileInAttachmentItem', () => {
     const downloadBtn = screen.getByRole('button')
     fireEvent.click(downloadBtn)
 
-    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
-      fileName: expect.stringMatching(/document\.pdf/i),
-    }))
+    expect(downloadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: expect.stringMatching(/document\.pdf/i),
+      }),
+    )
   })
 
   it('should open new page when previewMode is NewPage and clicked', () => {
@@ -294,11 +303,7 @@ describe('FileInAttachmentItem', () => {
   it('should not open new page when previewMode is not NewPage', () => {
     const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
     render(
-      <FileInAttachmentItem
-        file={createFile()}
-        canPreview
-        previewMode={PreviewMode.CurrentPage}
-      />,
+      <FileInAttachmentItem file={createFile()} canPreview previewMode={PreviewMode.CurrentPage} />,
     )
 
     fireEvent.click(screen.getByText(/document\.pdf/i))
@@ -309,11 +314,12 @@ describe('FileInAttachmentItem', () => {
 
   it('should use url for image render fallback when base64Url is empty', () => {
     render(
-      <FileInAttachmentItem file={createFile({
-        supportFileType: 'image',
-        base64Url: undefined,
-        url: 'https://example.com/img.png',
-      })}
+      <FileInAttachmentItem
+        file={createFile({
+          supportFileType: 'image',
+          base64Url: undefined,
+          url: 'https://example.com/img.png',
+        })}
       />,
     )
 
@@ -323,11 +329,12 @@ describe('FileInAttachmentItem', () => {
 
   it('should render image element even when both urls are empty', () => {
     render(
-      <FileInAttachmentItem file={createFile({
-        supportFileType: 'image',
-        base64Url: undefined,
-        url: undefined,
-      })}
+      <FileInAttachmentItem
+        file={createFile({
+          supportFileType: 'image',
+          base64Url: undefined,
+          url: undefined,
+        })}
       />,
     )
 
@@ -363,9 +370,11 @@ describe('FileInAttachmentItem', () => {
     const downloadBtn = screen.getByRole('button')
     fireEvent.click(downloadBtn)
 
-    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
-      url: 'data:application/pdf;base64,abc',
-    }))
+    expect(downloadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'data:application/pdf;base64,abc',
+      }),
+    )
   })
 
   it('should not render file size when size is 0', () => {
@@ -477,25 +486,26 @@ describe('FileInAttachmentItem', () => {
     const downloadBtn = screen.getByRole('button')
     fireEvent.click(downloadBtn)
 
-    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
-      url: '',
-    }))
+    expect(downloadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '',
+      }),
+    )
   })
 
   it('should call downloadUrl with empty url when both url and base64Url are falsy', async () => {
     const { downloadUrl } = await import('@/utils/download')
     render(
-      <FileInAttachmentItem
-        file={createFile({ url: '', base64Url: '' })}
-        showDownloadAction
-      />,
+      <FileInAttachmentItem file={createFile({ url: '', base64Url: '' })} showDownloadAction />,
     )
 
     const downloadBtn = screen.getByRole('button')
     fireEvent.click(downloadBtn)
 
-    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
-      url: '',
-    }))
+    expect(downloadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '',
+      }),
+    )
   })
 })

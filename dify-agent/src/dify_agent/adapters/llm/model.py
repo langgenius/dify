@@ -1,8 +1,10 @@
-"""Bridge Dify plugin-daemon LLM invocations into Pydantic AI's model interface.
+"""Bridge Dify API LLM invocations into Pydantic AI's model interface.
 
-The API and agent layers are clients of the plugin daemon, not direct hosts of provider SDK
-implementations. This adapter therefore targets the plugin-daemon dispatch protocol and maps
-Pydantic AI messages into the daemon's Graphon-compatible request and stream response schema.
+The agent calls Dify API's trusted LLM gateway rather than hosting provider SDK implementations.
+This adapter maps Pydantic AI messages into the gateway's Graphon-compatible request and stream
+response schema. Pydantic AI keeps token counts only, so the adapter separately accumulates Dify's complete
+Graphon usage for the lifetime of one model instance. The Agent runner creates one adapter per run
+and reads that accumulated usage after all model/tool rounds finish.
 """
 
 from __future__ import annotations
@@ -37,10 +39,7 @@ from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.messages import (
     AudioUrl,
     BinaryContent,
-    BuiltinToolCallPart,
-    BuiltinToolReturnPart,
     CachePoint,
-    CompactionPart,
     DocumentUrl,
     FilePart,
     FinishReason,
@@ -52,11 +51,13 @@ from pydantic_ai.messages import (
     ModelResponseStreamEvent,
     MultiModalContent,
     RetryPromptPart,
+    SpeechPart,
     SystemPromptPart,
     TextContent,
     TextPart,
     ThinkingPart,
     ToolCallPart,
+    ToolAvailabilityDeltaPart,
     ToolReturnPart,
     UploadedFile,
     UserContent,
@@ -65,10 +66,11 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import Model, ModelRequestParameters, StreamedResponse
 from pydantic_ai.profiles import ModelProfileSpec
+from pydantic_ai.providers import Provider
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RequestUsage
 
-from .provider import DifyPluginDaemonLLMClient, DifyPluginDaemonProvider
+from .provider import DifyLLMClient
 
 _THINK_START = "<think>\n"
 _THINK_END = "\n</think>"
@@ -80,7 +82,6 @@ _DETAIL_HIGH = "high"
 
 @dataclass(slots=True)
 class _DifyRequestInput:
-    credentials: dict[str, object]
     prompt_messages: list[PromptMessage]
     model_parameters: dict[str, object]
     tools: list[PromptMessageTool] | None
@@ -88,16 +89,21 @@ class _DifyRequestInput:
 
 
 @dataclass(slots=True)
-class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
-    """Use a Dify plugin-daemon transport plus request-level model identity."""
+class DifyLLMAdapterModel(Model[DifyLLMClient]):
+    """Use Dify API's LLM transport and retain complete usage for one Agent run.
+
+    A model instance belongs to one runner invocation. Pydantic AI may call it repeatedly while
+    resolving tools or retrying structured output; those sequential requests are accumulated so
+    the terminal event reflects every billed model round.
+    """
 
     model: str
-    daemon_provider: DifyPluginDaemonProvider
+    dify_provider: Provider[DifyLLMClient]
     _: KW_ONLY
     model_provider: str
-    credentials: dict[str, object] = field(default_factory=dict, repr=False)
     model_profile: InitVar[ModelProfileSpec | None] = None
     model_settings: InitVar[ModelSettings | None] = None
+    _accumulated_usage: LLMUsage | None = field(default=None, init=False, repr=False)
 
     def __post_init__(
         self,
@@ -107,13 +113,13 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         Model.__init__(
             self,
             settings=model_settings,
-            profile=model_profile or self.daemon_provider.model_profile(self.model),
+            profile=model_profile or self.dify_provider.model_profile(self.model),
         )
 
     @property
     @override
-    def provider(self) -> DifyPluginDaemonProvider:
-        return self.daemon_provider
+    def provider(self) -> Provider[DifyLLMClient]:
+        return self.dify_provider
 
     @property
     @override
@@ -123,7 +129,12 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
     @property
     @override
     def system(self) -> str:
-        return self.daemon_provider.name
+        return self.dify_provider.name
+
+    @property
+    def accumulated_usage(self) -> LLMUsage | None:
+        """Return complete Dify usage accumulated across successful model requests."""
+        return self._accumulated_usage
 
     @override
     async def request(
@@ -137,10 +148,9 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
 
         response = DifyStreamedResponse(
             model_request_parameters=prepared_params,
-            chunks=self.daemon_provider.client.iter_llm_result_chunks(
+            chunks=self.dify_provider.client.iter_llm_result_chunks(
                 provider=self.model_provider,
                 model=self.model_name,
-                credentials=request_input.credentials,
                 prompt_messages=request_input.prompt_messages,
                 model_parameters=request_input.model_parameters,
                 tools=request_input.tools,
@@ -152,7 +162,9 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         )
         async for _event in response:
             pass
-        return response.get()
+        model_response = response.get()
+        self._record_usage(response.dify_usage)
+        return model_response
 
     @asynccontextmanager
     @override
@@ -167,12 +179,11 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)
         request_input = self._build_request_input(messages, prepared_settings, prepared_params)
 
-        yield DifyStreamedResponse(
+        response = DifyStreamedResponse(
             model_request_parameters=prepared_params,
-            chunks=self.daemon_provider.client.iter_llm_result_chunks(
+            chunks=self.dify_provider.client.iter_llm_result_chunks(
                 provider=self.model_provider,
                 model=self.model_name,
-                credentials=request_input.credentials,
                 prompt_messages=request_input.prompt_messages,
                 model_parameters=request_input.model_parameters,
                 tools=request_input.tools,
@@ -182,6 +193,17 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
             response_model_name=self.model_name,
             provider_name_value=self.system,
         )
+        yield response
+        self._record_usage(response.dify_usage)
+
+    def _record_usage(self, usage: LLMUsage | None) -> None:
+        """Add one completed Dify request to this run's usage total."""
+        if usage is None:
+            return
+        if self._accumulated_usage is None:
+            self._accumulated_usage = usage.model_copy(deep=True)
+            return
+        self._accumulated_usage = self._accumulated_usage.plus(usage)
 
     def _build_request_input(
         self,
@@ -190,7 +212,6 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         model_request_parameters: ModelRequestParameters,
     ) -> _DifyRequestInput:
         return _DifyRequestInput(
-            credentials=dict(self.credentials),
             prompt_messages=_map_messages_to_prompt_messages(messages, model_request_parameters),
             model_parameters=_map_model_settings_to_parameters(model_settings),
             tools=_map_tool_definitions_to_prompt_tools(model_request_parameters),
@@ -200,16 +221,25 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
 
 @dataclass
 class DifyStreamedResponse(StreamedResponse):
+    """Map one Dify response while retaining its latest complete usage payload.
+
+    Some providers may repeat cumulative usage on more than one stream chunk. Keeping the latest
+    payload lets the owning model count each request exactly once instead of summing stream chunks.
+    """
+
     chunks: AsyncIterator[LLMResultChunk]
     response_model_name: str
     provider_name_value: str
     _timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     _embedded_thinking_parser: "_EmbeddedThinkingParser" = field(default_factory=lambda: _EmbeddedThinkingParser())
+    _dify_usage: LLMUsage | None = field(default=None, init=False, repr=False)
 
     @override
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
+        chunk_sequence = 0
         async for chunk in self.chunks:
             if chunk.delta.usage is not None:
+                self._dify_usage = chunk.delta.usage
                 self._usage: RequestUsage = _map_usage(chunk.delta.usage)
             if chunk.delta.finish_reason is not None:
                 self.finish_reason: FinishReason | None = _normalize_finish_reason(chunk.delta.finish_reason)
@@ -219,11 +249,18 @@ class DifyStreamedResponse(StreamedResponse):
                 chunk,
                 self.provider_name_value,
                 self._embedded_thinking_parser,
+                chunk_sequence,
             ):
                 yield event
+            chunk_sequence += 1
 
         for event in self._embedded_thinking_parser.flush(self._parts_manager, self.provider_name_value):
             yield event
+
+    @property
+    def dify_usage(self) -> LLMUsage | None:
+        """Return Dify's complete usage for this model request."""
+        return self._dify_usage
 
     @property
     @override
@@ -267,14 +304,38 @@ def _map_messages_to_prompt_messages(
         for part in (Model._get_instruction_parts(messages, model_request_parameters) or [])
         if part.content.strip()
     ]
-    if instruction_messages:
-        insert_at = next(
-            (index for index, message in enumerate(prompt_messages) if not isinstance(message, SystemPromptMessage)),
-            len(prompt_messages),
-        )
-        prompt_messages[insert_at:insert_at] = instruction_messages
+    prompt_messages = _order_system_messages_first(prompt_messages, instruction_messages)
 
     return prompt_messages
+
+
+def _order_system_messages_first(
+    prompt_messages: Sequence[PromptMessage],
+    instruction_messages: Sequence[SystemPromptMessage],
+) -> list[PromptMessage]:
+    """Merge all system content into a single leading system message.
+
+    Some providers (e.g. vLLM serving Qwen3.5/3.6 chat templates) reject any
+    system message that is not exactly the first message, so sorting alone is
+    not enough: multiple system messages must be merged into one.
+    """
+    system_contents: list[str] = []
+    non_system_messages: list[PromptMessage] = []
+    for message in prompt_messages:
+        if isinstance(message, SystemPromptMessage):
+            text = message.get_text_content()
+            if text.strip():
+                system_contents.append(text)
+        else:
+            non_system_messages.append(message)
+    for instruction in instruction_messages:
+        text = instruction.get_text_content()
+        if text.strip():
+            system_contents.append(text)
+
+    if not system_contents:
+        return non_system_messages
+    return [SystemPromptMessage(content="\n\n".join(system_contents)), *non_system_messages]
 
 
 def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptMessage]:
@@ -282,7 +343,8 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
 
     for part in message.parts:
         if isinstance(part, SystemPromptPart):
-            prompt_messages.append(SystemPromptMessage(content=part.content))
+            if part.content.strip():
+                prompt_messages.append(SystemPromptMessage(content=part.content))
         elif isinstance(part, UserPromptPart):
             prompt_messages.append(UserPromptMessage(content=_map_user_prompt_content(part.content)))
         elif isinstance(part, ToolReturnPart):
@@ -298,6 +360,8 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
                         name=part.tool_name,
                     )
                 )
+        elif isinstance(part, SpeechPart | ToolAvailabilityDeltaPart):
+            raise UnexpectedModelBehavior(f"Unsupported request part for daemon adapter: {type(part).__name__}")
         else:
             assert_never(part)
 
@@ -337,7 +401,7 @@ def _map_model_response_to_prompt_message(
     content_parts: list[PromptMessageContentUnionTypes] = []
     tool_calls: list[AssistantPromptMessage.ToolCall] = []
 
-    for part in message.parts:
+    for index, part in enumerate(message.parts):
         if isinstance(part, TextPart):
             if part.content:
                 content_parts.append(TextPromptMessageContent(data=part.content))
@@ -349,7 +413,7 @@ def _map_model_response_to_prompt_message(
         elif isinstance(part, ToolCallPart):
             tool_calls.append(
                 AssistantPromptMessage.ToolCall(
-                    id=part.tool_call_id or f"tool-call-{part.tool_name}",
+                    id=part.tool_call_id or f"tool-call-{index}-{part.tool_name}",
                     type="function",
                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                         name=part.tool_name,
@@ -357,10 +421,8 @@ def _map_model_response_to_prompt_message(
                     ),
                 )
             )
-        elif isinstance(part, BuiltinToolCallPart | BuiltinToolReturnPart | CompactionPart):
-            raise UnexpectedModelBehavior(f"Unsupported response part for daemon adapter: {type(part).__name__}")
         else:
-            assert_never(part)
+            raise UnexpectedModelBehavior(f"Unsupported response part for daemon adapter: {type(part).__name__}")
 
     content = _normalize_prompt_content(content_parts)
     if content is None and not tool_calls:
@@ -487,10 +549,16 @@ def _map_binary_content_to_prompt_content(
 def _normalize_prompt_content(
     content: list[PromptMessageContentUnionTypes],
 ) -> str | list[PromptMessageContentUnionTypes] | None:
+    """Collapse text-only daemon message content to the string form.
+
+    The daemon protocol supports content-part lists for multimodal messages, but
+    text-only history is safer as plain text because provider plugins commonly
+    JSON-encode text payloads without Graphon model encoders.
+    """
     if not content:
         return None
-    if len(content) == 1 and isinstance(content[0], TextPromptMessageContent):
-        return content[0].data
+    if all(isinstance(item, TextPromptMessageContent) for item in content):
+        return "".join(item.data for item in content)
     return content
 
 
@@ -550,11 +618,21 @@ def _normalize_finish_reason(finish_reason: str) -> FinishReason:
     return "error"
 
 
+def _normalize_tool_call_id(tool_call_id: str | None) -> str | None:
+    if tool_call_id is None:
+        return None
+    normalized = tool_call_id.strip()
+    if not normalized or normalized.lower() in {"none", "null"}:
+        return None
+    return normalized
+
+
 def _chunk_to_stream_events(
     parts_manager: ModelResponsePartsManager,
     chunk: LLMResultChunk,
     provider_name: str,
     embedded_thinking_parser: "_EmbeddedThinkingParser",
+    chunk_sequence: int,
 ) -> list[ModelResponseStreamEvent]:
     events: list[ModelResponseStreamEvent] = []
     message = chunk.delta.message
@@ -565,24 +643,19 @@ def _chunk_to_stream_events(
     elif isinstance(message.content, list):
         for part in _map_assistant_content_to_response_parts(message.content):
             if isinstance(part, TextPart):
-                events.extend(
-                    parts_manager.handle_text_delta(
-                        vendor_part_id=None,
-                        content=part.content,
-                        provider_name=provider_name,
-                    )
-                )
+                events.extend(embedded_thinking_parser.parse(parts_manager, part.content, provider_name))
             else:
                 events.append(parts_manager.handle_part(vendor_part_id=None, part=part))
 
     for index, tool_call in enumerate(message.tool_calls):
-        vendor_id = tool_call.id or f"chunk-{chunk.delta.index}-tool-{index}"
+        tool_call_id = _normalize_tool_call_id(tool_call.id)
+        vendor_id = tool_call_id or f"chunk-{chunk_sequence}-tool-{index}"
         events.append(
             parts_manager.handle_tool_call_part(
                 vendor_part_id=vendor_id,
                 tool_name=tool_call.function.name,
                 args=tool_call.function.arguments,
-                tool_call_id=tool_call.id,
+                tool_call_id=tool_call_id or vendor_id,
                 provider_name=provider_name,
             )
         )

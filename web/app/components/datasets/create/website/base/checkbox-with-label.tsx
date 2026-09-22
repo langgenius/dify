@@ -1,7 +1,7 @@
 'use client'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Infotip } from '@/app/components/base/infotip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 
 type Props = Readonly<{
   className?: string
@@ -23,18 +23,23 @@ export default function CheckboxWithLabel({
   return (
     <div className={cn(className, 'flex h-7 items-center')}>
       <label className="flex min-w-0 cursor-pointer items-center">
-        <Checkbox
-          checked={isChecked}
-          onCheckedChange={checked => onChange(checked)}
-        />
-        <span className={cn('ml-2 min-w-0 text-left text-sm font-normal text-text-secondary', labelClassName)}>
+        <Checkbox checked={isChecked} onCheckedChange={(checked) => onChange(checked)} />
+        <span
+          className={cn(
+            'ml-2 min-w-0 text-left text-sm font-normal text-text-secondary',
+            labelClassName,
+          )}
+        >
           {label}
         </span>
       </label>
       <div className="ml-1 flex min-w-0 items-center">
         {tooltip && (
-          <Infotip aria-label={tooltip} popupClassName="w-[200px]">
-            {tooltip}
+          <Infotip>
+            <InfotipTrigger aria-label={tooltip} />
+            <InfotipContent aria-label={tooltip} className="w-50">
+              {tooltip}
+            </InfotipContent>
           </Infotip>
         )}
       </div>

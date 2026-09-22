@@ -2,21 +2,19 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from inspect import unwrap
 
 import pytest
 from flask import Flask
 
 from controllers.console.app import workflow as workflow_module
+from controllers.console.app.workflow import ConvertToWorkflowApi
+from models import Account, App
+from tests.unit_tests.model_factories import make_app
 
 
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
+def _app(app_id: str) -> App:
+    return make_app(app_id=app_id, name=f"App {app_id}")
 
 
 class TestConvertToWorkflowApi:
@@ -25,14 +23,15 @@ class TestConvertToWorkflowApi:
         return workflow_module.ConvertToWorkflowApi()
 
     def test_convert_to_workflow_attaches_permission_keys_when_rbac_enabled(
-        self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
+        self, api: ConvertToWorkflowApi, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
+        new_app = _app("new-app-1")
 
         monkeypatch.setattr(
             workflow_module,
             "WorkflowService",
-            lambda: SimpleNamespace(convert_to_workflow=lambda **_kwargs: SimpleNamespace(id="new-app-1")),
+            lambda: type("WorkflowServiceStub", (), {"convert_to_workflow": lambda self, **_kwargs: new_app})(),
         )
         monkeypatch.setattr(
             workflow_module,
@@ -45,10 +44,14 @@ class TestConvertToWorkflowApi:
             method="POST",
             json={},
         ):
+            current_user = Account(name="Current user", email="user@example.com")
+            current_user.id = "u1"
             response = method(
+                api,
+                workflow_module.ConvertToWorkflowPayload.model_validate({}),
                 current_tenant_id="tenant-1",
-                current_user=SimpleNamespace(id="u1"),
-                app_model=SimpleNamespace(id="app-1"),
+                current_user=current_user,
+                app_model=_app("app-1"),
             )
 
         assert response["new_app_id"] == "new-app-1"

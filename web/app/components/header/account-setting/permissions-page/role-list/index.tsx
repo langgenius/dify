@@ -4,11 +4,11 @@ import type { Role, RoleCategory } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Row from './row'
 
 export type RoleListGroup = {
-  id: string
+  id: 'builtin' | 'custom'
   category: RoleCategory
   title: string
   items: Role[]
@@ -36,23 +36,23 @@ const RoleList = ({
   if (isLoading) {
     return (
       <div className={cn('px-1 py-8 text-center', className)}>
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
 
   return (
     <div className={cn('flex min-w-0 flex-col gap-y-6', className)}>
-      {groups.map(group => (
-        <section
-          key={group.id}
-          className="flex min-w-0 flex-col gap-y-1"
-        >
+      {groups.map((group) => (
+        <section key={group.id} className="flex min-w-0 flex-col gap-y-1">
           <div className="flex min-h-6 items-center system-sm-medium text-text-secondary">
-            {t(`role.groups.${group.id}`, { ns: 'permission', defaultValue: group.title })}
+            {t(($) => $[`role.groups.${group.id}`], {
+              ns: 'permission',
+              defaultValue: group.title,
+            })}
           </div>
           <div className="flex flex-col">
-            {group.items.map(row => (
+            {group.items.map((row) => (
               <Row
                 key={row.id}
                 name={row.name}
@@ -68,7 +68,7 @@ const RoleList = ({
       ))}
       {isFetchingNextPage && (
         <div className="px-1 py-3 text-center">
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         </div>
       )}
     </div>

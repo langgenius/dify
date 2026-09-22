@@ -38,43 +38,48 @@ const CrawledResult = ({
   const isCheckAll = checkedList.length === list.length
 
   const handleCheckedAll = useCallback(() => {
-    if (!isCheckAll)
-      onSelectedChange(list)
-
-    else
-      onSelectedChange([])
+    if (!isCheckAll) onSelectedChange(list)
+    else onSelectedChange([])
   }, [isCheckAll, list, onSelectedChange])
 
-  const handleItemCheckChange = useCallback((item: CrawlResultItem) => {
-    return (checked: boolean) => {
-      if (checked) {
-        if (isMultipleChoice)
-          onSelectedChange([...checkedList, item])
-        else
-          onSelectedChange([item])
+  const handleItemCheckChange = useCallback(
+    (item: CrawlResultItem) => {
+      return (checked: boolean) => {
+        if (checked) {
+          if (isMultipleChoice) onSelectedChange([...checkedList, item])
+          else onSelectedChange([item])
+        } else {
+          onSelectedChange(
+            checkedList.filter((checkedItem) => checkedItem.source_url !== item.source_url),
+          )
+        }
       }
-      else { onSelectedChange(checkedList.filter(checkedItem => checkedItem.source_url !== item.source_url)) }
-    }
-  }, [checkedList, onSelectedChange, isMultipleChoice])
+    },
+    [checkedList, onSelectedChange, isMultipleChoice],
+  )
 
-  const handlePreview = useCallback((index: number) => {
-    if (!onPreview)
-      return
-    onPreview(list[index]!, index)
-  }, [list, onPreview])
+  const handlePreview = useCallback(
+    (index: number) => {
+      if (!onPreview) return
+      onPreview(list[index]!, index)
+    },
+    [list, onPreview],
+  )
 
   const selectedSourceUrl = checkedList[0]?.source_url
-  const handleRadioChange = useCallback((sourceUrl: string) => {
-    const selectedItem = list.find(item => item.source_url === sourceUrl)
-    if (selectedItem)
-      onSelectedChange([selectedItem])
-  }, [list, onSelectedChange])
+  const handleRadioChange = useCallback(
+    (sourceUrl: string) => {
+      const selectedItem = list.find((item) => item.source_url === sourceUrl)
+      if (selectedItem) onSelectedChange([selectedItem])
+    },
+    [list, onSelectedChange],
+  )
 
   const resultItems = list.map((item, index) => (
     <CrawledResultItem
       key={item.source_url}
       payload={item}
-      isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
+      isChecked={checkedList.some((checkedItem) => checkedItem.source_url === item.source_url)}
       onCheckChange={handleItemCheckChange(item)}
       isPreview={index === previewIndex}
       onPreview={handlePreview.bind(null, index)}
@@ -86,7 +91,7 @@ const CrawledResult = ({
   return (
     <div className={cn('flex flex-col gap-y-2', className)}>
       <div className="pt-2 system-sm-medium text-text-primary">
-        {t(`${I18N_PREFIX}.scrapTimeInfo`, {
+        {t(($) => $[`${I18N_PREFIX}.scrapTimeInfo`], {
           ns: 'datasetCreation',
           total: list.length,
           time: usedTime.toFixed(1),
@@ -98,30 +103,32 @@ const CrawledResult = ({
             <CheckboxWithLabel
               isChecked={isCheckAll}
               onChange={handleCheckedAll}
-              label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.selectAll`, { ns: 'datasetCreation' })}
+              label={
+                isCheckAll
+                  ? t(($) => $[`${I18N_PREFIX}.resetAll`], { ns: 'datasetCreation' })
+                  : t(($) => $[`${I18N_PREFIX}.selectAll`], { ns: 'datasetCreation' })
+              }
             />
           </div>
         )}
-        {isMultipleChoice
-          ? (
-              <div className="flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2">
-                {resultItems}
-              </div>
-            )
-          : (
-              <RadioGroup
-                aria-label={t(`${I18N_PREFIX}.scrapTimeInfo`, {
-                  ns: 'datasetCreation',
-                  total: list.length,
-                  time: usedTime.toFixed(1),
-                })}
-                value={selectedSourceUrl}
-                onValueChange={handleRadioChange}
-                className="flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2"
-              >
-                {resultItems}
-              </RadioGroup>
-            )}
+        {isMultipleChoice ? (
+          <div className="flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2">
+            {resultItems}
+          </div>
+        ) : (
+          <RadioGroup
+            aria-label={t(($) => $[`${I18N_PREFIX}.scrapTimeInfo`], {
+              ns: 'datasetCreation',
+              total: list.length,
+              time: usedTime.toFixed(1),
+            })}
+            value={selectedSourceUrl}
+            onValueChange={handleRadioChange}
+            className="flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2"
+          >
+            {resultItems}
+          </RadioGroup>
+        )}
       </div>
     </div>
   )

@@ -1,5 +1,10 @@
+import type { VariableAssignerNodeType } from '../../types'
 import { fireEvent, screen } from '@testing-library/react'
-import { createNode, createStartNode, resetFixtureCounters } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  createNode,
+  createStartNode,
+  resetFixtureCounters,
+} from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import NodeGroupItem from '../node-group-item'
@@ -18,7 +23,7 @@ vi.mock('../../hooks', () => ({
   useGetAvailableVars: () => mockGetAvailableVars,
 }))
 
-const createData = () => ({
+const createData = (): VariableAssignerNodeType => ({
   title: 'Variable Assigner',
   desc: '',
   type: BlockEnum.VariableAssigner,
@@ -124,7 +129,10 @@ describe('variable-assigner/node-group-item', () => {
           targetHandleId: 'group-2',
           title: 'Group B',
           type: 'number',
-          variables: [['sys', 'query'], ['source-node', 'answer']],
+          variables: [
+            ['sys', 'query'],
+            ['source-node', 'answer'],
+          ],
           variableAssignerNodeId: 'assigner-node',
           variableAssignerNodeData: data,
         }}

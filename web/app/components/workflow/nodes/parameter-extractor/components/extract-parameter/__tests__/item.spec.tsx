@@ -22,7 +22,9 @@ describe('parameter-extractor/extract-parameter/item', () => {
     expect(screen.getByText('city')).toBeInTheDocument()
     expect(screen.getByText(ParamType.string)).toBeInTheDocument()
     expect(screen.getByText('City name')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.parameterExtractor.addExtractParameterContent.required')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.parameterExtractor.addExtractParameterContent.required'),
+    ).toBeInTheDocument()
 
     const actionButtons = container.querySelectorAll('.cursor-pointer.rounded-md.p-1')
     fireEvent.click(actionButtons[0] as HTMLElement)

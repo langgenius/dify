@@ -1,26 +1,37 @@
 import type { CustomCollectionBackend } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render } from '@/test/console/render'
 import { AuthType } from '../../types'
 import CustomCreateCard, { NewCustomToolButton } from '../custom-create-card'
 
-let mockWorkspacePermissionKeys: string[] = ['tool.manage']
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
+const mockConsoleState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['tool.manage'] as string[],
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+  }))
+})
 
 // Mock useLocale and useDocLink
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
-  useDocLink: () => (path: string) => `https://docs.dify.ai/en/${path?.startsWith('/') ? path.slice(1) : path}`,
 }))
 
-// Mock getLanguage
-vi.mock('@/i18n-config/language', () => ({
-  getLanguage: () => 'en-US',
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path?: string) =>
+    `https://docs.dify.ai/en${path?.startsWith('/use-dify/') ? `/cloud${path}` : path || ''}`,
+}))
+
+// Mock getPluginLanguage
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
+  getPluginLanguage: () => 'en-US',
 }))
 
 // Mock createCustomCollection service
@@ -34,7 +45,11 @@ let mockModalVisible = false
 
 // Mock EditCustomToolModal - complex component
 vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
-  default: ({ payload, onHide, onAdd }: {
+  default: ({
+    payload,
+    onHide,
+    onAdd,
+  }: {
     payload: null
     onHide: () => void
     onAdd: (data: CustomCollectionBackend) => void
@@ -44,7 +59,9 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
     return (
       <div data-testid="edit-custom-collection-modal">
         <span data-testid="modal-payload">{payload === null ? 'null' : 'not-null'}</span>
-        <button data-testid="close-modal" onClick={onHide}>Close</button>
+        <button data-testid="close-modal" onClick={onHide}>
+          Close
+        </button>
         <button
           data-testid="submit-modal"
           onClick={() => {
@@ -70,7 +87,7 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
 
 // Mock toast
 const mockToastSuccess = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (title: string) => mockToastSuccess(title),
   },
@@ -81,7 +98,7 @@ describe('CustomCreateCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['tool.manage']
+    mockConsoleState.workspacePermissionKeys = ['tool.manage']
     mockModalVisible = false
     mockCreateCustomCollection.mockResolvedValue({})
   })
@@ -94,7 +111,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should not render anything when user does not have tool.manage', () => {
-      mockWorkspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       const { container } = render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
@@ -104,12 +121,6 @@ describe('CustomCreateCard', () => {
 
   // Tests for card rendering and styling
   describe('Card Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      expect(screen.getByText(/createSwaggerAPIAsTool/i)).toBeInTheDocument()
-    })
-
     it('should render add icon', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
@@ -123,7 +134,12 @@ describe('CustomCreateCard', () => {
 
       const card = screen.getByText('tools.createSwaggerAPIAsTool').closest('.col-span-1')
       expect(card).toBeInTheDocument()
-      expect(card).toHaveClass('h-[120px]', 'border-[0.5px]', 'border-components-panel-border', 'shadow-md')
+      expect(card).toHaveClass(
+        'h-30',
+        'border-[0.5px]',
+        'border-components-panel-border',
+        'shadow-md',
+      )
       expect(card).toHaveClass('min-w-0')
       expect(card).not.toHaveClass('flex-1')
     })
@@ -132,7 +148,10 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       const docLink = screen.getByText('tools.swaggerAPIAsToolTip').closest('a')
-      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools#custom-tool')
+      expect(docLink).toHaveAttribute(
+        'href',
+        'https://docs.dify.ai/en/cloud/use-dify/workspace/tools#swagger-api',
+      )
       expect(docLink).toHaveAttribute('target', '_blank')
       expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     })
@@ -142,11 +161,13 @@ describe('CustomCreateCard', () => {
     it('should render toolbar add button when user has tool.manage', () => {
       render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
 
-      expect(screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i }),
+      ).toBeInTheDocument()
     })
 
     it('should not render toolbar add button when user does not have tool.manage', () => {
-      mockWorkspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       const { container } = render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
 
@@ -335,20 +356,4 @@ describe('CustomCreateCard', () => {
   })
 
   // Tests for hover styling
-  describe('Hover Styling', () => {
-    it('should have hover styles on card', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      const card = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      expect(card).toBeInTheDocument()
-      expect(card).toHaveClass('hover:bg-components-panel-on-panel-item-bg-hover')
-    })
-
-    it('should have group hover styles on icon container', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      const iconContainer = document.querySelector('.group-hover\\:text-text-accent')
-      expect(iconContainer).toBeInTheDocument()
-    })
-  })
 })

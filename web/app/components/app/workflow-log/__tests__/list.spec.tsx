@@ -1,4 +1,3 @@
-/* eslint-disable ts/no-explicit-any */
 /**
  * WorkflowAppLogList Component Tests
  *
@@ -12,7 +11,7 @@
 
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -48,7 +47,7 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 // Mock the Run component
 vi.mock('@/app/components/workflow/run', () => ({
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -135,7 +134,9 @@ const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): Work
   ...overrides,
 })
 
-const createMockWorkflowLog = (overrides: Partial<WorkflowAppLogDetail> = {}): WorkflowAppLogDetail => ({
+const createMockWorkflowLog = (
+  overrides: Partial<WorkflowAppLogDetail> = {},
+): WorkflowAppLogDetail => ({
   id: 'log-1',
   workflow_run: createMockWorkflowRun(),
   created_from: 'web-app',
@@ -178,10 +179,14 @@ describe('WorkflowAppLogList', () => {
   describe('Rendering', () => {
     it('should render loading state when logs are undefined', () => {
       const { container } = render(
-        <WorkflowAppLogList logs={undefined} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
+        <WorkflowAppLogList
+          logs={undefined}
+          appDetail={createMockApp()}
+          onRefresh={defaultOnRefresh}
+        />,
       )
 
-      expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('should render loading state when appDetail is undefined', () => {
@@ -191,7 +196,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={undefined} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('should render table when data is available', () => {
@@ -233,9 +238,7 @@ describe('WorkflowAppLogList', () => {
       const logs = createMockLogsResponse([createMockWorkflowLog()])
       const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
 
-      render(
-        <WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />,
-      )
+      render(<WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />)
 
       expect(screen.queryByText('appLog.table.header.triggered_from')).not.toBeInTheDocument()
     })
@@ -304,7 +307,9 @@ describe('WorkflowAppLogList', () => {
     it('should render partial-succeeded status correctly', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
-          workflow_run: createMockWorkflowRun({ status: 'partial-succeeded' as WorkflowRunDetail['status'] }),
+          workflow_run: createMockWorkflowRun({
+            status: 'partial-succeeded' as WorkflowRunDetail['status'],
+          }),
         }),
       ])
 
@@ -338,7 +343,12 @@ describe('WorkflowAppLogList', () => {
     it('should display end user session id when created by end user', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
-          created_by_end_user: { id: 'user-1', type: 'browser', is_anonymous: false, session_id: 'session-abc-123' },
+          created_by_end_user: {
+            id: 'user-1',
+            type: 'browser',
+            is_anonymous: false,
+            session_id: 'session-abc-123',
+          },
           created_by_account: undefined,
         }),
       ])
@@ -398,14 +408,16 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      // Click on the start time header to toggle sort
-      const startTimeHeader = screen.getByText('appLog.table.header.startTime')
-      await user.click(startTimeHeader)
-
-      // Arrow should rotate (indicated by class change)
-      // The sort icon should have rotate-180 class for ascending
-      const sortIcon = startTimeHeader.closest('div')?.querySelector('svg')
-      expect(sortIcon)!.toBeInTheDocument()
+      const startTimeHeader = screen.getByRole('columnheader', {
+        name: 'appLog.table.header.startTime',
+      })
+      const sortButton = screen.getByRole('button', { name: 'appLog.table.header.startTime' })
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'descending')
+      sortButton.focus()
+      await user.keyboard('{Enter}')
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'ascending')
+      await user.keyboard(' ')
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'descending')
     })
 
     it('should render sort arrow icon', () => {
@@ -447,15 +459,51 @@ describe('WorkflowAppLogList', () => {
       expect(screen.getByText('appLog.runDetail.workflowTitle'))!.toBeInTheDocument()
     })
 
+    it.each(['keyboard', 'row'])(
+      'restores focus to the selected log after %s opening and refresh',
+      async (opening) => {
+        const user = userEvent.setup()
+        const appDetail = createMockApp()
+        const onRefresh = vi.fn()
+        useAppStore.setState({ appDetail })
+        const logs = createMockLogsResponse([
+          createMockWorkflowLog({ id: 'log-1', created_at: 100 }),
+          createMockWorkflowLog({ id: 'log-2', created_at: 200 }),
+        ])
+        const { rerender } = render(
+          <WorkflowAppLogList logs={logs} appDetail={appDetail} onRefresh={onRefresh} />,
+        )
+        const trigger = screen.getByRole('button', { name: 'formatted-100' })
+        if (opening === 'keyboard') {
+          trigger.focus()
+          await user.keyboard('{Enter}')
+        } else {
+          await user.click(screen.getAllByRole('row')[2]!)
+        }
+        await screen.findByRole('dialog')
+        rerender(
+          <WorkflowAppLogList
+            logs={createMockLogsResponse(logs.data.map((log) => ({ ...log, read_at: 300 })))}
+            appDetail={appDetail}
+            onRefresh={onRefresh}
+          />,
+        )
+        await user.keyboard('{Escape}')
+        await waitFor(() => {
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+          expect(trigger).toHaveFocus()
+        })
+        expect(onRefresh).toHaveBeenCalledTimes(1)
+      },
+    )
+
     it('should close drawer and call onRefresh when closing', async () => {
       const user = userEvent.setup()
       const onRefresh = vi.fn()
       useAppStore.setState({ appDetail: createMockApp() })
       const logs = createMockLogsResponse([createMockWorkflowLog()])
 
-      render(
-        <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={onRefresh} />,
-      )
+      render(<WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={onRefresh} />)
 
       // Open drawer
       const dataRows = screen.getAllByRole('row')
@@ -555,7 +603,9 @@ describe('WorkflowAppLogList', () => {
       const replayButton = screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })
       await user.click(replayButton)
 
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-replay/workflow?replayRunId=run-to-replay')
+      expect(mockRouterPush).toHaveBeenCalledWith(
+        '/app/app-replay/workflow?replayRunId=run-to-replay',
+      )
     })
 
     it('should allow replay when triggered from debugging', async () => {
@@ -637,7 +687,9 @@ describe('WorkflowAppLogList', () => {
       // Replay button should not be present for webhook triggers
       // Replay button should not be present for webhook triggers
       // Replay button should not be present for webhook triggers
-      expect(screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -799,9 +851,7 @@ describe('WorkflowAppLogList', () => {
       ])
       const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
 
-      render(
-        <WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />,
-      )
+      render(<WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />)
 
       // Should render without trigger column
       // Should render without trigger column

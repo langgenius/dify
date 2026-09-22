@@ -1,20 +1,11 @@
-import type {
-  Klass,
-  LexicalEditor,
-  LexicalNode,
-} from 'lexical'
+import type { Klass, LexicalEditor, LexicalNode } from 'lexical'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createEditor } from 'lexical'
 import RosterReferenceBlockComponent from '../component'
-import {
-  $createRosterReferenceBlockNode,
-  $isRosterReferenceBlockNode,
-  RosterReferenceBlockNode,
-} from '../node'
-import {
-  getRosterReferenceFileIconType,
-  parseRosterReferenceToken,
-} from '../utils'
+import { RosterReferenceBlockContext } from '../context'
+import { $createRosterReferenceBlockNode, RosterReferenceBlockNode } from '../node'
+import { getRosterReferenceFileIconType, parseRosterReferenceToken } from '../utils'
 
 describe('RosterReferenceBlockNode', () => {
   let editor: LexicalEditor
@@ -60,15 +51,27 @@ describe('RosterReferenceBlockNode', () => {
     expect(container.querySelector('.i-custom-public-other-default-tool-icon')).toBeInTheDocument()
   })
 
-  it('should render knowledge icon with the configured retrieval row style', () => {
-    const { container } = render(
-      <RosterReferenceBlockComponent text="[§knowledge:manual-1:产品手册§]" />,
+  it('should render warning state for missing references', async () => {
+    const user = userEvent.setup()
+    render(
+      <RosterReferenceBlockContext
+        value={{
+          getWarning: (token) => `${token.label} does not exist`,
+        }}
+      >
+        <RosterReferenceBlockComponent text="[§skill:playwright:Playwright§]" />
+      </RosterReferenceBlockContext>,
     )
 
-    const iconShell = container.querySelector('.bg-util-colors-green-green-500')
-    expect(iconShell).toBeInTheDocument()
-    expect(iconShell).toHaveClass('text-text-primary-on-surface')
-    expect(iconShell?.querySelector('.i-ri-book-open-line')).toBeInTheDocument()
+    const token = screen.getByTitle('Playwright does not exist')
+    expect(token).toHaveAttribute('data-roster-reference-warning', 'true')
+    expect(token).toHaveClass('border-components-badge-status-light-warning-halo')
+    expect(token).toHaveClass('bg-state-warning-hover')
+    expect(token).toHaveTextContent('Playwright')
+    expect(token.querySelector('.i-ri-alert-fill')).toBeInTheDocument()
+
+    await user.hover(token)
+    expect(await screen.findByText('Playwright does not exist')).toBeInTheDocument()
   })
 
   it('should expose DecoratorNode behavior and preserve raw text content', () => {
@@ -104,16 +107,12 @@ describe('RosterReferenceBlockNode', () => {
     })
   })
 
-  it('should create node with helper and support type guard checks', () => {
+  it('should create node with helper', () => {
     runInEditor(() => {
       const node = $createRosterReferenceBlockNode('[§skill:playwright:Playwright§]')
 
       expect(node).toBeInstanceOf(RosterReferenceBlockNode)
       expect(node.getTextContent()).toBe('[§skill:playwright:Playwright§]')
-      expect($isRosterReferenceBlockNode(node)).toBe(true)
-      expect($isRosterReferenceBlockNode(null)).toBe(false)
-      expect($isRosterReferenceBlockNode(undefined)).toBe(false)
-      expect($isRosterReferenceBlockNode({} as LexicalNode)).toBe(false)
     })
   })
 })

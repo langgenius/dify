@@ -1,13 +1,8 @@
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-  RiFileDownloadLine,
-  RiLock2Line,
-} from '@remixicon/react'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine, RiLock2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import Divider from '../../base/divider'
 import MenuItem from './menu-item'
 
 type MenuProps = {
@@ -32,40 +27,40 @@ const Menu = ({
   openAccessConfig,
 }: MenuProps) => {
   const { t } = useTranslation()
-  const runtimeMode = useDatasetDetailContextWithSelector(state => state.dataset?.runtime_mode)
+  const runtimeMode = useDatasetDetailContextWithSelector((state) => state.dataset?.runtime_mode)
 
   return (
-    <div className="flex w-[200px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+    <div className="flex w-50 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
       <div className="flex flex-col p-1">
         {showEdit && (
           <MenuItem
             Icon={RiEditLine}
-            name={t('operation.edit', { ns: 'common' })}
+            name={t(($) => $['operation.edit'], { ns: 'common' })}
             handleClick={openRenameModal}
           />
         )}
         {showExportPipeline && runtimeMode === 'rag_pipeline' && (
           <MenuItem
             Icon={RiFileDownloadLine}
-            name={t('operations.exportPipeline', { ns: 'datasetPipeline' })}
+            name={t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
             handleClick={handleExportPipeline}
           />
         )}
         {showAccessConfig && (
           <MenuItem
             Icon={RiLock2Line}
-            name={t('settings.resourceAccess', { ns: 'common' })}
+            name={t(($) => $['settings.resourceAccess'], { ns: 'common' })}
             handleClick={openAccessConfig}
           />
         )}
       </div>
       {showDelete && (
         <>
-          <Divider type="horizontal" className="my-0 bg-divider-subtle" />
+          <Separator orientation="horizontal" className="my-0 h-[0.5px] bg-divider-subtle" />
           <div className="flex flex-col p-1">
             <MenuItem
               Icon={RiDeleteBinLine}
-              name={t('operation.delete', { ns: 'common' })}
+              name={t(($) => $['operation.delete'], { ns: 'common' })}
               handleClick={detectIsUsedByApp}
             />
           </div>

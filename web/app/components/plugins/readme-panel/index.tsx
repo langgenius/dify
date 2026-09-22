@@ -5,15 +5,13 @@ import { ReadmeDrawer } from './drawer'
 import { useReadmePanelStore } from './store'
 
 export default function ReadmePanel() {
-  const currentPanel = useReadmePanelStore(s => s.currentPanel)
-  const closeReadmePanel = useReadmePanelStore(s => s.closeReadmePanel)
+  const currentPanel = useReadmePanelStore((s) => s.currentPanel)
+  const closeReadmePanel = useReadmePanelStore((s) => s.closeReadmePanel)
 
-  if (!currentPanel)
-    return null
+  if (!currentPanel) return null
 
   const onOpenChange = (open: boolean) => {
-    if (!open)
-      closeReadmePanel()
+    if (!open) closeReadmePanel()
   }
 
   if (currentPanel.presentation === 'dialog') {

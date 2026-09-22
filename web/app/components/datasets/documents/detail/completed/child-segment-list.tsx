@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { formatNumber } from '@/utils/format'
 import { EditSlice } from '../../../formatted-text/flavours/edit-slice'
 import { FormattedText } from '../../../formatted-text/formatted'
@@ -34,7 +34,11 @@ function computeTotalInfo(
   isSearching: boolean,
   total: number | undefined,
   childChunksLength: number,
-): { displayText: string, count: number, translationKey: 'segment.searchResults' | 'segment.childChunks' } {
+): {
+  displayText: string
+  count: number
+  translationKey: 'segment.searchResults' | 'segment.childChunks'
+} {
   if (isSearching) {
     const count = total ?? 0
     return {
@@ -75,25 +79,30 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   focused = false,
 }) => {
   const { t } = useTranslation()
-  const parentMode = useDocumentContext(s => s.parentMode)
-  const currChildChunk = useSegmentListContext(s => s.currChildChunk)
+  const parentMode = useDocumentContext((s) => s.parentMode)
+  const canEdit = useDocumentContext((s) => s.canEdit)
+  const currChildChunk = useSegmentListContext((s) => s.currChildChunk)
 
   const [collapsed, setCollapsed] = useState(true)
 
   const isParagraphMode = parentMode === 'paragraph'
   const isFullDocMode = parentMode === 'full-doc'
   const isSearching = inputValue !== '' && isFullDocMode
-  const contentOpacity = (enabled || focused) ? '' : 'opacity-50 group-hover/card:opacity-100'
-  const { displayText, count, translationKey } = computeTotalInfo(isFullDocMode, isSearching, total, childChunks.length)
-  const totalText = `${displayText} ${t(translationKey, { ns: 'datasetDocuments', count })}`
+  const contentOpacity = enabled || focused ? '' : 'opacity-50 group-hover/card:opacity-100'
+  const { displayText, count, translationKey } = computeTotalInfo(
+    isFullDocMode,
+    isSearching,
+    total,
+    childChunks.length,
+  )
+  const totalText = `${displayText} ${t(($) => $[translationKey], { ns: 'datasetDocuments', count })}`
 
-  const toggleCollapse = () => setCollapsed(prev => !prev)
+  const toggleCollapse = () => setCollapsed((prev) => !prev)
   const showContent = (isFullDocMode && !isLoading) || !collapsed
   const hoverVisibleClass = isParagraphMode ? 'hidden group-hover/card:inline-block' : ''
 
   const renderCollapseIcon = () => {
-    if (!isParagraphMode)
-      return null
+    if (!isParagraphMode) return null
     const Icon = collapsed ? RiArrowRightSLine : RiArrowDownSLine
     return <Icon className={cn('mr-0.5 size-4 text-text-secondary', collapsed && 'opacity-50')} />
   }
@@ -102,7 +111,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     const isEdited = childChunk.updated_at !== childChunk.created_at
     const isFocused = currChildChunk?.childChunkInfo?.id === childChunk.id
     const label = isEdited
-      ? `C-${childChunk.position} · ${t('segment.edited', { ns: 'datasetDocuments' })}`
+      ? `C-${childChunk.position} · ${t(($) => $['segment.edited'], { ns: 'datasetDocuments' })}`
       : `C-${childChunk.position}`
 
     return (
@@ -111,10 +120,14 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         label={label}
         text={childChunk.content}
         onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
+        deleteDisabled={!canEdit}
         className="child-chunk"
         labelClassName={isFocused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
         labelInnerClassName="text-[10px] font-semibold align-bottom leading-6"
-        contentClassName={cn('leading-6!', isFocused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary')}
+        contentClassName={cn(
+          'leading-6!',
+          isFocused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary',
+        )}
         showDivider={false}
         onClick={(e) => {
           e.stopPropagation()
@@ -131,7 +144,9 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   const renderContent = () => {
     if (childChunks.length > 0) {
       return (
-        <FormattedText className={cn('flex w-full flex-col leading-6!', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
+        <FormattedText
+          className={cn('flex w-full flex-col leading-6!', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}
+        >
           {childChunks.map(renderChildChunkItem)}
         </FormattedText>
       )
@@ -147,15 +162,21 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   }
 
   return (
-    <div className={cn(
-      'flex flex-col',
-      contentOpacity,
-      isParagraphMode ? 'pt-1 pb-2' : 'grow px-3',
-      isFullDocMode && isLoading && 'overflow-y-hidden',
-    )}
+    <div
+      className={cn(
+        'flex flex-col',
+        contentOpacity,
+        isParagraphMode ? 'pt-1 pb-2' : 'grow px-3',
+        isFullDocMode && isLoading && 'overflow-y-hidden',
+      )}
     >
-      {isFullDocMode && <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />}
-      <div className={cn('flex items-center justify-between', isFullDocMode && 'sticky -top-2 left-0 bg-background-default pt-2 pb-3')}>
+      {isFullDocMode && <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />}
+      <div
+        className={cn(
+          'flex items-center justify-between',
+          isFullDocMode && 'sticky -top-2 left-0 bg-background-default pt-2 pb-3',
+        )}
+      >
         <div
           className={cn(
             'flex h-7 items-center rounded-lg pr-3 pl-1',
@@ -170,31 +191,34 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         >
           {renderCollapseIcon()}
           <span className="system-sm-semibold-uppercase text-text-secondary">{totalText}</span>
-          <span className={cn('pl-1.5 text-xs font-medium text-text-quaternary', hoverVisibleClass)}>·</span>
+          <span
+            className={cn('pl-1.5 text-xs font-medium text-text-quaternary', hoverVisibleClass)}
+          >
+            ·
+          </span>
           <button
             type="button"
             className={cn(
               'px-1.5 py-1 system-xs-semibold-uppercase text-components-button-secondary-accent-text',
               hoverVisibleClass,
               isFullDocMode && isLoading && 'text-components-button-secondary-accent-text-disabled',
+              !canEdit &&
+                'cursor-not-allowed text-components-button-secondary-accent-text-disabled',
             )}
             onClick={(event) => {
               event.stopPropagation()
               handleAddNewChildChunk?.(parentChunkId)
             }}
-            disabled={isLoading}
+            disabled={!canEdit || isLoading}
           >
-            {t('operation.add', { ns: 'common' })}
+            {t(($) => $['operation.add'], { ns: 'common' })}
           </button>
         </div>
         {isFullDocMode && (
-          <Input
-            showLeftIcon
-            showClearIcon
-            wrapperClassName="w-52!"
-            value={inputValue}
-            onChange={e => handleInputChange?.(e.target.value)}
-            onClear={() => handleInputChange?.('')}
+          <SearchInput
+            className="w-52!"
+            value={inputValue ?? ''}
+            onValueChange={(value) => handleInputChange?.(value)}
           />
         )}
       </div>
@@ -203,7 +227,11 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         <div className={cn('flex gap-x-0.5', isFullDocMode ? 'mb-6 grow' : 'items-center')}>
           {isParagraphMode && (
             <div className="self-stretch">
-              <Divider type="vertical" className="mx-[7px] w-[2px] bg-text-accent-secondary" />
+              <Separator
+                decorative
+                orientation="vertical"
+                className="mx-1.75 w-0.5 bg-text-accent-secondary"
+              />
             </div>
           )}
           {renderContent()}

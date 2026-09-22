@@ -12,13 +12,17 @@ from hashlib import sha256
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.db.session_factory import session_factory
 from core.plugin.impl.plugin import PluginInstaller
-from models.account import TenantPluginAutoUpgradeStrategy
+from models.account import (
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategy,
+    TenantPluginAutoUpgradeStrategySetting,
+)
 
 logger = logging.getLogger(__name__)
 
-PluginCategory = TenantPluginAutoUpgradeStrategy.PluginCategory
+PluginCategory = TenantPluginAutoUpgradeCategory
 PLUGIN_CATEGORIES = tuple(PluginCategory)
 SECONDS_PER_DAY = 24 * 60 * 60
 AUTO_UPGRADE_CHECK_SLOT_SECONDS = 15 * 60
@@ -35,10 +39,10 @@ class PluginAutoUpgradeService:
     @staticmethod
     def default_strategy_setting_for_category(
         category: PluginCategory,
-    ) -> TenantPluginAutoUpgradeStrategy.StrategySetting:
+    ) -> TenantPluginAutoUpgradeStrategySetting:
         if category == PluginCategory.MODEL:
-            return TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST
-        return TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY
+            return TenantPluginAutoUpgradeStrategySetting.LATEST
+        return TenantPluginAutoUpgradeStrategySetting.FIX_ONLY
 
     @staticmethod
     def default_upgrade_time_of_day(tenant_id: str) -> int:
@@ -102,9 +106,9 @@ class PluginAutoUpgradeService:
     @staticmethod
     def _has_default_strategy(strategy: TenantPluginAutoUpgradeStrategy) -> bool:
         return (
-            strategy.strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY
+            strategy.strategy_setting == TenantPluginAutoUpgradeStrategySetting.FIX_ONLY
             and strategy.upgrade_time_of_day == 0
-            and strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
+            and strategy.upgrade_mode == TenantPluginAutoUpgradeMode.EXCLUDE
             and not strategy.exclude_plugins
             and not strategy.include_plugins
         )
@@ -114,7 +118,7 @@ class PluginAutoUpgradeService:
         source_strategy: TenantPluginAutoUpgradeStrategy,
         category: PluginCategory,
         source_has_default_strategy: bool,
-    ) -> TenantPluginAutoUpgradeStrategy.StrategySetting:
+    ) -> TenantPluginAutoUpgradeStrategySetting:
         # Only pure legacy defaults adopt the new model=latest default. User-edited
         # strategies keep their original setting across all categories.
         if source_has_default_strategy:
@@ -136,6 +140,8 @@ class PluginAutoUpgradeService:
     @staticmethod
     def backfill_strategy_categories(
         tenant_id: str,
+        *,
+        session: Session,
     ) -> PluginAutoUpgradeBackfillResult:
         """Create missing category strategies and split include/exclude lists when needed.
 
@@ -143,89 +149,85 @@ class PluginAutoUpgradeService:
         New category rows copy it first, then plugin lists are narrowed by real
         plugin category when the source strategy contains include/exclude IDs.
         """
-        with session_factory.create_session() as session, session.begin():
-            strategies = list(
-                session.scalars(
-                    select(TenantPluginAutoUpgradeStrategy).where(
-                        TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id
-                    )
-                ).all()
+        strategies = list(
+            session.scalars(
+                select(TenantPluginAutoUpgradeStrategy).where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
+            ).all()
+        )
+        if not strategies:
+            return PluginAutoUpgradeBackfillResult(created_count=0, normalized=False)
+
+        # Schema migration marks the historical workspace-level row as tool.
+        source_strategy = next(
+            (strategy for strategy in strategies if strategy.category == PluginCategory.TOOL),
+            strategies[0],
+        )
+        source_has_default_strategy = PluginAutoUpgradeService._has_default_strategy(source_strategy)
+        strategies_by_category = {strategy.category: strategy for strategy in strategies}
+        exclude_plugins = source_strategy.exclude_plugins
+        include_plugins = source_strategy.include_plugins
+        should_split_plugin_lists = bool(exclude_plugins or include_plugins)
+        # Query daemon only for tenants that actually customized plugin lists.
+        plugin_categories = (
+            PluginAutoUpgradeService._get_installed_plugin_categories(tenant_id) if should_split_plugin_lists else {}
+        )
+        if should_split_plugin_lists:
+            PluginAutoUpgradeService._log_unknown_plugin_ids(
+                tenant_id,
+                "exclude_plugins",
+                exclude_plugins,
+                plugin_categories,
             )
-            if not strategies:
-                return PluginAutoUpgradeBackfillResult(created_count=0, normalized=False)
-
-            # Schema migration marks the historical workspace-level row as tool.
-            source_strategy = next(
-                (strategy for strategy in strategies if strategy.category == PluginCategory.TOOL),
-                strategies[0],
+            PluginAutoUpgradeService._log_unknown_plugin_ids(
+                tenant_id,
+                "include_plugins",
+                include_plugins,
+                plugin_categories,
             )
-            source_has_default_strategy = PluginAutoUpgradeService._has_default_strategy(source_strategy)
-            strategies_by_category = {strategy.category: strategy for strategy in strategies}
-            exclude_plugins = source_strategy.exclude_plugins
-            include_plugins = source_strategy.include_plugins
-            should_split_plugin_lists = bool(exclude_plugins or include_plugins)
-            # Query daemon only for tenants that actually customized plugin lists.
-            plugin_categories = (
-                PluginAutoUpgradeService._get_installed_plugin_categories(tenant_id)
-                if should_split_plugin_lists
-                else {}
+
+        created_count = 0
+        for category in PLUGIN_CATEGORIES:
+            strategy = strategies_by_category.get(category)
+            if strategy is None:
+                # Start from the legacy workspace-level behavior before narrowing lists.
+                strategy = TenantPluginAutoUpgradeStrategy(
+                    tenant_id=tenant_id,
+                    category=category,
+                    strategy_setting=PluginAutoUpgradeService._strategy_setting_for_category(
+                        source_strategy, category, source_has_default_strategy
+                    ),
+                    upgrade_time_of_day=PluginAutoUpgradeService._upgrade_time_of_day_for_category(
+                        tenant_id, source_strategy, source_has_default_strategy
+                    ),
+                    upgrade_mode=source_strategy.upgrade_mode,
+                    exclude_plugins=source_strategy.exclude_plugins.copy(),
+                    include_plugins=source_strategy.include_plugins.copy(),
+                )
+                session.add(strategy)
+                created_count += 1
+            elif source_has_default_strategy:
+                strategy.strategy_setting = PluginAutoUpgradeService.default_strategy_setting_for_category(
+                    strategy.category
+                )
+                strategy.upgrade_time_of_day = PluginAutoUpgradeService.default_upgrade_time_of_day(tenant_id)
+
+            if not should_split_plugin_lists:
+                continue
+
+            # Narrow include/exclude lists to the current category after all rows exist.
+            strategy.exclude_plugins = PluginAutoUpgradeService._filter_plugin_ids_for_category(
+                exclude_plugins,
+                strategy.category,
+                plugin_categories,
             )
-            if should_split_plugin_lists:
-                PluginAutoUpgradeService._log_unknown_plugin_ids(
-                    tenant_id,
-                    "exclude_plugins",
-                    exclude_plugins,
-                    plugin_categories,
-                )
-                PluginAutoUpgradeService._log_unknown_plugin_ids(
-                    tenant_id,
-                    "include_plugins",
-                    include_plugins,
-                    plugin_categories,
-                )
+            strategy.include_plugins = PluginAutoUpgradeService._filter_plugin_ids_for_category(
+                include_plugins,
+                strategy.category,
+                plugin_categories,
+            )
 
-            created_count = 0
-            for category in PLUGIN_CATEGORIES:
-                strategy = strategies_by_category.get(category)
-                if strategy is None:
-                    # Start from the legacy workspace-level behavior before narrowing lists.
-                    strategy = TenantPluginAutoUpgradeStrategy(
-                        tenant_id=tenant_id,
-                        category=category,
-                        strategy_setting=PluginAutoUpgradeService._strategy_setting_for_category(
-                            source_strategy, category, source_has_default_strategy
-                        ),
-                        upgrade_time_of_day=PluginAutoUpgradeService._upgrade_time_of_day_for_category(
-                            tenant_id, source_strategy, source_has_default_strategy
-                        ),
-                        upgrade_mode=source_strategy.upgrade_mode,
-                        exclude_plugins=source_strategy.exclude_plugins.copy(),
-                        include_plugins=source_strategy.include_plugins.copy(),
-                    )
-                    session.add(strategy)
-                    created_count += 1
-                elif source_has_default_strategy:
-                    strategy.strategy_setting = PluginAutoUpgradeService.default_strategy_setting_for_category(
-                        strategy.category
-                    )
-                    strategy.upgrade_time_of_day = PluginAutoUpgradeService.default_upgrade_time_of_day(tenant_id)
-
-                if not should_split_plugin_lists:
-                    continue
-
-                # Narrow include/exclude lists to the current category after all rows exist.
-                strategy.exclude_plugins = PluginAutoUpgradeService._filter_plugin_ids_for_category(
-                    exclude_plugins,
-                    strategy.category,
-                    plugin_categories,
-                )
-                strategy.include_plugins = PluginAutoUpgradeService._filter_plugin_ids_for_category(
-                    include_plugins,
-                    strategy.category,
-                    plugin_categories,
-                )
-
-            return PluginAutoUpgradeBackfillResult(created_count=created_count, normalized=should_split_plugin_lists)
+        session.commit()
+        return PluginAutoUpgradeBackfillResult(created_count=created_count, normalized=should_split_plugin_lists)
 
     @staticmethod
     def _get_strategy(
@@ -246,29 +248,27 @@ class PluginAutoUpgradeService:
     def get_strategy(
         tenant_id: str,
         category: PluginCategory,
+        *,
+        session: Session,
     ) -> TenantPluginAutoUpgradeStrategy | None:
-        with session_factory.create_session() as session:
-            return PluginAutoUpgradeService._get_strategy(session, tenant_id, category)
+        return PluginAutoUpgradeService._get_strategy(session, tenant_id, category)
 
     @staticmethod
-    def get_strategies(tenant_id: str) -> list[TenantPluginAutoUpgradeStrategy]:
-        with session_factory.create_session() as session:
-            return list(
-                session.scalars(
-                    select(TenantPluginAutoUpgradeStrategy).where(
-                        TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id
-                    )
-                ).all()
-            )
+    def get_strategies(tenant_id: str, *, session: Session) -> list[TenantPluginAutoUpgradeStrategy]:
+        return list(
+            session.scalars(
+                select(TenantPluginAutoUpgradeStrategy).where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
+            ).all()
+        )
 
     @staticmethod
     def _change_strategy(
         session: Session,
         tenant_id: str,
         category: PluginCategory,
-        strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting,
+        strategy_setting: TenantPluginAutoUpgradeStrategySetting,
         upgrade_time_of_day: int,
-        upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode,
+        upgrade_mode: TenantPluginAutoUpgradeMode,
         exclude_plugins: list[str],
         include_plugins: list[str],
     ) -> None:
@@ -294,26 +294,28 @@ class PluginAutoUpgradeService:
     @staticmethod
     def change_strategy(
         tenant_id: str,
-        strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting,
+        strategy_setting: TenantPluginAutoUpgradeStrategySetting,
         upgrade_time_of_day: int,
-        upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode,
+        upgrade_mode: TenantPluginAutoUpgradeMode,
         exclude_plugins: list[str],
         include_plugins: list[str],
         category: PluginCategory,
+        *,
+        session: Session,
     ) -> bool:
-        with session_factory.create_session() as session, session.begin():
-            PluginAutoUpgradeService._change_strategy(
-                session,
-                tenant_id=tenant_id,
-                category=category,
-                strategy_setting=strategy_setting,
-                upgrade_time_of_day=upgrade_time_of_day,
-                upgrade_mode=upgrade_mode,
-                exclude_plugins=exclude_plugins,
-                include_plugins=include_plugins,
-            )
+        PluginAutoUpgradeService._change_strategy(
+            session,
+            tenant_id=tenant_id,
+            category=category,
+            strategy_setting=strategy_setting,
+            upgrade_time_of_day=upgrade_time_of_day,
+            upgrade_mode=upgrade_mode,
+            exclude_plugins=exclude_plugins,
+            include_plugins=include_plugins,
+        )
 
-            return True
+        session.commit()
+        return True
 
     @staticmethod
     def _exclude_plugin(
@@ -329,28 +331,28 @@ class PluginAutoUpgradeService:
                 session,
                 tenant_id,
                 category,
-                TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+                TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
                 0,
-                TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                TenantPluginAutoUpgradeMode.EXCLUDE,
                 [plugin_id],
                 [],
             )
         else:
-            if exist_strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE:
+            if exist_strategy.upgrade_mode == TenantPluginAutoUpgradeMode.EXCLUDE:
                 # In exclude mode, disabling one plugin means adding it to exclude_plugins.
                 if plugin_id not in exist_strategy.exclude_plugins:
                     new_exclude_plugins = exist_strategy.exclude_plugins.copy()
                     new_exclude_plugins.append(plugin_id)
                     exist_strategy.exclude_plugins = new_exclude_plugins
-            elif exist_strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL:
+            elif exist_strategy.upgrade_mode == TenantPluginAutoUpgradeMode.PARTIAL:
                 # In partial mode, disabling one plugin means removing it from include_plugins.
                 if plugin_id in exist_strategy.include_plugins:
                     new_include_plugins = exist_strategy.include_plugins.copy()
                     new_include_plugins.remove(plugin_id)
                     exist_strategy.include_plugins = new_include_plugins
-            elif exist_strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL:
+            elif exist_strategy.upgrade_mode == TenantPluginAutoUpgradeMode.ALL:
                 # In all mode, switch to exclude mode so only this plugin is skipped.
-                exist_strategy.upgrade_mode = TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
+                exist_strategy.upgrade_mode = TenantPluginAutoUpgradeMode.EXCLUDE
                 exist_strategy.exclude_plugins = [plugin_id]
 
     @staticmethod
@@ -358,13 +360,15 @@ class PluginAutoUpgradeService:
         tenant_id: str,
         plugin_id: str,
         category: PluginCategory,
+        *,
+        session: Session,
     ) -> bool:
-        with session_factory.create_session() as session, session.begin():
-            PluginAutoUpgradeService._exclude_plugin(
-                session,
-                tenant_id,
-                category,
-                plugin_id,
-            )
+        PluginAutoUpgradeService._exclude_plugin(
+            session,
+            tenant_id,
+            category,
+            plugin_id,
+        )
 
-            return True
+        session.commit()
+        return True

@@ -6,7 +6,7 @@ import { createHttpClient } from '@/http/client'
 import { getTokenStore } from '@/store/manager'
 import { runWithSpinner } from '@/sys/io/spinner'
 import { realStreams } from '@/sys/io/streams'
-import { hostWithScheme, openAPIBase } from '@/util/host'
+import { activeHostInfo, openAPIBase } from '@/util/host'
 import { runLogout } from './logout.js'
 
 export default class Logout extends DifyCommand {
@@ -14,9 +14,7 @@ export default class Logout extends DifyCommand {
 
   static override effect: CommandEffect = 'write'
 
-  static override examples = [
-    '<%= config.bin %> auth logout',
-  ]
+  static override examples = ['<%= config.bin %> auth logout']
 
   async run(argv: string[]): Promise<void> {
     this.parse(Logout, argv)
@@ -29,16 +27,17 @@ export default class Logout extends DifyCommand {
       let bearer = ''
       try {
         bearer = await getTokenStore(reg.token_storage).read(active.host, active.email)
+      } catch {
+        /* keyring locked — skip remote revocation, local cleanup still runs */
       }
-      catch { /* keyring locked — skip remote revocation, local cleanup still runs */ }
       if (bearer !== '') {
-        http = createHttpClient({ baseURL: openAPIBase(hostWithScheme(active.host, active.scheme)), bearer, retryAttempts: 0 })
+        const { host, insecure } = activeHostInfo(active)
+        http = createHttpClient({ baseURL: openAPIBase(host), bearer, retryAttempts: 0, insecure })
       }
     }
 
-    await runWithSpinner(
-      { io, label: 'Signing out', enabled: true, style: 'dify-dim' },
-      () => runLogout({ io, reg, http }),
+    await runWithSpinner({ io, label: 'Signing out', enabled: true, style: 'dify-dim' }, () =>
+      runLogout({ io, reg, http }),
     )
   }
 }

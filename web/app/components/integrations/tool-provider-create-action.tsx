@@ -20,8 +20,12 @@ const ToolProviderCreateAction = ({
   onCustomToolCreated,
   onMCPProviderCreated,
 }: ToolProviderCreateActionProps) => {
-  if (activeTab === 'mcp' && hasCategoryCollections)
-    return <NewMCPButton handleCreate={(provider: ToolWithProvider) => onMCPProviderCreated(provider.id)} />
+  if (activeTab === 'mcp')
+    return (
+      <NewMCPButton
+        handleCreate={(provider: ToolWithProvider) => onMCPProviderCreated(provider.id)}
+      />
+    )
 
   if (activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
     return <NewCustomToolButton onRefreshData={onCustomToolCreated} />

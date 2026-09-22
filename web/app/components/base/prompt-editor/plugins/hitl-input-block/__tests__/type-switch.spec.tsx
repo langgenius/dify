@@ -11,11 +11,11 @@ describe('TypeSwitch', () => {
     const user = userEvent.setup()
     const onIsVariableChange = vi.fn()
 
-    render(
-      <TypeSwitch isVariable={false} onIsVariableChange={onIsVariableChange} />,
-    )
+    render(<TypeSwitch isVariable={false} onIsVariableChange={onIsVariableChange} />)
 
-    const trigger = screen.getByRole('button', { name: 'workflow.nodes.humanInput.insertInputField.useVarInstead' })
+    const trigger = screen.getByRole('button', {
+      name: 'workflow.nodes.humanInput.insertInputField.useVarInstead',
+    })
     await user.click(trigger)
 
     expect(onIsVariableChange).toHaveBeenCalledWith(true)
@@ -25,11 +25,11 @@ describe('TypeSwitch', () => {
     const user = userEvent.setup()
     const onIsVariableChange = vi.fn()
 
-    render(
-      <TypeSwitch isVariable onIsVariableChange={onIsVariableChange} />,
-    )
+    render(<TypeSwitch isVariable onIsVariableChange={onIsVariableChange} />)
 
-    const trigger = screen.getByRole('button', { name: 'workflow.nodes.humanInput.insertInputField.useConstantInstead' })
+    const trigger = screen.getByRole('button', {
+      name: 'workflow.nodes.humanInput.insertInputField.useConstantInstead',
+    })
     await user.click(trigger)
 
     expect(onIsVariableChange).toHaveBeenCalledWith(false)

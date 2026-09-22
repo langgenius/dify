@@ -7,21 +7,26 @@ const InfoPanel = () => {
   const docLink = useDocLink()
 
   return (
-    <div className="flex w-[360px] flex-col items-start pt-[108px] pr-8 pb-2">
-      <div className="flex w-full min-w-[240px] flex-col items-start gap-3 self-stretch rounded-xl bg-background-section p-6">
+    <div className="flex w-90 flex-col items-start pt-27 pr-8 pb-2">
+      <div className="flex w-full min-w-60 flex-col items-start gap-3 self-stretch rounded-xl bg-background-section p-6">
         <div className="flex h-10 w-10 grow items-center justify-center gap-2 self-stretch rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg p-1">
           <RiBookOpenLine className="size-5 text-text-accent" />
         </div>
         <p className="flex flex-col items-start gap-2 self-stretch">
           <span className="self-stretch system-xl-semibold text-text-secondary">
-            {t('connectDatasetIntro.title', { ns: 'dataset' })}
+            {t(($) => $['connectDatasetIntro.title'], { ns: 'dataset' })}
           </span>
           <span className="system-sm-regular text-text-tertiary">
-            {t('connectDatasetIntro.content.front', { ns: 'dataset' })}
-            <a className="ml-1 system-sm-regular text-text-accent" href={docLink('/use-dify/knowledge/external-knowledge-api')} target="_blank" rel="noopener noreferrer">
-              {t('connectDatasetIntro.content.link', { ns: 'dataset' })}
+            {t(($) => $['connectDatasetIntro.content.front'], { ns: 'dataset' })}
+            <a
+              className="ml-1 system-sm-regular text-text-accent"
+              href={docLink('/use-dify/knowledge/external-knowledge-api')}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t(($) => $['connectDatasetIntro.content.link'], { ns: 'dataset' })}
             </a>
-            {t('connectDatasetIntro.content.end', { ns: 'dataset' })}
+            {t(($) => $['connectDatasetIntro.content.end'], { ns: 'dataset' })}
           </span>
           <a
             className="self-stretch system-sm-regular text-text-accent"
@@ -29,7 +34,7 @@ const InfoPanel = () => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            {t('connectDatasetIntro.learnMore', { ns: 'dataset' })}
+            {t(($) => $['connectDatasetIntro.learnMore'], { ns: 'dataset' })}
           </a>
         </p>
       </div>

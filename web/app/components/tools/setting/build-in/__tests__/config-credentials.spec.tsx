@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ConfigCredential from '../config-credentials'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -15,25 +15,32 @@ vi.mock('@/service/tools', () => ({
 }))
 
 vi.mock('../../../utils/to-form-schema', () => ({
-  toolCredentialToFormSchemas: (schemas: unknown[]) => (schemas as Record<string, unknown>[]).map(s => ({
-    ...s,
-    variable: s.name,
-    show_on: [],
-  })),
+  toolCredentialToFormSchemas: (schemas: unknown[]) =>
+    (schemas as Record<string, unknown>[]).map((s) => ({
+      ...s,
+      variable: s.name,
+      show_on: [],
+    })),
   addDefaultValue: (value: Record<string, unknown>, _schemas: unknown[]) => ({ ...value }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: { notify: vi.fn() },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  default: ({ value, onChange }: { value: Record<string, string>, onChange: (v: Record<string, string>) => void }) => (
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: Record<string, string>
+    onChange: (v: Record<string, string>) => void
+  }) => (
     <div data-testid="form">
       <input
         data-testid="form-input"
         value={value.api_key || ''}
-        onChange={e => onChange({ ...value, api_key: e.target.value })}
+        onChange={(e) => onChange({ ...value, api_key: e.target.value })}
       />
     </div>
   ),
@@ -79,7 +86,7 @@ describe('ConfigCredential', () => {
         onSaved={mockOnSaved}
       />,
     )
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByTestId('form')).toBeInTheDocument()

@@ -26,6 +26,7 @@ DifyExecutionContextAgentMode: TypeAlias = Literal[
     "babysit",
     "fasten",
 ]
+DifyExecutionContextAgentConfigVersionKind: TypeAlias = Literal["snapshot", "draft", "build_draft"]
 DifyExecutionContextUserFrom: TypeAlias = Literal["account", "end-user"]
 DifyExecutionContextInvokeFrom: TypeAlias = Literal[
     "service-api",
@@ -53,6 +54,7 @@ class DifyExecutionContextLayerConfig(LayerConfig):
     conversation_id: str | None = None
     agent_id: str | None = None
     agent_config_version_id: str | None = None
+    agent_config_version_kind: DifyExecutionContextAgentConfigVersionKind | None = None
     agent_mode: DifyExecutionContextAgentMode
     invoke_from: DifyExecutionContextInvokeFrom
     trace_id: str | None = None
@@ -62,6 +64,7 @@ class DifyExecutionContextLayerConfig(LayerConfig):
 
 __all__ = [
     "DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID",
+    "DifyExecutionContextAgentConfigVersionKind",
     "DifyExecutionContextAgentMode",
     "DifyExecutionContextInvokeFrom",
     "DifyExecutionContextUserFrom",

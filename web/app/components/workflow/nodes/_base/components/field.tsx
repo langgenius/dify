@@ -1,12 +1,10 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
-import { Infotip } from '@/app/components/base/infotip'
+import { useState } from 'react'
 
 type Props = Readonly<{
   className?: string
@@ -22,11 +20,9 @@ type Props = Readonly<{
 }>
 
 const getTextFromNode = (node: ReactNode): string | undefined => {
-  if (typeof node === 'string' || typeof node === 'number')
-    return `${node}`
+  if (typeof node === 'string' || typeof node === 'number') return `${node}`
 
-  if (Array.isArray(node))
-    return node.map(getTextFromNode).filter(Boolean).join(' ')
+  if (Array.isArray(node)) return node.map(getTextFromNode).filter(Boolean).join(' ')
 
   if (React.isValidElement<{ children?: ReactNode }>(node))
     return getTextFromNode(node.props.children)
@@ -44,40 +40,51 @@ const Field: FC<Props> = ({
   required,
   warningDot,
 }) => {
-  const [fold, {
-    toggle: toggleFold,
-  }] = useBoolean(true)
-  const tooltipLabel = tooltip ? getTextFromNode(tooltip) || getTextFromNode(title) || 'Help' : undefined
+  const [fold, setFold] = useState(true)
+  const tooltipLabel = tooltip
+    ? getTextFromNode(tooltip) || getTextFromNode(title) || 'Help'
+    : undefined
 
   return (
     <div className={cn(className, inline && 'flex w-full items-center justify-between')}>
       <div
-        onClick={() => supportFold && toggleFold()}
+        onClick={() => supportFold && setFold((isFolded) => !isFolded)}
         className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}
       >
         <div className="flex h-6 items-center">
-          <div className={cn('relative', isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
-            {warningDot && (
-              <span className="absolute top-1/2 left-[-9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+          <div
+            className={cn(
+              'relative',
+              isSubTitle
+                ? 'system-xs-medium-uppercase text-text-tertiary'
+                : 'system-sm-semibold-uppercase text-text-secondary',
             )}
-            {title}
-            {' '}
-            {required && <span className="text-text-destructive">*</span>}
+          >
+            {warningDot && (
+              <span className="absolute top-1/2 -left-2.25 size-1.25 -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+            )}
+            {title} {required && <span className="text-text-destructive">*</span>}
           </div>
           {!!tooltip && !!tooltipLabel && (
-            <Infotip aria-label={tooltipLabel} className="ml-1">
-              {tooltip}
+            <Infotip>
+              <InfotipTrigger aria-label={tooltipLabel} className="ml-1" />
+              <InfotipContent aria-label={tooltipLabel}>{tooltip}</InfotipContent>
             </Infotip>
           )}
         </div>
         <div className="flex">
           {!!operations && <div>{operations}</div>}
           {supportFold && (
-            <RiArrowDownSLine className="size-4 cursor-pointer text-text-tertiary transition-transform" style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
+            <RiArrowDownSLine
+              className="size-4 cursor-pointer text-text-tertiary transition-transform"
+              style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+            />
           )}
         </div>
       </div>
-      {!!(children && (!supportFold || (supportFold && !fold))) && <div className={cn(!inline && 'mt-1')}>{children}</div>}
+      {!!(children && (!supportFold || (supportFold && !fold))) && (
+        <div className={cn(!inline && 'mt-1')}>{children}</div>
+      )}
     </div>
   )
 }

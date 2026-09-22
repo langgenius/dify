@@ -1,7 +1,7 @@
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { EventEmitterValue } from '@/context/event-emitter'
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from '../update-dsl-modal'
@@ -10,7 +10,9 @@ class MockFileReader {
   onload: ((this: FileReader, event: ProgressEvent<FileReader>) => void) | null = null
 
   readAsText(_file: Blob) {
-    const event = { target: { result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: tool\n' } } as unknown as ProgressEvent<FileReader>
+    const event = {
+      target: { result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: tool\n' },
+    } as unknown as ProgressEvent<FileReader>
     this.onload?.call(this as unknown as FileReader, event)
   }
 }
@@ -19,7 +21,7 @@ vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 const mockEmit = vi.fn()
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     info: vi.fn(),
@@ -30,9 +32,17 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-vi.mock('@/service/apps', () => ({
-  importDSL: (payload: unknown) => mockImportDSL(payload),
-  importDSLConfirm: (payload: unknown) => mockImportDSLConfirm(payload),
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: {
+      imports: {
+        post: ({ body }: { body: unknown }) => mockImportDSL(body),
+        byImportId: {
+          confirm: { post: ({ params }: { params: unknown }) => mockImportDSLConfirm(params) },
+        },
+      },
+    },
+  },
 }))
 
 const mockFetchWorkflowDraft = vi.fn()
@@ -54,20 +64,21 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { id: string, mode: string } }) => unknown) => selector({
-    appDetail: {
-      id: 'app-1',
-      mode: 'chat',
-    },
-  }),
+  useStore: (selector: (state: { appDetail: { id: string; mode: string } }) => unknown) =>
+    selector({
+      appDetail: {
+        id: 'app-1',
+        mode: 'chat',
+      },
+    }),
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  default: ({ updateFile }: { updateFile: (file?: File) => void }) => (
+  Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
     <input
       data-testid="dsl-file-input"
       type="file"
-      onChange={event => updateFile(event.target.files?.[0])}
+      onChange={(event) => updateFile(event.target.files?.[0])}
     />
   ),
 }))
@@ -112,10 +123,22 @@ describe('UpdateDSLModal', () => {
     )
   }
 
+  it('uploads an ifpkg without decoding it as YAML when overwriting a workflow', async () => {
+    mockImportDSL.mockResolvedValue({ status: DSLImportStatus.COMPLETED, app_id: 'app-1' })
+    render(<UpdateDSLModal {...defaultProps} />)
+    const file = new File([new Uint8Array([0x50, 0x4b, 0xff])], 'workflow.IFPKG')
+    fireEvent.change(screen.getByTestId('dsl-file-input'), { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file, app_id: 'app-1' }))
+    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalled())
+  })
+
   it('should keep import disabled until a file is selected', () => {
     renderModal()
 
-    expect(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }),
+    ).toBeDisabled()
   })
 
   it('should call backup handler from the warning area', () => {
@@ -154,18 +177,57 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockImportDSL).toHaveBeenCalledWith(expect.objectContaining({
-        app_id: 'app-1',
-        yaml_content: expect.stringContaining('workflow:'),
-      }))
+      expect(mockImportDSL).toHaveBeenCalledWith(
+        expect.objectContaining({
+          app_id: 'app-1',
+          yaml_content: expect.stringContaining('workflow:'),
+        }),
+      )
     })
 
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'WORKFLOW_DATA_UPDATE',
-    }))
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'WORKFLOW_DATA_UPDATE',
+      }),
+    )
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('should show Agent package warnings returned by a completed import', async () => {
+    mockImportDSL.mockResolvedValue({
+      id: 'import-with-agent-warnings',
+      status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
+      app_id: 'app-1',
+      warnings: [
+        {
+          code: 'agent_file_omitted',
+          path: 'agent_packages.agent_1.omitted_assets',
+          message: "Agent file 'brief.pdf' was not included in the portable package.",
+          details: { kind: 'file', name: 'brief.pdf' },
+        },
+        {
+          code: 'agent_tool_authorization_required',
+          path: 'agent_packages.agent_1.soul.tools.dify_tools.0',
+          message: "Agent tool 'web_search' requires authorization.",
+          details: { tool_name: 'web_search' },
+        },
+      ],
+    })
+
+    renderModal()
+
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => {
+      expect(toast.warning).toHaveBeenCalledWith('workflow.common.importWarning', {
+        description: expect.anything(),
+      })
+    })
   })
 
   it('should show an error notification when import fails', async () => {
@@ -216,6 +278,43 @@ describe('UpdateDSLModal', () => {
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
   })
 
+  it('should show Agent package warnings returned after confirming a pending import', async () => {
+    mockImportDSL.mockResolvedValue({
+      id: 'import-pending-agent',
+      status: DSLImportStatus.PENDING,
+      imported_dsl_version: '0.8.0',
+      current_dsl_version: '0.7.0',
+    })
+    mockImportDSLConfirm.mockResolvedValue({
+      status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
+      app_id: 'app-1',
+      warnings: [
+        {
+          code: 'agent_secret_required',
+          path: 'agent_packages.agent_1.soul.env.secret_refs',
+          message: "Agent secret 'SEARCH_TOKEN' must be configured.",
+          details: { name: 'SEARCH_TOKEN' },
+        },
+      ],
+    })
+
+    renderModal()
+
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    const confirmButton = await screen.findByRole('button', { name: 'app.newApp.Confirm' })
+    fireEvent.click(confirmButton)
+
+    await waitFor(() => {
+      expect(toast.warning).toHaveBeenCalledWith('workflow.common.importWarning', {
+        description: expect.anything(),
+      })
+    })
+  })
+
   it('should open the pending modal after the timeout and allow dismissing it', async () => {
     mockImportDSL.mockResolvedValue({
       id: 'import-5',
@@ -235,9 +334,12 @@ describe('UpdateDSLModal', () => {
       expect(mockImportDSL).toHaveBeenCalled()
     })
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
-    }, { timeout: 1000 })
+    await waitFor(
+      () => {
+        expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
+      },
+      { timeout: 1000 },
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
 
@@ -275,7 +377,11 @@ describe('UpdateDSLModal', () => {
   it('should show an error when the selected file content is invalid for the current app mode', async () => {
     class InvalidDSLFileReader extends MockFileReader {
       override readAsText(_file: Blob) {
-        const event = { target: { result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: answer\n' } } as unknown as ProgressEvent<FileReader>
+        const event = {
+          target: {
+            result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: answer\n',
+          },
+        } as unknown as ProgressEvent<FileReader>
         this.onload?.call(this as unknown as FileReader, event)
       }
     }

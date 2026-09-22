@@ -10,13 +10,13 @@ trustworthy metadata.
 
 from __future__ import annotations
 
-from mimetypes import guess_extension
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 
 from core.db.session_factory import session_factory
+from core.tools.tool_file_manager import resolve_extension
 from core.workflow.file_reference import build_file_reference
 from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 from models.tools import ToolFile
@@ -46,7 +46,7 @@ def reback_tool_file_output(*, tenant_id: str, tool_file_id: str) -> File | None
         return None
 
     mime_type = tool_file.mimetype or ""
-    extension = guess_extension(mime_type) or ".bin"
+    extension = resolve_extension(filename=tool_file.name, mimetype=mime_type)
     return File(
         type=get_file_type_by_mime_type(mime_type),
         transfer_method=FileTransferMethod.TOOL_FILE,

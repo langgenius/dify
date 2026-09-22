@@ -5,7 +5,9 @@ from unittest.mock import MagicMock
 import pytest
 from pytest_mock import MockerFixture
 
+from core.agent.plugin_entities import AgentStrategyParameter
 from core.agent.strategy.plugin import PluginAgentStrategy
+from core.tools.entities.common_entities import I18nObject
 
 # ============================================================
 # Fixtures
@@ -102,6 +104,17 @@ class TestInitializeParameters:
 
         mock_declaration.parameters[0].init_frontend_parameter.assert_called_once_with("value1")
         mock_declaration.parameters[1].init_frontend_parameter.assert_called_once_with(None)
+
+    def test_initialize_parameters_allows_empty_tools_selection(self, strategy: PluginAgentStrategy) -> None:
+        tools_parameter = AgentStrategyParameter(
+            name="tools",
+            label=I18nObject(en_US="Tools"),
+            required=True,
+            type=AgentStrategyParameter.AgentStrategyParameterType.TOOLS_SELECTOR,
+        )
+        strategy.declaration.parameters = [tools_parameter]
+
+        assert strategy.initialize_parameters({"tools": []}) == {"tools": []}
 
     @pytest.mark.parametrize(
         "input_params",

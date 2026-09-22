@@ -1,16 +1,29 @@
 name: Setup Web Environment
 description: Set up Node.js, Vite+, pnpm, and web dependencies
 
+inputs:
+  run-install:
+    description: Install web dependencies after setting up the toolchain
+    default: 'true'
+  cache-save:
+    description: Save the dependency cache after the job completes
+    default: 'true'
+
 runs:
   using: composite
   steps:
-    - name: Setup pnpm
-      uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+    - name: Setup pnpm and Node.js
+      uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
       with:
-        run_install: false
+        install: false
     - name: Setup Vite+
-      uses: voidzero-dev/setup-vp@ca1c46663915d6c1042ae23bd39ab85718bfb0fa # v1.10.0
+      uses: voidzero-dev/setup-vp@9fd26ff49f9b5e6276c2b493da4454ad4527f7f4 # v1.20.0
       with:
-        node-version-file: .nvmrc
+        node-manager: false
+        package-manager: |
+          pnpm: false
+          npm: false
         cache: true
-        run-install: true
+        # Nested composite post actions can evaluate inputs in the outer scope.
+        cache-save: ${{ inputs.cache-save || 'true' }}
+        run-install: ${{ inputs.run-install }}

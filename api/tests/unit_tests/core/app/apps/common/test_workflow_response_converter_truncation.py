@@ -49,10 +49,11 @@ class TestWorkflowResponseConverter:
         """Create a WorkflowResponseConverter for testing."""
 
         mock_entity = self.create_mock_generate_entity()
-        mock_user = Mock(spec=Account)
+        mock_user = Account(
+            name="Test User",
+            email="test@example.com",
+        )
         mock_user.id = "test-user-id"
-        mock_user.name = "Test User"
-        mock_user.email = "test@example.com"
 
         system_variables = build_system_variables(workflow_id="wf-id", workflow_execution_id="initial-run-id")
         return WorkflowResponseConverter(

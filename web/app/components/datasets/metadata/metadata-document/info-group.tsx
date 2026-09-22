@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { Infotip } from '@/app/components/base/infotip'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useRouter } from '@/next/navigation'
 import InputCombined from '../edit-metadata-batch/input-combined'
@@ -61,10 +61,20 @@ const InfoGroup: FC<Props> = ({
       {!noHeader && (
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1">
-            <div className={cn('text-text-secondary', uppercaseTitle ? 'system-xs-semibold-uppercase' : 'system-md-semibold')}>{title}</div>
+            <div
+              className={cn(
+                'text-text-secondary',
+                uppercaseTitle ? 'system-xs-semibold-uppercase' : 'system-md-semibold',
+              )}
+            >
+              {title}
+            </div>
             {titleTooltip && (
-              <Infotip aria-label={titleTooltip} popupClassName="max-w-[240px]">
-                {titleTooltip}
+              <Infotip>
+                <InfotipTrigger aria-label={titleTooltip} />
+                <InfotipContent aria-label={titleTooltip} className="max-w-60">
+                  {titleTooltip}
+                </InfotipContent>
               </Infotip>
             )}
           </div>
@@ -77,36 +87,45 @@ const InfoGroup: FC<Props> = ({
           <div>
             <DatasetMetadataPicker
               datasetId={dataSetId}
-              onSelectMetadata={data => onSelect?.(data as MetadataItemWithValue)}
-              onCreateMetadata={data => onAdd?.(data)}
+              onSelectMetadata={(data) => onSelect?.(data as MetadataItemWithValue)}
+              onCreateMetadata={(data) => onAdd?.(data)}
               onOpenMetadataManagement={handleMangeMetadata}
             />
-            {list.length > 0 && <Divider className="my-3" bgStyle="gradient" />}
+            {list.length > 0 && (
+              <Separator decorative className="my-3 h-[0.5px]" variant="gradient" />
+            )}
           </div>
         )}
         {list.map((item, i) => (
-          <Field key={(item.id && item.id !== 'built-in') ? item.id : `${i}`} label={item.name}>
-            {isEdit
-              ? (
-                  <div className="flex items-center space-x-0.5">
-                    <InputCombined
-                      className="h-6"
-                      label={item.name}
-                      type={item.type}
-                      value={item.value}
-                      onChange={value => onChange?.({ ...item, value })}
-                    />
-                    <button
-                      type="button"
-                      aria-label={t('operation.remove', { ns: 'common' })}
-                      className="shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                      onClick={() => onDelete?.(item)}
-                    >
-                      <RiDeleteBinLine className="size-4" aria-hidden="true" />
-                    </button>
-                  </div>
-                )
-              : (<div className="py-1 system-xs-regular text-text-secondary">{(item.value && item.type === DataType.time) ? formatTimestamp((item.value as number), t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : item.value}</div>)}
+          <Field key={item.id && item.id !== 'built-in' ? item.id : `${i}`} label={item.name}>
+            {isEdit ? (
+              <div className="flex items-center space-x-0.5">
+                <InputCombined
+                  className="h-6"
+                  label={item.name}
+                  type={item.type}
+                  value={item.value}
+                  onChange={(value) => onChange?.({ ...item, value })}
+                />
+                <button
+                  type="button"
+                  aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+                  className="shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={() => onDelete?.(item)}
+                >
+                  <RiDeleteBinLine className="size-4" aria-hidden="true" />
+                </button>
+              </div>
+            ) : (
+              <div className="py-1 system-xs-regular text-text-secondary">
+                {item.value && item.type === DataType.time
+                  ? formatTimestamp(
+                      item.value as number,
+                      t(($) => $['metadata.dateTimeFormat'], { ns: 'datasetDocuments' }),
+                    )
+                  : item.value}
+              </div>
+            )}
           </Field>
         ))}
       </div>

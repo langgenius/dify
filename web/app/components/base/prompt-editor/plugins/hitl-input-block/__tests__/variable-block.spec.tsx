@@ -3,15 +3,11 @@ import type { WorkflowNodesMap } from '../../workflow-variable-block/node'
 import type { Var } from '@/app/components/workflow/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import {
-  $getRoot,
-} from 'lexical'
+import userEvent from '@testing-library/user-event'
+import { $getRoot } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import {
-  BlockEnum,
-  VarType,
-} from '@/app/components/workflow/types'
-import { CaptureEditorPlugin } from '../../test-utils'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { CaptureEditorPlugin } from '../../__tests__/test-utils'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../../workflow-variable-block'
 import { HITLInputNode } from '../node'
 import HITLInputVariableBlockComponent from '../variable-block'
@@ -53,13 +49,13 @@ const createSelectorWithTransientPrefix = (prefix: string, suffix: string): stri
 }
 
 const hasErrorIcon = (container: HTMLElement) => {
-  return container.querySelector('svg.text-text-warning') !== null
+  return container.querySelector('.text-text-warning') !== null
 }
 
 const renderVariableBlock = (props: {
   variables: string[]
   workflowNodesMap?: WorkflowNodesMap
-  getVarType?: (payload: { nodeId: string, valueSelector: string[] }) => Type
+  getVarType?: (payload: { nodeId: string; valueSelector: string[] }) => Type
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
@@ -134,7 +130,8 @@ describe('HITLInputVariableBlockComponent', () => {
       })
 
       expect(screen.queryByText('Node One')).not.toBeInTheDocument()
-      expect(hasErrorIcon(container)).toBe(true)
+      await userEvent.setup().hover(container.firstElementChild as HTMLElement)
+      expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeVisible()
 
       await waitFor(() => {
         expect(getEditor()).not.toBeNull()
@@ -162,14 +159,15 @@ describe('HITLInputVariableBlockComponent', () => {
   })
 
   describe('Validation branches', () => {
-    it('should show invalid state for env variable when environment list does not contain selector', () => {
+    it('should show invalid state for env variable when environment list does not contain selector', async () => {
       const { container } = renderVariableBlock({
         variables: ['env', 'api_key'],
         workflowNodesMap: {},
         environmentVariables: [],
       })
 
-      expect(hasErrorIcon(container)).toBe(true)
+      await userEvent.setup().hover(container.firstElementChild as HTMLElement)
+      expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeVisible()
     })
 
     it('should keep conversation variable valid when selector exists in conversation variables', () => {
@@ -282,14 +280,15 @@ describe('HITLInputVariableBlockComponent', () => {
       expect(hasErrorIcon(container)).toBe(false)
     })
 
-    it('should format system variable names with sys. prefix correctly', () => {
+    it('should format system variable names with sys. prefix correctly', async () => {
       const { container } = renderVariableBlock({
         variables: ['sys', 'query'],
         workflowNodesMap: {},
       })
       // 'query' exception variable is valid sys variable
       expect(screen.getByText('query')).toBeInTheDocument()
-      expect(hasErrorIcon(container)).toBe(true)
+      await userEvent.setup().hover(container.firstElementChild as HTMLElement)
+      expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeVisible()
     })
 
     it('should apply exception styling for recognized exception variables', () => {

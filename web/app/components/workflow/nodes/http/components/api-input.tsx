@@ -29,21 +29,16 @@ type Props = Readonly<{
   onUrlChange: (url: string) => void
 }>
 
-const ApiInput: FC<Props> = ({
-  nodeId,
-  readonly,
-  method,
-  onMethodChange,
-  url,
-  onUrlChange,
-}) => {
+const ApiInput: FC<Props> = ({ nodeId, readonly, method, onMethodChange, url, onUrlChange }) => {
   const { t } = useTranslation()
 
   const [isFocus, setIsFocus] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+
+      return textVariableTypes.includes(varPayload.type)
     },
   })
 
@@ -53,12 +48,19 @@ const ApiInput: FC<Props> = ({
         value={method}
         onChange={onMethodChange}
         options={MethodOptions}
-        trigger={(
-          <div className={cn(readonly && 'cursor-pointer', 'flex h-8 shrink-0 items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-2.5')}>
-            <div className="w-12 pl-0.5 text-xs leading-[18px] font-medium text-text-primary uppercase">{method}</div>
+        trigger={
+          <div
+            className={cn(
+              readonly && 'cursor-pointer',
+              'flex h-8 shrink-0 items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-2.5',
+            )}
+          >
+            <div className="w-12 pl-0.5 text-xs leading-4.5 font-medium text-text-primary uppercase">
+              {method}
+            </div>
             {!readonly && <RiArrowDownSLine className="ml-1 size-3.5 text-text-secondary" />}
           </div>
-        )}
+        }
         popupClassName="top-[34px] w-[108px]"
         showChecked
         readonly={readonly}
@@ -66,14 +68,19 @@ const ApiInput: FC<Props> = ({
 
       <Input
         instanceId="http-api-url"
-        className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
+        className={cn(
+          isFocus
+            ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
+            : 'border-components-input-border-hover bg-components-input-bg-normal',
+          'w-0 grow rounded-lg border px-3 py-1.5',
+        )}
         value={url}
         onChange={onUrlChange}
         readOnly={readonly}
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
-        placeholder={!readonly ? t('nodes.http.apiPlaceholder', { ns: 'workflow' })! : ''}
+        placeholder={!readonly ? t(($) => $['nodes.http.apiPlaceholder'], { ns: 'workflow' })! : ''}
         placeholderClassName="leading-[21px]!"
       />
     </div>

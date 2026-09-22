@@ -41,8 +41,8 @@ from typing import Protocol, TypedDict
 
 from sqlalchemy.orm import Session
 
-from core.repositories.factory import WorkflowExecutionRepository
-from graphon.entities.pause_reason import PauseReason
+from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
+from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import WorkflowType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
@@ -81,7 +81,7 @@ class WorkflowRunCleanupRef:
     created_at: datetime
 
 
-class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
+class APIWorkflowRunRepository(Protocol):
     """
     Protocol for service-layer WorkflowRun repository operations.
 
@@ -290,7 +290,10 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         batch_size: int,
         run_types: Sequence[WorkflowType] | None = None,
         tenant_ids: Sequence[str] | None = None,
+        tenant_prefixes: Sequence[str] | None = None,
         workflow_ids: Sequence[str] | None = None,
+        run_shard_index: int | None = None,
+        run_shard_total: int | None = None,
     ) -> Sequence[WorkflowRun]:
         """
         Fetch ended workflow runs in a time window for archival and clean batching.
@@ -298,7 +301,9 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Optional filters:
         - run_types
         - tenant_ids
+        - tenant_prefixes, using the first hexadecimal digit of tenant_id for rollout waves
         - workflow_ids
+        - run_shard_index/run_shard_total, using a deterministic workflow_run_id shard
         """
         ...
 
@@ -494,7 +499,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         workflow_run_id: str,
         state_owner_user_id: str,
         state: str,
-        pause_reasons: Sequence[PauseReason],
+        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
     ) -> WorkflowPauseEntity:
         """
         Create a new workflow pause state.

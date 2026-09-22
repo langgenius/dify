@@ -3,6 +3,7 @@ from datetime import datetime, tzinfo
 from typing import Any, cast, override
 
 import pytz  # type: ignore[import-untyped]
+from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -13,6 +14,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -29,7 +31,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
         time_format = "%Y-%m-%d %H:%M:%S"
 
         timestamp = self.localtime_to_timestamp(localtime, time_format, timezone)  # type: ignore
-        if not timestamp:
+        if timestamp is None:
             yield self.create_text_message(f"Invalid localtime: {localtime}")
             return
 

@@ -1,5 +1,4 @@
-import type { Features } from '../../../types'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type { Features, OnFeaturesChange } from '../../../types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import ConversationOpener from '../index'
@@ -24,7 +23,7 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (
-  props: { disabled?: boolean, onChange?: OnFeaturesChange } = {},
+  props: { disabled?: boolean; onChange?: OnFeaturesChange } = {},
   featureOverrides?: Partial<Features>,
 ) => {
   const features = { ...defaultFeatures, ...featureOverrides }
@@ -68,25 +67,34 @@ describe('ConversationOpener', () => {
   })
 
   it('should show opening statement when enabled and not hovering', () => {
-    renderWithProvider({}, {
-      opening: { enabled: true, opening_statement: 'Welcome to the app!' },
-    })
+    renderWithProvider(
+      {},
+      {
+        opening: { enabled: true, opening_statement: 'Welcome to the app!' },
+      },
+    )
 
     expect(screen.getByText('Welcome to the app!'))!.toBeInTheDocument()
   })
 
   it('should show placeholder when enabled but no opening statement', () => {
-    renderWithProvider({}, {
-      opening: { enabled: true, opening_statement: '' },
-    })
+    renderWithProvider(
+      {},
+      {
+        opening: { enabled: true, opening_statement: '' },
+      },
+    )
 
     expect(screen.getByText(/openingStatement\.placeholder/))!.toBeInTheDocument()
   })
 
   it('should show edit button when hovering over enabled feature', () => {
-    renderWithProvider({}, {
-      opening: { enabled: true, opening_statement: 'Hello' },
-    })
+    renderWithProvider(
+      {},
+      {
+        opening: { enabled: true, opening_statement: 'Hello' },
+      },
+    )
 
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -95,9 +103,12 @@ describe('ConversationOpener', () => {
   })
 
   it('should open modal when edit button is clicked', () => {
-    renderWithProvider({}, {
-      opening: { enabled: true, opening_statement: 'Hello' },
-    })
+    renderWithProvider(
+      {},
+      {
+        opening: { enabled: true, opening_statement: 'Hello' },
+      },
+    )
 
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -107,9 +118,12 @@ describe('ConversationOpener', () => {
   })
 
   it('should not open modal when disabled', () => {
-    renderWithProvider({ disabled: true }, {
-      opening: { enabled: true, opening_statement: 'Hello' },
-    })
+    renderWithProvider(
+      { disabled: true },
+      {
+        opening: { enabled: true, opening_statement: 'Hello' },
+      },
+    )
 
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -119,9 +133,12 @@ describe('ConversationOpener', () => {
   })
 
   it('should pass opening data to modal', () => {
-    renderWithProvider({}, {
-      opening: { enabled: true, opening_statement: 'Hello' },
-    })
+    renderWithProvider(
+      {},
+      {
+        opening: { enabled: true, opening_statement: 'Hello' },
+      },
+    )
 
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -135,9 +152,12 @@ describe('ConversationOpener', () => {
 
   it('should invoke onSaveCallback and update features', () => {
     const onChange = vi.fn()
-    renderWithProvider({ onChange }, {
-      opening: { enabled: true, opening_statement: 'Hello' },
-    })
+    renderWithProvider(
+      { onChange },
+      {
+        opening: { enabled: true, opening_statement: 'Hello' },
+      },
+    )
 
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -153,9 +173,12 @@ describe('ConversationOpener', () => {
 
   it('should invoke onCancelCallback', () => {
     const onChange = vi.fn()
-    renderWithProvider({ onChange }, {
-      opening: { enabled: true, opening_statement: 'Hello' },
-    })
+    renderWithProvider(
+      { onChange },
+      {
+        opening: { enabled: true, opening_statement: 'Hello' },
+      },
+    )
 
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -168,9 +191,12 @@ describe('ConversationOpener', () => {
   })
 
   it('should show info and hide when hovering over enabled feature', () => {
-    renderWithProvider({}, {
-      opening: { enabled: true, opening_statement: 'Welcome!' },
-    })
+    renderWithProvider(
+      {},
+      {
+        opening: { enabled: true, opening_statement: 'Welcome!' },
+      },
+    )
 
     // Before hover, opening statement visible
     // Before hover, opening statement visible
@@ -191,9 +217,12 @@ describe('ConversationOpener', () => {
   })
 
   it('should return early from opener handler when disabled and hovered', () => {
-    renderWithProvider({ disabled: true }, {
-      opening: { enabled: true, opening_statement: 'Hello' },
-    })
+    renderWithProvider(
+      { disabled: true },
+      {
+        opening: { enabled: true, opening_statement: 'Hello' },
+      },
+    )
 
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -203,9 +232,12 @@ describe('ConversationOpener', () => {
   })
 
   it('should run save and cancel callbacks without onChange', () => {
-    renderWithProvider({}, {
-      opening: { enabled: true, opening_statement: 'Hello' },
-    })
+    renderWithProvider(
+      {},
+      {
+        opening: { enabled: true, opening_statement: 'Hello' },
+      },
+    )
 
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)

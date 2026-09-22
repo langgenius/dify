@@ -1,9 +1,10 @@
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from '../components/tag-combobox-item'
-import type { Tag, TagType } from '@/contract/console/tags'
-import { Combobox } from '@langgenius/dify-ui/combobox'
-import { render, screen } from '@testing-library/react'
+import { Combobox, createComboboxItems } from '@langgenius/dify-ui/combobox'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMemo, useState } from 'react'
+import { render } from '@/test/console/render'
 import { isCreateTagOption } from '../components/tag-combobox-item'
 import { TagSearchContent } from '../components/tag-search-content'
 
@@ -15,11 +16,12 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
 
 const i18n = {
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
@@ -30,68 +32,86 @@ const i18n = {
 }
 
 const appTags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 5 },
-  { id: 'tag-3', name: 'API', type: 'app', binding_count: 1 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
+  { id: 'tag-3', name: 'API', type: 'app', binding_count: '' },
 ]
 
-const knowledgeTag: Tag = { id: 'tag-k1', name: 'KnowledgeDB', type: 'knowledge', binding_count: 2 }
+const knowledgeTag: Tag = {
+  id: 'tag-k1',
+  name: 'KnowledgeDB',
+  type: 'knowledge',
+  binding_count: '',
+}
 
 type PanelHarnessProps = {
   type?: TagType
   value?: Tag[]
   tagList?: Tag[]
+  canBindOrUnbindTags?: boolean
   onOpenTagManagement?: () => void
 }
 
-const tagToString = (tag: TagComboboxItem) => tag.name
-const isSameTag = (item: TagComboboxItem, value: TagComboboxItem) => item.id === value.id
 const tagFilter = (tag: TagComboboxItem, query: string) => tag.name.includes(query)
 
 const PanelHarness = ({
   type = 'app',
   value = [appTags[0]!],
   tagList = [...appTags, knowledgeTag],
+  canBindOrUnbindTags,
   onOpenTagManagement,
 }: PanelHarnessProps) => {
-  const [selectedTags, setSelectedTags] = useState<Tag[]>(value)
+  const [selectedTagIds, setSelectedTagIds] = useState(() => value.map((tag) => tag.id))
   const [inputValue, setInputValue] = useState('')
   const items = useMemo<TagComboboxItem[]>(() => {
-    const tags = tagList.filter(tag => tag.type === type)
+    const tags = tagList.filter((tag) => tag.type === type)
 
-    if (!inputValue || tags.some(tag => tag.name === inputValue))
-      return tags
+    if (!inputValue || tags.some((tag) => tag.name === inputValue)) return tags
 
-    return [{
-      id: `__create_tag__:${inputValue}`,
-      name: inputValue,
-      type,
-      binding_count: 0,
-      isCreateOption: true,
-    }, ...tags]
+    return [
+      {
+        id: `__create_tag__:${inputValue}`,
+        name: inputValue,
+        type,
+        binding_count: '',
+        isCreateOption: true,
+      },
+      ...tags,
+    ]
   }, [inputValue, tagList, type])
+  const itemById = useMemo(() => new Map(items.map((tag) => [tag.id, tag])), [items])
+  const comboboxItems = useMemo(
+    () =>
+      createComboboxItems(items, {
+        getValue: (tag) => tag.id,
+        getLabel: (tag) => tag.name,
+      }),
+    [items],
+  )
 
   return (
-    <Combobox
-      items={items}
+    <Combobox<string, true, TagComboboxItem>
+      items={comboboxItems}
       multiple
-      value={selectedTags}
-      onValueChange={(nextTags) => {
-        onValueChangeSpy(nextTags)
-        if (nextTags.some(isCreateTagOption))
-          return
-        setSelectedTags(nextTags)
+      value={selectedTagIds}
+      onValueChange={(nextTagIds) => {
+        onValueChangeSpy(nextTagIds)
+        const hasCreateOption = nextTagIds.some((tagId) => {
+          const tag = itemById.get(tagId)
+          return tag ? isCreateTagOption(tag) : false
+        })
+        if (hasCreateOption) return
+        setSelectedTagIds(nextTagIds)
       }}
       inputValue={inputValue}
       onInputValueChange={setInputValue}
       filter={tagFilter}
-      itemToStringLabel={tagToString}
-      isItemEqualToValue={isSameTag}
     >
       <TagSearchContent
         type={type}
         inputValue={inputValue}
         onInputValueChange={setInputValue}
+        canBindOrUnbindTags={canBindOrUnbindTags}
         onOpenTagManagement={onOpenTagManagement}
       />
     </Combobox>
@@ -133,11 +153,18 @@ describe('TagSearchContent', () => {
     expect(input).toHaveValue('Back')
     vi.clearAllMocks()
 
-    await user.click(screen.getByRole('button', { name: i18n.operationClear }))
+    const clearButton = screen.getByRole('button', { name: i18n.operationClear })
+    await user.pointer({ keys: '[MouseLeft>]', target: clearButton })
+    expect(input).toHaveFocus()
+    await user.pointer({ keys: '[/MouseLeft]', target: clearButton })
 
     expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
     expect(onValueChangeSpy).not.toHaveBeenCalled()
-    expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
   it('shows a create option when the query is not an existing tag name', async () => {
@@ -165,10 +192,10 @@ describe('TagSearchContent', () => {
     render(<PanelHarness />)
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ id: 'tag-2' })]))
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining(['tag-2']))
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'tag-1' })])
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(['tag-1'])
   })
 
   it('routes create option activation through the combobox value change API', async () => {
@@ -179,12 +206,9 @@ describe('TagSearchContent', () => {
     await user.type(input, 'BrandNewTag')
     await user.click(screen.getByRole('option', { name: /BrandNewTag/i }))
 
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining([
-      expect.objectContaining({
-        isCreateOption: true,
-        name: 'BrandNewTag',
-      }),
-    ]))
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(
+      expect.arrayContaining(['__create_tag__:BrandNewTag']),
+    )
   })
 
   it('renders the empty state when no tags exist and no search is active', () => {
@@ -211,19 +235,42 @@ describe('TagSearchContent', () => {
     expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
   })
 
+  it('does not update selection when neither tag management nor binding permission is available', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<PanelHarness />)
+
+    await user.click(screen.getByRole('option', { name: /Backend/i }))
+
+    expect(onValueChangeSpy).not.toHaveBeenCalled()
+  })
+
+  it('updates selection with binding capability without tag management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<PanelHarness canBindOrUnbindTags />)
+
+    await user.click(screen.getByRole('option', { name: /Backend/i }))
+
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining(['tag-2']))
+    expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+  })
+
   it('renders knowledge tags when the panel type is knowledge', () => {
     render(<PanelHarness type="knowledge" value={[]} />)
     expect(screen.getByRole('option', { name: /KnowledgeDB/i })).toBeInTheDocument()
   })
 
-  it('renders snippet management action with snippets management permission', () => {
-    mockWorkspacePermissionKeys.value = ['snippets.management']
+  it('renders snippet management action with snippets create-and-modify permission', () => {
+    mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
 
     render(
       <PanelHarness
         type="snippet"
         value={[]}
-        tagList={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]}
+        tagList={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: '' }]}
       />,
     )
 

@@ -2,14 +2,7 @@ import { registerCommands, unregisterCommands } from '../command-bus'
 import { languageCommand } from '../language'
 
 vi.mock('../command-bus')
-
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   languages: [
     { value: 'en-US', name: 'English', supported: true },
     { value: 'zh-Hans', name: '简体中文', supported: true },
@@ -35,7 +28,7 @@ describe('languageCommand', () => {
       const results = await languageCommand.search('', 'en')
 
       expect(results).toHaveLength(3) // 3 supported languages
-      expect(results.every(r => r.type === 'command')).toBe(true)
+      expect(results.every((r) => r.type === 'command')).toBe(true)
     })
 
     it('filters languages by name query', async () => {

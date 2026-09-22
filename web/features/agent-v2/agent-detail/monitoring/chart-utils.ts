@@ -1,6 +1,5 @@
 import type { EChartsOption } from 'echarts'
 import dayjs from 'dayjs'
-import { formatNumber } from '@/utils/format'
 
 export type AgentMonitoringChartType = 'conversations' | 'endUsers' | 'tokenUsage'
 
@@ -11,7 +10,11 @@ export type AgentMonitoringChartRow = {
 
 type ColorType = 'green' | 'orange' | 'blue'
 
-const colorTypeMap: Record<ColorType, { lineColor: string, bgColor: [string, string] }> = {
+type AgentMonitoringChartConfig = {
+  colorType: ColorType
+}
+
+const colorTypeMap: Record<ColorType, { lineColor: string; bgColor: [string, string] }> = {
   green: {
     lineColor: 'rgba(6, 148, 162, 1)',
     bgColor: ['rgba(6, 148, 162, 0.2)', 'rgba(67, 174, 185, 0.08)'],
@@ -26,30 +29,39 @@ const colorTypeMap: Record<ColorType, { lineColor: string, bgColor: [string, str
   },
 }
 
-const chartTypeColorMap: Record<AgentMonitoringChartType, ColorType> = {
-  conversations: 'blue',
-  endUsers: 'blue',
-  tokenUsage: 'blue',
+const chartTypeConfig: Record<AgentMonitoringChartType, AgentMonitoringChartConfig> = {
+  conversations: {
+    colorType: 'green',
+  },
+  endUsers: {
+    colorType: 'orange',
+  },
+  tokenUsage: {
+    colorType: 'blue',
+  },
 }
 
-const commonDateFormat = 'MMM D, YYYY'
+const commonColorMap = {
+  label: '#9CA3AF',
+  splitLineLight: '#F3F4F6',
+  splitLineDark: '#E5E7EB',
+}
+
 const axisDateFormat = 'MMM'
 
-const sumValues = (rows: AgentMonitoringChartRow[], field: string) => {
-  return rows.reduce((sum, row) => sum + Number(row[field] ?? 0), 0)
-}
-
-const getChartColors = (chartType: AgentMonitoringChartType) => colorTypeMap[chartTypeColorMap[chartType]]
+const getChartColors = (chartType: AgentMonitoringChartType) =>
+  colorTypeMap[chartTypeConfig[chartType].colorType]
 
 const getMarkLineSeedData = (statisticsLength: number) => {
   const markLineLength = statisticsLength >= 2 ? statisticsLength - 2 : statisticsLength
+
   return ['', ...Array.from({ length: markLineLength }, () => '1'), '']
 }
 
 const getTooltipContent = (
   chartType: AgentMonitoringChartType,
   yField: string,
-  params: { name: string, data?: AgentMonitoringChartRow },
+  params: { name: string; data?: AgentMonitoringChartRow },
 ) => {
   const row = params.data ?? { date: params.name }
   const value = row[yField] ?? 0
@@ -67,65 +79,17 @@ const getTooltipContent = (
     </div>`
 }
 
-export const getDefaultChartData = ({
-  key = 'count',
-}: {
-  start: string
-  end: string
-  key?: string
-}) => {
-  const values = [180, 198, 188, 286, 423, 345]
+export const getChartValueField = (rows: AgentMonitoringChartRow[], valueKey?: string) => {
+  if (valueKey) return valueKey
 
-  return values.map((value, index) => ({
-    date: dayjs('2024-01-01').add(index, 'month').format(commonDateFormat),
-    [key]: value,
-    total_price: '0.0000',
-  }))
-}
-
-export const getChartValueField = (
-  rows: AgentMonitoringChartRow[],
-  valueKey?: string,
-) => {
-  if (valueKey)
-    return valueKey
-
-  return Object.keys(rows[0] ?? {}).find(name => name.includes('count')) ?? 'count'
-}
-
-/**
- * @public
- */
-// TODO: Remove this marker after summary values are wired to monitoring cards.
-export const getSummaryValue = ({
-  chartType,
-  rows,
-  valueKey,
-  isAvg,
-  unit = '',
-}: {
-  chartType: AgentMonitoringChartType
-  rows: AgentMonitoringChartRow[]
-  valueKey: string
-  isAvg?: boolean
-  unit?: string
-}) => {
-  const value = sumValues(rows, valueKey)
-  const summary = isAvg ? value / (rows.length || 1) : value
-
-  if (chartType === 'tokenUsage') {
-    const formattedUsage = summary < 1000
-      ? summary
-      : `${formatNumber(Math.round(summary / 1000))}k`
-
-    return `${formattedUsage}`
-  }
-
-  return `${summary.toLocaleString()} ${unit}`.trim()
+  return Object.keys(rows[0] ?? {}).find((name) => name.includes('count')) ?? 'count'
 }
 
 export const getTokenSummary = (rows: AgentMonitoringChartRow[]) => {
-  const totalPrice = rows.reduce((sum, row) => sum + Number.parseFloat(String(row.total_price ?? '0')), 0)
+  const totalPrice = rows.reduce(
+    (sum, row) => sum + Number.parseFloat(String(row.total_price ?? '0')),
+    0,
+  )
 
   return totalPrice.toLocaleString('en-US', {
     style: 'currency',
@@ -160,54 +124,57 @@ export const buildChartOptions = ({
       position: 'top',
       borderWidth: 0,
     },
-    xAxis: [{
-      type: 'category',
-      boundaryGap: false,
-      axisLabel: {
-        color: '#9CA3AF',
-        hideOverlap: true,
-        overflow: 'break',
-        formatter(value) {
-          return dayjs(value).format(axisDateFormat)
+    xAxis: [
+      {
+        type: 'category',
+        boundaryGap: false,
+        axisLabel: {
+          color: commonColorMap.label,
+          hideOverlap: true,
+          overflow: 'break',
+          formatter(value) {
+            return dayjs(value).format(axisDateFormat)
+          },
+        },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: commonColorMap.splitLineLight,
+            width: 1,
+            type: [10, 10],
+          },
+          interval(index) {
+            return index === 0 || index === xData.length - 1
+          },
         },
       },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: {
-        show: true,
-        lineStyle: {
-          color: '#F3F4F6',
-          width: 1,
-          type: [10, 10],
-        },
-        interval(index) {
-          return index === 0 || index === xData.length - 1
-        },
-      },
-    }, {
-      position: 'bottom',
-      boundaryGap: false,
-      data: markLineSeedData,
-      axisLabel: { show: false },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: {
-        show: true,
-        lineStyle: {
-          color: '#E5E7EB',
-        },
-        interval(_index, value) {
-          return !!value
+      {
+        position: 'bottom',
+        boundaryGap: false,
+        data: markLineSeedData,
+        axisLabel: { show: false },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: commonColorMap.splitLineDark,
+          },
+          interval(_index, value) {
+            return !!value
+          },
         },
       },
-    }],
+    ],
     yAxis: {
       max: yMax ?? 'dataMax',
       type: 'value',
-      axisLabel: { color: '#9CA3AF', hideOverlap: true },
+      axisLabel: { color: commonColorMap.label, hideOverlap: true },
       splitLine: {
         lineStyle: {
-          color: '#F3F4F6',
+          color: commonColorMap.splitLineLight,
         },
       },
     },
@@ -230,20 +197,27 @@ export const buildChartOptions = ({
             y: 0,
             x2: 0,
             y2: 1,
-            colorStops: [{
-              offset: 0,
-              color: chartColors.bgColor[0],
-            }, {
-              offset: 1,
-              color: chartColors.bgColor[1],
-            }],
+            colorStops: [
+              {
+                offset: 0,
+                color: chartColors.bgColor[0],
+              },
+              {
+                offset: 1,
+                color: chartColors.bgColor[1],
+              },
+            ],
             global: false,
           },
         },
         tooltip: {
           padding: [8, 12, 8, 12],
           formatter(params) {
-            return getTooltipContent(chartType, valueKey, params as { name: string, data?: AgentMonitoringChartRow })
+            return getTooltipContent(
+              chartType,
+              valueKey,
+              params as { name: string; data?: AgentMonitoringChartRow },
+            )
           },
         },
       },

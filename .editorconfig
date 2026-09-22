@@ -37,3 +37,7 @@ indent_size = 2
 [package.json]
 indent_style = space
 indent_size = 2
+
+# Oxlint writes its generated suppression baseline without a final newline.
+[oxlint-suppressions.json]
+insert_final_newline = false

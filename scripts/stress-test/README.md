@@ -84,10 +84,10 @@ The stress test tests a single endpoint with comprehensive SSE metrics tracking:
 
 ## Prerequisites
 
-1. **Dependencies are automatically installed** when running setup:
+1. **Dependencies**:
 
-   - Locust (load testing framework)
-   - sseclient-py (SSE client library)
+   - Locust runs through `uvx --from locust`, outside the API project environment.
+   - `sseclient-py` is included in the API project dependencies.
 
 1. **Complete Dify setup**:
 
@@ -95,6 +95,25 @@ The stress test tests a single endpoint with comprehensive SSE metrics tracking:
    # Run the complete setup
    python scripts/stress-test/setup_all.py
    ```
+
+   For a brand-new Dify instance, the setup script creates the first admin account. Override the defaults if needed:
+
+   ```bash
+   STRESS_TEST_ADMIN_EMAIL='your-admin@example.com' \
+   STRESS_TEST_ADMIN_USERNAME='dify' \
+   STRESS_TEST_ADMIN_PASSWORD='your-password' \
+   python scripts/stress-test/setup_all.py
+   ```
+
+   For an already-initialized Dify instance with an admin account, provide the existing admin login:
+
+   ```bash
+   STRESS_TEST_ADMIN_EMAIL='your-admin@example.com' \
+   STRESS_TEST_ADMIN_PASSWORD='your-password' \
+   python scripts/stress-test/setup_all.py
+   ```
+
+   `STRESS_TEST_ADMIN_USERNAME` is only used in the brand-new instance case, when `/console/api/setup` creates the first admin account.
 
 1. **Ensure services are running**:
 
@@ -141,11 +160,11 @@ The stress test tests a single endpoint with comprehensive SSE metrics tracking:
 # Run with default configuration (headless mode)
 ./scripts/stress-test/run_locust_stress_test.sh
 
-# Or run directly with uv
-uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py --host http://localhost:5001
+# Or run directly with uvx
+uvx --from locust locust -f scripts/stress-test/sse_benchmark.py --host http://localhost:5001
 
 # Run with Web UI (access at http://localhost:8089)
-uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py --host http://localhost:5001 --web-port 8089
+uvx --from locust locust -f scripts/stress-test/sse_benchmark.py --host http://localhost:5001 --web-port 8089
 ```
 
 The script will:
@@ -182,12 +201,13 @@ self.questions = [
 
 ### Report Structure
 
-After running the stress test, you'll find these files in the `reports/` directory:
+After running the stress test, you'll find one directory per run under `reports/`:
 
-- `locust_summary_YYYYMMDD_HHMMSS.txt` - Complete console output with metrics
-- `locust_report_YYYYMMDD_HHMMSS.html` - Interactive HTML report with charts
-- `locust_YYYYMMDD_HHMMSS_stats.csv` - CSV with detailed statistics
-- `locust_YYYYMMDD_HHMMSS_stats_history.csv` - Time-series data
+- `YYYYMMDD_HHMMSS/locust_summary.txt` - Complete console output with metrics
+- `YYYYMMDD_HHMMSS/locust_report.html` - Interactive HTML report with charts
+- `YYYYMMDD_HHMMSS/locust_stats.csv` - CSV with detailed statistics
+- `YYYYMMDD_HHMMSS/locust_stats_history.csv` - Time-series data
+- `YYYYMMDD_HHMMSS/sse_metrics_YYYYMMDD_HHMMSS.json` - Custom SSE metrics
 
 ### Key Metrics
 
@@ -399,8 +419,8 @@ docker compose -f docker/docker-compose.middleware.yaml up -d db
 1. **"ModuleNotFoundError: No module named 'locust'"**:
 
    ```bash
-   # Dependencies are installed automatically, but if needed:
-   uv --project api add --dev locust sseclient-py
+   # Locust is intentionally run outside the api project environment:
+   uvx --from locust locust --version
    ```
 
 1. **"API key configuration not found"**:
@@ -453,15 +473,15 @@ Run Locust directly with custom options:
 
 ```bash
 # With specific user count and spawn rate
-uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py \
+uvx --from locust locust -f scripts/stress-test/sse_benchmark.py \
   --host http://localhost:5001 --users 50 --spawn-rate 5
 
 # Generate CSV reports
-uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py \
+uvx --from locust locust -f scripts/stress-test/sse_benchmark.py \
   --host http://localhost:5001 --csv reports/results
 
 # Run for specific duration
-uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py \
+uvx --from locust locust -f scripts/stress-test/sse_benchmark.py \
   --host http://localhost:5001 --run-time 5m --headless
 ```
 
@@ -469,7 +489,7 @@ uv run --project api python -m locust -f scripts/stress-test/sse_benchmark.py \
 
 ```bash
 # Compare multiple stress test runs
-ls -la reports/stress_test_*.txt | tail -5
+ls -la scripts/stress-test/reports/*/locust_summary.txt | tail -5
 ```
 
 ## Interpreting Performance Issues

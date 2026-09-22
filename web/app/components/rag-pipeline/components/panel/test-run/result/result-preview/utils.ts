@@ -1,4 +1,9 @@
-import type { ChunkInfo, GeneralChunks, ParentChildChunks, QAChunks } from '../../../../chunk-card-list/types'
+import type {
+  ChunkInfo,
+  GeneralChunks,
+  ParentChildChunks,
+  QAChunks,
+} from '../../../../chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
 import { RAG_PIPELINE_PREVIEW_CHUNK_NUM } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
@@ -76,20 +81,16 @@ const formatQAChunks = (outputs: any) => {
 }
 
 export const formatPreviewChunks = (outputs: any): ChunkInfo | undefined => {
-  if (!outputs)
-    return undefined
+  if (!outputs) return undefined
 
   const chunkingMode = outputs.chunk_structure
   const parentMode = outputs.parent_mode
 
-  if (chunkingMode === ChunkingMode.text)
-    return formatGeneralChunks(outputs)
+  if (chunkingMode === ChunkingMode.text) return formatGeneralChunks(outputs)
 
-  if (chunkingMode === ChunkingMode.parentChild)
-    return formatParentChildChunks(outputs, parentMode)
+  if (chunkingMode === ChunkingMode.parentChild) return formatParentChildChunks(outputs, parentMode)
 
-  if (chunkingMode === ChunkingMode.qa)
-    return formatQAChunks(outputs)
+  if (chunkingMode === ChunkingMode.qa) return formatQAChunks(outputs)
 
   return undefined
 }

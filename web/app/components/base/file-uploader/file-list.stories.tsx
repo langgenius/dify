@@ -5,7 +5,8 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { FileList } from './file-uploader-in-chat-input/file-list'
 
-const SAMPLE_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'160\' height=\'160\'><rect width=\'160\' height=\'160\' rx=\'16\' fill=\'#D1E9FF\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'sans-serif\' font-size=\'20\' fill=\'#1F2937\'>IMG</text></svg>'
+const SAMPLE_IMAGE =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><rect width='160' height='160' rx='16' fill='#D1E9FF'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='#1F2937'>IMG</text></svg>"
 
 const filesSample: FileEntity[] = [
   {
@@ -46,7 +47,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Renders a responsive gallery of uploaded files, handling icons, previews, and progress states.',
+        component:
+          'Renders a responsive gallery of uploaded files, handling icons, previews, and progress states.',
       },
     },
   },
@@ -67,14 +69,14 @@ const FileListPlayground = (args: React.ComponentProps<typeof FileList>) => {
       <FileList
         {...args}
         files={items}
-        onRemove={fileId => setItems(list => list.filter(file => file.id !== fileId))}
+        onRemove={(fileId) => setItems((list) => list.filter((file) => file.id !== fileId))}
       />
     </div>
   )
 }
 
 export const Playground: Story = {
-  render: args => <FileListPlayground {...args} />,
+  render: (args) => <FileListPlayground {...args} />,
   parameters: {
     docs: {
       source: {
@@ -91,6 +93,6 @@ const [files, setFiles] = useState(initialFiles)
 
 export const UploadStates: Story = {
   args: {
-    files: filesSample.map(file => ({ ...file, progress: file.id === '3' ? 45 : 100 })),
+    files: filesSample.map((file) => ({ ...file, progress: file.id === '3' ? 45 : 100 })),
   },
 }

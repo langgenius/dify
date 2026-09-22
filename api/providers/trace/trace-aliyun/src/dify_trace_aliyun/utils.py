@@ -1,5 +1,7 @@
 import json
+import re
 from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Any, TypedDict
 
 from opentelemetry.trace import Link, Status, StatusCode
@@ -7,11 +9,22 @@ from opentelemetry.trace import Link, Status, StatusCode
 from core.rag.models.document import Document
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_FRAMEWORK,
+    GEN_AI_OPERATION_NAME,
     GEN_AI_SESSION_ID,
     GEN_AI_SPAN_KIND,
+    GEN_AI_TOOL_CALL_ARGUMENTS,
+    GEN_AI_TOOL_CALL_ID,
+    GEN_AI_TOOL_CALL_RESULT,
+    GEN_AI_TOOL_DESCRIPTION,
+    GEN_AI_TOOL_NAME,
+    GEN_AI_TOOL_TYPE,
     GEN_AI_USER_ID,
     INPUT_VALUE,
+    OPERATION_NAME_EXECUTE_TOOL,
     OUTPUT_VALUE,
+    TOOL_TYPE_DATASTORE,
+    TOOL_TYPE_EXTENSION,
+    TOOL_TYPE_FUNCTION,
     GenAISpanKind,
 )
 from extensions.ext_database import db
@@ -106,6 +119,47 @@ def create_common_span_attributes(
     }
 
 
+def map_gen_ai_tool_type(provider_type: str | None) -> str:
+    """Map Dify tool provider type to GenAI ``gen_ai.tool.type`` values."""
+    normalized = (provider_type or "").strip().lower()
+    if normalized in {"dataset-retrieval", "datastore"}:
+        return TOOL_TYPE_DATASTORE
+    if normalized == "extension":
+        return TOOL_TYPE_EXTENSION
+    return TOOL_TYPE_FUNCTION
+
+
+def extract_tool_description(tool_meta: Mapping[str, Any] | None) -> str:
+    if not isinstance(tool_meta, Mapping):
+        return ""
+    for key in ("description", "tool_description"):
+        value = tool_meta.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def create_gen_ai_tool_attributes(
+    *,
+    tool_name: str,
+    tool_type: str = TOOL_TYPE_FUNCTION,
+    tool_description: str = "",
+    tool_call_id: str = "",
+    tool_call_arguments: str = "",
+    tool_call_result: str = "",
+) -> dict[str, str]:
+    """Build GenAI-compliant attributes for a TOOL span."""
+    return {
+        GEN_AI_OPERATION_NAME: OPERATION_NAME_EXECUTE_TOOL,
+        GEN_AI_TOOL_NAME: tool_name,
+        GEN_AI_TOOL_TYPE: tool_type or TOOL_TYPE_FUNCTION,
+        GEN_AI_TOOL_DESCRIPTION: tool_description,
+        GEN_AI_TOOL_CALL_ID: tool_call_id,
+        GEN_AI_TOOL_CALL_ARGUMENTS: tool_call_arguments,
+        GEN_AI_TOOL_CALL_RESULT: tool_call_result,
+    }
+
+
 def format_retrieval_documents(retrieval_documents: list) -> list:
     try:
         if not isinstance(retrieval_documents, list):
@@ -172,6 +226,121 @@ def format_input_messages(process_data: Mapping[str, Any]) -> str:
         return serialize_json_data(input_messages)
     except Exception:
         return serialize_json_data([])
+
+
+def convert_seconds_to_nanoseconds(seconds: float) -> int:
+    return int(seconds * 1e9)
+
+
+_REACT_ROUND_LABEL_PATTERN = re.compile(r"ROUND\s+(\d+)", re.IGNORECASE)
+_LLM_THOUGHT_LABEL_SUFFIX = " Thought"
+_TOOL_CALL_LABEL_PREFIX = "CALL "
+
+
+@dataclass
+class AgentLogEntry:
+    """One entry of the agent-strategy execution log (``outputs["json"]`` of an agent node).
+
+    Entries form a tree via ``parent_id``: top-level entries are ReAct rounds
+    (label like ``ROUND 1``) and their children are LLM thoughts / tool calls.
+    ``started_at``/``finished_at`` in ``metadata`` are monotonic-clock seconds
+    (``time.perf_counter``), not epoch timestamps.
+    """
+
+    id: str
+    parent_id: str | None
+    label: str
+    status: str
+    error: str | None
+    data: dict[str, Any]
+    metadata: dict[str, Any]
+    children: list["AgentLogEntry"] = field(default_factory=list)
+
+
+def parse_agent_log_entries(outputs: Mapping[str, Any]) -> list[AgentLogEntry]:
+    """Parse agent node outputs into a tree of log entries, returning top-level rounds in order.
+
+    Entries without an ``id`` (e.g. the trailing ``{"data": []}`` element) are skipped.
+    Children whose parent is missing are dropped.
+    """
+    raw_entries = outputs.get("json")
+    if not isinstance(raw_entries, list):
+        return []
+
+    entries: list[AgentLogEntry] = []
+    entries_by_id: dict[str, AgentLogEntry] = {}
+    for raw_entry in raw_entries:
+        if not isinstance(raw_entry, dict):
+            continue
+        entry_id = raw_entry.get("id")
+        if not entry_id:
+            continue
+        data = raw_entry.get("data")
+        metadata = raw_entry.get("metadata")
+        entry = AgentLogEntry(
+            id=str(entry_id),
+            parent_id=raw_entry.get("parent_id"),
+            label=str(raw_entry.get("label") or ""),
+            status=str(raw_entry.get("status") or ""),
+            error=raw_entry.get("error"),
+            data=data if isinstance(data, dict) else {},
+            metadata=metadata if isinstance(metadata, dict) else {},
+        )
+        entries.append(entry)
+        entries_by_id[entry.id] = entry
+
+    roots: list[AgentLogEntry] = []
+    for entry in entries:
+        if entry.parent_id is None:
+            roots.append(entry)
+        else:
+            parent = entries_by_id.get(entry.parent_id)
+            if parent is not None:
+                parent.children.append(entry)
+    return roots
+
+
+def extract_react_round_number(label: str, fallback: int) -> int:
+    match = _REACT_ROUND_LABEL_PATTERN.search(label)
+    if match:
+        return int(match.group(1))
+    return fallback
+
+
+def is_tool_call_entry(entry: AgentLogEntry) -> bool:
+    """Tool invocations use labels like ``CALL {tool_name}`` (also carry a provider in metadata)."""
+    return entry.label.startswith(_TOOL_CALL_LABEL_PREFIX)
+
+
+def is_llm_thought_entry(entry: AgentLogEntry) -> bool:
+    """LLM thought entries use labels like ``{model} Thought``.
+
+    Do not key off ``metadata.provider`` alone: tool CALL entries also set provider
+    (to the tool provider), which previously misclassified them as LLM spans.
+    """
+    if is_tool_call_entry(entry):
+        return False
+    return entry.label.endswith(_LLM_THOUGHT_LABEL_SUFFIX) or bool(entry.metadata.get("provider"))
+
+
+def extract_model_name_from_thought_label(label: str) -> str:
+    if label.endswith(_LLM_THOUGHT_LABEL_SUFFIX):
+        return label.removesuffix(_LLM_THOUGHT_LABEL_SUFFIX)
+    return ""
+
+
+def extract_tool_name_from_call_label(label: str) -> str:
+    if label.startswith(_TOOL_CALL_LABEL_PREFIX):
+        return label.removeprefix(_TOOL_CALL_LABEL_PREFIX).strip()
+    return ""
+
+
+def create_status_from_agent_log_entry(entry: AgentLogEntry) -> Status:
+    if entry.error:
+        return Status(StatusCode.ERROR, str(entry.error))
+    if entry.status == "success":
+        return Status(StatusCode.OK)
+    return Status(StatusCode.UNSET)
 
 
 def format_output_messages(outputs: Mapping[str, Any]) -> str:

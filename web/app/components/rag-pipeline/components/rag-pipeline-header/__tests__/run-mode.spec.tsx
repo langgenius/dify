@@ -1,19 +1,45 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import RunMode from '../run-mode'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { RunMode } from '../run-mode'
 
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockHandleStopRun = vi.fn()
 const mockSetIsPreparingDataSource = vi.fn()
 const mockSetShowDebugAndPreviewPanel = vi.fn()
+const hotkeyRegistrations = vi.hoisted(
+  () =>
+    new Map<
+      string,
+      {
+        callback: () => void
+        options?: { enabled?: boolean; ignoreInputs?: boolean; preventDefault?: boolean }
+      }
+    >(),
+)
 
-let mockWorkflowRunningData: { task_id: string, result: { status: string } } | undefined
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (
+      hotkey: string,
+      callback: () => void,
+      options?: { enabled?: boolean; ignoreInputs?: boolean; preventDefault?: boolean },
+    ) => {
+      hotkeyRegistrations.set(hotkey, { callback, options })
+    },
+  }
+})
+
+let mockWorkflowRunningData: { task_id: string; result: { status: string } } | undefined
 let mockIsPreparingDataSource = false
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleStopRun: mockHandleStopRun,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-start-run', () => ({
   useWorkflowStartRun: () => ({
     handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
   }),
@@ -36,9 +62,10 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: { accessControl: { canRun: boolean } }) => unknown) => selector({
-    accessControl: { canRun: true },
-  }),
+  useHooksStore: (selector: (state: { accessControl: { canRun: boolean } }) => unknown) =>
+    selector({
+      accessControl: { canRun: true },
+    }),
 }))
 
 vi.mock('@/app/components/workflow/types', () => ({
@@ -56,7 +83,7 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: unknown[]) => args.filter(a => typeof a === 'string').join(' '),
+  cn: (...args: unknown[]) => args.filter((a) => typeof a === 'string').join(' '),
 }))
 
 vi.mock('@remixicon/react', () => ({
@@ -66,15 +93,12 @@ vi.mock('@remixicon/react', () => ({
   RiPlayLargeLine: () => <span data-testid="play-icon" />,
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/line/mediaAndDevices', () => ({
-  StopCircle: () => <span data-testid="stop-icon" />,
-}))
-
 describe('RunMode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockWorkflowRunningData = undefined
     mockIsPreparingDataSource = false
+    hotkeyRegistrations.clear()
   })
 
   describe('Idle state', () => {
@@ -109,6 +133,20 @@ describe('RunMode', () => {
 
       expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalled()
     })
+
+    it('should run through the enabled application shortcut', () => {
+      render(<RunMode />)
+
+      const registration = hotkeyRegistrations.get('Alt+R')
+      registration?.callback()
+
+      expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledOnce()
+      expect(registration?.options).toEqual({
+        enabled: true,
+        ignoreInputs: true,
+        preventDefault: true,
+      })
+    })
   })
 
   describe('Running state', () => {
@@ -128,7 +166,9 @@ describe('RunMode', () => {
     it('should show stop button', () => {
       render(<RunMode />)
 
-      expect(screen.getByTestId('stop-icon')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+      ).toBeInTheDocument()
     })
 
     it('should disable run button', () => {
@@ -141,7 +181,9 @@ describe('RunMode', () => {
     it('should call handleStopRun with task_id when stop clicked', () => {
       render(<RunMode />)
 
-      fireEvent.click(screen.getByTestId('stop-icon').closest('button')!)
+      fireEvent.click(
+        screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+      )
 
       expect(mockHandleStopRun).toHaveBeenCalledWith('task-1')
     })
@@ -185,7 +227,7 @@ describe('RunMode', () => {
     it('should cancel preparing when close clicked', () => {
       render(<RunMode />)
 
-      fireEvent.click(screen.getByTestId('close-icon').closest('button')!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(false)
       expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(false)

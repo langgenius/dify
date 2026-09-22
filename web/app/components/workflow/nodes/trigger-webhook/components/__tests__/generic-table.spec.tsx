@@ -33,7 +33,12 @@ const advancedColumns = [
     title: 'Preview',
     type: 'custom' as const,
     width: 'w-[120px]',
-    render: (_value: unknown, row: { method?: string }, index: number, onChange: (value: unknown) => void) => (
+    render: (
+      _value: unknown,
+      row: { method?: string },
+      index: number,
+      onChange: (value: unknown) => void,
+    ) => (
       <button type="button" onClick={() => onChange(`${index}:${row.method || 'empty'}`)}>
         custom-render
       </button>
@@ -77,7 +82,9 @@ describe('GenericTable', () => {
       />,
     )
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'my key' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'my key' },
+    })
 
     expect(onChange).toHaveBeenLastCalledWith([{ name: 'my_key', enabled: false }])
   })
@@ -97,7 +104,7 @@ describe('GenericTable', () => {
       />,
     )
 
-    const inputs = screen.getAllByRole('textbox')
+    const inputs = screen.getAllByRole('textbox', { name: 'Name' })
     expect(inputs).toHaveLength(3)
     expect(screen.getAllByRole('button', { name: 'Delete row' })).toHaveLength(2)
 
@@ -145,15 +152,13 @@ describe('GenericTable', () => {
           emptyRowData={{ method: '', preview: '' }}
           onChange={(nextData) => {
             onChange(nextData)
-            setData(nextData as { method: string, preview: string }[])
+            setData(nextData as { method: string; preview: string }[])
           }}
         />
       )
     }
 
-    render(
-      <ControlledTable />,
-    )
+    render(<ControlledTable />)
 
     await selectOption('Choose method', 'POST')
 

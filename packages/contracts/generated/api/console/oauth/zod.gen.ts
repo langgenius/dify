@@ -44,6 +44,7 @@ export const zOAuthProviderRequest = z.object({
 export const zOAuthProviderAppResponse = z.object({
   app_icon: z.string(),
   app_label: z.record(z.string(), z.unknown()),
+  auto_authorize: z.boolean(),
   scope: z.string(),
 })
 
@@ -60,9 +61,10 @@ export const zOAuthClientPayload = z.object({
 export const zOAuthProviderAccountResponse = z.object({
   avatar: z.string().nullish(),
   email: z.string(),
-  interface_language: z.string(),
+  id: z.string(),
+  interface_language: z.string().nullable(),
   name: z.string(),
-  timezone: z.string(),
+  timezone: z.string().nullable(),
 })
 
 /**
@@ -132,23 +134,28 @@ export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlPath = z.ob
 
 export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlQuery = z.object({
   credential_id: z.string().optional(),
+  visibility: z.string().optional(),
 })
 
 /**
- * Authorization URL retrieved successfully
+ * Datasource OAuth authorization URL generated successfully
  */
-export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse
-  = zPluginOAuthAuthorizationUrlResponse
+export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse =
+  zPluginOAuthAuthorizationUrlResponse
 
 export const zGetOauthPluginByProviderToolAuthorizationUrlPath = z.object({
   provider: z.string(),
 })
 
+export const zGetOauthPluginByProviderToolAuthorizationUrlQuery = z.object({
+  visibility: z.enum(['all_team_members', 'only_me']).optional(),
+})
+
 /**
- * Authorization URL retrieved successfully
+ * Tool OAuth authorization URL generated successfully
  */
-export const zGetOauthPluginByProviderToolAuthorizationUrlResponse
-  = zPluginOAuthAuthorizationUrlResponse
+export const zGetOauthPluginByProviderToolAuthorizationUrlResponse =
+  zPluginOAuthAuthorizationUrlResponse
 
 export const zPostOauthProviderBody = zOAuthProviderRequest
 

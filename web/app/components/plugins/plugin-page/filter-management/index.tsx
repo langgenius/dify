@@ -24,7 +24,7 @@ const FilterManagement = ({
   onFilterChange,
   rightSlot,
 }: FilterManagementProps) => {
-  const initFilters = usePluginPageContext(v => v.filters) as FilterState
+  const initFilters = usePluginPageContext((v) => v.filters) as FilterState
   const [filters, setFilters] = useState<FilterState>(initFilters)
   const showRightSlot = rightSlot !== undefined && rightSlot !== null
 
@@ -39,24 +39,17 @@ const FilterManagement = ({
       {!hideCategoryFilter && (
         <CategoriesFilter
           value={filters.categories}
-          onChange={categories => updateFilters({ categories })}
+          onChange={(categories) => updateFilters({ categories })}
         />
       )}
       {!hideTagFilter && (
-        <TagFilter
-          value={filters.tags}
-          onChange={tags => updateFilters({ tags })}
-        />
+        <TagFilter value={filters.tags} onChange={(tags) => updateFilters({ tags })} />
       )}
       <SearchBox
         searchQuery={filters.searchQuery}
-        onChange={searchQuery => updateFilters({ searchQuery })}
+        onChange={(searchQuery) => updateFilters({ searchQuery })}
       />
-      {showRightSlot && (
-        <div className="ml-auto shrink-0">
-          {rightSlot}
-        </div>
-      )}
+      {showRightSlot && <div className="ml-auto shrink-0">{rightSlot}</div>}
     </div>
   )
 }

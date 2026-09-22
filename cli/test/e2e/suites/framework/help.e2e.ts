@@ -18,7 +18,7 @@
  *  - Exit code is always 0 for help commands
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { run } from '../../helpers/cli.js'
 
 // ── 1. Top-level help overview ────────────────────────────────────────────────

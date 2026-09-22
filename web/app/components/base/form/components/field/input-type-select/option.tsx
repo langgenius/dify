@@ -6,9 +6,7 @@ type OptionProps = {
   option: FileTypeSelectOption
 }
 
-const Option = ({
-  option,
-}: OptionProps) => {
+const Option = ({ option }: OptionProps) => {
   return (
     <>
       <option.Icon className="size-4 shrink-0 text-text-tertiary" />

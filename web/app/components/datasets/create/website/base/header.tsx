@@ -1,8 +1,8 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
-import Divider from '@/app/components/base/divider'
 
 type HeaderProps = {
   isInPipeline?: boolean
@@ -24,26 +24,23 @@ const Header = ({
   return (
     <div className="flex items-center gap-x-2">
       <div className="flex shrink-0 grow items-center gap-x-1">
-        <div className={cn(
-          'text-text-secondary',
-          isInPipeline ? 'system-sm-semibold' : 'system-md-semibold',
-        )}
+        <div
+          className={cn(
+            'text-text-secondary',
+            isInPipeline ? 'system-sm-semibold' : 'system-md-semibold',
+          )}
         >
           {title}
         </div>
-        <Divider type="vertical" className="mx-1 h-3.5" />
+        <Separator decorative orientation="vertical" className="mx-1 h-3.5" />
         <Button
           variant="secondary"
           size="small"
-          className={cn(isInPipeline ? 'size-6 px-1' : 'gap-x-0.5 px-1.5')}
+          className={cn(isInPipeline ? 'size-6 px-1' : 'px-1.5')}
           onClick={onClickConfiguration}
         >
           <RiEqualizer2Line className="size-4" />
-          {!isInPipeline && (
-            <span className="system-xs-medium">
-              {buttonText}
-            </span>
-          )}
+          {!isInPipeline && <span className="system-xs-medium">{buttonText}</span>}
         </Button>
       </div>
       <a
@@ -53,7 +50,9 @@ const Header = ({
         rel="noopener noreferrer"
       >
         <RiBookOpenLine className="size-3.5 shrink-0" />
-        <span className="grow truncate" title={docTitle}>{docTitle}</span>
+        <span className="grow truncate" title={docTitle}>
+          {docTitle}
+        </span>
       </a>
     </div>
   )

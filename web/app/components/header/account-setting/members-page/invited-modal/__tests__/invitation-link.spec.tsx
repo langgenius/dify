@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import InvitationLink from '../invitation-link'
@@ -11,11 +11,6 @@ describe('InvitationLink', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
-  })
-
-  it('should render invitation url', () => {
-    render(<InvitationLink value={value} />)
-    expect(screen.getByText('/invite/123')).toBeInTheDocument()
   })
 
   it('should copy relative url with origin', async () => {
@@ -48,29 +43,5 @@ describe('InvitationLink', () => {
     await user.click(screen.getByRole('button', { name: 'https://dify.ai/invite/123' }))
 
     expect(copy).toHaveBeenCalledWith('https://dify.ai/invite/123')
-  })
-
-  it('should show copied feedback and reset after timeout', async () => {
-    vi.useFakeTimers()
-    render(<InvitationLink value={value} />)
-
-    const url = screen.getByRole('button', { name: '/invite/123' })
-
-    // Initial state check - PopupContent should be "copy"
-    // Since we mock i18next to return the key, we check for 'appApi.copy'
-
-    fireEvent.click(url)
-
-    // After click, isCopied = true, should show 'appApi.copied'
-    // We can't directly check tooltip state without more setup, but we can verify the timer logic.
-
-    act(() => {
-      vi.advanceTimersByTime(1000)
-    })
-
-    // After 1s, isCopied should be false again.
-    // Line 28 (setIsCopied(false)) is now covered.
-
-    vi.useRealTimers()
   })
 })

@@ -1,6 +1,7 @@
 import type { Recipient as RecipientItem } from '../../../../types'
 import type { Member } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import EmailInput from '../email-input'
 
 const mockEmailItem = vi.hoisted(() => vi.fn())
@@ -10,17 +11,13 @@ vi.mock('../email-item', () => ({
   __esModule: true,
   default: (props: {
     email: string
-    data: { email?: string, name?: string }
+    data: { email?: string; name?: string }
     isError: boolean
   }) => {
     mockEmailItem(props)
     return (
       <div data-testid="selected-email-item">
-        {props.data.email}
-        |
-        {props.data.name}
-        |
-        {props.isError ? 'error' : 'ok'}
+        {props.data.email}|{props.data.name}|{props.isError ? 'error' : 'ok'}
       </div>
     )
   },
@@ -28,10 +25,7 @@ vi.mock('../email-item', () => ({
 
 vi.mock('../member-list', () => ({
   __esModule: true,
-  default: (props: {
-    searchValue: string
-    onSelect: (value: string) => void
-  }) => {
+  default: (props: { searchValue: string; onSelect: (value: string) => void }) => {
     mockMemberList(props)
     return (
       <div data-testid="member-list">
@@ -87,13 +81,18 @@ describe('human-input/delivery-method/recipient/email-input', () => {
       />,
     )
 
-    expect(screen.getByTestId('selected-email-item')).toHaveTextContent('member-1@example.com|Member One|ok')
+    expect(screen.getByTestId('selected-email-item')).toHaveTextContent(
+      'member-1@example.com|Member One|ok',
+    )
 
     const input = screen.getByRole('textbox')
     expect(input).toHaveAttribute('placeholder', '')
 
     fireEvent.click(container.querySelector('.max-h-24') as HTMLDivElement)
-    expect(input).toHaveAttribute('placeholder', 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.placeholder')
+    expect(input).toHaveAttribute(
+      'placeholder',
+      'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.placeholder',
+    )
 
     fireEvent.change(input, { target: { value: 'member' } })
     expect(screen.getByTestId('member-list')).toBeInTheDocument()
@@ -137,6 +136,59 @@ describe('human-input/delivery-method/recipient/email-input', () => {
     expect(handleSelect).toHaveBeenCalledTimes(1)
   })
 
+  it.each([
+    { value: '', expectedAdds: 0 },
+    { value: 'bad-email', expectedAdds: 0 },
+    { value: 'existing@example.com', expectedAdds: 0 },
+    { value: 'new@example.com', expectedAdds: 1 },
+  ])(
+    'should allow Tab to leave "$value" and add a valid email only once',
+    async ({ value, expectedAdds }) => {
+      const user = userEvent.setup()
+      const handleAdd = vi.fn()
+      render(
+        <>
+          <EmailInput
+            email="owner@example.com"
+            value={[{ type: 'external', email: 'existing@example.com' }]}
+            list={members}
+            onDelete={vi.fn()}
+            onSelect={vi.fn()}
+            onAdd={handleAdd}
+          />
+          <button type="button">Save</button>
+        </>,
+      )
+      const input = screen.getByRole('textbox')
+      await user.click(input)
+      if (value) await user.type(input, value)
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Save' })).toHaveFocus()
+      expect(handleAdd).toHaveBeenCalledTimes(expectedAdds)
+      if (expectedAdds) expect(handleAdd).toHaveBeenCalledWith(value)
+    },
+  )
+
+  it('should allow Shift+Tab to return to the previous control', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <button type="button">Previous</button>
+        <EmailInput
+          email="owner@example.com"
+          value={[]}
+          list={members}
+          onDelete={vi.fn()}
+          onSelect={vi.fn()}
+          onAdd={vi.fn()}
+        />
+      </>,
+    )
+    await user.click(screen.getByRole('textbox'))
+    await user.tab({ shift: true })
+    expect(screen.getByRole('button', { name: 'Previous' })).toHaveFocus()
+  })
+
   it('should keep typing focused and stop keyboard events from reaching workflow listeners', () => {
     const handleParentKeyDown = vi.fn()
     const handleWindowKeyDown = vi.fn()
@@ -165,8 +217,7 @@ describe('human-input/delivery-method/recipient/email-input', () => {
       expect(document.activeElement).toBe(input)
       expect(handleParentKeyDown).not.toHaveBeenCalled()
       expect(handleWindowKeyDown).not.toHaveBeenCalled()
-    }
-    finally {
+    } finally {
       window.removeEventListener('keydown', handleWindowKeyDown)
     }
   })

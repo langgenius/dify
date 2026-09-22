@@ -178,11 +178,16 @@ class DifyKnowledgeBaseClient:
 def _build_http_error(response: httpx.Response) -> DifyKnowledgeBaseClientError:
     detail = _decode_error_detail(response)
     retryable = response.status_code in {429, 502}
+    error_code = detail["error_code"]
     message = detail["message"] or f"HTTP {response.status_code}"
+    if error_code:
+        message = f"Knowledge base search failed with HTTP {response.status_code} ({error_code}): {message}"
+    else:
+        message = f"Knowledge base search failed with HTTP {response.status_code}: {message}"
     return DifyKnowledgeBaseClientError(
         message,
         status_code=response.status_code,
-        error_code=detail["error_code"],
+        error_code=error_code,
         retryable=retryable,
     )
 

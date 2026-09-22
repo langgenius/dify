@@ -41,8 +41,7 @@ export class CustomTextNode extends TextNode {
   }
 
   override isSimpleText() {
-    return (
-      (this.__type === 'text' || this.__type === 'custom-text') && this.__mode === 0)
+    return (this.__type === 'text' || this.__type === 'custom-text') && this.__mode === 0
   }
 }
 

@@ -1,0 +1,219 @@
+import type {
+  RecommendedAppInfoResponse,
+  RecommendedAppResponse,
+} from '@dify/contracts/api/console/explore/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import * as React from 'react'
+import { trackEvent } from '@/app/components/base/amplitude'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { AppModeEnum } from '@/types/app'
+import { TemplateCard } from '../template-card'
+
+vi.mock('@/app/components/app/type-selector', () => ({
+  AppTypeIcon: ({ type }: { type: string }) => <div data-testid="app-type-icon">{type}</div>,
+}))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: vi.fn(),
+}))
+
+type TemplateFixture = RecommendedAppResponse & { app: RecommendedAppInfoResponse }
+type TemplateFixtureOverrides = Omit<Partial<RecommendedAppResponse>, 'app'> & {
+  app?: Partial<RecommendedAppInfoResponse>
+}
+
+const createApp = (overrides: TemplateFixtureOverrides = {}): TemplateFixture => ({
+  can_trial: true,
+  app_id: 'app-id',
+  description: 'App description',
+  copyright: '2024',
+  privacy_policy: null,
+  custom_disclaimer: null,
+  categories: ['Assistant'],
+  position: 1,
+  is_listed: true,
+  ...overrides,
+  app: {
+    id: 'id-1',
+    mode: AppModeEnum.CHAT,
+    icon_type: null,
+    icon: '🤖',
+    icon_background: '#fff',
+    icon_url: '',
+    name: 'Sample App',
+    ...overrides?.app,
+  },
+})
+
+describe('TemplateCard', () => {
+  const onCreate = vi.fn()
+  const onTry = vi.fn()
+  const mockTrackEvent = vi.mocked(trackEvent)
+  let deploymentEdition: DeploymentEdition = 'CLOUD'
+
+  const renderComponent = (props?: Partial<React.ComponentProps<typeof TemplateCard>>) => {
+    const mergedProps: React.ComponentProps<typeof TemplateCard> = {
+      app: createApp(),
+      canCreate: false,
+      onCreate,
+      onTry,
+      ...props,
+    }
+    return renderWithConsoleQuery(<TemplateCard {...mergedProps} />, {
+      systemFeatures: { deployment_edition: deploymentEdition },
+    })
+  }
+
+  beforeEach(() => {
+    deploymentEdition = 'CLOUD'
+    vi.clearAllMocks()
+  })
+
+  describe('Rendering', () => {
+    it('should render app name and description', () => {
+      renderComponent()
+
+      expect(screen.getByText('Sample App')).toBeInTheDocument()
+      expect(screen.getByText('App description')).toBeInTheDocument()
+    })
+
+    it.each([
+      [AppModeEnum.CHAT, 'APP.TYPES.CHATBOT'],
+      [AppModeEnum.ADVANCED_CHAT, 'APP.TYPES.ADVANCED'],
+      [AppModeEnum.AGENT_CHAT, 'APP.TYPES.AGENT'],
+      [AppModeEnum.WORKFLOW, 'APP.TYPES.WORKFLOW'],
+      [AppModeEnum.COMPLETION, 'APP.TYPES.COMPLETION'],
+    ])('should render correct mode label for %s mode', (mode, label) => {
+      renderComponent({ app: createApp({ app: { ...createApp().app, mode } }) })
+
+      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(screen.getByTestId('app-type-icon')).toHaveTextContent(mode)
+    })
+
+    it('should render description in a truncatable container', () => {
+      renderComponent({ app: createApp({ description: 'Very long description text' }) })
+
+      const descWrapper = screen.getByText('Very long description text')
+      expect(descWrapper).toHaveClass('line-clamp-2')
+    })
+
+    it('should not render category badges', () => {
+      renderComponent({ app: createApp({ categories: ['Search', 'Productivity'] }) })
+
+      expect(screen.queryByText('Search')).not.toBeInTheDocument()
+      expect(screen.queryByText('Productivity')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('User Interactions', () => {
+    it('should make the app card clickable on cloud edition', () => {
+      renderComponent({
+        app: createApp({ app: { ...createApp().app, mode: AppModeEnum.WORKFLOW } }),
+        canCreate: true,
+      })
+
+      const cardButton = screen.getByRole('button', { name: 'Sample App' })
+
+      expect(cardButton).toHaveAttribute('type', 'button')
+    })
+
+    it('should not render hover action buttons', () => {
+      renderComponent({ canCreate: true })
+
+      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+      expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
+    })
+
+    it('should make the app card clickable outside cloud edition when create is allowed', () => {
+      deploymentEdition = 'COMMUNITY'
+      renderComponent({ canCreate: true })
+
+      expect(screen.getByRole('button', { name: 'Sample App' })).toHaveClass('cursor-pointer')
+    })
+
+    it('should not make the app card clickable outside cloud edition when create is not allowed', () => {
+      deploymentEdition = 'COMMUNITY'
+      renderComponent({ canCreate: false })
+
+      expect(screen.queryByRole('button', { name: 'Sample App' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Props', () => {
+    it('should hide create button when canCreate is false', () => {
+      renderComponent({ canCreate: false })
+
+      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Edge Cases', () => {
+    it('should truncate long app name with title attribute', () => {
+      const longName = 'A Very Long Application Name That Should Be Truncated'
+      renderComponent({ app: createApp({ app: { ...createApp().app, name: longName } }) })
+
+      const nameElement = screen.getByText(longName)
+      expect(nameElement).toHaveAttribute('title', longName)
+      expect(nameElement).toHaveClass('truncate')
+    })
+
+    it('should render with empty description', () => {
+      renderComponent({ app: createApp({ description: '' }) })
+
+      expect(screen.getByText('Sample App')).toBeInTheDocument()
+    })
+
+    it('should call onTry when app card is clicked on cloud edition', () => {
+      const app = createApp()
+
+      renderComponent({ app, canCreate: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
+
+      expect(onTry).toHaveBeenCalledWith(app)
+      expect(onCreate).not.toHaveBeenCalled()
+    })
+
+    it('should call onCreate when app card is clicked outside cloud edition', () => {
+      deploymentEdition = 'COMMUNITY'
+
+      renderComponent({ canCreate: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
+
+      expect(onCreate).toHaveBeenCalledTimes(1)
+      expect(onTry).not.toHaveBeenCalled()
+      expect(mockTrackEvent).not.toHaveBeenCalled()
+    })
+
+    it('should call the card action when Enter is pressed on app card', async () => {
+      const user = userEvent.setup()
+      const app = createApp()
+
+      renderComponent({ app, canCreate: true })
+
+      screen.getByRole('button', { name: 'Sample App' }).focus()
+      await user.keyboard('{Enter}')
+
+      expect(onTry).toHaveBeenCalledWith(app)
+    })
+
+    it('should track preview event when app card is clicked', () => {
+      const app = createApp()
+
+      renderComponent({ app, canCreate: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
+
+      expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
+        template_id: app.app_id,
+        template_name: app.app.name,
+        template_mode: app.app.mode,
+        template_categories: app.categories,
+        page: 'explore',
+      })
+    })
+  })
+})

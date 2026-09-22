@@ -8,7 +8,7 @@ from graphon.enums import BuiltinNodeTypes, NodeType
 
 class DifyAgentNodeData(BaseNodeData):
     type: NodeType = BuiltinNodeTypes.AGENT
-    agent_node_kind: Literal["dify_agent"] = "dify_agent"
+    agent_node_kind: Literal["dify_agent"]
 
     @model_validator(mode="after")
     def validate_version(self) -> "DifyAgentNodeData":

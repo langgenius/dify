@@ -1,4 +1,5 @@
-import type { ComponentProps, MouseEventHandler } from 'react'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
+import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
@@ -8,25 +9,21 @@ import useWorkspacePluginInstallPermission from '@/app/components/plugins/instal
 import { TaskStatus } from '@/app/components/plugins/types'
 import { useCheckInstalled, useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 
-type InstallPluginButtonProps = Omit<ComponentProps<typeof Button>, 'children' | 'loading'> & {
+type InstallPluginButtonProps = Omit<ButtonProps, 'children' | 'loading'> & {
   uniqueIdentifier: string
   extraIdentifiers?: string[]
   onSuccess?: () => void
 }
 
 export const InstallPluginButton = (props: InstallPluginButtonProps) => {
-  const {
-    className,
-    uniqueIdentifier,
-    extraIdentifiers = [],
-    onSuccess,
-    ...rest
-  } = props
+  const { className, uniqueIdentifier, extraIdentifiers = [], onSuccess, ...rest } = props
   const { t } = useTranslation()
   const { canInstallPlugin } = useWorkspacePluginInstallPermission()
-  const identifiers = Array.from(new Set(
-    [uniqueIdentifier, ...extraIdentifiers].filter((item): item is string => Boolean(item)),
-  ))
+  const identifiers = Array.from(
+    new Set(
+      [uniqueIdentifier, ...extraIdentifiers].filter((item): item is string => Boolean(item)),
+    ),
+  )
   const manifest = useCheckInstalled({
     pluginIds: identifiers,
     enabled: identifiers.length > 0,
@@ -36,8 +33,7 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
   const isLoading = manifest.isLoading || install.isPending || isTracking
   const handleInstall: MouseEventHandler = (e) => {
     e.stopPropagation()
-    if (isLoading)
-      return
+    if (isLoading) return
     setIsTracking(true)
     install.mutate(uniqueIdentifier, {
       onSuccess: async (response) => {
@@ -72,8 +68,7 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
           }
 
           await finish()
-        }
-        catch {
+        } catch {
           setIsTracking(false)
           install.reset()
         }
@@ -84,16 +79,15 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       },
     })
   }
-  if (!canInstallPlugin || !manifest.data)
-    return null
+  if (!canInstallPlugin || !manifest.data) return null
   const identifierSet = new Set(identifiers)
-  const isInstalled = manifest.data.plugins.some(plugin => (
-    identifierSet.has(plugin.id)
-    || (plugin.plugin_unique_identifier && identifierSet.has(plugin.plugin_unique_identifier))
-    || (plugin.plugin_id && identifierSet.has(plugin.plugin_id))
-  ))
-  if (isInstalled)
-    return null
+  const isInstalled = manifest.data.plugins.some(
+    (plugin) =>
+      identifierSet.has(plugin.id) ||
+      (plugin.plugin_unique_identifier && identifierSet.has(plugin.plugin_unique_identifier)) ||
+      (plugin.plugin_id && identifierSet.has(plugin.plugin_id)),
+  )
+  if (isInstalled) return null
   return (
     <Button
       variant="secondary"
@@ -102,8 +96,14 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       onClick={handleInstall}
       className={cn('flex items-center', className)}
     >
-      {!isLoading ? t('nodes.agent.pluginInstaller.install', { ns: 'workflow' }) : t('nodes.agent.pluginInstaller.installing', { ns: 'workflow' })}
-      {!isLoading ? <span className="ml-1 i-ri-install-line size-3.5" /> : <span className="ml-1 i-ri-loader-2-line size-3.5 animate-spin" />}
+      {!isLoading
+        ? t(($) => $['nodes.agent.pluginInstaller.install'], { ns: 'workflow' })
+        : t(($) => $['nodes.agent.pluginInstaller.installing'], { ns: 'workflow' })}
+      {!isLoading ? (
+        <span className="i-ri-install-line size-3.5" />
+      ) : (
+        <span className="i-ri-loader-2-line size-3.5 animate-spin" />
+      )}
     </Button>
   )
 }

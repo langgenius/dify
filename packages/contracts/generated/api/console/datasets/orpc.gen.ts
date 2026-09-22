@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteDatasetsApiKeysByApiKeyIdPath,
   zDeleteDatasetsApiKeysByApiKeyIdResponse,
@@ -126,6 +125,7 @@ import {
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdBody,
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath,
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse,
+  zPostDatasetsApiKeysBody,
   zPostDatasetsApiKeysResponse,
   zPostDatasetsBatchImportStatusByJobIdBody,
   zPostDatasetsBatchImportStatusByJobIdPath,
@@ -249,6 +249,7 @@ export const post = oc
     path: '/datasets/api-keys',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostDatasetsApiKeysBody }))
   .output(zPostDatasetsApiKeysResponse)
 
 export const apiKeys = {
@@ -359,8 +360,12 @@ export const get5 = oc
   .input(z.object({ params: zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath }))
   .output(zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
 
+/**
+ * Update external knowledge API template
+ */
 export const patch = oc
   .route({
+    description: 'Update external knowledge API template',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsExternalKnowledgeApiByExternalKnowledgeApiId',
@@ -397,8 +402,12 @@ export const get6 = oc
   .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }))
   .output(zGetDatasetsExternalKnowledgeApiResponse)
 
+/**
+ * Create external knowledge API template
+ */
 export const post4 = oc
   .route({
+    description: 'Create external knowledge API template',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsExternalKnowledgeApi',
@@ -444,7 +453,6 @@ export const post6 = oc
     method: 'POST',
     operationId: 'postDatasetsInit',
     path: '/datasets/init',
-    successStatus: 201,
     tags: ['console'],
   })
   .input(z.object({ body: zPostDatasetsInitBody }))
@@ -659,7 +667,7 @@ export const downloadZip = {
 export const post10 = oc
   .route({
     description:
-      'Generate summary index for documents\nThis endpoint checks if the dataset configuration supports summary generation\n(indexing_technique must be \'high_quality\' and summary_index_setting.enable must be true),\nthen asynchronously generates summary indexes for the provided documents.',
+      "Generate summary index for documents\nThis endpoint checks if the dataset configuration supports summary generation\n(indexing_technique must be 'high_quality' and summary_index_setting.enable must be true),\nthen asynchronously generates summary indexes for the provided documents.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsGenerateSummary',
@@ -728,7 +736,7 @@ export const status = {
  */
 export const get14 = oc
   .route({
-    description: 'Get a signed download URL for a dataset document\'s original uploaded file',
+    description: "Get a signed download URL for a dataset document's original uploaded file",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdDownload',
@@ -1184,12 +1192,13 @@ export const segments = {
  * - generating: Number of summaries being generated
  * - error: Number of summaries with errors
  * - not_started: Number of segments without summary records
+ * - timeout: Number of summaries that timed out
  * - summaries: List of summary records with status and content preview
  */
 export const get22 = oc
   .route({
     description:
-      'Get summary index generation status for a document\nReturns:\n- total_segments: Total number of segments in the document\n- summary_status: Dictionary with status counts\n  - completed: Number of summaries completed\n  - generating: Number of summaries being generated\n  - error: Number of summaries with errors\n  - not_started: Number of segments without summary records\n- summaries: List of summary records with status and content preview',
+      'Get summary index generation status for a document\nReturns:\n- total_segments: Total number of segments in the document\n- summary_status: Dictionary with status counts\n  - completed: Number of summaries completed\n  - generating: Number of summaries being generated\n  - error: Number of summaries with errors\n  - not_started: Number of segments without summary records\n  - timeout: Number of summaries that timed out\n- summaries: List of summary records with status and content preview',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatus',

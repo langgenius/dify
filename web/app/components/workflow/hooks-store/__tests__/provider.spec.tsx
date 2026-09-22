@@ -15,7 +15,8 @@ let mockReactflowState = {
 }
 
 vi.mock('reactflow', () => ({
-  useStore: (selector: (state: typeof mockReactflowState) => unknown) => selector(mockReactflowState),
+  useStore: (selector: (state: typeof mockReactflowState) => unknown) =>
+    selector(mockReactflowState),
 }))
 
 vi.mock('../store', async () => {

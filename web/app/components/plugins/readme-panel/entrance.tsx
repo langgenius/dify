@@ -1,5 +1,4 @@
-import type { PluginDetail } from '../types'
-import type { ReadmePanelPresentation } from './store'
+import type { ReadmePanelPresentation, ReadmePanelState } from './store'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,14 +11,14 @@ export const ReadmeEntrance = ({
   className,
   showShortTip = false,
 }: {
-  pluginDetail: PluginDetail
+  pluginDetail: ReadmePanelState['detail']
   presentation?: ReadmePanelPresentation
   className?: string
   showShortTip?: boolean
 }) => {
   const { t } = useTranslation()
   const triggerId = useId()
-  const openReadmePanel = useReadmePanelStore(s => s.openReadmePanel)
+  const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
 
   const handleReadmeClick = () => {
     if (pluginDetail) {
@@ -30,11 +29,21 @@ export const ReadmeEntrance = ({
       })
     }
   }
-  if (!pluginDetail || !pluginDetail?.plugin_unique_identifier || BUILTIN_TOOLS_ARRAY.includes(pluginDetail.id))
+  if (
+    !pluginDetail ||
+    !pluginDetail?.plugin_unique_identifier ||
+    ('id' in pluginDetail && BUILTIN_TOOLS_ARRAY.includes(pluginDetail.id))
+  )
     return null
 
   return (
-    <div className={cn('flex flex-col items-start justify-center gap-2 pt-0 pb-4', presentation === 'drawer' && 'px-4', className)}>
+    <div
+      className={cn(
+        'flex flex-col items-start justify-center gap-2 pt-0 pb-4',
+        presentation === 'drawer' && 'px-4',
+        className,
+      )}
+    >
       {!showShortTip && (
         <div className="relative h-1 w-8 shrink-0">
           <div className="h-px w-full bg-divider-regular"></div>
@@ -51,7 +60,9 @@ export const ReadmeEntrance = ({
           <span aria-hidden="true" className="i-ri-book-read-line size-3" />
         </div>
         <span className="text-xs/4 font-normal">
-          {!showShortTip ? t('readmeInfo.needHelpCheckReadme', { ns: 'plugin' }) : t('readmeInfo.title', { ns: 'plugin' })}
+          {!showShortTip
+            ? t(($) => $['readmeInfo.needHelpCheckReadme'], { ns: 'plugin' })
+            : t(($) => $['readmeInfo.title'], { ns: 'plugin' })}
         </span>
       </button>
     </div>

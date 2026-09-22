@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   NumberField,
   NumberFieldControls,
@@ -9,9 +10,15 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { Infotip } from '@/app/components/base/infotip'
 
 type Props = Readonly<{
   className?: string
@@ -30,9 +37,24 @@ type Props = Readonly<{
   onSwitchChange?: (key: string, enable: boolean) => void
 }>
 
-const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, disabled = false, hasSwitch, onSwitchChange }) => {
+const ParamItem: FC<Props> = ({
+  className,
+  id,
+  name,
+  noTooltip,
+  tip,
+  step = 0.1,
+  min = 0,
+  max,
+  value,
+  enable,
+  onChange,
+  disabled = false,
+  hasSwitch,
+  onSwitchChange,
+}) => {
   return (
-    <FieldsetRoot className={className}>
+    <Fieldset className={className}>
       <FieldsetLegend className="sr-only">{name}</FieldsetLegend>
       <div className="flex items-center justify-between">
         <div className="flex h-6 items-center">
@@ -49,8 +71,11 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
           )}
           <span className="mr-1 system-sm-semibold text-text-secondary">{name}</span>
           {!noTooltip && tip && (
-            <Infotip aria-label={tip} popupClassName="w-[200px]">
-              {tip}
+            <Infotip>
+              <InfotipTrigger aria-label={tip} />
+              <InfotipContent aria-label={tip} className="w-50">
+                {tip}
+              </InfotipContent>
             </Infotip>
           )}
         </div>
@@ -63,7 +88,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             max={max}
             step={step}
             value={value}
-            onValueChange={nextValue => onChange(id, nextValue ?? min)}
+            onValueChange={(nextValue) => onChange(id, nextValue ?? min)}
           >
             <NumberFieldGroup>
               <NumberFieldInput aria-label={name} className="w-18" />
@@ -81,12 +106,25 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
-            onValueChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
-            aria-label={name}
-          />
+            onValueChange={(value) => onChange(id, value / (max < 5 ? 100 : 1))}
+          >
+            <SliderLabel className="sr-only">{name}</SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb
+                  getAriaValueText={
+                    max < 5
+                      ? (_formattedValue, sliderValue) => (sliderValue / 100).toString()
+                      : undefined
+                  }
+                />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
         </div>
       </div>
-    </FieldsetRoot>
+    </Fieldset>
   )
 }
 export default ParamItem

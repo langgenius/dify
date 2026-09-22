@@ -18,21 +18,17 @@ export type Props = Readonly<{
   onChange: (newValues: Record<string, any>) => void
 }>
 
-const Form: FC<Props> = ({
-  className,
-  label,
-  inputs,
-  values,
-  onChange,
-}) => {
+const Form: FC<Props> = ({ className, label, inputs, values, onChange }) => {
+  const collectionInputTypes: readonly InputVarType[] = [
+    InputVarType.contexts,
+    InputVarType.iterator,
+  ]
+
   const { t } = useTranslation()
   const mapKeysWithSameValueSelector = useMemo(() => {
     const keysWithSameValueSelector = (key: string) => {
-      const targetValueSelector = inputs.find(
-        item => item.variable === key,
-      )?.value_selector
-      if (!targetValueSelector)
-        return [key]
+      const targetValueSelector = inputs.find((item) => item.variable === key)?.value_selector
+      if (!targetValueSelector) return [key]
 
       const result: string[] = []
       inputs.forEach((item) => {
@@ -43,8 +39,7 @@ const Form: FC<Props> = ({
     }
 
     const m = new Map()
-    for (const input of inputs)
-      m.set(input.variable, keysWithSameValueSelector(input.variable))
+    for (const input of inputs) m.set(input.variable, keysWithSameValueSelector(input.variable))
 
     return m
   }, [inputs])
@@ -52,25 +47,26 @@ const Form: FC<Props> = ({
   useEffect(() => {
     valuesRef.current = values
   }, [values])
-  const handleChange = useCallback((key: string) => {
-    const mKeys = mapKeysWithSameValueSelector.get(key) ?? [key]
-    return (value: any) => {
-      const newValues = produce(valuesRef.current, (draft) => {
-        for (const k of mKeys)
-          draft[k] = value
-      })
-      onChange(newValues)
-    }
-  }, [valuesRef, onChange, mapKeysWithSameValueSelector])
-  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(inputs[0]?.type!)
+  const handleChange = useCallback(
+    (key: string) => {
+      const mKeys = mapKeysWithSameValueSelector.get(key) ?? [key]
+      return (value: any) => {
+        const newValues = produce(valuesRef.current, (draft) => {
+          for (const k of mKeys) draft[k] = value
+        })
+        onChange(newValues)
+      }
+    },
+    [valuesRef, onChange, mapKeysWithSameValueSelector],
+  )
+  const isArrayLikeType = collectionInputTypes.includes(inputs[0]?.type!)
   const isIteratorItemFile = inputs[0]?.type === InputVarType.iterator && inputs[0]?.isFileItem
 
   const isContext = inputs[0]?.type === InputVarType.contexts
   const handleAddContext = useCallback(() => {
     const newValues = produce(values, (draft: any) => {
       const key = inputs[0]!.variable
-      if (!draft[key])
-        draft[key] = []
+      if (!draft[key]) draft[key] = []
       draft[key].push(isContext ? RETRIEVAL_OUTPUT_STRUCT : '')
     })
     onChange(newValues)
@@ -80,11 +76,13 @@ const Form: FC<Props> = ({
     <div className={cn(className, 'space-y-2')}>
       {label && (
         <div className="mb-1 flex items-center justify-between">
-          <div className="flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">{label}</div>
+          <div className="flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
+            {label}
+          </div>
           {isArrayLikeType && !isIteratorItemFile && (
             <button
               type="button"
-              aria-label={`${t('operation.add', { ns: 'common' })} ${label}`}
+              aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${label}`}
               className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={handleAddContext}
             >

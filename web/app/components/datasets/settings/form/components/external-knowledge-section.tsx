@@ -1,8 +1,7 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import RetrievalSettings from '../../../external-knowledge-base/create/RetrievalSettings'
 
 const rowClass = 'flex gap-x-1'
@@ -13,7 +12,11 @@ type ExternalKnowledgeSectionProps = {
   topK: number
   scoreThreshold: number
   scoreThresholdEnabled: boolean
-  handleSettingsChange: (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => void
+  handleSettingsChange: (data: {
+    top_k?: number
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+  }) => void
   readonly?: boolean
 }
 
@@ -29,12 +32,14 @@ const ExternalKnowledgeSection = ({
 
   return (
     <>
-      <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+      <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
 
       {/* Retrieval Settings */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <RetrievalSettings
           topK={topK}
@@ -46,16 +51,21 @@ const ExternalKnowledgeSection = ({
         />
       </div>
 
-      <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+      <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
 
       {/* External Knowledge API */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.externalKnowledgeAPI', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.externalKnowledgeAPI'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="w-full">
           <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
-            <ApiConnectionMod className="size-4 text-text-secondary" />
+            <span
+              aria-hidden
+              className="i-custom-vender-solid-development-api-connection-mod size-4 text-text-secondary"
+            />
             <div className="overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
               {currentDataset.external_knowledge_info.external_knowledge_api_name}
             </div>
@@ -70,7 +80,9 @@ const ExternalKnowledgeSection = ({
       {/* External Knowledge ID */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.externalKnowledgeID', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.externalKnowledgeID'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="w-full">
           <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">

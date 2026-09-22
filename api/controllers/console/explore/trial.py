@@ -1,29 +1,35 @@
 import logging
-from typing import Any, Literal, cast
+from collections.abc import Callable, Mapping
+from dataclasses import asdict
+from datetime import datetime
+from functools import wraps
+from typing import Any, Literal
+from uuid import UUID
 
-from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from flask import Response, request
+from flask_restx import Resource
+from pydantic import AliasChoices, BaseModel, Field, field_validator
+from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, Unauthorized
 
 import services
+from configs import dify_config
+from controllers.common.audio_response import audio_binary_response
 from controllers.common.fields import (
     AudioBinaryResponse,
     AudioTranscriptResponse,
-    GeneratedAppResponse,
     SimpleResultResponse,
 )
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import (
-    get_or_create_model,
+    JsonResponseWithStatus,
     query_params_from_model,
     register_response_schema_models,
     register_schema_models,
 )
 from controllers.console import console_ns
 from controllers.console.app.error import (
+    AppNotFoundError,
     AppUnavailableError,
     AudioTooLargeError,
     CompletionRequestError,
@@ -34,60 +40,63 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
-from controllers.console.app.wraps import get_app_model_with_trial
+from controllers.console.app.preview_admission import get_preview_app
+from controllers.console.explore.error import (
+    AppPreviewOwnerUnavailableError as AppPreviewOwnerUnavailableHttpError,
+)
+from controllers.console.explore.error import (
+    AppPreviewSiteUnavailableError as AppPreviewSiteUnavailableHttpError,
+)
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
     NotCompletionAppError,
     NotWorkflowAppError,
 )
-from controllers.console.explore.wraps import TrialAppResource, trial_feature_enable
-from controllers.console.wraps import with_current_user
+from controllers.console.explore.trial_app_admission import get_trial_app
+from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request_context
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
+from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
-from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
+    AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from extensions.ext_database import db
-from extensions.ext_redis import redis_client
-from fields.app_fields import (
-    app_detail_fields_with_site,
-    deleted_tool_fields,
-    model_config_fields,
-    site_fields,
-    tag_fields,
-)
-from fields.dataset_fields import dataset_fields
-from fields.member_fields import simple_account_fields
+from core.helper import encrypter
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
+from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
+from fields.conversation_variable_fields import WorkflowConversationVariableResponse
+from fields.file_fields import FileResponse, FileWithSignedUrl
 from fields.message_fields import SuggestedQuestionsResponse
-from fields.workflow_fields import (
-    conversation_variable_fields,
-    pipeline_variable_fields,
-    workflow_fields,
-    workflow_partial_fields,
-)
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
+from graphon.variables import SecretVariable, VariableBase
 from libs import helper
-from libs.helper import uuid_value
-from models import Account
-from models.account import TenantStatus
-from models.model import AppMode, Site
-from models.workflow import Workflow
-from services.app_generate_service import AppGenerateService
-from services.app_service import AppService
-from services.audio_service import AudioService
-from services.dataset_service import DatasetService
+from libs.helper import dump_response, to_timestamp, uuid_value
+from libs.stream import close_stream
+from libs.url_utils import normalize_api_base_url
+from machinery.context import RequestContext
+from models.enums import CreatorUserRole
+from services.account_errors import AccountNotFoundError
+from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.app_preview_query_service import (
+    AppPreviewOwnerUnavailableError,
+    AppPreviewRef,
+    AppPreviewSiteUnavailableError,
+    AppPreviewUnavailableError,
+)
+from services.audio_types import AudioAppRef, AudioUpload
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 from services.errors.conversation import ConversationNotExistsError
@@ -96,52 +105,16 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.message_service import MessageService
-from services.recommended_app_service import RecommendedAppService
+from services.file_service import FileUploadActor
+from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
+from services.trial_app_access_service import TrialAppRef
+from services.trial_app_generation_service import (
+    TrialAppNotChatError,
+    TrialAppNotCompletionError,
+    TrialAppNotWorkflowError,
+)
 
 logger = logging.getLogger(__name__)
-
-
-model_config_model = get_or_create_model("TrialAppModelConfig", model_config_fields)
-workflow_partial_model = get_or_create_model("TrialWorkflowPartial", workflow_partial_fields)
-deleted_tool_model = get_or_create_model("TrialDeletedTool", deleted_tool_fields)
-tag_model = get_or_create_model("TrialTag", tag_fields)
-site_model = get_or_create_model("TrialSite", site_fields)
-
-app_detail_fields_with_site_copy = app_detail_fields_with_site.copy()
-app_detail_fields_with_site_copy["model_config"] = fields.Nested(
-    model_config_model, attribute="app_model_config", allow_null=True
-)
-app_detail_fields_with_site_copy["workflow"] = fields.Nested(workflow_partial_model, allow_null=True)
-app_detail_fields_with_site_copy["deleted_tools"] = fields.List(fields.Nested(deleted_tool_model))
-app_detail_fields_with_site_copy["tags"] = fields.List(fields.Nested(tag_model))
-app_detail_fields_with_site_copy["site"] = fields.Nested(site_model)
-app_detail_with_site_model = get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
-
-simple_account_model = get_or_create_model("TrialSimpleAccount", simple_account_fields)
-conversation_variable_model = get_or_create_model("TrialConversationVariable", conversation_variable_fields)
-pipeline_variable_model = get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
-
-workflow_fields_copy = workflow_fields.copy()
-workflow_fields_copy["created_by"] = fields.Nested(simple_account_model, attribute="created_by_account")
-workflow_fields_copy["updated_by"] = fields.Nested(
-    simple_account_model, attribute="updated_by_account", allow_null=True
-)
-workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
-workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
-workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
-
-dataset_model = get_or_create_model("TrialDataset", dataset_fields)
-dataset_list_model = get_or_create_model(
-    "TrialDatasetList",
-    {
-        "data": fields.List(fields.Nested(dataset_model)),
-        "has_more": fields.Boolean,
-        "limit": fields.Integer,
-        "total": fields.Integer,
-        "page": fields.Integer,
-    },
-)
 
 
 class WorkflowRunRequest(BaseModel):
@@ -179,6 +152,284 @@ class TrialDatasetListQuery(BaseModel):
     ids: list[str] = Field(default_factory=list, description="Dataset IDs")
 
 
+type TrialAppMode = Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+type TrialIconType = Literal["emoji", "image", "link"]
+type JsonObject = dict[str, Any]
+
+
+class TrialAppModel(ResponseModel):
+    provider: str
+    name: str
+    mode: str | None = None
+    completion_params: JsonObject = Field(default_factory=dict)
+
+
+class TrialAppAgentMode(ResponseModel):
+    enabled: bool | None = None
+    strategy: str | None = None
+    tools: list[JsonObject] = Field(default_factory=list)
+
+
+class TrialAppModelConfigResponse(ResponseModel):
+    opening_statement: str | None = None
+    suggested_questions: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("suggested_questions_list", "suggested_questions"),
+    )
+    suggested_questions_after_answer: JsonObject | None = Field(
+        default=None,
+        validation_alias=AliasChoices("suggested_questions_after_answer_dict", "suggested_questions_after_answer"),
+    )
+    speech_to_text: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("speech_to_text_dict", "speech_to_text")
+    )
+    text_to_speech: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("text_to_speech_dict", "text_to_speech")
+    )
+    retriever_resource: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("retriever_resource_dict", "retriever_resource")
+    )
+    annotation_reply: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("annotation_reply_dict", "annotation_reply")
+    )
+    more_like_this: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("more_like_this_dict", "more_like_this")
+    )
+    sensitive_word_avoidance: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("sensitive_word_avoidance_dict", "sensitive_word_avoidance")
+    )
+    external_data_tools: list[JsonObject] = Field(
+        default_factory=list, validation_alias=AliasChoices("external_data_tools_list", "external_data_tools")
+    )
+    model: TrialAppModel | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
+    user_input_form: list[JsonObject] = Field(
+        default_factory=list, validation_alias=AliasChoices("user_input_form_list", "user_input_form")
+    )
+    dataset_query_variable: str | None = None
+    pre_prompt: str | None = None
+    agent_mode: TrialAppAgentMode | None = Field(
+        default=None,
+        validation_alias=AliasChoices("agent_mode_dict", "agent_mode"),
+    )
+    prompt_type: str | None = None
+    chat_prompt_config: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("chat_prompt_config_dict", "chat_prompt_config")
+    )
+    completion_prompt_config: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("completion_prompt_config_dict", "completion_prompt_config")
+    )
+    dataset_configs: JsonObject | None = Field(
+        default=None,
+        validation_alias=AliasChoices("dataset_configs_dict", "dataset_configs"),
+    )
+    file_upload: JsonObject | None = Field(
+        default=None,
+        validation_alias=AliasChoices("file_upload_dict", "file_upload"),
+    )
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialDeletedToolResponse(ResponseModel):
+    type: str
+    tool_name: str
+    provider_id: str
+
+
+class TrialTagResponse(ResponseModel):
+    id: str
+    name: str
+    type: str
+
+
+class TrialSiteResponse(ResponseModel):
+    access_token: str | None = Field(default=None, validation_alias="code")
+    code: str | None = None
+    title: str
+    icon_type: TrialIconType | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    description: str | None = None
+    default_language: str
+    chat_color_theme: str | None = None
+    chat_color_theme_inverted: bool | None = None
+    customize_domain: str | None = None
+    copyright: str | None = None
+    privacy_policy: str | None = None
+    input_placeholder: str | None = None
+    custom_disclaimer: str | None = None
+    customize_token_strategy: str | None = None
+    prompt_public: bool | None = None
+    app_base_url: str | None = None
+    show_workflow_steps: bool | None = None
+    use_icon_as_answer_icon: bool | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+    icon_url: str | None = None
+
+    @field_validator("icon_type", mode="before")
+    @classmethod
+    def _normalize_icon_type(cls, value: Any) -> str | None:
+        if hasattr(value, "value"):
+            return value.value
+        return value
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialWorkflowPartialResponse(ResponseModel):
+    id: str
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialAppDetailResponse(ResponseModel):
+    id: str
+    name: str
+    description: str | None = None
+    mode: TrialAppMode = Field(validation_alias="mode_compatible_with_agent")
+    icon_type: TrialIconType | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    icon_url: str | None = None
+    enable_site: bool
+    enable_api: bool
+    model_config_: TrialAppModelConfigResponse | None = Field(
+        default=None,
+        validation_alias=AliasChoices("app_model_config", "model_config"),
+        alias="model_config",
+    )
+    workflow: TrialWorkflowPartialResponse | None = None
+    api_base_url: str | None = None
+    use_icon_as_answer_icon: bool | None = None
+    max_active_requests: int | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+    deleted_tools: list[TrialDeletedToolResponse] = Field(default_factory=list)
+    access_mode: str | None = None
+    tags: list[TrialTagResponse] = Field(default_factory=list)
+    permission_keys: list[str] = Field(default_factory=list)
+    site: TrialSiteResponse
+
+    @field_validator("icon_type", mode="before")
+    @classmethod
+    def _normalize_icon_type(cls, value: Any) -> str | None:
+        if hasattr(value, "value"):
+            return value.value
+        return value
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialDatasetResponse(ResponseModel):
+    id: str
+    name: str
+    description: str | None = None
+    permission: str | None = None
+    data_source_type: str | None = None
+    indexing_technique: str | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    permission_keys: list[str] = Field(default_factory=list)
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialDatasetListResponse(ResponseModel):
+    data: list[TrialDatasetResponse]
+    has_more: bool
+    limit: int
+    total: int
+    page: int
+
+
+class TrialSimpleAccount(ResponseModel):
+    id: str
+    name: str | None = None
+    email: str | None = None
+
+
+class TrialWorkflowResponse(ResponseModel):
+    id: str
+    graph: JsonObject = Field(validation_alias=AliasChoices("graph_dict", "graph"))
+    features: JsonObject = Field(default_factory=dict, validation_alias=AliasChoices("features_dict", "features"))
+    hash: str | None = Field(default=None, validation_alias=AliasChoices("unique_hash", "hash"))
+    version: str | None = None
+    marked_name: str | None = None
+    marked_comment: str | None = None
+    created_by: TrialSimpleAccount | None = Field(
+        default=None,
+        validation_alias=AliasChoices("created_by_account", "created_by"),
+    )
+    created_at: int | None = None
+    updated_by: TrialSimpleAccount | None = Field(
+        default=None,
+        validation_alias=AliasChoices("updated_by_account", "updated_by"),
+    )
+    updated_at: int | None = None
+    tool_published: bool | None = None
+    environment_variables: list[JsonObject] = Field(default_factory=list)
+    conversation_variables: list[WorkflowConversationVariableResponse] = Field(default_factory=list)
+    rag_pipeline_variables: list[JsonObject] = Field(default_factory=list)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+    @field_validator("environment_variables", mode="before")
+    @classmethod
+    def _serialize_environment_variables(cls, value: Any) -> list[Any]:
+        if value is None:
+            return []
+
+        result: list[Any] = []
+        for item in value:
+            if isinstance(item, Mapping):
+                serialized = dict(item)
+                if serialized.get("value_type") == "secret":
+                    serialized["value"] = encrypter.full_mask_token()
+                result.append(serialized)
+            elif isinstance(item, SecretVariable):
+                serialized = item.model_dump(mode="json")
+                serialized["value"] = encrypter.full_mask_token()
+                result.append(serialized)
+            elif isinstance(item, LLMEnvironmentVariable):
+                result.append(dump_environment_variable(item, mode="json"))
+            elif isinstance(item, VariableBase):
+                result.append(item.model_dump(mode="json"))
+            else:
+                result.append(item)
+        return result
+
+
 register_schema_models(
     console_ns,
     WorkflowRunRequest,
@@ -192,39 +443,77 @@ register_response_schema_models(
     ParametersResponse,
     AudioBinaryResponse,
     AudioTranscriptResponse,
-    GeneratedAppResponse,
     SimpleResultResponse,
     SiteResponse,
     SuggestedQuestionsResponse,
+    TrialAppDetailResponse,
+    TrialDatasetListResponse,
+    TrialWorkflowResponse,
 )
 
+simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
-class TrialAppWorkflowRunApi(TrialAppResource):
-    @trial_feature_enable
+
+class TrialAppFileUploadApi(Resource):
+    @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
+    @console_account_admission()
+    @get_trial_app
+    @cloud_edition_billing_resource_check("documents")
+    def post(self, request_context: RequestContext, trial_app: TrialAppRef) -> JsonResponseWithStatus:
+        """Upload a file into the tenant that owns the trial app."""
+        upload_file = upload_file_from_request_context(
+            request_context=request_context,
+            resource_tenant_id=trial_app.tenant_id,
+        )
+        return dump_response(FileResponse, upload_file), 201
+
+
+class TrialAppRemoteFileUploadApi(Resource):
+    @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
+    @console_account_admission()
+    @get_trial_app
+    @cloud_edition_billing_resource_check("documents")
+    @model_validate(RemoteFileUploadPayload)
+    def post(
+        self, payload: RemoteFileUploadPayload, request_context: RequestContext, trial_app: TrialAppRef
+    ) -> JsonResponseWithStatus:
+        """Upload a remote file into the tenant that owns the trial app."""
+        remote_file = upload_remote_file(
+            url=payload.url,
+            current_user=FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=trial_app.tenant_id,
+        )
+        return dump_response(FileWithSignedUrl, remote_file), 201
+
+
+class TrialAppWorkflowRunApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @console_ns.response(200, "Success")
+    @console_account_admission()
+    @get_trial_app
+    @model_validate(WorkflowRunRequest)
+    def post(self, req_data: WorkflowRunRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
         """
         Run workflow
         """
-        app_model = trial_app
-        if not app_model:
-            raise NotWorkflowAppError()
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
-            raise NotWorkflowAppError()
-
-        request_data = WorkflowRunRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
         try:
-            app_id = app_model.id
-            user_id = current_user.id
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+            response = application_services().trial_app_generation.generate_workflow(
+                trial_app=trial_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(),
             )
-            RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TrialAppNotWorkflowError as error:
+            raise NotWorkflowAppError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
+        except services.errors.app_model_config.AppModelConfigBrokenError as error:
+            raise AppUnavailableError() from error
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -233,7 +522,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except InvokeRateLimitError as ex:
+        except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
@@ -242,43 +531,30 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             raise InternalServerError()
 
 
-class TrialAppWorkflowTaskStopApi(TrialAppResource):
+class TrialAppWorkflowTaskStopApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @trial_feature_enable
-    def post(self, trial_app, task_id: str):
+    @console_account_admission()
+    @get_trial_app
+    def post(self, request_context: RequestContext, trial_app: TrialAppRef, task_id: str) -> dict[str, object]:
         """
         Stop workflow task
         """
-        app_model = trial_app
-        if not app_model:
-            raise NotWorkflowAppError()
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
+        if trial_app.app_mode != "workflow":
             raise NotWorkflowAppError()
 
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
+        application_services().app_tasks.stop_workflow_task_no_user_check(task_id=task_id)
 
-        # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
-
-        return {"result": "success"}
+        return dump_response(SimpleResultResponse, {"result": "success"})
 
 
-class TrialChatApi(TrialAppResource):
+class TrialChatApi(Resource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
-    @trial_feature_enable
-    @with_current_user
-    def post(self, current_user: Account, trial_app):
-        app_model = trial_app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
-        request_data = ChatRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
+    @console_ns.response(200, "Success")
+    @console_account_admission()
+    @get_trial_app
+    @model_validate(ChatRequest)
+    def post(self, req_data: ChatRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
+        args = req_data.model_dump()
 
         # Validate UUID values if provided
         if args.get("conversation_id"):
@@ -286,18 +562,20 @@ class TrialChatApi(TrialAppResource):
         if args.get("parent_message_id"):
             args["parent_message_id"] = uuid_value(args["parent_message_id"])
 
-        args["auto_generate_name"] = False
-
         try:
-            # Get IDs before they might be detached from session
-            app_id = app_model.id
-            user_id = current_user.id
-
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+            response = application_services().trial_app_generation.generate_chat(
+                trial_app=trial_app,
+                account_id=request_context.account_id,
+                args=args,
             )
-            RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TrialAppNotChatError as error:
+            raise NotChatAppError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -313,7 +591,7 @@ class TrialChatApi(TrialAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except InvokeRateLimitError as ex:
+        except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
@@ -322,21 +600,26 @@ class TrialChatApi(TrialAppResource):
             raise InternalServerError()
 
 
-class TrialMessageSuggestedQuestionApi(TrialAppResource):
+class TrialMessageSuggestedQuestionApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
-    @with_current_user
-    def get(self, current_user: Account, trial_app, message_id):
-        app_model = trial_app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+    @console_account_admission()
+    @get_trial_app
+    def get(self, request_context: RequestContext, trial_app: TrialAppRef, message_id: UUID) -> dict[str, object]:
+        if trial_app.app_mode not in {"chat", "agent-chat", "advanced-chat"}:
             raise NotChatAppError()
 
-        message_id = str(message_id)
-
         try:
-            questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
+            questions = application_services().message_suggested_questions.get_suggested_questions(
+                app_id=trial_app.app_id,
+                app_owner_tenant_id=trial_app.tenant_id,
+                expected_app_mode=trial_app.app_mode,
+                actor=SuggestedQuestionsAccount(account_id=request_context.account_id, invoke_from="explore"),
+                message_id=str(message_id),
             )
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except SuggestedQuestionsActorNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
         except MessageNotExistsError:
             raise NotFound("Message not found")
         except ConversationNotExistsError:
@@ -355,126 +638,112 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
             logger.exception("internal server error.")
             raise InternalServerError()
 
-        return {"data": questions}
+        return dump_response(SuggestedQuestionsResponse, {"data": questions})
 
 
-class TrialChatAudioApi(TrialAppResource):
-    @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
-    @trial_feature_enable
-    @with_current_user
-    def post(self, current_user: Account, trial_app):
-        app_model = trial_app
-
-        file = request.files["file"]
-
+def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
-            # Get IDs before they might be detached from session
-            app_id = app_model.id
-            user_id = current_user.id
+            return view(*args, **kwargs)
+        except (AppDefinitionUnavailableError, services.errors.app_model_config.AppModelConfigBrokenError) as error:
+            raise AppUnavailableError() from error
+        except NoAudioUploadedServiceError as error:
+            raise NoAudioUploadedError() from error
+        except AudioTooLargeServiceError as error:
+            raise AudioTooLargeError(str(error)) from error
+        except UnsupportedAudioTypeServiceError as error:
+            raise UnsupportedAudioTypeError() from error
+        except ProviderNotSupportSpeechToTextServiceError as error:
+            raise ProviderNotSupportSpeechToTextError() from error
+        except SpeechToTextDisabledServiceError as error:
+            raise SpeechToTextDisabledError() from error
+        except ProviderTokenNotInitError as error:
+            raise ProviderNotInitializeError(error.description) from error
+        except QuotaExceededError as error:
+            raise ProviderQuotaExceededError() from error
+        except ModelCurrentlyNotSupportError as error:
+            raise ProviderModelCurrentlyNotSupportError() from error
+        except InvokeError as error:
+            raise CompletionRequestError(error.description) from error
+        except (HTTPException, ValueError):
+            raise
+        except Exception as error:
+            logger.exception("Trial audio operation failed")
+            raise InternalServerError() from error
 
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
-            RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
-            return response
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logger.exception("internal server error.")
-            raise InternalServerError()
+    return decorated
 
 
-class TrialChatTextApi(TrialAppResource):
+class TrialChatAudioApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
+    @console_account_admission()
+    @get_trial_app
+    @_trial_audio_errors
+    def post(self, request_context: RequestContext, trial_app: TrialAppRef) -> dict[str, object]:
+        file = request.files.get("file")
+        audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
+        transcript = application_services().app_audio.transcript_asr(
+            app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
+            audio=audio,
+        )
+        application_services().trial_app_usage.record(app_id=trial_app.app_id, account_id=request_context.account_id)
+        return dump_response(AudioTranscriptResponse, transcript)
+
+
+class TrialChatTextApi(Resource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
-    @trial_feature_enable
-    @with_current_user
-    def post(self, current_user: Account, trial_app):
-        app_model = trial_app
+    @console_account_admission()
+    @get_trial_app
+    @model_validate(TextToSpeechRequest)
+    @_trial_audio_errors
+    def post(
+        self, req_data: TextToSpeechRequest, request_context: RequestContext, trial_app: TrialAppRef
+    ) -> Response | None:
+        output = application_services().app_audio.transcript_tts(
+            app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
+            account_id=request_context.account_id,
+            text=req_data.text,
+            voice=req_data.voice,
+            message_id=req_data.message_id,
+        )
+        response = audio_binary_response(output)
         try:
-            request_data = TextToSpeechRequest.model_validate(console_ns.payload)
-
-            message_id = request_data.message_id
-            text = request_data.text
-            voice = request_data.voice
-
-            # Get IDs before they might be detached from session
-            app_id = app_model.id
-            user_id = current_user.id
-
-            response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
-            RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
-            return response
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logger.exception("internal server error.")
-            raise InternalServerError()
-
-
-class TrialCompletionApi(TrialAppResource):
-    @console_ns.expect(console_ns.models[CompletionRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
-    @trial_feature_enable
-    @with_current_user
-    def post(self, current_user: Account, trial_app):
-        app_model = trial_app
-        if app_model.mode != "completion":
-            raise NotCompletionAppError()
-
-        request_data = CompletionRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
-
-        streaming = args["response_mode"] == "streaming"
-        args["auto_generate_name"] = False
-
-        try:
-            # Get IDs before they might be detached from session
-            app_id = app_model.id
-            user_id = current_user.id
-
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+            # Preserve usage after MIME inspection, including a missing message's
+            # null response. Early provider/MIME failures do not consume a trial.
+            application_services().trial_app_usage.record(
+                app_id=trial_app.app_id, account_id=request_context.account_id
             )
+        except BaseException:
+            if response is not None:
+                close_stream(response)
+            raise
+        # response-contract:ignore audio_binary_response
+        return response
 
-            RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+
+class TrialCompletionApi(Resource):
+    @console_ns.expect(console_ns.models[CompletionRequest.__name__])
+    @console_ns.response(200, "Success")
+    @console_account_admission()
+    @get_trial_app
+    @model_validate(CompletionRequest)
+    def post(self, req_data: CompletionRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
+        try:
+            response = application_services().trial_app_generation.generate_completion(
+                trial_app=trial_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(),
+            )
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TrialAppNotCompletionError as error:
+            raise NotCompletionAppError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -490,6 +759,8 @@ class TrialCompletionApi(TrialAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+        except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
         except Exception:
@@ -501,103 +772,122 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
-    @get_app_model_with_trial(None)
-    def get(self, app_model):
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app site info.
 
         Returns the site configuration for the application including theme, icons, and text.
         """
-        site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
-
-        if not site:
-            raise Forbidden()
-
-        assert app_model.tenant
-        if app_model.tenant.status == TenantStatus.ARCHIVE:
-            raise Forbidden()
-
-        return SiteResponse.model_validate(site).model_dump(mode="json")
+        try:
+            site = application_services().app_previews.get_site(app=app)
+        except AppPreviewSiteUnavailableError as error:
+            raise AppPreviewSiteUnavailableHttpError(str(error)) from error
+        except AppPreviewOwnerUnavailableError as error:
+            raise AppPreviewOwnerUnavailableHttpError(str(error)) from error
+        return dump_response(SiteResponse, site)
 
 
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
-    @get_app_model_with_trial(None)
-    def get(self, app_model):
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app parameters."""
 
-        if app_model is None:
-            raise AppUnavailableError()
+        try:
+            parameters = application_services().app_definitions.get_parameters(app.app_id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
 
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
-            if workflow is None:
-                raise AppUnavailableError()
-
-            features_dict = workflow.features_dict
-            user_input_form = workflow.user_input_form(to_old_structure=True)
-        else:
-            app_model_config = app_model.app_model_config
-            if app_model_config is None:
-                raise AppUnavailableError()
-
-            features_dict = app_model_config.to_dict()
-
-            user_input_form = features_dict.get("user_input_form", [])
-
-        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
-        return ParametersResponse.model_validate(parameters).model_dump(mode="json")
+        return dump_response(ParametersResponse, parameters)
 
 
 class AppApi(Resource):
-    @console_ns.response(200, "Success", app_detail_with_site_model)
-    @get_app_model_with_trial(None)
-    @marshal_with(app_detail_with_site_model)
-    def get(self, app_model):
-        """Get app detail"""
+    @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
+    @console_account_admission()
+    @get_preview_app
+    def get(self, app: AppPreviewRef, request_context: RequestContext) -> dict[str, object]:
+        """Get app detail using the viewer's workspace for tool configuration."""
+        try:
+            detail = application_services().app_preview_details.get_detail(
+                app=app,
+                account_id=request_context.account_id,
+                active_workspace_id=request_context.active_workspace_id,
+            )
+        except AppPreviewUnavailableError as error:
+            raise AppNotFoundError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
+        except AppPreviewSiteUnavailableError as error:
+            raise AppPreviewSiteUnavailableHttpError(str(error)) from error
 
-        app_service = AppService()
-        app_model = app_service.get_app(app_model)
-
-        return app_model
+        source = asdict(detail)
+        source["api_base_url"] = normalize_api_base_url(dify_config.SERVICE_API_URL or request.host_url.rstrip("/"))
+        source["site"] = {
+            **asdict(detail.site),
+            "app_base_url": dify_config.APP_WEB_URL or request.url_root.rstrip("/"),
+        }
+        return dump_response(TrialAppDetailResponse, source)
 
 
 class AppWorkflowApi(Resource):
-    @console_ns.response(200, "Success", workflow_model)
-    @get_app_model_with_trial(None)
-    @marshal_with(workflow_model)
-    def get(self, app_model):
-        """Get workflow detail"""
-        if not app_model.workflow_id:
-            raise AppUnavailableError()
-
-        workflow = db.session.get(Workflow, app_model.workflow_id)
-        return workflow
+    @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
+        """Get a detached workflow definition after catalog preview admission."""
+        try:
+            workflow = application_services().app_preview_details.get_workflow(app=app)
+        except AppPreviewUnavailableError as error:
+            raise AppNotFoundError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        return dump_response(TrialWorkflowResponse, workflow)
 
 
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
-    @console_ns.response(200, "Success", dataset_list_model)
-    @get_app_model_with_trial(None)
-    def get(self, app_model):
+    @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
+        # These legacy fields are response metadata: the query returns all
+        # requested IDs without pagination. Keep their integer fallback and echo behavior.
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         ids = request.args.getlist("ids")
 
-        tenant_id = app_model.tenant_id
-        if ids:
-            datasets, total = DatasetService.get_datasets_by_ids(ids, tenant_id)
-        else:
+        if not ids:
             raise NeedAddIdsError()
+        try:
+            datasets = application_services().app_previews.get_datasets(app=app, ids=ids)
+        except AppPreviewUnavailableError as error:
+            raise AppNotFoundError() from error
 
-        data = cast(list[dict[str, Any]], marshal(datasets, dataset_fields))
-
-        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
-        return response
+        response = {
+            "data": datasets,
+            "has_more": False,
+            "limit": limit,
+            "total": len(datasets),
+            "page": page,
+        }
+        return dump_response(TrialDatasetListResponse, response)
 
 
 console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
+
+console_ns.add_resource(
+    TrialAppFileUploadApi,
+    "/trial-apps/<uuid:app_id>/files/upload",
+    endpoint="trial_app_file_upload",
+)
+
+console_ns.add_resource(
+    TrialAppRemoteFileUploadApi,
+    "/trial-apps/<uuid:app_id>/remote-files/upload",
+    endpoint="trial_app_remote_file_upload",
+)
 
 console_ns.add_resource(
     TrialMessageSuggestedQuestionApi,

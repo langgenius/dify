@@ -1,18 +1,18 @@
 'use client'
 
-import type { AccessPolicyWithBindings } from '@/models/access-control'
+import type { AccessRule } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRuleRowMenu from './access-rule-row-menu'
 
 type AccessRuleRowProps = {
-  rule: AccessPolicyWithBindings
+  rule: AccessRule
   canManage: boolean
   className?: string
   showMenu?: boolean
-  onView?: (rule: AccessPolicyWithBindings) => void
-  onEdit?: (rule: AccessPolicyWithBindings) => void
+  onView?: (rule: AccessRule) => void
+  onEdit?: (rule: AccessRule) => void
 }
 
 const AccessRuleRow = ({
@@ -25,7 +25,8 @@ const AccessRuleRow = ({
 }: AccessRuleRowProps) => {
   const { t } = useTranslation()
   const { policy } = rule
-  const description = policy.description.trim() || t('accessRule.noDescription', { ns: 'permission' })
+  const description =
+    policy.description?.trim() || t(($) => $['accessRule.noDescription'], { ns: 'permission' })
 
   const handleView = useCallback(() => onView?.(rule), [onView, rule])
   const handleEdit = useCallback(() => onEdit?.(rule), [onEdit, rule])
@@ -36,16 +37,10 @@ const AccessRuleRow = ({
         <div className="flex h-6 items-center system-sm-semibold text-text-primary">
           {policy.name}
         </div>
-        <p className="system-xs-regular leading-4 text-text-tertiary">
-          {description}
-        </p>
+        <p className="system-xs-regular leading-4 text-text-tertiary">{description}</p>
       </div>
       {showMenu && canManage && (
-        <AccessRuleRowMenu
-          onView={handleView}
-          onEdit={handleEdit}
-          rule={policy}
-        />
+        <AccessRuleRowMenu onView={handleView} onEdit={handleEdit} rule={policy} />
       )}
     </div>
   )

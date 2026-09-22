@@ -1,14 +1,17 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import data from '../i18n-config/languages'
+import data from '../i18n/languages'
+import { findValueIssues, formatValueIssue } from './check-i18n-values'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const targetLanguage = 'en-US'
 
-const languages = data.languages.filter(language => language.supported).map(language => language.value)
+const languages = data.languages
+  .filter((language) => language.supported)
+  .map((language) => language.value)
 
 function parseArgs(argv) {
   const args = {
@@ -24,8 +27,7 @@ function parseArgs(argv) {
     let cursor = startIndex + 1
     while (cursor < argv.length && !argv[cursor].startsWith('--')) {
       const value = argv[cursor].trim()
-      if (value)
-        values.push(value)
+      if (value) values.push(value)
       cursor++
     }
     return { values, nextIndex: cursor - 1 }
@@ -37,7 +39,7 @@ function parseArgs(argv) {
       return false
     }
 
-    const invalid = values.find(value => value.includes(','))
+    const invalid = values.find((value) => value.includes(','))
     if (invalid) {
       args.errors.push(`${flag} expects space-separated values. Example: ${flag} app billing`)
       return false
@@ -66,8 +68,7 @@ function parseArgs(argv) {
 
     if (arg === '--file') {
       const { values, nextIndex } = collectValues(index)
-      if (validateList(values, '--file'))
-        args.files.push(...values)
+      if (validateList(values, '--file')) args.files.push(...values)
       index = nextIndex
       continue
     }
@@ -79,8 +80,7 @@ function parseArgs(argv) {
 
     if (arg === '--lang') {
       const { values, nextIndex } = collectValues(index)
-      if (validateList(values, '--lang'))
-        args.languages.push(...values)
+      if (validateList(values, '--lang')) args.languages.push(...values)
       index = nextIndex
       continue
     }
@@ -106,7 +106,7 @@ Examples:
 
 async function getKeysFromLanguage(language) {
   return new Promise((resolve, reject) => {
-    const folderPath = path.resolve(__dirname, '../i18n', language)
+    const folderPath = path.resolve(__dirname, '../i18n/locales', language)
     const allKeys = []
     fs.readdir(folderPath, (err, files) => {
       if (err) {
@@ -116,13 +116,12 @@ async function getKeysFromLanguage(language) {
       }
 
       // Filter only .json files
-      const translationFiles = files.filter(file => file.endsWith('.json'))
+      const translationFiles = files.filter((file) => file.endsWith('.json'))
 
       translationFiles.forEach((file) => {
         const filePath = path.join(folderPath, file)
         const fileName = file.replace(/\.json$/, '') // Remove file extension
-        const camelCaseFileName = fileName.replace(/[-_](.)/g, (_, c) =>
-          c.toUpperCase()) // Convert to camel case
+        const camelCaseFileName = fileName.replace(/[-_](.)/g, (_, c) => c.toUpperCase()) // Convert to camel case
 
         try {
           const content = fs.readFileSync(filePath, 'utf8')
@@ -135,10 +134,9 @@ async function getKeysFromLanguage(language) {
           }
 
           // Flat structure: just get all keys directly
-          const fileKeys = Object.keys(translationObj).map(key => `${camelCaseFileName}.${key}`)
+          const fileKeys = Object.keys(translationObj).map((key) => `${camelCaseFileName}.${key}`)
           allKeys.push(...fileKeys)
-        }
-        catch (error) {
+        } catch (error) {
           console.error(`Error processing file ${filePath}:`, error.message)
           reject(error)
         }
@@ -149,7 +147,7 @@ async function getKeysFromLanguage(language) {
 }
 
 async function removeExtraKeysFromFile(language, fileName, extraKeys) {
-  const filePath = path.resolve(__dirname, '../i18n', language, `${fileName}.json`)
+  const filePath = path.resolve(__dirname, '../i18n/locales', language, `${fileName}.json`)
 
   if (!fs.existsSync(filePath)) {
     console.log(`⚠️  File not found: ${filePath}`)
@@ -160,11 +158,10 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
     // Filter keys that belong to this file
     const camelCaseFileName = fileName.replace(/[-_](.)/g, (_, c) => c.toUpperCase())
     const fileSpecificKeys = extraKeys
-      .filter(key => key.startsWith(`${camelCaseFileName}.`))
-      .map(key => key.substring(camelCaseFileName.length + 1)) // Remove file prefix
+      .filter((key) => key.startsWith(`${camelCaseFileName}.`))
+      .map((key) => key.substring(camelCaseFileName.length + 1)) // Remove file prefix
 
-    if (fileSpecificKeys.length === 0)
-      return false
+    if (fileSpecificKeys.length === 0) return false
 
     console.log(`🔄 Processing file: ${filePath}`)
 
@@ -180,8 +177,7 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
         delete translationObj[keyToRemove]
         console.log(`🗑️  Removed key: ${keyToRemove}`)
         modified = true
-      }
-      else {
+      } else {
         console.log(`⚠️  Could not find key: ${keyToRemove}`)
       }
     }
@@ -195,11 +191,32 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
     }
 
     return false
-  }
-  catch (error) {
+  } catch (error) {
     console.error(`Error processing file ${filePath}:`, error.message)
     return false
   }
+}
+
+function readLocaleFile(language, fileName) {
+  const filePath = path.resolve(__dirname, '../i18n/locales', language, `${fileName}.json`)
+
+  if (!fs.existsSync(filePath)) return null
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch (error) {
+    console.error(`Error processing file ${filePath}:`, error.message)
+    return null
+  }
+}
+
+function listSourceFileNames() {
+  const folderPath = path.resolve(__dirname, '../i18n/locales', targetLanguage)
+  return fs
+    .readdirSync(folderPath)
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => file.replace(/\.json$/, ''))
 }
 
 // Add command line argument support
@@ -214,22 +231,28 @@ async function main() {
     const allTargetKeys = await getKeysFromLanguage(targetLanguage)
 
     // Filter target keys by file if specified
-    const camelTargetFiles = targetFiles.map(file => file.replace(/[-_](.)/g, (_, c) => c.toUpperCase()))
+    const camelTargetFiles = targetFiles.map((file) =>
+      file.replace(/[-_](.)/g, (_, c) => c.toUpperCase()),
+    )
     const targetKeys = targetFiles.length
-      ? allTargetKeys.filter(key => camelTargetFiles.some(file => key.startsWith(`${file}.`)))
+      ? allTargetKeys.filter((key) => camelTargetFiles.some((file) => key.startsWith(`${file}.`)))
       : allTargetKeys
 
     // Filter languages by target language if specified
     const languagesToProcess = targetLangs.length ? targetLangs : languages
 
-    const allLanguagesKeys = await Promise.all(languagesToProcess.map(language => getKeysFromLanguage(language)))
+    const allLanguagesKeys = await Promise.all(
+      languagesToProcess.map((language) => getKeysFromLanguage(language)),
+    )
 
     // Filter language keys by file if specified
     const languagesKeys = targetFiles.length
-      ? allLanguagesKeys.map(keys => keys.filter(key => camelTargetFiles.some(file => key.startsWith(`${file}.`))))
+      ? allLanguagesKeys.map((keys) =>
+          keys.filter((key) => camelTargetFiles.some((file) => key.startsWith(`${file}.`))),
+        )
       : allLanguagesKeys
 
-    const keysCount = languagesKeys.map(keys => keys.length)
+    const keysCount = languagesKeys.map((keys) => keys.length)
     const targetKeysCount = targetKeys.length
 
     const comparison = languagesToProcess.reduce((result, language, index) => {
@@ -245,12 +268,11 @@ async function main() {
     for (let index = 0; index < languagesToProcess.length; index++) {
       const language = languagesToProcess[index]
       const languageKeys = languagesKeys[index]
-      const missingKeys = targetKeys.filter(key => !languageKeys.includes(key))
-      const extraKeys = languageKeys.filter(key => !targetKeys.includes(key))
+      const missingKeys = targetKeys.filter((key) => !languageKeys.includes(key))
+      const extraKeys = languageKeys.filter((key) => !targetKeys.includes(key))
 
       console.log(`Missing keys in ${language}:`, missingKeys)
-      if (missingKeys.length > 0)
-        hasDiff = true
+      if (missingKeys.length > 0) hasDiff = true
 
       // Show extra keys only when there are extra keys (negative difference)
       if (extraKeys.length > 0) {
@@ -261,22 +283,21 @@ async function main() {
           console.log(`\n🤖 Auto-removing extra keys from ${language}...`)
 
           // Get all translation files
-          const i18nFolder = path.resolve(__dirname, '../i18n', language)
-          const files = fs.readdirSync(i18nFolder)
-            .filter(file => file.endsWith('.json'))
-            .map(file => file.replace(/\.json$/, ''))
-            .filter(f => targetFiles.length === 0 || targetFiles.includes(f))
+          const i18nFolder = path.resolve(__dirname, '../i18n/locales', language)
+          const files = fs
+            .readdirSync(i18nFolder)
+            .filter((file) => file.endsWith('.json'))
+            .map((file) => file.replace(/\.json$/, ''))
+            .filter((f) => targetFiles.length === 0 || targetFiles.includes(f))
 
           let totalRemoved = 0
           for (const fileName of files) {
             const removed = await removeExtraKeysFromFile(language, fileName, extraKeys)
-            if (removed)
-              totalRemoved++
+            if (removed) totalRemoved++
           }
 
           console.log(`✅ Auto-removal completed for ${language}. Modified ${totalRemoved} files.`)
-        }
-        else {
+        } else {
           hasDiff = true
         }
       }
@@ -285,22 +306,48 @@ async function main() {
     return hasDiff
   }
 
-  console.log('🚀 Starting i18n:check script...')
-  if (targetFiles.length)
-    console.log(`📁 Checking files: ${targetFiles.join(', ')}`)
+  const compareValues = () => {
+    let hasDiff = false
+    const fileNames = targetFiles.length ? targetFiles : listSourceFileNames()
+    const languagesToProcess = (targetLangs.length ? targetLangs : languages).filter(
+      (language) => language !== targetLanguage,
+    )
 
-  if (targetLangs.length)
-    console.log(`🌍 Checking languages: ${targetLangs.join(', ')}`)
+    for (const language of languagesToProcess) {
+      const issueLines = []
 
-  if (autoRemove)
-    console.log('🤖 Auto-remove mode: ENABLED')
+      for (const fileName of fileNames) {
+        const source = readLocaleFile(targetLanguage, fileName)
+        const translation = readLocaleFile(language, fileName)
+        if (!source || !translation) continue
 
-  const hasDiff = await compareKeysCount()
-  if (hasDiff) {
-    console.error('\n❌ i18n keys are not aligned. Fix issues above.')
-    process.exitCode = 1
+        for (const issue of findValueIssues(source, translation))
+          issueLines.push(formatValueIssue(fileName, issue))
+      }
+
+      if (issueLines.length) {
+        hasDiff = true
+        console.log(`Placeholder and tag mismatches in ${language}:`)
+        issueLines.forEach((line) => console.log(`  ${line}`))
+      }
+    }
+
+    return hasDiff
   }
-  else {
+
+  console.log('🚀 Starting i18n:check script...')
+  if (targetFiles.length) console.log(`📁 Checking files: ${targetFiles.join(', ')}`)
+
+  if (targetLangs.length) console.log(`🌍 Checking languages: ${targetLangs.join(', ')}`)
+
+  if (autoRemove) console.log('🤖 Auto-remove mode: ENABLED')
+
+  const hasKeyDiff = await compareKeysCount()
+  const hasValueDiff = compareValues()
+  if (hasKeyDiff || hasValueDiff) {
+    console.error('\n❌ i18n files are not aligned. Fix issues above.')
+    process.exitCode = 1
+  } else {
     console.log('\n✅ All i18n files are in sync')
   }
 }
@@ -312,13 +359,13 @@ async function bootstrap() {
   }
 
   if (args.errors.length) {
-    args.errors.forEach(message => console.error(`❌ ${message}`))
+    args.errors.forEach((message) => console.error(`❌ ${message}`))
     printHelp()
     process.exit(1)
     return
   }
 
-  const unknownLangs = targetLangs.filter(lang => !languages.includes(lang))
+  const unknownLangs = targetLangs.filter((lang) => !languages.includes(lang))
   if (unknownLangs.length) {
     console.error(`❌ Unsupported languages: ${unknownLangs.join(', ')}`)
     process.exit(1)

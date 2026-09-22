@@ -1,18 +1,8 @@
 import type { FC } from 'react'
 import type { ImageFile, VisionSettings } from '@/types/app'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
-import {
-  Fragment,
-  useEffect,
-  useState,
-} from 'react'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link03 } from '@/app/components/base/icons/src/vender/line/general'
-import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
 import { TransferMethod } from '@/types/app'
 import { useImageFiles } from './hooks'
 import ImageLinkInput from './image-link-input'
@@ -23,10 +13,7 @@ type PasteImageLinkButtonProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
 }
-const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
-  onUpload,
-  disabled,
-}) => {
+const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({ onUpload, disabled }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -39,28 +26,24 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
     <Popover
       open={open}
       onOpenChange={(nextOpen) => {
-        if (disabled)
-          return
+        if (disabled) return
         setOpen(nextOpen)
       }}
     >
       <PopoverTrigger
-        render={(
+        render={
           <div
-            className={`
-              relative flex h-8 items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary hover:bg-components-button-tertiary-bg-hover
-              ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
-            `}
+            className={`relative flex h-8 items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary hover:bg-components-button-tertiary-bg-hover ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} `}
           >
-            <Link03 className="mr-2 size-4" />
-            {t('imageUploader.pasteImageLink', { ns: 'common' })}
+            <span aria-hidden className="mr-2 i-custom-vender-line-general-link-03 size-4" />
+            {t(($) => $['imageUploader.pasteImageLink'], { ns: 'common' })}
           </div>
-        )}
+        }
       />
       <PopoverContent
         placement="top-start"
         sideOffset={0}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
           <ImageLinkInput onUpload={handleUpload} />
@@ -82,14 +65,8 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const {
-    files,
-    onUpload,
-    onRemove,
-    onImageLinkLoadError,
-    onImageLinkLoadSuccess,
-    onReUpload,
-  } = useImageFiles()
+  const { files, onUpload, onRemove, onImageLinkLoadError, onImageLinkLoadSuccess, onReUpload } =
+    useImageFiles()
 
   useEffect(() => {
     onFilesChange(files)
@@ -101,19 +78,14 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
       disabled={files.length >= settings.number_limits || disabled}
       limit={+settings.image_file_size_limit!}
     >
-      {
-        hovering => (
-          <div className={`
-            flex h-8 cursor-pointer items-center justify-center rounded-lg
-            bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary
-            ${hovering && 'hover:bg-components-button-tertiary-bg-hover'}
-          `}
-          >
-            <ImagePlus className="mr-2 size-4" />
-            {t('imageUploader.uploadFromComputer', { ns: 'common' })}
-          </div>
-        )
-      }
+      {(hovering) => (
+        <div
+          className={`flex h-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary ${hovering && 'hover:bg-components-button-tertiary-bg-hover'} `}
+        >
+          <span aria-hidden className="mr-2 i-custom-vender-line-images-image-plus size-4" />
+          {t(($) => $['imageUploader.uploadFromComputer'], { ns: 'common' })}
+        </div>
+      )}
     </Uploader>
   )
 
@@ -135,18 +107,19 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
           onImageLinkLoadSuccess={onImageLinkLoadSuccess}
         />
       </div>
-      <div className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`} data-testid="upload-actions">
-        {
-          settings.transfer_methods.map((method) => {
-            if (method === TransferMethod.local_file)
-              return <Fragment key={TransferMethod.local_file}>{localUpload}</Fragment>
+      <div
+        className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}
+        data-testid="upload-actions"
+      >
+        {settings.transfer_methods.map((method) => {
+          if (method === TransferMethod.local_file)
+            return <Fragment key={TransferMethod.local_file}>{localUpload}</Fragment>
 
-            if (method === TransferMethod.remote_url)
-              return <Fragment key={TransferMethod.remote_url}>{urlUpload}</Fragment>
+          if (method === TransferMethod.remote_url)
+            return <Fragment key={TransferMethod.remote_url}>{urlUpload}</Fragment>
 
-            return null
-          })
-        }
+          return null
+        })}
       </div>
     </div>
   )

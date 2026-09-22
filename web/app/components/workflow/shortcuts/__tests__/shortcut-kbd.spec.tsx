@@ -34,9 +34,7 @@ describe('ShortcutKbd', () => {
   })
 
   it('keeps single-key shortcuts in one keycap', () => {
-    const { container } = render(
-      <ShortcutKbd shortcut="workflow.delete" platform="windows" />,
-    )
+    const { container } = render(<ShortcutKbd shortcut="workflow.delete" platform="windows" />)
 
     expect(container.querySelectorAll('kbd')).toHaveLength(1)
     expect(screen.getByText('⌦')).toBeInTheDocument()

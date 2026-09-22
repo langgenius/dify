@@ -3,13 +3,10 @@ from typing import Any
 import pytest
 
 import core.tools.utils.message_transformer as mt
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.tools.entities.tool_entities import ToolInvokeMessage
-
-
-class _FakeToolFile:
-    def __init__(self, mimetype: str):
-        self.id = "fake-tool-file-id"
-        self.mimetype = mimetype
+from models.tools import ToolFile
 
 
 class _FakeToolFileManager:
@@ -17,7 +14,7 @@ class _FakeToolFileManager:
 
     last_call: dict[str, Any] | None = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         pass
 
     def create_file_by_raw(
@@ -38,7 +35,17 @@ class _FakeToolFileManager:
             "mimetype": mimetype,
             "filename": filename,
         }
-        return _FakeToolFile(mimetype)
+        tool_file = ToolFile(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            file_key="tools/fake-tool-file-id",
+            mimetype=mimetype,
+            name=filename or "fake-tool-file.bin",
+            size=len(file_binary),
+        )
+        tool_file.id = "fake-tool-file-id"
+        return tool_file
 
 
 @pytest.fixture(autouse=True)
@@ -89,6 +96,29 @@ def test_transform_tool_invoke_messages_mimetype_key_present_but_none():
     assert o.meta["tool_file_id"] == "fake-tool-file-id"
 
 
+def test_transform_tool_invoke_messages_prefers_filename_extension_over_mimetype():
+    msg = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.BLOB,
+        message=ToolInvokeMessage.BlobMessage(blob=b"docx"),
+        meta={"mime_type": "application/octet-stream", "filename": "report.docx"},
+    )
+
+    out = list(
+        mt.ToolFileMessageTransformer.transform_tool_invoke_messages(
+            messages=_gen([msg]),
+            user_id="u1",
+            tenant_id="t1",
+            conversation_id="c1",
+        )
+    )
+
+    assert _FakeToolFileManager.last_call is not None
+    assert _FakeToolFileManager.last_call["filename"] == "report.docx"
+    assert len(out) == 1
+    assert isinstance(out[0].message, ToolInvokeMessage.TextMessage)
+    assert out[0].message.text.endswith(".docx")
+
+
 def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():
     msg = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
@@ -107,3 +137,32 @@ def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():
 
     assert len(out) == 1
     assert out[0].meta["tool_file_id"] == "existing-tool-file"
+
+
+def test_transform_tool_invoke_messages_grants_tool_file_to_current_end_user_scope():
+    """Workflow-as-tool LLM nodes need a grant for plugin files (#41169)."""
+    msg = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.IMAGE_LINK,
+        message=ToolInvokeMessage.TextMessage(text="/files/tools/existing-tool-file.png"),
+        meta={},
+    )
+    scope = FileAccessScope(
+        tenant_id="t1",
+        user_id="end-user-1",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        list(
+            mt.ToolFileMessageTransformer.transform_tool_invoke_messages(
+                messages=_gen([msg]),
+                user_id="u1",
+                tenant_id="t1",
+                conversation_id="c1",
+            )
+        )
+        current_scope = get_current_file_access_scope()
+
+    assert current_scope is not None
+    assert "existing-tool-file" in current_scope.granted_tool_file_ids

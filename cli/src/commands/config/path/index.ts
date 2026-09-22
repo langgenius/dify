@@ -7,14 +7,10 @@ import { CONFIG_FILE_NAME } from '@/store/manager'
 export default class ConfigPath extends DifyCommand {
   static override description = 'Print the resolved config.yml path'
 
-  static override examples = [
-    '<%= config.bin %> config path',
-  ]
+  static override examples = ['<%= config.bin %> config path']
 
   async run(argv: string[]) {
     this.parse(ConfigPath, argv)
-    return raw(
-      join(resolveConfigDir(), CONFIG_FILE_NAME),
-    )
+    return raw(join(resolveConfigDir(), CONFIG_FILE_NAME))
   }
 }

@@ -1,20 +1,26 @@
 import type { FormData, InputFieldFormProps } from './types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { useAppForm } from '@/app/components/base/form'
 import { ChangeType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { useFileUploadConfig } from '@/service/use-common'
 import HiddenFields from './hidden-fields'
 import InitialFields from './initial-fields'
 import { createInputFieldSchema } from './schema'
 import ShowAllSettings from './show-all-settings'
 
-const InputFieldForm = ({ initialData, supportFile = false, onCancel, onSubmit, isEditMode = true }: InputFieldFormProps) => {
+const InputFieldForm = ({
+  initialData,
+  supportFile = false,
+  onCancel,
+  onSubmit,
+  isEditMode = true,
+}: InputFieldFormProps) => {
   const { t } = useTranslation()
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const { maxFileUploadLimit } = useFileSizeLimit(fileUploadConfigResponse)
@@ -72,13 +78,13 @@ const InputFieldForm = ({ initialData, supportFile = false, onCancel, onSubmit, 
     >
       <div className="flex flex-col gap-4 px-4 py-2">
         <InitialFieldsComp form={inputFieldForm} />
-        <Divider type="horizontal" />
-        {!showAllSettings && (<ShowAllSettingComp form={inputFieldForm} />)}
-        {showAllSettings && (<HiddenFieldsComp form={inputFieldForm} />)}
+        <Separator className="my-2 h-[0.5px]" orientation="horizontal" />
+        {!showAllSettings && <ShowAllSettingComp form={inputFieldForm} />}
+        {showAllSettings && <HiddenFieldsComp form={inputFieldForm} />}
       </div>
       <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
         <Button variant="secondary" onClick={onCancel}>
-          {t('operation.cancel', { ns: 'common' })}
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <inputFieldForm.AppForm>
           <inputFieldForm.Actions />

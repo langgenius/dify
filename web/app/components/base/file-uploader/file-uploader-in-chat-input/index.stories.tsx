@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { AppToastHost } from '@/app/notifications/host'
 import { TransferMethod } from '@/types/app'
 import FileUploaderInChatInput from '.'
 import { FileList } from '../file-uploader-in-chat-input/file-list'
@@ -37,13 +37,15 @@ const ChatInputDemo = ({ initialFiles = mockFiles, ...props }: ChatInputDemoProp
 
   return (
     <>
-      <ToastHost />
+      <AppToastHost />
       <FileContextProvider value={files} onChange={setFiles}>
-        <div className="w-[360px] rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
+        <div className="w-90 rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
           <div className="mb-3 text-xs text-text-secondary">Simulated chat input</div>
           <div className="flex items-center gap-2">
             <FileUploaderInChatInput {...props} />
-            <div className="flex-1 rounded-lg border border-divider-subtle bg-background-default-subtle p-2 text-xs text-text-tertiary">Type a message...</div>
+            <div className="flex-1 rounded-lg border border-divider-subtle bg-background-default-subtle p-2 text-xs text-text-tertiary">
+              Type a message...
+            </div>
           </div>
           <div className="mt-4">
             <FileList files={files} />
@@ -60,7 +62,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Attachment trigger suited for chat inputs. Demonstrates integration with the shared file store and preview list.',
+        component:
+          'Attachment trigger suited for chat inputs. Demonstrates integration with the shared file store and preview list.',
       },
     },
     nextjs: {
@@ -82,7 +85,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Playground: Story = {
-  render: args => <ChatInputDemo {...args} />,
+  render: (args) => <ChatInputDemo {...args} />,
 }
 
 export const RemoteOnly: Story = {

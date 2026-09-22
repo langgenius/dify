@@ -1,9 +1,9 @@
 import type { ChunkingMode, IconInfo } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { General } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
-import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
+import { DOC_FORM_ICON_CLASS_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 
 type ContentProps = {
   name: string
@@ -12,14 +12,10 @@ type ContentProps = {
   chunkStructure: ChunkingMode
 }
 
-const Content = ({
-  name,
-  description,
-  iconInfo,
-  chunkStructure,
-}: ContentProps) => {
+const Content = ({ name, description, iconInfo, chunkStructure }: ContentProps) => {
   const { t } = useTranslation()
-  const Icon = DOC_FORM_ICON_WITH_BG[chunkStructure] || General
+  const iconClassName =
+    DOC_FORM_ICON_CLASS_WITH_BG[chunkStructure] || 'i-custom-public-knowledge-dataset-card-general'
 
   return (
     <>
@@ -33,18 +29,15 @@ const Content = ({
             imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
           />
           <div className="absolute -right-1 -bottom-1 z-10">
-            <Icon className="size-4" />
+            <span aria-hidden className={cn(iconClassName, 'size-4')} />
           </div>
         </div>
         <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
-          <div
-            className="truncate system-md-semibold text-text-secondary"
-            title={name}
-          >
+          <div className="truncate system-md-semibold text-text-secondary" title={name}>
             {name}
           </div>
           <div className="system-2xs-medium-uppercase text-text-tertiary">
-            {t(`chunkingMode.${DOC_FORM_TEXT[chunkStructure]}`, { ns: 'dataset' })}
+            {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[chunkStructure]}`], { ns: 'dataset' })}
           </div>
         </div>
       </div>

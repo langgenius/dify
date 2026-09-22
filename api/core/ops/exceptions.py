@@ -9,6 +9,14 @@ class RetryableTraceDispatchError(RuntimeError):
     """Base class for transient trace dispatch failures that Celery may retry."""
 
 
+class TraceParentContextAccessError(RetryableTraceDispatchError):
+    """Raised when unified parent context storage is temporarily unavailable."""
+
+
+class InvalidTraceParentContextError(RuntimeError):
+    """Raised when stored unified parent context cannot be safely restored."""
+
+
 class PendingTraceParentContextError(RetryableTraceDispatchError):
     """Raised when a nested trace arrives before its parent span context is available."""
 

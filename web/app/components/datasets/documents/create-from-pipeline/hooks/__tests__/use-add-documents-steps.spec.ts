@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useAddDocumentsSteps } from '../use-add-documents-steps'
 
 describe('useAddDocumentsSteps', () => {
@@ -19,7 +19,7 @@ describe('useAddDocumentsSteps', () => {
 
   it('should have correct step labels', () => {
     const { result } = renderHook(() => useAddDocumentsSteps())
-    const labels = result.current.steps.map(s => s.label)
+    const labels = result.current.steps.map((s) => s.label)
     expect(labels[0]).toContain('chooseDatasource')
     expect(labels[1]).toContain('processDocuments')
     expect(labels[2]).toContain('processingDocuments')

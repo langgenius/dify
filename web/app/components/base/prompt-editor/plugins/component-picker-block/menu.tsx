@@ -11,21 +11,25 @@ type MenuOptionRenderProps = {
   queryString: string | null
 }
 
+type PickerBlockMenuOptionData = {
+  key: string
+  group?: string
+  onSelect?: () => void
+  render: (menuRenderProps: MenuOptionRenderProps) => React.JSX.Element
+}
+
 export class PickerBlockMenuOption extends MenuOption {
+  private data: PickerBlockMenuOptionData
   public group?: string
 
-  constructor(
-    private data: {
-      key: string
-      group?: string
-      onSelect?: () => void
-      render: (menuRenderProps: MenuOptionRenderProps) => React.JSX.Element
-    },
-  ) {
+  constructor(data: PickerBlockMenuOptionData) {
     super(data.key)
+    this.data = data
     this.group = data.group
   }
 
   public onSelectMenuOption = () => this.data.onSelect?.()
-  public renderMenuOption = (menuRenderProps: MenuOptionRenderProps) => <Fragment key={this.data.key}>{this.data.render(menuRenderProps)}</Fragment>
+  public renderMenuOption = (menuRenderProps: MenuOptionRenderProps) => (
+    <Fragment key={this.data.key}>{this.data.render(menuRenderProps)}</Fragment>
+  )
 }

@@ -175,7 +175,7 @@ describe('useChunkStructure', () => {
     it('should return options in correct order', () => {
       const { result } = renderHook(() => useChunkStructure())
 
-      const ids = result.current.options.map(opt => opt.id)
+      const ids = result.current.options.map((opt) => opt.id)
       expect(ids).toEqual(['text_model', 'hierarchical_model', 'qa_model'])
     })
 
@@ -217,9 +217,9 @@ describe('useChunkStructure', () => {
     it('should return consistent options on multiple renders', () => {
       const { result, rerender } = renderHook(() => useChunkStructure())
 
-      const firstRenderOptions = result.current.options.map(opt => opt.id)
+      const firstRenderOptions = result.current.options.map((opt) => opt.id)
       rerender()
-      const secondRenderOptions = result.current.options.map(opt => opt.id)
+      const secondRenderOptions = result.current.options.map((opt) => opt.id)
 
       expect(firstRenderOptions).toEqual(secondRenderOptions)
     })

@@ -12,16 +12,20 @@ export type AgentV2NodeType = CommonNodeType & {
 }
 
 export function isAgentV2NodeData(data: CommonNodeType): data is AgentV2NodeType {
-  const payload = data as { agent_node_kind?: string, version?: string }
-  return (data.type === BlockEnum.Agent || data.type === BlockEnum.AgentV2)
-    && payload.agent_node_kind === 'dify_agent'
-    && payload.version === '2'
+  const payload = data as { agent_node_kind?: string; version?: string }
+  return (
+    (data.type === BlockEnum.Agent || data.type === BlockEnum.AgentV2) &&
+    payload.agent_node_kind === 'dify_agent' &&
+    payload.version === '2'
+  )
 }
 
 export function hasValidRosterAgentBinding(data: AgentV2NodeType) {
-  return data.agent_binding?.binding_type === 'roster_agent'
-    && typeof data.agent_binding.agent_id === 'string'
-    && data.agent_binding.agent_id.length > 0
+  return (
+    data.agent_binding?.binding_type === 'roster_agent' &&
+    typeof data.agent_binding.agent_id === 'string' &&
+    data.agent_binding.agent_id.length > 0
+  )
 }
 
 export function hasInlineAgentBinding(data: AgentV2NodeType) {
@@ -29,11 +33,13 @@ export function hasInlineAgentBinding(data: AgentV2NodeType) {
 }
 
 export function hasValidInlineAgentBinding(data: AgentV2NodeType) {
-  return data.agent_binding?.binding_type === 'inline_agent'
-    && typeof data.agent_binding.agent_id === 'string'
-    && data.agent_binding.agent_id.length > 0
-    && typeof data.agent_binding.current_snapshot_id === 'string'
-    && data.agent_binding.current_snapshot_id.length > 0
+  return (
+    data.agent_binding?.binding_type === 'inline_agent' &&
+    typeof data.agent_binding.agent_id === 'string' &&
+    data.agent_binding.agent_id.length > 0 &&
+    typeof data.agent_binding.current_snapshot_id === 'string' &&
+    data.agent_binding.current_snapshot_id.length > 0
+  )
 }
 
 export function needsInlineAgentBindingCreation(data: AgentV2NodeType) {

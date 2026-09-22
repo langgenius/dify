@@ -1,42 +1,79 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactElement } from 'react'
 import type { Collection } from '../../types'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AuthType, CollectionType } from '../../types'
 import ProviderDetail from '../detail'
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: [
+      {
+        ...providerSummaryFixture,
+        ...{ provider: 'model-collection-id' },
+      } satisfies ModelProviderSummaryResponse,
+    ],
+    plugins: {},
+  })
+  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
+    data: [{ provider: 'model-collection-id' }],
+  })
+  void queryClient.invalidateQueries({
+    queryKey: commonQueryKeys.modelProviderDetails,
+    exact: true,
+    refetchType: 'none',
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
+
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
+  getPluginLanguage: () => 'en_US',
 }))
 
-vi.mock('@/i18n-config/language', () => ({
-  getLanguage: () => 'en_US',
+const mockConsoleState = vi.hoisted(() => ({
+  workspacePermissionKeys: [
+    'tool.manage',
+    'credential.use',
+    'credential.create',
+    'credential.manage',
+  ] as string[],
 }))
 
-const mockIsCurrentWorkspaceManager = vi.fn(() => true)
-const mockAppContextState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['tool.manage', 'credential.manage', 'credential.use'] as string[],
-}))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-  }),
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }),
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+  }))
+})
 
 const mockSetShowModelModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowModelModal: mockSetShowModelModal,
-  }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: [
-      { provider: 'model-collection-id', name: 'TestModel' },
-    ],
   }),
 }))
 
@@ -82,7 +119,7 @@ vi.mock('@/utils/var', () => ({
 
 const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -110,35 +147,85 @@ vi.mock('@/app/components/plugins/card/base/title', () => ({
 }))
 
 vi.mock('../tool-item', () => ({
-  default: ({ tool }: { tool: { name: string } }) => <div data-testid={`tool-${tool.name}`}>{tool.name}</div>,
+  default: ({ tool }: { tool: { name: string } }) => (
+    <div data-testid={`tool-${tool.name}`}>{tool.name}</div>
+  ),
 }))
 
 vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
-  default: ({ onHide, onEdit, onRemove }: { onHide: () => void, onEdit: (data: unknown) => void, onRemove: () => void }) => (
+  default: ({
+    onHide,
+    onEdit,
+    onRemove,
+  }: {
+    onHide: () => void
+    onEdit: (data: unknown) => void
+    onRemove: () => void
+  }) => (
     <div data-testid="edit-custom-modal">
-      <button data-testid="edit-save" onClick={() => onEdit({ labels: ['test'] })}>Save</button>
-      <button data-testid="edit-remove" onClick={onRemove}>Remove</button>
-      <button data-testid="edit-close" onClick={onHide}>Close</button>
+      <button data-testid="edit-save" onClick={() => onEdit({ labels: ['test'] })}>
+        Save
+      </button>
+      <button data-testid="edit-remove" onClick={onRemove}>
+        Remove
+      </button>
+      <button data-testid="edit-close" onClick={onHide}>
+        Close
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/tools/setting/build-in/config-credentials', () => ({
-  default: ({ onCancel, onSaved, onRemove, readonly }: { onCancel: () => void, onSaved: (val: Record<string, string>) => Promise<void>, onRemove: () => Promise<void>, readonly?: boolean }) => (
+  default: ({
+    onCancel,
+    onSaved,
+    onRemove,
+    readonly,
+  }: {
+    onCancel: () => void
+    onSaved: (val: Record<string, string>) => Promise<void>
+    onRemove: () => Promise<void>
+    readonly?: boolean
+  }) => (
     <div data-testid="config-credential" data-readonly={readonly ? 'true' : 'false'}>
-      <button data-testid="credential-save" disabled={readonly} onClick={() => onSaved({ key: 'val' })}>Save</button>
-      <button data-testid="credential-remove" disabled={readonly} onClick={onRemove}>Remove</button>
-      <button data-testid="credential-cancel" onClick={onCancel}>Cancel</button>
+      <button
+        data-testid="credential-save"
+        disabled={readonly}
+        onClick={() => onSaved({ key: 'val' })}
+      >
+        Save
+      </button>
+      <button data-testid="credential-remove" disabled={readonly} onClick={onRemove}>
+        Remove
+      </button>
+      <button data-testid="credential-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/tools/workflow-tool', () => ({
-  WorkflowToolDrawer: ({ onHide, onSave, onRemove }: { onHide: () => void, onSave: (data: unknown) => void, onRemove: () => void }) => (
+  WorkflowToolDrawer: ({
+    onHide,
+    onSave,
+    onRemove,
+  }: {
+    onHide: () => void
+    onSave: (data: unknown) => void
+    onRemove: () => void
+  }) => (
     <div data-testid="workflow-tool-drawer">
-      <button data-testid="wf-save" onClick={() => onSave({ name: 'test' })}>Save</button>
-      <button data-testid="wf-remove" onClick={onRemove}>Remove</button>
-      <button data-testid="wf-close" onClick={onHide}>Close</button>
+      <button data-testid="wf-save" onClick={() => onSave({ name: 'test' })}>
+        Save
+      </button>
+      <button data-testid="wf-remove" onClick={onRemove}>
+        Remove
+      </button>
+      <button data-testid="wf-close" onClick={onHide}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -158,7 +245,8 @@ const createMockCollection = (overrides?: Partial<Collection>): Collection => ({
   ...overrides,
 })
 
-const getDeleteConfirmButton = () => screen.getByRole('button', { name: 'common.operation.confirm' })
+const getDeleteConfirmButton = () =>
+  screen.getByRole('button', { name: 'common.operation.confirm' })
 const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
 
 describe('ProviderDetail', () => {
@@ -168,12 +256,33 @@ describe('ProviderDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFetchBuiltInToolList.mockResolvedValue([
-      { name: 'tool-1', label: { en_US: 'Tool 1' }, description: { en_US: 'desc' }, parameters: [], labels: [], author: '', output_schema: {} },
-      { name: 'tool-2', label: { en_US: 'Tool 2' }, description: { en_US: 'desc' }, parameters: [], labels: [], author: '', output_schema: {} },
+      {
+        name: 'tool-1',
+        label: { en_US: 'Tool 1' },
+        description: { en_US: 'desc' },
+        parameters: [],
+        labels: [],
+        author: '',
+        output_schema: {},
+      },
+      {
+        name: 'tool-2',
+        label: { en_US: 'Tool 2' },
+        description: { en_US: 'desc' },
+        parameters: [],
+        labels: [],
+        author: '',
+        output_schema: {},
+      },
     ])
     mockFetchCustomToolList.mockResolvedValue([])
     mockFetchModelToolList.mockResolvedValue([])
-    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.manage', 'credential.use']
+    mockConsoleState.workspacePermissionKeys = [
+      'tool.manage',
+      'credential.use',
+      'credential.create',
+      'credential.manage',
+    ]
   })
 
   afterEach(() => {
@@ -192,12 +301,18 @@ describe('ProviderDetail', () => {
 
       const dialog = screen.getByRole('dialog')
 
+      expect(
+        document.querySelector('.absolute.inset-0.z-50.bg-transparent'),
+      ).not.toBeInTheDocument()
+      expect(dialog.closest('.pointer-events-none')).toBeInTheDocument()
       expect(dialog).toHaveClass(
+        'pointer-events-auto',
+        'touch-auto',
         'data-[swipe-direction=right]:top-2',
         'data-[swipe-direction=right]:right-2',
         'data-[swipe-direction=right]:bottom-2',
         'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
-        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:w-100',
         'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
       )
       expect(dialog).not.toHaveClass(
@@ -228,7 +343,7 @@ describe('ProviderDetail', () => {
           onRefreshData={mockOnRefreshData}
         />,
       )
-      expect(screen.getByRole('status'))!.toBeInTheDocument()
+      expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('renders tool list after loading for builtIn type', async () => {
@@ -333,13 +448,26 @@ describe('ProviderDetail', () => {
         />,
       )
 
-      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest('button')!
+      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest(
+        'button',
+      )!
 
       expect(configureButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
     })
 
-    it('does not fetch or enable custom tool management without tool.manage', async () => {
-      mockAppContextState.workspacePermissionKeys = []
+    it('renders custom tool details read-only without tool.manage', async () => {
+      mockConsoleState.workspacePermissionKeys = []
+      mockFetchCustomToolList.mockResolvedValue([
+        {
+          name: 'custom-tool',
+          label: { en_US: 'Custom Tool' },
+          description: { en_US: 'desc' },
+          parameters: [],
+          labels: [],
+          author: '',
+          output_schema: {},
+        },
+      ])
 
       render(
         <ProviderDetail
@@ -349,10 +477,13 @@ describe('ProviderDetail', () => {
         />,
       )
 
-      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest('button')!
+      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest(
+        'button',
+      )!
 
       expect(mockFetchCustomCollection).not.toHaveBeenCalled()
-      expect(mockFetchCustomToolList).not.toHaveBeenCalled()
+      expect(mockFetchCustomToolList).toHaveBeenCalledWith('test-collection')
+      expect(screen.getByTestId('tool-custom-tool')).toBeInTheDocument()
       expect(configureButton).toBeDisabled()
     })
   })
@@ -398,12 +529,12 @@ describe('ProviderDetail', () => {
       )
 
       const openInStudio = (await screen.findByText('tools.openInStudio')).closest('a')!
-      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest('button')!
+      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest(
+        'button',
+      )!
 
       expect(openInStudio).toHaveAttribute('href', '/app/wf-123/workflow')
-      expect(openInStudio).toHaveClass('h-8', 'min-w-0', 'flex-1', 'rounded-lg', 'px-3', 'py-2')
       expect(openInStudio.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
-      expect(configureButton).toHaveClass('h-8', 'min-w-0', 'flex-1', 'rounded-lg', 'px-3', 'py-2')
       expect(configureButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
     })
 
@@ -416,13 +547,15 @@ describe('ProviderDetail', () => {
         />,
       )
 
-      const actions = (await screen.findByText('tools.openInStudio')).closest('.border-b-\\[0\\.5px\\]')!
+      const actions = (await screen.findByText('tools.openInStudio')).closest(
+        '.border-b-\\[0\\.5px\\]',
+      )!
 
       expect(actions).toHaveClass('-mx-4', 'px-4', 'border-b-[0.5px]', 'border-divider-subtle')
     })
 
-    it('does not fetch or show workflow tool edit actions without tool.manage', () => {
-      mockAppContextState.workspacePermissionKeys = []
+    it('renders workflow tool details read-only without tool.manage', async () => {
+      mockConsoleState.workspacePermissionKeys = []
 
       render(
         <ProviderDetail
@@ -432,16 +565,33 @@ describe('ProviderDetail', () => {
         />,
       )
 
-      expect(mockFetchWorkflowToolDetail).not.toHaveBeenCalled()
-      expect(screen.queryByText('tools.openInStudio')).not.toBeInTheDocument()
-      expect(screen.queryByText('tools.createTool.editAction')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(mockFetchWorkflowToolDetail).toHaveBeenCalledWith('test-id')
+      })
+
+      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest(
+        'button',
+      )!
+      expect(screen.getByText('tools.openInStudio')).toBeInTheDocument()
+      expect(configureButton).toBeDisabled()
+
+      fireEvent.click(configureButton)
+      expect(screen.queryByTestId('workflow-tool-drawer')).not.toBeInTheDocument()
     })
   })
 
   describe('Model Collection', () => {
     it('opens model modal when clicking auth button for model type', async () => {
       mockFetchModelToolList.mockResolvedValue([
-        { name: 'model-tool-1', label: { en_US: 'MT1' }, description: { en_US: '' }, parameters: [], labels: [], author: '', output_schema: {} },
+        {
+          name: 'model-tool-1',
+          label: { en_US: 'MT1' },
+          description: { en_US: '' },
+          parameters: [],
+          labels: [],
+          author: '',
+          output_schema: {},
+        },
       ])
       render(
         <ProviderDetail
@@ -459,7 +609,10 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      expect(mockSetShowModelModal).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(mockSetShowModelModal).toHaveBeenCalled()
+      })
+      expect(globalThis.fetch).not.toHaveBeenCalled()
     })
   })
 
@@ -535,8 +688,12 @@ describe('ProviderDetail', () => {
       expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
     })
 
-    it('does not open setup credential drawer without credential.manage', async () => {
-      mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.use']
+    it('does not open setup credential drawer without credential.create', async () => {
+      mockConsoleState.workspacePermissionKeys = [
+        'tool.manage',
+        'credential.use',
+        'credential.manage',
+      ]
 
       render(
         <ProviderDetail
@@ -556,7 +713,7 @@ describe('ProviderDetail', () => {
     })
 
     it('opens authorized credential drawer as readonly with credential.use only', async () => {
-      mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.use']
+      mockConsoleState.workspacePermissionKeys = ['tool.manage', 'credential.use']
 
       render(
         <ProviderDetail
@@ -591,7 +748,9 @@ describe('ProviderDetail', () => {
         fireEvent.click(screen.getByTestId('credential-save'))
       })
       await waitFor(() => {
-        expect(mockUpdateBuiltInToolCredential).toHaveBeenCalledWith('test-collection', { key: 'val' })
+        expect(mockUpdateBuiltInToolCredential).toHaveBeenCalledWith('test-collection', {
+          key: 'val',
+        })
         expect(mockOnRefreshData).toHaveBeenCalled()
       })
     })
@@ -651,6 +810,9 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
+      await waitFor(() => {
+        expect(mockSetShowModelModal).toHaveBeenCalled()
+      })
       const call = mockSetShowModelModal.mock.calls[0]![0]
       act(() => {
         call.onSaveCallback()
@@ -741,8 +903,20 @@ describe('ProviderDetail', () => {
         workflow_tool_id: 'wt-456',
         tool: {
           parameters: [
-            { name: 'query', type: 'string', llm_description: 'Search query', form: 'llm', required: true },
-            { name: 'limit', type: 'number', llm_description: 'Max results', form: 'form', required: false },
+            {
+              name: 'query',
+              type: 'string',
+              llm_description: 'Search query',
+              form: 'llm',
+              required: true,
+            },
+            {
+              name: 'limit',
+              type: 'number',
+              llm_description: 'Max results',
+              form: 'form',
+              required: false,
+            },
           ],
           labels: ['search'],
         },

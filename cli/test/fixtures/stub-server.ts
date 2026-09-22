@@ -29,7 +29,7 @@ export function jsonResponder(
     captured.url = req.url
     captured.headers = req.headers
     const chunks: Buffer[] = []
-    req.on('data', c => chunks.push(c))
+    req.on('data', (c) => chunks.push(c))
     req.on('end', () => {
       captured.body = Buffer.concat(chunks).toString('utf8')
       const payload = JSON.stringify(body)
@@ -58,7 +58,7 @@ export function startStubServer(
         url: `http://127.0.0.1:${addr.port}`,
         captured,
         stop: () =>
-          new Promise<void>((res, rej) => server.close(err => (err ? rej(err) : res()))),
+          new Promise<void>((res, rej) => server.close((err) => (err ? rej(err) : res()))),
       })
     })
     server.on('error', reject)

@@ -6,9 +6,11 @@ using TestContainers to ensure realistic database interactions and proper isolat
 The task is responsible for removing document segments from the search index when they are disabled.
 """
 
+import logging
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -533,7 +535,9 @@ class TestDisableSegmentsFromIndexTask:
                     assert result is None  # Task should complete without returning a value
                     mock_factory.assert_called_with(doc_form)
 
-    def test_disable_segments_performance_timing(self, db_session_with_containers: Session):
+    def test_disable_segments_performance_timing(
+        self, db_session_with_containers: Session, caplog: pytest.LogCaptureFixture
+    ):
         """
         Test that the task properly measures and logs performance timing.
 
@@ -562,21 +566,18 @@ class TestDisableSegmentsFromIndexTask:
                 # Mock time.perf_counter to control timing
                 with patch("tasks.disable_segments_from_index_task.time.perf_counter") as mock_perf_counter:
                     mock_perf_counter.side_effect = [1000.0, 1000.5]  # 0.5 seconds execution time
+                    caplog.set_level(logging.INFO, logger="tasks.disable_segments_from_index_task")
 
-                    # Mock logger to capture log messages
-                    with patch("tasks.disable_segments_from_index_task.logger") as mock_logger:
-                        # Act
-                        result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
+                    # Act
+                    result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
 
-                        # Assert
-                        assert result is None  # Task should complete without returning a value
+                    # Assert
+                    assert result is None  # Task should complete without returning a value
 
-                        # Verify performance logging
-                        mock_logger.info.assert_called()
-                        log_calls = [call[0][0] for call in mock_logger.info.call_args_list]
-                        performance_log = next((call for call in log_calls if "latency" in call), None)
-                        assert performance_log is not None
-                        assert "0.5" in performance_log  # Should log the execution time
+                    # Verify performance logging
+                    performance_log = next((message for message in caplog.messages if "latency" in message), None)
+                    assert performance_log is not None
+                    assert "0.5" in performance_log  # Should log the execution time
 
     def test_disable_segments_redis_cache_cleanup(self, db_session_with_containers: Session):
         """

@@ -8,11 +8,19 @@ import {
 
 describe('node helpers', () => {
   it('should derive node border states from running status and selection state', () => {
-    expect(getNodeStatusBorders(NodeRunningStatus.Running, false, false).showRunningBorder).toBe(true)
-    expect(getNodeStatusBorders(NodeRunningStatus.Succeeded, false, false).showSuccessBorder).toBe(true)
+    expect(getNodeStatusBorders(NodeRunningStatus.Running, false, false).showRunningBorder).toBe(
+      true,
+    )
+    expect(getNodeStatusBorders(NodeRunningStatus.Succeeded, false, false).showSuccessBorder).toBe(
+      true,
+    )
     expect(getNodeStatusBorders(NodeRunningStatus.Failed, false, false).showFailedBorder).toBe(true)
-    expect(getNodeStatusBorders(NodeRunningStatus.Exception, false, false).showExceptionBorder).toBe(true)
-    expect(getNodeStatusBorders(NodeRunningStatus.Succeeded, false, true).showSuccessBorder).toBe(false)
+    expect(
+      getNodeStatusBorders(NodeRunningStatus.Exception, false, false).showExceptionBorder,
+    ).toBe(true)
+    expect(getNodeStatusBorders(NodeRunningStatus.Succeeded, false, true).showSuccessBorder).toBe(
+      false,
+    )
   })
 
   it('should expose the correct loop translation key per running status', () => {

@@ -1,18 +1,12 @@
 import type { FC } from 'react'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 
 type ProgressTooltipProps = {
   data: number
 }
 
-const ProgressTooltip: FC<ProgressTooltipProps> = ({
-  data,
-}) => {
+const ProgressTooltip: FC<ProgressTooltipProps> = ({ data }) => {
   const { t } = useTranslation()
 
   return (
@@ -26,19 +20,12 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({
             data-testid="progress-bar-fill"
             className="h-full bg-components-progress-gray-progress"
             style={{ width: `${data * 100}%` }}
-          >
-          </div>
+          ></div>
         </div>
         {data}
       </TooltipTrigger>
-      <TooltipContent
-        data-testid="progress-tooltip-popup"
-        placement="top-start"
-        className="rounded-lg bg-components-tooltip-bg p-3 system-xs-medium text-text-quaternary shadow-lg"
-      >
-        {t('chat.citation.hitScore', { ns: 'common' })}
-        {' '}
-        {data}
+      <TooltipContent data-testid="progress-tooltip-popup" placement="top-start">
+        {t(($) => $['chat.citation.hitScore'], { ns: 'common' })} {data}
       </TooltipContent>
     </Tooltip>
   )

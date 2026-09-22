@@ -14,8 +14,7 @@ export function setBearer(token: string): Hook {
 
 export function setUserAgent(ua: string): Hook {
   return ({ request }) => {
-    if (!request.headers.has('user-agent'))
-      request.headers.set('user-agent', ua)
+    if (!request.headers.has('user-agent')) request.headers.set('user-agent', ua)
   }
 }
 
@@ -32,8 +31,7 @@ export function logRequest(logger: HttpLogger): Hook {
 
 export function logResponse(logger: HttpLogger): Hook {
   return ({ request, response, meta }) => {
-    if (response === undefined)
-      return
+    if (response === undefined) return
     const start = meta.get(HTTP_START_SYM)
     const durationMs = typeof start === 'number' ? performance.now() - start : undefined
     logger({
@@ -47,9 +45,7 @@ export function logResponse(logger: HttpLogger): Hook {
 }
 
 export const classifyTransport: Hook = (ctx) => {
-  if (ctx.error === undefined)
-    return
-  if (ctx.error instanceof BaseError)
-    return
+  if (ctx.error === undefined) return
+  if (ctx.error instanceof BaseError) return
   ctx.error = classifyTransportError(ctx.error)
 }

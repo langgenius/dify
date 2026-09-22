@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect as useLayoutEffectFromReact } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { useStore, useWorkflowStore } from '../store'
 import {
   isControlMode,
@@ -9,10 +9,6 @@ import {
   useWorkflowVariableInspectPanelHeightValue,
 } from './local-storage-options'
 
-const useIsoLayoutEffect = typeof document !== 'undefined'
-  ? useLayoutEffectFromReact
-  : useEffect
-
 export const WorkflowLocalStorageBridge = () => {
   const storedNodePanelWidth = useWorkflowNodePanelWidthValue()
   const storedPreviewPanelWidth = useDebugPreviewPanelWidthValue()
@@ -20,33 +16,30 @@ export const WorkflowLocalStorageBridge = () => {
   const [storedControlMode, setControlModeStorage] = useWorkflowOperationMode()
 
   const workflowStore = useWorkflowStore()
-  const setNodePanelWidth = useStore(state => state.setNodePanelWidth)
-  const setPanelWidth = useStore(state => state.setPanelWidth)
-  const setPreviewPanelWidth = useStore(state => state.setPreviewPanelWidth)
-  const setVariableInspectPanelHeight = useStore(state => state.setVariableInspectPanelHeight)
-  const setControlMode = useStore(state => state.setControlMode)
+  const setNodePanelWidth = useStore((state) => state.setNodePanelWidth)
+  const setPanelWidth = useStore((state) => state.setPanelWidth)
+  const setPreviewPanelWidth = useStore((state) => state.setPreviewPanelWidth)
+  const setVariableInspectPanelHeight = useStore((state) => state.setVariableInspectPanelHeight)
+  const setControlMode = useStore((state) => state.setControlMode)
 
-  useIsoLayoutEffect(() => {
-    if (!isFiniteNumber(storedNodePanelWidth))
-      return
+  useLayoutEffect(() => {
+    if (!isFiniteNumber(storedNodePanelWidth)) return
 
     setNodePanelWidth(storedNodePanelWidth)
     setPanelWidth(storedNodePanelWidth)
   }, [setNodePanelWidth, setPanelWidth, storedNodePanelWidth])
 
-  useIsoLayoutEffect(() => {
-    if (isFiniteNumber(storedPreviewPanelWidth))
-      setPreviewPanelWidth(storedPreviewPanelWidth)
+  useLayoutEffect(() => {
+    if (isFiniteNumber(storedPreviewPanelWidth)) setPreviewPanelWidth(storedPreviewPanelWidth)
   }, [setPreviewPanelWidth, storedPreviewPanelWidth])
 
-  useIsoLayoutEffect(() => {
+  useLayoutEffect(() => {
     if (isFiniteNumber(storedVariableInspectPanelHeight))
       setVariableInspectPanelHeight(storedVariableInspectPanelHeight)
   }, [setVariableInspectPanelHeight, storedVariableInspectPanelHeight])
 
-  useIsoLayoutEffect(() => {
-    if (isControlMode(storedControlMode))
-      setControlMode(storedControlMode)
+  useLayoutEffect(() => {
+    if (isControlMode(storedControlMode)) setControlMode(storedControlMode)
   }, [setControlMode, storedControlMode])
 
   useEffect(() => {

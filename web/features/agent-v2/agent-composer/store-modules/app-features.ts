@@ -5,7 +5,7 @@ import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
 
 export const agentComposerAppFeaturesAtom = atom(
-  get => get(agentComposerDraftAtom).appFeatures,
+  (get) => get(agentComposerDraftAtom).appFeatures,
   (get, set, appFeaturesUpdate: DraftFieldUpdate<AgentSoulAppFeaturesConfig | undefined>) => {
     const draft = get(agentComposerDraftAtom)
 

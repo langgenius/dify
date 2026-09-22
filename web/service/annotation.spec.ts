@@ -12,10 +12,15 @@ describe('annotation service', () => {
   })
 
   it('should preserve zero score threshold when updating annotation status', () => {
-    updateAnnotationStatus('app-1', AnnotationEnableStatus.enable, {
-      embedding_model_name: 'model',
-      embedding_provider_name: 'provider',
-    }, 0)
+    updateAnnotationStatus(
+      'app-1',
+      AnnotationEnableStatus.enable,
+      {
+        embedding_model_name: 'model',
+        embedding_provider_name: 'provider',
+      },
+      0,
+    )
 
     expect(post).toHaveBeenCalledWith('apps/app-1/annotation-reply/enable', {
       body: {

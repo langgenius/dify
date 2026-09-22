@@ -17,7 +17,8 @@ from werkzeug.exceptions import NotFound
 
 from libs import jws
 from libs.token import is_secure
-from services.feature_service import FeatureService, LicenseStatus
+from services.entities.feature_entities import LicenseStatus
+from services.system_feature_service import SystemFeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +40,7 @@ def enterprise_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        settings = FeatureService.get_system_features()
-        if settings.license.status not in _EE_ENABLED_STATUSES:
+        if SystemFeatureService.get_license_status() not in _EE_ENABLED_STATUSES:
             raise NotFound()
         return view(*args, **kwargs)
 

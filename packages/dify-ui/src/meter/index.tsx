@@ -14,19 +14,20 @@ import type { VariantProps } from 'class-variance-authority'
 import { Meter as BaseMeter } from '@base-ui/react/meter'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
-export const MeterRoot = BaseMeter.Root
-export type MeterRootProps = BaseMeter.Root.Props
+const Meter = BaseMeter.Root
+type MeterProps = BaseMeter.Root.Props
 
-const meterTrackClassName
-  = 'relative block h-1 w-full overflow-hidden rounded-md bg-components-progress-bar-bg'
+const meterTrackClassName =
+  'relative block h-1 w-full overflow-hidden rounded-md bg-components-progress-bar-bg'
 
-export type MeterTrackProps = BaseMeter.Track.Props
+type MeterTrackProps = BaseMeter.Track.Props
 
-export function MeterTrack({ className, ...props }: MeterTrackProps) {
+function MeterTrack({ className, ...props }: MeterTrackProps) {
   return (
     <BaseMeter.Track
-      className={cn(meterTrackClassName, className)}
+      className={(state) => cn(meterTrackClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -48,41 +49,53 @@ const meterIndicatorVariants = cva(
   },
 )
 
-export type MeterTone = NonNullable<VariantProps<typeof meterIndicatorVariants>['tone']>
+type MeterTone = NonNullable<VariantProps<typeof meterIndicatorVariants>['tone']>
 
-export type MeterIndicatorProps = BaseMeter.Indicator.Props & {
+type MeterIndicatorProps = BaseMeter.Indicator.Props & {
   tone?: MeterTone
 }
 
-export function MeterIndicator({ className, tone, ...props }: MeterIndicatorProps) {
+function MeterIndicator({ className, tone, ...props }: MeterIndicatorProps) {
   return (
     <BaseMeter.Indicator
-      className={cn(meterIndicatorVariants({ tone }), className)}
+      className={(state) =>
+        cn(meterIndicatorVariants({ tone }), resolveClassName(className, state))
+      }
       {...props}
     />
   )
 }
 
 const meterValueClassName = 'system-xs-regular text-text-tertiary tabular-nums'
-export type MeterValueProps = BaseMeter.Value.Props
+type MeterValueProps = BaseMeter.Value.Props
 
-export function MeterValue({ className, ...props }: MeterValueProps) {
+function MeterValue({ className, ...props }: MeterValueProps) {
   return (
     <BaseMeter.Value
-      className={cn(meterValueClassName, className)}
+      className={(state) => cn(meterValueClassName, resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
 const meterLabelClassName = 'system-xs-medium text-text-tertiary'
-export type MeterLabelProps = BaseMeter.Label.Props
+type MeterLabelProps = BaseMeter.Label.Props
 
-export function MeterLabel({ className, ...props }: MeterLabelProps) {
+function MeterLabel({ className, ...props }: MeterLabelProps) {
   return (
     <BaseMeter.Label
-      className={cn(meterLabelClassName, className)}
+      className={(state) => cn(meterLabelClassName, resolveClassName(className, state))}
       {...props}
     />
   )
+}
+
+export { Meter, MeterIndicator, MeterLabel, MeterTrack, MeterValue }
+export type {
+  MeterIndicatorProps,
+  MeterLabelProps,
+  MeterProps,
+  MeterTone,
+  MeterTrackProps,
+  MeterValueProps,
 }

@@ -7,15 +7,16 @@ import { Field as BaseField } from '@base-ui/react/field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { textControlFocusClassName } from '../form-control-shared'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const textareaVariants = cva(
   [
-    'min-h-20 w-full appearance-none overflow-auto border border-transparent bg-components-input-bg-normal text-components-input-text-filled caret-primary-600 outline-hidden transition-[background-color,border-color,box-shadow]',
+    'min-h-20 w-full appearance-none overflow-auto border border-transparent bg-components-input-bg-normal text-components-input-text-filled caret-primary-600 outline-hidden transition-[background-color,border-color]',
     'placeholder:text-components-input-text-placeholder',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
     textControlFocusClassName,
     'data-invalid:border-components-input-border-destructive data-invalid:bg-components-input-bg-destructive',
-    'read-only:cursor-default read-only:shadow-none read-only:hover:border-transparent read-only:hover:bg-components-input-bg-normal read-only:focus:border-transparent read-only:focus:bg-components-input-bg-normal read-only:focus:shadow-none',
+    'read-only:cursor-default read-only:shadow-none read-only:hover:border-transparent read-only:hover:bg-components-input-bg-normal read-only:focus:border-transparent read-only:focus:bg-components-input-bg-normal read-only:focus:shadow-none read-only:focus-visible:ring-2 read-only:focus-visible:ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:border-transparent disabled:bg-components-input-bg-disabled disabled:text-components-input-text-filled-disabled',
     'disabled:hover:border-transparent disabled:hover:bg-components-input-bg-disabled',
     'motion-reduce:transition-none',
@@ -35,8 +36,7 @@ const textareaVariants = cva(
 )
 
 type TextareaValue = string | number
-export type TextareaSize = NonNullable<VariantProps<typeof textareaVariants>['size']>
-export type TextareaChangeEventDetails = BaseFieldNS.Control.ChangeEventDetails
+type TextareaChangeEventDetails = BaseFieldNS.Control.ChangeEventDetails
 type TextareaOnValueChange = (value: string, eventDetails: TextareaChangeEventDetails) => void
 
 type ControlledTextareaProps = {
@@ -55,7 +55,16 @@ type TextareaNativeProps = React.ComponentPropsWithRef<'textarea'>
 type TextareaOnlyProps = Pick<TextareaNativeProps, 'cols' | 'rows' | 'wrap'>
 type TextareaElementProps = Omit<
   TextareaNativeProps,
-  'children' | 'className' | 'cols' | 'defaultValue' | 'onChange' | 'rows' | 'size' | 'value' | 'wrap'
+  | 'children'
+  | 'className'
+  | 'cols'
+  | 'defaultValue'
+  | 'onChange'
+  | 'rows'
+  | 'size'
+  | 'style'
+  | 'value'
+  | 'wrap'
 >
 
 type TextareaControlProps = ControlledTextareaProps | UncontrolledTextareaProps
@@ -65,17 +74,15 @@ type FieldControlTextareaProps = Omit<
   'className' | 'defaultValue' | 'onValueChange' | 'render' | 'value'
 >
 
-export type TextareaProps
-  = TextareaElementProps
-    & TextareaOnlyProps
-    & TextareaControlProps
-    & TextareaVariantProps
-    & {
-      children?: never
-      className?: string
-    }
+type TextareaProps = TextareaElementProps &
+  Pick<BaseFieldNS.Control.Props, 'className' | 'style'> &
+  TextareaOnlyProps &
+  TextareaControlProps &
+  TextareaVariantProps & {
+    children?: never
+  }
 
-export function Textarea({
+function Textarea({
   className,
   cols,
   defaultValue,
@@ -93,7 +100,7 @@ export function Textarea({
   return (
     <BaseField.Control
       {...fieldControlProps}
-      className={cn(textareaVariants({ size }), className)}
+      className={(state) => cn(textareaVariants({ size }), resolveClassName(className, state))}
       defaultValue={defaultValue}
       onValueChange={onValueChange}
       ref={ref}
@@ -102,3 +109,7 @@ export function Textarea({
     />
   )
 }
+
+export { Textarea }
+
+export type { TextareaProps }

@@ -1,5 +1,5 @@
 'use client'
-import type { KeyboardEvent } from 'react'
+import type { MouseEvent } from 'react'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { memo, useCallback } from 'react'
@@ -35,64 +35,69 @@ const MemberRow = ({
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
-  const roleNames = roles.map(role => role.name)
+  const roleNames = roles.map((role) => role.name)
 
   const openDetails = useCallback(() => {
     onOpenDetails(member)
   }, [member, onOpenDetails])
 
-  const handleRowKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
+  const handleRowClick = useCallback(
+    (event: MouseEvent<HTMLTableRowElement>) => {
+      const target = event.target
+      if (
+        !(target instanceof Element) ||
+        !event.currentTarget.contains(target) ||
+        target.closest('button, a')
+      )
+        return
       openDetails()
-    }
-  }, [openDetails])
+    },
+    [openDetails],
+  )
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <tr
       data-testid={`member-row-${member.id}`}
-      aria-label={t('members.memberDetails.openAria', {
-        ns: 'common',
-        name: member.name,
-        defaultValue: 'Open member details for {{name}}',
-      })}
-      className="flex cursor-pointer border-b border-divider-subtle hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
-      onClick={openDetails}
-      onKeyDown={handleRowKeyDown}
+      className="cursor-pointer border-b border-divider-subtle hover:bg-state-base-hover"
+      onClick={handleRowClick}
     >
-      <div className="flex w-65 shrink-0 items-center px-3 py-2">
-        <Avatar avatar={member.avatar_url} size="sm" className="mr-2" name={member.name} />
-        <div className="">
-          <div className="system-sm-medium text-text-secondary">
-            {member.name}
-            {member.status === 'pending' && (
-              <span className="ml-1 system-xs-medium text-text-warning">
-                {t('members.pending', { ns: 'common' })}
-              </span>
-            )}
-            {isCurrentUser && (
-              <span className="system-xs-regular text-text-tertiary">
-                {t('members.you', { ns: 'common' })}
-              </span>
-            )}
+      <td className="px-3 py-2">
+        <div className="flex min-w-0 items-center">
+          <Avatar avatar={member.avatar_url} size="sm" className="mr-2" name={member.name} />
+          <div className="min-w-0">
+            <div className="system-sm-medium text-text-secondary">
+              <button
+                type="button"
+                className="max-w-full cursor-pointer rounded-sm text-left wrap-break-word hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={openDetails}
+              >
+                {member.name}
+              </button>
+              {member.status === 'pending' && (
+                <span className="ml-1 system-xs-medium text-text-warning">
+                  {t(($) => $['members.pending'], { ns: 'common' })}
+                </span>
+              )}
+              {isCurrentUser && (
+                <span className="system-xs-regular text-text-tertiary">
+                  {t(($) => $['members.you'], { ns: 'common' })}
+                </span>
+              )}
+            </div>
+            <div className="system-xs-regular wrap-break-word text-text-tertiary">
+              {member.email}
+            </div>
           </div>
-          <div className="system-xs-regular text-text-tertiary">{member.email}</div>
         </div>
-      </div>
-      <div className="flex w-30 shrink-0 items-center py-2 system-sm-regular text-text-secondary">
-        {formatTimeFromNow(Number((member.last_active_at || member.created_at)) * 1000)}
-      </div>
-      <div
-        className="flex min-w-0 grow items-center gap-2 px-3"
-        role="presentation"
-      >
-        <RoleBadges
-          className="grow"
-          roleNames={roleNames}
-        />
-        {canManage && (
+      </td>
+      <td className="py-2 system-sm-regular text-text-secondary">
+        {formatTimeFromNow(Number(member.last_active_at || member.created_at) * 1000)}
+      </td>
+      <td className="px-3 py-2">
+        <RoleBadges roleNames={roleNames} />
+      </td>
+      {canManage && (
+        <td className="px-3 py-2">
           <MemberMenu
             member={member}
             isCurrentUser={isCurrentUser}
@@ -100,9 +105,9 @@ const MemberRow = ({
             allowMultipleRoles={allowMultipleRoles}
             onTransferOwnership={onTransferOwnership}
           />
-        )}
-      </div>
-    </div>
+        </td>
+      )}
+    </tr>
   )
 }
 

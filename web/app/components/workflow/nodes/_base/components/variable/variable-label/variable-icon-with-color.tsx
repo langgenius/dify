@@ -19,10 +19,7 @@ const VariableIconWithColor = ({
     <VariableIcon
       variables={variables}
       variableCategory={variableCategory}
-      className={cn(
-        varColorClassName,
-        className,
-      )}
+      className={cn(varColorClassName, className)}
     />
   )
 }

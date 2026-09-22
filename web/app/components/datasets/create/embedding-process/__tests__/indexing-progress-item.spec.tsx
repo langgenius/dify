@@ -1,6 +1,7 @@
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import IndexingProgressItem from '../indexing-progress-item'
 
@@ -85,7 +86,8 @@ describe('IndexingProgressItem', () => {
     expect(screen.queryByText(/%/)).not.toBeInTheDocument()
   })
 
-  it('should render error icon with tooltip for error status', () => {
+  it('opens the full indexing error from the warning button', async () => {
+    const user = userEvent.setup()
     render(
       <IndexingProgressItem
         detail={makeDetail({ indexing_status: 'error', error: 'Parse failed' })}
@@ -93,42 +95,23 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Parse failed')).toBeInTheDocument()
+    expect(screen.queryByText('Parse failed')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.error' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Parse failed')
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('button', { name: 'common.error' })).toHaveFocus()
   })
 
-  it('should show priority label when billing is enabled', () => {
+  it('should use the localized fallback when an error has no message', async () => {
+    const user = userEvent.setup()
     render(
       <IndexingProgressItem
-        detail={makeDetail()}
-        name="test.pdf"
-        enableBilling={true}
+        detail={makeDetail({ indexing_status: 'error', error: null })}
+        name="broken.pdf"
       />,
     )
 
-    expect(screen.getByTestId('priority-label')).toBeInTheDocument()
-  })
-
-  it('should not show priority label when billing is disabled', () => {
-    render(
-      <IndexingProgressItem
-        detail={makeDetail()}
-        name="test.pdf"
-        enableBilling={false}
-      />,
-    )
-
-    expect(screen.queryByTestId('priority-label')).not.toBeInTheDocument()
-  })
-
-  it('should apply error styling for error status', () => {
-    const { container } = render(
-      <IndexingProgressItem
-        detail={makeDetail({ indexing_status: 'error' })}
-        name="error.pdf"
-      />,
-    )
-
-    const wrapper = container.firstChild as HTMLElement
-    expect(wrapper.className).toContain('bg-state-destructive-hover-alt')
+    await user.click(screen.getByRole('button', { name: 'common.error' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('common.error')
   })
 })

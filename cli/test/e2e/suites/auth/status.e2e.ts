@@ -8,7 +8,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import { assertExitCode, assertNoAnsi } from '../../helpers/assert.js'
 import { injectAuth, injectSsoAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -76,7 +76,7 @@ describe('E2E / difyctl auth session state', () => {
     const result = await r(['auth', 'list', '-o', 'json'])
     assertExitCode(result, 0)
     const parsed = JSON.parse(result.stdout) as {
-      contexts: Array<{ host: string, account: string, name: string, active: boolean }>
+      contexts: Array<{ host: string; account: string; name: string; active: boolean }>
     }
     expect(parsed.contexts).toHaveLength(1)
     expect(parsed.contexts[0]).toMatchObject({
@@ -90,7 +90,7 @@ describe('E2E / difyctl auth session state', () => {
     await withAuth()
     const result = await r(['auth', 'whoami', '--json'])
     assertExitCode(result, 0)
-    const parsed = JSON.parse(result.stdout) as { id: string, email: string, name: string }
+    const parsed = JSON.parse(result.stdout) as { id: string; email: string; name: string }
     expect(parsed).toMatchObject({
       id: 'acct-e2e',
       email: 'e2e@example.com',

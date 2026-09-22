@@ -4,10 +4,7 @@ import contextlib
 import logging
 from typing import override
 
-import flask
-
-from core.logging.context import get_request_id, get_trace_id
-from core.logging.structured_formatter import IdentityDict
+from core.logging.context import get_identity_context, get_request_id, get_trace_id
 
 
 class TraceContextFilter(logging.Filter):
@@ -51,49 +48,16 @@ class TraceContextFilter(logging.Filter):
 
 
 class IdentityContextFilter(logging.Filter):
-    """
-    Filter that adds user identity context to log records.
-    Extracts tenant_id, user_id, and user_type from Flask-Login current_user.
+    """Add an identity snapshot without invoking authentication or database work.
+
+    Logging can run while other libraries hold internal locks, so this filter must
+    only read primitive ContextVar values populated by authentication boundaries.
     """
 
     @override
     def filter(self, record: logging.LogRecord) -> bool:
-        identity = self._extract_identity()
-        record.tenant_id = identity.get("tenant_id", "")
-        record.user_id = identity.get("user_id", "")
-        record.user_type = identity.get("user_type", "")
+        identity = get_identity_context()
+        record.tenant_id = identity.tenant_id
+        record.user_id = identity.user_id
+        record.user_type = identity.user_type
         return True
-
-    def _extract_identity(self) -> IdentityDict:
-        """Extract identity from current_user if in request context."""
-        try:
-            if not flask.has_request_context():
-                return {}
-            from flask_login import current_user
-
-            # Check if user is authenticated using the proxy
-            if not current_user.is_authenticated:
-                return {}
-
-            # Access the underlying user object
-            user = current_user
-
-            from models import Account
-            from models.model import EndUser
-
-            identity: IdentityDict = {}
-
-            match user:
-                case Account():
-                    if user.current_tenant_id:
-                        identity["tenant_id"] = user.current_tenant_id
-                    identity["user_id"] = user.id
-                    identity["user_type"] = "account"
-                case EndUser():
-                    identity["tenant_id"] = user.tenant_id
-                    identity["user_id"] = user.id
-                    identity["user_type"] = user.type or "end_user"
-
-            return identity
-        except Exception:
-            return {}

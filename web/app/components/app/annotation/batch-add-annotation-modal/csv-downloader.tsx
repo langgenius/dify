@@ -2,13 +2,9 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useCSVDownloader,
-} from 'react-papaparse'
-import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
-
-import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { useCSVDownloader } from 'react-papaparse'
+import { useLocale } from '#i18n'
+import { LanguagesSupported } from '@/i18n/language'
 
 const CSV_TEMPLATE_QA_EN = [
   ['question', 'answer'],
@@ -33,38 +29,36 @@ const CSVDownload: FC = () => {
 
   return (
     <div className="mt-6">
-      <div className="system-sm-medium text-text-primary">{t('generation.csvStructureTitle', { ns: 'share' })}</div>
-      <div className="mt-2 max-h-[500px] overflow-auto">
+      <div className="system-sm-medium text-text-primary">
+        {t(($) => $['generation.csvStructureTitle'], { ns: 'share' })}
+      </div>
+      <div className="mt-2 max-h-125 overflow-auto">
         <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular text-xs">
           <thead className="text-text-tertiary">
             <tr>
-              <td className="h-9 border-b border-divider-regular pr-2 pl-3">{t('batchModal.question', { ns: 'appAnnotation' })}</td>
-              <td className="h-9 border-b border-divider-regular pr-2 pl-3">{t('batchModal.answer', { ns: 'appAnnotation' })}</td>
+              <th className="h-9 border-b border-divider-regular pr-2 pl-3 text-left font-[weight:inherit]">
+                {t(($) => $['batchModal.question'], { ns: 'appAnnotation' })}
+              </th>
+              <th className="h-9 border-b border-divider-regular pr-2 pl-3 text-left font-[weight:inherit]">
+                {t(($) => $['batchModal.answer'], { ns: 'appAnnotation' })}
+              </th>
             </tr>
           </thead>
           <tbody className="text-text-secondary">
             <tr>
               <td className="h-9 border-b border-divider-subtle pr-2 pl-3 text-[13px]">
-                {t('batchModal.question', { ns: 'appAnnotation' })}
-                {' '}
-                1
+                {t(($) => $['batchModal.question'], { ns: 'appAnnotation' })} 1
               </td>
               <td className="h-9 border-b border-divider-subtle pr-2 pl-3 text-[13px]">
-                {t('batchModal.answer', { ns: 'appAnnotation' })}
-                {' '}
-                1
+                {t(($) => $['batchModal.answer'], { ns: 'appAnnotation' })} 1
               </td>
             </tr>
             <tr>
               <td className="h-9 pr-2 pl-3 text-[13px]">
-                {t('batchModal.question', { ns: 'appAnnotation' })}
-                {' '}
-                2
+                {t(($) => $['batchModal.question'], { ns: 'appAnnotation' })} 2
               </td>
               <td className="h-9 pr-2 pl-3 text-[13px]">
-                {t('batchModal.answer', { ns: 'appAnnotation' })}
-                {' '}
-                2
+                {t(($) => $['batchModal.answer'], { ns: 'appAnnotation' })} 2
               </td>
             </tr>
           </tbody>
@@ -77,13 +71,12 @@ const CSVDownload: FC = () => {
         bom={true}
         data={getTemplate()}
       >
-        <div className="flex h-[18px] items-center space-x-1 system-xs-medium text-text-accent">
-          <DownloadIcon className="mr-1 size-3" />
-          {t('batchModal.template', { ns: 'appAnnotation' })}
+        <div className="flex h-4.5 items-center space-x-1 system-xs-medium text-text-accent">
+          <span aria-hidden className="mr-1 i-custom-vender-solid-general-download-02 size-3" />
+          {t(($) => $['batchModal.template'], { ns: 'appAnnotation' })}
         </div>
       </CSVDownloader>
     </div>
-
   )
 }
 export default React.memo(CSVDownload)

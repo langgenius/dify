@@ -59,7 +59,7 @@ def init_app(app: DifyApp):
             SERVICE_NAME: dify_config.APPLICATION_NAME,
             SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
             PROCESS_PID: os.getpid(),
-            DEPLOYMENT_ENVIRONMENT_NAME: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+            DEPLOYMENT_ENVIRONMENT_NAME: f"{dify_config.DEPLOY_ENV}-{dify_config.DEPLOYMENT_EDITION.value}",
             HOST_NAME: socket.gethostname(),
             HOST_ARCH: platform.machine(),
             "custom.deployment.git_commit": dify_config.COMMIT_SHA,

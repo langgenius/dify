@@ -6,12 +6,7 @@ type MockForm = {
   id: string
 }
 
-const {
-  mockForm,
-  mockBaseField,
-  mockUseInitialData,
-  mockUseConfigurations,
-} = vi.hoisted(() => ({
+const { mockForm, mockBaseField, mockUseInitialData, mockUseConfigurations } = vi.hoisted(() => ({
   mockForm: {
     id: 'form-1',
   } as MockForm,
@@ -32,7 +27,7 @@ vi.mock('@/app/components/base/form/form-scenarios/base/field', () => ({
   default: mockBaseField,
 }))
 
-vi.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
+vi.mock('../../../../../hooks/use-input-fields', () => ({
   useInitialData: mockUseInitialData,
   useConfigurations: mockUseConfigurations,
 }))

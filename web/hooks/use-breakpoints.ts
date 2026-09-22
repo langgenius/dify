@@ -12,10 +12,8 @@ type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
 const useBreakpoints = (): MediaTypeValue => {
   const [width, setWidth] = React.useState(globalThis.innerWidth)
   const media = (() => {
-    if (width <= 640)
-      return MediaType.mobile
-    if (width <= 768)
-      return MediaType.tablet
+    if (width <= 640) return MediaType.mobile
+    if (width <= 768) return MediaType.tablet
     return MediaType.pc
   })()
 

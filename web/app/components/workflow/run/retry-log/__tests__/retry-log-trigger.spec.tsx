@@ -65,7 +65,9 @@ describe('RetryLogTrigger', () => {
         </div>,
       )
 
-      await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.retry.retries:{"num":2}' }))
+      await user.click(
+        screen.getByRole('button', { name: 'workflow.nodes.common.retry.retries:{"num":2}' }),
+      )
 
       expect(onShowRetryResultList).toHaveBeenCalledWith(retryDetail)
       expect(parentClick).not.toHaveBeenCalled()

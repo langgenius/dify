@@ -41,7 +41,7 @@ def test_get_conversation_mark_read_keeps_updated_at_unchanged(
         return_value=read_at,
         autospec=True,
     ):
-        loaded = _get_conversation(account, app, conversation.id)
+        loaded = _get_conversation(db_session_with_containers, account, app, conversation.id)
 
     db_session_with_containers.refresh(conversation)
 
@@ -58,4 +58,4 @@ def test_get_conversation_raises_not_found_for_missing_conversation(
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
 
     with pytest.raises(NotFound):
-        _get_conversation(account, app, "00000000-0000-0000-0000-000000000000")
+        _get_conversation(db_session_with_containers, account, app, "00000000-0000-0000-0000-000000000000")

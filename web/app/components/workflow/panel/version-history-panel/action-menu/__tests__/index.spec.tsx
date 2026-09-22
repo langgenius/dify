@@ -1,33 +1,38 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Plan } from '@/app/components/billing/type'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import {
+  createConsoleQueryClient,
+  seedFeatures,
+  seedSystemFeatures,
+} from '@/test/console/query-data'
 import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env'
 import { VersionHistoryContextMenuOptions } from '../../../../types'
 import ActionMenu from '../index'
+
+let mockPlanType: CloudPlan = 'professional'
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
+
+const renderActionMenu = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedFeatures(queryClient, { billing: { subscription: { plan: mockPlanType } } })
+  seedSystemFeatures(queryClient, { deployment_edition: deploymentEdition })
+  return renderWorkflowComponent(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, { queryClient })
+}
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: true,
   }
 })
-
-let mockPlanType = Plan.professional
-let mockEnableBilling = true
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: { type: mockPlanType },
-    enableBilling: mockEnableBilling,
-  }),
-}))
 
 describe('ActionMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPlanType = Plan.professional
-    mockEnableBilling = true
+    mockPlanType = 'professional'
+    deploymentEdition = 'CLOUD'
   })
 
   it('toggles the trigger and forwards menu clicks', async () => {
@@ -35,8 +40,9 @@ describe('ActionMenu', () => {
     const setOpen = vi.fn()
     const handleClickActionMenuItem = vi.fn()
 
-    renderWorkflowComponent(
+    renderActionMenu(
       <ActionMenu
+        workflowId="version-1"
         isNamedVersion
         isShowDelete
         canImportExportDSL
@@ -46,7 +52,10 @@ describe('ActionMenu', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button'))
+    const trigger = screen.getByRole('button', { name: 'common.operation.more' })
+    expect(trigger).not.toHaveAttribute('role')
+
+    await user.click(trigger)
     await user.click(screen.getByText('workflow.common.restore'))
     await user.click(screen.getByText('common.operation.delete'))
 
@@ -64,10 +73,11 @@ describe('ActionMenu', () => {
   it('shows upgrade buttons beside restore and export for sandbox users', async () => {
     const user = userEvent.setup()
     const handleClickActionMenuItem = vi.fn()
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
 
-    renderWorkflowComponent(
+    renderActionMenu(
       <ActionMenu
+        workflowId="version-1"
         isNamedVersion
         isShowDelete
         canImportExportDSL
@@ -77,7 +87,9 @@ describe('ActionMenu', () => {
       />,
     )
 
-    const upgradeButtons = screen.getAllByRole('button', { name: 'billing.upgradeBtn.encourageShort' })
+    const upgradeButtons = screen.getAllByRole('button', {
+      name: 'billing.upgradeBtn.encourageShort',
+    })
     expect(upgradeButtons).toHaveLength(2)
 
     await user.click(upgradeButtons[0]!)

@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import { zPostResetPasswordBody, zPostResetPasswordResponse } from './zod.gen'
 
 export const post = oc

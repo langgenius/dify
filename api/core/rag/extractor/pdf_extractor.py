@@ -9,6 +9,7 @@ from typing import override
 
 import pypdfium2
 import pypdfium2.raw as pdfium_c
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.extractor.blob.blob import Blob
@@ -33,6 +34,7 @@ class PdfExtractor(BaseExtractor):
         tenant_id: Workspace ID.
         user_id: ID of the user performing the extraction.
         file_cache_key: Optional cache key for the extracted text.
+        session: Session used to persist extracted images.
     """
 
     # Magic bytes for image format detection: (magic_bytes, extension, mime_type)
@@ -48,13 +50,23 @@ class PdfExtractor(BaseExtractor):
         (b"MM\x00+", "tiff", "image/tiff"),
     )
     MAX_MAGIC_LEN = max(len(m) for m, _, _ in IMAGE_FORMATS)
+    _session: Session | None
 
-    def __init__(self, file_path: str, tenant_id: str, user_id: str, file_cache_key: str | None = None):
+    def __init__(
+        self,
+        file_path: str,
+        tenant_id: str | None = None,
+        user_id: str | None = None,
+        file_cache_key: str | None = None,
+        *,
+        session: Session | None = None,
+    ):
         """Initialize PdfExtractor."""
         self._file_path = file_path
         self._tenant_id = tenant_id
         self._user_id = user_id
         self._file_cache_key = file_cache_key
+        self._session = session
 
     @override
     def extract(self) -> list[Document]:
@@ -115,6 +127,12 @@ class PdfExtractor(BaseExtractor):
         Returns:
             Markdown string containing links to the extracted images.
         """
+        if not self._tenant_id or not self._user_id:
+            # No tenant context (e.g. file loaded from a URL rather than an
+            # uploaded file): extracted images cannot be persisted, so skip
+            # image extraction and return text only.
+            return ""
+
         image_content = []
         upload_files = []
         base_url = dify_config.FILES_URL
@@ -174,6 +192,8 @@ class PdfExtractor(BaseExtractor):
         except Exception as e:
             logger.warning("Failed to get objects from PDF page: %s", e)
         if upload_files:
-            db.session.add_all(upload_files)
-            db.session.commit()
+            session = self._session or db.session
+            session.add_all(upload_files)
+            if self._session is None:
+                session.commit()
         return "\n".join(image_content)

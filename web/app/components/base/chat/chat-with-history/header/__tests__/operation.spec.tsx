@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Operation from '../operation'
 
 describe('Operation Component', () => {
@@ -48,11 +48,7 @@ describe('Operation Component', () => {
   it('handles rename and delete visibility correctly', async () => {
     const user = userEvent.setup()
     const { rerender } = render(
-      <Operation
-        {...defaultProps}
-        isShowRenameConversation={false}
-        isShowDelete={false}
-      />,
+      <Operation {...defaultProps} isShowRenameConversation={false} isShowDelete={false} />,
     )
 
     await user.click(screen.getByText('Chat Title'))

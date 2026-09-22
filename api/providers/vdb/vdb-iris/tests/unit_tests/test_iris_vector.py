@@ -1,4 +1,5 @@
 import importlib
+import json
 import sys
 import types
 from contextlib import contextmanager
@@ -8,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_iris_module():
@@ -381,12 +383,10 @@ def test_iris_vector_delete_create_collection_and_factory(iris_module, monkeypat
     assert cursor.execute.call_count == 2
 
     factory = iris_module.IrisVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(iris_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(iris_module.dify_config, "IRIS_HOST", "localhost")

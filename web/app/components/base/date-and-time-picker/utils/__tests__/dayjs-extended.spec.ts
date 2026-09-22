@@ -5,7 +5,6 @@ import dayjs, {
   getDateWithTimezone,
   getDaysInMonth,
   getHourIn12Hour,
-  parseDateWithFormat,
   toDayjs,
 } from '../dayjs'
 
@@ -56,8 +55,8 @@ describe('dayjs extended utilities', () => {
       const date = dayjs('2024-06-15') // June 2024 starts on Saturday
       const days = getDaysInMonth(date)
 
-      const prevMonthDays = days.filter(d => !d.isCurrentMonth && d.date.month() < date.month())
-      const nextMonthDays = days.filter(d => !d.isCurrentMonth && d.date.month() > date.month())
+      const prevMonthDays = days.filter((d) => !d.isCurrentMonth && d.date.month() < date.month())
+      const nextMonthDays = days.filter((d) => !d.isCurrentMonth && d.date.month() > date.month())
 
       // June 2024 starts on Saturday (6), so there are 6 days from previous month
       expect(prevMonthDays.length).toBeGreaterThan(0)
@@ -68,7 +67,7 @@ describe('dayjs extended utilities', () => {
       const date = dayjs('2024-06-15')
       const days = getDaysInMonth(date)
 
-      const currentMonthDays = days.filter(d => d.isCurrentMonth)
+      const currentMonthDays = days.filter((d) => d.isCurrentMonth)
       // June has 30 days
       expect(currentMonthDays).toHaveLength(30)
     })
@@ -290,46 +289,6 @@ describe('dayjs extended utilities', () => {
 
       expect(result).toBeUndefined()
       consoleSpy.mockRestore()
-    })
-  })
-
-  // Tests for parseDateWithFormat
-  describe('parseDateWithFormat', () => {
-    it('should return null for empty string', () => {
-      expect(parseDateWithFormat('')).toBeNull()
-    })
-
-    it('should parse with provided format from common formats', () => {
-      // Uses YYYY-MM-DD which is in COMMON_PARSE_FORMATS
-      const result = parseDateWithFormat('2024-06-15', 'YYYY-MM-DD')
-
-      expect(result).not.toBeNull()
-      expect(result?.format('YYYY-MM-DD')).toBe('2024-06-15')
-    })
-
-    it('should return null for invalid date with format', () => {
-      const result = parseDateWithFormat('not-a-date', 'YYYY-MM-DD')
-
-      expect(result).toBeNull()
-    })
-
-    it('should try common formats when no format is specified', () => {
-      const result = parseDateWithFormat('2024-06-15')
-
-      expect(result).not.toBeNull()
-      expect(result?.format('YYYY-MM-DD')).toBe('2024-06-15')
-    })
-
-    it('should parse ISO datetime format', () => {
-      const result = parseDateWithFormat('2024-06-15T12:00:00')
-
-      expect(result).not.toBeNull()
-    })
-
-    it('should return null for unparseable string without format', () => {
-      const result = parseDateWithFormat('gibberish')
-
-      expect(result).toBeNull()
     })
   })
 

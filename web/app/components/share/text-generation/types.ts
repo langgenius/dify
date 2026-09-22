@@ -1,4 +1,10 @@
+import type { Namespace, SelectorParam } from 'i18next'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+
+export type TextGenerationTranslate = <Ns extends Namespace, Selector extends SelectorParam<Ns>>(
+  selector: Selector,
+  options: { ns: Ns } & Record<string, unknown>,
+) => string
 
 type TaskParam = {
   inputs: Record<string, string | boolean | undefined>
@@ -10,22 +16,24 @@ export type Task = {
   params: TaskParam
 }
 
-export enum TaskStatus {
-  pending = 'pending',
-  running = 'running',
-  completed = 'completed',
-  failed = 'failed',
-}
+export const TaskStatus = {
+  pending: 'pending',
+  running: 'running',
+  completed: 'completed',
+  failed: 'failed',
+} as const
 
-export type InputValueTypes
-  = | string
-    | boolean
-    | number
-    | string[]
-    | Record<string, unknown>
-    | FileEntity
-    | FileEntity[]
-    | undefined
+export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus]
+
+export type InputValueTypes =
+  | string
+  | boolean
+  | number
+  | string[]
+  | Record<string, unknown>
+  | FileEntity
+  | FileEntity[]
+  | undefined
 
 export type TextGenerationRunControl = {
   onStop: () => Promise<void> | void

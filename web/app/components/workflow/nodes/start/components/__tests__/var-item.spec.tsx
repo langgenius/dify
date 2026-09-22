@@ -5,7 +5,8 @@ import VarItem from '../var-item'
 
 vi.mock('@/app/components/app/configuration/config-var/config-modal', () => ({
   __esModule: true,
-  default: ({ isShow }: { isShow: boolean }) => isShow ? <div role="dialog">edit-variable</div> : null,
+  default: ({ isShow }: { isShow: boolean }) =>
+    isShow ? <div role="dialog">edit-variable</div> : null,
 }))
 
 const createPayload = (overrides: Partial<InputVar> = {}): InputVar => ({
@@ -20,11 +21,7 @@ describe('StartVarItem', () => {
   it('shows named edit and remove actions on hover', () => {
     const handleRemove = vi.fn()
     const { container } = render(
-      <VarItem
-        readonly={false}
-        payload={createPayload()}
-        onRemove={handleRemove}
-      />,
+      <VarItem readonly={false} payload={createPayload()} onRemove={handleRemove} />,
     )
 
     fireEvent.mouseEnter(container.firstElementChild!)
