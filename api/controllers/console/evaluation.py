@@ -500,6 +500,51 @@ def _cancel_run(
     return dump_response(EvaluationRunResponse, run)
 
 
+def _retry_run(
+    *,
+    session: Session,
+    tenant_id: str,
+    target_type: str,
+    target_id: str,
+    run_id: str,
+) -> dict[str, Any]:
+    try:
+        existing_run = EvaluationService.get_evaluation_run_detail(
+            session,
+            tenant_id,
+            target_type,
+            target_id,
+            run_id,
+        )
+        if not existing_run.dataset_file_id:
+            raise BadRequest("Evaluation run has no dataset file to retry.")
+        dataset_content, dataset_filename = _load_evaluation_dataset(
+            session=session,
+            tenant_id=tenant_id,
+            file_id=existing_run.dataset_file_id,
+        )
+        run = EvaluationService.retry_evaluation_run(
+            session=session,
+            tenant_id=tenant_id,
+            target_type=target_type,
+            target_id=target_id,
+            run_id=run_id,
+            dataset_file_content=dataset_content,
+            dataset_filename=dataset_filename,
+        )
+    except EvaluationFrameworkNotConfiguredError as exc:
+        raise BadRequest(exc.description) from exc
+    except EvaluationDatasetInvalidError as exc:
+        raise BadRequest(exc.description) from exc
+    except EvaluationNotFoundError as exc:
+        raise NotFound(exc.description) from exc
+    except EvaluationMaxConcurrentRunsError as exc:
+        raise TooManyRequests(exc.description) from exc
+    except ValueError as exc:
+        raise BadRequest(str(exc)) from exc
+    return dump_response(EvaluationRunResponse, run)
+
+
 def _evaluation_file_response(
     *,
     session: Session,
@@ -618,7 +663,10 @@ class EvaluationTemplateColumnsApi(Resource):
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def post(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
         payload = EvaluationConfigPayload.model_validate(console_ns.payload or {})
-        columns = EvaluationService.get_dataset_column_names(target, target_type, payload, session)
+        try:
+            columns = EvaluationService.get_dataset_column_names(target, target_type, payload, session)
+        except ValueError as exc:
+            raise BadRequest(str(exc)) from exc
         return dump_response(EvaluationTemplateColumnsResponse, {"columns": columns})
 
 
@@ -724,6 +772,35 @@ class EvaluationRunCancelApi(Resource):
     ) -> dict[str, Any]:
         _, tenant_id = current_account_with_tenant()
         return _cancel_run(
+            session=session,
+            tenant_id=tenant_id,
+            target_type=target_type,
+            target_id=target.id,
+            run_id=str(run_id),
+        )
+
+
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>/retry")
+class EvaluationRunRetryApi(Resource):
+    @console_ns.response(200, "Evaluation run retry scheduled", console_ns.models[EvaluationRunResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_session
+    @evaluation_target_required(
+        app_permission=RBACPermission.APP_TEST_AND_RUN,
+        snippet_permission=RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
+    )
+    def post(
+        self,
+        session: Session,
+        target: EvaluationTarget,
+        target_type: str,
+        run_id: UUID,
+    ) -> dict[str, Any]:
+        _, tenant_id = current_account_with_tenant()
+        return _retry_run(
             session=session,
             tenant_id=tenant_id,
             target_type=target_type,
@@ -1106,6 +1183,27 @@ class DatasetEvaluationRunCancelApi(Resource):
         current_user, tenant_id = current_account_with_tenant()
         dataset = _get_accessible_dataset(session, dataset_id, current_user, tenant_id)
         return _cancel_run(
+            session=session,
+            tenant_id=tenant_id,
+            target_type=EvaluationTargetType.KNOWLEDGE_BASE.value,
+            target_id=dataset.id,
+            run_id=str(run_id),
+        )
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/evaluation/runs/<uuid:run_id>/retry")
+class DatasetEvaluationRunRetryApi(Resource):
+    @console_ns.response(200, "Evaluation run retry scheduled", console_ns.models[EvaluationRunResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
+    @with_session
+    def post(self, session: Session, dataset_id: UUID, run_id: UUID) -> dict[str, Any]:
+        current_user, tenant_id = current_account_with_tenant()
+        dataset = _get_accessible_dataset(session, dataset_id, current_user, tenant_id)
+        return _retry_run(
             session=session,
             tenant_id=tenant_id,
             target_type=EvaluationTargetType.KNOWLEDGE_BASE.value,

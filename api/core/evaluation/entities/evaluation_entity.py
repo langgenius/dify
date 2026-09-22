@@ -248,6 +248,12 @@ class EvaluationRunRequest(EvaluationConfigData):
     file_id: str
 
 
+class EvaluationRunSnapshot(EvaluationRunRequest):
+    """Immutable run configuration plus the target's pinned dataset input schema."""
+
+    dataset_input_types: dict[str, str] = Field(default_factory=dict)
+
+
 class EvaluationRunData(BaseModel):
     """Serializable data for Celery task."""
 
