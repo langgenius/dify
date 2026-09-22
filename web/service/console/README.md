@@ -27,6 +27,11 @@ navigation behavior in `onSuccess` / `onError`. Do not override `onSettled` with
 preserving that cache contract. The returned invalidation promise keeps the
 mutation pending until active consumers have refreshed.
 
+List affected generated keys inline in the owning operation's policy. Whether
+invalidation runs after an error depends on the write contract: a rejected
+request does not imply the server rolled back. Record that decision per module.
+Do not add an invalidation helper to hide the cache dependencies.
+
 Use generated options and types directly. A feature-owned options factory is
 appropriate only when it owns a shared request policy or a composed query;
 forwarding hooks and handwritten API DTOs create a second owner.

@@ -128,7 +128,7 @@ describe('endpoint mutation cache policy', () => {
   )
 
   it.each(mutations)(
-    '$name preserves caches and skips success feedback on failure',
+    '$name invalidates uncertain server state and skips success feedback on failure',
     async ({ run }) => {
       const client = new QueryClient()
       const { affectedKeys } = seedEndpointCaches(client)
@@ -140,10 +140,32 @@ describe('endpoint mutation cache policy', () => {
       try {
         await expect(run(client, onSuccess)).rejects.toThrow()
         expect(onSuccess).not.toHaveBeenCalled()
-        for (const key of affectedKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(false)
+        for (const key of affectedKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
       } finally {
         client.clear()
       }
     },
   )
+
+  it('reconciles after a lost response without retrying the create', async () => {
+    const client = new QueryClient()
+    const { affectedKeys, unrelatedKeys } = seedEndpointCaches(client)
+    const onSuccess = vi.fn()
+    request.mockRejectedValue(new TypeError('Failed to fetch'))
+    const mutation = new MutationObserver(client, endpoints.post.mutationOptions({ onSuccess }))
+
+    try {
+      await expect(
+        mutation.mutate({
+          body: { name: 'Endpoint', plugin_unique_identifier: 'plugin@1.0', settings: {} },
+        }),
+      ).rejects.toThrow('Failed to fetch')
+      expect(request).toHaveBeenCalledOnce()
+      expect(onSuccess).not.toHaveBeenCalled()
+      for (const key of affectedKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+      for (const key of unrelatedKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(false)
+    } finally {
+      client.clear()
+    }
+  })
 })

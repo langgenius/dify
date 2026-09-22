@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import httpx
 import pytest
 from pytest_mock import MockerFixture
@@ -8,17 +10,23 @@ from core.plugin.impl.exc import PluginDaemonInternalServerError
 
 class TestPluginEndpointClientImpl:
     @pytest.mark.parametrize(
-        ("method_name", "args"),
+        "mutate",
         [
-            ("create_endpoint", ("tenant-1", "user-1", "org/plugin:1", "endpoint-a", {})),
-            ("update_endpoint", ("tenant-1", "user-1", "endpoint-1", "renamed", {})),
-            ("delete_endpoint", ("tenant-1", "user-1", "endpoint-1")),
-            ("enable_endpoint", ("tenant-1", "user-1", "endpoint-1")),
-            ("disable_endpoint", ("tenant-1", "user-1", "endpoint-1")),
+            pytest.param(
+                lambda client: client.create_endpoint("tenant-1", "user-1", "org/plugin:1", "endpoint-a", {}),
+                id="create",
+            ),
+            pytest.param(
+                lambda client: client.update_endpoint("tenant-1", "user-1", "endpoint-1", "renamed", {}),
+                id="update",
+            ),
+            pytest.param(lambda client: client.delete_endpoint("tenant-1", "user-1", "endpoint-1"), id="delete"),
+            pytest.param(lambda client: client.enable_endpoint("tenant-1", "user-1", "endpoint-1"), id="enable"),
+            pytest.param(lambda client: client.disable_endpoint("tenant-1", "user-1", "endpoint-1"), id="disable"),
         ],
     )
     def test_mutation_rejects_false_daemon_result(
-        self, mocker: MockerFixture, method_name: str, args: tuple[object, ...]
+        self, mocker: MockerFixture, mutate: Callable[[PluginEndpointClient], bool]
     ) -> None:
         client = PluginEndpointClient()
         mocker.patch.object(
@@ -32,7 +40,7 @@ class TestPluginEndpointClientImpl:
         )
 
         with pytest.raises(PluginDaemonInternalServerError, match="Plugin daemon failed to"):
-            getattr(client, method_name)(*args)
+            mutate(client)
 
     def test_create_endpoint(self, mocker: MockerFixture):
         client = PluginEndpointClient()

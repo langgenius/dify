@@ -35,10 +35,19 @@ or add a frontend compatibility type to hide a contract mismatch.
 | List identity         | Generated input includes plugin ID, page `1`, and page size `100`; pagination behavior is unchanged.                                                                                                                 |
 | Freshness and retries | Inherit the existing QueryClient defaults, including five-minute freshness. No endpoint-specific override is needed.                                                                                                 |
 | Rendering             | The list queries when its endpoint surface is mounted. The card reads `enabled` from query data; pending changes disable the switch.                                                                                 |
-| Shared invalidation   | All five successful writes invalidate the endpoint list family and installed plugin list/category queries containing endpoint counts.                                                                                |
+| Shared invalidation   | All five settled writes invalidate the endpoint list family and installed plugin list/category queries containing endpoint counts.                                                                                   |
 | Invalidation scope    | Update/delete/enable/disable only identify an endpoint, so their shared policy cannot safely infer its plugin. All endpoint list inputs are marked stale. Installed plugin IDs and unrelated tools remain untouched. |
-| Failure               | Rejected mutations preserve query data and editable form state. They do not invalidate lists or close the form.                                                                                                      |
+| Failure               | Rejected mutations refresh server state, retain editable form state, and do not close the form or retry the write.                                                                                                   |
 | Local callbacks       | The surface owns toast, confirmation, and closing behavior; shared cache work stays in `query-policies.ts` `onSettled`.                                                                                              |
+
+Endpoint writes are not atomic across the daemon's database and follow-up work.
+Create can install a record before later encryption fails; update/delete can
+commit before credential-cache cleanup fails. A rejected request is therefore
+not proof that server state is unchanged. All five mutation policies invalidate
+on settlement, including errors, with the generated keys written inline in each
+configuration. Local `onError` feedback remains separate; refreshing is a read,
+not an automatic retry or a rollback of the write. Mutations retain TanStack
+Query's default of no automatic retries.
 
 The endpoint list family uses `endpoints.list.key()`: `list.get.key()` would not
 match `list.plugin.get`. Query data remains scoped by the application's existing
@@ -49,7 +58,7 @@ workspace-switch boundary; this module does not introduce a separate cache.
 Backend tests protect the success-only write contract, daemon failure handling,
 delete idempotence, and generated schema. Frontend tests exercise generated
 transport and real QueryClient invalidation alongside local callbacks, including
-failure and unchanged scalar settings. Surface tests protect form submission,
+failure after a committed write and unchanged scalar settings. Surface tests protect form submission,
 server-owned switch state, and failure recovery. Coverage percentage is not an
 acceptance criterion.
 

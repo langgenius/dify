@@ -18,26 +18,53 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           endpoints: {
             post: {
               mutationOptions: {
-                onSettled: (_data, error, _variables, _result, context) => {
-                  if (error) return
-                  return invalidateEndpointQueries(consoleQuery, context.client)
+                onSettled: (_data, _error, _variables, _result, context) => {
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                    }),
+                  ])
                 },
               },
             },
             byId: {
               patch: {
                 mutationOptions: {
-                  onSettled: (_data, error, _variables, _result, context) => {
-                    if (error) return
-                    return invalidateEndpointQueries(consoleQuery, context.client)
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
                   },
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSettled: (_data, error, _variables, _result, context) => {
-                    if (error) return
-                    return invalidateEndpointQueries(consoleQuery, context.client)
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
                   },
                 },
               },
@@ -45,9 +72,18 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             enable: {
               post: {
                 mutationOptions: {
-                  onSettled: (_data, error, _variables, _result, context) => {
-                    if (error) return
-                    return invalidateEndpointQueries(consoleQuery, context.client)
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
                   },
                 },
               },
@@ -55,9 +91,18 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             disable: {
               post: {
                 mutationOptions: {
-                  onSettled: (_data, error, _variables, _result, context) => {
-                    if (error) return
-                    return invalidateEndpointQueries(consoleQuery, context.client)
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
                   },
                 },
               },
@@ -1302,14 +1347,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
-}
-
-function invalidateEndpointQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
-  return invalidateQueryKeys(client, [
-    query.workspaces.current.endpoints.list.key(),
-    query.workspaces.current.plugin.list.get.key(),
-    query.workspaces.current.plugin.byCategory.list.get.key(),
-  ])
 }
 
 function invalidateAccessPolicyQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {

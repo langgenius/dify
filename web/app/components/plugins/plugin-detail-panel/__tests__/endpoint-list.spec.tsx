@@ -36,6 +36,7 @@ const createEndpoint = (): EndpointListItemResponse => ({
 
 let endpoints: EndpointListItemResponse[]
 let rejectMutation: boolean
+let failAfterWrite: boolean
 const mutations: { path: string; method: string; body: unknown }[] = []
 
 const renderEndpoints = () => render(<EndpointList detail={detail} />)
@@ -44,6 +45,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   endpoints = [createEndpoint()]
   rejectMutation = false
+  failAfterWrite = false
   mutations.length = 0
   request.mockImplementation(
     async (url: string, _init: RequestInit, options: { request: Request }) => {
@@ -52,13 +54,15 @@ beforeEach(() => {
       if (method === 'GET') return Response.json({ endpoints })
       const body: unknown = options.request.body ? await options.request.json() : undefined
       mutations.push({ path, method, body })
-      if (rejectMutation) return Response.json({ message: 'Failed' }, { status: 500 })
+      if (rejectMutation && !failAfterWrite)
+        return Response.json({ message: 'Failed' }, { status: 500 })
       if (path.endsWith('/enable'))
         endpoints = endpoints.map((item) => ({ ...item, enabled: true }))
       else if (path.endsWith('/disable'))
         endpoints = endpoints.map((item) => ({ ...item, enabled: false }))
       else if (method === 'DELETE') endpoints = []
       else endpoints = [{ ...createEndpoint(), name: 'Saved endpoint' }]
+      if (rejectMutation) return Response.json({ message: 'Failed after write' }, { status: 500 })
       return Response.json({ success: true })
     },
   )
@@ -161,5 +165,22 @@ describe('Endpoint management', () => {
     await waitFor(() => expect(showError).toHaveBeenCalled())
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('Endpoint 1')).toBeInTheDocument()
+  })
+
+  it('refreshes a committed write after an error while preserving the editable form', async () => {
+    const user = userEvent.setup()
+    rejectMutation = true
+    failAfterWrite = true
+    renderEndpoints()
+    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await user.clear(screen.getByPlaceholderText('Endpoint Name'))
+    await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Submitted name')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() => expect(showError).toHaveBeenCalled())
+    expect(await screen.findByText('Saved endpoint')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Endpoint Name')).toHaveValue('Submitted name')
+    expect(mutations).toHaveLength(1)
   })
 })
