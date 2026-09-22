@@ -37,6 +37,7 @@ from typing import Any, ClassVar, cast
 import json_repair
 
 from configs import dify_config
+from core.workflow import graph_normalizers
 from core.workflow.generator.prompts.node_builder_prompts import (
     NODE_BUILDER_USER_PROMPT,
     format_mode_section,
@@ -1542,6 +1543,20 @@ class WorkflowGenerator:
         # dropdown in the test form -> repair it to a text-input.
         cls._normalize_start_select_variables(nodes=nodes)
 
+        # Pure value repairs shared with the Builder's apply_repair chokepoint
+        # (core.workflow.graph_normalizers), so both write paths agree:
+        # - condition values written as JSON numbers (ESQ1-303: ``"value": 60``)
+        #   become the strings graphon's Condition model accepts;
+        # - if-else ``varType`` (frontend operator hint) is derived only when a
+        #   declared start-variable type makes it certain;
+        # - http-request body items get the ``type`` BodyData cannot default
+        #   (ESQ1-302), and a ``none`` body drops stray items.
+        for changed_id in graph_normalizers.normalize_condition_values(nodes):
+            logger.info("Workflow generator: coerced condition value(s) on node %s to strings", changed_id)
+        graph_normalizers.derive_if_else_var_types(nodes)
+        for changed_id in graph_normalizers.normalize_http_request_bodies(nodes):
+            logger.info("Workflow generator: filled http-request body item type(s) on node %s", changed_id)
+
         return cast(GraphDict, {"nodes": nodes, "edges": deduped_edges, "viewport": viewport})
 
     # ------------------------------------------------------------------
@@ -2205,62 +2220,32 @@ class WorkflowGenerator:
     @classmethod
     def _repair_branch_edge_handles(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
         """
-        Re-home edges that leave a branch node on the default "source" handle.
+        Re-home edges that leave a branch node on a handle it does not declare.
 
         if-else exposes one source handle per ``case_id`` plus the implicit
-        "false" (ELSE) handle; question-classifier exposes one per class id.
-        The builder prompt documents this, but LLMs still emit the default
-        handle, which renders as an edge hanging off a handle that doesn't
-        exist and the branch silently never runs.
+        "false" (ELSE) handle; question-classifier one per class id; human-input
+        one per action id. The builder prompt documents this, but the planner
+        names the handles BEFORE the node builder picks the ids (ESQ1-303:
+        ``score_equals_60`` / ``else`` against a case named ``true``) and LLMs
+        still emit the default handle -- either renders as an edge hanging off
+        a handle that doesn't exist, and the arm silently never runs.
 
-        Repair only when unambiguous: default-handle edges are assigned to the
-        node's UNUSED branch handles in declaration order, and only when there
-        are at least as many unused handles as edges to fix. Anything
-        ambiguous is left alone — a wrong guess that swaps the IF and ELSE
-        arms is worse than a visible dangling edge.
+        Delegates to ``core.workflow.graph_normalizers.repair_branch_edge_handles``
+        (shared with the Builder). Repairs only what is forced -- exact / alias /
+        name matches, one arm fanning out under an invented name, default-handle
+        edges onto unused handles in declaration order; anything ambiguous is
+        left alone so ``_validate_structure`` fails the graph closed. A wrong
+        guess that swaps the IF and ELSE arms is worse than a visible rejection.
         """
-        for node in nodes:
-            data = node.get("data") or {}
-            node_type = data.get("type")
-            if node_type == BuiltinNodeTypes.IF_ELSE:
-                branch_handles = [
-                    str(case["case_id"])
-                    for case in (data.get("cases") or [])
-                    if isinstance(case, dict) and case.get("case_id")
-                ]
-                # ELSE is implicit — it has a handle even though no case
-                # declares it.
-                branch_handles.append("false")
-            elif node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                branch_handles = [
-                    str(klass["id"])
-                    for klass in (data.get("classes") or [])
-                    if isinstance(klass, dict) and klass.get("id")
-                ]
-            elif node_type == BuiltinNodeTypes.HUMAN_INPUT:
-                branch_handles = [
-                    str(action["id"])
-                    for action in (data.get("user_actions") or [])
-                    if isinstance(action, dict) and action.get("id")
-                ]
-            else:
-                continue
-
-            node_id = node.get("id")
-            outgoing = [e for e in edges if e.get("source") == node_id]
-            taken = {e.get("sourceHandle") for e in outgoing if e.get("sourceHandle") in branch_handles}
-            unused = [h for h in branch_handles if h not in taken]
-            defaulted = [e for e in outgoing if e.get("sourceHandle") in (None, "", "source")]
-            if not defaulted or len(defaulted) > len(unused):
-                continue
-            for edge, handle in zip(defaulted, unused):
-                edge["sourceHandle"] = handle
-                logger.info(
-                    "Workflow generator: re-homed default-handle edge %s -> %s onto branch handle %r",
-                    node_id,
-                    edge.get("target"),
-                    handle,
-                )
+        unresolved = graph_normalizers.repair_branch_edge_handles(nodes, edges)
+        for item in unresolved:
+            logger.warning(
+                "Workflow generator: cannot re-home edge %s -> %s (handle %r; node declares %s)",
+                item["node_id"],
+                item["target"],
+                item["handle"],
+                item["declared"],
+            )
 
     @classmethod
     def _layout_top_level_nodes(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:

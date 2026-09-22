@@ -4779,3 +4779,85 @@ def test_tool_result_is_aliased_to_text():
 
     node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
     assert G._aliased_output(node, "result") == "text"
+
+
+class TestPostprocessGraphNormalizers:
+    """The shared postprocess applies the pure ``core.workflow.graph_normalizers``
+    so cmd+K ``/create`` / ``/refine`` and the Builder heal the same defects the
+    same way. Driven by the REAL ESQ1-303 dev draft (value 60, invented
+    handles) and the REAL ESQ1-302 http-request node (body items without type)."""
+
+    _FIXTURES = __import__("pathlib").Path(__file__).resolve().parent.parent / "fixtures"
+
+    def _esq1_303(self) -> dict:
+        return json.loads((self._FIXTURES / "esq1_303_draft_graph.json").read_text(encoding="utf-8"))
+
+    def test_postprocess_heals_the_esq1_303_draft(self):
+        graph = self._esq1_303()
+
+        out = WorkflowGenerator._postprocess_graph(graph=cast(GraphDict, graph), mode="workflow")
+
+        node2 = next(n for n in out["nodes"] if n["id"] == "node2")
+        condition = node2["data"]["cases"][0]["conditions"][0]
+        assert condition["value"] == "60"  # was the JSON number 60: graphon refused to start
+        assert condition["varType"] == "number"  # ``score`` is a number start variable
+        by_target = {e["target"]: e["sourceHandle"] for e in out["edges"] if e["source"] == "node2"}
+        assert by_target == {"node3": "true", "node4": "false"}  # was score_equals_60 / else
+        # edge ids are derived from the REPAIRED handles
+        assert {e["id"] for e in out["edges"] if e["source"] == "node2"} == {
+            "node2-true-node3-target",
+            "node2-false-node4-target",
+        }
+
+    def test_postprocess_fills_the_esq1_302_body_item_types_but_does_not_collapse_items(self):
+        graph = {
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
+                {
+                    "id": "node4",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "http-request",
+                        "title": "Call PPT API",
+                        "method": "post",
+                        "url": "https://api.example.com/ppt/generate",
+                        "authorization": {"config": None, "type": "no-auth"},
+                        "headers": "",
+                        "params": "",
+                        "body": {
+                            "type": "json",
+                            "data": [
+                                {"value": "{{#node3.text#}}", "key": "slides"},
+                                {"value": "{{#node1.output_filename#}}", "key": "filename"},
+                            ],
+                        },
+                    },
+                },
+            ],
+            "edges": [{"source": "node1", "target": "node4"}],
+        }
+
+        out = WorkflowGenerator._postprocess_graph(graph=cast(GraphDict, graph), mode="workflow")
+
+        items = next(n for n in out["nodes"] if n["id"] == "node4")["data"]["body"]["data"]
+        assert [i["type"] for i in items] == ["text", "text"]
+        assert len(items) == 2  # two items stay two items -- the validator rejects, nothing guesses
+
+    def test_repair_branch_edge_handles_classmethod_keeps_its_contract(self):
+        # Existing callers/tests use the classmethod with keyword args; it now
+        # delegates to graph_normalizers and also heals named-but-wrong handles.
+        nodes = [{"id": "branch", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}}]
+        edges = [
+            {"source": "branch", "target": "a", "sourceHandle": "score_equals_60"},
+            {"source": "branch", "target": "b", "sourceHandle": "else"},
+        ]
+
+        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
+
+        assert [e["sourceHandle"] for e in edges] == ["true", "false"]
