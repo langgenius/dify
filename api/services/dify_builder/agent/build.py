@@ -579,9 +579,19 @@ _UNRESOLVED_REFERENCE_GUIDANCE = (
 )
 
 
+def _valid_errors(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """The generator's structured ``errors`` list, filtered to well-formed dict
+    entries -- shared by every reader of ``result["errors"]`` (the retry
+    instruction, the error-card text, and the debug-log diagnostic) so a
+    malformed/degraded entry can't be treated as one three separate ways."""
+    errors = result.get("errors")
+    return [e for e in errors if isinstance(e, dict)] if isinstance(errors, list) else []
+
+
 def _format_generator_error(error: dict[str, Any]) -> str:
     """One line for a structured generator error: its code, detail, and (when
-    present) the offending node id -- so the retry names WHERE to fix it."""
+    present) the offending node id -- so both the retry instruction and the
+    error card name WHERE to fix it, not just what went wrong."""
     code = str(error.get("code") or "").strip()
     detail = str(error.get("detail") or error.get("message") or "").strip()
     node_id = error.get("node_id")
@@ -596,8 +606,7 @@ def _terminal_retry_instruction(base_instruction: str, result: dict[str, Any]) -
     rather than only the first, adds UNRESOLVED_REFERENCE-specific guidance when
     that code is present, and keeps the topology guidance the retry has always
     carried (start/end/answer) regardless of which error(s) triggered the retry."""
-    errors = result.get("errors")
-    errors = [e for e in errors if isinstance(e, dict)] if isinstance(errors, list) else []
+    errors = _valid_errors(result)
     if errors:
         error_text = "\n".join(_format_generator_error(e) for e in errors)
     else:
@@ -617,19 +626,19 @@ def _terminal_retry_instruction(base_instruction: str, result: dict[str, Any]) -
 
 def _generation_error_text(result: dict[str, Any]) -> str:
     """Best human-readable failure reason from a generator result -- EVERY
-    structured ``errors`` detail joined (so a multi-error failure isn't truncated
-    to the first), else the top-level ``error`` string, else a generic fallback.
-    Surfaced to the user so a failed build shows WHY, not a hardcoded 'couldn't
-    build' message."""
-    errors = result.get("errors")
-    errors = [e for e in errors if isinstance(e, dict)] if isinstance(errors, list) else []
-    parts = [
-        str(e.get("detail") or e.get("message") or e.get("code"))
-        for e in errors
-        if e.get("detail") or e.get("message") or e.get("code")
-    ]
-    if parts:
-        return "; ".join(parts)
+    structured ``errors`` entry rendered (via ``_format_generator_error``, so the
+    card names the offending node the same way the retry instruction does) and
+    joined (so a multi-error failure isn't truncated to the first), else the
+    top-level ``error`` string, else a generic fallback. Surfaced to the user so
+    a failed build shows WHY -- and WHERE -- not a hardcoded 'couldn't build'
+    message.
+
+    Joined with a NEWLINE, like the retry instruction: ``_format_generator_error``
+    already prefixes each line with ``- ``, so joining with ``"; "`` rendered a
+    two-error failure as the run-on ``- X (node 'h'); - Y``."""
+    errors = _valid_errors(result)
+    if errors:
+        return "\n".join(_format_generator_error(e) for e in errors)
     err = result.get("error")
     if isinstance(err, str) and err.strip():
         return err.strip()
@@ -650,8 +659,7 @@ def _generation_diagnostic(result: dict[str, Any], *, attempt: int) -> dict[str,
     """Capture one failed generation attempt: the generator's structured errors
     (``code`` / ``detail`` / ``node_id`` -- e.g. UNRESOLVED_REFERENCE on node2),
     which is strictly more than the server-side log line carries."""
-    errors = result.get("errors")
-    errors = [e for e in errors if isinstance(e, dict)] if isinstance(errors, list) else []
+    errors = _valid_errors(result)
     return _diagnostic(
         source="workflow-generator",
         attempt=attempt,
