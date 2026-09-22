@@ -63,9 +63,14 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret, VarType.arrayString].includes(
-        varPayload.type,
-      )
+      const supportedVariableTypes: readonly VarType[] = [
+        VarType.string,
+        VarType.number,
+        VarType.secret,
+        VarType.arrayString,
+      ]
+
+      return supportedVariableTypes.includes(varPayload.type)
     },
   })
 

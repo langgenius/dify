@@ -81,11 +81,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/webapp-reset-password/layout.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -110,9 +105,6 @@
     }
   },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -137,9 +129,6 @@
     }
   },
   "web/app/components/app/annotation/batch-add-annotation-modal/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
@@ -151,9 +140,6 @@
     }
   },
   "web/app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
@@ -196,15 +182,7 @@
       "count": 5
     }
   },
-  "web/app/components/app/annotation/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/app/components/app/annotation/view-annotation-modal/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "eslint-react/set-state-in-effect": {
       "count": 5
     },
@@ -388,11 +366,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/config/automatic/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/dataset-config/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 36
@@ -517,9 +490,6 @@
     }
   },
   "web/app/components/app/create-app-dialog/app-list/sidebar.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "react/only-export-components": {
       "count": 1
     }
@@ -745,11 +715,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/badge/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/base/carousel/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 3
@@ -930,11 +895,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/date-and-time-picker/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/app/components/base/date-and-time-picker/utils/dayjs.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -969,11 +929,6 @@
   "web/app/components/base/features/new-feature-panel/annotation-reply/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/base/features/new-feature-panel/annotation-reply/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "web/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config.ts": {
@@ -1029,9 +984,6 @@
     }
   },
   "web/app/components/base/features/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -1087,11 +1039,6 @@
       "count": 4
     }
   },
-  "web/app/components/base/file-uploader/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/base/file-uploader/utils.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -1131,9 +1078,6 @@
     }
   },
   "web/app/components/base/form/form-scenarios/base/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -1149,9 +1093,6 @@
     }
   },
   "web/app/components/base/form/form-scenarios/input-field/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -1172,9 +1113,6 @@
     }
   },
   "web/app/components/base/form/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 15
     }
@@ -1555,9 +1493,6 @@
     }
   },
   "web/app/components/base/node-status/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "react/only-export-components": {
       "count": 1
     }
@@ -1901,11 +1836,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/hooks/use-dsl-import.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -1916,11 +1846,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/create-from-pipeline/list/template-card/details/types.ts": {
-    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -2005,9 +1930,6 @@
     }
   },
   "web/app/components/datasets/create/step-two/hooks/use-indexing-config.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "eslint-react/set-state-in-effect": {
       "count": 3
     }
@@ -2198,11 +2120,6 @@
   "web/app/components/datasets/documents/create-from-pipeline/steps/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    }
-  },
-  "web/app/components/datasets/documents/create-from-pipeline/types.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "web/app/components/datasets/documents/detail/batch-modal/csv-downloader.tsx": {
@@ -2409,16 +2326,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/metadata/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
-  "web/app/components/datasets/settings/chunk-structure/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/settings/option-card.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -2496,9 +2403,6 @@
     }
   },
   "web/app/components/header/account-setting/model-provider-page/declarations.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 11
-    },
     "typescript/no-explicit-any": {
       "count": 4
     }
@@ -2641,9 +2545,6 @@
     }
   },
   "web/app/components/plugins/install-plugin/install-bundle/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "react/only-export-components": {
       "count": 1
     }
@@ -2749,9 +2650,6 @@
     }
   },
   "web/app/components/plugins/plugin-auth/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    },
     "no-barrel-files/no-barrel-files": {
       "count": 2
     }
@@ -2830,21 +2728,11 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-common-modal-state.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/types.ts": {
-    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -2854,16 +2742,8 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-detail-panel/trigger/event-detail-drawer.tsx": {
@@ -2909,15 +2789,7 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/reference-setting-modal/auto-update-setting/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 7
-    },
     "typescript/no-explicit-any": {
       "count": 25
     }
@@ -3139,11 +3011,6 @@
       "count": 1
     }
   },
-  "web/app/components/share/text-generation/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/snippet-list/__tests__/reflow.browser.spec.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
@@ -3194,9 +3061,6 @@
     }
   },
   "web/app/components/tools/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 3
-    },
     "typescript/no-explicit-any": {
       "count": 4
     }
@@ -3256,11 +3120,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/use-sticky-scroll.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/comment/comment-input.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 1
@@ -3310,9 +3169,6 @@
   },
   "web/app/components/workflow/header/test-run-menu.tsx": {
     "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "erasable-syntax-only/enums": {
       "count": 1
     },
     "react/only-export-components": {
@@ -3464,17 +3320,11 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/entry-node-container.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "react/only-export-components": {
       "count": 1
     }
   },
   "web/app/components/workflow/nodes/_base/components/error-handle/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -3706,9 +3556,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -3742,9 +3589,6 @@
     }
   },
   "web/app/components/workflow/nodes/agent/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -3765,9 +3609,6 @@
     }
   },
   "web/app/components/workflow/nodes/assigner/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -3779,11 +3620,6 @@
   },
   "web/app/components/workflow/nodes/assigner/utils.ts": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/code/types.ts": {
-    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -3829,9 +3665,6 @@
     }
   },
   "web/app/components/workflow/nodes/data-source/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -3873,11 +3706,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/http/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 5
     }
   },
   "web/app/components/workflow/nodes/http/use-config.ts": {
@@ -3940,11 +3768,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/human-input/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/if-else/components/condition-list/condition-input.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -3964,11 +3787,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/if-else/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/if-else/use-single-run-form-params.ts": {
@@ -4005,9 +3823,6 @@
     }
   },
   "web/app/components/workflow/nodes/knowledge-base/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-barrel-files/no-barrel-files": {
       "count": 8
     }
@@ -4015,11 +3830,6 @@
   "web/app/components/workflow/nodes/knowledge-base/use-single-run-form-params.ts": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-base/utils.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-common-variable-selector.tsx": {
@@ -4079,9 +3889,6 @@
     }
   },
   "web/app/components/workflow/nodes/knowledge-retrieval/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 4
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -4098,11 +3905,6 @@
   },
   "web/app/components/workflow/nodes/list-operator/components/filter-condition.tsx": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/list-operator/types.ts": {
-    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -4136,11 +3938,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/llm/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/llm/use-config.ts": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -4152,9 +3949,6 @@
     }
   },
   "web/app/components/workflow/nodes/llm/utils.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 7
     }
@@ -4199,9 +3993,6 @@
     }
   },
   "web/app/components/workflow/nodes/loop/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -4227,11 +4018,6 @@
   "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/parameter-extractor/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/parameter-extractor/use-config.ts": {
@@ -4547,11 +4333,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/panel/chat-variable-panel/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/comments-panel/index.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 3
@@ -4829,9 +4610,6 @@
     }
   },
   "web/app/components/workflow/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 16
-    },
     "typescript/no-empty-object-type": {
       "count": 3
     },
@@ -5131,33 +4909,21 @@
     }
   },
   "web/models/datasets.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 7
-    },
     "typescript/no-explicit-any": {
       "count": 5
     }
   },
   "web/models/debug.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 4
     }
   },
   "web/models/log.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 6
     }
   },
   "web/models/pipeline.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 3
-    },
     "typescript/no-explicit-any": {
       "count": 6
     }
@@ -5373,9 +5139,6 @@
     }
   },
   "web/service/share.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 2
     },
@@ -5556,11 +5319,6 @@
   "web/types/assets.d.ts": {
     "typescript/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/types/common.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "web/types/pipeline.tsx": {

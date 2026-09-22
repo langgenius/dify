@@ -15,23 +15,27 @@ import {
 } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { PermissionLevel } from './permission'
 
-export enum DataSourceType {
-  FILE = 'upload_file',
-  NOTION = 'notion_import',
-  WEB = 'website_crawl',
-}
+export const DataSourceType = {
+  FILE: 'upload_file',
+  NOTION: 'notion_import',
+  WEB: 'website_crawl',
+} as const
+
+export type DataSourceType = (typeof DataSourceType)[keyof typeof DataSourceType]
 
 // Re-export PermissionLevel as DatasetPermission for backward compatibility
 export const DatasetPermission = PermissionLevel
 
 export type DatasetPermission = PermissionLevel
 
-export enum ChunkingMode {
-  text = 'text_model', // General text
-  qa = 'qa_model', // General QA
-  parentChild = 'hierarchical_model', // Parent-Child
+export const ChunkingMode = {
+  text: 'text_model', // General text
+  qa: 'qa_model', // General QA
+  parentChild: 'hierarchical_model', // Parent-Child
   // graph = 'graph', // todo: Graph RAG
-}
+} as const
+
+export type ChunkingMode = (typeof ChunkingMode)[keyof typeof ChunkingMode]
 
 export type MetadataInDoc = {
   value: string
@@ -183,11 +187,13 @@ export type CrawlResult = {
   time_consuming: number | string
 }
 
-export enum CrawlStep {
-  init = 'init',
-  running = 'running',
-  finished = 'finished',
-}
+export const CrawlStep = {
+  init: 'init',
+  running: 'running',
+  finished: 'finished',
+} as const
+
+export type CrawlStep = (typeof CrawlStep)[keyof typeof CrawlStep]
 
 export type FileItem = {
   fileID: string
@@ -262,10 +268,12 @@ export type IndexingStatusBatchResponse = {
   data: IndexingStatusResponse[]
 }
 
-export enum ProcessMode {
-  general = 'custom',
-  parentChild = 'hierarchical',
-}
+export const ProcessMode = {
+  general: 'custom',
+  parentChild: 'hierarchical',
+} as const
+
+export type ProcessMode = (typeof ProcessMode)[keyof typeof ProcessMode]
 
 export type ParentMode = 'full-doc' | 'paragraph'
 
@@ -725,16 +733,20 @@ export type SelectedDatasetsMode = {
   inconsistentEmbeddingModel: boolean
 }
 
-export enum WeightedScoreEnum {
-  SemanticFirst = 'semantic_first',
-  KeywordFirst = 'keyword_first',
-  Customized = 'customized',
-}
+export const WeightedScoreEnum = {
+  SemanticFirst: 'semantic_first',
+  KeywordFirst: 'keyword_first',
+  Customized: 'customized',
+} as const
 
-export enum RerankingModeEnum {
-  RerankingModel = 'reranking_model',
-  WeightedScore = 'weighted_score',
-}
+export type WeightedScoreEnum = (typeof WeightedScoreEnum)[keyof typeof WeightedScoreEnum]
+
+export const RerankingModeEnum = {
+  RerankingModel: 'reranking_model',
+  WeightedScore: 'weighted_score',
+} as const
+
+export type RerankingModeEnum = (typeof RerankingModeEnum)[keyof typeof RerankingModeEnum]
 
 export const DEFAULT_WEIGHTED_SCORE = {
   allHighQualityVectorSearch: {
@@ -773,14 +785,16 @@ export type ChildSegmentsResponse = {
 }
 
 // Used in api url
-export enum DocumentActionType {
-  enable = 'enable',
-  disable = 'disable',
-  archive = 'archive',
-  unArchive = 'un_archive',
-  delete = 'delete',
-  summary = 'summary',
-}
+export const DocumentActionType = {
+  enable: 'enable',
+  disable: 'disable',
+  archive: 'archive',
+  unArchive: 'un_archive',
+  delete: 'delete',
+  summary: 'summary',
+} as const
+
+export type DocumentActionType = (typeof DocumentActionType)[keyof typeof DocumentActionType]
 
 export type UpdateDocumentBatchParams = {
   datasetId: string

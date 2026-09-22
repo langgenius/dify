@@ -5,9 +5,9 @@ import type { CommonNodeType, Node } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, VarInInspect } from '@/types/workflow'
 
-export enum DataSourceClassification {
-  localFile = 'local_file',
-}
+export const DataSourceClassification = {
+  localFile: 'local_file',
+} as const
 
 export type ToolVarInputs = ResourceVarInputs
 
