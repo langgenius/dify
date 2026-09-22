@@ -152,6 +152,17 @@ vi.mock('jotai', async (importOriginal) => {
   }
 })
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useQuery: (options: Parameters<typeof original.useQuery>[0]) =>
+      options.queryKey[0] === 'datasource-plugins'
+        ? datasourceQueryMock.plugins
+        : original.useQuery(options),
+  }
+})
+
 vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
@@ -212,6 +223,18 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    rag: {
+      pipelines: {
+        datasourcePlugins: {
+          get: {
+            queryOptions: ({ enabled }: { enabled: boolean }) => ({
+              enabled,
+              queryKey: ['datasource-plugins'],
+            }),
+          },
+        },
+      },
+    },
     account: {
       profile: { get: { queryKey: () => permissionQueryKeys.accountProfile } },
     },
@@ -268,10 +291,6 @@ vi.mock('@/service/datasets', () => ({
   createFirecrawlTask: serviceMock.createCrawl,
   createJinaReaderTask: serviceMock.createCrawl,
   createWatercrawlTask: serviceMock.createCrawl,
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  useDataSourceList: () => datasourceQueryMock.plugins,
 }))
 
 vi.mock('@/service/use-datasource', () => ({

@@ -193,10 +193,6 @@ const queryState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDataSourceList: () => queryState.datasourcePlugins,
-}))
-
 const clientMock = vi.hoisted(() => ({
   createConnection: vi.fn(),
   refreshConnection: vi.fn(),
@@ -252,6 +248,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       }
     },
     useQuery: (options: { queryKey?: string[]; select?: (data: unknown) => unknown }) => {
+      if (options.queryKey?.[0] === 'datasource-plugins') return queryState.datasourcePlugins
       providerHookOptionsMock(options)
       if (options.queryKey?.[0] === 'datasource-auth') return queryState.datasourceAuth
       const raw = queryState.providers.data
@@ -286,6 +283,18 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    rag: {
+      pipelines: {
+        datasourcePlugins: {
+          get: {
+            queryOptions: (options: { enabled?: boolean }) => ({
+              ...options,
+              queryKey: ['datasource-plugins'],
+            }),
+          },
+        },
+      },
+    },
     auth: {
       plugin: {
         datasource: {

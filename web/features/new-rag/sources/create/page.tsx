@@ -27,7 +27,6 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { useDataSourceList } from '@/service/use-pipeline'
 import { newKnowledgeDetailPath } from '../../routes'
 import { useKnowledgeSpacePermission } from '../../space/context'
 import {
@@ -835,7 +834,11 @@ function AddSourcePageContent({
       retry: false,
     }),
   )
-  const datasourcePluginsQuery = useDataSourceList(websiteSourceSelected)
+  const datasourcePluginsQuery = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
+      enabled: websiteSourceSelected,
+    }),
+  )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       context: { silent: true },

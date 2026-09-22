@@ -34,7 +34,6 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
-import { useDataSourceList } from '@/service/use-pipeline'
 import { formatFileSize } from '@/utils/format'
 import { createRequestId } from '../../request-id'
 import {
@@ -1513,7 +1512,9 @@ function AppliedResourceConfiguration({
 
 export function ConnectedSourceWorkflow(props: ConnectedSourceWorkflowProps) {
   const { draft, onDraftChange } = props
-  const datasourcePluginsQuery = useDataSourceList(true)
+  const datasourcePluginsQuery = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
+  )
   const datasourceAuthQuery = useGetDataSourceListAuth()
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
@@ -1577,7 +1578,9 @@ function ConnectedSourceWorkflowSession({
       select: sourceProviderListFromApi,
     }),
   )
-  const datasourcePluginsQuery = useDataSourceList(true)
+  const datasourcePluginsQuery = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
+  )
   const datasourceAuthQuery = useGetDataSourceListAuth()
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({

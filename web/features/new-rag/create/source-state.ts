@@ -6,11 +6,12 @@ import type {
   DataSourceAuth,
   DataSourceCredential,
 } from '@/app/components/header/account-setting/data-source-page-new/types'
+import { useQuery } from '@tanstack/react-query'
 import { atom, useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
+import { consoleQuery } from '@/service/console'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
-import { useDataSourceList } from '@/service/use-pipeline'
 import { connectedInitialSource } from '../sources/setup/connected-source-selection'
 import {
   datasourceIncludeSubpages,
@@ -75,7 +76,9 @@ function websiteSourceUri(parameters: Record<string, boolean | number | string>,
 }
 
 export function useSourceSetupInputs(draft: NewKnowledgeSourceDraft, enabled = true) {
-  const datasourcePluginsQuery = useDataSourceList(enabled)
+  const datasourcePluginsQuery = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({ enabled }),
+  )
   const datasourceAuthQuery = useGetDataSourceListAuth(enabled)
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),

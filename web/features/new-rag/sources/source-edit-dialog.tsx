@@ -15,12 +15,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { useDataSourceList } from '@/service/use-pipeline'
 import { ConnectedSourceEditForm } from './setup/connected-source-configuration'
 import { CrawlPreviewPageSelection } from './setup/crawl-selection'
 import { WebsiteDatasourceParameterForm } from './setup/datasource-parameter-form'
@@ -193,7 +192,9 @@ function ConnectedSourceEditDialogContent({
 }) {
   const { t: tCommon } = useTranslation('common')
   const { t } = useTranslation('knowledgeSpace')
-  const datasourcePluginsQuery = useDataSourceList(true)
+  const datasourcePluginsQuery = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
+  )
   const {
     data: connectionsData,
     fetchNextPage,
@@ -481,7 +482,11 @@ function WebsiteSourceEditDialogContent({
     initialSource.type === 'web' &&
     (initialSource.metadata.datasourceParameterMode === 'exact' ||
       Boolean(providerKey || providerName))
-  const datasourcePluginsQuery = useDataSourceList(usesProviderDeclaration)
+  const datasourcePluginsQuery = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
+      enabled: usesProviderDeclaration,
+    }),
+  )
   const {
     data: connectionsData,
     fetchNextPage,

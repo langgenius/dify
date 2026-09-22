@@ -98,10 +98,6 @@ const datasourcePluginsQuery = vi.hoisted(() => ({
   isPending: false,
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDataSourceList: () => datasourcePluginsQuery,
-}))
-
 type SourcesInfiniteOptions = {
   getNextPageParam: (lastPage: { next_cursor?: string | null }) => string | null | undefined
   input: (pageParam: string | null) => unknown
@@ -200,27 +196,30 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                 }
               : undefined,
           },
-    useQuery: () => ({
-      data: {
-        active_profile_available: settingsState.configurationState === 'active',
-        active_profile_revisions:
-          settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
-        capabilities: {
-          deep: settingsState.configurationState === 'active',
-          index: settingsState.configurationState === 'active',
-          ingest: settingsState.configurationState === 'active',
-          query: settingsState.configurationState === 'active',
-          research: settingsState.configurationState === 'active',
-          source_sync: settingsState.configurationState === 'active',
-        },
-        configuration_state: settingsState.configurationState,
-        embedding: null,
-        issues: [],
-        retrieval: null,
-        revision: 1,
-      },
-      refetch: settingsState.refetch,
-    }),
+    useQuery: (options: { queryKey?: string[] }) =>
+      options.queryKey?.[0] === 'datasource-plugins'
+        ? datasourcePluginsQuery
+        : {
+            data: {
+              active_profile_available: settingsState.configurationState === 'active',
+              active_profile_revisions:
+                settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
+              capabilities: {
+                deep: settingsState.configurationState === 'active',
+                index: settingsState.configurationState === 'active',
+                ingest: settingsState.configurationState === 'active',
+                query: settingsState.configurationState === 'active',
+                research: settingsState.configurationState === 'active',
+                source_sync: settingsState.configurationState === 'active',
+              },
+              configuration_state: settingsState.configurationState,
+              embedding: null,
+              issues: [],
+              retrieval: null,
+              revision: 1,
+            },
+            refetch: settingsState.refetch,
+          },
     useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
   }
 })
@@ -307,6 +306,18 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    rag: {
+      pipelines: {
+        datasourcePlugins: {
+          get: {
+            queryOptions: (options: { enabled?: boolean }) => ({
+              ...options,
+              queryKey: ['datasource-plugins'],
+            }),
+          },
+        },
+      },
+    },
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {

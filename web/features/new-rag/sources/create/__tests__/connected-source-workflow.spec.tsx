@@ -80,20 +80,6 @@ vi.mock('@/service/use-datasource', async () => {
   }
 })
 
-vi.mock('@/service/use-pipeline', async () => {
-  const { useQuery } =
-    await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
-  return {
-    useDataSourceList: (enabled: boolean) =>
-      useQuery({
-        enabled,
-        queryFn: () => clientMock.listDatasourcePlugins(),
-        queryKey: ['pipeline', 'datasource'],
-        retry: false,
-      }),
-  }
-})
-
 vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
@@ -148,6 +134,20 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    rag: {
+      pipelines: {
+        datasourcePlugins: {
+          get: {
+            queryOptions: (options: { enabled?: boolean }) => ({
+              ...options,
+              queryKey: ['datasource-plugins'],
+              queryFn: () => clientMock.listDatasourcePlugins(),
+              retry: false,
+            }),
+          },
+        },
+      },
+    },
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
@@ -765,7 +765,7 @@ describe('ConnectedSourceWorkflow', () => {
       data: [outlineProvider],
     } satisfies KnowledgeFsSourceProviderListResponse)
     await act(async () => {
-      queryClient.setQueryData(['pipeline', 'datasource'], [outlineDatasourcePlugin])
+      queryClient.setQueryData(['datasource-plugins'], [outlineDatasourcePlugin])
       queryClient.setQueryData(['data-source-auth', 'list'], {
         result: [outlineDatasourceAuth],
       })
