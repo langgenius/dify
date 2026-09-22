@@ -54,7 +54,6 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.app_package_service import PreparedAppPackage
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
-from services.dsl_import_errors import missing_app_section_error
 from services.dsl_version import check_version_compatibility
 from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise.rbac_service import RBACService
@@ -84,6 +83,22 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
+
+
+def missing_app_section_error(top_level_keys: list[str]) -> str:
+    """Explain a YAML that has no top-level ``app`` mapping.
+
+    The found keys are the caller's actual document, so a sketch of nodes is
+    not reported as a blank import failure.
+    """
+    found = ", ".join(key for key in top_level_keys if key != "app")
+    if len(found) > 80:
+        found = found[:80].rstrip(", ") + "…"
+    return (
+        "Missing app data in YAML content. "
+        "Not a valid Dify app DSL: the top-level 'app' section is required "
+        f"(found: {found or 'none'})."
+    )
 
 
 class Import(BaseModel):
