@@ -35,7 +35,9 @@ web_pid=$!
     cp docker/envs/middleware.env.example docker/middleware.env
   fi
   # Pull only the core suite's services. The E2E runner still owns their lifecycle.
+  # Leave bandwidth and extraction capacity for the concurrent package installs.
   docker compose -f docker/docker-compose.middleware.yaml \
+    --parallel 2 \
     --profile postgresql --profile weaviate \
     pull db_postgres redis weaviate sandbox ssrf_proxy plugin_daemon
   echo "$((SECONDS - images_started))" > "$timing_dir/images"
@@ -63,7 +65,7 @@ wait "$images_pid" || images_status=$?
   done
   echo ""
   echo "API exit status: $api_status; Web/browser exit status: $web_status; Images exit status: $images_status"
-} >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+} | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
 if (( api_status != 0 || web_status != 0 || images_status != 0 )); then
   echo "E2E dependency installation failed (API: $api_status, Web/browser: $web_status, Images: $images_status)" >&2

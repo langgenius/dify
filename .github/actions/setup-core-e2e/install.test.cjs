@@ -68,6 +68,8 @@ for (const browser of ['chromium', 'webkit']) {
       'compose',
       '-f',
       'docker/docker-compose.middleware.yaml',
+      '--parallel',
+      '2',
       '--profile',
       'postgresql',
       '--profile',
@@ -87,6 +89,7 @@ for (const browser of ['chromium', 'webkit']) {
     )
     assert.match(summary, /\| images \| \d+ \|/)
     assert.match(summary, /Images exit status: 0/)
+    assert.match(result.stdout, /\| images \| \d+ \|/)
     assert.equal(middlewareEnv, 'EXAMPLE=1\n')
   })
 }
