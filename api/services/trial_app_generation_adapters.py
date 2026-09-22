@@ -54,6 +54,8 @@ class AppGenerateServiceRuntime(TrialAppGenerationRuntime):
                     session=session,
                     streaming=streaming,
                 )
+                if response is None:
+                    raise RuntimeError(f"Trial generation returned no response for app {app.app_id}")
                 session.commit()
         except BaseException:
             if response is not None and not isinstance(response, Mapping):
