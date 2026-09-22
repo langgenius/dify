@@ -2236,11 +2236,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/hit-testing/components/score.tsx": {
-    "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/list/dataset-card/components/operations-dropdown.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -2432,11 +2427,6 @@
   "web/app/components/header/account-setting/model-provider-page/model-auth/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 7
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-modal/Input.tsx": {
-    "unicorn/prefer-number-properties": {
-      "count": 2
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
@@ -4435,9 +4425,6 @@
   "web/app/components/workflow/run/iteration-log/iteration-log-trigger.tsx": {
     "dify/require-disable-directive-description": {
       "count": 2
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 1
     }
   },
   "web/app/components/workflow/run/iteration-log/iteration-result-panel.tsx": {
@@ -4462,11 +4449,6 @@
   "web/app/components/workflow/run/loop-log/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/run/loop-log/loop-log-trigger.tsx": {
-    "unicorn/prefer-number-properties": {
-      "count": 1
     }
   },
   "web/app/components/workflow/run/loop-log/loop-result-panel.tsx": {
