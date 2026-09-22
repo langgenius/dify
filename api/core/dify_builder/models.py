@@ -263,6 +263,11 @@ class DifyBuilderContext:
     # handlers_build._failure_signature), NOT human-readable prose -- it is
     # compared for equality to detect a repair loop and is never displayed.
     last_repair_error: str = ""
+    # Consecutive verify runs whose outcome could not be established (stream
+    # ended with neither a terminal nor an error frame). Reset by any
+    # determinate outcome; ``handlers_fix.MAX_UNKNOWN_OUTCOMES`` caps it so a
+    # stream that keeps ending early cannot be re-run forever.
+    unknown_outcome_count: int = 0
     risk: Risk | None = None
     change_set: ChangeSet | None = None
     checkpoint_id: str = ""
