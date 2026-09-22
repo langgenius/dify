@@ -1499,14 +1499,6 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   })
 }
 
-export const useMutationCheckDependencies = () => {
-  return useMutation({
-    mutationFn: (appId: string) => {
-      return get<{ leaked_dependencies: Dependency[] }>(`/apps/imports/${appId}/check-dependencies`)
-    },
-  })
-}
-
 export const useFetchDynamicOptions = (
   plugin_id: string,
   provider: string,

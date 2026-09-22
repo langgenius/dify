@@ -4,9 +4,10 @@ import PipelineExportConfirmModal from '../export-confirm-modal'
 
 it('keeps pipeline DSL copy and the explicit secret opt-in after separating app exports', async () => {
   const user = userEvent.setup()
-  const onConfirm = vi.fn()
+  const onConfirm = vi.fn().mockResolvedValue(true)
   render(
     <PipelineExportConfirmModal
+      isExporting={false}
       envList={[{ name: 'TOKEN', value: 'masked' }]}
       onConfirm={onConfirm}
       onClose={vi.fn()}

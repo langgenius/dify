@@ -5,7 +5,8 @@ import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
-import { memo, useCallback, useRef, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
@@ -15,7 +16,7 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
@@ -36,30 +37,9 @@ type UpdateDSLModalProps = {
 const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
   const { t } = useTranslation()
   const appDetail = useAppStore((s) => s.appDetail)
-  const [currentFile, setDSLFile] = useState<File>()
-  const [fileContent, setFileContent] = useState<string>()
-  const [loading, setLoading] = useState(false)
+  const [currentFile, setCurrentFile] = useState<File>()
   const { eventEmitter } = useEventEmitterContextContext()
-  const [show, setShow] = useState(true)
-  const [showErrorModal, setShowErrorModal] = useState(false)
-  const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
-  const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
-
-  const readFile = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = function (event) {
-      const content = event.target?.result
-      setFileContent(content as string)
-    }
-    reader.readAsText(file)
-  }
-
-  const handleFile = (file?: File) => {
-    setDSLFile(file)
-    setFileContent('')
-    if (file && !file.name.toLowerCase().endsWith('.ifpkg')) readFile(file)
-  }
 
   const handleWorkflowUpdate = useCallback(
     async (app_id: string) => {
@@ -78,12 +58,11 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           conversation_variables: conversation_variables || [],
           environment_variables: environment_variables || [],
         },
-      } as any)
+      })
     },
     [eventEmitter],
   )
 
-  const isCreatingRef = useRef(false)
   const handleCompletedImport = useCallback(
     async (status: Import['status'], appId?: string | null, warnings: Import['warnings'] = []) => {
       if (!appId) {
@@ -91,9 +70,6 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         return
       }
 
-      await handleWorkflowUpdate(appId)
-      collaborationManager.emitWorkflowUpdate(appId)
-      onImport?.()
       const payload = getImportNotificationPayload(status, t)
       toast[payload.type](
         payload.message,
@@ -105,120 +81,108 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
             }
           : undefined,
       )
+      collaborationManager.emitWorkflowUpdate(appId)
+      try {
+        await handleWorkflowUpdate(appId)
+      } catch (error) {
+        toast.error(
+          t(($) => $.error, { ns: 'common' }),
+          {
+            description: await getAppTransferErrorMessage(error),
+          },
+        )
+        // Reload the committed graph before the old canvas can resume autosaving.
+        window.location.reload()
+        return
+      }
+      onImport?.()
+      // Dependency checks own their feedback after the import has already succeeded.
       await handleCheckPluginDependencies(appId)
-      setLoading(false)
       onCancel()
     },
     [handleCheckPluginDependencies, handleWorkflowUpdate, onCancel, onImport, t],
   )
 
-  const handlePendingImport = useCallback(
-    (id: string, importedVersion?: string | null, currentVersion?: string | null) => {
-      setShow(false)
-      setTimeout(() => {
-        setShowErrorModal(true)
-      }, 300)
-      setVersions({
-        importedVersion: importedVersion ?? '',
-        systemVersion: currentVersion ?? '',
-      })
-      setImportId(id)
-    },
-    [],
-  )
-
-  const handleImport: MouseEventHandler = useCallback(async () => {
-    if (isCreatingRef.current) return
-    isCreatingRef.current = true
-    if (!currentFile) {
-      isCreatingRef.current = false
-      return
-    }
-    try {
-      const isPackage = currentFile.name.toLowerCase().endsWith('.ifpkg')
-      if (
-        appDetail &&
-        (isPackage || (fileContent && validateDSLContent(fileContent, appDetail.mode)))
-      ) {
-        setLoading(true)
-        const response = await consoleClient.apps.imports.post(
-          {
-            body: isPackage
-              ? { file: currentFile, app_id: appDetail.id }
-              : {
-                  mode: DSLImportMode.YAML_CONTENT,
-                  yaml_content: fileContent,
-                  app_id: appDetail.id,
-                },
-          },
-          { context: { silent: true } },
-        )
-        const { id, status, app_id, imported_dsl_version, current_dsl_version, warnings } = response
-
-        if (isImportCompleted(status)) {
-          await handleCompletedImport(status, app_id, warnings)
-        } else if (status === DSLImportStatus.PENDING) {
-          handlePendingImport(id, imported_dsl_version, current_dsl_version)
-        } else {
-          setLoading(false)
-          toast.error(
-            t(($) => $['common.importFailure'], { ns: 'workflow' }),
-            { description: response.error || undefined },
-          )
-        }
-      } else if (fileContent) {
-        toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
-      }
-    } catch (error) {
-      setLoading(false)
+  const handleImportResponse = async (response: Import) => {
+    if (isImportCompleted(response.status)) {
+      await handleCompletedImport(response.status, response.app_id, response.warnings)
+    } else if (response.status === DSLImportStatus.FAILED) {
       toast.error(
         t(($) => $['common.importFailure'], { ns: 'workflow' }),
         {
-          description: await getAppTransferErrorMessage(error),
-        },
-      )
-    }
-    isCreatingRef.current = false
-  }, [currentFile, fileContent, t, appDetail, handleCompletedImport, handlePendingImport])
-
-  const onUpdateDSLConfirm: MouseEventHandler = async () => {
-    try {
-      if (!importId) return
-      const response = await consoleClient.apps.imports.byImportId.confirm.post(
-        {
-          params: { import_id: importId },
-        },
-        { context: { silent: true } },
-      )
-
-      const { status, app_id, warnings } = response
-
-      if (isImportCompleted(status)) {
-        await handleCompletedImport(status, app_id, warnings)
-      } else if (status === DSLImportStatus.FAILED) {
-        setLoading(false)
-        toast.error(
-          t(($) => $['common.importFailure'], { ns: 'workflow' }),
-          { description: response.error || undefined },
-        )
-      }
-    } catch (error) {
-      setLoading(false)
-      toast.error(
-        t(($) => $['common.importFailure'], { ns: 'workflow' }),
-        {
-          description: await getAppTransferErrorMessage(error),
+          description: response.error || undefined,
         },
       )
     }
   }
 
+  const notifyImportError = async (error: unknown) => {
+    toast.error(
+      t(($) => $['common.importFailure'], { ns: 'workflow' }),
+      {
+        description: await getAppTransferErrorMessage(error),
+      },
+    )
+  }
+
+  const { mutateAsync: requestImport } = useMutation(
+    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+  )
+  const importMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!appDetail) return
+      if (file.name.toLowerCase().endsWith('.ifpkg'))
+        return requestImport({ body: { file, app_id: appDetail.id } })
+
+      const content = await file.text()
+      if (!content || !validateDSLContent(content, appDetail.mode)) {
+        toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
+        return
+      }
+      return requestImport({
+        body: {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: content,
+          app_id: appDetail.id,
+        },
+      })
+    },
+    onError: notifyImportError,
+    onSettled: async (response) => {
+      if (response) await handleImportResponse(response)
+    },
+  })
+  const confirmImportMutation = useMutation(
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
+      context: { silent: true },
+      onError: (error) => notifyImportError(error),
+      onSettled: async (response) => {
+        if (response) await handleImportResponse(response)
+      },
+    }),
+  )
+  const pendingImport = importMutation.data?.status === 'pending' ? importMutation.data : undefined
+  const isImporting = importMutation.isPending || confirmImportMutation.isPending
+
+  const handleImport: MouseEventHandler = () => {
+    if (isImporting || !currentFile || !appDetail) return
+    importMutation.mutate(currentFile)
+  }
+
+  const onUpdateDSLConfirm: MouseEventHandler = () => {
+    if (!pendingImport || isImporting) return
+
+    confirmImportMutation.mutate({
+      params: { import_id: pendingImport.id },
+    })
+  }
+
   return (
     <>
       <Dialog
-        open={show}
+        open={!pendingImport}
         onOpenChange={(open) => {
-          if (!open) onCancel()
+          if (!open && !isImporting) onCancel()
         }}
       >
         <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
@@ -230,6 +194,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               type="button"
               className="flex h-5.5 w-5.5 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              disabled={isImporting}
               onClick={onCancel}
             >
               <RiCloseLine className="h-4.5 w-4.5 text-text-tertiary" aria-hidden="true" />
@@ -245,7 +210,13 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
                 {t(($) => $['common.importDSLTip'], { ns: 'workflow' })}
               </div>
               <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
-                <Button size="small" variant="secondary" className="relative" onClick={onBackup}>
+                <Button
+                  size="small"
+                  variant="secondary"
+                  className="relative"
+                  disabled={isImporting}
+                  onClick={onBackup}
+                >
                   <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
                   <div className="flex items-center justify-center gap-1">
                     {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
@@ -261,20 +232,23 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
             <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
               <Uploader
                 importType="app"
+                disabled={isImporting}
                 file={currentFile}
-                updateFile={handleFile}
+                updateFile={setCurrentFile}
                 className="mt-0! w-full"
               />
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 self-stretch pt-5">
-            <Button onClick={onCancel}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
+            <Button disabled={isImporting} onClick={onCancel}>
+              {t(($) => $['newApp.Cancel'], { ns: 'app' })}
+            </Button>
             <Button
-              disabled={!currentFile}
+              disabled={isImporting || !currentFile || !appDetail}
               variant="primary"
               tone="destructive"
               onClick={handleImport}
-              loading={loading}
+              loading={importMutation.isPending}
             >
               {t(($) => $['common.overwriteAndImport'], { ns: 'workflow' })}
             </Button>
@@ -282,9 +256,9 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         </DialogContent>
       </Dialog>
       <Dialog
-        open={showErrorModal}
+        open={!!pendingImport}
         onOpenChange={(open) => {
-          if (!open) setShowErrorModal(false)
+          if (!open && !isImporting) onCancel()
         }}
       >
         <DialogContent className="w-full max-w-120! overflow-hidden! border-none text-left align-middle">
@@ -298,19 +272,25 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               <br />
               <div>
                 {t(($) => $['newApp.appCreateDSLErrorPart3'], { ns: 'app' })}
-                <span className="system-md-medium">{versions?.importedVersion}</span>
+                <span className="system-md-medium">{pendingImport?.imported_dsl_version}</span>
               </div>
               <div>
                 {t(($) => $['newApp.appCreateDSLErrorPart4'], { ns: 'app' })}
-                <span className="system-md-medium">{versions?.systemVersion}</span>
+                <span className="system-md-medium">{pendingImport?.current_dsl_version}</span>
               </div>
             </div>
           </div>
           <div className="flex items-start justify-end gap-2 self-stretch pt-6">
-            <Button variant="secondary" onClick={() => setShowErrorModal(false)}>
+            <Button variant="secondary" disabled={isImporting} onClick={onCancel}>
               {t(($) => $['newApp.Cancel'], { ns: 'app' })}
             </Button>
-            <Button variant="primary" tone="destructive" onClick={onUpdateDSLConfirm}>
+            <Button
+              variant="primary"
+              tone="destructive"
+              disabled={isImporting}
+              loading={confirmImportMutation.isPending}
+              onClick={onUpdateDSLConfirm}
+            >
               {t(($) => $['newApp.Confirm'], { ns: 'app' })}
             </Button>
           </div>

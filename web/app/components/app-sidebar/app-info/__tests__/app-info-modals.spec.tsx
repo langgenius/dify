@@ -129,7 +129,7 @@ const defaultProps = {
   setSecretEnvList: vi.fn(),
   onEdit: vi.fn(),
   onCopy: vi.fn(),
-  onExport: vi.fn(async () => {}),
+  onExport: vi.fn(async () => true),
   isExporting: false,
   exportCheck: vi.fn(),
   handleConfirmExport: vi.fn(async () => {}),

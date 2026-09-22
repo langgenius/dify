@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import AppExportConfirmModal from '../export-confirm-modal'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '../use-export-app-dsl'
 
 const mocks = vi.hoisted(() => ({
@@ -75,7 +77,60 @@ function createWrapper() {
 describe('useExportAppDsl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.exportAppDsl.mockReset()
     mocks.getEnvironmentVariables.mockResolvedValue({ items: [] })
+  })
+
+  it('keeps the secret confirmation open after a failed request and retries the same choice', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    let rejectExport!: (reason: unknown) => void
+    mocks.exportAppDsl
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectExport = reject
+          }),
+      )
+      .mockResolvedValueOnce(new File(['package'], 'app.ifpkg'))
+
+    function ExportConfirmation() {
+      const { exportAppDsl, isExporting } = useExportAppDsl()
+      return (
+        <AppExportConfirmModal
+          envList={[{ name: 'TOKEN', value: 'masked' }]}
+          isExporting={isExporting}
+          onClose={onClose}
+          onConfirm={async (includeSecret) => {
+            const result = await exportAppDsl({ appId: 'app-1', appName: 'App', includeSecret })
+            return result.status === 'downloaded'
+          }}
+        />
+      )
+    }
+    render(<ExportConfirmation />, { wrapper: createWrapper() })
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: 'app.exportSecret.title' }))
+    const pendingButton = await screen.findByRole('button', { name: 'common.operation.exporting' })
+    expect(screen.getByRole('checkbox')).toHaveAttribute('aria-disabled', 'true')
+    await user.click(pendingButton)
+    expect(mocks.exportAppDsl).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      rejectExport(new Response(JSON.stringify({ message: 'Skill unavailable' }), { status: 400 }))
+    })
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportAppFailed', {
+      description: 'Skill unavailable',
+    })
+    await user.click(await screen.findByRole('button', { name: 'app.exportSecret.title' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    expect(mocks.exportAppDsl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: expect.objectContaining({ include_secret: true }) }),
+      { context: { silent: true } },
+    )
+    expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
   })
 
   it.each([

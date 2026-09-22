@@ -1,5 +1,7 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { useCallback, useState } from 'react'
+import type { ExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
+import { useMutation } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
@@ -15,37 +17,51 @@ type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowD
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
-  const [exporting, setExporting] = useState(false)
 
   const appDetail = useAppStore((s) => s.appDetail)
 
-  const handleExportDSL = useCallback(
-    async (include = false, workflowId?: string) => {
-      if (!appDetail) return
+  const { mutateAsync: exportWorkflow, isPending: isExporting } = useMutation({
+    mutationFn: async ({ include, workflowId }: { include: boolean; workflowId?: string }) => {
+      if (!appDetail) return false
 
-      if (exporting) return
+      if (!workflowId) {
+        let syncFailed = false
+        await doSyncWorkflowDraft(undefined, {
+          onError: () => {
+            syncFailed = true
+          },
+        })
+        if (syncFailed) {
+          toast.error(t(($) => $.exportAppFailed, { ns: 'app' }))
+          return false
+        }
+      }
+
+      await exportAppDslFile({
+        appId: appDetail.id,
+        appName: appDetail.name,
+        includeSecret: include,
+        workflowId,
+      })
+      return true
+    },
+  })
+
+  const handleExportDSL = useCallback(
+    async (include = false, workflowId?: string): Promise<boolean> => {
+      if (isExporting) return false
 
       try {
-        setExporting(true)
-        await doSyncWorkflowDraft()
-        await exportAppDslFile({
-          appId: appDetail.id,
-          appName: appDetail.name,
-          includeSecret: include,
-          workflowId,
-        })
+        return await exportWorkflow({ include, workflowId })
       } catch (error) {
         toast.error(
           t(($) => $.exportAppFailed, { ns: 'app' }),
-          {
-            description: await getAppTransferErrorMessage(error),
-          },
+          { description: await getAppTransferErrorMessage(error) },
         )
-      } finally {
-        setExporting(false)
+        return false
       }
     },
-    [appDetail, t, doSyncWorkflowDraft, exporting],
+    [exportWorkflow, isExporting, t],
   )
 
   const exportCheck = useCallback(async () => {
@@ -57,7 +73,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       )
       const list = items.filter((env) => env.value_type === 'secret')
       if (list.length === 0) {
-        handleExportDSL()
+        await handleExportDSL()
         return
       }
       eventEmitter?.emit({
@@ -65,7 +81,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         payload: {
           data: list,
         },
-      } as any)
+      } satisfies ExportSecretEnvironmentEvent)
     } catch (error) {
       toast.error(
         t(($) => $.exportAppFailed, { ns: 'app' }),
@@ -79,6 +95,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   return {
     exportCheck,
     handleExportDSL,
+    isExporting,
   }
 }
 
