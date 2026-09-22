@@ -1,7 +1,8 @@
 import type { Plugin } from '../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { ThemeProvider } from 'next-themes'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render } from '@/test/console/render'
 import ProviderCard from '../provider-card'
 import { PluginCategoryEnum } from '../types'
 
@@ -23,7 +24,8 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permis
   default: () => ({ canInstallPlugin: true }),
 }))
 
-vi.mock('@/app/components/plugins/marketplace/utils', () => ({
+vi.mock('@/app/components/plugins/marketplace/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/plugins/marketplace/utils')>()),
   getPluginLinkInMarketplace: (plugin: Plugin, params: Record<string, string>) =>
     `/marketplace/${plugin.org}/${plugin.name}?language=${params.language}&theme=${params.theme}`,
 }))
@@ -45,6 +47,15 @@ vi.mock('../card/base/download-count', () => ({
 vi.mock('../card/base/title', () => ({
   default: ({ title }: { title: string }) => <div data-testid="title">{title}</div>,
 }))
+
+const deploymentState = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+}))
+
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+  return createSystemFeaturesStateModuleMock(() => deploymentState)
+})
 
 const payload = {
   type: 'plugin',
@@ -72,6 +83,7 @@ const payload = {
 
 describe('ProviderCard', () => {
   beforeEach(() => {
+    deploymentState.deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
   })
 
@@ -105,4 +117,18 @@ describe('ProviderCard', () => {
     fireEvent.click(screen.getByTestId('close-install-modal'))
     expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
   })
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'uses the official detail destination for %s',
+    (edition) => {
+      deploymentState.deploymentEdition = edition
+      renderProviderCard()
+      const link = screen.getByRole('link', { name: /plugin.detailPanel.operation.detail/i })
+      const url = new URL(link.getAttribute('href')!)
+      expect(url.origin).toBe('https://marketplace.dify.ai')
+      expect(url.pathname).toBe('/plugin/dify/provider-one')
+      expect(url.searchParams.get('source')).toBe(window.location.origin)
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    },
+  )
 })

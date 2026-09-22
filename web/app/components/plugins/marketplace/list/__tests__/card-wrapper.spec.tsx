@@ -1,10 +1,11 @@
 import type { ComponentProps } from 'react'
 import type { Plugin } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { render } from '@/test/console/render'
 import { trackMarketplaceSiteCardClick } from '@/utils/marketplace-site-track'
 import CardWrapper from '../card-wrapper'
 
@@ -65,17 +66,23 @@ vi.mock('../../detail-dialog', () => ({
     ) : null,
 }))
 
-vi.mock('../../utils', () => ({
-  getPluginDetailLinkInMarketplace: (plugin: Plugin) => `/detail/${plugin.org}/${plugin.name}`,
-}))
-
 vi.mock('@/utils/marketplace-site-track', () => ({
   trackMarketplaceSiteCardClick: vi.fn(),
 }))
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
+  useLocale: () => 'en-US',
 }))
+
+const deploymentState = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+}))
+
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+  return createSystemFeaturesStateModuleMock(() => deploymentState)
+})
 
 const plugin = {
   type: 'plugin',
@@ -103,6 +110,7 @@ const plugin = {
 
 describe('CardWrapper', () => {
   beforeEach(() => {
+    deploymentState.deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
   })
 
@@ -155,7 +163,7 @@ describe('CardWrapper', () => {
   it('links the card to its marketplace detail when explicitly enabled', () => {
     renderCardWrapper({ linkToMarketplaceDetail: true })
 
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/detail/dify/plugin-a')
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/plugin/dify/plugin-a')
     fireEvent.click(screen.getByRole('link'))
     expect(trackMarketplaceSiteCardClick).toHaveBeenCalledWith({
       itemId: 'dify/plugin-a',
@@ -219,5 +227,38 @@ describe('CardWrapper', () => {
 
     expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
     expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
+  })
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'links %s plugin details to the official site while preserving direct installation',
+    async (edition) => {
+      deploymentState.deploymentEdition = edition
+      const user = userEvent.setup()
+      render(<CardWrapper plugin={plugin} showInstallButton />)
+
+      const card = screen.getByRole('link', { name: 'Plugin A' })
+      const url = new URL(card.getAttribute('href')!)
+      expect(url.origin).toBe('https://marketplace.dify.ai')
+      expect(url.pathname).toBe('/plugin/dify/plugin-a')
+      expect(url.searchParams.get('source')).toBe(window.location.origin)
+      expect([...url.searchParams.keys()].sort()).toEqual(['language', 'source'])
+      expect(card).toHaveAttribute('target', '_blank')
+      expect(card).toHaveAttribute('rel', 'noopener noreferrer')
+      expect(
+        screen.getByRole('link', { name: 'plugin.detailPanel.operation.detail' }),
+      ).toHaveAttribute('href', url.toString())
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(document.querySelector('iframe')).toBeNull()
+
+      await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }))
+      expect(screen.getByTestId('install-modal')).toBeInTheDocument()
+    },
+  )
+
+  it('keeps Bundle details inside Dify in Community edition', async () => {
+    deploymentState.deploymentEdition = 'COMMUNITY'
+    const user = userEvent.setup()
+    render(<CardWrapper plugin={{ ...plugin, type: 'bundle' }} />)
+    await user.click(screen.getByRole('button', { name: 'Plugin A' }))
+    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
   })
 })

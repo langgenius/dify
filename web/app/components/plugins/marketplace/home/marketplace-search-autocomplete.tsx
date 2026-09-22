@@ -60,7 +60,7 @@ type MarketplaceSearchAutocompleteProps = {
   category?: string
   inputName?: string
   locale: string
-  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => void
+  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => { preserveQuery: boolean } | void
   onValueChange: (value: string) => void
   placeholder: string
   scope: MarketplaceSearchScope
@@ -193,9 +193,9 @@ export function MarketplaceSearchAutocomplete({
   }
   const openSuggestion = (selection: MarketplaceSearchSelection) => {
     if (onSuggestionSelect) {
-      onSuggestionSelect(selection)
+      const result = onSuggestionSelect(selection)
       queueMicrotask(() => {
-        onValueChange('')
+        if (!result?.preserveQuery) onValueChange('')
         setIsOpen(false)
       })
       return
