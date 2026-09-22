@@ -1684,16 +1684,18 @@ class WorkflowGenerator:
 
         # Pure value repairs shared with the Builder's apply_repair chokepoint
         # (core.workflow.graph_normalizers), so both write paths agree:
-        # - condition values written as JSON numbers (ESQ1-303: ``"value": 60``)
-        #   become the strings graphon's Condition model accepts;
+        # - a comparison operator written the ASCII way (``>=``) becomes the
+        #   engine's own literal (``≥``), and condition values written as JSON
+        #   numbers (ESQ1-303: ``"value": 60``) become the strings graphon's
+        #   Condition model accepts;
         # - if-else ``varType`` (frontend operator hint) is derived only when a
         #   declared start-variable type makes it certain;
         # - http-request body items get the ``type`` BodyData cannot default
         #   (ESQ1-302), and a ``none`` body drops stray items;
         # - a parameter-extractor ``query`` written as an array of selector
         #   arrays (Blocker A) is unwrapped to the one selector graphon wants.
-        for changed_id in graph_normalizers.normalize_condition_values(nodes):
-            logger.info("Workflow generator: coerced condition value(s) on node %s to strings", changed_id)
+        for changed_id in graph_normalizers.normalize_conditions(nodes):
+            logger.info("Workflow generator: canonicalized condition operator(s)/value(s) on node %s", changed_id)
         graph_normalizers.derive_if_else_var_types(nodes)
         for changed_id in graph_normalizers.normalize_http_request_bodies(nodes):
             logger.info("Workflow generator: filled http-request body item type(s) on node %s", changed_id)
