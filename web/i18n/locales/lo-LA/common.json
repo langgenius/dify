@@ -476,6 +476,8 @@
   "operation.more": "ເພີ່ມເຕີມ",
   "operation.moreActions": "ການດຳເນີນການເພີ່ມເຕີມ",
   "operation.moreActionsFor": "ການດຳເນີນການເພີ່ມເຕີມສຳລັບ {{name}}",
+  "operation.moveDown": "ຍ້າຍລົງ",
+  "operation.moveUp": "ຍ້າຍຂຶ້ນ",
   "operation.no": "ບໍ່",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "ບໍ່ພົບ {{content}}",

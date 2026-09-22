@@ -476,6 +476,8 @@
   "operation.more": "Daha çox",
   "operation.moreActions": "Daha çox əməliyyat",
   "operation.moreActionsFor": "{{name}} üçün daha çox əməliyyat",
+  "operation.moveDown": "Aşağı köçür",
+  "operation.moveUp": "Yuxarı köçür",
   "operation.no": "Xeyr",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Heç bir {{content}} tapılmadı",

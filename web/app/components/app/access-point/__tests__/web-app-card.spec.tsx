@@ -183,7 +183,6 @@ function StoreConnectedWebAppCard({
       appInfo={appInfo}
       availability={availability}
       canDeploy
-      canManageAccess
       canManageAccessPoint={canManageAccessPoint}
       showAccessControl={showAccessControl}
       onRefreshApp={onRefreshApp}
@@ -544,6 +543,6 @@ describe('WebAppAccessPointCard', () => {
     )
     expect(
       screen.getByRole('button', { name: /accessControlDialog\.accessItems\.anyone/ }),
-    ).toBeEnabled()
+    ).toBeDisabled()
   })
 })

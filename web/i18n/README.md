@@ -84,17 +84,18 @@ shared by server selection, client navigation and production build validation. `
 
 The server reads the pathname that `proxy.ts` overwrites on every request. Missing
 or unknown paths conservatively use the full registry. Base paths are supported.
-For sign-in, the serialized resources include the requested locale and, when it
-differs, English fallback resources for those same two namespaces. Unmigrated
-routes retain their existing fallback loading behavior.
+Serialized resources include the requested locale and English fallback for the
+selected namespaces, keeping translation initialization ready for SSR and hydration.
+Sign-in still includes only `common` and `login`.
 
 Client initialization uses only the provided namespaces. The default namespace is
 `common` for sign-in, so a bare `useTranslation()` does not request `app`. The
 provider keeps the same i18next instance across rerenders and locale changes.
 A namespace-set change resets only the translation readiness component; the
 provider and business subtree retain their state, including active notifications.
-Suspense reveals children after the destination's namespaces are loaded. The current route's namespace list also
-controls language switching, without discarding previously loaded bundles.
+The loader suspends missing translations into the existing router/root boundaries;
+the provider adds no application-wide Suspense fallback. The current route's
+namespace list also controls language switching without discarding loaded bundles.
 
 Server metadata requests initialize an empty instance and load their requested
 namespace. Existing server consumers without a namespace keep the full-catalog

@@ -1,3 +1,4 @@
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine, RiInformation2Fill } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,12 +26,13 @@ const PublishToast = () => {
             {t(($) => $['publishToast.desc'], { ns: 'pipeline' })}
           </div>
         </div>
-        <div
-          className="pointer-events-auto flex size-6 cursor-pointer items-center justify-center"
+        <IconButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          className="nokey pointer-events-auto shrink-0"
           onClick={() => setHideToast(true)}
         >
-          <RiCloseLine className="size-4 text-text-tertiary" />
-        </div>
+          <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
+        </IconButton>
       </div>
     </div>
   )

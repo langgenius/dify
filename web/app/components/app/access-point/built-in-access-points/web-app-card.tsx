@@ -60,7 +60,6 @@ type WebAppAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: AccessPointAvailability
   canDeploy: boolean
-  canManageAccess: boolean
   canManageAccessPoint: boolean
   highlighted?: boolean
   showAccessControl: boolean
@@ -73,7 +72,6 @@ export function WebAppAccessPointCard({
   appInfo,
   availability,
   canDeploy,
-  canManageAccess,
   canManageAccessPoint,
   highlighted,
   onRefreshApp,
@@ -137,7 +135,7 @@ export function WebAppAccessPointCard({
   const { data: accessSubjects } = useAppWhiteListSubjects(
     appInfo.id,
     showAccessControl &&
-      canManageAccess &&
+      canManageAccessPoint &&
       appInfo.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
   )
   const accessConfigured =
@@ -274,7 +272,7 @@ export function WebAppAccessPointCard({
               accessConfigured={accessConfigured}
               accessIcon={accessIcon}
               accessLabel={t(accessLabel, { ns: 'app' })}
-              disabled={!canManageAccess}
+              disabled={!canManageAccessPoint}
               onClick={() => setShowAccess(true)}
             />
           ) : (

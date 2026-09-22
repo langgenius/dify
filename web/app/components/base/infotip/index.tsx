@@ -95,7 +95,7 @@ export function Infotip({
         placement="top"
         sideOffset={sideOffset}
         className={cn(
-          'max-w-75 rounded-md px-3 py-2 system-xs-regular text-text-tertiary',
+          'max-w-75 rounded-lg bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-secondary shadow-[0px_12px_16px_-4px_var(--color-shadow-shadow-5),0px_4px_6px_-2px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
           popupClassName,
         )}
       >

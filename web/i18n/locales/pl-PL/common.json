@@ -476,6 +476,8 @@
   "operation.more": "Więcej",
   "operation.moreActions": "Więcej akcji",
   "operation.moreActionsFor": "Więcej akcji dla {{name}}",
+  "operation.moveDown": "Przenieś w dół",
+  "operation.moveUp": "Przenieś w górę",
   "operation.no": "Nie",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Nie znaleziono {{content}}",

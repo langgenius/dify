@@ -476,6 +476,8 @@
   "operation.more": "Daha fazla",
   "operation.moreActions": "Daha fazla işlem",
   "operation.moreActionsFor": "{{name}} için daha fazla işlem",
+  "operation.moveDown": "Aşağı taşı",
+  "operation.moveUp": "Yukarı taşı",
   "operation.no": "Hayır",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Hiç {{content}} bulunamadı",
