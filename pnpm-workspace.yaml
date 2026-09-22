@@ -65,6 +65,7 @@ catalog:
   '@amplitude/plugin-session-replay-browser': 1.35.1
   '@axe-core/playwright': 4.13.0
   '@base-ui/react': 1.8.0
+  '@base-ui/utils': 0.4.0
   '@chromatic-com/storybook': 5.3.1
   '@cucumber/cucumber': 13.2.1
   '@egoist/tailwindcss-icons': 1.9.2
