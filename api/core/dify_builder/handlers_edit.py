@@ -32,6 +32,7 @@ from core.dify_builder.contract import (
 from core.dify_builder.handlers_fix import (
     NO_OUTPUT_BODY,
     NO_OUTPUT_REPLY,
+    UNKNOWN_OUTCOME_STUCK_BODY,
     UNKNOWN_TEST_OUTCOME_NOTICE,
     action_kind,
     action_string,
@@ -46,6 +47,7 @@ from core.dify_builder.handlers_fix import (
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
+    note_unknown_outcome,
     perform_revert,
     run_finished_without_output,
     start_schema,
@@ -455,6 +457,9 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         immutable=True,
     )
 
+    if status != "running":
+        fc.unknown_outcome_count = 0
+
     if status == "succeeded" and run_finished_without_output(graph, per_node):
         # Same as Build's: a branch node ran and every one of its arms was
         # skipped, and no End node ran either. Not green, not an engine error
@@ -540,6 +545,23 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
 
     if status == "running":
         # A truncated stream cannot establish failure or justify another repair.
+        # The second consecutive unknown outcome stops the re-run loop at the
+        # gate (no staged repair) instead of bouncing to edit.apply_changes again.
+        if note_unknown_outcome(fc):
+            fc.verify_run_id = run.id
+            fc.diagnosis = None
+            fc.staged_repair = []
+            stuck_items = append_card(
+                fc, ErrorCard(title="Test outcome unknown", body=UNKNOWN_OUTCOME_STUCK_BODY, tone="danger")
+            )
+            progress.finish()
+            return StepResult(
+                next=PcState.EDIT_AWAIT_REPAIR,
+                context=fc,
+                items=stuck_items,
+                run=run,
+                run_id_sink=[run.id],
+            )
         notice_items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
         progress.finish()
         return StepResult(

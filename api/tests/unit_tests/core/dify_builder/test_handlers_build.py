@@ -2598,3 +2598,61 @@ def test_a_succeeded_fail_branch_node_in_a_linear_graph_is_still_a_pass():
 
     assert res.next == PcState.BUILD_REVIEW
     assert next(i for i in res.items if i.kind == "test_result").payload["subtitle"] == "All checks passed"
+
+
+def _unknown_outcome_run(*_a, **_k):
+    from core.dify_builder.models import Run
+    from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
+
+    return Run(
+        kind="verify", immutable=True, dify_run_id="", status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+    )
+
+
+def test_an_unknown_outcome_is_re_runnable_once_and_capped_on_the_second():
+    """The unknown-outcome branch returned to build.execution with no limit: a
+    stream that keeps ending early could be re-run forever. The second
+    consecutive unknown outcome now stops at the gate."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.handlers_fix import MAX_UNKNOWN_OUTCOMES
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    assert MAX_UNKNOWN_OUTCOMES == 2
+    dify = FakeBuildDifyPort()
+    dify.run_draft = _unknown_outcome_run
+    env, _ = _new_env(dify=dify)
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(test_input_ref="ti-1")
+
+    first = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    assert first.next == PcState.BUILD_EXECUTION  # unchanged: one unknown outcome is re-runnable
+    assert first.context.unknown_outcome_count == 1
+    assert any(i.kind == "notice" for i in first.items)
+
+    second = handle_test_and_repair(env, Turn(actor=_actor()), s, first.context)
+    assert second.next == PcState.BUILD_AWAIT_REPAIR
+    assert second.context.unknown_outcome_count == 2
+    assert second.context.staged_repair == []
+    error = next(i for i in second.items if i.kind == "error")
+    assert error.payload["title"] == "Test outcome unknown"
+    assert "notice" not in [i.kind for i in second.items]
+
+
+def test_a_determinate_outcome_resets_the_unknown_outcome_count():
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()  # verify_pass=True: a real, determinate success
+    env, _ = _new_env(dify=dify)
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+
+    res = handle_test_and_repair(
+        env, Turn(actor=_actor()), s, DifyBuilderContext(test_input_ref="ti-1", unknown_outcome_count=1)
+    )
+
+    assert res.next == PcState.BUILD_REVIEW
+    assert res.context.unknown_outcome_count == 0
