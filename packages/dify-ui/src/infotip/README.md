@@ -52,4 +52,3 @@ A few rules:
 Infotip owns its hint surface, spacing, typography, radius, and shadow. Callers may constrain width
 or preserve intentional line breaks.
 
-[Base UI's infotip guidance]: https://base-ui.com/react/components/tooltip#infotips
