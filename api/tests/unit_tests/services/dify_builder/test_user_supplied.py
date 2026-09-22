@@ -42,6 +42,29 @@ def test_is_user_supplied_url_dify_template_is_always_true():
     assert us.is_user_supplied_url("{{#node1.node5_url#}}", "goal has no url at all") is True
 
 
+# --- Final review F1: only a template in the HOST position exempts a URL ---
+
+
+def test_is_user_supplied_url_false_when_a_templated_query_hides_an_invented_host():
+    url = "https://api.pptrender.io/v1/render?topic={{#node1.topic#}}"
+    assert us.is_user_supplied_url(url, "goal has no url at all") is False
+
+
+def test_is_user_supplied_url_false_when_a_templated_path_hides_an_invented_host():
+    url = "https://api.pptrender.io/v1/{{#node1.topic#}}/render"
+    assert us.is_user_supplied_url(url, "goal has no url at all") is False
+
+
+def test_is_user_supplied_url_true_for_a_template_in_the_host_position():
+    assert us.is_user_supplied_url("{{#s.h_url#}}/v1/render", "goal has no url at all") is True
+    assert us.is_user_supplied_url("https://{{#s.host#}}/v1", "goal has no url at all") is True
+
+
+def test_is_user_supplied_url_true_for_a_templated_path_on_a_host_the_user_gave():
+    url = "https://api.pptrender.io/v1/{{#node1.topic#}}/render"
+    assert us.is_user_supplied_url(url, "render via https://api.pptrender.io/v1") is True
+
+
 def test_credential_placeholder_re_matches_known_placeholder_shapes():
     for token in (
         "YOUR_API_KEY",
