@@ -22,6 +22,7 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
+from extensions.application_services.agent import AgentAppServices, build_agent_app_services
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now, utc_now
@@ -138,6 +139,7 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -273,6 +275,8 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    agent_apps: AgentAppServices
+    advanced_prompt_templates: AdvancedPromptTemplateService
     accounts: AccountServices
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
@@ -639,6 +643,8 @@ def build_application_services(
                 enabled=dify_config.RBAC_ENABLED,
             ),
         ),
+        agent_apps=build_agent_app_services(database_client=database_client),
+        advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=AppDefinitionQueryService(
             definitions=app_definition_repository,
             builtin_icon_url_prefix=(

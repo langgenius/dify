@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Sequence
-from typing import Any, TypedDict
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
@@ -43,6 +43,7 @@ from services.agent.errors import (
     AgentVersionNotFoundError,
 )
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
+from services.app.agent_app_contracts import AgentReferencingWorkflow
 from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
@@ -51,21 +52,6 @@ from services.system_feature_service import SystemFeatureService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
-
-
-class AgentReferencingWorkflow(TypedDict):
-    """A workflow app that references a roster Agent via an Agent node."""
-
-    app_id: str
-    app_name: str
-    app_icon_type: str | None
-    app_icon: str | None
-    app_icon_background: str | None
-    app_mode: str
-    app_updated_at: int | None
-    workflow_id: str
-    workflow_version: str
-    node_ids: list[str]
 
 
 class AgentRosterService:
