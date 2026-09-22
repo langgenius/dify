@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../types'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,8 +32,6 @@ const PanelOutputSection: FC<Props> = ({
   const structuredLabelId = React.useId()
 
   const { t } = useTranslation()
-  const warningTitleId = React.useId()
-
   return (
     <>
       <Split />
@@ -50,10 +48,10 @@ const PanelOutputSection: FC<Props> = ({
                   iconSize="large"
                   className="mr-1 text-text-warning-secondary"
                 />
-                <InfotipContent aria-labelledby={warningTitleId} className="w-58">
-                  <div id={warningTitleId} className="title-xs-semi-bold text-text-primary">
+                <InfotipContent className="w-58">
+                  <InfotipTitle className="title-xs-semi-bold text-text-primary" render={<div />}>
                     {t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
-                  </div>
+                  </InfotipTitle>
                   <div className="mt-1">
                     {t(($) => $['structOutput.modelNotSupportedTip'], { ns: 'app' })}
                   </div>
