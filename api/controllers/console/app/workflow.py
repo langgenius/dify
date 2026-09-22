@@ -1355,11 +1355,13 @@ class PublishedWorkflowApi(Resource):
         warning = (
             _advisory_variable_reference_warning(published_graph) if isinstance(published_graph, Mapping) else None
         )
-        return {
+        payload: dict[str, object] = {
             "result": "success",
             "created_at": workflow_created_at,
-            "warning": warning,
         }
+        if warning:
+            payload["warning"] = warning
+        return payload
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
