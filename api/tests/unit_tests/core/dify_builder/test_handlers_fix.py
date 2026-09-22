@@ -770,6 +770,61 @@ def test_needs_upload_inputs_true_for_a_mixed_schema():
     assert needs_upload_inputs(schema) is True
 
 
+# ---- endpoint_variable_names -------------------------------------------------
+
+
+def test_endpoint_variable_names_finds_a_start_variable_referenced_as_the_whole_url():
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "h_url", "type": "text-input"}]}},
+            {"id": "h", "data": {"type": "http-request", "url": "{{#s.h_url#}}"}},
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"h_url"}
+
+
+def test_endpoint_variable_names_finds_a_start_variable_embedded_in_a_larger_url():
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "path", "type": "text-input"}]}},
+            {"id": "h", "data": {"type": "http-request", "url": "https://x.com/{{#s.path#}}"}},
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"path"}
+
+
+def test_endpoint_variable_names_ignores_a_reference_to_a_non_start_node():
+    """A template pointing at another node's output is an ordinary wired
+    value, not an endpoint waiting on the user."""
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": []}},
+            {"id": "llm1", "data": {"type": "llm"}},
+            {"id": "h", "data": {"type": "http-request", "url": "{{#llm1.text#}}"}},
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == set()
+
+
+def test_endpoint_variable_names_empty_when_there_is_no_http_request_node():
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    graph = {
+        "nodes": [{"id": "s", "data": {"type": "start", "variables": [{"variable": "topic", "type": "text-input"}]}}],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == set()
+
+
 # ---- is_input_failure / testdata_form_fields -------------------------------
 
 

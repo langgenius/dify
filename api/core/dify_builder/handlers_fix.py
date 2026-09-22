@@ -26,6 +26,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 """
 
 import logging
+import re
 import uuid
 from typing import Any
 
@@ -85,6 +86,7 @@ __all__ = [
     "decode_checklist_errors",
     "drop_unapplied_repair",
     "emit_canvas",
+    "endpoint_variable_names",
     "failure_signature",
     "first_failed_node",
     "fix_registry",
@@ -454,6 +456,42 @@ def upload_variable_names(schema: StartSchema) -> set[str]:
         for v in schema.get("variables", [])
         if isinstance(v, dict) and v.get("variable") and str(v.get("type") or "") in _UPLOAD_VARIABLE_TYPES
     }
+
+
+# ``{{#<node_id>.<var>#}}`` -- the Dify template reference syntax -- may sit
+# anywhere inside a URL string (e.g. ``https://x.com/{{#s.path#}}``), so this
+# searches the whole string rather than anchoring to it.
+_ENDPOINT_TEMPLATE_RE = re.compile(r"\{\{#([^.#{}]+)\.([^.#{}]+)#\}\}")
+
+
+def endpoint_variable_names(graph: Graph) -> set[str]:
+    """Names of the start variables an http-request node reads its URL from.
+
+    Nothing can invent a real endpoint any more than it can invent an upload
+    (ESQ1-302 / build.py's ``_ground_placeholder_endpoints``), so these are
+    values a human still has to supply even when every other field is mocked
+    for them. Only a reference to the graph's own START node counts -- a
+    reference to some other node's output is an ordinary wired value, not an
+    endpoint waiting on the user.
+    """
+    start_id = ""
+    for node in graph.get("nodes", []):
+        data = node.get("data") or {}
+        if data.get("type") == "start":
+            start_id = str(node.get("id") or "")
+            break
+    if not start_id:
+        return set()
+    names: set[str] = set()
+    for node in graph.get("nodes", []):
+        data = node.get("data") or {}
+        if data.get("type") != "http-request":
+            continue
+        url = str(data.get("url") or "")
+        for node_id, var_name in _ENDPOINT_TEMPLATE_RE.findall(url):
+            if node_id == start_id:
+                names.add(var_name)
+    return names
 
 
 def needs_upload_inputs(schema: StartSchema) -> bool:
