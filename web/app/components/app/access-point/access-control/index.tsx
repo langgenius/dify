@@ -180,25 +180,22 @@ function AccessControlSession({
   const showDowngrade = Boolean(assignment) && !entitled
   const showStatus = Boolean(assignment) && entitled && (!canMutate || view === 'status')
 
-  const tooltip =
-    chip.kind === 'pro'
+  const tooltip = showDowngrade
+    ? t(($) => $['studio.accessControl.tooltipDowngraded'], { ns: 'deployments' })
+    : chip.kind === 'pro'
       ? t(($) => $['studio.accessControl.tooltipPro'], { ns: 'deployments' })
       : chip.kind === 'paused'
         ? t(($) => $['studio.accessControl.tooltipPaused'], {
             ns: 'deployments',
             name: chip.policyName ?? '',
           })
-        : chip.kind === 'on'
-          ? t(($) => $['studio.accessControl.tooltipOn'], {
+        : chip.kind === 'on' || chip.kind === 'partial'
+          ? t(($) => $['studio.accessControl.tooltipProtected'], {
               ns: 'deployments',
+              n: chip.coveredCount,
+              total: chip.inServiceCount,
             })
-          : chip.kind === 'partial'
-            ? t(($) => $['studio.accessControl.tooltipPartial'], {
-                ns: 'deployments',
-                n: chip.coveredCount,
-                total: chip.inServiceCount,
-              })
-            : t(($) => $['studio.accessControl.tooltipOff'], { ns: 'deployments' })
+          : t(($) => $['studio.accessControl.tooltipOff'], { ns: 'deployments' })
 
   const handleTurnOn = () => {
     void setPricing('open')

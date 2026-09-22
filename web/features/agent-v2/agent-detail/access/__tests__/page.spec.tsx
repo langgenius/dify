@@ -160,7 +160,7 @@ describe('Agent IP access configuration', () => {
     expect(screen.getByText('Protecting all 2 access points.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
-    const toggle = screen.getByRole('switch', { name: 'Enable access control' })
+    const toggle = screen.getByRole('switch', { name: 'Restrict by IP address' })
     expect(toggle).toHaveAttribute('aria-disabled', 'true')
     await user.click(toggle)
     expect(toggle).toBeChecked()
