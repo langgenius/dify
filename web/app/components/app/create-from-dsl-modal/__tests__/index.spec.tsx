@@ -583,6 +583,40 @@ describe('CreateFromDSLModal', () => {
     )
   })
 
+  it.each([false, true])(
+    'navigates after a dependency check fails for an import (confirmed: %s)',
+    async (confirmed) => {
+      const user = userEvent.setup()
+      const completed = {
+        status: DSLImportStatus.COMPLETED,
+        app_id: 'created-app',
+        app_mode: AppModeEnum.WORKFLOW,
+      }
+      mockImportDSL.mockResolvedValue(
+        confirmed ? { id: 'pending-import', status: DSLImportStatus.PENDING } : completed,
+      )
+      mockImportDSLConfirm.mockResolvedValue(completed)
+      // The dependency owner has already reported its request failure.
+      mockHandleCheckPluginDependencies.mockResolvedValue(false)
+      const onClose = vi.fn()
+      render(
+        <CreateFromDSLModal
+          show
+          onClose={onClose}
+          activeTab={CreateFromDSLModalTab.FROM_URL}
+          dslUrl="https://example.com/app.yml"
+        />,
+      )
+      await user.click(getCreateButton())
+      if (confirmed)
+        await user.click(await screen.findByRole('button', { name: /newApp\.Confirm/ }))
+
+      await waitFor(() => expect(mockGetRedirection).toHaveBeenCalled())
+      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(toastMocks.error).not.toHaveBeenCalled()
+    },
+  )
+
   it('should surface Agent warnings after confirming a pending import', async () => {
     mockImportDSL.mockResolvedValue({
       id: 'agent-import-pending',

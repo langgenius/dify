@@ -414,7 +414,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   } = useWorkflowStartRunByCanEdit(appACLCapabilities.canEdit)
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
-  const { exportCheck, handleExportDSL } = useDSLByCanEdit(appACLCapabilities.canEdit)
+  const { exportCheck, handleExportDSL, isExporting } = useDSLByCanEdit(appACLCapabilities.canEdit)
 
   const configsMap = useConfigsMap()
 
@@ -459,6 +459,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       getWorkflowRunAndTraceUrl,
       exportCheck,
       handleExportDSL,
+      isExporting,
       fetchInspectVars,
       hasNodeInspectVars,
       hasSetInspectVar,
@@ -502,6 +503,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    isExporting,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,

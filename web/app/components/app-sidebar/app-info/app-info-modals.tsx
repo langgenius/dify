@@ -42,7 +42,7 @@ type AppInfoModalsProps = {
   setSecretEnvList: (list: EnvironmentVariableItemResponse[]) => void
   onEdit: CreateAppModalProps['onConfirm']
   onCopy: DuplicateAppModalProps['onConfirm']
-  onExport: (include?: boolean) => Promise<void>
+  onExport: (include?: boolean) => Promise<boolean>
   isExporting: boolean
   exportCheck: () => void
   handleConfirmExport: () => Promise<void>
@@ -65,7 +65,6 @@ const AppInfoModals = ({
 }: AppInfoModalsProps) => {
   const { t } = useTranslation()
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const [isSecretExporting, setIsSecretExporting] = useState(false)
   const exportConfirmLabelId = React.useId()
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
   const exportDialogMode =
@@ -88,11 +87,11 @@ const AppInfoModals = ({
 
   const handleExportDialogOpenChange = useCallback(
     (open: boolean) => {
-      if (open || isExporting || isSecretExporting) return
+      if (open || isExporting) return
 
       handleExportDialogClose()
     },
-    [handleExportDialogClose, isExporting, isSecretExporting],
+    [handleExportDialogClose, isExporting],
   )
 
   return (
@@ -204,7 +203,7 @@ const AppInfoModals = ({
             envList={secretEnvList}
             onConfirm={onExport}
             onClose={() => setSecretEnvList([])}
-            onExportingChange={setIsSecretExporting}
+            isExporting={isExporting}
           />
         ) : (
           exportDialogMode === 'warning' && (

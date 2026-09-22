@@ -184,6 +184,7 @@ function CreateFromDSLModal({
     )
     if (!response.app_id || !appMode) return
 
+    // Dependency checks own their error feedback; a created app remains navigable.
     await handleCheckPluginDependencies(response.app_id)
     const redirectionTarget = await resolveImportedAppRedirectionTarget({
       id: response.app_id,
@@ -224,6 +225,7 @@ function CreateFromDSLModal({
   const handleSubmit = async (values: ImportFormValues) => {
     if (isAppQuotaUnavailable || isAppsFull || isImporting) return
 
+    let response: Import
     try {
       let source: ImportSource
       if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
@@ -235,8 +237,7 @@ function CreateFromDSLModal({
         source = { type: CreateFromDSLModalTab.FROM_URL, url: yamlUrl }
       }
 
-      const response = await importMutation.mutateAsync(source)
-      await handleImportResponse(response)
+      response = await importMutation.mutateAsync(source)
     } catch (error) {
       toast.error(
         t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
@@ -244,37 +245,38 @@ function CreateFromDSLModal({
           description: await getAppTransferErrorMessage(error),
         },
       )
+      return
     }
+    await handleImportResponse(response)
   }
 
   const handleConfirm = async () => {
     if (!pendingImport || isConfirming) return
 
+    let response: Import
     try {
-      const response = await confirmImportMutation.mutateAsync({
+      response = await confirmImportMutation.mutateAsync({
         params: { import_id: pendingImport.id },
       })
-      if (response.status === 'completed' || response.status === 'completed-with-warnings') {
-        setPendingImport(null)
-        await handleCompletedImport(response)
-        return
-      }
-
-      if (response.status === 'failed')
-        toast.error(
-          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-          {
-            description: response.error || undefined,
-          },
-        )
     } catch (error) {
       toast.error(
         t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-        {
-          description: await getAppTransferErrorMessage(error),
-        },
+        { description: await getAppTransferErrorMessage(error) },
       )
+      return
     }
+
+    if (response.status === 'completed' || response.status === 'completed-with-warnings') {
+      setPendingImport(null)
+      await handleCompletedImport(response)
+      return
+    }
+
+    if (response.status === 'failed')
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        { description: response.error || undefined },
+      )
   }
 
   const handleTabChange = (value: string | number) => {

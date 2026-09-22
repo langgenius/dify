@@ -472,7 +472,8 @@ export function AppCardInteractions({
   }
 
   const onExport = async (include = false) => {
-    await exportAppDsl({ appId: app.id, appName: app.name, includeSecret: include })
+    const result = await exportAppDsl({ appId: app.id, appName: app.name, includeSecret: include })
+    return result.status === 'downloaded'
   }
 
   const exportCheck = async () => {
@@ -742,6 +743,7 @@ export function AppCardInteractions({
       {secretEnvList.length > 0 && (
         <AppExportConfirmModal
           envList={secretEnvList}
+          isExporting={isExporting}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
         />
