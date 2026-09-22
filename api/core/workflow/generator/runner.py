@@ -2227,8 +2227,42 @@ class WorkflowGenerator:
             if not isinstance(properties, dict) or not properties:
                 return True
             return root in properties
-        if node_type in (BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP):
-            return root == "output"
+        if node_type == BuiltinNodeTypes.ITERATION:
+            # graphon's ``IterationNode`` publishes THREE names, not one:
+            #   - ``output``: the node's own result
+            #     (``outputs={"output": flattened_outputs}``,
+            #     nodes/iteration/iteration_node.py:551/565/631) -- what a
+            #     consumer OUTSIDE the container reads.
+            #   - ``item`` / ``index``: added to a deep COPY of the pool that
+            #     only the child engine sees (``_create_graph_engine``, :827-828),
+            #     so they resolve for a node INSIDE the sub-pipeline.
+            #
+            # Accepting ``output`` alone meant a CORRECT ``{{#node4.item#}}``
+            # was read as unresolved and silently rewritten to
+            # ``{{#node4.output#}}`` -- this item's value replaced by the whole
+            # array. Scope is not enforced here because the walker carries only
+            # the TARGET of a reference, never the node that made it; the
+            # alternative to accepting all three is that silent rewrite, which
+            # is strictly worse than an out-of-scope ``item`` failing loudly at
+            # run time.
+            return root in {"output", "item", "index"}
+        if node_type == BuiltinNodeTypes.LOOP:
+            # A loop is NOT the same shape as an iteration: it never publishes
+            # ``item`` / ``index``. It adds each declared
+            # ``loop_variables[].label`` to the MAIN pool
+            # (nodes/loop/loop_node.py:279-286, so visible inside AND outside),
+            # and its result is those labels plus ``loop_round``
+            # (:489-492), alongside whatever ``data.outputs`` already declares.
+            #
+            # ``output`` stays accepted although the engine does not publish it
+            # under that name: dropping it would turn graphs that generate
+            # today into failures, which is a tightening, not this fix. This
+            # fix only stops a CORRECT reference being rewritten.
+            if root in {"output", "loop_round"}:
+                return True
+            if root in (data.get("outputs") or {}):
+                return True
+            return any(isinstance(v, dict) and v.get("label") == root for v in (data.get("loop_variables") or []))
         if node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
             return root in {"class_id", "class_name"}
         if node_type == BuiltinNodeTypes.DOCUMENT_EXTRACTOR:
@@ -2342,11 +2376,16 @@ class WorkflowGenerator:
             return human_outputs[0] if len(human_outputs) == 1 else None
         if not isinstance(node_type, str):
             return None
+        # ``iteration`` and ``loop`` are deliberately absent: an iteration
+        # publishes ``output`` / ``item`` / ``index`` and a loop publishes
+        # ``loop_round`` plus each declared loop variable, so neither has a
+        # SOLE output to fall back on. Guessing ``output`` for them is exactly
+        # the "which value did the workflow mean?" this helper refuses to
+        # answer for every other multi-output type -- and it is how a correct
+        # ``{{#node4.item#}}`` got silently rewritten to the whole array.
         single_output_by_type: dict[str, str] = {
             BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: "result",
             BuiltinNodeTypes.TEMPLATE_TRANSFORM: "output",
-            BuiltinNodeTypes.ITERATION: "output",
-            BuiltinNodeTypes.LOOP: "output",
             BuiltinNodeTypes.DOCUMENT_EXTRACTOR: "text",
             BuiltinNodeTypes.VARIABLE_AGGREGATOR: "output",
             BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR: "output",

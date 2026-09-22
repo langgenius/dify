@@ -5518,6 +5518,147 @@ class TestLlmNodeDeclaresTheEngineOutputs:
         assert errors[0]["node_id"] == "node2"
 
 
+class TestAnIterationPublishesItemAndIndex:
+    """Live-verification defect (FINDINGS.md B8), verified against graphon.
+
+    ``IterationNode._create_graph_engine`` (nodes/iteration/iteration_node.py
+    :827-828) adds ``[<node_id>, "index"]`` and ``[<node_id>, "item"]`` to a
+    DEEP COPY of the pool that only the child engine sees, so those two names
+    resolve for a node INSIDE the iteration. The node's own result publishes
+    ``outputs={"output": flattened_outputs}`` (:551, :565, :631), which is what
+    a consumer outside reads.
+
+    ``_declares_variable`` accepted ``output`` only, so a CORRECT
+    ``{{#node4.item#}}`` was treated as unresolved and silently rewritten to
+    ``{{#node4.output#}}`` -- the container's whole array instead of this
+    item's value. It fired on 9 of 9 live attempts. Silently rewriting a
+    reference the engine resolves is the one thing the repair path must never
+    do; it is worse than the loud failure it replaces.
+
+    A ``loop`` is NOT the same shape: it publishes each declared
+    ``loop_variables[].label`` into the MAIN pool
+    (nodes/loop/loop_node.py:279-286, visible inside and out) and reports
+    ``loop_round`` plus those labels as its outputs (:489-492). It never
+    publishes ``item`` or ``index``.
+    """
+
+    @staticmethod
+    def _iteration_graph(reference: str) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": "node1",
+                "data": {
+                    "type": "start",
+                    "title": "Start",
+                    "variables": [{"variable": "slides", "label": "Slides", "type": "paragraph"}],
+                },
+            },
+            {
+                "id": "node4",
+                "data": {
+                    "type": "iteration",
+                    "title": "Per Slide",
+                    "iterator_selector": ["node1", "slides"],
+                    "output_selector": ["node5", "text"],
+                    "start_node_id": "node4start",
+                },
+            },
+            {
+                "id": "node5",
+                "parentId": "node4",
+                "data": {
+                    "type": "llm",
+                    "title": "Writer",
+                    "prompt_template": [{"role": "user", "text": f"Write {reference}"}],
+                },
+            },
+        ]
+
+    @pytest.mark.parametrize("published", ["item", "index", "output"])
+    def test_a_real_iteration_output_survives_the_repair_path_untouched(self, published: str):
+        nodes = self._iteration_graph(f"{{{{#node4.{published}#}}}}")
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[2]["data"]["prompt_template"][0]["text"] == f"Write {{{{#node4.{published}#}}}}"
+        assert WorkflowGenerator._declares_variable(nodes[1], published) is True
+
+    def test_an_invented_name_on_an_iteration_is_reported_not_guessed(self):
+        """An iteration exposes THREE names now, so it no longer has a "sole
+        declared output" to fall back on -- guessing ``output`` is exactly the
+        "which value did the workflow mean?" the repairer refuses to answer
+        everywhere else. Reported instead."""
+        nodes = self._iteration_graph("{{#node4.slide#}}")
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[2]["data"]["prompt_template"][0]["text"] == "Write {{#node4.slide#}}"
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert [(e["code"], e["node_id"]) for e in errors] == [("UNRESOLVED_REFERENCE", "node4")]
+
+    @staticmethod
+    def _loop_graph(reference: str) -> list[dict[str, Any]]:
+        return [
+            {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "node5",
+                "data": {
+                    "type": "loop",
+                    "title": "Until Done",
+                    "loop_count": 5,
+                    "loop_variables": [{"label": "tally", "var_type": "number", "value_type": "constant", "value": 0}],
+                    "outputs": {"summary": None},
+                    "start_node_id": "node5start",
+                },
+            },
+            {
+                "id": "node6",
+                "parentId": "node5",
+                "data": {
+                    "type": "llm",
+                    "title": "Step",
+                    "prompt_template": [{"role": "user", "text": f"Use {reference}"}],
+                },
+            },
+        ]
+
+    @pytest.mark.parametrize("published", ["tally", "loop_round", "summary"])
+    def test_a_real_loop_output_survives_the_repair_path_untouched(self, published: str):
+        # A declared loop variable's label, the engine's own ``loop_round``,
+        # and a configured ``outputs`` key -- none of them ``item`` / ``index``.
+        nodes = self._loop_graph(f"{{{{#node5.{published}#}}}}")
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[2]["data"]["prompt_template"][0]["text"] == f"Use {{{{#node5.{published}#}}}}"
+        assert WorkflowGenerator._declares_variable(nodes[1], published) is True
+
+    def test_a_loop_does_not_publish_an_iterations_item(self):
+        assert WorkflowGenerator._declares_variable(self._loop_graph("x")[1], "item") is False
+        assert WorkflowGenerator._declares_variable(self._loop_graph("x")[1], "index") is False
+
+    def test_a_non_container_node_still_has_its_invented_name_repaired(self):
+        # Regression guard for dropping the container types from
+        # ``_sole_declared_variable``: every OTHER single-output type keeps the
+        # rewrite it has always had.
+        nodes = [
+            {"id": "node1", "data": {"type": "template-transform", "title": "T", "template": "hi"}},
+            {
+                "id": "node2",
+                "data": {
+                    "type": "llm",
+                    "title": "Writer",
+                    "prompt_template": [{"role": "user", "text": "Use {{#node1.rendered#}}"}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Use {{#node1.output#}}"
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+
 class TestReferenceRepairDoesNotDependOnWalkOrder:
     """``_reconcile_variable_references`` MUTATES the start node's declarations
     while it walks, and the dotted-reference repair READS them ("is the root a
