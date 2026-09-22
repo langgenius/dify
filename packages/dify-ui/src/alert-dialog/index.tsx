@@ -77,11 +77,29 @@ type AlertDialogCancelButtonProps = Omit<ButtonProps, 'children'> & {
 
 function AlertDialogCancelButton({
   children,
+  className,
+  style,
   closeProps,
   ...buttonProps
 }: AlertDialogCancelButtonProps) {
+  const { className: closeClassName, style: closeStyle, ...closeButtonProps } = closeProps ?? {}
+
   return (
-    <BaseAlertDialog.Close {...closeProps} render={<Button {...buttonProps} />}>
+    <BaseAlertDialog.Close
+      {...closeButtonProps}
+      render={
+        <Button
+          {...buttonProps}
+          className={(state) =>
+            cn(resolveClassName(className, state), resolveClassName(closeClassName, state))
+          }
+          style={(state) => ({
+            ...(typeof closeStyle === 'function' ? closeStyle(state) : closeStyle),
+            ...(typeof style === 'function' ? style(state) : style),
+          })}
+        />
+      }
+    >
       {children}
     </BaseAlertDialog.Close>
   )

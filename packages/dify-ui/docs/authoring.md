@@ -62,6 +62,9 @@ part's state before merging default classes with `cn()`, including through compo
 Forward `style` unchanged unless the wrapper needs to merge styles; then resolve its callback first.
 Do not add state callbacks to native DOM props or unrelated custom APIs. See [Styling].
 
+Forward upstream change handlers without narrowing their arguments or discarding event details.
+When a wrapper needs an internal ref, preserve the public ref as well, including callback ref cleanup.
+
 ## Evidence
 
 Use local public-subpath type tests to protect generic inference, required relationships, and

@@ -123,3 +123,53 @@ describe('AlertDialog wrapper', () => {
     })
   })
 })
+
+it('resolves both cancel-button styling layers with the final disabled state', async () => {
+  const buttonRef = React.createRef<HTMLButtonElement>()
+  const closeRef = React.createRef<HTMLButtonElement>()
+  const onButtonClick = vi.fn()
+  const onCloseClick = vi.fn()
+  function Confirmation({ loading }: { loading: boolean }) {
+    return (
+      <AlertDialog defaultOpen>
+        <AlertDialogContent>
+          <AlertDialogTitle>Confirm changes</AlertDialogTitle>
+          <AlertDialogCancelButton
+            loading={loading}
+            ref={buttonRef}
+            onClick={onButtonClick}
+            className={(state) => (state.disabled ? 'opacity-50' : 'opacity-100')}
+            style={(state) => ({ color: state.disabled ? 'red' : 'blue' })}
+            closeProps={{
+              ref: closeRef,
+              onClick: onCloseClick,
+              className: (state) => (state.disabled ? 'underline' : 'no-underline'),
+              style: { backgroundColor: 'yellow' },
+            }}
+          >
+            Cancel
+          </AlertDialogCancelButton>
+        </AlertDialogContent>
+      </AlertDialog>
+    )
+  }
+  const screen = await render(<Confirmation loading />)
+  const cancel = screen.getByRole('button', { name: 'Cancel' })
+  await expect.element(cancel).toHaveStyle({
+    opacity: '0.5',
+    color: 'rgb(255, 0, 0)',
+    backgroundColor: 'rgb(255, 255, 0)',
+    textDecorationLine: 'underline',
+  })
+  expect(buttonRef.current).toBe(cancel.element())
+  expect(closeRef.current).toBe(cancel.element())
+
+  await screen.rerender(<Confirmation loading={false} />)
+  await expect
+    .element(cancel)
+    .toHaveStyle({ opacity: '1', color: 'rgb(0, 0, 255)', textDecorationLine: 'none' })
+  await cancel.click()
+  expect(onButtonClick).toHaveBeenCalledTimes(1)
+  expect(onCloseClick).toHaveBeenCalledTimes(1)
+  await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+})

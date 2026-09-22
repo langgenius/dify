@@ -292,6 +292,7 @@ type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children'> & {
 
 function PaginationPageJump({
   className,
+  ref,
   inputLabel = 'Page number',
   children,
   'aria-label': ariaLabel,
@@ -301,6 +302,21 @@ function PaginationPageJump({
   const [editing, setEditing] = React.useState(false)
   const summaryButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const restoreSummaryFocusRef = React.useRef(false)
+  const handleSummaryRef = React.useCallback(
+    (element: HTMLButtonElement | null) => {
+      summaryButtonRef.current = element
+      const cleanup = typeof ref === 'function' ? ref(element) : undefined
+      if (ref && typeof ref !== 'function') ref.current = element
+
+      return () => {
+        summaryButtonRef.current = null
+        if (typeof cleanup === 'function') cleanup()
+        else if (typeof ref === 'function') ref(null)
+        else if (ref) ref.current = null
+      }
+    },
+    [ref],
+  )
 
   useIsoLayoutEffect(() => {
     if (editing || !restoreSummaryFocusRef.current) return
@@ -371,7 +387,7 @@ function PaginationPageJump({
   return (
     <BaseButton
       {...props}
-      ref={summaryButtonRef}
+      ref={handleSummaryRef}
       type="button"
       aria-label={
         ariaLabel ?? `Edit page number, current page ${pagination.page} of ${pagination.totalPages}`
