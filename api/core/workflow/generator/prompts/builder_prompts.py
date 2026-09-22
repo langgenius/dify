@@ -80,7 +80,13 @@ _NODE_SNIPPETS: dict[str, str] = {
             values are the translations.
             Input: {{#node1.text#}}
       * Each placeholder only resolves the variable from its source node —
-        it cannot be a Jinja template or call a function.""",
+        it cannot be a Jinja template or call a function.
+
+    Structured output: a schema-less LLM node's only output is "text". To
+    expose extra fields, set "structured_output_enabled": true and
+    "structured_output": {"schema": <json-schema-object>} on the node's
+    data; each schema field then becomes a 3-segment reference
+    {{#<node>.structured_output.<field>#}} — never a flat {{#<node>.<field>#}}.""",
     "knowledge-retrieval": """\
 - knowledge-retrieval:
     {"query_variable_selector": ["<src>", "<var>"],
@@ -98,7 +104,9 @@ _NODE_SNIPPETS: dict[str, str] = {
     "template-transform": """\
 - template-transform:
     {"template": "Hello {{ name }}",
-     "variables": [{"variable": "name", "value_selector": ["<src>", "<var>"]}]}""",
+     "variables": [{"variable": "name", "value_selector": ["<src>", "<var>"]}]}
+    ``variables`` is REQUIRED (no default) — a template that references no
+    variables must still set ``"variables": []``, never omit the field.""",
     "http-request": """\
 - http-request  (escape hatch — only if no installed tool fits):
     {"variables": [], "method": "get", "url": "https://example.com",
@@ -138,6 +146,11 @@ _NODE_SNIPPETS: dict[str, str] = {
                         "comparison_operator": "is",
                         "value": "<value>"}]}
      ]}
+    comparison_operator MUST be exactly one of (verbatim strings): "contains",
+    "not contains", "start with", "end with", "is", "is not", "empty",
+    "not empty", "in", "not in", "all of", "null", "not null", "exists",
+    "not exists", "=", ">", "<", "≥", "≤", "≠". The number comparisons are
+    ALWAYS the unicode forms "≥" / "≤" / "≠" — never ">=" / "<=" / "!=".
     Source handle for downstream edges = the case_id ("true" / "false").
     HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's
     outgoing ``source_handle`` values. Each declared ``case_id`` (and its
@@ -163,7 +176,7 @@ _NODE_SNIPPETS: dict[str, str] = {
     ``source_handle`` values, one class per planned handle.""",
     "parameter-extractor": """\
 - parameter-extractor:
-    {"query": [["<src>", "<var>"]],          # array of value_selector arrays
+    {"query": ["<src>", "<var>"],            # ONE value_selector, not an array of them
      "model": {"provider": "<p>", "name": "<m>", "mode": "chat",
                "completion_params": {"temperature": 0.7}},
      "parameters": [{"name": "topic", "type": "string",
