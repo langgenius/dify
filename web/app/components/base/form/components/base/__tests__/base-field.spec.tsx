@@ -7,6 +7,11 @@ import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/
 import BaseField from '../base-field'
 
 const mockDynamicOptions = vi.fn()
+const mockCopy = vi.fn()
+
+vi.mock('foxact/use-clipboard', () => ({
+  useClipboard: () => ({ copy: mockCopy, copied: false }),
+}))
 
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (content: Record<string, string>) =>
@@ -73,6 +78,30 @@ describe('BaseField', () => {
       error: null,
     })
   })
+
+  it.each([
+    { type: FormTypeEnum.textInput, value: 'server-value', copied: 'server-value' },
+    { type: FormTypeEnum.textNumber, value: 0, copied: '0' },
+  ])(
+    'copies the $type field value through its keyboard-accessible action',
+    async ({ type, value, copied }) => {
+      const user = userEvent.setup()
+      renderBaseField({
+        formSchema: { type, name: 'value', label: 'Value', required: false, showCopy: true },
+        defaultValues: { value },
+      })
+
+      await user.click(screen.getByLabelText('Value'))
+      await user.tab()
+      const copyButton = screen.getByRole('button', { name: 'common.operation.copy' })
+      expect(copyButton).toHaveFocus()
+      await user.keyboard('{Enter}')
+
+      expect(mockCopy).toHaveBeenCalledWith(copied)
+      expect(copyButton).toHaveFocus()
+      expect(screen.getByLabelText('Value')).toHaveValue(String(value))
+    },
+  )
 
   it.each([FormTypeEnum.textInput, FormTypeEnum.secretInput, FormTypeEnum.textNumber])(
     'associates the visible label, description and required state for %s',

@@ -21,10 +21,12 @@ type Props = Readonly<{
   className?: string
 }>
 
-enum LogTypeEnum {
-  REQUEST = 'request',
-  RESPONSE = 'response',
-}
+const LogTypeEnum = {
+  REQUEST: 'request',
+  RESPONSE: 'response',
+} as const
+
+type LogTypeEnum = (typeof LogTypeEnum)[keyof typeof LogTypeEnum]
 
 const LogViewer = ({ logs, className }: Props) => {
   const { t } = useTranslation()

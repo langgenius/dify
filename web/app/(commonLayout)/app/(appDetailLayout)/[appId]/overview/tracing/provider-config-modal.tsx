@@ -28,8 +28,6 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { toast } from '@/app/notifications'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import { docURL } from './config'
@@ -783,7 +781,10 @@ const ProviderConfigModal: FC<Props> = ({
                           key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
                         })}
                       </span>
-                      <LinkExternal02 className="size-3" />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-line-general-link-external-02 size-3"
+                      />
                     </a>
                     <div className="flex items-center">
                       {isEdit && (
@@ -820,7 +821,10 @@ const ProviderConfigModal: FC<Props> = ({
                 </div>
                 <div className="border-t-[0.5px] border-divider-regular">
                   <div className="flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary">
-                    <Lock01 className="mr-1 size-3 text-text-tertiary" />
+                    <span
+                      aria-hidden
+                      className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
+                    />
                     {t(($) => $['modelProvider.encrypted.front'], { ns: 'common' })}
                     <a
                       className="mx-1 text-primary-600"

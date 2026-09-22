@@ -90,8 +90,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           </button>
         </div>
         <div className="flex flex-col gap-y-4 px-6 py-3">
-          <Field name="title" invalid={titleError} className="gap-y-1">
-            <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
+          <Field name="title" invalid={titleError}>
+            <FieldLabel className="system-sm-semibold">
               {t(($) => $['versionHistory.editField.title'], { ns: 'workflow' })}
             </FieldLabel>
             <Input
@@ -100,8 +100,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
               onValueChange={setTitle}
             />
           </Field>
-          <Field name="releaseNotes" invalid={releaseNotesError} className="gap-y-1">
-            <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
+          <Field name="releaseNotes" invalid={releaseNotesError}>
+            <FieldLabel className="system-sm-semibold">
               {t(($) => $['versionHistory.editField.releaseNotes'], { ns: 'workflow' })}
             </FieldLabel>
             <Textarea

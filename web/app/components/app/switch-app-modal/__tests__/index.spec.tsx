@@ -296,13 +296,13 @@ describe('SwitchAppModal', () => {
 
       await user.click(screen.getByText('open-icon-picker'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      await user.click(screen.getByRole('button', { name: '#F3FEE7' }))
       await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
@@ -313,7 +313,7 @@ describe('SwitchAppModal', () => {
             body: expect.objectContaining({
               icon_type: 'emoji',
               icon: '🚀',
-              icon_background: '#E4FBCC',
+              icon_background: '#F3FEE7',
             }),
           }),
         )
@@ -326,13 +326,13 @@ describe('SwitchAppModal', () => {
 
       await user.click(screen.getByText('open-icon-picker'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
-      await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+      await user.keyboard('{Escape}')
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
-      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('app.removeOriginal'))
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()

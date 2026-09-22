@@ -1,3 +1,4 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { OnSelectBlock, ToolWithProvider } from '../types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
@@ -78,7 +79,7 @@ export function ToolPanel({
   tags: string[]
   onTagsChange: (tags: string[]) => void
   onSelect: OnSelectBlock
-  dataSources: ToolWithProvider[]
+  dataSources: RagPipelineDatasourceProviderResponse[]
 }) {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()

@@ -11,7 +11,6 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
 import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
-import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import CodeGeneratorButton from '../code-generator-button'
 import ToggleExpandBtn from '../toggle-expand-btn'
@@ -117,9 +116,12 @@ const Base: FC<Props> = ({
               onClick={handleCopy}
             >
               {!isCopied ? (
-                <Copy aria-hidden="true" className="size-4 cursor-pointer" />
+                <span
+                  aria-hidden="true"
+                  className="i-custom-vender-line-files-copy size-4 cursor-pointer"
+                />
               ) : (
-                <CopyCheck aria-hidden="true" className="size-4" />
+                <span aria-hidden="true" className="i-custom-vender-line-files-copy-check size-4" />
               )}
             </IconButton>
             <div className="ml-1">

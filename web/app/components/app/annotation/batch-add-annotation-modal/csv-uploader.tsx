@@ -6,7 +6,6 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import { toast } from '@/app/notifications'
 
 export type Props = Readonly<{
@@ -92,7 +91,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
             )}
           >
             <div className="flex w-full items-center justify-center space-x-2">
-              <CSVIcon className="shrink-0" />
+              <span aria-hidden className="i-custom-public-files-csv h-8.5 w-8 shrink-0" />
               <div className="text-text-tertiary">
                 {t(($) => $['batchModal.csvUploadTitle'], { ns: 'appAnnotation' })}
                 <button
@@ -114,7 +113,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
               'hover:border-components-panel-bg-blur hover:bg-components-panel-bg-blur',
             )}
           >
-            <CSVIcon className="shrink-0" />
+            <span aria-hidden className="i-custom-public-files-csv h-8.5 w-8 shrink-0" />
             <div className="ml-2 flex w-0 grow">
               <span className="max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">
                 {file.name.replace(/.csv$/, '')}

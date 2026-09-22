@@ -476,6 +476,8 @@
   "operation.more": "More",
   "operation.moreActions": "Meer acties",
   "operation.moreActionsFor": "Meer acties voor {{name}}",
+  "operation.moveDown": "Omlaag verplaatsen",
+  "operation.moveUp": "Omhoog verplaatsen",
   "operation.no": "No",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "No {{content}} were found",

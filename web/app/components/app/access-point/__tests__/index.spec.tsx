@@ -65,7 +65,6 @@ vi.mock('@/app/components/app/access-point/deployed-environment-access-points', 
   DeployedEnvironmentAccessPoints: (props: {
     appId: string
     canManageAccessPoint: boolean
-    canReleaseAndVersion: boolean
     environmentId: string
     highlightedAccessPoint?: AccessPointType
   }) => {
@@ -225,7 +224,6 @@ describe('AccessPoint', () => {
       expect.objectContaining({
         appId: 'app-1',
         canManageAccessPoint: false,
-        canReleaseAndVersion: false,
         environmentId: 'canary',
       }),
     )
@@ -267,22 +265,21 @@ describe('AccessPoint', () => {
     expect(accessPointMocks.deployed).not.toHaveBeenCalled()
   })
 
-  it('opens deployed environments with Access Point management independently from deploy', () => {
+  it('does not grant Access Point view from management permission', () => {
     appPermissionKeys = [AppACLPermission.AccessPointManage]
 
     renderAccessPoint({ searchParams: '?environment=canary' })
 
-    expect(screen.getByRole('tab', { name: 'Canary' })).toHaveAttribute('aria-selected', 'true')
-    expect(accessPointMocks.deployed).toHaveBeenCalledWith(
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(accessPointMocks.builtIn).toHaveBeenCalledWith(
       expect.objectContaining({
         canManageAccessPoint: true,
-        canReleaseAndVersion: false,
-        environmentId: 'canary',
       }),
     )
+    expect(accessPointMocks.deployed).not.toHaveBeenCalled()
   })
 
-  it('passes Web App access management independently from Access Point management', () => {
+  it('does not grant Access Point management from release permission', () => {
     appPermissionKeys = [AppACLPermission.AccessPointView, AppACLPermission.ReleaseAndVersion]
 
     renderAccessPoint({ searchParams: '?environment=canary' })
@@ -290,7 +287,6 @@ describe('AccessPoint', () => {
     expect(accessPointMocks.deployed).toHaveBeenCalledWith(
       expect.objectContaining({
         canManageAccessPoint: false,
-        canReleaseAndVersion: true,
         environmentId: 'canary',
       }),
     )

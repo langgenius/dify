@@ -2,6 +2,7 @@ import type { SsoProtocol } from '@dify/contracts/api/console/system-features/ty
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
@@ -690,7 +691,7 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('app.iconPicker.search'))!.toBeInTheDocument()
         })
       }
     })
@@ -707,19 +708,19 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('app.iconPicker.search'))!.toBeInTheDocument()
         })
 
-        fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+        fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
         fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
         await waitFor(() => {
-          expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+          expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
         })
       }
     })
 
-    it('should close app icon picker and reset icon when close button is clicked', async () => {
+    it('should close app icon picker and reset icon when Escape is pressed', async () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       // Open the icon picker
@@ -731,13 +732,13 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('app.iconPicker.search'))!.toBeInTheDocument()
         })
 
-        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+        await userEvent.setup().keyboard('{Escape}')
 
         await waitFor(() => {
-          expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+          expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
         })
       }
     })

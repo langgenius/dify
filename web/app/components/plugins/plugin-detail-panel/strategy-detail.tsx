@@ -1,9 +1,11 @@
 'use client'
 
+import type {
+  AgentStrategyEntity,
+  AgentStrategyParameterType,
+  AgentStrategyProviderIdentity,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type { StrategyDetail as StrategyDetailType } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n/locale'
-import type { PluginLanguage } from '@/i18n/metadata'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -11,6 +13,7 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -25,44 +28,42 @@ import { API_PREFIX } from '@/config'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 type Props = Readonly<{
-  provider: {
-    author: string
-    name: string
-    description: Record<Locale | PluginLanguage, string>
-    tenant_id: string
-    icon: string
-    label: Record<Locale | PluginLanguage, string>
-    tags: string[]
-  }
-  detail: StrategyDetailType
+  provider: AgentStrategyProviderIdentity
+  tenantId: string
+  detail: AgentStrategyEntity
   onHide: () => void
 }>
 
-const StrategyDetail: FC<Props> = ({ provider, detail, onHide }) => {
+const isSchemaObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const getOutputType = (schema: unknown): string => {
+  if (!isSchemaObject(schema)) return 'Unknown'
+  if (schema.type === 'array') return `Array[${getOutputType(schema.items)}]`
+  if (typeof schema.type !== 'string' || !schema.type) return 'Unknown'
+  return schema.type.slice(0, 1).toLocaleUpperCase() + schema.type.slice(1)
+}
+
+const StrategyDetail: FC<Props> = ({ provider, tenantId, detail, onHide }) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
 
   const outputSchema = useMemo(() => {
-    const res: any[] = []
-    if (!detail.output_schema || !detail.output_schema.properties) return []
-    Object.keys(detail.output_schema.properties).forEach((outputKey) => {
-      const output = detail.output_schema.properties[outputKey]
-      res.push({
-        name: outputKey,
-        type:
-          output.type === 'array'
-            ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]`
-            : `${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}`,
-        description: output.description,
-      })
-    })
-    return res
+    const properties = detail.output_schema?.properties
+    if (!isSchemaObject(properties)) return []
+    return Object.entries(properties).map(([name, output]) => ({
+      name,
+      type: getOutputType(output),
+      description:
+        isSchemaObject(output) && typeof output.description === 'string'
+          ? output.description
+          : undefined,
+    }))
   }, [detail.output_schema])
 
-  const getType = (type: string) => {
-    if (type === 'number-input') return t(($) => $['setBuiltInTools.number'], { ns: 'tools' })
-    if (type === 'text-input') return t(($) => $['setBuiltInTools.string'], { ns: 'tools' })
-    if (type === 'checkbox') return 'boolean'
+  const getType = (type: AgentStrategyParameterType) => {
+    if (type === 'number') return t(($) => $['setBuiltInTools.number'], { ns: 'tools' })
+    if (type === 'string') return t(($) => $['setBuiltInTools.string'], { ns: 'tools' })
     if (type === 'file') return t(($) => $['setBuiltInTools.file'], { ns: 'tools' })
     if (type === 'array[tools]') return 'multiple-tool-select'
     return type
@@ -107,13 +108,13 @@ const StrategyDetail: FC<Props> = ({ provider, detail, onHide }) => {
                   <Icon
                     size="tiny"
                     className="size-6"
-                    src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${provider.tenant_id}&filename=${provider.icon}`}
+                    src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${provider.icon}`}
                   />
                   <div className="">{getValueFromI18nObject(provider.label)}</div>
                 </div>
-                <div className="mt-1 system-md-semibold text-text-primary">
+                <DrawerTitle className="mt-1 system-md-semibold text-text-primary">
                   {getValueFromI18nObject(detail.identity.label)}
-                </div>
+                </DrawerTitle>
                 <Description
                   className="mt-3"
                   text={getValueFromI18nObject(detail.description)}
@@ -127,10 +128,10 @@ const StrategyDetail: FC<Props> = ({ provider, detail, onHide }) => {
                     {t(($) => $['setBuiltInTools.parameters'], { ns: 'tools' })}
                   </div>
                   <div className="px-4">
-                    {detail.parameters.length > 0 && (
+                    {detail.parameters && detail.parameters.length > 0 && (
                       <div className="space-y-1 py-2">
-                        {detail.parameters.map((item: any, index) => (
-                          <div key={index} className="py-1">
+                        {detail.parameters.map((item) => (
+                          <div key={item.name} className="py-1">
                             <div className="flex items-center gap-2">
                               <div className="code-sm-semibold text-text-secondary">
                                 {getValueFromI18nObject(item.label)}
@@ -144,9 +145,9 @@ const StrategyDetail: FC<Props> = ({ provider, detail, onHide }) => {
                                 </div>
                               )}
                             </div>
-                            {item.human_description && (
+                            {item.help && (
                               <div className="mt-0.5 system-xs-regular text-text-tertiary">
-                                {getValueFromI18nObject(item.human_description)}
+                                {getValueFromI18nObject(item.help)}
                               </div>
                             )}
                           </div>
@@ -164,8 +165,8 @@ const StrategyDetail: FC<Props> = ({ provider, detail, onHide }) => {
                       </div>
                       {outputSchema.length > 0 && (
                         <div className="space-y-1 px-4 py-2">
-                          {outputSchema.map((outputItem, index) => (
-                            <div key={index} className="py-1">
+                          {outputSchema.map((outputItem) => (
+                            <div key={outputItem.name} className="py-1">
                               <div className="flex items-center gap-2">
                                 <div className="code-sm-semibold text-text-secondary">
                                   {outputItem.name}

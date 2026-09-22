@@ -5,7 +5,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckboxCircleLine, RiErrorWarningLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useLocale } from '#i18n'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -61,10 +60,14 @@ const ToolCallItem: FC<Props> = ({
           )}
           onClick={() => setCollapseState(!collapseState)}
         >
-          <ChevronRight
+          <span
+            aria-hidden
             className={cn(
-              'mr-1 size-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
-              !collapseState && 'rotate-90',
+              'i-custom-vender-line-arrows-chevron-right h-3.5 w-3.5',
+              cn(
+                'mr-1 size-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                !collapseState && 'rotate-90',
+              ),
             )}
           />
           <BlockIcon

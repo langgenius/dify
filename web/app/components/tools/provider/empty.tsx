@@ -6,7 +6,6 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import Link from '@/next/link'
-import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
 import { ToolType } from '../../workflow/block-selector/types'
 
 type Props = Readonly<{
@@ -106,7 +105,13 @@ const Empty = ({ type, isAgent }: Props) => {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      <NoToolPlaceholder className={theme === 'dark' ? 'invert' : ''} />
+      <span
+        aria-hidden
+        className={cn(
+          'i-custom-vender-other-no-tool-placeholder h-9 w-51',
+          theme === 'dark' ? 'invert' : '',
+        )}
+      />
       <div className="mt-2 mb-1 text-[13px] leading-4.5 font-medium text-text-primary">
         {hasTitle && renderType
           ? t(($) => $[`addToolModal.${renderType}.title`], { ns: 'tools' })

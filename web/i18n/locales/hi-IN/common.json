@@ -476,6 +476,8 @@
   "operation.more": "अधिक",
   "operation.moreActions": "अधिक कार्रवाइयाँ",
   "operation.moreActionsFor": "{{name}} के लिए अधिक कार्रवाइयाँ",
+  "operation.moveDown": "नीचे ले जाएँ",
+  "operation.moveUp": "ऊपर ले जाएँ",
   "operation.no": "नहीं",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "कोई {{content}} नहीं मिला",

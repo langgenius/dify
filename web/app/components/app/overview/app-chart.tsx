@@ -4,11 +4,11 @@ import type { Dayjs } from 'dayjs'
 import type { SelectorParam } from 'i18next'
 import type { FC } from 'react'
 import type { ChartRow } from './app-chart-utils'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useQuery } from '@tanstack/react-query'
 import ReactECharts from 'echarts-for-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import {
@@ -102,8 +102,11 @@ const Chart: React.FC<IChartProps> = ({
             {title}
           </div>
           {explanation && (
-            <Infotip aria-label={explanation} className="ml-1" popupClassName="w-[240px]">
-              {explanation}
+            <Infotip>
+              <InfotipTrigger aria-label={explanation} className="ml-1" />
+              <InfotipContent aria-label={explanation} className="w-60">
+                {explanation}
+              </InfotipContent>
             </Infotip>
           )}
         </div>

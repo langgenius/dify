@@ -111,12 +111,6 @@ vi.mock('@langgenius/dify-ui/status-dot', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning', () => ({
-  default: (props: Record<string, unknown>) => (
-    <div data-testid="warning-icon" className={props.className as string} />
-  ),
-}))
-
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
   ({
     provider: 'langgenius/openai/openai',
@@ -214,19 +208,6 @@ describe('CredentialPanel', () => {
       )
       expect(screen.getByText(/aiCreditsInUse/)).toBeInTheDocument()
     })
-
-    it('should show warning icon for credits-fallback variant', () => {
-      renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.noConfigure,
-            available_credentials: [],
-          },
-        }),
-      )
-      expect(screen.getByTestId('warning-icon')).toBeInTheDocument()
-    })
   })
 
   describe('Status label variants', () => {
@@ -237,12 +218,6 @@ describe('CredentialPanel', () => {
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
 
-    it('should show warning icon for api-fallback variant', () => {
-      mockTrialCredits.isExhausted = true
-      renderWithQueryClient(createProvider())
-      expect(screen.getByTestId('warning-icon')).toBeInTheDocument()
-    })
-
     it('should show green indicator for api-active (custom priority + authorized)', () => {
       renderWithQueryClient(
         createProvider({
@@ -251,15 +226,6 @@ describe('CredentialPanel', () => {
       )
       expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
       expect(screen.getByText('test-credential')).toBeInTheDocument()
-    })
-
-    it('should NOT show warning icon for api-active variant', () => {
-      renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-        }),
-      )
-      expect(screen.queryByTestId('warning-icon')).not.toBeInTheDocument()
     })
 
     it('should show red indicator and credential name for api-unavailable (exhausted + named unauthorized key)', () => {

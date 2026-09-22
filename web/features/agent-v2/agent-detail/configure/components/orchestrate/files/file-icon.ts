@@ -63,7 +63,7 @@ export function getFileIconType(fileName: string, mimeType?: string | null): Fil
   if (tableFileExtensions.has(extension)) return 'table'
   if (archiveFileExtensions.has(extension)) return 'archive'
   if (codeFileExtensions.has(extension)) return 'code'
-  if (mimeType?.startsWith('text/')) return 'text'
+  if (extension === 'txt' || mimeType?.startsWith('text/')) return 'text'
 
   return 'file'
 }

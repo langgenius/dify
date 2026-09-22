@@ -300,7 +300,7 @@ describe('CreateAppModal', () => {
   })
 
   describe('App Icon Picker', () => {
-    it('should open and close the picker when cancel is clicked', async () => {
+    it('should open and close the picker when Escape is pressed', async () => {
       await setup({
         appIconType: 'image',
         appIcon: 'file-123',
@@ -310,14 +310,14 @@ describe('CreateAppModal', () => {
       const pickerDialog = openAppIconPicker()
 
       expect(
-        within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }),
+        within(pickerDialog).getByRole('button', { name: 'app.iconPicker.tryYourLuck' }),
       )!.toBeInTheDocument()
 
-      fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }))
+      await userEvent.setup().keyboard('{Escape}')
 
       await waitFor(() => {
         expect(
-          screen.queryByRole('button', { name: 'app.iconPicker.cancel' }),
+          screen.queryByRole('dialog', { name: 'app.iconPicker.emoji' }),
         ).not.toBeInTheDocument()
       })
     })
@@ -343,7 +343,7 @@ describe('CreateAppModal', () => {
       expect(payload).toMatchObject({
         icon_type: 'emoji',
         icon: '😀',
-        icon_background: '#FFEAD5',
+        icon_background: '#FEF3F2',
       })
     })
 
@@ -358,7 +358,7 @@ describe('CreateAppModal', () => {
 
         const pickerDialog = openAppIconPicker()
 
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: '#E4FBCC' }))
+        fireEvent.click(within(pickerDialog).getByRole('button', { name: '#F3FEE7' }))
         fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
 
         fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
@@ -371,7 +371,7 @@ describe('CreateAppModal', () => {
         expect(payload).toMatchObject({
           icon_type: 'emoji',
           icon: '🤖',
-          icon_background: '#E4FBCC',
+          icon_background: '#F3FEE7',
         })
       } finally {
         vi.useRealTimers()

@@ -56,6 +56,8 @@ const StepTwo: FC<StepTwoProps> = ({
   onCancel,
   updateRetrievalMethodCache,
 }) => {
+  const generalChunkingModes: readonly ChunkingMode[] = [ChunkingMode.text, ChunkingMode.qa]
+
   const { t } = useTranslation()
   const locale = useLocale()
   const isMobile = useBreakpoints() === MediaType.mobile
@@ -256,7 +258,7 @@ const StepTwo: FC<StepTwoProps> = ({
 
   // Show options conditions
   const showGeneralOption =
-    (isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form)) ||
+    (isInUpload && generalChunkingModes.includes(currentDataset!.doc_form)) ||
     isUploadInEmptyDataset ||
     isInInit
   const showParentChildOption =
@@ -280,7 +282,7 @@ const StepTwo: FC<StepTwoProps> = ({
             rules={segmentation.rules}
             currentDocForm={currentDocForm}
             docLanguage={docLanguage}
-            isActive={[ChunkingMode.text, ChunkingMode.qa].includes(currentDocForm)}
+            isActive={generalChunkingModes.includes(currentDocForm)}
             isInUpload={isInUpload}
             isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
             hasCurrentDatasetDocForm={!!currentDataset?.doc_form}
