@@ -45,7 +45,7 @@ export const TopBar: FC<TopBarProps> = (props) => {
           {t(($) => $['steps.header.fallbackRoute'], { ns: 'datasetCreation' })}
         </p>
       </Link>
-      <div className="min-w-0 px-4 pb-3 xl:py-0 xl:pr-6">
+      <div className="min-w-0 px-4 pb-3 xl:absolute xl:top-1/2 xl:left-1/2 xl:-translate-1/2 xl:p-0">
         <Stepper
           steps={Array.from({ length: 3 }, (_, i) => ({
             name: t(($) => $[STEP_T_MAP[(i + 1) as keyof typeof STEP_T_MAP]], {
