@@ -49,7 +49,7 @@ const PanelOutputSection: FC<Props> = ({
                   className="mr-1 text-text-warning-secondary"
                 />
                 <InfotipContent className="w-58">
-                  <InfotipTitle className="title-xs-semi-bold text-text-primary" render={<div />}>
+                  <InfotipTitle className="title-xs-semi-bold text-text-primary">
                     {t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
                   </InfotipTitle>
                   <div className="mt-1">
