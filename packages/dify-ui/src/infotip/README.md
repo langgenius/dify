@@ -25,8 +25,8 @@ function ProcessingHint() {
 }
 ```
 
-If the popup has its own visible title, use `InfotipTitle`. It is unstyled and only wires the title
-to the dialog's accessible name; use `render` to preserve the existing element semantics:
+If the popup has its own visible title, use `InfotipTitle`. It is unstyled and gives the dialog its
+accessible name. Use `render` only when the surrounding heading hierarchy calls for a different heading level:
 
 ```tsx
 <Infotip>
