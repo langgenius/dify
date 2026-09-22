@@ -3,12 +3,12 @@
 import json
 import unittest
 import uuid
-from types import SimpleNamespace
+from pathlib import Path
 from typing import override
 
 import pytest
 from sqlalchemy import Engine, delete, func, select
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_storage import storage
@@ -34,29 +34,24 @@ from services.workflow_draft_variable_service import (
 
 
 @pytest.fixture(autouse=True)
-def _bind_database(
+def _bind_storage(
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
-    sessions = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
-    monkeypatch.setitem(globals(), "db", SimpleNamespace(session=sessions, engine=sqlite_engine))
     monkeypatch.setattr(
         storage,
         "storage_runner",
         OpenDALStorage(scheme="fs", root=str(tmp_path / "storage")),
         raising=False,
     )
-    yield
-    sessions.remove()
 
 
-def _persist_account(*, tenant_id: str) -> Account:
+def _persist_account(*, engine: Engine, tenant_id: str) -> Account:
     tenant = Tenant(name="draft-variable-tenant")
     tenant.id = tenant_id
     account = Account(email=f"draft-{uuid.uuid4()}@example.com", name="Draft Variable User")
     membership = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER)
-    with Session(bind=db.engine, expire_on_commit=False) as session:
+    with Session(bind=engine, expire_on_commit=False) as session:
         session.add_all([tenant, account, membership])
         session.commit()
     return account
@@ -70,11 +65,14 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
     _node2_id = "test_node_2"
     _node_exec_id = str(uuid.uuid4())
 
+    @pytest.fixture(autouse=True)
+    def _bind_session(self, sqlite_session: Session) -> None:
+        self._session = sqlite_session
+
     @override
-    def setUp(self):
+    def setUp(self) -> None:
         self._test_app_id = str(uuid.uuid4())
         self._test_user_id = str(uuid.uuid4())
-        self._session: Session = db.session()
         sys_var = WorkflowDraftVariable.new_sys_variable(
             app_id=self._test_app_id,
             user_id=self._test_user_id,
@@ -126,8 +124,8 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
             ]
         )
 
-        db.session.add_all(_variables)
-        db.session.flush()
+        self._session.add_all(_variables)
+        self._session.flush()
         self._variable_ids = [v.id for v in _variables]
         self._node1_str_var_id = node1_var.id
         self._sys_var_id = sys_var.id
@@ -138,10 +136,10 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         return WorkflowDraftVariableService(session=self._session)
 
     @override
-    def tearDown(self):
+    def tearDown(self) -> None:
         self._session.rollback()
 
-    def test_list_variables(self):
+    def test_list_variables(self) -> None:
         srv = self._get_test_srv()
         var_list = srv.list_variables_without_values(self._test_app_id, page=1, limit=2, user_id=self._test_user_id)
         assert var_list.total == 5
@@ -156,7 +154,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         assert page2_var_ids.isdisjoint(page1_var_ids)
         assert page2_var_ids.issubset(self._variable_ids)
 
-    def test_get_node_variable(self):
+    def test_get_node_variable(self) -> None:
         srv = self._get_test_srv()
         node_var = srv.get_node_variable(self._test_app_id, self._node1_id, "str_var", user_id=self._test_user_id)
         assert node_var is not None
@@ -164,7 +162,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         assert node_var.name == "str_var"
         assert node_var.get_value() == build_segment("str_value")
 
-    def test_get_system_variable(self):
+    def test_get_system_variable(self) -> None:
         srv = self._get_test_srv()
         sys_var = srv.get_system_variable(self._test_app_id, "sys_var", user_id=self._test_user_id)
         assert sys_var is not None
@@ -172,7 +170,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         assert sys_var.name == "sys_var"
         assert sys_var.get_value() == build_segment("sys_value")
 
-    def test_get_conversation_variable(self):
+    def test_get_conversation_variable(self) -> None:
         srv = self._get_test_srv()
         conv_var = srv.get_conversation_variable(self._test_app_id, "conv_var", user_id=self._test_user_id)
         assert conv_var is not None
@@ -180,7 +178,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         assert conv_var.name == "conv_var"
         assert conv_var.get_value() == build_segment("conv_value")
 
-    def test_delete_node_variables(self):
+    def test_delete_node_variables(self) -> None:
         srv = self._get_test_srv()
         srv.delete_node_variables(self._test_app_id, self._node2_id, user_id=self._test_user_id)
         node2_var_count = self._session.scalar(
@@ -194,7 +192,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         )
         assert node2_var_count == 0
 
-    def test_delete_variable(self):
+    def test_delete_variable(self) -> None:
         srv = self._get_test_srv()
         node_1_var = self._session.scalars(
             select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == self._node1_str_var_id)
@@ -207,13 +205,13 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         )
         assert exists is False
 
-    def test__list_node_variables(self):
+    def test__list_node_variables(self) -> None:
         srv = self._get_test_srv()
         node_vars = srv._list_node_variables(self._test_app_id, self._node2_id, user_id=self._test_user_id)
         assert len(node_vars.variables) == 2
         assert {v.id for v in node_vars.variables} == set(self._node2_var_ids)
 
-    def test_get_draft_variables_by_selectors(self):
+    def test_get_draft_variables_by_selectors(self) -> None:
         srv = self._get_test_srv()
         selectors = [
             [self._node1_id, "str_var"],
@@ -228,28 +226,17 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
 class TestDraftVariableLoader(unittest.TestCase):
     _test_app_id: str
     _test_tenant_id: str
+    _engine: Engine
 
     _node1_id = "test_loader_node_1"
     _node_exec_id = str(uuid.uuid4())
 
-    # @pytest.fixture
-    # def test_app_id(self):
-    #     return str(uuid.uuid4())
+    @pytest.fixture(autouse=True)
+    def _bind_engine(self, sqlite_engine: Engine) -> None:
+        self._engine = sqlite_engine
 
-    # @pytest.fixture
-    # def test_tenant_id(self):
-    #     return str(uuid.uuid4())
-
-    # @pytest.fixture
-    # def session(self):
-    #     with Session(bind=db.engine, expire_on_commit=False) as session:
-    #         yield session
-
-    # @pytest.fixture
-    # def node_var(self, session):
-    #     pass
     @override
-    def setUp(self):
+    def setUp(self) -> None:
         self._test_app_id = str(uuid.uuid4())
         self._test_tenant_id = str(uuid.uuid4())
         self._test_user_id = str(uuid.uuid4())
@@ -281,7 +268,7 @@ class TestDraftVariableLoader(unittest.TestCase):
             conv_var,
         ]
 
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with Session(bind=self._engine, expire_on_commit=False) as session:
             session.add_all(_variables)
             session.flush()
             session.commit()
@@ -291,14 +278,14 @@ class TestDraftVariableLoader(unittest.TestCase):
         self._conv_var_id = conv_var.id
 
     @override
-    def tearDown(self):
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+    def tearDown(self) -> None:
+        with Session(bind=self._engine, expire_on_commit=False) as session:
             session.execute(delete(WorkflowDraftVariable).where(WorkflowDraftVariable.app_id == self._test_app_id))
             session.commit()
 
-    def test_variable_loader_with_empty_selector(self):
+    def test_variable_loader_with_empty_selector(self) -> None:
         var_loader = DraftVarLoader(
-            engine=db.engine,
+            engine=self._engine,
             app_id=self._test_app_id,
             tenant_id=self._test_tenant_id,
             user_id=self._test_user_id,
@@ -306,9 +293,9 @@ class TestDraftVariableLoader(unittest.TestCase):
         variables = var_loader.load_variables([])
         assert len(variables) == 0
 
-    def test_variable_loader_with_non_empty_selector(self):
+    def test_variable_loader_with_non_empty_selector(self) -> None:
         var_loader = DraftVarLoader(
-            engine=db.engine,
+            engine=self._engine,
             app_id=self._test_app_id,
             tenant_id=self._test_tenant_id,
             user_id=self._test_user_id,
@@ -328,9 +315,9 @@ class TestDraftVariableLoader(unittest.TestCase):
         node1_var = next(v for v in variables if v.selector[0] == self._node1_id)
         assert node1_var.id == self._node_var_id
 
-    def test_load_offloaded_variable_string_type_integration(self):
+    def test_load_offloaded_variable_string_type_integration(self) -> None:
         """Test _load_offloaded_variable with string type using DraftVariableSaver for data creation."""
-        account = _persist_account(tenant_id=self._test_tenant_id)
+        account = _persist_account(engine=self._engine, tenant_id=self._test_tenant_id)
 
         # Create a large string that will be offloaded
         test_content = "x" * 15000  # Create a string larger than LARGE_VARIABLE_THRESHOLD (10KB)
@@ -339,7 +326,7 @@ class TestDraftVariableLoader(unittest.TestCase):
         node_execution_id = str(uuid.uuid4())
 
         try:
-            with Session(bind=db.engine, expire_on_commit=False) as session:
+            with Session(bind=self._engine, expire_on_commit=False) as session:
                 # Use DraftVariableSaver to create offloaded variable (this mimics production)
                 saver = DraftVariableSaver(
                     session=session,
@@ -357,7 +344,7 @@ class TestDraftVariableLoader(unittest.TestCase):
 
                 # Now test loading using DraftVarLoader
                 var_loader = DraftVarLoader(
-                    engine=db.engine,
+                    engine=self._engine,
                     app_id=self._test_app_id,
                     tenant_id=self._test_tenant_id,
                     user_id=account.id,
@@ -375,12 +362,12 @@ class TestDraftVariableLoader(unittest.TestCase):
 
         finally:
             # Clean up - delete all draft variables for this app
-            with Session(bind=db.engine) as session:
+            with Session(bind=self._engine) as session:
                 service = WorkflowDraftVariableService(session)
                 service.delete_app_workflow_variables(self._test_app_id)
                 session.commit()
 
-    def test_load_offloaded_variable_object_type_integration(self):
+    def test_load_offloaded_variable_object_type_integration(self) -> None:
         """Test _load_offloaded_variable with object type using real storage and service."""
 
         # Create a test object
@@ -421,7 +408,7 @@ class TestDraftVariableLoader(unittest.TestCase):
         )
 
         try:
-            with Session(bind=db.engine, expire_on_commit=False) as session:
+            with Session(bind=self._engine, expire_on_commit=False) as session:
                 # Add upload file and variable file first to get their IDs
                 session.add_all([upload_file, variable_file])
                 session.flush()  # This generates the IDs
@@ -456,7 +443,7 @@ class TestDraftVariableLoader(unittest.TestCase):
 
                 # Create DraftVarLoader and test loading
                 var_loader = DraftVarLoader(
-                    engine=db.engine,
+                    engine=self._engine,
                     app_id=self._test_app_id,
                     tenant_id=self._test_tenant_id,
                     user_id=self._test_user_id,
@@ -473,7 +460,7 @@ class TestDraftVariableLoader(unittest.TestCase):
 
         finally:
             # Clean up
-            with Session(bind=db.engine) as session:
+            with Session(bind=self._engine) as session:
                 # Query and delete by ID to ensure they're tracked in this session
                 session.execute(delete(WorkflowDraftVariable).where(WorkflowDraftVariable.id == offloaded_var.id))
                 session.execute(
@@ -483,7 +470,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                 session.commit()
             storage.delete(upload_file.key)
 
-    def test_load_variables_with_offloaded_variables_integration(self):
+    def test_load_variables_with_offloaded_variables_integration(self) -> None:
         """Test load_variables method with mix of regular and offloaded variables using real storage."""
         # Create a regular variable (already exists from setUp)
         # Create offloaded variable content
@@ -523,7 +510,7 @@ class TestDraftVariableLoader(unittest.TestCase):
         )
 
         try:
-            with Session(bind=db.engine, expire_on_commit=False) as session:
+            with Session(bind=self._engine, expire_on_commit=False) as session:
                 # Add upload file and variable file first to get their IDs
                 session.add_all([upload_file, variable_file])
                 session.flush()  # This generates the IDs
@@ -547,7 +534,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                 # Test load_variables with both regular and offloaded variables
                 # This method should handle the relationship preloading internally
                 var_loader = DraftVarLoader(
-                    engine=db.engine,
+                    engine=self._engine,
                     app_id=self._test_app_id,
                     tenant_id=self._test_tenant_id,
                     user_id=self._test_user_id,
@@ -575,7 +562,7 @@ class TestDraftVariableLoader(unittest.TestCase):
 
         finally:
             # Clean up
-            with Session(bind=db.engine) as session:
+            with Session(bind=self._engine) as session:
                 # Query and delete by ID to ensure they're tracked in this session
                 session.execute(delete(WorkflowDraftVariable).where(WorkflowDraftVariable.id == offloaded_var.id))
                 session.execute(
@@ -593,19 +580,24 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
     _test_tenant_id: str
     _test_workflow_id: str
     _session: Session
+    _engine: Engine
     _node_id = "test_reset_node"
     _node_exec_id: str
     _workflow_node_exec_id: str
 
+    @pytest.fixture(autouse=True)
+    def _bind_sqlite(self, sqlite_session: Session, sqlite_engine: Engine) -> None:
+        self._session = sqlite_session
+        self._engine = sqlite_engine
+
     @override
-    def setUp(self):
+    def setUp(self) -> None:
         self._test_app_id = str(uuid.uuid4())
         self._test_tenant_id = str(uuid.uuid4())
         self._test_workflow_id = str(uuid.uuid4())
         self._test_user_id = str(uuid.uuid4())
         self._node_exec_id = str(uuid.uuid4())
         self._workflow_node_exec_id = str(uuid.uuid4())
-        self._session: Session = db.session()
 
         # Create a workflow node execution record with outputs
         # Note: The WorkflowNodeExecutionModel.id should match the node_execution_id in WorkflowDraftVariable
@@ -685,13 +677,13 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
         )
         self._conv_var.last_edited_at = datetime_utils.naive_utc_now()
 
-        with Session(db.engine, expire_on_commit=False) as persistent_session, persistent_session.begin():
+        with Session(self._engine, expire_on_commit=False) as persistent_session, persistent_session.begin():
             persistent_session.add(
                 self._workflow_node_execution,
             )
 
         # Add all to database
-        db.session.add_all(
+        self._session.add_all(
             [
                 self._node_var_with_exec,
                 self._node_var_without_exec,
@@ -699,7 +691,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
                 self._conv_var,
             ]
         )
-        db.session.flush()
+        self._session.flush()
 
         # Store IDs for assertions
         self._node_var_with_exec_id = self._node_var_with_exec.id
@@ -708,9 +700,9 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
         self._conv_var_id = self._conv_var.id
 
     @override
-    def tearDown(self):
+    def tearDown(self) -> None:
         self._session.rollback()
-        with Session(db.engine) as session, session.begin():
+        with Session(self._engine) as session, session.begin():
             stmt = delete(WorkflowNodeExecutionModel).where(
                 WorkflowNodeExecutionModel.id == self._workflow_node_execution.id
             )
@@ -724,7 +716,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
         conversation_vars = self._conv_variables
 
         # Create a simple graph with the test node
-        graph = {
+        graph: dict[str, object] = {
             "nodes": [{"id": "test_reset_node", "type": "llm", "title": "Test Node", "data": {"type": "llm"}}],
             "edges": [],
         }
@@ -743,7 +735,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
         )
         return workflow
 
-    def test_reset_system_variable_raises_error(self):
+    def test_reset_system_variable_raises_error(self) -> None:
         """Test that resetting a system variable raises an error"""
         srv = self._get_test_srv()
         mock_workflow = self._create_mock_workflow()
@@ -756,8 +748,8 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
             value=build_segment("sys_value"),
             node_execution_id=self._node_exec_id,
         )
-        db.session.add(sys_var)
-        db.session.flush()
+        self._session.add(sys_var)
+        self._session.flush()
 
         # Attempt to reset the system variable
         with pytest.raises(VariableResetError) as exc_info:
