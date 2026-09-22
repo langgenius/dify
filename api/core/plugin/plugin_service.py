@@ -114,9 +114,10 @@ class PluginService:
     PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL = 0.05
     PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX = b"\x00dify-plugin-model-providers-zstd-v1:"
     PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_MIN_BYTES = 64 * 1024
-    # Provider declarations are tenant-scoped but contain no tenant credentials. Cache the immutable parsed tuple by
-    # payload content so unchanged Redis data does not pay the Pydantic validation cost on every retrieval request.
-    # A changed payload always has a different key, while the small LRU bounds per-process memory usage.
+    # Provider declarations are tenant-scoped but contain no tenant credentials. Cache the parsed tuple by payload
+    # content so unchanged Redis data does not pay the Pydantic validation cost on every retrieval request. The cached
+    # declarations are shared and consumers must treat them as read-only. A changed payload always has a different key,
+    # while the small LRU bounds per-process memory usage.
     PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES = 8
     _parsed_plugin_model_providers_cache: OrderedDict[tuple[int, bytes], tuple[PluginModelProviderDeclaration, ...]] = (
         OrderedDict()
