@@ -61,6 +61,8 @@ PLAIN: frozenset[str] = frozenset(
         "No fix is staged for this failure -- keep the draft or revert.",
         "I didn't apply the workflow: it would fail before its first node. Adjust the plan and approve again.",
         "I didn't apply the change: the workflow would fail before its first node. Adjust it and approve again.",
+        "I couldn't apply the workflow -- see the error above. Adjust the plan and approve again.",
+        "I couldn't apply the change -- see the error above. Adjust it and approve again.",
         # card titles
         "Test run",
         "Review",
@@ -77,6 +79,7 @@ PLAIN: frozenset[str] = frozenset(
         "Model not configured",
         "Nothing was applied to the canvas",
         "Couldn't apply the fix",
+        "Couldn't apply the workflow",
         "Proceeding with sensible defaults",
         "Repeated failure",
         "The workflow can't start",
@@ -143,6 +146,19 @@ TEMPLATES: list[Template] = [
     Template(
         pattern=re.compile(r"^The generated workflow would fail before its first node: (?P<value>.+)$", re.DOTALL),
         template="The generated workflow would fail before its first node: {value}",
+        translate_fields=frozenset(),  # value is the engine's node error, kept verbatim
+    ),
+    Template(
+        pattern=re.compile(r"^The generated workflow couldn't be applied to the draft: (?P<value>.+)$", re.DOTALL),
+        template="The generated workflow couldn't be applied to the draft: {value}",
+        translate_fields=frozenset(),  # value is a validation message; re-inserted verbatim
+    ),
+    Template(
+        pattern=re.compile(
+            r"^The proposed fix would leave a workflow that fails before its first node: (?P<value>.+)$",
+            re.DOTALL,
+        ),
+        template="The proposed fix would leave a workflow that fails before its first node: {value}",
         translate_fields=frozenset(),  # value is the engine's node error, kept verbatim
     ),
     Template(

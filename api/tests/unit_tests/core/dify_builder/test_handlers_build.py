@@ -2042,6 +2042,39 @@ def test_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session():
     assert out.context.staged_repair == []  # engages the empty-repair guard
 
 
+def test_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix():
+    """The preflight rejects a fix that APPLIED fine but would leave a draft
+    that fails at Graph.init. "The proposed fix no longer applies" is wrong
+    for that -- nothing about the draft moved. Same recovery as a stale
+    intent (nothing written, the fix dropped, stay at the gate), true reason."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.handlers_build import handle_await_repair
+    from core.dify_builder.models import MutationIntent
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    class _WouldNotStartDifyPort(FakeBuildDifyPort):
+        def apply_repair(self, *_args, **_kwargs):
+            raise DraftWouldNotStartError("the draft would not start: node 'llm' (llm): 1 validation error")
+
+    env, repo = _new_env()
+    env.dify = _WouldNotStartDifyPort()
+    s = _seed_build_session(repo, PcState.BUILD_AWAIT_REPAIR)
+    fc = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "m.w", "value": 1})]
+    )
+
+    out = handle_await_repair(env, Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor()), s, fc)
+
+    assert out.next == PcState.BUILD_AWAIT_REPAIR
+    error = next(i for i in out.items if i.kind == "error")
+    assert error.payload["title"] == "The workflow can't start"
+    assert error.payload["body"] == (
+        "The proposed fix would leave a workflow that fails before its first node: "
+        "the draft would not start: node 'llm' (llm): 1 validation error"
+    )
+    assert out.context.staged_repair == []
+
+
 def test_repair_counter_tracks_consecutive_repeats_of_the_same_error():
     """The counter is per-failure, not a global budget: an interleaved
     A -> B -> B must NOT trip the guard, because B has survived one repair."""
@@ -2390,7 +2423,7 @@ def test_a_launch_error_frame_reaches_diagnose_and_trips_the_breaker_on_the_thir
 
 def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing():
     """``apply_repair`` now dry-validates the graph it is about to write and
-    raises ``PreflightError`` (a ``ValueError``). Before this, the error left
+    raises ``PreflightError`` (a ``DraftWouldNotStartError``). Before this, the error left
     the handler uncaught and the advance died mid-step; now it is a card and
     the plan stays approvable, so re-approving regenerates the graph.
 
@@ -2401,6 +2434,7 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     once, then raises) so the assertion below covers the real sequence: the
     handler must revert the client's canvas back to the plan-approval
     checkpoint."""
+    from core.dify_builder.errors import DraftWouldNotStartError
     from core.dify_builder.handlers_build import handle_plan_approval
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -2409,7 +2443,9 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     def would_not_start(*_a, on_canvas=None, **_k):
         if on_canvas is not None:
             on_canvas({"event": "add_node", "node_id": "llm"})
-        raise ValueError("the draft would not start: node 'llm' (llm): 2 validation errors for LLMNodeData")
+        raise DraftWouldNotStartError(
+            "the draft would not start: node 'llm' (llm): 2 validation errors for LLMNodeData"
+        )
 
     dify.apply_repair = would_not_start
     events: list[dict] = []
@@ -2431,6 +2467,46 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     # The already-streamed add_node marker precedes the revert: the handler
     # tells the client to fall back to the checkpoint AFTER apply_repair's
     # own per-intent markers, same as production ordering.
+    assert [e["event"] for e in events] == ["create_checkpoint", "add_node", "revert_checkpoint"]
+
+
+def test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_cannot_start():
+    """A graph_ops rejection ("node not found") is a ValueError too, but the
+    draft was never checked for startability -- the generated intents just
+    did not apply. Calling that "The workflow can't start" sends the user
+    looking for a broken node that does not exist. Same recovery (nothing
+    written, revert the streamed markers, plan still approvable), honest
+    reason."""
+    from core.dify_builder.handlers_build import handle_plan_approval
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+
+    def does_not_apply(*_a, on_canvas=None, **_k):
+        if on_canvas is not None:
+            on_canvas({"event": "add_node", "node_id": "llm"})
+        raise ValueError("node not found: x")
+
+    dify.apply_repair = does_not_apply
+    events: list[dict] = []
+    env, repo = _new_env(dify=dify, emit_canvas=events.append)
+    s = _seed_build_session(
+        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve", "Summarize"], plan_version_tag="v1"
+    )
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+
+    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
+
+    assert res.next == PcState.BUILD_PLAN_APPROVAL
+    assert res.context.built_node_ids == []
+    error = next(i for i in res.items if i.kind == "error")
+    assert error.payload["title"] == "Couldn't apply the workflow"
+    assert error.payload["body"] == "The generated workflow couldn't be applied to the draft: node not found: x"
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert assistant.payload["execution"]["status"] == "error"
+    assert assistant.payload["reply_text"] == (
+        "I couldn't apply the workflow -- see the error above. Adjust the plan and approve again."
+    )
     assert [e["event"] for e in events] == ["create_checkpoint", "add_node", "revert_checkpoint"]
 
 

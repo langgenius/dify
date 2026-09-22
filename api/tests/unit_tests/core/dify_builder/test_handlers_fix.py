@@ -221,6 +221,35 @@ def test_apply_surfaces_a_stale_intent_instead_of_failing_the_session():
     assert result.context.staged_repair == []
 
 
+def test_apply_says_a_fix_that_would_not_start_is_not_a_stale_fix():
+    """A fix the preflight rejected applied fine; it would leave a draft that
+    fails at Graph.init. Same recovery as a stale intent, true reason."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.models import MutationIntent
+
+    env, _repo = _new_env()
+
+    def _would_not_start(*_args, **_kwargs):
+        raise DraftWouldNotStartError("the draft would not start: node 'code' (code): 1 validation error")
+
+    env.dify.apply_repair = _would_not_start  # type: ignore[method-assign]
+    s = _session(current_state=PcState.FIX_APPLY)
+    fc = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "code", "path": "o.r", "value": 1})]
+    )
+
+    result = handle_apply(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.FIX_AWAIT_DECISION
+    error = next(i for i in result.items if i.kind == "error")
+    assert error.payload["title"] == "The workflow can't start"
+    assert error.payload["body"] == (
+        "The proposed fix would leave a workflow that fails before its first node: "
+        "the draft would not start: node 'code' (code): 1 validation error"
+    )
+    assert result.context.staged_repair == []
+
+
 def test_apply_forwards_env_emit_canvas_to_the_adapters_on_canvas_callback():
     events: list[dict] = []
     repo = InMemoryRepository()
