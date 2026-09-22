@@ -542,14 +542,11 @@ class TestDeclaredBranchHandles:
         assert declared_branch_handles(_if_else("n", ("true",))) == ["true", "false"]
         assert declared_branch_handles(_if_else("n", ("c1", "c2"))) == ["c1", "c2", "false"]
 
-    def test_question_classifier_and_human_input_declare_their_ids(self):
+    def test_question_classifier_declares_its_class_ids(self):
         from core.workflow.graph_normalizers import declared_branch_handles
 
         qc = {"id": "q", "data": {"type": "question-classifier", "classes": [{"id": "1", "name": "A"}, {"id": "2"}]}}
-        hi = {"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}
         assert declared_branch_handles(qc) == ["1", "2"]
-        # human-input always routes an implicit timeout arm too (R1(b)).
-        assert declared_branch_handles(hi) == ["approve", "deny", "__timeout"]
 
     def test_human_input_declares_its_action_ids_plus_the_implicit_timeout(self):
         # (i) R1(b): human-input routes an implicit "__timeout" arm
@@ -666,7 +663,15 @@ class TestRepairBranchEdgeHandles:
                 "id": "q",
                 "data": {
                     "type": "question-classifier",
-                    "classes": [{"id": "1", "name": "Billing"}, {"id": "2", "name": "Tech Support"}],
+                    # A third, unwired class: with only 2 classes, a broken
+                    # name match on "tech_support" could still "succeed" by
+                    # elimination (only one handle would ever be left
+                    # unused). With 3, elimination can't mask a failed match.
+                    "classes": [
+                        {"id": "1", "name": "Billing"},
+                        {"id": "2", "name": "Tech Support"},
+                        {"id": "3", "name": "Refunds"},
+                    ],
                 },
             }
         ]
@@ -737,6 +742,164 @@ class TestRepairBranchEdgeHandles:
         assert repair_branch_edge_handles(nodes, edges) == []
         assert _handles(edges) == [("a", "approve"), ("b", "deny"), ("c", "__timeout")]
 
+    def test_a_missing_source_handle_key_on_a_fail_branch_node_means_source_and_is_untouched(self):
+        # Review fix round 1, Important 1: graphon resolves a missing/None
+        # sourceHandle to "source" (edge_config.get("sourceHandle",
+        # "source"), graph/graph.py:131). These are already-valid graphs;
+        # they must come out byte-for-byte identical, not re-homed.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        node = {"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}
+
+        edges = _edges("h", [(None, "a"), (None, "b")])
+        assert repair_branch_edge_handles([node], edges) == []
+        assert _handles(edges) == [("a", None), ("b", None)]
+
+        edges = _edges("h", [("source", "a"), (None, "b")])
+        assert repair_branch_edge_handles([node], edges) == []
+        assert _handles(edges) == [("a", "source"), ("b", None)]
+
+        edges = _edges("h", [(None, "a"), (None, "b"), ("fail-branch", "e")])
+        assert repair_branch_edge_handles([node], edges) == []
+        assert _handles(edges) == [("a", None), ("b", None), ("e", "fail-branch")]
+
+    def test_fail_branch_if_else_fan_out_stays_unresolved_like_before_fail_branch_existed(self):
+        # Review fix round 1, Important 2 (probe 1): "fail-branch" must not
+        # be a candidate the fan-out rule assigns to -- with true/false both
+        # wired, a third, unrecognized name has nowhere safe to land.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        node = _if_else("n", ("true",))
+        node["data"]["error_strategy"] = "fail-branch"
+        edges = _edges("n", [("true", "a"), ("false", "b"), ("matched", "c")])
+
+        unresolved = repair_branch_edge_handles([node], edges)
+
+        assert len(unresolved) == 1
+        assert unresolved[0]["handle"] == "matched"
+        assert _handles(edges) == [("a", "true"), ("b", "false"), ("c", "matched")]
+
+    def test_fail_branch_if_else_three_default_edges_stay_unresolved_like_before_fail_branch_existed(self):
+        # Review fix round 1, Important 2 (probe 2): three default-handle
+        # edges against true/false only (fail-branch excluded from the
+        # pool) is exactly the pre-fail-branch "too many defaults" case.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        node = _if_else("n", ("true",))
+        node["data"]["error_strategy"] = "fail-branch"
+        edges = _edges("n", [("source", "a"), ("source", "b"), ("source", "c")])
+
+        unresolved = repair_branch_edge_handles([node], edges)
+
+        assert len(unresolved) == 3
+        assert all(h == "source" for _, h in _handles(edges))
+
+    def test_fail_branch_success_alias_maps_to_source_not_elimination(self):
+        # Review fix round 1, Important 2 (probe 3): "success" is an
+        # explicit alias for a plain fail-branch node's "source" arm, not a
+        # guess made by process of elimination.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        nodes = [{"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}]
+        edges = _edges("h", [("source", "ok"), ("success", "b")])
+        assert repair_branch_edge_handles(nodes, edges) == []
+        assert _handles(edges) == [("ok", "source"), ("b", "source")]
+
+    def test_fail_branch_unaliased_named_edge_never_lands_on_source_via_elimination(self):
+        # Review fix round 1, Important 2: none of the three probes above
+        # actually exercises the "skip rule 2 on a plain fail-branch node"
+        # guard itself (probes 1-2 fail earlier on "unused != 1"; probe 3 is
+        # claimed by an alias before reaching elimination at all). A word
+        # not on either alias list must still fail closed rather than land
+        # on the one handle ("source") that rule 2 would otherwise see as
+        # the sole unused slot.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        nodes = [{"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}]
+        edges = _edges("h", [("problem", "b")])
+
+        unresolved = repair_branch_edge_handles(nodes, edges)
+
+        assert len(unresolved) == 1
+        assert _handles(edges) == [("b", "problem")]
+
+    def test_human_input_timeout_alias_is_claimed_before_elimination(self):
+        # Review fix round 1, Important 3: "timeout" must resolve via the
+        # explicit alias (rule 1), not fan out onto the unwired "deny" arm
+        # by elimination (rule 2).
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        nodes = [{"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}]
+        edges = _edges("h", [("approve", "a"), ("timeout", "t")])
+        assert repair_branch_edge_handles(nodes, edges) == []
+        assert _handles(edges) == [("a", "approve"), ("t", "__timeout")]
+
+    def test_duplicate_canonical_class_names_fail_closed_instead_of_picking_a_winner(self):
+        # Review fix round 1, Minor 1a: "Support" and "support" both canon
+        # to "support" -- that name must not silently pick class "1" or "2".
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        nodes = [
+            {
+                "id": "q",
+                "data": {
+                    "type": "question-classifier",
+                    "classes": [{"id": "1", "name": "Support"}, {"id": "2", "name": "support"}],
+                },
+            }
+        ]
+        edges = _edges("q", [("support", "a")])
+
+        unresolved = repair_branch_edge_handles(nodes, edges)
+
+        assert len(unresolved) == 1
+        assert _handles(edges) == [("a", "support")]
+
+    def test_an_alias_that_disagrees_with_a_stem_match_fails_closed(self):
+        # Review fix round 1, Minor 1b: "default" is the ELSE alias, but it
+        # is also the unambiguous stem of a case literally named
+        # "default_case" -- the two signals disagree, so neither wins.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        node = _if_else("n", ("default_case", "other"))
+        edges = _edges("n", [("default", "a")])
+
+        unresolved = repair_branch_edge_handles([node], edges)
+
+        assert len(unresolved) == 1
+        assert _handles(edges) == [("a", "default")]
+
+    def test_if_alias_needs_exactly_one_case_not_exactly_two_handles(self):
+        # Review fix round 1, Minor 2: zero cases + fail-branch also has 2
+        # declared handles (["false", "fail-branch"]) -- the same count as
+        # "one case + ELSE" -- but there is no IF arm to alias "yes" onto.
+        # "false" is already taken by another edge, so elimination (which
+        # would otherwise also land "yes" on the sole leftover handle) can't
+        # mask a wrongly-firing IF alias either: this isolates the alias fix.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        node = _if_else("n", ())
+        node["data"]["error_strategy"] = "fail-branch"
+        edges = _edges("n", [("false", "z"), ("yes", "a")])
+
+        unresolved = repair_branch_edge_handles([node], edges)
+
+        assert len(unresolved) == 1
+        assert unresolved[0]["handle"] == "yes"
+        assert _handles(edges) == [("z", "false"), ("a", "yes")]
+
+    def test_one_case_if_else_keeps_its_if_alias_even_with_fail_branch(self):
+        # Review fix round 1, Minor 2: one case + fail-branch has 3 declared
+        # handles (["true", "false", "fail-branch"]); the IF alias must
+        # still resolve since there is still exactly one case.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        node = _if_else("n", ("true",))
+        node["data"]["error_strategy"] = "fail-branch"
+        edges = _edges("n", [("yes", "a")])
+        assert repair_branch_edge_handles([node], edges) == []
+        assert _handles(edges) == [("a", "true")]
+
 
 class TestUndeclaredBranchHandles:
     def test_reports_every_edge_whose_handle_the_node_does_not_declare(self):
@@ -779,3 +942,15 @@ class TestUndeclaredBranchHandles:
         nodes = [{"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}]
         edges = _edges("h", [("approve", "a"), ("deny", "b"), ("__timeout", "c")])
         assert undeclared_branch_handles(nodes, edges) == []
+
+    def test_a_missing_source_handle_key_on_a_fail_branch_node_reports_nothing(self):
+        # Review fix round 1, Important 1: a missing/None sourceHandle means
+        # "source" to graphon; it must not be reported as an undeclared
+        # handle when "source" itself is declared (a fail-branch node).
+        from core.workflow.graph_normalizers import undeclared_branch_handles
+
+        node = {"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}
+
+        assert undeclared_branch_handles([node], _edges("h", [(None, "a"), (None, "b")])) == []
+        assert undeclared_branch_handles([node], _edges("h", [("source", "a"), (None, "b")])) == []
+        assert undeclared_branch_handles([node], _edges("h", [(None, "a"), (None, "b"), ("fail-branch", "e")])) == []
