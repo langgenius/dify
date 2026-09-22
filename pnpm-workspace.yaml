@@ -252,7 +252,6 @@ catalog:
   svgo: 4.1.0
   tailwindcss: 4.3.3
   tldts: 7.4.13
-  tsx: 4.23.13
   typescript: npm:@typescript/typescript6@6.0.2
   uglify-js: 3.19.3
   undici: 7.29.1

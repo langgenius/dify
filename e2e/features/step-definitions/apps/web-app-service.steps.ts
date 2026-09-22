@@ -1,11 +1,11 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp } from '../../../support/api/apps'
-import { getAppSiteURL } from '../../../support/api/web-apps'
-import { syncRunnableWorkflowDraft } from '../../../support/api/workflows'
-import { createE2EResourceName } from '../../../support/naming'
-import { baseURL, defaultLocale } from '../../../test-env'
+import { createTestApp } from '../../../support/api/apps.ts'
+import { getAppSiteURL } from '../../../support/api/web-apps.ts'
+import { syncRunnableWorkflowDraft } from '../../../support/api/workflows.ts'
+import { createE2EResourceName } from '../../../support/naming.ts'
+import { baseURL, defaultLocale } from '../../../test-env.ts'
 
 Given('a new runnable workflow app has been published', async function (this: DifyWorld) {
   const client = this.getConsoleClient()

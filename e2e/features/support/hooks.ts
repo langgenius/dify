@@ -1,16 +1,16 @@
 import type { Browser, Page } from '@playwright/test'
 import type { Buffer } from 'node:buffer'
-import type { CleanupTask } from '../../support/cleanup'
-import type { DifyWorld } from './world'
+import type { CleanupTask } from '../../support/cleanup.ts'
+import type { DifyWorld } from './world.ts'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium, webkit } from '@playwright/test'
-import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
-import { runCleanupTasks, shouldFailForCleanupErrors } from '../../support/cleanup'
-import { getVoiceInputTestMaterialPath } from '../../support/test-materials'
-import { baseURL, cucumberHeadless, cucumberSlowMo, e2eBrowser } from '../../test-env'
+import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth.ts'
+import { runCleanupTasks, shouldFailForCleanupErrors } from '../../support/cleanup.ts'
+import { getVoiceInputTestMaterialPath } from '../../support/test-materials.ts'
+import { baseURL, cucumberHeadless, cucumberSlowMo, e2eBrowser } from '../../test-env.ts'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
 const artifactsDir = path.join(e2eRoot, 'cucumber-report', 'artifacts')
