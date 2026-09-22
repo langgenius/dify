@@ -1,9 +1,10 @@
 import type { ExtraProps } from 'streamdown'
 import type { SimplePluginInfo } from '../markdown/streamdown-wrapper'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
-import { usePluginReadmeAsset } from '@/service/use-plugins'
+import { pluginAssetQueryOptions } from './plugin-asset-query'
 import { getMarkdownImageURL, hasImageChild } from './utils'
 
 type HastChildNode = {
@@ -24,12 +25,9 @@ export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, no
   const isImageParagraph = firstChild?.tagName === 'img'
   const imageSrc = isImageParagraph ? firstChild?.properties?.src : undefined
 
-  const { data: assetData } = usePluginReadmeAsset({
-    plugin_unique_identifier: pluginUniqueIdentifier,
-    file_name: isImageParagraph && imageSrc ? imageSrc : '',
-  })
+  const { data: assetData } = useQuery(pluginAssetQueryOptions(imageSrc, pluginUniqueIdentifier))
 
-  const [blobUrl, setBlobUrl] = useState<string>()
+  const [blobUrl, setBlobUrl] = useState<{ data: Blob; url: string }>()
 
   useEffect(() => {
     if (!assetData) {
@@ -38,7 +36,7 @@ export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, no
     }
 
     const objectUrl = URL.createObjectURL(assetData)
-    setBlobUrl(objectUrl)
+    setBlobUrl({ data: assetData, url: objectUrl })
 
     return () => {
       URL.revokeObjectURL(objectUrl)
@@ -46,12 +44,12 @@ export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, no
   }, [assetData])
 
   const imageUrl = useMemo(() => {
-    if (blobUrl) return blobUrl
+    if (blobUrl && blobUrl.data === assetData) return blobUrl.url
 
     if (isImageParagraph && imageSrc) return getMarkdownImageURL(imageSrc, pluginId)
 
     return ''
-  }, [blobUrl, imageSrc, isImageParagraph, pluginId])
+  }, [assetData, blobUrl, imageSrc, isImageParagraph, pluginId])
 
   if (isImageParagraph) {
     const remainingChildren =
@@ -59,7 +57,7 @@ export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, no
 
     return (
       <div className="markdown-img-wrapper" data-testid="image-paragraph-wrapper">
-        <ImageGallery srcs={[imageUrl]} />
+        <ImageGallery key={JSON.stringify([pluginUniqueIdentifier, imageUrl])} srcs={[imageUrl]} />
         {remainingChildren && (
           <div className="mt-2" data-testid="remaining-children">
             {remainingChildren}
