@@ -202,3 +202,70 @@ class TestNodeBuilderHandleContract:
         )
 
         assert '"source_handle":"score_equals_60"' in out
+
+
+class TestNodeSnippetContracts:
+    """Task 4: the generator prompt must not contradict the engine's node-data
+    schemas. Each case below was live-verified against a graphon entity (see
+    docs/superpowers/triage/generator-blockers-2026-09-22/FINDINGS.md Blocker A)."""
+
+    def test_parameter_extractor_query_is_one_selector_not_an_array_of_selectors(self):
+        """graphon ParameterExtractorNodeData.query: list[str] -- ONE selector,
+        not an array of selector arrays."""
+        prompt = get_node_builder_system_prompt("parameter-extractor")
+
+        assert '"query": ["<src>", "<var>"]' in prompt
+        assert "[[" not in prompt
+
+    def test_if_else_enumerates_the_engines_comparison_operators_verbatim(self):
+        """graphon utils.condition.entities.SupportedComparisonOperator -- the
+        number comparisons are the unicode >= <= != forms only."""
+        prompt = get_node_builder_system_prompt("if-else")
+
+        for operator in (
+            "contains",
+            "not contains",
+            "start with",
+            "end with",
+            "is not",
+            "empty",
+            "not empty",
+            "in",
+            "not in",
+            "all of",
+            "null",
+            "not null",
+            "exists",
+            "not exists",
+            "≥",
+            "≤",
+            "≠",
+        ):
+            assert operator in prompt
+        # The unicode forms are listed as the only valid operators...
+        assert '"≥"' in prompt
+        assert '"≤"' in prompt
+        assert '"≠"' in prompt
+        # ...and the ASCII digraphs are called out as wrong, not silently omitted.
+        assert "never" in prompt.lower()
+        assert '">="' in prompt
+        assert '"<="' in prompt
+        assert '"!="' in prompt
+
+    def test_template_transform_marks_variables_required_with_empty_list_form(self):
+        """graphon TemplateTransformNodeData.variables has no default -- it is
+        required even for a template that references no variables."""
+        prompt = get_node_builder_system_prompt("template-transform")
+
+        assert "REQUIRED" in prompt
+        assert '"variables": []' in prompt
+
+    def test_llm_documents_structured_output_as_a_three_segment_reference(self):
+        """graphon LLM node outputs text/reasoning_content/usage/finish_reason
+        always, plus a structured_output OBJECT only when explicitly enabled --
+        addressed with a 3-segment selector, never a flat <node>.<field>."""
+        prompt = get_node_builder_system_prompt("llm")
+
+        assert "structured_output_enabled" in prompt
+        assert "{{#<node>.structured_output.<field>#}}" in prompt
+        assert '"text"' in prompt
