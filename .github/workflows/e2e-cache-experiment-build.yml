@@ -1,0 +1,87 @@
+name: E2E Cache Experiment Build
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-web
+        with:
+          cache-save: 'false'
+      - name: Initialize isolated build
+        id: inputs
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          case "$MODE" in existing|cold|fresh) ;; *) exit 1 ;; esac
+          rm -rf web/.next
+          source_hash=$(git ls-tree -r HEAD -- web packages e2e/scripts e2e/package.json e2e/test-env.ts package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc .github/actions/setup-web .github/workflows/web-e2e.yml | sha256sum | cut -d ' ' -f 1)
+          echo "hash=$source_hash" >> "$GITHUB_OUTPUT"
+          echo "started=$(date +%s%3N)" >> "$GITHUB_OUTPUT"
+      - name: Restore selected cache
+        id: cache
+        if: inputs.mode != 'cold'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: web/.next/cache
+          key: ${{ inputs.mode == 'fresh' && format('e2e-cache-experiment-{0}-{1}', github.run_id, github.run_attempt) || format('e2e-next-v1-{0}-{1}-{2}-{3}', runner.os, runner.arch, hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'), steps.inputs.outputs.hash) }}
+          restore-keys: ${{ inputs.mode == 'existing' && format('e2e-next-v1-{0}-{1}-{2}-', runner.os, runner.arch, hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml')) || '' }}
+      - name: Verify selected cache
+        if: inputs.mode != 'cold'
+        env:
+          MODE: ${{ inputs.mode }}
+          HIT: ${{ steps.cache.outputs.cache-hit }}
+          MATCHED: ${{ steps.cache.outputs.cache-matched-key }}
+        run: |
+          test -n "$MATCHED"
+          if [[ "$MODE" == fresh ]]; then test "$HIT" = true; fi
+      - name: Inspect starting cache
+        env:
+          E2E_CACHE_RESTORE_STARTED: ${{ steps.inputs.outputs.started }}
+          E2E_CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+          E2E_CACHE_PRIMARY_KEY: ${{ steps.cache.outputs.cache-primary-key }}
+          E2E_CACHE_MATCHED_KEY: ${{ steps.cache.outputs.cache-matched-key }}
+          E2E_BUILD_SOURCE_HASH: ${{ steps.inputs.outputs.hash }}
+        run: node .github/scripts/e2e-build-diagnostics.cjs before
+      - name: Build Web
+        id: build
+        working-directory: e2e
+        env:
+          E2E_FORCE_WEB_BUILD: '1'
+          CACHE_HIT: 'false'
+        run: |
+          set -o pipefail
+          vp run e2e:web:build 2>&1 | tee .logs/web-build.log
+      - name: Inspect resulting cache
+        if: ${{ !cancelled() }}
+        env:
+          E2E_BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: node .github/scripts/e2e-build-diagnostics.cjs after
+      - name: Upload experiment evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cache-experiment-${{ inputs.mode }}-${{ github.run_attempt }}
+          path: e2e/.logs/*.log
+          include-hidden-files: true
+          retention-days: 7
+      - name: Save only the isolated cold-build cache
+        if: inputs.mode == 'cold'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: web/.next/cache
+          key: e2e-cache-experiment-${{ github.run_id }}-${{ github.run_attempt }}

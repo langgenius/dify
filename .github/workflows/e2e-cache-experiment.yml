@@ -1,0 +1,25 @@
+name: E2E Cache Experiment
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/e2e-cache-experiment*.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  existing:
+    uses: ./.github/workflows/e2e-cache-experiment-build.yml
+    with:
+      mode: existing
+  cold:
+    uses: ./.github/workflows/e2e-cache-experiment-build.yml
+    with:
+      mode: cold
+  fresh:
+    needs: cold
+    uses: ./.github/workflows/e2e-cache-experiment-build.yml
+    with:
+      mode: fresh
