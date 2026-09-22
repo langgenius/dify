@@ -1463,10 +1463,14 @@ class WorkflowGenerator:
             if n.get("id") in inner_node_to_parent.values():
                 parent_type[n["id"]] = n.get("data", {}).get("type", "")
 
-        # Branch nodes (if-else / question-classifier) emit one handle per
-        # case; an edge leaving them on the default "source" handle dangles
-        # off a handle that doesn't exist on the canvas. Repair the
-        # unambiguous cases before edge ids are computed from the handles.
+        # Branch nodes (if-else / question-classifier / human-input, and any
+        # node with error_strategy "fail-branch") route only on the handles
+        # they declare. An edge on any other handle -- the default "source"
+        # on an if-else, or a named-but-wrong one like the planner's "else"
+        # against case "true" -- dangles off a handle that doesn't exist and
+        # its arm never runs. Re-home only what is forced (fail-closed:
+        # ambiguous edges are left as they are), before edge ids are
+        # computed from the handles.
         cls._repair_branch_edge_handles(nodes=nodes, edges=edges)
 
         # Dedupe edges (LLMs sometimes emit the same edge twice).
@@ -2224,18 +2228,24 @@ class WorkflowGenerator:
 
         if-else exposes one source handle per ``case_id`` plus the implicit
         "false" (ELSE) handle; question-classifier one per class id; human-input
-        one per action id. The builder prompt documents this, but the planner
-        names the handles BEFORE the node builder picks the ids (ESQ1-303:
-        ``score_equals_60`` / ``else`` against a case named ``true``) and LLMs
-        still emit the default handle -- either renders as an edge hanging off
-        a handle that doesn't exist, and the arm silently never runs.
+        one per action id plus the implicit "__timeout" arm; a node with
+        ``error_strategy: "fail-branch"`` adds a "fail-branch" arm (a plain
+        node's success arm stays on "source"). The builder prompt documents
+        this, but the planner names the handles BEFORE the node builder picks
+        the ids (ESQ1-303: ``score_equals_60`` / ``else`` against a case named
+        ``true``) and LLMs still emit the default handle -- either renders as
+        an edge hanging off a handle that doesn't exist, and the arm silently
+        never runs.
 
         Delegates to ``core.workflow.graph_normalizers.repair_branch_edge_handles``
         (shared with the Builder). Repairs only what is forced -- exact / alias /
         name matches, one arm fanning out under an invented name, default-handle
-        edges onto unused handles in declaration order; anything ambiguous is
-        left alone so ``_validate_structure`` fails the graph closed. A wrong
-        guess that swaps the IF and ELSE arms is worse than a visible rejection.
+        edges onto unused handles in declaration order. Anything ambiguous is
+        left exactly as it was (the shared function returns it; this method
+        logs each one as a warning), so a validator can still see it and fail
+        closed -- the INVALID_BRANCH_HANDLE check, when enabled. A wrong guess
+        that swaps the IF and ELSE arms is worse than an edge left for that
+        check.
         """
         unresolved = graph_normalizers.repair_branch_edge_handles(nodes, edges)
         for item in unresolved:
