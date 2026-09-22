@@ -961,3 +961,35 @@ def test_build_change_set_survives_non_string_changed_nodes():
     assert changes == ["1", "n2"]
     assert change_set.diff == "1; n2"
     assert scope == "configuration"
+
+
+def test_verify_keeps_the_ports_run_error():
+    """Fix's ``Run(...)`` literal had no ``error=`` at all, so a launch failure
+    was persisted with an empty error and diagnose saw nothing."""
+    launch_error = "node 'node4' (http-request): body.data.0.type Field required [invalid_param]"
+    env, _ = _new_env()
+    env.dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify", immutable=True, dify_run_id="", status="failed", per_node=[], error=launch_error
+    )
+    s = _session(current_state=PcState.FIX_VERIFY)
+
+    res = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+
+    assert res.next == PcState.FIX_AWAIT_DECISION
+    assert res.run.status == "failed"
+    assert res.run.error == launch_error
+
+
+def test_verify_survives_a_run_draft_that_raises():
+    """Build and Edit already degrade a raising ``run_draft`` to a failed Run;
+    Fix's ``handle_verify`` had no try/except and killed the advance."""
+    env, _ = _new_env()
+    env.dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
+    s = _session(current_state=PcState.FIX_VERIFY)
+
+    res = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+
+    assert res.next == PcState.FIX_AWAIT_DECISION
+    assert res.run.status == "failed"
+    assert res.run.error == "kaboom-provider"
+    assert res.run.culprit_node_id == ""

@@ -701,7 +701,13 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     def emit(event: NodeEvent) -> None:
         progress.observe_node("fix-run-validation", event)
 
-    result = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
+    try:
+        result = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
+    except Exception as exc:
+        # Same degrade as Build/Edit: never crash the advance; the launch error
+        # is captured on the Run (log + store) so the decision gate can show it.
+        logger.exception("dify_builder verify run failed to launch (session=%s, app=%s)", s.id, s.app_id)
+        result = Run(kind="verify", status="failed", per_node=[], error=launch_error_text(exc))
     if result.status == "succeeded":
         progress.complete("fix-run-validation")
     else:
@@ -720,6 +726,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         dify_run_id=result.dify_run_id,
         status=result.status,
         per_node=result.per_node,
+        error=result.error,
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
