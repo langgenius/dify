@@ -251,6 +251,59 @@ def test_bind_resources_names_bound_label(monkeypatch):
     assert any("Company KB" in item for item in out)
 
 
+def test_bind_resources_binds_each_resource_to_the_step_it_covers(monkeypatch):
+    """bind_resources appended "(using ...)" to the LAST plan item -- in the
+    ESQ1-302 session that was the end node step. Each resource now lands on
+    the step it covers; the last step is only the fallback."""
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[
+                resources.ResourceRef(id="langgenius/tokener/tokener/deepseek-v4-flash", label="deepseek-v4-flash")
+            ],
+            datasets=[resources.ResourceRef(id="kb-1", label="Company KB")],
+            tools=[
+                resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX")
+            ],
+        ),
+    )
+    plan = [
+        "start节点：定义输入变量",
+        "llm节点：根据主题生成大纲",
+        "knowledge-retrieval node: fetch the style guide",
+        "tool节点：把 Markdown 转成 PPTX 文件",
+        "end节点：返回生成的PPT文件",
+    ]
+
+    out = build.bind_resources(
+        None,
+        "t1",
+        plan,
+        ["langgenius/tokener/tokener/deepseek-v4-flash", "kb-1", "bowenliang123/md_exporter/md_exporter/md_to_pptx"],
+    )
+
+    assert out[0] == plan[0]
+    assert out[1] == plan[1] + " (using deepseek-v4-flash)"
+    assert out[2] == plan[2] + " (using Company KB)"
+    assert out[3] == plan[3] + " (using Markdown ⮕ PPTX)"
+    assert out[4] == plan[4]
+
+
+def test_bind_resources_falls_back_to_the_last_step_when_nothing_matches(monkeypatch):
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[], datasets=[], tools=[resources.ResourceRef(id="p/t", label="Some Tool")]
+        ),
+    )
+
+    out = build.bind_resources(None, "t1", ["start node: inputs", "end node: output"], ["p/t"])
+
+    assert out == ["start node: inputs", "end node: output (using Some Tool)"]
+
+
 def test_learn_from_build_degrades_to_generic():
     assert isinstance(build.learn_from_build(None, "g", {}, ["p"], ["n"]), str)
 

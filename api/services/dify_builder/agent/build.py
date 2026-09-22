@@ -289,19 +289,58 @@ def assess_capability_gap(model, plan_items: list[str], options: list[ResourceOp
     return str(gap).strip() if isinstance(gap, str) else ""
 
 
+# Which plan step a resource kind covers, by the node vocabulary the planner
+# writes its steps in (see _DIFY_NODE_VOCABULARY). Matched case-insensitively
+# as substrings because steps mix scripts ("tool节点：...").
+_STEP_KEYWORDS_BY_KIND: dict[str, tuple[str, ...]] = {
+    "model": ("llm", "question-classifier", "parameter-extractor"),
+    "knowledge": ("knowledge-retrieval", "knowledge"),
+    "plugin": ("tool",),
+}
+
+
+def _covering_step(plan_items: list[str], kind: str, label: str) -> int:
+    """Index of the first step a resource covers: one naming the resource's
+    label, else one naming its kind's node type; ``-1`` when none does."""
+    lowered = [item.lower() for item in plan_items]
+    needle = label.lower()
+    for index, item in enumerate(lowered):
+        if needle and needle in item:
+            return index
+    for index, item in enumerate(lowered):
+        if any(keyword in item for keyword in _STEP_KEYWORDS_BY_KIND.get(kind, ())):
+            return index
+    return -1
+
+
 def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: list[str]) -> list[str]:
+    """Name each selected resource on the plan step it covers.
+
+    Used to append every label to the LAST step -- in the ESQ1-302 session the
+    end-node step read "(using deepseek-v4-flash, Code Interpreter)" while the
+    step that needed a tool said nothing. The last step is now only the
+    fallback for a resource no step names.
+    """
     inv = resources.list_tenant_resources(tenant_id)
+    kinds: dict[str, str] = {}
+    kinds.update({r.id: "knowledge" for r in inv.datasets})
+    kinds.update({r.id: "plugin" for r in inv.tools})
+    kinds.update({r.id: "model" for r in inv.models})
     by_id = {r.id: r for r in (*inv.datasets, *inv.tools, *inv.models)}
-    labels = [by_id[rid].label for rid in resource_ids if rid in by_id]
-    if not labels:
+    chosen = [by_id[rid] for rid in resource_ids if rid in by_id]
+    if not chosen:
         return list(plan_items)
-    suffix = f" (using {', '.join(labels)})"
-    # Deterministic, clean binding: name the resources on the retrieval/process step.
+    if not plan_items:
+        return [f"Use {', '.join(r.label for r in chosen)}"]
+    labels_by_step: dict[int, list[str]] = {}
+    for ref in chosen:
+        index = _covering_step(plan_items, kinds[ref.id], ref.label)
+        labels_by_step.setdefault(index if index >= 0 else len(plan_items) - 1, []).append(ref.label)
     bound = list(plan_items)
-    if bound:
-        bound[-1] = bound[-1] + suffix if suffix not in bound[-1] else bound[-1]
-    else:
-        bound = [f"Use {', '.join(labels)}"]
+    for index, labels in labels_by_step.items():
+        suffix = f" (using {', '.join(labels)})"
+        if suffix not in bound[index]:
+            bound[index] = bound[index] + suffix
     return bound
 
 
