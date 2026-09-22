@@ -1162,7 +1162,10 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
     fc.verify_run_id -- otherwise the retest after a rebuild reuses the
     FIRST build's stale mock inputs instead of regenerating fresh
     schema-shaped ones. The repair-loop counters go with them: a re-planned
-    build must not inherit the previous one's repeat count."""
+    build must not inherit the previous one's repeat count. Nor the
+    unknown-outcome count: after the cap (2) -> keep_draft -> review ->
+    re_fix, the new cycle's FIRST unknown outcome would otherwise re-cap
+    with "twice in a row"."""
     from core.dify_builder.handlers_build import handle_reverted, handle_review
 
     env, repo = _new_env()
@@ -1175,6 +1178,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
         verify_run_id="run-old",
         repair_attempts=4,
         last_repair_error="boom",
+        unknown_outcome_count=2,
     )
     turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res = handle_review(env, turn, *repo.get_session(s.id))
@@ -1182,6 +1186,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
     assert res.context.verify_run_id == ""
     assert res.context.repair_attempts == 0
     assert res.context.last_repair_error == ""
+    assert res.context.unknown_outcome_count == 0
 
     env2, repo2 = _new_env()
     s2 = _seed_build_session(
@@ -1192,6 +1197,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
         verify_run_id="run-old",
         repair_attempts=4,
         last_repair_error="boom",
+        unknown_outcome_count=2,
     )
     turn2 = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res2 = handle_reverted(env2, turn2, *repo2.get_session(s2.id))
@@ -1199,6 +1205,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
     assert res2.context.verify_run_id == ""
     assert res2.context.repair_attempts == 0
     assert res2.context.last_repair_error == ""
+    assert res2.context.unknown_outcome_count == 0
 
 
 def test_build_registry_covers_all_non_terminal_build_states():
