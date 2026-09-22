@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 from core.dify_builder.models import MutationIntent
+from core.workflow.graph_normalizers import declared_branch_handles
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import graph_ops
 from services.dify_builder.agent import form_schema, llm
@@ -20,7 +21,10 @@ _OP_SCHEMA = (
     "- set_node_config: {node_id, path, value}\n"
     "- create_node: {node_type, config, node_id?}\n"
     "- delete_node: {node_id}\n"
-    "- connect: {from_node, to_node}\n"
+    "- connect: {from_node, to_node, source_handle?}\n"
+    "  When from_node is an if-else, question-classifier or human-input node (or a node with "
+    "error_strategy fail-branch), source_handle is required and must be one of the handles "
+    "listed for that node in GRAPH.\n"
     "- insert_between: {edge: {source, target}, node_type, config}\n"
 )
 
@@ -33,10 +37,18 @@ def _graph_context(graph: dict) -> str:
     lines = ["NODES:"]
     for n in graph.get("nodes", []):
         d = n.get("data") or {}
-        lines.append(f"  {n.get('id')} ({d.get('type', '?')}): {d.get('title', '')}")
+        line = f"  {n.get('id')} ({d.get('type', '?')}): {d.get('title', '')}"
+        handles = declared_branch_handles(n)
+        if handles:
+            line += f" handles={handles}"
+        lines.append(line)
     lines.append("EDGES:")
     for e in graph.get("edges", []):
-        lines.append(f"  {e.get('source')} -> {e.get('target')}")
+        handle = e.get("sourceHandle")
+        if handle and handle != "source":
+            lines.append(f"  {e.get('source')} -[{handle}]-> {e.get('target')}")
+        else:
+            lines.append(f"  {e.get('source')} -> {e.get('target')}")
     return "\n".join(lines)
 
 
@@ -131,15 +143,22 @@ def build_edit_intents(
     if intents is None:
         return []
     applicable, rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
-    # A partial reject still leaves usable intents -- keep them, no re-prompt needed. Only a
-    # TOTAL reject (nothing survived the dry run) burns the one corrective re-prompt.
-    if not applicable and rejected:
+    # ANY rejection -- partial or total -- burns the one corrective re-prompt: a
+    # partial reject can silently drop the one intent that mattered (e.g. a connect
+    # from a branch node missing its required source_handle), so it is not safe to
+    # just keep what survived without giving the model a chance to supply the rest.
+    # If the retry itself yields nothing usable, fall back to the first attempt's
+    # applicable intents rather than losing them.
+    if rejected:
+        first_applicable = applicable
         reasons = "\n".join(f"- {i.op} {i.args}: {why}" for i, why in rejected)
         retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
         intents = _invoke_intents(model, system, retry_user, on_reasoning)
         if intents is None:
-            return []
+            return first_applicable
         applicable, _rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
+        if not applicable:
+            return first_applicable
     return applicable
 
 
