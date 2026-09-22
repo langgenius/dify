@@ -466,9 +466,7 @@ class TestMCPToolNormalization:
 
         def _get_label(tool: MCPToolType) -> str:
             """Call the real display function and return label.en_US."""
-            result = ToolTransformService.mcp_tool_to_user_tool(
-                Mock(), [tool], user_name="test_user"
-            )
+            result = ToolTransformService.mcp_tool_to_user_tool(Mock(), [tool], user_name="test_user")
             return result[0].label.en_US
 
         def _roundtrip(tool: MCPToolType) -> MCPToolType:
@@ -509,16 +507,14 @@ class TestMCPToolNormalization:
             # Original tool: display function must produce expected title
             display_label = _get_label(tool)
             assert display_label == expected, (
-                f"Display label for {tool.name} (title={tool.title}): "
-                f"expected {expected!r}, got {display_label!r}"
+                f"Display label for {tool.name} (title={tool.title}): expected {expected!r}, got {display_label!r}"
             )
 
             # Normalized + JSON roundtrip: display function must produce same title
             restored = _roundtrip(tool)
             restored_label = _get_label(restored)
             assert restored_label == expected, (
-                f"Restored display label for {tool.name}: "
-                f"expected {expected!r}, got {restored_label!r}"
+                f"Restored display label for {tool.name}: expected {expected!r}, got {restored_label!r}"
             )
 
             # Stored title must also match
