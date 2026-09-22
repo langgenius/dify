@@ -2386,3 +2386,34 @@ def test_a_launch_error_frame_reaches_diagnose_and_trips_the_breaker_on_the_thir
     final = results[-1]
     assert final.context.staged_repair == []
     assert next(i for i in final.items if i.kind == "error").payload["title"] == "Repeated failure"
+
+
+def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing():
+    """``apply_repair`` now dry-validates the graph it is about to write and
+    raises ``PreflightError`` (a ``ValueError``). Before this, the error left
+    the handler uncaught and the advance died mid-step; now it is a card and
+    the plan stays approvable, so re-approving regenerates the graph."""
+    from core.dify_builder.handlers_build import handle_plan_approval
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+
+    def would_not_start(*_a, **_k):
+        raise ValueError("the draft would not start: node 'llm' (llm): 2 validation errors for LLMNodeData")
+
+    dify.apply_repair = would_not_start
+    env, repo = _new_env(dify=dify)
+    s = _seed_build_session(
+        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve", "Summarize"], plan_version_tag="v1"
+    )
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+
+    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
+
+    assert res.next == PcState.BUILD_PLAN_APPROVAL
+    assert res.context.built_node_ids == []
+    error = next(i for i in res.items if i.kind == "error")
+    assert error.payload["title"] == "The workflow can't start"
+    assert "node 'llm' (llm)" in error.payload["body"]
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert assistant.payload["execution"]["status"] == "error"

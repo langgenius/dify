@@ -258,9 +258,39 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
 
     progress.activate("edit-apply")
-    result = env.dify.apply_repair(
-        s.app_id, turn.actor, intents, on_canvas=None, expected_revision=fc.last_snapshot_hash
-    )
+    try:
+        result = env.dify.apply_repair(
+            s.app_id, turn.actor, intents, on_canvas=None, expected_revision=fc.last_snapshot_hash
+        )
+    except ValueError as exc:
+        # apply_repair's preflight: the edited draft would fail at Graph.init.
+        # Nothing was written; keep the change plan at its gate as a card.
+        logger.warning("Dify Builder: edit rejected before write for app %s: %s", s.app_id, exc)
+        fc.staged_repair = []
+        progress.fail_step("edit-apply")
+        execution = progress.finish(status="error")
+        error_items = append_card(
+            fc,
+            ErrorCard(
+                title="The workflow can't start",
+                body=f"The generated workflow would fail before its first node: {exc}",
+                tone="danger",
+            ),
+        )
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                execution=execution,
+                reply_text=(
+                    "I didn't apply the change: the workflow would fail before its first node. "
+                    "Adjust it and approve again."
+                ),
+                cards=["error"],
+            ),
+        )
+        return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*error_items, *turn_items])
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
     emit_canvas(env, "apply_edit_plan")
