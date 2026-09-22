@@ -554,9 +554,40 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         )
 
     progress.activate("build-apply-graph")
-    result = env.dify.apply_repair(
-        s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
-    )
+    try:
+        result = env.dify.apply_repair(
+            s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
+        )
+    except ValueError as exc:
+        # The generator's own checks passed, but the draft would fail at
+        # Graph.init (apply_repair's preflight; ESQ1-302/303 both died there
+        # on the first test run). Nothing was written. Say which node and why,
+        # and keep the plan approvable: re-approving regenerates the graph.
+        logger.warning("Dify Builder: generated graph rejected before write for app %s: %s", s.app_id, exc)
+        progress.fail_step("build-apply-graph")
+        execution = progress.finish(status="error")
+        error_items = append_card(
+            fc,
+            ErrorCard(
+                title="The workflow can't start",
+                body=f"The generated workflow would fail before its first node: {exc}",
+                tone="danger",
+            ),
+        )
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                execution=execution,
+                reply_text=(
+                    "I didn't apply the workflow: it would fail before its first node. "
+                    "Adjust the plan and approve again."
+                ),
+                cards=["error"],
+            ),
+        )
+        return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc, items=[*error_items, *turn_items])
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
     fc.built_node_ids = [
