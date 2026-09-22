@@ -130,13 +130,8 @@ const RetrievalParamConfig: FC<Props> = ({
                 {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
               </span>
               <Infotip>
-                <InfotipTrigger
-                  aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                />
-                <InfotipContent
-                  aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                  className="w-50"
-                >
+                <InfotipTrigger aria-labelledby={rerankLabelId} />
+                <InfotipContent aria-labelledby={rerankLabelId} className="w-50">
                   {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
                 </InfotipContent>
               </Infotip>

@@ -8,7 +8,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
@@ -86,6 +86,8 @@ const ChatInputArea = ({
   autoFocus = true,
   sendOnEnter = true,
 }: ChatInputAreaProps) => {
+  const footerNoticeLabelId = useId()
+
   const { t } = useTranslation()
   const {
     wrapperRef,
@@ -295,10 +297,6 @@ const ChatInputArea = ({
   const shouldShowFooterNotice = footerNotice !== undefined && footerNotice !== null
   const shouldShowFooterNoticeTooltip =
     footerNoticeTooltip !== undefined && footerNoticeTooltip !== null
-  const footerNoticeText = typeof footerNotice === 'string' ? footerNotice.trim() : ''
-  const footerNoticeAriaLabel = footerNoticeText
-    ? `${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${footerNoticeText}`
-    : t(($) => $['operation.learnMore'], { ns: 'common' })
   return (
     <>
       <div
@@ -377,15 +375,20 @@ const ChatInputArea = ({
       {shouldShowFooterNotice && (
         <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
           <div className="flex items-center gap-1">
-            <div className="min-w-0 flex-1 body-xs-medium text-text-accent">{footerNotice}</div>
+            <div
+              id={footerNoticeLabelId}
+              className="min-w-0 flex-1 body-xs-medium text-text-accent"
+            >
+              {footerNotice}
+            </div>
             {shouldShowFooterNoticeTooltip && (
               <Infotip>
                 <InfotipTrigger
-                  aria-label={footerNoticeAriaLabel}
+                  aria-labelledby={footerNoticeLabelId}
                   className="ml-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
                   iconVariant="information"
                 />
-                <InfotipContent aria-label={footerNoticeAriaLabel} className="max-w-80">
+                <InfotipContent aria-labelledby={footerNoticeLabelId} className="max-w-80">
                   {footerNoticeTooltip}
                 </InfotipContent>
               </Infotip>

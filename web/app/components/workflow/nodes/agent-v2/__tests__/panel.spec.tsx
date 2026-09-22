@@ -426,7 +426,7 @@ describe('agent/panel', () => {
     expect(screen.getByText('Nadia')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' }),
+      screen.getByRole('button', { name: 'workflow.nodes.agent.task.label' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })).toHaveValue('')
     expect(
@@ -446,7 +446,7 @@ describe('agent/panel', () => {
     const user = userEvent.setup()
     render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.label' }))
 
     expect(
       await screen.findByRole('link', { name: 'workflow.nodes.agent.task.learnMore' }),

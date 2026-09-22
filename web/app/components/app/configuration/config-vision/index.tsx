@@ -19,6 +19,8 @@ import { Resolution } from '@/types/app'
 import ParamConfig from './param-config'
 
 const ConfigVision: FC = () => {
+  const resolutionLabelId = React.useId()
+
   const { t } = useTranslation()
   const titleId = useId()
   const { isShowVisionConfig, isAllowVideoUpload, readonly } = useContext(ConfigContext)
@@ -78,11 +80,8 @@ const ConfigVision: FC = () => {
           {t(($) => $['vision.name'], { ns: 'appDebug' })}
         </h2>
         <Infotip>
-          <InfotipTrigger aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })} />
-          <InfotipContent
-            aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })}
-            className="w-45"
-          >
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-45">
             {t(($) => $['vision.description'], { ns: 'appDebug' })}
           </InfotipContent>
         </Infotip>
@@ -91,19 +90,13 @@ const ConfigVision: FC = () => {
         {readonly ? (
           <>
             <div className="mr-2 flex items-center gap-0.5">
-              <div className="system-xs-medium-uppercase text-text-tertiary">
+              <div id={resolutionLabelId} className="system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
               </div>
               <Infotip>
-                <InfotipTrigger
-                  aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                    ns: 'appDebug',
-                  })}
-                />
+                <InfotipTrigger aria-labelledby={resolutionLabelId} />
                 <InfotipContent
-                  aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                    ns: 'appDebug',
-                  })}
+                  aria-labelledby={resolutionLabelId}
                   className="w-45 whitespace-pre-wrap"
                 >
                   {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}

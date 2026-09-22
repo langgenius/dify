@@ -24,6 +24,8 @@ type ModalPropsType = {
 }
 
 const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
+  const secretLabelId = React.useId()
+
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const [type, setType] = React.useState<EnvironmentVariable['value_type']>('string')
@@ -187,6 +189,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
             </button>
             <div className="relative min-w-0">
               <button
+                id={secretLabelId}
                 type="button"
                 aria-pressed={type === 'secret'}
                 disabled={isTypeChangeDisabled('secret')}
@@ -201,13 +204,10 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
               </button>
               <Infotip>
                 <InfotipTrigger
-                  aria-label={t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
+                  aria-labelledby={secretLabelId}
                   className="absolute top-1/2 right-1 size-3.5 -translate-y-1/2"
                 />
-                <InfotipContent
-                  aria-label={t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
-                  className="w-60"
-                >
+                <InfotipContent aria-labelledby={secretLabelId} className="w-60">
                   {t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
                 </InfotipContent>
               </Infotip>

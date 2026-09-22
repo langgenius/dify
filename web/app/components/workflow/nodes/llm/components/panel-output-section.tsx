@@ -29,6 +29,8 @@ const PanelOutputSection: FC<Props> = ({
   handleStructureOutputEnableChange,
   handleStructureOutputChange,
 }) => {
+  const structuredLabelId = React.useId()
+
   const { t } = useTranslation()
   const warningTitleId = React.useId()
 
@@ -58,17 +60,15 @@ const PanelOutputSection: FC<Props> = ({
                 </InfotipContent>
               </Infotip>
             )}
-            <div className="mr-0.5 system-xs-medium-uppercase text-text-tertiary">
+            <div
+              id={structuredLabelId}
+              className="mr-0.5 system-xs-medium-uppercase text-text-tertiary"
+            >
               {t(($) => $['structOutput.structured'], { ns: 'app' })}
             </div>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
-              />
-              <InfotipContent
-                aria-label={t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
-                className="w-37.5"
-              >
+              <InfotipTrigger aria-labelledby={structuredLabelId} />
+              <InfotipContent aria-labelledby={structuredLabelId} className="w-37.5">
                 {t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
               </InfotipContent>
             </Infotip>

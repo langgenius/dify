@@ -94,6 +94,8 @@ export type IConfigVarProps = {
 }
 
 const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVariablesChange }) => {
+  const titleId = React.useId()
+
   const { t } = useTranslation()
   const { mode, dataSets } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
@@ -313,14 +315,13 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       className="mt-2"
       title={
         <div className="flex items-center">
-          <h2 className="mr-1">{t(($) => $.variableTitle, { ns: 'appDebug' })}</h2>
+          <h2 id={titleId} className="mr-1">
+            {t(($) => $.variableTitle, { ns: 'appDebug' })}
+          </h2>
           {!readonly && (
             <Infotip>
-              <InfotipTrigger aria-label={t(($) => $.variableTip, { ns: 'appDebug' })} />
-              <InfotipContent
-                aria-label={t(($) => $.variableTip, { ns: 'appDebug' })}
-                className="w-45"
-              >
+              <InfotipTrigger aria-labelledby={titleId} />
+              <InfotipContent aria-labelledby={titleId} className="w-45">
                 {t(($) => $.variableTip, { ns: 'appDebug' })}
               </InfotipContent>
             </Infotip>

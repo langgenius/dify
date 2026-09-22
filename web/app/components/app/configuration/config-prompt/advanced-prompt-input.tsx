@@ -54,6 +54,8 @@ const AdvancedPromptInput: FC<Props> = ({
   onHideContextMissingTip,
   noResize,
 }) => {
+  const promptLabelId = React.useId()
+
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -186,18 +188,12 @@ const AdvancedPromptInput: FC<Props> = ({
               <MessageTypeSelector value={type} onChange={onTypeChange} />
             ) : (
               <div className="flex items-center space-x-1">
-                <div className="text-sm font-semibold text-indigo-800 uppercase">
+                <div id={promptLabelId} className="text-sm font-semibold text-indigo-800 uppercase">
                   {t(($) => $['pageTitle.line1'], { ns: 'appDebug' })}
                 </div>
                 <Infotip>
-                  <InfotipTrigger
-                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                    className="ml-1"
-                  />
-                  <InfotipContent
-                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                    className="w-45"
-                  >
+                  <InfotipTrigger aria-labelledby={promptLabelId} className="ml-1" />
+                  <InfotipContent aria-labelledby={promptLabelId} className="w-45">
                     {t(($) => $.promptTip, { ns: 'appDebug' })}
                   </InfotipContent>
                 </Infotip>

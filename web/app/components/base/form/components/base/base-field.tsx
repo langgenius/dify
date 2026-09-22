@@ -295,7 +295,7 @@ const BaseField = ({
         <div className={cn(labelClassName, formLabelClassName)}>
           {isSelect ? (
             <SelectLabel className="inline p-0 text-inherit [font:inherit]">
-              {translatedLabel || name}
+              <span id={labelId}>{translatedLabel || name}</span>
             </SelectLabel>
           ) : isSingleControl ? (
             <label
@@ -315,8 +315,8 @@ const BaseField = ({
           )}
           {translatedTooltip && (
             <Infotip>
-              <InfotipTrigger aria-label={translatedTooltip} className="ml-0.5" />
-              <InfotipContent aria-label={translatedTooltip} className="w-50">
+              <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+              <InfotipContent aria-labelledby={labelId} className="w-50">
                 {translatedTooltip}
               </InfotipContent>
             </Infotip>
