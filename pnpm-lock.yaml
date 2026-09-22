@@ -734,9 +734,6 @@ catalogs:
     tldts:
       specifier: 7.4.13
       version: 7.4.13
-    tsx:
-      specifier: 4.23.13
-      version: 4.23.13
     typescript:
       specifier: npm:@typescript/typescript6@6.0.2
       version: 6.0.2
@@ -1036,9 +1033,6 @@ importers:
       eventsource-parser:
         specifier: 'catalog:'
         version: 4.1.1
-      tsx:
-        specifier: 'catalog:'
-        version: 4.23.13
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1243,9 +1237,6 @@ importers:
       iconify-import-svg:
         specifier: 'catalog:'
         version: 0.2.0(supports-color@11.0.0)
-      tsx:
-        specifier: 'catalog:'
-        version: 4.23.13
 
   packages/image-resources:
     dependencies:
@@ -1857,9 +1848,6 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
-      tsx:
-        specifier: 'catalog:'
-        version: 4.23.13
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -17404,6 +17392,7 @@ snapshots:
       esbuild: 0.28.2
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   tunnel-agent@0.6.0:
     dependencies:
@@ -18424,7 +18413,6 @@ time:
   svgo@4.1.0: '2026-08-24T12:10:36.576Z'
   tailwindcss@4.3.3: '2026-07-16T12:03:35.267Z'
   tldts@7.4.13: '2026-09-13T20:59:12.244Z'
-  tsx@4.23.13: '2026-08-30T00:46:16.265Z'
   typescript@7.0.2: '2026-07-08T15:55:18.431Z'
   uglify-js@3.19.3: '2024-08-29T13:49:01.316Z'
   undici@7.29.1: '2026-09-04T14:25:11.648Z'

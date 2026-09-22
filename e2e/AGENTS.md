@@ -9,7 +9,7 @@ Run commands from the repository root. Install dependencies and browsers once wi
 - Existing initialized instance: `pnpm -C e2e e2e`
 - Standalone automated WCAG Level A scan: `pnpm -C e2e e2e:accessibility:a`
 - Standalone automated WCAG Level AA scan: `pnpm -C e2e e2e:accessibility:aa`
-- One-page automated WCAG scan: `pnpm -C e2e exec tsx ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-a and @wcag-page-studio"` (replace the level and page tag as needed)
+- One-page automated WCAG scan: `pnpm -C e2e exec node ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-a and @wcag-page-studio"` (replace the level and page tag as needed)
 - Reset, initialize, and run deterministic scenarios: `pnpm -C e2e e2e:full`
 - Prepare and run scenarios backed by shared fixtures: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:prepared`
 - Tagged subset: `pnpm -C e2e e2e -- --tags @smoke`

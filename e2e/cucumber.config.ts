@@ -1,5 +1,5 @@
 import type { IConfiguration } from '@cucumber/cucumber'
-import './scripts/env-register'
+import './scripts/env-register.ts'
 
 const hasCliTags = process.argv.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
 const defaultNonExternalTags =
@@ -15,7 +15,7 @@ const config = {
     'html:./cucumber-report/report.html',
     'message:./cucumber-report/report.ndjson',
   ],
-  import: ['./tsx-register.js', 'features/**/*.ts'],
+  import: ['features/**/*.ts'],
   paths: ['features/**/*.feature'],
   tags,
   timeout: 60_000,

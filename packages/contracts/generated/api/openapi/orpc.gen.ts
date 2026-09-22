@@ -84,7 +84,7 @@ import {
   zPostWorkspacesByWorkspaceIdMembersResponse,
   zPostWorkspacesByWorkspaceIdSwitchPath,
   zPostWorkspacesByWorkspaceIdSwitchResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Machine-readable catalog of every op on this surface

@@ -1,13 +1,13 @@
 import type { IWorldOptions } from '@cucumber/cucumber'
 import type { APIRequestContext, Browser, BrowserContext, Download, Page } from '@playwright/test'
-import type { AuthSessionMetadata } from '../../fixtures/auth'
-import type { ConsoleClient } from '../../support/api/console-client'
+import type { AuthSessionMetadata } from '../../fixtures/auth.ts'
+import type { ConsoleClient } from '../../support/api/console-client.ts'
 import { setWorldConstructor, World } from '@cucumber/cucumber'
 import { request } from '@playwright/test'
-import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth'
-import { createConsoleClient } from '../../support/api/console-client'
-import { runCleanupTasks } from '../../support/cleanup'
-import { apiURL, baseURL, defaultLocale } from '../../test-env'
+import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth.ts'
+import { createConsoleClient } from '../../support/api/console-client.ts'
+import { runCleanupTasks } from '../../support/cleanup.ts'
+import { apiURL, baseURL, defaultLocale } from '../../test-env.ts'
 
 export type ScenarioCleanup = () => Promise<void> | void
 export type CreatedAgentConfigFile = {
