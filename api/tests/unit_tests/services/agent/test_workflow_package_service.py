@@ -12,6 +12,7 @@ from unittest.mock import Mock
 
 import pytest
 import yaml
+from services.errors.account import NoPermissionError
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
@@ -38,7 +39,6 @@ from services.agent.package_resource_importer import AgentPackageResourceImporte
 from services.app_dsl_service import AppDslService, Import
 from services.app_package_service import AppPackageManifest, AppPackageService
 from services.entities.dsl_entities import ImportStatus
-from services.errors.account import NoPermissionError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
 
