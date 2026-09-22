@@ -11,8 +11,8 @@ import type {
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { Resolution, TransferMethod } from '@/types/app'
@@ -499,7 +499,7 @@ export type MoreInfo = {
 
 export type ToolWithProvider = Collection & {
   tools: Tool[]
-  meta: PluginMeta
+  meta?: PluginMeta
   plugin_unique_identifier?: string
 }
 

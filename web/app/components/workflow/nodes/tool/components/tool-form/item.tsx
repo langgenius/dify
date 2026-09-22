@@ -1,8 +1,8 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -52,8 +52,8 @@ type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
-  value: ToolVarInputs
-  onChange: (value: ToolVarInputs) => void
+  value: ResourceVarInputs
+  onChange: (value: ResourceVarInputs) => void
   inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider

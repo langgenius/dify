@@ -3,8 +3,8 @@ import type { IfElseNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, VarType } from '../../../types'
-import { VarType as NumberVarType } from '../../tool/types'
 import ConditionAdd from '../components/condition-add'
 import ConditionFilesListValue from '../components/condition-files-list-value'
 import ConditionList from '../components/condition-list'
@@ -243,7 +243,7 @@ describe('if-else path', () => {
           />
           <ConditionNumberInput
             value="12"
-            numberVarType={NumberVarType.constant}
+            numberVarType={VarKindType.constant}
             onNumberVarTypeChange={onNumberVarTypeChange}
             onValueChange={onValueChange}
             variables={[]}
@@ -259,7 +259,7 @@ describe('if-else path', () => {
       fireEvent.change(screen.getByDisplayValue('12'), { target: { value: '42' } })
 
       expect(onSelect.mock.calls[0]?.[0]).toBe(ComparisonOperator.is)
-      expect(onNumberVarTypeChange.mock.calls[0]?.[0]).toBe(NumberVarType.variable)
+      expect(onNumberVarTypeChange.mock.calls[0]?.[0]).toBe(VarKindType.variable)
       expect(onValueChange).toHaveBeenCalledWith('42')
     })
 

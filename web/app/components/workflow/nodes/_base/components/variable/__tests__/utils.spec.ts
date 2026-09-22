@@ -1,4 +1,5 @@
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
+import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
@@ -79,6 +80,71 @@ describe('variable utils', () => {
       expect(availableVars.find((item) => item.nodeId === 'env')?.vars).toEqual([
         expect.objectContaining({ variable: 'env.query', type: 'string' }),
       ])
+    })
+
+    it.each([null, undefined])(
+      'keeps the built-in legacy Agent outputs without an output schema: %s',
+      (output_schema) => {
+        const node = createNode<AgentNodeType>({
+          type: BlockEnum.Agent,
+          title: 'Agent',
+          desc: '',
+          output_schema,
+        })
+        const availableVars = toNodeAvailableVars({
+          beforeNodes: [node],
+          isChatMode: false,
+          filterVar: () => true,
+          allPluginInfoList: {},
+        })
+        expect(availableVars.find((item) => item.nodeId === node.id)?.vars).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ variable: 'text', type: VarType.string }),
+            expect.objectContaining({ variable: 'json', type: VarType.arrayObject }),
+          ]),
+        )
+      },
+    )
+
+    it('keeps legacy Agent JSON Schema outputs selectable with canonical variable types', () => {
+      const node = createNode<AgentNodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        output_schema: {
+          properties: {
+            answer: { type: 'string' },
+            scores: { type: 'array', items: { type: 'number' } },
+            allowed: true,
+            forbidden: false,
+            unspecified: {},
+            emptyType: { type: '' },
+          },
+        },
+      })
+      const options = { beforeNodes: [node], isChatMode: false, allPluginInfoList: {} }
+      const availableVars = toNodeAvailableVars({ ...options, filterVar: () => true })
+      expect(availableVars.find((item) => item.nodeId === node.id)?.vars).toEqual(
+        expect.arrayContaining([
+          { variable: 'answer', type: VarType.string },
+          { variable: 'scores', type: VarType.arrayNumber },
+          { variable: 'allowed', type: VarType.any },
+          { variable: 'forbidden', type: VarType.any },
+          { variable: 'unspecified', type: VarType.any },
+          { variable: 'emptyType', type: VarType.any },
+        ]),
+      )
+      const stringVars = toNodeAvailableVars({
+        ...options,
+        filterVar: (variable) => variable.type === VarType.string,
+      })
+      expect(stringVars.find((item) => item.nodeId === node.id)?.vars).toContainEqual({
+        variable: 'answer',
+        type: VarType.string,
+      })
+      expect(stringVars.find((item) => item.nodeId === node.id)?.vars).not.toContainEqual(
+        expect.objectContaining({ variable: 'scores' }),
+      )
     })
 
     it('uses Agent v2 default declared outputs for agent nodes', () => {

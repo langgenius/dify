@@ -1,10 +1,10 @@
 'use client'
 
-import type { VarType as VarKindType } from '../../../tool/types'
 import type {
   CredentialFormSchema,
   FormOption,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type {
   CommonNodeType,
   Node,

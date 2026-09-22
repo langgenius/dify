@@ -2552,11 +2552,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/agent-strategy-list.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form.tsx": {
     "typescript/no-explicit-any": {
       "count": 8
@@ -2598,9 +2593,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/plugins/plugin-detail-panel/strategy-item.tsx": {
@@ -2679,7 +2671,7 @@
   },
   "web/app/components/plugins/types.ts": {
     "typescript/no-explicit-any": {
-      "count": 24
+      "count": 20
     }
   },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/hidden-fields.spec.tsx": {
@@ -3149,14 +3141,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/_base/components/agent-strategy.tsx": {
-    "typescript/no-empty-object-type": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/before-run-form/form-item.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 3
@@ -3452,32 +3436,17 @@
   },
   "web/app/components/workflow/nodes/agent/__tests__/integration.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 20
+      "count": 17
     }
   },
   "web/app/components/workflow/nodes/agent/default.ts": {
     "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "web/app/components/workflow/nodes/agent/node.tsx": {
-    "typescript/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/agent/panel.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/agent/types.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/agent/use-config.ts": {
     "typescript/no-explicit-any": {
-      "count": 7
+      "count": 5
     }
   },
   "web/app/components/workflow/nodes/assigner/__tests__/integration.spec.tsx": {
@@ -3999,9 +3968,6 @@
     }
   },
   "web/app/components/workflow/nodes/tool/types.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }
@@ -5002,11 +4968,6 @@
       "count": 1
     }
   },
-  "web/service/strategy.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/tools.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -5094,11 +5055,6 @@
   "web/service/use-snippets.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 1
-    }
-  },
-  "web/service/use-strategy.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
     }
   },
   "web/service/use-tools.ts": {

@@ -26,7 +26,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     // if not required and not selected, show nothing
     const models =
       currentStrategy?.parameters
-        .filter((param) => param.type === FormTypeEnum.modelSelector)
+        ?.filter((param) => param.type === FormTypeEnum.modelSelector)
         .reduce(
           (acc, param) => {
             const item = inputs.agent_parameters?.[param.name]?.value
@@ -48,22 +48,12 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
 
   const tools = useMemo(() => {
     const tools: Array<ToolIconProps> = []
-    currentStrategy?.parameters.forEach((param, i) => {
-      if (param.type === FormTypeEnum.toolSelector) {
-        const field = param.name
-        const value = inputs.agent_parameters?.[field]?.value
-        if (value) {
-          tools.push({
-            id: `${param.name}-${i}`,
-            providerName: value.provider_name as any,
-          })
-        }
-      }
+    currentStrategy?.parameters?.forEach((param) => {
       if (param.type === FormTypeEnum.multiToolSelector) {
         const field = param.name
         const value = inputs.agent_parameters?.[field]?.value
-        if (value) {
-          ;(value as unknown as any[]).forEach((item, idx) => {
+        if (Array.isArray(value)) {
+          value.forEach((item, idx) => {
             tools.push({
               id: `${param.name}-${idx}`,
               providerName: item.provider_name,

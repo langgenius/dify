@@ -312,6 +312,27 @@ describe('normalizeInstalledPluginDetail', () => {
     expect(categoryDetail.plugin_id).toBe('langgenius/category-plugin')
   })
 
+  it('preserves the generated agent identity and nullable metadata at the dynamic manifest boundary', () => {
+    const plugin = createPluginInstallation()
+    plugin.declaration.agent_strategy = {
+      identity: {
+        author: 'Dify',
+        name: 'agent',
+        icon: 'agent.svg',
+        icon_dark: null,
+        label: { en_US: 'Agent', zh_Hans: null },
+        description: { en_US: 'Agent strategy' },
+        tags: null,
+      },
+      plugin_id: null,
+    }
+    expect(normalizeInstalledPluginDetail(plugin).declaration.agent_strategy).toEqual(
+      plugin.declaration.agent_strategy,
+    )
+    plugin.declaration.agent_strategy = null
+    expect(normalizeInstalledPluginDetail(plugin).declaration.agent_strategy).toBeNull()
+  })
+
   it('preserves endpoint setting types at the dynamic plugin manifest boundary', () => {
     const plugin = createPluginInstallation()
     plugin.declaration.endpoint = {
