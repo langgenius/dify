@@ -54,6 +54,27 @@ describe('IndexMethod', () => {
     ).toHaveValue('25')
   })
 
+  it.each(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'])(
+    'keeps Economy selected while editing keywords with %s',
+    async (key) => {
+      const user = userEvent.setup()
+      render(<Settings />)
+      const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
+      await user.click(input)
+      await user.keyboard(key === 'ArrowLeft' ? '{Home}' : '{End}')
+      await user.keyboard(`{${key}}`)
+
+      expect(
+        screen.getByRole('radio', { name: 'datasetSettings.form.indexMethodEconomy' }),
+      ).toBeChecked()
+      expect(
+        screen.getByRole('radio', { name: 'datasetCreation.stepTwo.qualified' }),
+      ).not.toBeChecked()
+      expect(input).toBeInTheDocument()
+      expect(input).toHaveFocus()
+    },
+  )
+
   it('uses arrow keys to select one index method without toggling the selected radio off', async () => {
     const user = userEvent.setup()
     render(<Settings />)

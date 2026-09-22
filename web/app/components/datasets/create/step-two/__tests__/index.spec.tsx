@@ -138,6 +138,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 const mockFetchDefaultProcessRuleMutate = vi.fn()
+const mockResetFileEstimate = vi.fn()
 vi.mock('@/service/knowledge/use-create-dataset', () => ({
   useFetchDefaultProcessRule: ({
     onSuccess,
@@ -169,7 +170,7 @@ vi.mock('@/service/knowledge/use-create-dataset', () => ({
     data: undefined,
     isIdle: true,
     isPending: false,
-    reset: vi.fn(),
+    reset: mockResetFileEstimate,
   }),
   useFetchFileIndexingEstimateForNotion: () => ({
     mutate: vi.fn(),
@@ -2374,6 +2375,27 @@ describe('StepTwo Component', () => {
       expect(general).toBeChecked()
       expect(parentChild).not.toBeChecked()
     })
+
+    it.each(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'])(
+      'keeps General selected and its preview intact when editing the delimiter with %s',
+      async (key) => {
+        const user = userEvent.setup()
+        render(<StepTwo {...defaultStepTwoProps} />)
+        const input = screen.getByRole('textbox', { name: 'datasetCreation.stepTwo.separator' })
+        await user.click(input)
+        await user.keyboard(key === 'ArrowLeft' ? '{Home}' : '{End}')
+        mockResetFileEstimate.mockClear()
+        await user.keyboard(`{${key}}`)
+
+        expect(screen.getByRole('radio', { name: 'datasetCreation.stepTwo.general' })).toBeChecked()
+        expect(
+          screen.getByRole('radio', { name: 'datasetCreation.stepTwo.parentChild' }),
+        ).not.toBeChecked()
+        expect(input).toBeInTheDocument()
+        expect(input).toHaveFocus()
+        expect(mockResetFileEstimate).not.toHaveBeenCalled()
+      },
+    )
 
     it('should show general chunking options when not in upload', () => {
       render(<StepTwo {...defaultStepTwoProps} />)

@@ -105,7 +105,14 @@ const OptionCard = <T,>({
         </div>
       </RadioItem>
       {!!(children && showChildren) && (
-        <div className="relative rounded-b-xl bg-components-panel-bg p-4">
+        <div
+          role="presentation"
+          className="relative rounded-b-xl bg-components-panel-bg p-4"
+          onKeyDown={(event) => {
+            // Keep parameter arrow keys from navigating the enclosing radio group.
+            if (event.key.startsWith('Arrow')) event.stopPropagation()
+          }}
+        >
           <span
             aria-hidden
             className="absolute -top-2.75 left-3.5 i-custom-vender-knowledge-arrow-shape size-4 text-components-panel-bg"

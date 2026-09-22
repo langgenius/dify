@@ -157,7 +157,14 @@ export const OptionCard = <Value,>({ ref, ...props }: OptionCardProps<Value>) =>
       </RadioItem>
       {/** Body */}
       {!!(isActive && (children || actions)) && (
-        <div className="rounded-b-xl bg-components-panel-bg px-4 py-3">
+        <div
+          role="presentation"
+          className="rounded-b-xl bg-components-panel-bg px-4 py-3"
+          onKeyDown={(event) => {
+            // Keep parameter arrow keys from navigating the enclosing radio group.
+            if (event.key.startsWith('Arrow')) event.stopPropagation()
+          }}
+        >
           {children}
           {!!actions && <div className="mt-4 flex flex-wrap gap-2">{actions}</div>}
         </div>
