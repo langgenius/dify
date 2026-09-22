@@ -145,7 +145,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByRole('switch')).toBeChecked()
+      expect(
+        screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }),
+      ).toBeChecked()
     })
 
     it('should render model selector when reranking is enabled', () => {
@@ -211,7 +213,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('switch'))
+      fireEvent.click(screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }))
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...config,
@@ -230,7 +232,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('switch'))
+      fireEvent.click(screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }))
 
       expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
@@ -354,7 +356,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByRole('switch')).toBeChecked()
+      expect(
+        screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }),
+      ).toBeChecked()
     })
 
     it('should hide score threshold when reranking is disabled for full text search', () => {

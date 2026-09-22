@@ -19,6 +19,7 @@ import {
   SliderTrack,
 } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useId } from 'react'
 
 type Props = Readonly<{
   className?: string
@@ -53,6 +54,7 @@ const ParamItem: FC<Props> = ({
   hasSwitch,
   onSwitchChange,
 }) => {
+  const labelId = useId()
   return (
     <Fieldset className={className}>
       <FieldsetLegend className="sr-only">{name}</FieldsetLegend>
@@ -60,6 +62,7 @@ const ParamItem: FC<Props> = ({
         <div className="flex h-6 items-center">
           {hasSwitch && (
             <Switch
+              aria-labelledby={labelId}
               size="md"
               className="mr-2"
               checked={enable}
@@ -69,7 +72,9 @@ const ParamItem: FC<Props> = ({
               }}
             />
           )}
-          <span className="mr-1 system-sm-semibold text-text-secondary">{name}</span>
+          <span id={labelId} className="mr-1 system-sm-semibold text-text-secondary">
+            {name}
+          </span>
           {!noTooltip && tip && (
             <Infotip>
               <InfotipTrigger aria-label={tip} />

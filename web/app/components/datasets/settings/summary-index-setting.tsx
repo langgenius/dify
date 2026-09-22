@@ -4,7 +4,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useQuery } from '@tanstack/react-query'
-import { memo, useCallback, useMemo } from 'react'
+import { memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -23,6 +23,7 @@ const SummaryIndexSetting = ({
   readonly = false,
 }: SummaryIndexSettingProps) => {
   const { t } = useTranslation()
+  const summaryLabelId = useId()
   const { data: textGenerationModelList = [] } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textGeneration } },
@@ -72,7 +73,9 @@ const SummaryIndexSetting = ({
       <div>
         <div className="flex h-6 items-center justify-between">
           <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
-            {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
+            <span id={summaryLabelId}>
+              {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
+            </span>
             <Infotip>
               <InfotipTrigger
                 aria-label={t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
@@ -86,6 +89,7 @@ const SummaryIndexSetting = ({
             </Infotip>
           </div>
           <Switch
+            aria-labelledby={summaryLabelId}
             checked={summaryIndexSetting?.enable ?? false}
             onCheckedChange={handleSummaryIndexEnableChange}
             size="md"
@@ -132,13 +136,14 @@ const SummaryIndexSetting = ({
       <div className="space-y-4">
         <div className="flex gap-x-1">
           <div className="flex h-7 w-45 shrink-0 items-center pt-1">
-            <div className="system-sm-semibold text-text-secondary">
+            <div id={summaryLabelId} className="system-sm-semibold text-text-secondary">
               {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
             </div>
           </div>
           <div className="py-1.5">
             <div className="flex items-center system-sm-semibold text-text-secondary">
               <Switch
+                aria-labelledby={summaryLabelId}
                 className="mr-2"
                 checked={summaryIndexSetting?.enable ?? false}
                 onCheckedChange={handleSummaryIndexEnableChange}
@@ -208,13 +213,14 @@ const SummaryIndexSetting = ({
     <div className="space-y-3">
       <div className="flex h-6 items-center">
         <Switch
+          aria-labelledby={summaryLabelId}
           className="mr-2"
           checked={summaryIndexSetting?.enable ?? false}
           onCheckedChange={handleSummaryIndexEnableChange}
           size="md"
           disabled={readonly}
         />
-        <div className="system-sm-semibold text-text-secondary">
+        <div id={summaryLabelId} className="system-sm-semibold text-text-secondary">
           {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
         </div>
       </div>

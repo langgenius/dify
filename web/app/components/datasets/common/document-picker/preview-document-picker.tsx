@@ -41,18 +41,20 @@ const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange })
         render={
           <div
             className={cn(
-              'flex h-6 items-center rounded-md px-1 select-none hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
+              'flex h-6 max-w-full min-w-0 items-center rounded-md px-1 select-none hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
               className,
             )}
           >
             <FileIcon name={name} extension={extension} size="lg" />
-            <div className="ml-1 flex flex-col items-start">
-              <div className="flex items-center space-x-0.5">
-                <span className={cn('max-w-50 truncate system-md-semibold text-text-primary')}>
+            <div className="ml-1 flex min-w-0 flex-col items-start">
+              <div className="flex max-w-full items-center space-x-0.5">
+                <span
+                  className={cn('max-w-50 min-w-0 truncate system-md-semibold text-text-primary')}
+                >
                   {' '}
                   {name || '--'}
                 </span>
-                <ArrowIcon className="h-4.5 w-4.5 text-text-primary" />
+                <ArrowIcon className="h-4.5 w-4.5 shrink-0 text-text-primary" />
               </div>
             </div>
           </div>
@@ -63,7 +65,7 @@ const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange })
         sideOffset={4}
         className="border-none bg-transparent shadow-none"
       >
-        <div className="w-98 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
+        <div className="w-98 max-w-[calc(100vw-2rem)] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
           {files?.length > 1 && (
             <div className="flex h-8 items-center pl-2 system-xs-medium-uppercase text-text-tertiary">
               {t(($) => $.preprocessDocument, { ns: 'dataset', num: files.length })}
@@ -72,7 +74,7 @@ const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange })
           {files?.length > 0 ? (
             <PreviewDocumentList list={files} onChange={handleChange} />
           ) : (
-            <div className="mt-2 flex h-25 w-90 items-center justify-center">
+            <div className="mt-2 flex h-25 w-90 items-center justify-center max-sm:w-full">
               <LoadingPlaceholder />
             </div>
           )}
