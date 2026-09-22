@@ -7,10 +7,12 @@ import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 
-export enum NodeStatusEnum {
-  warning = 'warning',
-  error = 'error',
-}
+export const NodeStatusEnum = {
+  warning: 'warning',
+  error: 'error',
+} as const
+
+export type NodeStatusEnum = (typeof NodeStatusEnum)[keyof typeof NodeStatusEnum]
 
 const nodeStatusVariants = cva('flex items-center gap-1 rounded-md px-2 py-1 system-xs-medium', {
   variants: {

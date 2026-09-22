@@ -6,6 +6,7 @@ import type { SelectorTranslate } from '@/app/components/app/configuration/utils
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
@@ -26,7 +27,6 @@ import * as React from 'react'
 import { Trans } from 'react-i18next'
 import { getStringSelectorTranslate } from '@/app/components/app/configuration/utils'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import { Infotip } from '@/app/components/base/infotip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -81,6 +81,8 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   validationError,
   t: rawTranslate,
 }) => {
+  const fileInputTypes: readonly InputVarType[] = [InputVarType.singleFile, InputVarType.multiFiles]
+
   const t = getStringSelectorTranslate(rawTranslate)
   const { type, label, variable } = tempPayload
   const numberDefault =
@@ -88,7 +90,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
     (typeof tempPayload.default === 'string' && tempPayload.default.trim() !== '')
       ? Number(tempPayload.default)
       : Number.NaN
-  const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
+  const isFileInput = fileInputTypes.includes(type)
   const docLink = useDocLink()
   const fieldId = React.useId()
   const errorId = `${fieldId}-error`
@@ -409,21 +411,24 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             </span>
           </label>
           <div className="flex items-center gap-1">
-            <Infotip aria-label={hiddenDescriptionAriaLabel}>
-              <Trans
-                i18nKey={($) => $['variableConfig.hiddenDescription']}
-                ns="appDebug"
-                components={{
-                  docLink: (
-                    <a
-                      href={docLink('/use-dify/nodes/user-input#hide-and-pre-fill-input-fields')}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-text-accent hover:underline"
-                    />
-                  ),
-                }}
-              />
+            <Infotip>
+              <InfotipTrigger aria-label={hiddenDescriptionAriaLabel} />
+              <InfotipContent aria-label={hiddenDescriptionAriaLabel}>
+                <Trans
+                  i18nKey={($) => $['variableConfig.hiddenDescription']}
+                  ns="appDebug"
+                  components={{
+                    docLink: (
+                      <a
+                        href={docLink('/use-dify/nodes/user-input#hide-and-pre-fill-input-fields')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-text-accent hover:underline"
+                      />
+                    ),
+                  }}
+                />
+              </InfotipContent>
             </Infotip>
           </div>
         </div>

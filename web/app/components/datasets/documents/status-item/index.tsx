@@ -3,6 +3,7 @@ import type { OperationName } from '../types'
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDisplayStatus } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -10,7 +11,6 @@ import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { toast } from '@/app/notifications'
 import {
   useDocumentDelete,
@@ -109,12 +109,11 @@ const StatusItem = ({
         {statusItem.text}
       </span>
       {errorMessage && (
-        <Infotip
-          aria-label={errorMessage}
-          className="ml-1"
-          popupClassName="max-w-[260px] break-all"
-        >
-          {errorMessage}
+        <Infotip>
+          <InfotipTrigger aria-label={errorMessage} className="ml-1" />
+          <InfotipContent aria-label={errorMessage} className="max-w-65">
+            {errorMessage}
+          </InfotipContent>
         </Infotip>
       )}
       {scene === 'detail' && (

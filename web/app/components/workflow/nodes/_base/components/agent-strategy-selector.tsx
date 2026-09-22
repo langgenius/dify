@@ -7,11 +7,11 @@ import type {
   ListRef,
 } from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { SearchInput } from '@/app/components/base/search-input'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
@@ -32,25 +32,30 @@ const DEFAULT_TAGS: ListProps['tags'] = []
 
 const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
   const { title, description } = props
+  const titleId = useId()
 
   const { t } = useTranslation()
   return (
-    <Infotip
-      aria-label={title}
-      iconVariant="warning"
-      iconSize="large"
-      className="text-text-destructive"
-      popupClassName="w-45"
-    >
-      <div className="space-y-1">
-        <h3 className="font-semibold text-text-primary">{title}</h3>
-        <p>{description}</p>
-        <p>
-          <Link href="/plugins" className="text-text-accent">
-            {t(($) => $['nodes.agent.linkToPlugin'], { ns: 'workflow' })}
-          </Link>
-        </p>
-      </div>
+    <Infotip>
+      <InfotipTrigger
+        aria-label={title}
+        iconVariant="warning"
+        iconSize="large"
+        className="text-text-destructive"
+      />
+      <InfotipContent aria-labelledby={titleId} className="w-45">
+        <div className="space-y-1">
+          <h3 id={titleId} className="font-semibold text-text-primary">
+            {title}
+          </h3>
+          <p>{description}</p>
+          <p>
+            <Link href="/plugins" className="text-text-accent">
+              {t(($) => $['nodes.agent.linkToPlugin'], { ns: 'workflow' })}
+            </Link>
+          </p>
+        </div>
+      </InfotipContent>
     </Infotip>
   )
 }

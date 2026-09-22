@@ -164,7 +164,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   // vars
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
-    return [
+    const supportedVariableTypes: readonly VarKindType[] = [
       VarKindType.arrayObject,
       VarKindType.array,
       VarKindType.number,
@@ -174,7 +174,9 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       VarKindType.arrayNumber,
       VarKindType.file,
       VarKindType.arrayFile,
-    ].includes(varPayload.type)
+    ]
+
+    return supportedVariableTypes.includes(varPayload.type)
   }, [])
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {

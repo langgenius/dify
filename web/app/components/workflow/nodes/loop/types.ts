@@ -9,34 +9,38 @@ import type {
   VarType,
 } from '@/app/components/workflow/types'
 
-export enum LogicalOperator {
-  and = 'and',
-  or = 'or',
-}
+export const LogicalOperator = {
+  and: 'and',
+  or: 'or',
+} as const
 
-export enum ComparisonOperator {
-  contains = 'contains',
-  notContains = 'not contains',
-  startWith = 'start with',
-  endWith = 'end with',
-  is = 'is',
-  isNot = 'is not',
-  empty = 'empty',
-  notEmpty = 'not empty',
-  equal = '=',
-  notEqual = '≠',
-  largerThan = '>',
-  lessThan = '<',
-  largerThanOrEqual = '≥',
-  lessThanOrEqual = '≤',
-  isNull = 'is null',
-  isNotNull = 'is not null',
-  in = 'in',
-  notIn = 'not in',
-  allOf = 'all of',
-  exists = 'exists',
-  notExists = 'not exists',
-}
+export type LogicalOperator = (typeof LogicalOperator)[keyof typeof LogicalOperator]
+
+export const ComparisonOperator = {
+  contains: 'contains',
+  notContains: 'not contains',
+  startWith: 'start with',
+  endWith: 'end with',
+  is: 'is',
+  isNot: 'is not',
+  empty: 'empty',
+  notEmpty: 'not empty',
+  equal: '=',
+  notEqual: '≠',
+  largerThan: '>',
+  lessThan: '<',
+  largerThanOrEqual: '≥',
+  lessThanOrEqual: '≤',
+  isNull: 'is null',
+  isNotNull: 'is not null',
+  in: 'in',
+  notIn: 'not in',
+  allOf: 'all of',
+  exists: 'exists',
+  notExists: 'not exists',
+} as const
+
+export type ComparisonOperator = (typeof ComparisonOperator)[keyof typeof ComparisonOperator]
 
 export type Condition = {
   id: string

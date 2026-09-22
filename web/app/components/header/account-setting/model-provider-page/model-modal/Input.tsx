@@ -29,11 +29,11 @@ const Input: FC<InputProps> = ({
   const toLimit = (v: string) => {
     const minNum = Number.parseFloat(`${min}`)
     const maxNum = Number.parseFloat(`${max}`)
-    if (!isNaN(minNum) && Number.parseFloat(v) < minNum) {
+    if (!Number.isNaN(minNum) && Number.parseFloat(v) < minNum) {
       onChange(`${min}`)
       return
     }
-    if (!isNaN(maxNum) && Number.parseFloat(v) > maxNum) onChange(`${max}`)
+    if (!Number.isNaN(maxNum) && Number.parseFloat(v) > maxNum) onChange(`${max}`)
   }
 
   return (

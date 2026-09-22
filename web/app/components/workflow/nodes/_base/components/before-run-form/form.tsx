@@ -19,6 +19,11 @@ export type Props = Readonly<{
 }>
 
 const Form: FC<Props> = ({ className, label, inputs, values, onChange }) => {
+  const collectionInputTypes: readonly InputVarType[] = [
+    InputVarType.contexts,
+    InputVarType.iterator,
+  ]
+
   const { t } = useTranslation()
   const mapKeysWithSameValueSelector = useMemo(() => {
     const keysWithSameValueSelector = (key: string) => {
@@ -54,7 +59,7 @@ const Form: FC<Props> = ({ className, label, inputs, values, onChange }) => {
     },
     [valuesRef, onChange, mapKeysWithSameValueSelector],
   )
-  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(inputs[0]?.type!)
+  const isArrayLikeType = collectionInputTypes.includes(inputs[0]?.type!)
   const isIteratorItemFile = inputs[0]?.type === InputVarType.iterator && inputs[0]?.isFileItem
 
   const isContext = inputs[0]?.type === InputVarType.contexts

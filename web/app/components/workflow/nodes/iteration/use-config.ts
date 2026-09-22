@@ -30,14 +30,16 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   const { inputs, setInputs } = useNodeCrud<IterationNodeType>(id, payload)
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [
+    const arrayVariableTypes: readonly VarType[] = [
       VarType.array,
       VarType.arrayString,
       VarType.arrayBoolean,
       VarType.arrayNumber,
       VarType.arrayObject,
       VarType.arrayFile,
-    ].includes(varPayload.type)
+    ]
+
+    return arrayVariableTypes.includes(varPayload.type)
   }, [])
 
   const handleInputChange = useCallback(

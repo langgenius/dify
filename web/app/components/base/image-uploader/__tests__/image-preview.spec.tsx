@@ -81,7 +81,11 @@ describe('ImagePreview', () => {
     })
 
     globalThis.ClipboardItem = class {
-      constructor(public readonly data: Record<string, Blob | Promise<Blob>>) {}
+      public readonly data: Record<string, Blob | Promise<Blob>>
+
+      constructor(data: Record<string, Blob | Promise<Blob>>) {
+        this.data = data
+      }
     } as unknown as typeof ClipboardItem
     vi.spyOn(window, 'open').mockImplementation((...args: Parameters<Window['open']>) => {
       return mocks.windowOpen(...args)
