@@ -71,8 +71,7 @@ export const KeyboardShortcut: Story = {
   parameters: {
     docs: {
       description: {
-        story:
-          'A visible button label can use a tooltip for a supplementary keyboard shortcut.',
+        story: 'A visible button label can use a tooltip for a supplementary keyboard shortcut.',
       },
     },
   },
