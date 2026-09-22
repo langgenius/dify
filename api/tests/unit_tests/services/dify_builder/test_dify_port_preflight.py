@@ -112,3 +112,53 @@ def test_a_repair_that_heals_the_broken_node_is_written(mock_session: MagicMock)
     assert result.changed_nodes == ["node2"]
     _, kwargs = sync.call_args
     assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "="
+
+
+def test_apply_repair_coerces_a_numeric_condition_value_before_the_preflight(mock_session: MagicMock):
+    """The ESQ1-285 flip-flop: a Fix/Edit repair writes ``"value": 60`` (the
+    generator never produced this intent, so the shared postprocess never saw
+    it). The chokepoint normalizes it, and the preflight then passes."""
+    numeric_cases = [
+        {
+            "case_id": "true",
+            "logical_operator": "and",
+            "conditions": [
+                {"id": "c1", "variable_selector": ["node1", "score"], "comparison_operator": "=", "value": 60}
+            ],
+        }
+    ]
+    valid_cases = json.loads(json.dumps(numeric_cases))
+    valid_cases[0]["conditions"][0]["value"] = "1"  # the draft is currently valid
+    node2 = {"id": "node2", "type": "custom", "data": {"type": "if-else", "title": "判断分数", "cases": valid_cases}}
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": numeric_cases})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, node2], "edges": []}, intents)
+
+    assert result.changed_nodes == ["node2"]
+    _, kwargs = sync.call_args
+    assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] == "60"
+
+
+def test_apply_repair_fills_http_body_item_types_before_the_preflight(mock_session: MagicMock):
+    body = {"type": "json", "data": [{"key": "", "value": '{"a": 1}'}]}  # one item, no ``type``
+    http = {
+        "id": "node4",
+        "type": "custom",
+        "data": {
+            "type": "http-request",
+            "title": "Call",
+            "method": "post",
+            "url": "https://x.test/a",
+            "authorization": {"config": None, "type": "no-auth"},
+            "headers": "",
+            "params": "",
+            "body": {"type": "none", "data": []},
+        },
+    }
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "node4", "path": "body", "value": body})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, http], "edges": []}, intents)
+
+    assert result.changed_nodes == ["node4"]
+    _, kwargs = sync.call_args
+    assert kwargs["graph"]["nodes"][1]["data"]["body"]["data"][0]["type"] == "text"

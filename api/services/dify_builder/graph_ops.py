@@ -13,6 +13,7 @@ import json
 from typing import Any
 
 from core.dify_builder.models import Graph, MutationIntent
+from core.workflow.graph_normalizers import declared_branch_handles
 
 MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
     "set_node_config": ("node_id", "path", "value"),
@@ -299,16 +300,28 @@ def apply_connect(
 
     Raises ``ValueError`` if either ``from_node`` or ``to_node`` is not a
     node id present in ``graph["nodes"]`` (the Slice 1 dangling-ref
-    validation). Handles default to "source"/"target" (mirrors the
-    generator's ``_fill_edge_defaults``). Returns
-    ``(new_graph, [from_node, to_node])``.
+    validation), or if ``from_node`` is a branch node (if-else /
+    question-classifier / human-input / fail-branch) and ``source_handle``
+    (or the default "source") is not one of its declared handles. Handles
+    default to "source"/"target" (mirrors the generator's
+    ``_fill_edge_defaults``). Returns ``(new_graph, [from_node, to_node])``.
     """
     new_graph = copy.deepcopy(graph)
-    node_ids = {n.get("id") for n in new_graph.get("nodes", [])}
-    if from_node not in node_ids:
+    nodes_by_id = {n.get("id"): n for n in new_graph.get("nodes", [])}
+    if from_node not in nodes_by_id:
         raise ValueError(f"node not found: {from_node}")
-    if to_node not in node_ids:
+    if to_node not in nodes_by_id:
         raise ValueError(f"node not found: {to_node}")
+
+    # A branch node (if-else / question-classifier / human-input / fail-branch)
+    # only routes along the handles it declares. An edge on any other handle
+    # -- including the default "source" -- hangs off nothing: its arm never
+    # runs and the run still reports "succeeded" (ESQ1-303). Reject it here
+    # like a dangling node ref; the caller's ``except ValueError`` shows it.
+    declared = declared_branch_handles(nodes_by_id[from_node])
+    handle = source_handle or "source"
+    if declared and handle not in declared:
+        raise ValueError(f"branch node {from_node!r} has no handle {handle!r}; it declares {declared}")
 
     existing_edge_ids = {e.get("id") for e in new_graph.get("edges", [])}
     edge = _make_edge(from_node, to_node, source_handle, target_handle, existing_edge_ids)
