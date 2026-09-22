@@ -8,7 +8,7 @@ import { isValidCronExpression } from './utils/cron-parser'
 import { getNextExecutionTimes } from './utils/execution-time-calculator'
 
 const isValidTimeFormat = (time: string): boolean => {
-  const timeRegex = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/
+  const timeRegex = /^(?:0?\d|1[0-2]):[0-5]\d (?:AM|PM)$/
   if (!timeRegex.test(time)) return false
 
   const [timePart, period] = time.split(' ')

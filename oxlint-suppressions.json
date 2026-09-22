@@ -1299,11 +1299,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/image-uploader/image-link-input.tsx": {
-    "regexp/no-unused-capturing-group": {
-      "count": 1
-    }
-  },
   "web/app/components/base/image-uploader/image-preview.tsx": {
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
@@ -1335,11 +1330,6 @@
   "web/app/components/base/markdown-blocks/code-block.tsx": {
     "typescript/no-explicit-any": {
       "count": 9
-    }
-  },
-  "web/app/components/base/markdown-blocks/form.tsx": {
-    "prefer-regex-literals": {
-      "count": 1
     }
   },
   "web/app/components/base/markdown-blocks/index.ts": {
@@ -1390,11 +1380,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/markdown/markdown-utils.ts": {
-    "regexp/no-unused-capturing-group": {
-      "count": 1
-    }
-  },
   "web/app/components/base/mermaid/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
@@ -1416,9 +1401,6 @@
     }
   },
   "web/app/components/base/mermaid/utils.ts": {
-    "regexp/no-unused-capturing-group": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 4
     }
@@ -3537,9 +3519,6 @@
     "eslint-react/set-state-in-effect": {
       "count": 2
     },
-    "regexp/no-useless-assertions": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 6
     }
@@ -4081,9 +4060,6 @@
     "dify/require-disable-directive-description": {
       "count": 1
     },
-    "regexp/no-unused-capturing-group": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 4
     }
@@ -4172,11 +4148,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/note-node/note-editor/utils.ts": {
-    "regexp/no-useless-quantifier": {
       "count": 1
     }
   },
@@ -4615,12 +4586,6 @@
     "eslint-react/set-state-in-effect": {
       "count": 5
     },
-    "regexp/no-super-linear-backtracking": {
-      "count": 1
-    },
-    "regexp/no-unused-capturing-group": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 5
     }
@@ -4775,9 +4740,6 @@
     }
   },
   "web/hooks/use-format-time-from-now.spec.ts": {
-    "regexp/no-dupe-disjunctions": {
-      "count": 5
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
