@@ -104,7 +104,7 @@ const Chart: React.FC<IChartProps> = ({
           {explanation && (
             <Infotip>
               <InfotipTrigger aria-label={explanation} className="ml-1" />
-              <InfotipContent aria-label={explanation} className="w-[240px]">
+              <InfotipContent aria-label={explanation} className="w-60">
                 {explanation}
               </InfotipContent>
             </Infotip>

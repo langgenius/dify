@@ -103,3 +103,16 @@ export const Controlled: Story = {
     await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }
+
+export const LongText: Story = {
+  render: () => (
+    <Infotip>
+      <InfotipTrigger aria-label="Indexing error" iconVariant="warning" />
+      <InfotipContent aria-label="Indexing error" className="w-60 whitespace-pre-wrap">
+        {
+          'Unable to index the document.\nSource: https://example.com/documents/0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz'
+        }
+      </InfotipContent>
+    </Infotip>
+  ),
+}

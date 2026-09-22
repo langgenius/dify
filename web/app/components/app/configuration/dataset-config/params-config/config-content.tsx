@@ -246,7 +246,7 @@ const ConfigContent: FC<Props> = ({
                   <div className="truncate">{option.label}</div>
                   <Infotip>
                     <InfotipTrigger aria-label={option.tips} className="ml-0.5 size-3.5" />
-                    <InfotipContent aria-label={option.tips} className="w-[200px]">
+                    <InfotipContent aria-label={option.tips} className="w-50">
                       {option.tips}
                     </InfotipContent>
                   </Infotip>
@@ -274,7 +274,7 @@ const ConfigContent: FC<Props> = ({
                   />
                   <InfotipContent
                     aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                    className="w-[200px]"
+                    className="w-50"
                   >
                     {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
                   </InfotipContent>

@@ -143,7 +143,7 @@ const InputFieldPanel = () => {
               aria-label={t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], {
                 ns: 'datasetPipeline',
               })}
-              className="max-w-[240px]"
+              className="max-w-60"
             >
               {t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
             </InfotipContent>

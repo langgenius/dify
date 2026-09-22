@@ -158,7 +158,7 @@ const OpeningSettingModal = ({
                 aria-label={t(($) => $['openingStatement.openingQuestionDescription'], {
                   ns: 'appDebug',
                 })}
-                className="max-w-[220px] system-sm-regular"
+                className="max-w-55"
               >
                 {t(($) => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
               </InfotipContent>

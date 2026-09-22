@@ -319,7 +319,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
               <InfotipTrigger aria-label={t(($) => $.variableTip, { ns: 'appDebug' })} />
               <InfotipContent
                 aria-label={t(($) => $.variableTip, { ns: 'appDebug' })}
-                className="w-[180px]"
+                className="w-45"
               >
                 {t(($) => $.variableTip, { ns: 'appDebug' })}
               </InfotipContent>

@@ -134,7 +134,7 @@ const RetrievalParamConfig: FC<Props> = ({
                 />
                 <InfotipContent
                   aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                  className="w-[200px]"
+                  className="w-50"
                 >
                   {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
                 </InfotipContent>

@@ -215,7 +215,7 @@ const EditMetadataBatchModal: FC<Props> = ({
                 aria-label={t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], {
                   ns: 'dataset',
                 })}
-                className="max-w-[240px]"
+                className="max-w-60"
               >
                 {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
               </InfotipContent>

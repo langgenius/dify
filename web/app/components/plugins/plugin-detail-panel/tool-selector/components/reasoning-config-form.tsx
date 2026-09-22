@@ -149,8 +149,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const tooltipText = tooltip?.[language] || tooltip?.en_US
     const tooltipContent = tooltipText && (
       <Infotip>
-        <InfotipTrigger aria-label={tooltipText} className="ml-0.5 size-4" />
-        <InfotipContent aria-label={tooltipText} className="w-[200px]">
+        <InfotipTrigger aria-label={tooltipText} className="ml-0.5" />
+        <InfotipContent aria-label={tooltipText} className="w-50">
           {tooltipText}
         </InfotipContent>
       </Infotip>

@@ -7,11 +7,11 @@ const rootDir = import.meta.dirname
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
 
-export const tooltipContentRules = {
+export const hintContentRules = {
   'shadcn/no-restyle': [
     'error',
     {
-      componentImports: ['^@langgenius/dify-ui/tooltip$'],
+      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip)$'],
       allow: ['*'],
       contracts: [
         {
@@ -21,6 +21,12 @@ export const tooltipContentRules = {
           deny: ['flex-*'],
           message:
             '"{{className}}" is outside the TooltipContent styling contract. Use the default surface, spacing, and typography from packages/dify-ui/src/tooltip/index.tsx; callers may compose a label/shortcut row or constrain width.',
+        },
+        {
+          pattern: '^InfotipContent$',
+          allow: ['w-*', 'max-w-*', 'whitespace-pre-wrap'],
+          message:
+            '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
         },
       ],
     },
@@ -832,7 +838,7 @@ export const lintConfig = {
     },
     {
       files: ['web/**/*.{jsx,tsx}'],
-      rules: tooltipContentRules,
+      rules: hintContentRules,
     },
     {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],

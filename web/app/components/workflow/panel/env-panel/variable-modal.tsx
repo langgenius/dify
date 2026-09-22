@@ -206,7 +206,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
                 />
                 <InfotipContent
                   aria-label={t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
-                  className="w-[240px]"
+                  className="w-60"
                 >
                   {t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
                 </InfotipContent>

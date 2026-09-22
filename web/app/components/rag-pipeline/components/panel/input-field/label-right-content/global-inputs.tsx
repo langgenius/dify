@@ -20,7 +20,7 @@ const GlobalInputs = () => {
           aria-label={t(($) => $['inputFieldPanel.globalInputs.tooltip'], {
             ns: 'datasetPipeline',
           })}
-          className="w-[240px]"
+          className="w-60"
         >
           {t(($) => $['inputFieldPanel.globalInputs.tooltip'], { ns: 'datasetPipeline' })}
         </InfotipContent>

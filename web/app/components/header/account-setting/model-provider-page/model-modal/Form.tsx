@@ -160,7 +160,7 @@ function Form<
     const infotipContent = infotipText && (
       <Infotip>
         <InfotipTrigger aria-label={infotipText} className="ml-1" />
-        <InfotipContent aria-label={infotipText} className="w-[200px] max-w-[200px]">
+        <InfotipContent aria-label={infotipText} className="w-50">
           {infotipText}
         </InfotipContent>
       </Infotip>

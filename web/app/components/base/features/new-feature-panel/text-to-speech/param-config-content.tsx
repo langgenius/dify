@@ -113,13 +113,9 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
             />
             <InfotipContent
               aria-label={t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
-              className="w-[180px]"
+              className="w-45 whitespace-pre-wrap"
             >
-              {t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })
-                .split('\n')
-                .map((item) => (
-                  <div key={item}>{item}</div>
-                ))}
+              {t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
             </InfotipContent>
           </Infotip>
         </div>

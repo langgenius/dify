@@ -104,7 +104,7 @@ const ToolFormItem: FC<Props> = ({
           {!showDescription && tooltip && (
             <Infotip>
               <InfotipTrigger aria-label={tooltip[language] || tooltip.en_US} className="ml-1" />
-              <InfotipContent aria-label={tooltip[language] || tooltip.en_US} className="w-[200px]">
+              <InfotipContent aria-label={tooltip[language] || tooltip.en_US} className="w-50">
                 {tooltip[language] || tooltip.en_US}
               </InfotipContent>
             </Infotip>

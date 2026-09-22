@@ -385,10 +385,7 @@ const ChatInputArea = ({
                   className="ml-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
                   iconVariant="information"
                 />
-                <InfotipContent
-                  aria-label={footerNoticeAriaLabel}
-                  className="max-w-80 text-start wrap-break-word"
-                >
+                <InfotipContent aria-label={footerNoticeAriaLabel} className="max-w-80">
                   {footerNoticeTooltip}
                 </InfotipContent>
               </Infotip>

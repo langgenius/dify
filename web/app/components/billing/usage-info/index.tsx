@@ -169,7 +169,7 @@ const UsageInfo: FC<Props> = ({
           {tooltip && (
             <Infotip>
               <InfotipTrigger aria-label={tooltip} />
-              <InfotipContent aria-label={tooltip} className="w-[180px] max-w-[180px]">
+              <InfotipContent aria-label={tooltip} className="w-45">
                 {tooltip}
               </InfotipContent>
             </Infotip>

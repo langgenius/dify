@@ -90,7 +90,7 @@ const InfoTooltip = ({ children }: { children: string }) => {
   return (
     <Infotip>
       <InfotipTrigger aria-label={children} className="ml-1 size-3.5" />
-      <InfotipContent aria-label={children} className="w-[180px]">
+      <InfotipContent aria-label={children} className="w-45">
         {children}
       </InfotipContent>
     </Infotip>
@@ -206,7 +206,7 @@ const WorkflowToolOutputName = React.memo(
                           {sources.map((source) => {
                             const sourceTitle = getSourceNodeDisplayName(source, sources)
                             return (
-                              <li key={source.nodeId} className="wrap-break-word">
+                              <li key={source.nodeId}>
                                 {sourceNodeLabel}: <span translate="no">{sourceTitle}</span>
                               </li>
                             )

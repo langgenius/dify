@@ -111,7 +111,7 @@ const StatusItem = ({
       {errorMessage && (
         <Infotip>
           <InfotipTrigger aria-label={errorMessage} className="ml-1" />
-          <InfotipContent aria-label={errorMessage} className="max-w-[260px] break-all">
+          <InfotipContent aria-label={errorMessage} className="max-w-65">
             {errorMessage}
           </InfotipContent>
         </Infotip>

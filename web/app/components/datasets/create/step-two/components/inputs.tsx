@@ -60,7 +60,7 @@ export const DelimiterInput: FC<
             />
             <InfotipContent
               aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
-              className="max-w-[200px]"
+              className="max-w-50"
             >
               {tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
             </InfotipContent>
@@ -196,7 +196,7 @@ export const OverlapInput: FC<LabeledCompoundNumberInputProps> = (props) => {
             />
             <InfotipContent
               aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
-              className="max-w-[200px]"
+              className="max-w-50"
             >
               {t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
             </InfotipContent>

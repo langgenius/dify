@@ -73,8 +73,8 @@ const UploadMethodField = ({ label, labelOptions, className }: UploadMethodField
           )}
           {labelOptions?.tooltip && (
             <Infotip>
-              <InfotipTrigger aria-label={labelOptions.tooltip} className="ml-0.5 size-4" />
-              <InfotipContent aria-label={labelOptions.tooltip} className="w-[200px]">
+              <InfotipTrigger aria-label={labelOptions.tooltip} className="ml-0.5" />
+              <InfotipContent aria-label={labelOptions.tooltip} className="w-50">
                 {labelOptions.tooltip}
               </InfotipContent>
             </Infotip>

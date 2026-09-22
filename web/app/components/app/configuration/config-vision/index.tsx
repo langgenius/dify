@@ -79,7 +79,7 @@ const ConfigVision: FC = () => {
           <InfotipTrigger aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })} />
           <InfotipContent
             aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })}
-            className="w-[180px]"
+            className="w-45"
           >
             {t(($) => $['vision.description'], { ns: 'appDebug' })}
           </InfotipContent>
@@ -102,13 +102,9 @@ const ConfigVision: FC = () => {
                   aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
                     ns: 'appDebug',
                   })}
-                  className="w-[180px]"
+                  className="w-45 whitespace-pre-wrap"
                 >
-                  {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })
-                    .split('\n')
-                    .map((item) => (
-                      <div key={item}>{item}</div>
-                    ))}
+                  {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}
                 </InfotipContent>
               </Infotip>
             </div>

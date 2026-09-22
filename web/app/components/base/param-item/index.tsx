@@ -73,7 +73,7 @@ const ParamItem: FC<Props> = ({
           {!noTooltip && tip && (
             <Infotip>
               <InfotipTrigger aria-label={tip} />
-              <InfotipContent aria-label={tip} className="w-[200px]">
+              <InfotipContent aria-label={tip} className="w-50">
                 {tip}
               </InfotipContent>
             </Infotip>

@@ -104,7 +104,7 @@ export function AgentTaskField({
           <InfotipContent
             aria-label={t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}
           >
-            <span>{t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}</span>{' '}
+            {t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}{' '}
             <a
               href={docLink('/use-dify/nodes/agent#give-it-a-task')}
               target="_blank"

@@ -37,7 +37,7 @@ export default function CheckboxWithLabel({
         {tooltip && (
           <Infotip>
             <InfotipTrigger aria-label={tooltip} />
-            <InfotipContent aria-label={tooltip} className="w-[200px]">
+            <InfotipContent aria-label={tooltip} className="w-50">
               {tooltip}
             </InfotipContent>
           </Infotip>

@@ -37,7 +37,7 @@ const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) =
         />
         <InfotipContent
           aria-label={t(($) => $.error, { ns: 'common' })}
-          className="wrap-anywhere whitespace-pre-wrap"
+          className="whitespace-pre-wrap"
           sideOffset={4}
         >
           {errorLabel}
