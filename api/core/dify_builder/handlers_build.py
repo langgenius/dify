@@ -50,6 +50,7 @@ from core.dify_builder.handlers_fix import (
     dead_end_branch_node_id,
     drop_unapplied_repair,
     emit_canvas,
+    endpoint_variable_names,
     failure_signature,
     first_failed_node,
     is_input_failure,
@@ -707,8 +708,12 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
             # invent them: the cost is one click, not N fields. Still SHOW
             # them -- a green check produced by inputs nobody ever saw is weak
             # evidence about the workflow. Upload fields stay empty because
-            # nothing can mock a file, so the form asks for those alone.
-            prefill = without_upload_values(schema, env.agent.generate_mock_inputs(schema, {}))
+            # nothing can mock a file. Endpoint fields -- a start variable an
+            # http-request node reads its URL from (ESQ1-302's placeholder
+            # grounding) -- stay empty too: a mocked endpoint is just another
+            # invented URL, so the form asks for those alone as well.
+            mocked = without_upload_values(schema, env.agent.generate_mock_inputs(schema, {}))
+            prefill = {k: v for k, v in mocked.items() if k not in endpoint_variable_names(graph)}
             form_items = append_card(
                 fc,
                 FormCard(
