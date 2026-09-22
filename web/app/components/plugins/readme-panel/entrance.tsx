@@ -1,5 +1,4 @@
-import type { PluginDetail } from '../types'
-import type { ReadmePanelPresentation } from './store'
+import type { ReadmePanelPresentation, ReadmePanelState } from './store'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +11,7 @@ export const ReadmeEntrance = ({
   className,
   showShortTip = false,
 }: {
-  pluginDetail: PluginDetail
+  pluginDetail: ReadmePanelState['detail']
   presentation?: ReadmePanelPresentation
   className?: string
   showShortTip?: boolean
@@ -33,7 +32,7 @@ export const ReadmeEntrance = ({
   if (
     !pluginDetail ||
     !pluginDetail?.plugin_unique_identifier ||
-    BUILTIN_TOOLS_ARRAY.includes(pluginDetail.id)
+    ('id' in pluginDetail && BUILTIN_TOOLS_ARRAY.includes(pluginDetail.id))
   )
     return null
 

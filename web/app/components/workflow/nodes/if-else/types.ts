@@ -1,4 +1,4 @@
-import type { VarType as NumberVarType } from '../tool/types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { CommonNodeType, ValueSelector, Var, VarType } from '@/app/components/workflow/types'
 
 export const LogicalOperator = {
@@ -41,7 +41,7 @@ export type Condition = {
   key?: string // sub variable key
   comparison_operator?: ComparisonOperator
   value: string | string[] | boolean
-  numberVarType?: NumberVarType
+  numberVarType?: VarKindType
   sub_variable_condition?: CaseItem
 }
 

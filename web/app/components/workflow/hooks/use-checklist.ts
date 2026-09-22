@@ -38,7 +38,6 @@ import {
 } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
 import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
-import { useStrategyProviders } from '@/service/use-strategy'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -178,7 +177,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const dataSourceList = useStore((s) => s.dataSourceList)
   const environmentVariables =
     useStore((s) => s.environmentVariables) ?? EMPTY_ENVIRONMENT_VARIABLES
-  const { data: strategyProviders } = useStrategyProviders()
+  const { data: strategyProviders } = useQuery(
+    consoleQuery.workspaces.current.agentProviders.get.queryOptions(),
+  )
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
@@ -622,7 +623,9 @@ export const useChecklistBeforePublish = () => {
   const queryClient = useQueryClient()
   const store = useStoreApi()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
-  const { data: strategyProviders } = useStrategyProviders()
+  const { data: strategyProviders } = useQuery(
+    consoleQuery.workspaces.current.agentProviders.get.queryOptions(),
+  )
   const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
       select: (response) => response.data,

@@ -1,3 +1,4 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { TriggerWithProvider } from '../block-selector/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { ToolNodeType } from '../nodes/tool/types'
@@ -32,16 +33,18 @@ export function matchTriggerProvider(
 }
 
 export function matchDataSource(
-  list: ToolWithProvider[],
+  list: RagPipelineDatasourceProviderResponse[],
   data: { plugin_unique_identifier?: string; plugin_id?: string; provider_name?: string },
-): ToolWithProvider | undefined {
-  return list.find(
-    (item) =>
-      (data.plugin_unique_identifier &&
-        item.plugin_unique_identifier === data.plugin_unique_identifier) ||
-      (data.plugin_id && item.plugin_id === data.plugin_id) ||
-      (data.provider_name && item.provider === data.provider_name),
-  )
+): RagPipelineDatasourceProviderResponse | undefined {
+  if (data.plugin_unique_identifier) {
+    const installedVersion = list.find(
+      (item) => item.plugin_unique_identifier === data.plugin_unique_identifier,
+    )
+    if (installedVersion) return installedVersion
+  }
+  if (data.plugin_id) return list.find((item) => item.plugin_id === data.plugin_id)
+  if (data.plugin_unique_identifier) return undefined
+  return list.find((item) => item.provider === data.provider_name)
 }
 
 type PluginInstallCheckContext = {
@@ -50,7 +53,7 @@ type PluginInstallCheckContext = {
   workflowTools?: ToolWithProvider[]
   mcpTools?: ToolWithProvider[]
   triggerPlugins?: TriggerWithProvider[]
-  dataSourceList?: ToolWithProvider[]
+  dataSourceList?: RagPipelineDatasourceProviderResponse[]
 }
 
 export function isNodePluginMissing(

@@ -200,7 +200,6 @@
   "openInExplore": "Abrir Web App da barra lateral",
   "publishApp.notSet": "Não definido",
   "removeOriginal": "Excluir o aplicativo original",
-  "structOutput.LLMResponse": "Resposta do LLM",
   "structOutput.configure": "Configurar",
   "structOutput.modelNotSupported": "Modelo não suportado",
   "structOutput.modelNotSupportedTip": "O modelo atual não suporta esse recurso e é automaticamente rebaixado para injeção de prompt.",

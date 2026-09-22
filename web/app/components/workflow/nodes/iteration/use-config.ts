@@ -1,6 +1,6 @@
 import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
 import type { IterationNodeType } from './types'
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
 import { useCallback } from 'react'

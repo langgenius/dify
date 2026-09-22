@@ -200,7 +200,6 @@
   "openInExplore": "打开左侧 Web App",
   "publishApp.notSet": "未设置",
   "removeOriginal": "删除原应用",
-  "structOutput.LLMResponse": "LLM 的响应",
   "structOutput.configure": "配置",
   "structOutput.modelNotSupported": "模型不支持",
   "structOutput.modelNotSupportedTip": "当前模型不支持此功能，将自动降级为提示注入。",
