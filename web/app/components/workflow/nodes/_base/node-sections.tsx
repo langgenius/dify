@@ -33,7 +33,7 @@ export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: H
               })}
             />
             <InfotipContent className="w-45">
-              <InfotipTitle className="font-semibold text-text-primary" render={<div />}>
+              <InfotipTitle className="font-semibold text-text-primary">
                 {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
               </InfotipTitle>
               {t(($) => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
