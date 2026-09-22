@@ -261,11 +261,65 @@ class TestNodeSnippetContracts:
         assert '"variables": []' in prompt
 
     def test_llm_documents_structured_output_as_a_three_segment_reference(self):
-        """graphon LLM node outputs text/reasoning_content/usage/finish_reason
-        always, plus a structured_output OBJECT only when explicitly enabled --
+        """graphon LLM node._build_run_outputs (node.py ~719-737) ALWAYS sets
+        text/reasoning_content/usage/finish_reason; only structured_output and
+        files are conditional. The prompt must not tell the generator "text"
+        is the only output -- that would block legitimate
+        {{#node.reasoning_content#}} / {{#node.usage#}} references, the FE's
+        own LLM_OUTPUT_STRUCT (constants.ts:142-155). structured_output is
         addressed with a 3-segment selector, never a flat <node>.<field>."""
         prompt = get_node_builder_system_prompt("llm")
 
         assert "structured_output_enabled" in prompt
         assert "{{#<node>.structured_output.<field>#}}" in prompt
         assert '"text"' in prompt
+        assert '"reasoning_content"' in prompt
+        assert '"usage"' in prompt
+        assert "only output" not in prompt.lower()
+
+    def test_list_operator_restates_the_same_unicode_comparison_operators(self):
+        """Each node build sees only its own snippet (get_node_builder_system_prompt
+        embeds exactly one _NODE_SNIPPETS entry), so list-operator's
+        if-else-shaped ``conditions`` never see the if-else entry's operator
+        rule -- it must be restated here or a filter can still emit ">="."""
+        prompt = get_node_builder_system_prompt("list-operator")
+
+        assert "≥" in prompt
+        assert "≤" in prompt
+        assert "≠" in prompt
+        assert "never" in prompt.lower()
+
+    def test_list_operator_enumerates_the_filter_operators_the_engine_has(self):
+        """A filter's ``comparison_operator`` is graphon's ``FilterOperator``
+        (``nodes/list_operator/entities.py:10-28``), a SMALLER set than the
+        if-else ``Condition`` operators the snippet used to point at. Pointing
+        at the if-else shape let the generator emit ``"all of"`` / ``"null"`` /
+        ``"not null"`` / ``"exists"`` / ``"not exists"`` on a filter, which
+        ``FilterCondition`` rejects, so the workflow is refused at
+        ``Graph.init`` and never runs."""
+        prompt = get_node_builder_system_prompt("list-operator")
+
+        # The 16 FilterOperator values, verbatim.
+        for operator in (
+            "contains",
+            "start with",
+            "end with",
+            "is",
+            "in",
+            "empty",
+            "not contains",
+            "is not",
+            "not in",
+            "not empty",
+            "=",
+            "≠",
+            "<",
+            ">",
+            "≥",
+            "≤",
+        ):
+            assert f'"{operator}"' in prompt, operator
+
+        # The five the if-else condition has and a filter does not.
+        for absent in ("all of", "null", "not null", "exists", "not exists"):
+            assert absent not in prompt, absent
