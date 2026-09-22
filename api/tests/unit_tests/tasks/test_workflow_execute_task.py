@@ -340,6 +340,21 @@ def test_get_error_message(event: str | Mapping[str, object] | BaseModel, expect
     assert workflow_execute_task_module._get_error_message(event) == expected
 
 
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        ({"event": "stop", "data": {"stopped_by": "annotation_reply"}}, "annotation_reply"),
+        ({"event": "stop", "stopped_by": "input_moderation"}, "input_moderation"),
+        ({"event": "stop", "data": {"stopped_by": 123}}, None),
+        (_StreamEventModel(event="stop"), None),
+        ({}, None),
+        ("annotation_reply", None),
+    ],
+)
+def test_get_stopped_by(event: object, expected: str | None):
+    assert workflow_execute_task_module._get_stopped_by(event) == expected
+
+
 @pytest.fixture
 def mock_topic(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     topic = MagicMock()
@@ -576,6 +591,84 @@ def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_with
     assert payloads[1]["data"]["error"] == "Workflow stream ended without a terminal event"
     assert "workflow-run-id" in caplog.text
     assert "ended without a terminal event" in caplog.text
+
+
+def test_publish_streaming_response_skips_fallback_terminal_for_annotation_reply(mock_topic: MagicMock):
+    """Regression test for #42722: an annotation reply answers the message directly.
+
+    The workflow is never started, so the stream ends after `message_end` without a
+    terminal workflow event. That is a successful run, not a broken stream, so no
+    synthetic failed `workflow_finished` may be published (the UI rendered it as a
+    red "Workflow stream ended without a terminal event" error).
+    """
+    response_stream = iter(
+        [
+            {
+                "event": "annotation_reply",
+                "task_id": "task-id",
+                "data": {"message_annotation_id": "annotation-id"},
+            },
+            {"event": "message", "task_id": "task-id", "data": {"text": "222"}},
+            {"event": "message_end", "task_id": "task-id"},
+        ]
+    )
+
+    _publish_streaming_response(
+        response_stream,
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+    payloads = _published_payloads(mock_topic)
+    assert [payload["event"] for payload in payloads] == ["annotation_reply", "message", "message_end"]
+
+
+def test_publish_streaming_response_skips_fallback_terminal_for_moderation_stop(mock_topic: MagicMock):
+    """Input moderation short-circuits the run the same way an annotation reply does."""
+    response_stream = iter(
+        [
+            {"event": "message", "task_id": "task-id"},
+            {"event": "stop", "task_id": "task-id", "data": {"stopped_by": "input_moderation"}},
+        ]
+    )
+
+    _publish_streaming_response(
+        response_stream,
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+    payloads = _published_payloads(mock_topic)
+    assert [payload["event"] for payload in payloads] == ["message", "stop"]
+
+
+def test_publish_streaming_response_keeps_fallback_terminal_for_user_stop(mock_topic: MagicMock):
+    """A stop that is not a short-circuit still leaves the stream genuinely broken."""
+    response_stream = iter(
+        [
+            {"event": "workflow_started", "task_id": "task-id"},
+            {"event": "stop", "task_id": "task-id", "data": {"stopped_by": "user_manual"}},
+        ]
+    )
+
+    _publish_streaming_response(
+        response_stream,
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+    payloads = _published_payloads(mock_topic)
+    assert [payload["event"] for payload in payloads] == ["workflow_started", "stop", "workflow_finished"]
+    assert payloads[-1]["data"]["status"] == WorkflowExecutionStatus.FAILED
 
 
 def test_publish_streaming_response_uses_error_message_for_failed_terminal(mock_topic: MagicMock):

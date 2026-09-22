@@ -351,6 +351,21 @@ def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None
     return message if isinstance(message, str) and message else None
 
 
+def _get_stopped_by(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    event_data = _get_event_data(event)
+    if event_data is None:
+        return None
+
+    # Stop reasons normally live under "data"; accept a flat payload as well.
+    for candidate in (event_data.get("data"), event_data):
+        if not isinstance(candidate, Mapping):
+            continue
+        stopped_by = candidate.get("stopped_by")
+        if isinstance(stopped_by, str) and stopped_by:
+            return stopped_by
+    return None
+
+
 def _publish_streaming_response(
     response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
     workflow_run_id: str | uuid.UUID,
@@ -413,10 +428,15 @@ def _publish_streaming_response(
         topic.publish(json.dumps(finished_payload.model_dump(mode="json"), ensure_ascii=False).encode())
 
     terminal_events = {"workflow_finished", "workflow_paused"}
+    # Annotation reply and input moderation answer the message directly, so the workflow
+    # is never started and the stream legitimately ends without a terminal workflow event.
+    short_circuit_events = {"annotation_reply"}
+    short_circuit_stop_reasons = {"annotation_reply", "input_moderation"}
     unexpected_stream_end_message = "Workflow stream ended without a terminal event"
     topic = MessageBasedAppGenerator.get_response_topic(app_mode, normalized_workflow_run_id)
     started_published = False
     terminal_published = False
+    short_circuited = False
     last_task_id = normalized_workflow_run_id
     stream_error_message: str | None = None
 
@@ -444,6 +464,10 @@ def _publish_streaming_response(
                 terminal_published = True
             elif event_name == "error":
                 stream_error_message = _get_error_message(event) or stream_error_message
+            elif event_name in short_circuit_events or (
+                event_name == "stop" and _get_stopped_by(event) in short_circuit_stop_reasons
+            ):
+                short_circuited = True
     except Exception as exc:
         if not terminal_published:
             logger.exception(
@@ -457,7 +481,7 @@ def _publish_streaming_response(
             )
         raise
 
-    if not terminal_published:
+    if not terminal_published and not short_circuited:
         logger.warning(
             "Workflow stream for run %s ended without a terminal event; publishing fallback terminal event",
             normalized_workflow_run_id,
