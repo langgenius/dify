@@ -561,7 +561,9 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
     (fc.repair_attempts / fc.last_repair_error), same as Build's parallel
     handlers -- otherwise a count left over from an earlier repair cycle
     survives into the next adjustment and the breaker can trip one round
-    early."""
+    early. The unknown-outcome count resets too: after the cap (2) ->
+    keep_draft -> review -> re_fix, the new cycle's FIRST unknown outcome
+    would otherwise re-cap with "twice in a row"."""
     from core.dify_builder.handlers_edit import handle_reverted, handle_review
 
     env, repo = _new_env()
@@ -574,6 +576,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
         verify_run_id="run-old",
         repair_attempts=1,
         last_repair_error="llm|boom",
+        unknown_outcome_count=2,
     )
     turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res = handle_review(env, turn, *repo.get_session(s.id))
@@ -581,6 +584,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
     assert res.context.verify_run_id == ""
     assert res.context.repair_attempts == 0
     assert res.context.last_repair_error == ""
+    assert res.context.unknown_outcome_count == 0
 
     env2, repo2 = _new_env()
     s2 = _seed_edit_session(
@@ -591,6 +595,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
         verify_run_id="run-old",
         repair_attempts=1,
         last_repair_error="llm|boom",
+        unknown_outcome_count=2,
     )
     turn2 = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res2 = handle_reverted(env2, turn2, *repo2.get_session(s2.id))
@@ -598,6 +603,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
     assert res2.context.verify_run_id == ""
     assert res2.context.repair_attempts == 0
     assert res2.context.last_repair_error == ""
+    assert res2.context.unknown_outcome_count == 0
 
 
 def test_edit_await_repair_approve_applies_and_waits_for_retest():
@@ -1081,7 +1087,7 @@ def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
 
 def test_a_second_consecutive_unknown_outcome_stops_at_the_edit_gate():
     from core.dify_builder.handlers_edit import handle_test_affected_paths
-    from core.dify_builder.models import Run, TestInput
+    from core.dify_builder.models import Diagnosis, Run, TestInput
     from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
 
     env, repo = _new_env()
@@ -1090,7 +1096,13 @@ def test_a_second_consecutive_unknown_outcome_stops_at_the_edit_gate():
     )
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
     repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
-    fc = DifyBuilderContext(test_input_ref="ti-1")
+    # A diagnosis + staged repair left over from an earlier failure: the gate
+    # the cap lands on must not offer to apply a fix for a run it never saw.
+    fc = DifyBuilderContext(
+        test_input_ref="ti-1",
+        diagnosis=Diagnosis(culprit_node_id="llm", root_cause="old failure"),
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "code", "value": ""})],
+    )
 
     first = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
     assert first.next == PcState.EDIT_APPLY_CHANGES
@@ -1098,6 +1110,8 @@ def test_a_second_consecutive_unknown_outcome_stops_at_the_edit_gate():
 
     assert second.next == PcState.EDIT_AWAIT_REPAIR
     assert second.context.unknown_outcome_count == 2
+    assert second.context.staged_repair == []
+    assert second.context.diagnosis is None
     assert next(i for i in second.items if i.kind == "error").payload["title"] == "Test outcome unknown"
 
 

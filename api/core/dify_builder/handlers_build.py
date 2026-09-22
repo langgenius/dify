@@ -1335,6 +1335,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         fc.verify_run_id = ""
         fc.repair_attempts = 0
         fc.last_repair_error = ""
+        fc.unknown_outcome_count = 0
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
         execution = progress.finish()
         turn_items = append_card(
@@ -1459,6 +1460,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     fc.verify_run_id = ""
     fc.repair_attempts = 0
     fc.last_repair_error = ""
+    fc.unknown_outcome_count = 0
     execution = progress.finish()
     turn_items = append_card(
         fc,
