@@ -1107,3 +1107,47 @@ def test_build_nodes_leaves_a_url_whose_host_a_requirement_names_without_a_schem
 
     http = next(i for i in intents if i.args.get("node_type") == "http-request")
     assert http.args["config"]["url"] == "https://api.pptrender.io/v1/render"
+
+
+# ---- Final review minors ------------------------------------------------------
+
+
+def test_build_nodes_grounds_a_bearer_key_the_goal_only_mentions_as_a_word():
+    """M1: ``Bearer key`` is not user-supplied just because the goal says "key"."""
+    intents = _build_with(
+        _gen_graph_with_http_full("https://api.acme.com/v1/render", headers="Authorization: Bearer key"),
+        trusted_text="Call https://api.acme.com/v1/render with my API key.",
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.h_api_key#}}"
+
+
+def test_build_nodes_grounds_an_invented_azure_subscription_key_header():
+    """M2: ``Ocp-Apim-Subscription-Key`` is a credential header."""
+    intents = _build_with(
+        _gen_graph_with_http_full("https://api.acme.com/v1/render", headers="Ocp-Apim-Subscription-Key: abc123"),
+        trusted_text="Call https://api.acme.com/v1/render.",
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["headers"] == "Ocp-Apim-Subscription-Key: {{#s.h_api_key#}}"
+
+
+def test_build_nodes_replaces_a_bare_scheme_word_wholesale_off_an_authorization_line():
+    """M3: a bare ``Bearer``/``Basic``/``Token`` is an auth SCHEME only on an
+    ``Authorization``/``Proxy-Authorization`` line; under any other credential
+    key it is just an invented value and is replaced whole."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="X-Auth-Token: token\nProxy-Authorization: Basic",
+            params="api_key: token",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["headers"] == (
+        "X-Auth-Token: {{#s.h_api_key#}}\nProxy-Authorization: Basic {{#s.h_api_key#}}"
+    )
+    assert http.args["config"]["params"] == "api_key: {{#s.h_api_key#}}"
