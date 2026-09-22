@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
-import { Infotip, InfotipContent, InfotipTrigger } from '.'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '.'
 import { Button } from '../button'
 
 const meta = {
@@ -81,12 +81,11 @@ export const WithLink: Story = {
 }
 
 function HeadingHint() {
-  const titleId = React.useId()
   return (
     <Infotip defaultOpen>
       <InfotipTrigger aria-label="Processing priority" />
-      <InfotipContent aria-labelledby={titleId}>
-        <h3 id={titleId}>Processing priority</h3>
+      <InfotipContent>
+        <InfotipTitle render={<h3 />}>Processing priority</InfotipTitle>
         <p>Priority determines which documents are processed first.</p>
       </InfotipContent>
     </Infotip>
