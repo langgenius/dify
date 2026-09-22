@@ -1,16 +1,10 @@
-import type {
-  ConversationItem,
-  DifyBuilderActionPayloadChange,
-  DifyBuilderActionValidityChange,
-} from '../types'
+import type { ConversationItem } from '../types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { DifyBuilderCard } from '../cards/card-shell'
 import { ExecutionProgress } from './execution-progress'
-import { FormCard } from './form-card'
 import { PreflightContextCard } from './preflight-context-card'
-import { ResourceCard } from './resource-card'
 import { Thinking } from './thinking'
 
 export const AssistantReply = ({ text }: { text: string }) => (
@@ -31,25 +25,7 @@ export const UserMessage = memo(({ text }: { text: string }) => {
 })
 
 export const ConversationCard = memo(
-  ({
-    item,
-    busy,
-    interactive,
-    invalidated,
-    formId,
-    onActionPayloadChange,
-    onActionValidityChange,
-    onFormSubmit,
-  }: {
-    item: ConversationItem
-    busy: boolean
-    interactive: boolean
-    invalidated: boolean
-    formId?: string
-    onActionPayloadChange: DifyBuilderActionPayloadChange
-    onActionValidityChange?: DifyBuilderActionValidityChange
-    onFormSubmit?: () => void
-  }) => {
+  ({ item, invalidated }: { item: ConversationItem; invalidated: boolean }) => {
     const { t } = useTranslation()
 
     if (item.kind === 'user' || item.kind === 'decision')
@@ -78,32 +54,35 @@ export const ConversationCard = memo(
       )
     }
 
-    if (item.kind === 'form') {
+    if (item.kind === 'interaction_response') {
+      const fields = item.payload.fields ?? []
       return (
-        <FormCard
-          item={item}
-          busy={busy}
-          formId={formId}
-          interactive={interactive}
-          invalidated={invalidated}
-          onActionPayloadChange={onActionPayloadChange}
-          onActionValidityChange={onActionValidityChange}
-          onSubmit={onFormSubmit}
-        />
+        <article className="rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 py-3 shadow-xs">
+          <h3 className="system-sm-regular text-text-tertiary">{item.payload.question}</h3>
+          {item.payload.answer && (
+            <p className="mt-1 system-sm-regular whitespace-pre-wrap text-text-primary">
+              {item.payload.answer}
+            </p>
+          )}
+          {fields.length > 0 && (
+            <dl className="mt-2 flex flex-col gap-2 border-t border-divider-subtle pt-2">
+              {fields.map((field) => (
+                <div key={field.key} className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3">
+                  <dt className="system-xs-regular wrap-break-word text-text-tertiary">
+                    {field.label}
+                  </dt>
+                  <dd className="m-0 system-xs-medium wrap-break-word whitespace-pre-wrap text-text-primary">
+                    {field.display_value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </article>
       )
     }
 
-    if (item.kind === 'resource_select') {
-      return (
-        <ResourceCard
-          item={item}
-          busy={busy}
-          interactive={interactive}
-          invalidated={invalidated}
-          onActionPayloadChange={onActionPayloadChange}
-        />
-      )
-    }
+    if (item.kind === 'form' || item.kind === 'resource_select') return null
 
     if (item.kind === 'run_context') {
       return (

@@ -341,7 +341,11 @@ class Runner:
     ) -> None:
         at_version = session.version + 1
         if self._env.localize_items is not None and context.reply_language:
-            pending_localization = [item for item in items if item.seq not in self._env.prelocalized_seqs]
+            pending_localization = [
+                item
+                for item in items
+                if item.seq not in self._env.prelocalized_seqs and item.kind != "interaction_response"
+            ]
             localized = (
                 self._env.localize_items(pending_localization, context.reply_language) if pending_localization else []
             )
@@ -479,7 +483,18 @@ class Runner:
             self._commit(s, s.current_state, fc, [], settled=True)
             return s
         if action_kind in ("check_recovery", "recovery_continue", "recovery_restart"):
+            response_item = None
+            if turn.action is not None and turn.action.interaction_response is not None:
+                response_item = ConversationItem(
+                    seq=fc.next_seq,
+                    kind="interaction_response",
+                    payload=turn.action.interaction_response,
+                    at_version=s.version + 1,
+                )
+                fc.next_seq += 1
             next_state, items = recovery.apply_recovery_action(self._env.dify, turn, s, fc)
+            if response_item is not None:
+                items.insert(0, response_item)
             # check_recovery / recovery_continue stay at the current waiting
             # state. Restart into EDIT still rests at its input gate; BUILD,
             # FIX, and FIX_CHECKLIST restart into working entry states that the
@@ -597,6 +612,29 @@ class Runner:
             res = handler(self._env, step_turn, s, fc)
             if res.context is None:
                 res.context = fc
+
+            if first and turn.action is not None and turn.action.interaction_response is not None:
+                response_index = next(
+                    (index for index, item in enumerate(res.items) if item.kind == "decision"),
+                    None,
+                )
+                if response_index is None:
+                    response_item = ConversationItem(
+                        seq=res.context.next_seq,
+                        kind="interaction_response",
+                        payload=turn.action.interaction_response,
+                        at_version=s.version + 1,
+                    )
+                    res.context.next_seq += 1
+                    res.items.append(response_item)
+                else:
+                    previous = res.items[response_index]
+                    res.items[response_index] = ConversationItem(
+                        seq=previous.seq,
+                        kind="interaction_response",
+                        payload=turn.action.interaction_response,
+                        at_version=previous.at_version,
+                    )
 
             # Persist side effects (checkpoint, run) BEFORE the CAS commit. On a
             # lost CAS race these rows are orphaned (harmless, unreferenced) —

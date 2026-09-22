@@ -47,6 +47,7 @@ export const FormCard = memo(
     busy,
     interactive,
     invalidated,
+    embedded = false,
     formId,
     onActionPayloadChange,
     onActionValidityChange,
@@ -56,6 +57,7 @@ export const FormCard = memo(
     busy: boolean
     interactive: boolean
     invalidated: boolean
+    embedded?: boolean
     formId?: string
     onActionPayloadChange: DifyBuilderActionPayloadChange
     onActionValidityChange?: DifyBuilderActionValidityChange
@@ -125,197 +127,39 @@ export const FormCard = memo(
       return `${field.label} has an invalid value.`
     }
 
-    return (
-      <DifyBuilderCard category={category} invalidated={invalidated}>
-        <form
-          id={formId}
-          aria-label={category}
-          className="flex flex-col gap-3"
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (!prepared.valid) {
-              const invalidField =
-                event.currentTarget.querySelector<HTMLElement>('[aria-invalid="true"]')
-              const focusableSelector =
-                'input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"])'
-              const focusTarget = invalidField?.matches(focusableSelector)
-                ? invalidField
-                : invalidField?.querySelector<HTMLElement>(focusableSelector)
-              focusTarget?.focus()
-              return
-            }
-            onSubmit?.()
-          }}
-        >
-          {fields.map((field, index) => {
-            const validationError = prepared.errors[field.key]
-            const fieldErrorId = `${errorId}-${index}-error`
-            const labelContent = (
-              <>
-                {field.label}
-                {field.type === 'number' && field.unit ? ` (${field.unit})` : null}
-                {field.required && <span aria-hidden> *</span>}
-              </>
-            )
-            if (field.type === 'bool' || field.type === 'checkbox') {
-              return (
-                <Field
-                  key={field.key}
-                  name={field.key}
-                  disabled={frozen}
-                  invalid={Boolean(validationError)}
-                >
-                  <FieldLabel className="flex items-center gap-2">
-                    <Checkbox
-                      name={field.key}
-                      checked={values[field.key] === true}
-                      disabled={frozen}
-                      required={field.required}
-                      aria-invalid={validationError ? true : undefined}
-                      aria-describedby={validationError ? fieldErrorId : undefined}
-                      onCheckedChange={(checked) => updateValues(field.key, checked)}
-                    />
-                    <span>{labelContent}</span>
-                  </FieldLabel>
-                  {validationError && (
-                    <FieldError id={fieldErrorId} role="alert" match>
-                      {validationMessage(field, validationError)}
-                    </FieldError>
-                  )}
-                  {field.hint && !validationError && (
-                    <FieldDescription>{field.hint}</FieldDescription>
-                  )}
-                </Field>
-              )
-            }
-
-            if (FILE_FIELD_TYPES.has(field.type)) {
-              const files = toFileEntities(values[field.key])
-              const configuredFileTypes = (field.allowed_file_types ?? []).filter(
-                (type): type is SupportUploadFileTypes => FILE_TYPE_VALUES.has(type),
-              )
-              const configuredUploadMethods = (field.allowed_file_upload_methods ?? []).filter(
-                (method): method is TransferMethod => FILE_UPLOAD_METHOD_VALUES.has(method),
-              )
-              const allowedFileTypes =
-                configuredFileTypes.length > 0 ? configuredFileTypes : DEFAULT_ALLOWED_FILE_TYPES
-              const allowedFileExtensions =
-                configuredFileTypes.length > 0
-                  ? (field.allowed_file_extensions ?? [])
-                  : DEFAULT_ALLOWED_FILE_EXTENSIONS
-              const allowedFileUploadMethods =
-                configuredUploadMethods.length > 0
-                  ? configuredUploadMethods
-                  : DEFAULT_ALLOWED_FILE_UPLOAD_METHODS
-              return (
-                <fieldset
-                  key={field.key}
-                  aria-label={field.label}
-                  aria-required={field.required || undefined}
-                  aria-invalid={validationError ? true : undefined}
-                  aria-describedby={validationError ? fieldErrorId : undefined}
-                  className="m-0 min-w-0 border-0 p-0"
-                  disabled={frozen}
-                >
-                  <legend className="mb-1 system-xs-medium text-text-secondary">
-                    {field.label}
-                    {field.required && <span aria-hidden> *</span>}
-                  </legend>
-                  <FileUploaderInAttachmentWrapper
-                    value={files}
-                    isDisabled={frozen}
-                    fileConfig={{
-                      allowed_file_types: allowedFileTypes,
-                      allowed_file_extensions: allowedFileExtensions,
-                      allowed_file_upload_methods: allowedFileUploadMethods,
-                      number_limits: MULTI_FILE_FIELD_TYPES.has(field.type)
-                        ? (field.number_limits ??
-                          field.max_length ??
-                          fileUploadConfig?.workflow_file_upload_limit ??
-                          MAX_FILE_UPLOAD_LIMIT)
-                        : 1,
-                      fileUploadConfig,
-                    }}
-                    onChange={(files) =>
-                      updateValues(
-                        field.key,
-                        MULTI_FILE_FIELD_TYPES.has(field.type) ? files : files[0],
-                      )
-                    }
-                  />
-                  {validationError && (
-                    <span
-                      id={fieldErrorId}
-                      role="alert"
-                      className="mt-1 block system-xs-regular text-text-destructive"
-                    >
-                      {validationMessage(field, validationError)}
-                    </span>
-                  )}
-                </fieldset>
-              )
-            }
-
-            const rawValue = values[field.key]
-            const value =
-              typeof rawValue === 'string' || typeof rawValue === 'number'
-                ? String(rawValue)
-                : rawValue == null
-                  ? ''
-                  : JSON.stringify(rawValue)
-
-            if (field.type === 'select') {
-              const emptyOptionLabel =
-                field.placeholder ?? t(($) => $['operation.clear'], { ns: 'common' })
-              return (
-                <Field
-                  key={field.key}
-                  name={field.key}
-                  disabled={frozen}
-                  invalid={Boolean(validationError)}
-                >
-                  <Select<string>
-                    name={field.key}
-                    value={value === '' ? null : value}
-                    disabled={frozen}
-                    required={field.required}
-                    onValueChange={(nextValue) => updateValues(field.key, nextValue ?? '')}
-                  >
-                    <SelectLabel>{labelContent}</SelectLabel>
-                    <SelectTrigger
-                      aria-invalid={validationError ? true : undefined}
-                      aria-describedby={validationError ? fieldErrorId : undefined}
-                    >
-                      <SelectValue placeholder={field.placeholder ?? ''} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {!(field.options ?? []).includes('') && (
-                        <SelectItem value="">
-                          <SelectItemText>{emptyOptionLabel}</SelectItemText>
-                          <SelectItemIndicator />
-                        </SelectItem>
-                      )}
-                      {(field.options ?? []).map((option) => (
-                        <SelectItem key={option} value={option}>
-                          <SelectItemText>{option || emptyOptionLabel}</SelectItemText>
-                          <SelectItemIndicator />
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {validationError && (
-                    <FieldError id={fieldErrorId} role="alert" match>
-                      {validationMessage(field, validationError)}
-                    </FieldError>
-                  )}
-                  {field.hint && !validationError && (
-                    <FieldDescription>{field.hint}</FieldDescription>
-                  )}
-                </Field>
-              )
-            }
-
+    const form = (
+      <form
+        id={formId}
+        aria-label={category}
+        className="flex flex-col gap-3"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (!prepared.valid) {
+            const invalidField =
+              event.currentTarget.querySelector<HTMLElement>('[aria-invalid="true"]')
+            const focusableSelector =
+              'input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"])'
+            const focusTarget = invalidField?.matches(focusableSelector)
+              ? invalidField
+              : invalidField?.querySelector<HTMLElement>(focusableSelector)
+            focusTarget?.focus()
+            return
+          }
+          onSubmit?.()
+        }}
+      >
+        {fields.map((field, index) => {
+          const validationError = prepared.errors[field.key]
+          const fieldErrorId = `${errorId}-${index}-error`
+          const labelContent = (
+            <>
+              {field.label}
+              {field.type === 'number' && field.unit ? ` (${field.unit})` : null}
+              {field.required && <span aria-hidden> *</span>}
+            </>
+          )
+          if (field.type === 'bool' || field.type === 'checkbox') {
             return (
               <Field
                 key={field.key}
@@ -323,39 +167,18 @@ export const FormCard = memo(
                 disabled={frozen}
                 invalid={Boolean(validationError)}
               >
-                <FieldLabel>{labelContent}</FieldLabel>
-                {['textarea', 'paragraph', 'json', 'json_object'].includes(field.type) ? (
-                  <Textarea
+                <FieldLabel className="flex items-center gap-2">
+                  <Checkbox
                     name={field.key}
-                    value={value}
+                    checked={values[field.key] === true}
                     disabled={frozen}
                     required={field.required}
-                    maxLength={field.max_length ?? undefined}
-                    placeholder={field.placeholder ?? undefined}
                     aria-invalid={validationError ? true : undefined}
                     aria-describedby={validationError ? fieldErrorId : undefined}
-                    className="min-h-18 resize-y"
-                    onValueChange={(nextValue) => updateValues(field.key, nextValue)}
+                    onCheckedChange={(checked) => updateValues(field.key, checked)}
                   />
-                ) : (
-                  <Input
-                    name={field.key}
-                    type={field.type === 'number' || field.type === 'url' ? field.type : 'text'}
-                    value={value}
-                    disabled={frozen}
-                    required={field.required}
-                    maxLength={field.max_length ?? undefined}
-                    placeholder={field.placeholder ?? undefined}
-                    aria-invalid={validationError ? true : undefined}
-                    aria-describedby={validationError ? fieldErrorId : undefined}
-                    onValueChange={(nextValue) =>
-                      updateValues(
-                        field.key,
-                        field.type === 'number' && nextValue !== '' ? Number(nextValue) : nextValue,
-                      )
-                    }
-                  />
-                )}
+                  <span>{labelContent}</span>
+                </FieldLabel>
                 {validationError && (
                   <FieldError id={fieldErrorId} role="alert" match>
                     {validationMessage(field, validationError)}
@@ -366,8 +189,190 @@ export const FormCard = memo(
                 )}
               </Field>
             )
-          })}
-        </form>
+          }
+
+          if (FILE_FIELD_TYPES.has(field.type)) {
+            const files = toFileEntities(values[field.key])
+            const configuredFileTypes = (field.allowed_file_types ?? []).filter(
+              (type): type is SupportUploadFileTypes => FILE_TYPE_VALUES.has(type),
+            )
+            const configuredUploadMethods = (field.allowed_file_upload_methods ?? []).filter(
+              (method): method is TransferMethod => FILE_UPLOAD_METHOD_VALUES.has(method),
+            )
+            const allowedFileTypes =
+              configuredFileTypes.length > 0 ? configuredFileTypes : DEFAULT_ALLOWED_FILE_TYPES
+            const allowedFileExtensions =
+              configuredFileTypes.length > 0
+                ? (field.allowed_file_extensions ?? [])
+                : DEFAULT_ALLOWED_FILE_EXTENSIONS
+            const allowedFileUploadMethods =
+              configuredUploadMethods.length > 0
+                ? configuredUploadMethods
+                : DEFAULT_ALLOWED_FILE_UPLOAD_METHODS
+            return (
+              <fieldset
+                key={field.key}
+                aria-label={field.label}
+                aria-required={field.required || undefined}
+                aria-invalid={validationError ? true : undefined}
+                aria-describedby={validationError ? fieldErrorId : undefined}
+                className="m-0 min-w-0 border-0 p-0"
+                disabled={frozen}
+              >
+                <legend className="mb-1 system-xs-medium text-text-secondary">
+                  {field.label}
+                  {field.required && <span aria-hidden> *</span>}
+                </legend>
+                <FileUploaderInAttachmentWrapper
+                  value={files}
+                  isDisabled={frozen}
+                  fileConfig={{
+                    allowed_file_types: allowedFileTypes,
+                    allowed_file_extensions: allowedFileExtensions,
+                    allowed_file_upload_methods: allowedFileUploadMethods,
+                    number_limits: MULTI_FILE_FIELD_TYPES.has(field.type)
+                      ? (field.number_limits ??
+                        field.max_length ??
+                        fileUploadConfig?.workflow_file_upload_limit ??
+                        MAX_FILE_UPLOAD_LIMIT)
+                      : 1,
+                    fileUploadConfig,
+                  }}
+                  onChange={(files) =>
+                    updateValues(
+                      field.key,
+                      MULTI_FILE_FIELD_TYPES.has(field.type) ? files : files[0],
+                    )
+                  }
+                />
+                {validationError && (
+                  <span
+                    id={fieldErrorId}
+                    role="alert"
+                    className="mt-1 block system-xs-regular text-text-destructive"
+                  >
+                    {validationMessage(field, validationError)}
+                  </span>
+                )}
+              </fieldset>
+            )
+          }
+
+          const rawValue = values[field.key]
+          const value =
+            typeof rawValue === 'string' || typeof rawValue === 'number'
+              ? String(rawValue)
+              : rawValue == null
+                ? ''
+                : JSON.stringify(rawValue)
+
+          if (field.type === 'select') {
+            const emptyOptionLabel =
+              field.placeholder ?? t(($) => $['operation.clear'], { ns: 'common' })
+            return (
+              <Field
+                key={field.key}
+                name={field.key}
+                disabled={frozen}
+                invalid={Boolean(validationError)}
+              >
+                <Select<string>
+                  name={field.key}
+                  value={value === '' ? null : value}
+                  disabled={frozen}
+                  required={field.required}
+                  onValueChange={(nextValue) => updateValues(field.key, nextValue ?? '')}
+                >
+                  <SelectLabel>{labelContent}</SelectLabel>
+                  <SelectTrigger
+                    aria-invalid={validationError ? true : undefined}
+                    aria-describedby={validationError ? fieldErrorId : undefined}
+                  >
+                    <SelectValue placeholder={field.placeholder ?? ''} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {!(field.options ?? []).includes('') && (
+                      <SelectItem value="">
+                        <SelectItemText>{emptyOptionLabel}</SelectItemText>
+                        <SelectItemIndicator />
+                      </SelectItem>
+                    )}
+                    {(field.options ?? []).map((option) => (
+                      <SelectItem key={option} value={option}>
+                        <SelectItemText>{option || emptyOptionLabel}</SelectItemText>
+                        <SelectItemIndicator />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {validationError && (
+                  <FieldError id={fieldErrorId} role="alert" match>
+                    {validationMessage(field, validationError)}
+                  </FieldError>
+                )}
+                {field.hint && !validationError && (
+                  <FieldDescription>{field.hint}</FieldDescription>
+                )}
+              </Field>
+            )
+          }
+
+          return (
+            <Field
+              key={field.key}
+              name={field.key}
+              disabled={frozen}
+              invalid={Boolean(validationError)}
+            >
+              <FieldLabel>{labelContent}</FieldLabel>
+              {['textarea', 'paragraph', 'json', 'json_object'].includes(field.type) ? (
+                <Textarea
+                  name={field.key}
+                  value={value}
+                  disabled={frozen}
+                  required={field.required}
+                  maxLength={field.max_length ?? undefined}
+                  placeholder={field.placeholder ?? undefined}
+                  aria-invalid={validationError ? true : undefined}
+                  aria-describedby={validationError ? fieldErrorId : undefined}
+                  className="min-h-18 resize-y"
+                  onValueChange={(nextValue) => updateValues(field.key, nextValue)}
+                />
+              ) : (
+                <Input
+                  name={field.key}
+                  type={field.type === 'number' || field.type === 'url' ? field.type : 'text'}
+                  value={value}
+                  disabled={frozen}
+                  required={field.required}
+                  maxLength={field.max_length ?? undefined}
+                  placeholder={field.placeholder ?? undefined}
+                  aria-invalid={validationError ? true : undefined}
+                  aria-describedby={validationError ? fieldErrorId : undefined}
+                  onValueChange={(nextValue) =>
+                    updateValues(
+                      field.key,
+                      field.type === 'number' && nextValue !== '' ? Number(nextValue) : nextValue,
+                    )
+                  }
+                />
+              )}
+              {validationError && (
+                <FieldError id={fieldErrorId} role="alert" match>
+                  {validationMessage(field, validationError)}
+                </FieldError>
+              )}
+              {field.hint && !validationError && <FieldDescription>{field.hint}</FieldDescription>}
+            </Field>
+          )
+        })}
+      </form>
+    )
+
+    if (embedded) return form
+    return (
+      <DifyBuilderCard category={category} invalidated={invalidated}>
+        {form}
       </DifyBuilderCard>
     )
   },

@@ -92,20 +92,40 @@ vi.mock('@/app/components/workflow/store', () => ({
     }),
 }))
 
-const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
-  actions: [],
-  app_revision: { current: 'hash-1', conflicted: false },
-  canvas_read_only: false,
-  active_interaction: null,
-  conversation_last_seq: -1,
-  interrupted: false,
-  last_command_id: 'command-1',
-  phase: 'clarify',
-  run_status: 'waiting_input',
-  session_id: 'session-1',
-  version: 1,
-  ...overrides,
-})
+const withDecision = (view: SessionView): SessionView => {
+  const actions = view.actions ?? []
+  if (view.active_interaction || actions.length === 0) return { ...view, decision: null }
+  const options = actions.map((action, index) => ({
+    id: action.id,
+    label: action.label,
+    is_default: index === 0,
+  }))
+  return {
+    ...view,
+    decision: {
+      title: 'How should Builder continue?',
+      default_option_id: options[0]?.id ?? '',
+      options,
+      submit: { id: 'confirm', label: 'Submit', kind: 'primary' },
+    },
+  }
+}
+
+const createSessionView = (overrides: Partial<SessionView> = {}): SessionView =>
+  withDecision({
+    actions: [],
+    app_revision: { current: 'hash-1', conflicted: false },
+    canvas_read_only: false,
+    active_interaction: null,
+    conversation_last_seq: -1,
+    interrupted: false,
+    last_command_id: 'command-1',
+    phase: 'clarify',
+    run_status: 'waiting_input',
+    session_id: 'session-1',
+    version: 1,
+    ...overrides,
+  })
 
 const commandStartedEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
   event: 'command_started',
@@ -129,7 +149,8 @@ const stateEvent = (
   view: SessionView,
   overrides: Partial<DifyBuilderCommandFinishedEventData> = {},
 ): DifyBuilderStreamEventResponse => {
-  const { last_command_id: lastCommandId, ...state } = view
+  const normalizedView = withDecision(view)
+  const { last_command_id: lastCommandId, ...state } = normalizedView
   return {
     event: 'command_finished',
     data: {
@@ -317,6 +338,8 @@ const getComposer = () =>
 
 const getSendButton = () => screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' })
 
+const getSubmitButton = () => screen.getByRole('button', { name: 'common.operation.submit' })
+
 describe('Dify Builder Build, Edit, and Fix flows', () => {
   beforeEach(() => {
     vi.resetAllMocks()
@@ -390,10 +413,10 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     renderFlow()
     await user.type(getComposer(), 'Build a support workflow')
     await user.click(getSendButton())
-    const submit = await screen.findByRole('button', { name: 'Submit requirements' })
+    const submit = await screen.findByRole('button', { name: 'common.operation.submit' })
     await waitFor(() => expect(submit).toBeEnabled())
     await user.click(submit)
-    const confirm = await screen.findByRole('button', { name: 'Confirm resources' })
+    const confirm = await screen.findByRole('button', { name: 'common.operation.submit' })
     await waitFor(() => expect(confirm).toBeEnabled())
     expect(screen.queryByRole('heading', { name: 'Support workflow' })).not.toBeInTheDocument()
     await user.click(confirm)
@@ -450,7 +473,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     await waitFor(() => expect(input).toBeEnabled())
     expect(input).toHaveValue('Sample question')
     expect(mocks.action).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'Run test' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
     await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
     expect(mocks.action.mock.calls[0]?.[0].body).toMatchObject({
       action_id: 'provide_testdata',
@@ -495,12 +518,15 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     )
     const user = userEvent.setup()
     renderFlow()
-    const retry = await screen.findByRole('button', { name: 'Retry' })
+    const retry = await screen.findByRole('radio', { name: 'Retry' })
     await waitFor(() => expect(retry).toBeEnabled())
-    await user.click(retry)
-    expect(await screen.findByRole('button', { name: 'Confirm resources' })).toBeInTheDocument()
+    await user.click(getSubmitButton())
+    expect(await screen.findByRole('radio', { name: 'Confirm resources' })).toBeInTheDocument()
     expect(screen.getByText('Keep my original goal.')).toBeInTheDocument()
-    expect(mocks.action.mock.calls[0]?.[0].body.action_id).toBe('recovery_continue')
+    expect(mocks.action.mock.calls[0]?.[0].body).toMatchObject({
+      action_id: 'confirm',
+      payload: { option_id: 'recovery_continue' },
+    })
     expect(mocks.create).not.toHaveBeenCalled()
   })
 
@@ -548,25 +574,25 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       renderFlow(1, reactStrictMode)
 
       expect(await screen.findByText(notice.payload.text)).toBeInTheDocument()
-      const runTest = screen.getByRole('button', { name: 'Run test' })
+      const runTest = screen.getByRole('radio', { name: 'Run test' })
       await waitFor(() => expect(runTest).toBeEnabled())
-      expect(screen.getByRole('button', { name: 'Revert' })).toBeEnabled()
+      expect(screen.getByRole('radio', { name: 'Revert' })).toBeEnabled()
       expect(screen.queryByText('workflow.common.running')).not.toBeInTheDocument()
       expect(mocks.refreshCanvas).toHaveBeenCalledOnce()
       expect(mocks.stream).not.toHaveBeenCalled()
 
-      await user.click(runTest)
+      await user.click(getSubmitButton())
 
-      const publish = await screen.findByRole('button', { name: 'Publish' })
+      const publish = await screen.findByRole('radio', { name: 'Publish' })
       await waitFor(() => expect(publish).toBeEnabled())
       expect(mocks.action).toHaveBeenCalledWith(
         {
           params: { session_id: waiting.session_id },
           body: {
-            action_id: 'run_test',
+            action_id: 'confirm',
             base_app_revision: 'hash-1',
             base_version: 4,
-            payload: {},
+            payload: { option_id: 'run_test' },
           },
         },
         { signal: expect.any(AbortSignal) },
@@ -600,7 +626,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     first.unmount()
     renderFlow(1)
 
-    const runTest = await screen.findByRole('button', { name: 'Run test' })
+    const runTest = await screen.findByRole('radio', { name: 'Run test' })
     await waitFor(() => expect(runTest).toBeEnabled())
 
     // The lock can settle without changing the durable session version.
@@ -609,7 +635,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     })
 
     expect(runTest).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Revert' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'Revert' })).toBeEnabled()
     expect(screen.queryByText('workflow.common.running')).not.toBeInTheDocument()
     expect(window.sessionStorage.getItem(storageKey)).toBe(waiting.session_id)
     expect(mocks.stream).not.toHaveBeenCalled()
@@ -645,14 +671,14 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       )
       renderFlow(1, reactStrictMode)
 
-      const runTest = await screen.findByRole('button', { name: 'Run test' })
-      expect(runTest).toBeDisabled()
+      const runTest = await screen.findByRole('radio', { name: 'Run test' })
+      expect(getSubmitButton()).toBeDisabled()
       expect(mocks.refreshCanvas).not.toHaveBeenCalled()
 
       await act(async () => finishHistory(conversationPage()))
 
       await waitFor(() => expect(runTest).toBeEnabled())
-      expect(screen.getByRole('button', { name: 'Revert' })).toBeEnabled()
+      expect(screen.getByRole('radio', { name: 'Revert' })).toBeEnabled()
       expect(screen.queryByText('workflow.common.running')).not.toBeInTheDocument()
       expect(mocks.refreshCanvas).toHaveBeenCalledOnce()
       expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
@@ -708,16 +734,18 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           }),
       )
       await act(async () => reconnect.push(stateEvent(waiting)))
-      expect(screen.getByRole('button', { name: 'Run test' })).toBeDisabled()
+      expect(screen.getByRole('radio', { name: 'Run test' })).toBeDisabled()
       expect(mocks.refreshCanvas).not.toHaveBeenCalled()
 
       await act(async () => finishHistory(conversationPage([notice])))
 
       expect(await screen.findByText(notice.payload.text)).toBeInTheDocument()
-      const runTest = await screen.findByRole('button', { name: 'Run test' })
+      const runTest = await screen.findByRole('radio', { name: 'Run test' })
       await waitFor(() => expect(runTest).toBeEnabled())
-      expect(screen.getByRole('button', { name: 'Revert' })).toBeEnabled()
-      expect(getComposer()).toBeEnabled()
+      expect(screen.getByRole('radio', { name: 'Revert' })).toBeEnabled()
+      expect(
+        screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('workflow.common.running')).not.toBeInTheDocument()
       expect(mocks.refreshCanvas).toHaveBeenCalledOnce()
       expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
@@ -779,9 +807,9 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         await user.type(getComposer(), 'Prepare the workflow')
         await user.click(getSendButton())
       }
-      const approve = await screen.findByRole('button', { name: 'Approve changes' })
+      const approve = await screen.findByRole('radio', { name: 'Approve changes' })
       await waitFor(() => expect(approve).toBeEnabled())
-      await user.click(approve)
+      await user.click(getSubmitButton())
       await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
 
       await act(async () => {
@@ -796,7 +824,9 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       expect(
         screen.queryByRole('article', { name: 'workflow.difyBuilder.changes' }),
       ).not.toBeInTheDocument()
-      expect(getComposer()).toBeDisabled()
+      expect(
+        screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+      ).not.toBeInTheDocument()
 
       await act(async () => {
         actionStream.push(stateEvent(applied))
@@ -837,8 +867,8 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       edgeCount: 0,
     },
   ])(
-    'preserves $variant drafts through a chat commit and submits the edited values',
-    async ({ variant, state, actionId, edgeCount }) => {
+    'blocks chat while $variant is pending and submits the edited values',
+    async ({ variant, actionId, edgeCount }) => {
       const form: ConversationItem = {
         seq: 0,
         at_version: 2,
@@ -855,24 +885,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         active_interaction: { action_id: actionId, card_seq: form.seq, valid_at_version: 2 },
         actions: [{ id: actionId, kind: 'primary', label: 'Submit form' }],
       })
-      const reply: ConversationItem = {
-        seq: 2,
-        at_version: 4,
-        kind: 'assistant_turn',
-        payload: {
-          turn_id: 'reply-1',
-          stage_id: state,
-          execution: { status: 'completed' },
-          reply_text: 'The audience determines how to explain the results.',
-        },
-      }
-      const answered = {
-        ...waiting,
-        version: 4,
-        conversation_last_seq: 2,
-        active_interaction: { action_id: actionId, card_seq: form.seq, valid_at_version: 4 },
-      }
-      const messageStream = createControlledEventStream()
       mocks.create.mockResolvedValue(
         streamOf(
           commandStartedEvent(createSessionView()),
@@ -880,13 +892,12 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           stateEvent(waiting),
         ),
       )
-      mocks.message.mockResolvedValue(messageStream.iterable)
       mocks.action.mockResolvedValue(
         streamOf(
-          commandStartedEvent(answered),
+          commandStartedEvent(waiting),
           stateEvent({
-            ...answered,
-            version: 5,
+            ...waiting,
+            version: 3,
             active_interaction: null,
             actions: [],
           }),
@@ -901,37 +912,16 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       await waitFor(() => expect(audience).toBeEnabled())
       await user.clear(audience)
       await user.type(audience, 'Support agents')
-      await user.type(getComposer(), 'How is the audience used?')
-      await user.click(getSendButton())
-      await waitFor(() => expect(mocks.message).toHaveBeenCalledOnce())
-      const clientTurnId = mocks.message.mock.calls[0]?.[0].body.client_turn_id
-      expect(clientTurnId).toEqual(expect.any(String))
-      const question: ConversationItem = {
-        seq: 1,
-        at_version: 3,
-        kind: 'user',
-        payload: { turn_id: clientTurnId, text: 'How is the audience used?' },
-      }
-      await act(async () => {
-        messageStream.push(commandStartedEvent(waiting))
-        messageStream.push(conversationItemEvent(question))
-        for (const event of assistantMessageEvents(reply, 'message-1')) messageStream.push(event)
-      })
-      await screen.findByText('The audience determines how to explain the results.')
-      expect(screen.getByRole('textbox', { name: 'Audience' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'Submit form' })).toBeDisabled()
-
-      await act(async () => messageStream.push(stateEvent(answered)))
-      await screen.findByText('How is the audience used?')
-      await screen.findByText('The audience determines how to explain the results.')
-      await waitFor(() => expect(screen.getByRole('textbox', { name: 'Audience' })).toBeEnabled())
       expect(screen.getByRole('textbox', { name: 'Audience' })).toHaveValue('Support agents')
+      expect(
+        screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+      ).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'Submit form' }))
+      await user.click(getSubmitButton())
       await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
       expect(mocks.action.mock.calls[0]?.[0].body).toMatchObject({
         action_id: actionId,
-        base_version: 4,
+        base_version: 2,
         payload:
           actionId === 'provide_testdata'
             ? { mode: 'provide', inputs: { audience: 'Support agents' } }
@@ -1001,13 +991,15 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       createStream.push(stateEvent(planReady))
     })
 
-    const approvePlan = await screen.findByRole('button', { name: 'Approve plan' })
+    const approvePlan = await screen.findByRole('radio', { name: 'Approve plan' })
     expect(await screen.findByText('Plan reconciled from the server.')).toBeInTheDocument()
     await waitFor(() => expect(approvePlan).toBeEnabled())
 
-    await user.click(approvePlan)
+    await user.click(getSubmitButton())
     await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
-    expect(getComposer()).toBeDisabled()
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).not.toBeInTheDocument()
 
     await act(async () => {
       actionStream.push(commandStartedEvent(planReady))
@@ -1016,7 +1008,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     })
 
     expect(await screen.findByText('Plan approved and ready to verify.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Run verification' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'Run verification' })).toBeEnabled()
     expect(mocks.create).toHaveBeenCalledWith(
       {
         body: {
@@ -1033,10 +1025,10 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       {
         params: { session_id: 'session-1' },
         body: {
-          action_id: 'approve_plan',
+          action_id: 'confirm',
           base_app_revision: 'hash-1',
           base_version: 2,
-          payload: {},
+          payload: { option_id: 'approve_plan' },
         },
       },
       { signal: expect.any(AbortSignal) },
@@ -1127,8 +1119,10 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
 
     expect(await screen.findByText('Recovered the latest Fix state.')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Approve repair' })).toBeEnabled()
-    expect(getComposer()).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'Approve repair' })).toBeEnabled()
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).not.toBeInTheDocument()
     expect(mocks.create.mock.calls[0]?.[0]).toEqual({
       body: {
         app_id: 'app-1',
@@ -1199,18 +1193,23 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     const audience = await screen.findByRole('textbox', { name: 'Build audience' })
     const fixEntry = screen.getByRole('button', { name: 'Fix failed run' })
     await waitFor(() => expect(fixEntry).toBeEnabled())
-    await user.type(getComposer(), 'Continue the build')
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).not.toBeInTheDocument()
     await user.click(fixEntry)
     await waitFor(() => expect(fixEntry).toBeDisabled())
     expect(audience).toBeDisabled()
-    expect(getComposer()).toBeDisabled()
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).not.toBeInTheDocument()
     expect(mocks.create).not.toHaveBeenCalled()
 
     await act(async () => finishSync())
     await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce())
     expect(screen.queryByRole('textbox', { name: 'Build audience' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Submit requirements' })).not.toBeInTheDocument()
-    expect(getComposer()).toHaveValue('')
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.submit' }),
+    ).not.toBeInTheDocument()
 
     await act(async () => {
       fixStream.push(
@@ -1228,9 +1227,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       fixStream.close()
     })
     expect(await screen.findByText('Repair the selected failed run.')).toBeInTheDocument()
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Approve repair' })).toBeEnabled(),
-    )
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Approve repair' })).toBeEnabled())
     expect(window.sessionStorage.getItem(storageKey)).toBe('fix-session')
     expect(mocks.create.mock.calls[0]?.[0].body).toMatchObject({
       scenario: 'fix',

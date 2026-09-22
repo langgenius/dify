@@ -1,5 +1,5 @@
 import type { DifyBuilderRuntime } from '../store'
-import type { SessionView } from '../types'
+import type { ConversationItem, SessionView } from '../types'
 import { QueryClient } from '@tanstack/react-query'
 import { createStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -22,6 +22,7 @@ import {
   difyBuilderDraftAtom,
   difyBuilderHasSessionAtom,
   difyBuilderInteractionBusyAtom,
+  difyBuilderLocalInteractionResponseAtom,
   difyBuilderModelReadonlyAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRegisterChecklistErrorsAtom,
@@ -496,6 +497,162 @@ describe('Dify Builder store', () => {
       }),
     ).toBe(false)
     expect(runtime.session.startBuild).not.toHaveBeenCalled()
+  })
+
+  it('publishes a choice response optimistically while the action is running', async () => {
+    const store = createStore()
+    let finishAction!: (submitted: boolean) => void
+    const action = new Promise<boolean>((resolve) => {
+      finishAction = resolve
+    })
+    const runAction = vi.fn(() => action)
+    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        conversation_last_seq: 4,
+        decision: {
+          title: 'Is this workflow plan ready to apply?',
+          options: [{ id: 'approve_plan', label: 'Approve plan' }],
+        },
+      }),
+    )
+
+    const submission = store.set(difyBuilderSubmitActionAtom, 'confirm', {
+      option_id: 'approve_plan',
+    })
+
+    expect(store.get(difyBuilderLocalInteractionResponseAtom)).toMatchObject({
+      afterSequence: 4,
+      baseVersion: 1,
+      sessionId: 'session-1',
+      item: {
+        at_version: 2,
+        kind: 'interaction_response',
+        payload: {
+          interaction_kind: 'choice',
+          question: 'Is this workflow plan ready to apply?',
+          answer: 'Approve plan',
+          submitted_data: { option_id: 'approve_plan' },
+        },
+        seq: 5,
+      },
+    })
+    finishAction(true)
+    expect(await submission).toBe(true)
+    expect(store.get(difyBuilderLocalInteractionResponseAtom)).toBeNull()
+  })
+
+  it('formats submitted form values for the optimistic conversation response', async () => {
+    const store = createStore()
+    let finishAction!: (submitted: boolean) => void
+    const action = new Promise<boolean>((resolve) => {
+      finishAction = resolve
+    })
+    const runAction = vi.fn(() => action)
+    const card: Extract<ConversationItem, { kind: 'form' }> = {
+      at_version: 1,
+      kind: 'form',
+      payload: {
+        fields: [
+          { key: 'topic', label: 'Topic', type: 'text-input' },
+          { key: 'enabled', label: 'Enabled', type: 'bool' },
+        ],
+        title: 'Provide test data',
+        values: {},
+        variant: 'testdata',
+      },
+      seq: 0,
+    }
+    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+    store.set(difyBuilderConversationAtom, [card])
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card_seq: card.seq,
+          valid_at_version: 1,
+        },
+        conversation_last_seq: 0,
+      }),
+    )
+
+    const submission = store.set(difyBuilderSubmitActionAtom, 'provide_testdata', {
+      mode: 'provide',
+      inputs: { enabled: true, topic: 'AI agents' },
+    })
+
+    expect(store.get(difyBuilderLocalInteractionResponseAtom)?.item.payload).toEqual({
+      interaction_kind: 'form',
+      question: 'Provide test data',
+      fields: [
+        { key: 'topic', label: 'Topic', value: 'AI agents', display_value: 'AI agents' },
+        { key: 'enabled', label: 'Enabled', value: true, display_value: 'Yes' },
+      ],
+      submitted_data: { enabled: true, topic: 'AI agents' },
+    })
+    finishAction(true)
+    await submission
+  })
+
+  it('uses selected resource labels in the optimistic conversation response', async () => {
+    const store = createStore()
+    let finishAction!: (submitted: boolean) => void
+    const action = new Promise<boolean>((resolve) => {
+      finishAction = resolve
+    })
+    const runAction = vi.fn(() => action)
+    const card: Extract<ConversationItem, { kind: 'resource_select' }> = {
+      at_version: 1,
+      kind: 'resource_select',
+      payload: {
+        recommended: [
+          {
+            id: 'knowledge',
+            kind: 'knowledge',
+            label: 'Support knowledge base',
+            meta: 'Dataset',
+            readiness: 'ready',
+          },
+          {
+            id: 'slack',
+            kind: 'tool',
+            label: 'Slack',
+            meta: 'Tool',
+            readiness: 'ready',
+          },
+        ],
+        title: 'Choose resources',
+      },
+      seq: 0,
+    }
+    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+    store.set(difyBuilderConversationAtom, [card])
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        active_interaction: {
+          action_id: 'confirm_resources',
+          card_seq: card.seq,
+          valid_at_version: 1,
+        },
+        conversation_last_seq: 0,
+      }),
+    )
+
+    const submission = store.set(difyBuilderSubmitActionAtom, 'confirm_resources', {
+      resource_ids: ['slack'],
+    })
+
+    expect(store.get(difyBuilderLocalInteractionResponseAtom)?.item.payload).toEqual({
+      interaction_kind: 'resource',
+      question: 'Choose resources',
+      answer: 'Slack',
+      submitted_data: { resource_ids: ['slack'] },
+    })
+    finishAction(true)
+    await submission
   })
 
   it('builds recheck payloads from the latest checklist atom value', async () => {

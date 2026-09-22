@@ -32,10 +32,18 @@ export type DifyBuilderLocalUserMessage = {
   text: string
   turnId?: string
 }
+export type DifyBuilderLocalInteractionResponse = {
+  afterSequence: number
+  baseVersion: number
+  item: Extract<ConversationItem, { kind: 'interaction_response' }>
+  localId: string
+  sessionId: string
+}
 export type ConversationPage = DifyBuilderConversationPageResponse
 export type FormField = GeneratedFormField
 export type SessionModel = GeneratedSessionModel
 export type SessionView = DifyBuilderSessionViewResponse
+export type DifyBuilderDecision = NonNullable<SessionView['decision']>
 export type DifyBuilderActiveInteraction = NonNullable<SessionView['active_interaction']> & {
   card: ConversationItem
 }

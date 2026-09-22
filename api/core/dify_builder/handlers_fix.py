@@ -646,6 +646,8 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             fc,
             FormCard(
                 variant="testdata",
+                title="Provide test data",
+                description="Review the inputs Builder will use for this run.",
                 fields=testdata_form_fields(start_schema(graph)),
                 values={},
                 frozen=False,

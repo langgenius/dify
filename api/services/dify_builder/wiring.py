@@ -153,6 +153,8 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
         "phase": view.get("phase", "understand"),
         "actions": _public_actions(view.get("actions")),
     }
+    if view.get("decision") is not None:
+        projected["decision"] = view["decision"]
     active_interaction = _public_active_interaction(view.get("active_interaction"))
     if active_interaction is not None:
         projected["active_interaction"] = active_interaction

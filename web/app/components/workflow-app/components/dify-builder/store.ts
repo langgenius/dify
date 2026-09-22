@@ -2,12 +2,14 @@ import type {
   Action,
   ChecklistErrorPayload,
   DifyBuilderActiveInteraction,
+  DifyBuilderLocalInteractionResponse,
   DifyBuilderSessionController,
   SessionModel,
 } from './types'
 import type { DifyBuilderCanvasNode } from './utils'
 import { atom } from 'jotai'
 import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
+import { createOptimisticInteractionResponse } from './interactions/optimistic-response'
 import {
   difyBuilderActiveCommandAtom,
   difyBuilderConversationAtom,
@@ -49,6 +51,8 @@ const difyBuilderStartFixMutationAtom = atomWithMutation((get) => ({
 }))
 export const difyBuilderSelectedModelAtom = atom<SessionModel | null>(null)
 export const difyBuilderDraftAtom = atom('')
+export const difyBuilderLocalInteractionResponseAtom =
+  atom<DifyBuilderLocalInteractionResponse | null>(null)
 export const difyBuilderDeriveAppNameAtom = atom(false)
 export const difyBuilderLocalErrorAtom = atom('')
 export const difyBuilderRunRestoreErrorAtom = atom('')
@@ -70,6 +74,7 @@ export const difyBuilderScopedAtoms = [
   difyBuilderRuntimeAtom,
   difyBuilderSelectedModelAtom,
   difyBuilderDraftAtom,
+  difyBuilderLocalInteractionResponseAtom,
   difyBuilderDeriveAppNameAtom,
   difyBuilderLocalErrorAtom,
   difyBuilderRunRestoreErrorAtom,
@@ -104,6 +109,9 @@ export const difyBuilderActiveInteractionAtom = atom((get) => {
   const interaction = get(difyBuilderInteractionAtom)
   return interaction?.valid_at_version === view?.version ? interaction : null
 })
+export const difyBuilderDecisionAtom = atom(
+  (get) => get(difyBuilderSessionViewAtom)?.decision ?? null,
+)
 export const difyBuilderActionsAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.actions ?? EMPTY_ACTIONS,
 )
@@ -165,6 +173,7 @@ export const difyBuilderRetryCanvasRefreshAtom = atom(null, (get, set) => {
 export const difyBuilderCanComposeAtom = atom((get) => {
   if (get(difyBuilderInteractionBusyAtom) || !get(difyBuilderCanvasReadyAtom)) return false
   const view = get(difyBuilderSessionViewAtom)
+  if (view?.decision || view?.active_interaction) return false
   if (view?.recovery || view?.app_revision?.conflicted) return false
   return !view || isTerminalStatus(view.run_status) || canContinueConversation(view.run_status)
 })
@@ -368,7 +377,7 @@ export const difyBuilderSelectModelAtom = atom(null, async (get, set, model: Ses
 
 export const difyBuilderSubmitActionAtom = atom(
   null,
-  (get, set, actionId: string, payload: Record<string, unknown> = {}) => {
+  async (get, set, actionId: string, payload: Record<string, unknown> = {}) => {
     const runtime = get(difyBuilderRuntimeAtom)
     if (
       !runtime?.enabled ||
@@ -376,18 +385,56 @@ export const difyBuilderSubmitActionAtom = atom(
       get(difyBuilderInteractionBusyAtom) ||
       !get(difyBuilderCanvasReadyAtom)
     )
-      return Promise.resolve(false)
+      return false
 
     set(difyBuilderLocalErrorAtom, '')
-    if (actionId === 'recheck') {
-      if (!get(difyBuilderRecheckReadyAtom)) return Promise.resolve(false)
+    const selectedActionId =
+      actionId === 'confirm' && typeof payload.option_id === 'string' ? payload.option_id : actionId
+    let actionPayload = payload
+    if (selectedActionId === 'recheck') {
+      if (!get(difyBuilderRecheckReadyAtom)) return false
       const errors = get(difyBuilderChecklistErrorsAtom)
-      return runtime.session.runAction(actionId, {
+      actionPayload = {
+        ...payload,
         passed: errors.length === 0,
         remaining: errors,
+      }
+    }
+
+    const view = get(difyBuilderSessionViewAtom)
+    const optimisticPayload = view
+      ? createOptimisticInteractionResponse({
+          actionId,
+          activeInteraction: get(difyBuilderActiveInteractionAtom),
+          decision: view.decision ?? null,
+          payload: actionPayload,
+        })
+      : null
+    const localId = optimisticPayload ? globalThis.crypto.randomUUID() : null
+    if (view && optimisticPayload && localId) {
+      set(difyBuilderLocalInteractionResponseAtom, {
+        afterSequence: view.conversation_last_seq,
+        baseVersion: view.version,
+        item: {
+          at_version: view.version + 1,
+          kind: 'interaction_response',
+          payload: optimisticPayload,
+          seq: view.conversation_last_seq + 1,
+        },
+        localId,
+        sessionId: view.session_id,
       })
     }
-    return runtime.session.runAction(actionId, payload)
+
+    try {
+      return await runtime.session.runAction(actionId, actionPayload)
+    } finally {
+      if (localId) {
+        set(difyBuilderLocalInteractionResponseAtom, (current) =>
+          current?.localId === localId ? null : current,
+        )
+      }
+    }
   },
 )
 
@@ -410,6 +457,7 @@ export const difyBuilderResetAtom = atom(null, (get, set) => {
   set(difyBuilderSelectedModelAtom, null)
   set(difyBuilderDeriveAppNameAtom, false)
   set(difyBuilderDraftAtom, '')
+  set(difyBuilderLocalInteractionResponseAtom, null)
   set(difyBuilderLocalUserMessageAtom, null)
   set(difyBuilderRetryableMessageAtom, null)
   set(difyBuilderLocalErrorAtom, '')

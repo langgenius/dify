@@ -6,6 +6,8 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { DifyBuilderConversation } from '../conversation'
+import { FormCard } from '../conversation/form-card'
+import { ResourceCard } from '../conversation/resource-card'
 import {
   difyBuilderExecutionProgressAtom,
   difyBuilderReasoningAtom,
@@ -88,22 +90,12 @@ const renderForm = (
     payload: { variant, fields, values },
   }
   render(
-    <DifyBuilderConversation
-      viewVersion={1}
+    <FormCard
+      item={card}
       busy={false}
-      activeInteraction={{
-        action_id:
-          variant === 'build_requirements'
-            ? 'submit_requirements'
-            : variant === 'edit_rules'
-              ? 'submit_edit_rules'
-              : 'provide_testdata',
-        card_seq: card.seq,
-        card,
-        valid_at_version: 1,
-      }}
-      interrupted={false}
-      items={[card]}
+      embedded
+      interactive
+      invalidated={false}
       onActionPayloadChange={onActionPayloadChange}
       onActionValidityChange={onActionValidityChange}
     />,
@@ -354,20 +346,16 @@ describe('DifyBuilderConversation test data form', () => {
     }
     render(
       <Provider store={store}>
-        <DifyBuilderConversation
-          viewVersion={1}
+        <FormCard
+          item={card}
           busy={false}
-          activeInteraction={{
-            action_id: 'provide_testdata',
-            card_seq: card.seq,
-            card,
-            valid_at_version: 1,
-          }}
-          interrupted={false}
-          items={[card]}
+          embedded
+          interactive
+          invalidated={false}
           onActionPayloadChange={vi.fn()}
           onActionValidityChange={vi.fn()}
         />
+        <DifyBuilderConversation busy interrupted={false} items={[]} />
       </Provider>,
     )
     const input = screen.getByRole('textbox', { name: 'Topic' })
@@ -421,9 +409,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     render(
       <DifyBuilderConversation
-        viewVersion={1}
         busy={false}
-        activeInteraction={null}
         interrupted={false}
         items={[
           {
@@ -438,7 +424,6 @@ describe('DifyBuilderConversation test data form', () => {
             },
           },
         ]}
-        onActionPayloadChange={vi.fn()}
       />,
     )
 
@@ -449,9 +434,7 @@ describe('DifyBuilderConversation test data form', () => {
   it('renders user and assistant text without message actions', () => {
     render(
       <DifyBuilderConversation
-        viewVersion={1}
         busy={false}
-        activeInteraction={null}
         interrupted={false}
         items={[
           {
@@ -472,7 +455,6 @@ describe('DifyBuilderConversation test data form', () => {
             },
           },
         ]}
-        onActionPayloadChange={vi.fn()}
       />,
     )
 
@@ -491,11 +473,8 @@ describe('DifyBuilderConversation test data form', () => {
       turnId: 'turn-local-1',
     }
     const props = {
-      viewVersion: 1,
       busy: true,
-      activeInteraction: null,
       interrupted: false,
-      onActionPayloadChange: vi.fn(),
     }
     const { rerender } = render(
       <DifyBuilderConversation {...props} items={[]} localUserMessage={localUserMessage} />,
@@ -538,9 +517,7 @@ describe('DifyBuilderConversation test data form', () => {
     render(
       <Provider store={store}>
         <DifyBuilderConversation
-          viewVersion={1}
           busy
-          activeInteraction={null}
           interrupted={false}
           items={[
             {
@@ -561,7 +538,6 @@ describe('DifyBuilderConversation test data form', () => {
               },
             },
           ]}
-          onActionPayloadChange={vi.fn()}
         />
       </Provider>,
     )
@@ -593,14 +569,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     render(
       <Provider store={store}>
-        <DifyBuilderConversation
-          viewVersion={1}
-          busy
-          activeInteraction={null}
-          interrupted={false}
-          items={[]}
-          onActionPayloadChange={vi.fn()}
-        />
+        <DifyBuilderConversation busy interrupted={false} items={[]} />
       </Provider>,
     )
 
@@ -633,17 +602,12 @@ describe('DifyBuilderConversation test data form', () => {
       }
 
       render(
-        <DifyBuilderConversation
-          viewVersion={1}
+        <ResourceCard
+          item={resourceCard}
           busy={false}
-          activeInteraction={{
-            action_id: 'confirm_resources',
-            card_seq: resourceCard.seq,
-            card: resourceCard,
-            valid_at_version: 1,
-          }}
-          interrupted={false}
-          items={[resourceCard]}
+          embedded
+          interactive
+          invalidated={false}
           onActionPayloadChange={onActionPayloadChange}
         />,
       )
@@ -662,8 +626,7 @@ describe('DifyBuilderConversation test data form', () => {
     },
   )
 
-  it('restores the current interaction separately and freezes historical forms', async () => {
-    const user = userEvent.setup()
+  it('hides source forms and renders only the durable submitted response', () => {
     const oldCard: Extract<ConversationItem, { kind: 'form' }> = {
       seq: 2,
       at_version: 2,
@@ -684,46 +647,118 @@ describe('DifyBuilderConversation test data form', () => {
         values: { topic: 'restored value' },
       },
     }
-    const onActionPayloadChange = vi.fn()
-
     render(
       <DifyBuilderConversation
-        viewVersion={5}
         busy={false}
-        activeInteraction={{
-          action_id: 'provide_testdata',
-          card_seq: activeCard.seq,
-          card: activeCard,
-          valid_at_version: 5,
-        }}
         interrupted={false}
-        items={[oldCard]}
-        onActionPayloadChange={onActionPayloadChange}
+        items={[
+          oldCard,
+          activeCard,
+          {
+            seq: 9,
+            at_version: 6,
+            kind: 'interaction_response',
+            payload: {
+              interaction_kind: 'form',
+              question: 'Provide test data',
+              fields: [
+                {
+                  key: 'topic',
+                  label: 'Topic',
+                  value: 'new value',
+                  display_value: 'new value',
+                },
+              ],
+              submitted_data: { topic: 'new value' },
+            },
+          },
+        ]}
       />,
     )
 
-    const [historicalInput, activeInput] = screen.getAllByRole('textbox', { name: 'Topic' })
-    expect(historicalInput).toBeDisabled()
-    expect(historicalInput).toHaveValue('old value')
-    expect(activeInput).toBeEnabled()
-    expect(activeInput).toHaveValue('restored value')
+    expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Provide test data' })).toBeInTheDocument()
+    expect(screen.getByText('new value')).toBeInTheDocument()
+  })
 
-    await user.clear(activeInput!)
-    await user.type(activeInput!, 'new value')
-    await waitFor(() =>
-      expect(onActionPayloadChange).toHaveBeenLastCalledWith('provide_testdata', {
-        mode: 'provide',
-        inputs: { topic: 'new value' },
-      }),
+  it('reconciles an optimistic response with its durable conversation item', () => {
+    const response: Extract<ConversationItem, { kind: 'interaction_response' }> = {
+      seq: 5,
+      at_version: 2,
+      kind: 'interaction_response',
+      payload: {
+        interaction_kind: 'choice',
+        question: 'Is this workflow plan ready to apply?',
+        answer: 'Approve plan',
+        submitted_data: { option_id: 'approve_plan' },
+      },
+    }
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        interrupted={false}
+        items={[response]}
+        localInteractionResponse={{
+          afterSequence: 4,
+          baseVersion: 1,
+          item: response,
+          localId: 'local-response-1',
+          sessionId: 'session-1',
+        }}
+      />,
     )
+
+    expect(
+      screen.getAllByRole('heading', { name: 'Is this workflow plan ready to apply?' }),
+    ).toHaveLength(1)
+    expect(screen.getAllByText('Approve plan')).toHaveLength(1)
+  })
+
+  it('shows a submitted response before output committed by the same transition', () => {
+    render(
+      <DifyBuilderConversation
+        busy={false}
+        interrupted={false}
+        items={[
+          {
+            seq: 0,
+            at_version: 2,
+            kind: 'assistant_turn',
+            payload: {
+              turn_id: 'turn-1',
+              stage_id: 'fix.await_verify',
+              execution: { status: 'completed' },
+              reply_text: 'Provide test inputs to continue.',
+            },
+          },
+          {
+            seq: 1,
+            at_version: 2,
+            kind: 'interaction_response',
+            payload: {
+              interaction_kind: 'choice',
+              question: 'What should Builder do with the applied fix?',
+              answer: 'Run validation',
+              submitted_data: { option_id: 'run_validation' },
+            },
+          },
+        ]}
+      />,
+    )
+
+    const response = screen.getByRole('heading', {
+      name: 'What should Builder do with the applied fix?',
+    })
+    const assistant = screen.getByText('Provide test inputs to continue.')
+    expect(
+      response.compareDocumentPosition(assistant) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('keeps completed execution and reasoning available with the committed reply', () => {
     render(
       <DifyBuilderConversation
-        viewVersion={1}
         busy={false}
-        activeInteraction={null}
         interrupted={false}
         items={[
           {
@@ -748,7 +783,6 @@ describe('DifyBuilderConversation test data form', () => {
             },
           },
         ]}
-        onActionPayloadChange={vi.fn()}
       />,
     )
 
@@ -762,9 +796,7 @@ describe('DifyBuilderConversation test data form', () => {
   it('renders change summaries as ordinary assistant text', () => {
     render(
       <DifyBuilderConversation
-        viewVersion={1}
         busy={false}
-        activeInteraction={null}
         interrupted={false}
         items={[
           {
@@ -779,7 +811,6 @@ describe('DifyBuilderConversation test data form', () => {
             },
           },
         ]}
-        onActionPayloadChange={vi.fn()}
       />,
     )
 
@@ -792,9 +823,7 @@ describe('DifyBuilderConversation test data form', () => {
   it('renders preflight findings with Builder-owned checklist styling', () => {
     render(
       <DifyBuilderConversation
-        viewVersion={2}
         busy={false}
-        activeInteraction={null}
         interrupted={false}
         items={[
           {
@@ -817,7 +846,6 @@ describe('DifyBuilderConversation test data form', () => {
             },
           },
         ]}
-        onActionPayloadChange={vi.fn()}
       />,
     )
 
@@ -854,14 +882,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     render(
       <Provider store={store}>
-        <DifyBuilderConversation
-          viewVersion={1}
-          busy
-          activeInteraction={null}
-          interrupted={false}
-          items={[]}
-          onActionPayloadChange={vi.fn()}
-        />
+        <DifyBuilderConversation busy interrupted={false} items={[]} />
       </Provider>,
     )
 
@@ -891,14 +912,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     render(
       <Provider store={store}>
-        <DifyBuilderConversation
-          viewVersion={1}
-          busy
-          activeInteraction={null}
-          interrupted={false}
-          items={[]}
-          onActionPayloadChange={vi.fn()}
-        />
+        <DifyBuilderConversation busy interrupted={false} items={[]} />
       </Provider>,
     )
 
@@ -942,9 +956,7 @@ describe('DifyBuilderConversation test data form', () => {
   it('renders a plan title and steps without version metadata', () => {
     render(
       <DifyBuilderConversation
-        viewVersion={1}
         busy={false}
-        activeInteraction={null}
         interrupted={false}
         items={[
           {
@@ -957,7 +969,6 @@ describe('DifyBuilderConversation test data form', () => {
             },
           },
         ]}
-        onActionPayloadChange={vi.fn()}
       />,
     )
 
@@ -972,9 +983,7 @@ describe('DifyBuilderConversation test data form', () => {
   it('renders failed test result content in the card framework', () => {
     render(
       <DifyBuilderConversation
-        viewVersion={1}
         busy={false}
-        activeInteraction={null}
         interrupted={false}
         items={[
           {
@@ -988,7 +997,6 @@ describe('DifyBuilderConversation test data form', () => {
             },
           },
         ]}
-        onActionPayloadChange={vi.fn()}
       />,
     )
 
@@ -1005,9 +1013,7 @@ describe('DifyBuilderConversation test data form', () => {
   it('renders only the success result indicator for a successful test', () => {
     render(
       <DifyBuilderConversation
-        viewVersion={2}
         busy={false}
-        activeInteraction={null}
         interrupted={false}
         items={[
           {
@@ -1017,7 +1023,6 @@ describe('DifyBuilderConversation test data form', () => {
             payload: { status: 'succeeded', dify_run_id: 'run-1' },
           },
         ]}
-        onActionPayloadChange={vi.fn()}
       />,
     )
 

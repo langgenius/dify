@@ -259,50 +259,14 @@ export const zDifyBuilderActionResponse = z.object({
 })
 
 /**
- * DifyBuilderSessionViewResponse
+ * Action
  */
-export const zDifyBuilderSessionViewResponse = z.object({
-  actions: z.array(zDifyBuilderActionResponse).optional(),
-  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
-  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
-  canvas_read_only: z.boolean(),
-  conversation_last_seq: z.int(),
-  interrupted: z.boolean(),
-  last_command_id: z.string().optional().default(''),
-  model: zSessionModel.nullish(),
-  phase: zPhase,
-  recovery: zRecoveryRef.nullish(),
-  run_status: zRunStatus,
-  session_id: z.string(),
-  version: z.int(),
-})
-
-/**
- * DifyBuilderCommandFinishedEventData
- */
-export const zDifyBuilderCommandFinishedEventData = z.object({
-  actions: z.array(zDifyBuilderActionResponse).optional(),
-  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
-  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
-  canvas_read_only: z.boolean(),
-  command_id: z.string(),
-  conversation_last_seq: z.int(),
-  interrupted: z.boolean(),
-  model: zSessionModel.nullish(),
-  phase: zPhase,
-  post_canvas_action_id: z.string().nullish(),
-  recovery: zRecoveryRef.nullish(),
-  run_status: zRunStatus,
-  session_id: z.string(),
-  version: z.int(),
-})
-
-/**
- * DifyBuilderCommandFinishedEventResponse
- */
-export const zDifyBuilderCommandFinishedEventResponse = z.object({
-  data: zDifyBuilderCommandFinishedEventData,
-  event: z.literal('command_finished'),
+export const zAction = z.object({
+  canvas_event: z.string().nullish(),
+  id: z.string(),
+  kind: zActionKind,
+  label: z.string(),
+  next_state: z.string().nullish(),
 })
 
 /**
@@ -569,6 +533,121 @@ export const zDifyBuilderAgentMessageEventResponse = z.object({
 })
 
 /**
+ * OptionInput
+ */
+export const zOptionInput = z.object({
+  max_length: z.int().optional().default(100),
+  min_length: z.int().optional().default(0),
+  placeholder: z.string().optional().default(''),
+  required: z.boolean().optional().default(true),
+})
+
+/**
+ * CardOption
+ */
+export const zCardOption = z.object({
+  canvas_event: z.string().nullish(),
+  description: z.string().optional().default(''),
+  id: z.string(),
+  input: zOptionInput.nullish(),
+  is_default: z.boolean().optional().default(false),
+  label: z.string(),
+  next_state: z.string().nullish(),
+  tone: z.string().optional().default('neutral'),
+})
+
+/**
+ * Decision
+ */
+export const zDecision = z.object({
+  default_option_id: z.string().optional().default(''),
+  description: z.string().optional().default(''),
+  options: z.array(zCardOption).optional(),
+  submit: zAction.nullish(),
+  title: z.string(),
+})
+
+/**
+ * DifyBuilderSessionViewResponse
+ */
+export const zDifyBuilderSessionViewResponse = z.object({
+  actions: z.array(zDifyBuilderActionResponse).optional(),
+  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
+  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
+  canvas_read_only: z.boolean(),
+  conversation_last_seq: z.int(),
+  decision: zDecision.nullish(),
+  interrupted: z.boolean(),
+  last_command_id: z.string().optional().default(''),
+  model: zSessionModel.nullish(),
+  phase: zPhase,
+  recovery: zRecoveryRef.nullish(),
+  run_status: zRunStatus,
+  session_id: z.string(),
+  version: z.int(),
+})
+
+/**
+ * DifyBuilderCommandFinishedEventData
+ */
+export const zDifyBuilderCommandFinishedEventData = z.object({
+  actions: z.array(zDifyBuilderActionResponse).optional(),
+  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
+  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
+  canvas_read_only: z.boolean(),
+  command_id: z.string(),
+  conversation_last_seq: z.int(),
+  decision: zDecision.nullish(),
+  interrupted: z.boolean(),
+  model: zSessionModel.nullish(),
+  phase: zPhase,
+  post_canvas_action_id: z.string().nullish(),
+  recovery: zRecoveryRef.nullish(),
+  run_status: zRunStatus,
+  session_id: z.string(),
+  version: z.int(),
+})
+
+/**
+ * DifyBuilderCommandFinishedEventResponse
+ */
+export const zDifyBuilderCommandFinishedEventResponse = z.object({
+  data: zDifyBuilderCommandFinishedEventData,
+  event: z.literal('command_finished'),
+})
+
+/**
+ * InteractionResponseField
+ */
+export const zInteractionResponseField = z.object({
+  display_value: z.string(),
+  key: z.string(),
+  label: z.string(),
+  value: z.unknown(),
+})
+
+/**
+ * InteractionResponseItem
+ */
+export const zInteractionResponseItem = z.object({
+  answer: z.string().optional().default(''),
+  fields: z.array(zInteractionResponseField).optional(),
+  interaction_kind: z.enum(['choice', 'form', 'resource']),
+  question: z.string(),
+  submitted_data: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * DifyBuilderInteractionResponseConversationItemResponse
+ */
+export const zDifyBuilderInteractionResponseConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('interaction_response'),
+  payload: zInteractionResponseItem,
+  seq: z.int(),
+})
+
+/**
  * PreflightIssue
  */
 export const zPreflightIssue = z.object({
@@ -624,8 +703,10 @@ export const zFormField = z.object({
  * FormCard
  */
 export const zFormCard = z.object({
+  description: z.string().optional().default(''),
   fields: z.array(zFormField).optional(),
   frozen: z.boolean().optional().default(false),
+  title: z.string().optional().default(''),
   values: z.record(z.string(), z.unknown()).optional(),
   variant: z.string(),
 })
@@ -655,7 +736,9 @@ export const zResourceOption = z.object({
  * ResourceSelectCard
  */
 export const zResourceSelectCard = z.object({
+  description: z.string().optional().default(''),
   recommended: z.array(zResourceOption).optional(),
+  title: z.string().optional().default(''),
 })
 
 /**
@@ -676,6 +759,9 @@ export const zDifyBuilderConversationItemAppendedEventData = z.object({
   item: z.discriminatedUnion('kind', [
     zDifyBuilderUserConversationItemResponse.extend({ kind: z.literal('user') }),
     zDifyBuilderDecisionConversationItemResponse.extend({ kind: z.literal('decision') }),
+    zDifyBuilderInteractionResponseConversationItemResponse.extend({
+      kind: z.literal('interaction_response'),
+    }),
     zDifyBuilderNoticeConversationItemResponse.extend({ kind: z.literal('notice') }),
     zDifyBuilderRunContextConversationItemResponse.extend({ kind: z.literal('run_context') }),
     zDifyBuilderPreflightContextConversationItemResponse.extend({
@@ -995,6 +1081,11 @@ export const zDifyBuilderConversationPageResponse = z.object({
           kind: z.literal('decision'),
         })
         .and(zDifyBuilderDecisionConversationItemResponse),
+      z
+        .object({
+          kind: z.literal('interaction_response'),
+        })
+        .and(zDifyBuilderInteractionResponseConversationItemResponse),
       z
         .object({
           kind: z.literal('notice'),

@@ -37,7 +37,21 @@ def test_session_view_to_dict_projects_only_browser_fields():
     }
 
 
-def test_public_session_projection_strips_internal_decision_and_revision_fields():
+def test_public_session_projection_exposes_decision_and_strips_internal_revision_fields():
+    decision = {
+        "title": "What should Builder do next?",
+        "description": "Choose one option to continue.",
+        "options": [
+            {
+                "id": "approve_plan",
+                "label": "Approve plan",
+                "kind": "primary",
+                "is_default": True,
+            }
+        ],
+        "submit": {"id": "confirm", "label": "Submit", "kind": "primary"},
+        "default_option_id": "approve_plan",
+    }
     projected = wiring._public_session_view(
         {
             "session_id": "s1",
@@ -65,7 +79,7 @@ def test_public_session_projection_strips_internal_decision_and_revision_fields(
                 "valid_at_version": 4,
             },
             "app_revision": {"observed": "old", "current": "new", "conflicted": True},
-            "decision": {"default_option_id": "confirm"},
+            "decision": decision,
             "checkpoint": {"id": "checkpoint-1"},
         },
         include_last_command_id=False,
@@ -86,6 +100,7 @@ def test_public_session_projection_strips_internal_decision_and_revision_fields(
             "valid_at_version": 4,
         },
         "app_revision": {"current": "new", "conflicted": True},
+        "decision": decision,
     }
 
 

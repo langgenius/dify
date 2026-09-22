@@ -9,10 +9,12 @@ from core.dify_builder.contract import (
     AssistantTurnItem,
     BuilderErrorCode,
     CanvasEvent,
+    Decision,
     DecisionItem,
     ExecutionActivityState,
     ExecutionProgressStatus,
     FormCard,
+    InteractionResponseItem,
     NoticeItem,
     Phase,
     PlanCard,
@@ -129,6 +131,11 @@ class DifyBuilderDecisionConversationItemResponse(DifyBuilderConversationItemBas
     payload: DecisionItem
 
 
+class DifyBuilderInteractionResponseConversationItemResponse(DifyBuilderConversationItemBase):
+    kind: Literal["interaction_response"]
+    payload: InteractionResponseItem
+
+
 class DifyBuilderNoticeConversationItemResponse(DifyBuilderConversationItemBase):
     kind: Literal["notice"]
     payload: NoticeItem
@@ -172,6 +179,7 @@ class DifyBuilderTestResultConversationItemResponse(DifyBuilderConversationItemB
 DifyBuilderConversationItem = Annotated[
     DifyBuilderUserConversationItemResponse
     | DifyBuilderDecisionConversationItemResponse
+    | DifyBuilderInteractionResponseConversationItemResponse
     | DifyBuilderNoticeConversationItemResponse
     | DifyBuilderRunContextConversationItemResponse
     | DifyBuilderPreflightContextConversationItemResponse
@@ -189,6 +197,7 @@ DifyBuilderConversationItem = Annotated[
 DifyBuilderAppendedConversationItem = Annotated[
     DifyBuilderUserConversationItemResponse
     | DifyBuilderDecisionConversationItemResponse
+    | DifyBuilderInteractionResponseConversationItemResponse
     | DifyBuilderNoticeConversationItemResponse
     | DifyBuilderRunContextConversationItemResponse
     | DifyBuilderPreflightContextConversationItemResponse
@@ -226,6 +235,7 @@ class DifyBuilderSessionStateResponse(ResponseModel):
     conversation_last_seq: int
     phase: Phase
     actions: list[DifyBuilderActionResponse] = Field(default_factory=list)
+    decision: Decision | None = None
     active_interaction: DifyBuilderActiveInteractionResponse | None = None
     recovery: RecoveryRef | None = None
     model: SessionModel | None = None

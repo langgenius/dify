@@ -338,6 +338,9 @@ class Action:
     # Server-assigned stable id shared by command_started and
     # command_finished. It is not accepted from the public request payload.
     command_id: str = ""
+    # Server-built receipt metadata. It is attached only after synchronous
+    # validation and committed atomically with the first state transition.
+    interaction_response: dict[str, Any] | None = None
 
 
 @dataclass(kw_only=True)

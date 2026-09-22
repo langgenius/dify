@@ -128,6 +128,8 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         fc,
         FormCard(
             variant="build_requirements",
+            title="Review the requirements",
+            description="Adjust any values before Builder continues.",
             fields=build_form_fields(fc.form_fields),
             values=dict(fc.requirements),
             frozen=False,
@@ -225,6 +227,8 @@ def _discover_and_offer_resources(
     rs_items = append_card(
         fc,
         ResourceSelectCard(
+            title="Which resources should Builder use?",
+            description="Recommended resources are selected by default.",
             recommended=options,
         ),
     )
@@ -537,6 +541,8 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
                 fc,
                 FormCard(
                     variant="testdata",
+                    title="Provide test data",
+                    description="Review the inputs Builder will use for this run.",
                     fields=testdata_form_fields(schema),
                     values=prefill,
                     frozen=False,
@@ -716,6 +722,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             fc,
             FormCard(
                 variant="testdata",
+                title="Provide test data",
+                description="Review the inputs Builder will use for this run.",
                 fields=testdata_form_fields(start_schema(graph)),
                 values={},
                 frozen=False,

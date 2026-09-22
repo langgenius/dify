@@ -8,6 +8,7 @@ Redis-backed ``session_lock`` module or Celery -- those are wired in by the
 caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 """
 
+import json
 from collections.abc import Callable, Iterator
 from dataclasses import asdict
 from enum import StrEnum
@@ -16,7 +17,6 @@ from uuid import uuid4
 
 from core.dify_builder import recovery
 from core.dify_builder.contract import (
-    CANCEL_ACTION_ID,
     CONFIRM_ACTION_ID,
     ActionKind,
     ActiveInteraction,
@@ -25,6 +25,8 @@ from core.dify_builder.contract import (
     CheckpointRef,
     ConversationPage,
     Decision,
+    InteractionResponseField,
+    InteractionResponseItem,
     NoticeItem,
     OptionInput,
     Phase,
@@ -408,16 +410,29 @@ _OPTION_INPUTS: dict[str, OptionInput] = {
 }
 
 
-def _decision_for(actions: list[UiAction]) -> Decision | None:
-    """Project a gate's actions as card options plus the fixed buttons.
+_DECISION_COPY_FOR: dict[PcState, tuple[str, str]] = {
+    PcState.FIX_AWAIT_APPROVAL: ("How should Builder proceed with this fix?", "Choose one option to continue."),
+    PcState.FIX_AWAIT_VERIFY: ("What should Builder do with the applied fix?", "Choose one option to continue."),
+    PcState.FIX_AWAIT_DECISION: ("What should happen to this fix?", "Choose one option to continue."),
+    PcState.CHECKLIST_AWAIT_RECHECK: ("What should Builder do next?", "Choose one option to continue."),
+    PcState.BUILD_PLAN_APPROVAL: ("Is this workflow plan ready to apply?", "Choose one option to continue."),
+    PcState.BUILD_EXECUTION: ("What should Builder do with the built workflow?", "Choose one option to continue."),
+    PcState.BUILD_AWAIT_REPAIR: ("What should Builder do with the proposed repair?", "Choose one option to continue."),
+    PcState.BUILD_REVIEW: ("What should happen to this workflow?", "Choose one option to continue."),
+    PcState.BUILD_REVERTED: ("How should Builder continue after the revert?", "Choose one option to continue."),
+    PcState.EDIT_PLAN_APPROVAL: ("Is this change plan ready to apply?", "Choose one option to continue."),
+    PcState.EDIT_APPLY_CHANGES: ("What should Builder do with the updated workflow?", "Choose one option to continue."),
+    PcState.EDIT_AWAIT_REPAIR: ("What should Builder do with the proposed repair?", "Choose one option to continue."),
+    PcState.EDIT_REVIEW: ("What should happen to these changes?", "Choose one option to continue."),
+    PcState.EDIT_REVERTED: ("How should Builder continue after the revert?", "Choose one option to continue."),
+    PcState.FAILED: ("How should Builder recover?", "Choose one option to continue."),
+}
 
-    Same choice, different shape: a button row that changed per state becomes
-    options with one confirm and one cancel under them. Option ids are the old
-    action ids untouched, which keeps ``resolve_action_kind`` and the per-state
-    legality check working unchanged.
-    """
+
+def _decision_for(state: PcState, actions: list[UiAction]) -> Decision | None:
+    """Project a non-form gate as one blocking choice interaction."""
     renderable = [a for a in actions if a.kind != ActionKind.AUTOMATIC]
-    if not renderable:
+    if not renderable or any(action.id in _ACTIVE_INTERACTION_CARD_FOR_ACTION for action in renderable):
         return None
     # Only the first primary is badged: two recommendations is no recommendation.
     default_index = next((i for i, a in enumerate(renderable) if a.kind == ActionKind.PRIMARY), -1)
@@ -433,10 +448,15 @@ def _decision_for(actions: list[UiAction]) -> Decision | None:
         )
         for i, a in enumerate(renderable)
     ]
+    title, description = _DECISION_COPY_FOR.get(
+        state,
+        ("How should Builder continue?", "Choose one option to continue."),
+    )
     return Decision(
+        title=title,
+        description=description,
         options=options,
-        confirm=UiAction(id=CONFIRM_ACTION_ID, label="Confirm", kind=ActionKind.PRIMARY),
-        cancel=UiAction(id=CANCEL_ACTION_ID, label="Cancel", kind=ActionKind.SECONDARY),
+        submit=UiAction(id=CONFIRM_ACTION_ID, label="Submit", kind=ActionKind.PRIMARY),
         default_option_id=options[default_index].id if default_index >= 0 else "",
     )
 
@@ -447,6 +467,137 @@ _ACTIVE_INTERACTION_CARD_FOR_ACTION: dict[str, tuple[str, str | None]] = {
     "provide_testdata": ("form", "testdata"),
     "confirm_resources": ("resource_select", None),
 }
+
+_FORM_COPY_FOR_VARIANT: dict[str, tuple[str, str]] = {
+    "build_requirements": (
+        "Review the requirements",
+        "Adjust any values before Builder continues.",
+    ),
+    "edit_rules": (
+        "Review the change rules",
+        "Adjust any values before Builder applies the change plan.",
+    ),
+    "testdata": (
+        "Provide test data",
+        "Review the inputs Builder will use for this run.",
+    ),
+}
+
+
+def _display_interaction_value(value: object) -> str:
+    if value is None or value == "":
+        return "—"
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, list):
+        return ", ".join(_display_interaction_value(item) for item in value) or "—"
+    if isinstance(value, dict):
+        name = value.get("name") or value.get("filename")
+        if isinstance(name, str) and name:
+            return name
+        return json.dumps(value, ensure_ascii=False, default=str, separators=(",", ":"))
+    return str(value)
+
+
+def _selected_ui_action(actions: list[UiAction], action: Action) -> UiAction | None:
+    option_id = action.payload.get("option_id")
+    if isinstance(option_id, str) and option_id:
+        selected = next((candidate for candidate in actions if candidate.id == option_id), None)
+        if selected is not None:
+            return selected
+    matching = [candidate for candidate in actions if resolve_action_kind(candidate.id) == action.kind]
+    return matching[0] if len(matching) == 1 else None
+
+
+def _interaction_response_for(
+    repo: Repository,
+    session: Session,
+    action: Action,
+    visible_actions: list[UiAction],
+) -> InteractionResponseItem | None:
+    selected_action = _selected_ui_action(visible_actions, action)
+    if selected_action is None:
+        return None
+
+    card_contract = _ACTIVE_INTERACTION_CARD_FOR_ACTION.get(selected_action.id)
+    if card_contract is None:
+        free_text = action.payload.get("free_text")
+        option_input = _OPTION_INPUTS.get(selected_action.id)
+        submitted_data: dict[str, object] = {"option_id": selected_action.id}
+        answer = selected_action.label
+        if option_input is not None and isinstance(free_text, str) and free_text.strip():
+            normalized_free_text = free_text.strip()
+            submitted_data["free_text"] = normalized_free_text
+            answer = f"{answer} — {normalized_free_text}"
+        title, _description = _DECISION_COPY_FOR.get(
+            session.current_state,
+            ("How should Builder continue?", ""),
+        )
+        return InteractionResponseItem(
+            interaction_kind="choice",
+            question=title,
+            answer=answer,
+            submitted_data=submitted_data,
+        )
+
+    card_kind, expected_variant = card_contract
+    card = repo.get_latest_conversation_item(session.id, frozenset({card_kind}))
+    if card is None:
+        return None
+
+    if card_kind == "resource_select":
+        raw_ids = action.payload.get("resource_ids")
+        selected_ids = [value for value in raw_ids if isinstance(value, str)] if isinstance(raw_ids, list) else []
+        resources = card.payload.get("recommended")
+        resource_options = resources if isinstance(resources, list) else []
+        selected_labels = [
+            str(resource.get("label") or resource.get("id") or "")
+            for resource in resource_options
+            if isinstance(resource, dict) and resource.get("id") in selected_ids
+        ]
+        return InteractionResponseItem(
+            interaction_kind="resource",
+            question=str(card.payload.get("title") or "Which resources should Builder use?"),
+            answer=", ".join(label for label in selected_labels if label) or "No resources selected",
+            submitted_data={"resource_ids": selected_ids},
+        )
+
+    variant = str(card.payload.get("variant") or "")
+    if expected_variant is not None and variant != expected_variant:
+        return None
+    raw_values = action.payload.get("inputs") if selected_action.id == "provide_testdata" else action.payload
+    submitted_values = raw_values if isinstance(raw_values, dict) else {}
+    raw_fields = card.payload.get("fields")
+    fields = raw_fields if isinstance(raw_fields, list) else []
+    response_fields: list[InteractionResponseField] = []
+    normalized_values: dict[str, object] = {}
+    for raw_field in fields:
+        if not isinstance(raw_field, dict):
+            continue
+        key = raw_field.get("key")
+        if not isinstance(key, str) or not key:
+            continue
+        value = submitted_values.get(key)
+        normalized_values[key] = value
+        response_fields.append(
+            InteractionResponseField(
+                key=key,
+                label=str(raw_field.get("label") or key),
+                value=value,
+                display_value=_display_interaction_value(value),
+            )
+        )
+    fallback_title, _fallback_description = _FORM_COPY_FOR_VARIANT.get(
+        variant,
+        ("Submitted form", ""),
+    )
+    return InteractionResponseItem(
+        interaction_kind="form",
+        question=str(card.payload.get("title") or fallback_title),
+        fields=response_fields,
+        submitted_data=normalized_values,
+    )
+
 
 # Handler-facing kinds accepted at each state. This is deliberately explicit:
 # several handlers historically treated every unknown kind as a default branch
@@ -563,11 +714,10 @@ def resolve_action_kind(raw: str) -> str:
 def resolve_submitted_action(action_id: str, payload: dict | None) -> str:
     """Map what the client posted to the engine handler kind.
 
-    The card-options client posts ``confirm`` and names its choice in
-    ``payload["option_id"]``; an action-bar client posts that id directly. Both
-    reach the same kind because an option id IS the action id it replaced, which
-    is what lets the two contracts run side by side. A ``confirm`` naming no
-    option resolves to "", which the per-state legality check then rejects.
+    The interaction dock posts ``confirm`` and names its choice in
+    ``payload["option_id"]``. Handler-facing callers may already use the
+    resolved action id. A ``confirm`` naming no option resolves to "", which
+    the per-state legality check then rejects.
     """
     if action_id == CONFIRM_ACTION_ID:
         action_id = str(payload.get("option_id") or "") if isinstance(payload, dict) else ""
@@ -1122,7 +1272,7 @@ class DifyBuilderService:
             entry_mode=s.entry_mode,
             phase=_phase_for(st),
             actions=actions,
-            decision=_decision_for(actions),
+            decision=_decision_for(st, actions),
             active_interaction=self._active_interaction_for(s.id, s.version, actions),
             checkpoint=checkpoint,
             recovery=recovery_ref,
@@ -1221,6 +1371,14 @@ class DifyBuilderService:
             and action.kind not in {"check_recovery", "recovery_restart", "resume"}
         ):
             raise ConflictError(f"draft changed outside Builder for app {s.app_id}")
+        visible_actions = _actions_for(
+            s.current_state,
+            fc,
+            interrupted=is_working(s.current_state) and not self._session_lock.exists(session_id),
+            app_revision_conflicted=app_revision_conflicted,
+        )
+        interaction_response = _interaction_response_for(self._repo, s, action, visible_actions)
+        action.interaction_response = asdict(interaction_response) if interaction_response is not None else None
         if action.kind == "update_model":
             if is_working(s.current_state) or self._session_lock.exists(session_id):
                 raise BusyError(f"session {session_id} is busy")

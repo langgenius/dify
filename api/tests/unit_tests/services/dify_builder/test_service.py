@@ -914,11 +914,71 @@ def test_session_view_carries_the_same_choice_as_options_and_as_actions(
 
     view = service.get_session_view(s.id, _actor())
 
-    # Both contracts are live while the web client migrates, and they must never
-    # disagree about what this gate is asking.
+    # The public decision and internal action authorization must never disagree
+    # about what this gate is asking.
     assert [o.id for o in view.decision.options] == [a.id for a in view.actions]
     assert view.decision.default_option_id == "publish_fix"
-    assert (view.decision.confirm.id, view.decision.cancel.id) == ("confirm", "cancel")
+    assert view.decision.submit is not None
+    assert (view.decision.submit.id, view.decision.submit.label) == ("confirm", "Submit")
+
+
+def test_prepare_choice_action_snapshots_the_submitted_option(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    session = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
+    action = Action(
+        kind="publish",
+        payload={"option_id": "publish_fix"},
+        base_version=session.version,
+    )
+
+    service._prepare_action(session.id, _actor(), action)
+
+    assert action.interaction_response == {
+        "interaction_kind": "choice",
+        "question": "What should happen to this fix?",
+        "answer": "Publish fix",
+        "fields": [],
+        "submitted_data": {"option_id": "publish_fix"},
+    }
+
+
+def test_prepare_choice_action_ignores_free_text_for_an_option_without_input(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    session = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
+    action = Action(
+        kind="publish",
+        payload={"option_id": "publish_fix", "free_text": "not applicable"},
+        base_version=session.version,
+    )
+
+    service._prepare_action(session.id, _actor(), action)
+
+    assert action.interaction_response is not None
+    assert action.interaction_response["answer"] == "Publish fix"
+    assert action.interaction_response["submitted_data"] == {"option_id": "publish_fix"}
+
+
+def test_prepare_interrupted_action_snapshots_the_visible_recovery_choice(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    session = _seed_session_at(repo, PcState.BUILD_PUBLISH)
+    action = Action(
+        kind="recovery_continue",
+        payload={"option_id": "recovery_continue"},
+        base_version=session.version,
+    )
+
+    service._prepare_action(session.id, _actor(), action)
+
+    assert action.interaction_response == {
+        "interaction_kind": "choice",
+        "question": "How should Builder continue?",
+        "answer": "Retry",
+        "fields": [],
+        "submitted_data": {"option_id": "recovery_continue"},
+    }
 
 
 def test_a_session_view_with_nothing_to_decide_has_no_decision(
@@ -1527,6 +1587,99 @@ def test_session_view_exposes_only_the_current_interactive_card(
     assert view.active_interaction.action_id == "submit_requirements"
     assert view.active_interaction.card.seq == 0
     assert view.active_interaction.valid_at_version == view.version
+
+
+def test_prepare_form_action_snapshots_submitted_field_values(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_GOAL_ANALYSIS,
+    )
+    repo.create_session(
+        session,
+        DifyBuilderContext(goal_text="Build it"),
+        [
+            ConversationItem(
+                seq=0,
+                kind="form",
+                payload={
+                    "variant": "build_requirements",
+                    "title": "Review the requirements",
+                    "fields": [
+                        {"key": "audience", "label": "Audience", "type": "text"},
+                        {"key": "send_email", "label": "Send email", "type": "bool"},
+                    ],
+                    "values": {"audience": "Operations", "send_email": False},
+                },
+            )
+        ],
+    )
+    action = Action(
+        kind="submit_requirements",
+        payload={"audience": "Finance", "send_email": True},
+        base_version=session.version,
+    )
+
+    service._prepare_action(session.id, _actor(), action)
+
+    assert action.interaction_response == {
+        "interaction_kind": "form",
+        "question": "Review the requirements",
+        "answer": "",
+        "fields": [
+            {"key": "audience", "label": "Audience", "value": "Finance", "display_value": "Finance"},
+            {"key": "send_email", "label": "Send email", "value": True, "display_value": "Yes"},
+        ],
+        "submitted_data": {"audience": "Finance", "send_email": True},
+    }
+
+
+def test_prepare_resource_action_snapshots_selected_resource_labels(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_RESOURCE_RECOMMENDATION,
+    )
+    repo.create_session(
+        session,
+        DifyBuilderContext(goal_text="Build it"),
+        [
+            ConversationItem(
+                seq=0,
+                kind="resource_select",
+                payload={
+                    "title": "Which resources should Builder use?",
+                    "recommended": [
+                        {"id": "knowledge-1", "label": "Support handbook"},
+                        {"id": "tool-1", "label": "Ticket lookup"},
+                    ],
+                },
+            )
+        ],
+    )
+    action = Action(
+        kind="confirm_resources",
+        payload={"resource_ids": ["tool-1"]},
+        base_version=session.version,
+    )
+
+    service._prepare_action(session.id, _actor(), action)
+
+    assert action.interaction_response == {
+        "interaction_kind": "resource",
+        "question": "Which resources should Builder use?",
+        "answer": "Ticket lookup",
+        "fields": [],
+        "submitted_data": {"resource_ids": ["tool-1"]},
+    }
 
 
 def test_conversation_page_requires_session_owner(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:

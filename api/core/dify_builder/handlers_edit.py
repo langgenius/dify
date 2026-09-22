@@ -105,7 +105,12 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     form_items = append_card(
         fc,
         FormCard(
-            variant="edit_rules", fields=build_form_fields(fc.form_fields), values=dict(fc.edit_rules), frozen=False
+            variant="edit_rules",
+            title="Review the change rules",
+            description="Adjust any values before Builder applies the change plan.",
+            fields=build_form_fields(fc.form_fields),
+            values=dict(fc.edit_rules),
+            frozen=False,
         ),
     )
     execution = progress.finish()
@@ -264,6 +269,8 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
                 fc,
                 FormCard(
                     variant="testdata",
+                    title="Provide test data",
+                    description="Review the inputs Builder will use for this run.",
                     fields=testdata_form_fields(start_schema(graph)),
                     values={},
                     frozen=False,
@@ -437,6 +444,8 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             fc,
             FormCard(
                 variant="testdata",
+                title="Provide test data",
+                description="Review the inputs Builder will use for this run.",
                 fields=testdata_form_fields(start_schema(graph)),
                 values={},
                 frozen=False,
@@ -659,7 +668,12 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         form_items = append_card(
             fc,
             FormCard(
-                variant="edit_rules", fields=build_form_fields(fc.form_fields), values=dict(fc.edit_rules), frozen=False
+                variant="edit_rules",
+                title="Review the change rules",
+                description="Adjust any values before Builder applies the change plan.",
+                fields=build_form_fields(fc.form_fields),
+                values=dict(fc.edit_rules),
+                frozen=False,
             ),
         )
         target_text = ", ".join(fc.edit_target_node_ids) or "none identified"

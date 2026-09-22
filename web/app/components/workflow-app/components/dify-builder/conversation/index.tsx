@@ -1,8 +1,6 @@
 import type {
   ConversationItem,
-  DifyBuilderActionPayloadChange,
-  DifyBuilderActionValidityChange,
-  DifyBuilderActiveInteraction,
+  DifyBuilderLocalInteractionResponse,
   DifyBuilderLocalUserMessage,
 } from '../types'
 import type { DifyBuilderConversationGroup } from './group-conversation-items'
@@ -16,18 +14,36 @@ import { StreamingAssistantTurn } from './streaming-assistant-turn'
 type ConversationRenderEntry =
   | DifyBuilderConversationGroup
   | { type: 'local-user'; message: DifyBuilderLocalUserMessage }
+  | { type: 'local-interaction'; response: DifyBuilderLocalInteractionResponse }
 
 const firstSequence = (group: DifyBuilderConversationGroup) =>
   group.type === 'standalone' ? group.item.seq : (group.cards[0]?.seq ?? group.turn.seq)
 
-const addLocalUserMessage = (
+const insertLocalEntry = (
+  entries: ConversationRenderEntry[],
+  entry: ConversationRenderEntry,
+  afterSequence: number,
+) => {
+  const insertionIndex = entries.findIndex(
+    (candidate) =>
+      candidate.type !== 'local-user' &&
+      candidate.type !== 'local-interaction' &&
+      firstSequence(candidate) > afterSequence,
+  )
+  if (insertionIndex < 0) return [...entries, entry]
+  return [...entries.slice(0, insertionIndex), entry, ...entries.slice(insertionIndex)]
+}
+
+const addLocalEntries = (
   groups: DifyBuilderConversationGroup[],
   items: ConversationItem[],
   message?: DifyBuilderLocalUserMessage | null,
+  interactionResponse?: DifyBuilderLocalInteractionResponse | null,
 ): ConversationRenderEntry[] => {
+  let entries: ConversationRenderEntry[] = [...groups]
   if (
-    !message ||
-    items.some(
+    message &&
+    !items.some(
       (item) =>
         item.kind === 'user' &&
         (message.turnId
@@ -35,49 +51,45 @@ const addLocalUserMessage = (
           : item.payload.text === message.text),
     )
   )
-    return groups
-
-  const entry: ConversationRenderEntry = { type: 'local-user', message }
-  const insertionIndex = groups.findIndex((group) => firstSequence(group) > message.afterSequence)
-  if (insertionIndex < 0) return [...groups, entry]
-  return [...groups.slice(0, insertionIndex), entry, ...groups.slice(insertionIndex)]
+    entries = insertLocalEntry(entries, { type: 'local-user', message }, message.afterSequence)
+  if (
+    interactionResponse &&
+    !items.some(
+      (item) =>
+        item.kind === 'interaction_response' &&
+        item.at_version === interactionResponse.item.at_version,
+    )
+  )
+    entries = insertLocalEntry(
+      entries,
+      { type: 'local-interaction', response: interactionResponse },
+      interactionResponse.afterSequence,
+    )
+  return entries
 }
 
 export const DifyBuilderConversation = memo(
   ({
     busy,
-    activeInteraction,
-    viewVersion,
-    activeFormId,
     interrupted,
     items,
+    localInteractionResponse,
     localUserMessage,
-    onActionPayloadChange,
-    onActionValidityChange,
-    onActiveFormSubmit,
     onStreamingContentChange,
   }: {
     busy: boolean
-    activeInteraction: DifyBuilderActiveInteraction | null
-    viewVersion: number
-    activeFormId?: string
     interrupted: boolean
     items: ConversationItem[]
+    localInteractionResponse?: DifyBuilderLocalInteractionResponse | null
     localUserMessage?: DifyBuilderLocalUserMessage | null
-    onActionPayloadChange: DifyBuilderActionPayloadChange
-    onActionValidityChange?: DifyBuilderActionValidityChange
-    onActiveFormSubmit?: () => void
     onStreamingContentChange?: () => void
   }) => {
     const { t } = useTranslation()
     const groups = useMemo(() => groupConversationItems(items), [items])
     const entries = useMemo(
-      () => addLocalUserMessage(groups, items, localUserMessage),
-      [groups, items, localUserMessage],
+      () => addLocalEntries(groups, items, localUserMessage, localInteractionResponse),
+      [groups, items, localInteractionResponse, localUserMessage],
     )
-    const activeCard = activeInteraction?.card
-    const interactionIsCurrent = activeInteraction?.valid_at_version === viewVersion
-
     return (
       <div className="flex flex-col gap-3 px-4 py-4">
         {interrupted && (
@@ -100,8 +112,17 @@ export const DifyBuilderConversation = memo(
               return <UserMessage key={`user-${group.message.localId}`} text={group.message.text} />
             }
 
+            if (group.type === 'local-interaction') {
+              return (
+                <ConversationCard
+                  key={`interaction-${group.response.item.at_version}`}
+                  item={group.response.item}
+                  invalidated={false}
+                />
+              )
+            }
+
             if (group.type === 'standalone') {
-              if (group.item.seq === activeCard?.seq) return null
               if (group.item.kind === 'user') {
                 return (
                   <UserMessage
@@ -112,13 +133,13 @@ export const DifyBuilderConversation = memo(
               }
               return (
                 <ConversationCard
-                  key={`${group.item.seq}-${group.item.kind}`}
+                  key={
+                    group.item.kind === 'interaction_response'
+                      ? `interaction-${group.item.at_version}`
+                      : `${group.item.seq}-${group.item.kind}`
+                  }
                   item={group.item}
-                  busy={busy}
-                  interactive={interactionIsCurrent && group.item.seq === activeCard?.seq}
                   invalidated={false}
-                  onActionPayloadChange={onActionPayloadChange}
-                  onActionValidityChange={onActionValidityChange}
                 />
               )
             }
@@ -134,44 +155,18 @@ export const DifyBuilderConversation = memo(
                     <span>{t(($) => $['difyBuilder.invalidated'], { ns: 'workflow' })}</span>
                   </div>
                 )}
-                <ConversationCard
-                  item={group.turn}
-                  busy={busy}
-                  interactive={interactionIsCurrent && group.turn.seq === activeCard?.seq}
-                  invalidated={group.invalidated}
-                  onActionPayloadChange={onActionPayloadChange}
-                  onActionValidityChange={onActionValidityChange}
-                />
-                {group.cards
-                  .filter((item) => item.seq !== activeCard?.seq)
-                  .map((item) => (
-                    <ConversationCard
-                      key={`${item.seq}-${item.kind}`}
-                      item={item}
-                      busy={busy}
-                      interactive={interactionIsCurrent && item.seq === activeCard?.seq}
-                      invalidated={group.invalidated}
-                      onActionPayloadChange={onActionPayloadChange}
-                      onActionValidityChange={onActionValidityChange}
-                    />
-                  ))}
+                <ConversationCard item={group.turn} invalidated={group.invalidated} />
+                {group.cards.map((item) => (
+                  <ConversationCard
+                    key={`${item.seq}-${item.kind}`}
+                    item={item}
+                    invalidated={group.invalidated}
+                  />
+                ))}
               </div>
             )
           })}
         </div>
-        {activeCard && (
-          <ConversationCard
-            key={`active-${activeInteraction?.action_id}-${activeCard.seq}-${activeCard.kind}`}
-            item={activeCard}
-            busy={busy}
-            formId={activeFormId}
-            interactive={interactionIsCurrent}
-            invalidated={false}
-            onActionPayloadChange={onActionPayloadChange}
-            onActionValidityChange={onActionValidityChange}
-            onFormSubmit={onActiveFormSubmit}
-          />
-        )}
         <StreamingAssistantTurn busy={busy} onContentChange={onStreamingContentChange} />
       </div>
     )

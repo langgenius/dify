@@ -1,11 +1,5 @@
 import type { DifyBuilderActiveInteraction } from '../types'
 
-export const FORM_ACTION_IDS = new Set([
-  'provide_testdata',
-  'submit_edit_rules',
-  'submit_requirements',
-])
-
 export const getDefaultActionPayload = (
   actionId: string,
   activeInteraction: DifyBuilderActiveInteraction | null,

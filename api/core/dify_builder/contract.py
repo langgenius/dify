@@ -67,6 +67,7 @@ class CardKind(StrEnum):
 
     USER = "user"
     DECISION = "decision"
+    INTERACTION_RESPONSE = "interaction_response"
     NOTICE = "notice"
     RUN_CONTEXT = "run_context"
     PREFLIGHT_CONTEXT = "preflight_context"
@@ -172,10 +173,9 @@ class Action:
     canvas_event: str | None = None
 
 
-# The only two buttons an interactive card shows; every real choice is an option
-# inside it. One interaction shape at every gate, not one per state.
+# Every real choice is an option inside one interaction card. The single
+# visible submit button posts this stable action id with the chosen option.
 CONFIRM_ACTION_ID = "confirm"
-CANCEL_ACTION_ID = "cancel"
 
 
 @dataclass
@@ -216,22 +216,12 @@ class CardOption:
 
 @dataclass
 class Decision:
-    """What the current gate asks: card options plus the fixed button pair.
+    """The one blocking choice shown in the fixed conversation footer."""
 
-    Replaces the per-state action bar. The client renders ``options`` in the
-    active card, shows only ``confirm`` and ``cancel``, and on confirm posts
-    ``confirm`` with ``{"option_id": ..., "free_text": ...}``. ``cancel`` is
-    presentational -- it dismisses without posting and the gate stays open.
-
-    While ``SessionView.actions`` is still populated, the server accepts the old
-    per-action ids too and does not enforce ``OptionInput`` bounds, so a client
-    posting a bare action id keeps working. Enforcement moves server-side when
-    ``actions`` goes.
-    """
-
+    title: str
+    description: str = ""
     options: list[CardOption] = field(default_factory=list)
-    confirm: Action | None = None
-    cancel: Action | None = None
+    submit: Action | None = None
     default_option_id: str = ""
 
 
@@ -484,6 +474,29 @@ class DecisionItem(_Card):
 
 
 @dataclass
+class InteractionResponseField:
+    """One immutable, human-readable row in a submitted form receipt."""
+
+    key: str
+    label: str
+    value: Any
+    display_value: str
+
+
+@dataclass
+class InteractionResponseItem(_Card):
+    """Durable snapshot of a submitted choice, form, or resource selection."""
+
+    kind: ClassVar[CardKind] = CardKind.INTERACTION_RESPONSE
+
+    interaction_kind: Literal["choice", "form", "resource"]
+    question: str
+    answer: str = ""
+    fields: list[InteractionResponseField] = field(default_factory=list)
+    submitted_data: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class NoticeItem(_Card):
     """A neutral/informational system notice."""
 
@@ -554,6 +567,8 @@ class FormCard(_Card):
     kind: ClassVar[CardKind] = CardKind.FORM
 
     variant: str
+    title: str = ""
+    description: str = ""
     fields: list[FormField] = field(default_factory=list)
     values: dict = field(default_factory=dict)
     frozen: bool = False
@@ -565,6 +580,8 @@ class ResourceSelectCard(_Card):
 
     kind: ClassVar[CardKind] = CardKind.RESOURCE_SELECT
 
+    title: str = ""
+    description: str = ""
     recommended: list[ResourceOption] = field(default_factory=list)
 
 

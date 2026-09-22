@@ -51,6 +51,7 @@ export type DifyBuilderSessionViewResponse = {
   app_revision?: DifyBuilderAppRevisionResponse | null
   canvas_read_only: boolean
   conversation_last_seq: number
+  decision?: Decision | null
   interrupted: boolean
   last_command_id?: string
   model?: SessionModel | null
@@ -78,6 +79,9 @@ export type DifyBuilderConversationPageResponse = {
     | ({
         kind: 'decision'
       } & DifyBuilderDecisionConversationItemResponse)
+    | ({
+        kind: 'interaction_response'
+      } & DifyBuilderInteractionResponseConversationItemResponse)
     | ({
         kind: 'notice'
       } & DifyBuilderNoticeConversationItemResponse)
@@ -214,6 +218,14 @@ export type DifyBuilderAppRevisionResponse = {
   current: string
 }
 
+export type Decision = {
+  default_option_id?: string
+  description?: string
+  options?: Array<CardOption>
+  submit?: Action | null
+  title: string
+}
+
 export type SessionModel = {
   completion_params?: {
     [key: string]: unknown
@@ -260,6 +272,13 @@ export type DifyBuilderDecisionConversationItemResponse = {
   at_version: number
   kind: 'decision'
   payload: DecisionItem
+  seq: number
+}
+
+export type DifyBuilderInteractionResponseConversationItemResponse = {
+  at_version: number
+  kind: 'interaction_response'
+  payload: InteractionResponseItem
   seq: number
 }
 
@@ -444,6 +463,9 @@ export type DifyBuilderConversationItemAppendedEventData = {
         kind: 'decision'
       } & DifyBuilderDecisionConversationItemResponse)
     | ({
+        kind: 'interaction_response'
+      } & DifyBuilderInteractionResponseConversationItemResponse)
+    | ({
         kind: 'notice'
       } & DifyBuilderNoticeConversationItemResponse)
     | ({
@@ -491,6 +513,7 @@ export type DifyBuilderCommandFinishedEventData = {
   canvas_read_only: boolean
   command_id: string
   conversation_last_seq: number
+  decision?: Decision | null
   interrupted: boolean
   model?: SessionModel | null
   phase: Phase
@@ -510,6 +533,25 @@ export type DifyBuilderErrorEventData = {
 
 export type ActionKind = 'automatic' | 'destructive' | 'primary' | 'secondary'
 
+export type CardOption = {
+  canvas_event?: string | null
+  description?: string
+  id: string
+  input?: OptionInput | null
+  is_default?: boolean
+  label: string
+  next_state?: string | null
+  tone?: string
+}
+
+export type Action = {
+  canvas_event?: string | null
+  id: string
+  kind: ActionKind
+  label: string
+  next_state?: string | null
+}
+
 export type UserItem = {
   text: string
   turn_id: string
@@ -517,6 +559,16 @@ export type UserItem = {
 
 export type DecisionItem = {
   text: string
+}
+
+export type InteractionResponseItem = {
+  answer?: string
+  fields?: Array<InteractionResponseField>
+  interaction_kind: 'choice' | 'form' | 'resource'
+  question: string
+  submitted_data?: {
+    [key: string]: unknown
+  }
 }
 
 export type NoticeItem = {
@@ -554,8 +606,10 @@ export type PlanCard = {
 }
 
 export type FormCard = {
+  description?: string
   fields?: Array<FormField>
   frozen?: boolean
+  title?: string
   values?: {
     [key: string]: unknown
   }
@@ -563,7 +617,9 @@ export type FormCard = {
 }
 
 export type ResourceSelectCard = {
+  description?: string
   recommended?: Array<ResourceOption>
+  title?: string
 }
 
 export type TestResultCard = {
@@ -764,6 +820,20 @@ export type DifyBuilderExecutionActivityResponse = {
   label: string
   parent_id?: string | null
   state: 'active' | 'done' | 'failed' | 'stopped'
+}
+
+export type OptionInput = {
+  max_length?: number
+  min_length?: number
+  placeholder?: string
+  required?: boolean
+}
+
+export type InteractionResponseField = {
+  display_value: string
+  key: string
+  label: string
+  value: unknown
 }
 
 export type PreflightIssue = {

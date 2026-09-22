@@ -73,6 +73,47 @@ def test_advance_commits_each_transition_and_stops_at_waiting():
     assert stored.current_state == PcState.FIX_AWAIT_APPROVAL
 
 
+def test_first_transition_replaces_legacy_decision_with_interaction_response():
+    env, repo = _new_env()
+    session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    def approve(_env: Env, _turn: Turn, _session: Session, context: DifyBuilderContext) -> StepResult:
+        item = ConversationItem(
+            seq=context.next_seq,
+            kind="decision",
+            payload={"text": "Approved the fix"},
+        )
+        context.next_seq += 1
+        return StepResult(next=PcState.FIX_AWAIT_VERIFY, context=context, items=[item])
+
+    response = {
+        "interaction_kind": "choice",
+        "question": "How should Builder proceed with this fix?",
+        "answer": "Approve fix",
+        "fields": [],
+        "submitted_data": {"option_id": "approve_plan"},
+    }
+    result = Runner(env, {PcState.FIX_AWAIT_APPROVAL: approve}).advance(
+        session.id,
+        Turn(
+            action=Action(
+                kind="approve_repair",
+                base_version=1,
+                interaction_response=response,
+            ),
+            actor=_actor(),
+        ),
+    )
+
+    assert result.current_state == PcState.FIX_AWAIT_VERIFY
+    items = repo.list_conversation(session.id)
+    assert [(item.seq, item.kind, item.at_version) for item in items] == [(0, "interaction_response", 2)]
+    assert items[0].payload == response
+    _stored, context = repo.get_session(session.id)
+    assert context.next_seq == 1
+
+
 def test_advance_stale_base_version_raises_conflict_with_nothing_applied():
     env, repo = _new_env()
     s = _session()
@@ -617,13 +658,38 @@ def test_recovery_short_path_persists_its_items(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr("core.dify_builder.runner.recovery.apply_recovery_action", apply_recovery)
     Runner(env, {}).advance(
         s.id,
-        Turn(action=Action(kind="check_recovery", base_version=1), actor=_actor()),
+        Turn(
+            action=Action(
+                kind="check_recovery",
+                base_version=1,
+                interaction_response={
+                    "interaction_kind": "choice",
+                    "question": "How should Builder recover?",
+                    "answer": "Review draft changes",
+                    "fields": [],
+                    "submitted_data": {"option_id": "check_recovery"},
+                },
+            ),
+            actor=_actor(),
+        ),
     )
 
     stored, _context = repo.get_session(s.id)
     assert stored.version == 2
     assert stored.current_state == PcState.FIX_AWAIT_APPROVAL
-    assert [item.payload for item in repo.list_conversation(s.id)] == [{"text": "Recovery checked"}]
+    assert [(item.kind, item.payload) for item in repo.list_conversation(s.id)] == [
+        (
+            "interaction_response",
+            {
+                "interaction_kind": "choice",
+                "question": "How should Builder recover?",
+                "answer": "Review draft changes",
+                "fields": [],
+                "submitted_data": {"option_id": "check_recovery"},
+            },
+        ),
+        ("notice", {"text": "Recovery checked"}),
+    ]
 
 
 def test_advance_passes_full_turn_to_first_step_and_actor_only_turn_to_subsequent_steps():
