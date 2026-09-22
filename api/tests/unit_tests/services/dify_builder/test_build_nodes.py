@@ -583,6 +583,58 @@ def test_build_nodes_grounds_a_placeholder_endpoint_into_a_required_start_variab
     assert "Call PPT API" in var["label"]
 
 
+def _http_node(node_id: str, title: str, url: str) -> dict:
+    return {
+        "id": node_id,
+        "type": "custom",
+        "data": {
+            "type": "http-request",
+            "title": title,
+            "method": "post",
+            "url": url,
+            "authorization": {"type": "no-auth", "config": None},
+            "headers": "",
+            "params": "",
+            "body": _HTTP_BODY,
+        },
+    }
+
+
+def test_build_nodes_grounds_each_placeholder_endpoint_into_its_own_start_variable():
+    gen_graph = _gen_graph_with_http("https://api.example.com/ppt/generate")
+    nodes = gen_graph["graph"]["nodes"]
+    nodes.insert(2, _http_node("h2", "Upload PPT", "https://your-api.com/v1/upload"))
+    gen_graph["graph"]["edges"] = [
+        {"id": "e1", "source": "s", "target": "h"},
+        {"id": "e2", "source": "h", "target": "h2"},
+        {"id": "e3", "source": "h2", "target": "e"},
+    ]
+
+    intents = _build_with(gen_graph)
+
+    urls = {i.args["node_id"]: i.args["config"]["url"] for i in intents if i.args.get("node_type") == "http-request"}
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert urls == {"h": "{{#s.h_url#}}", "h2": "{{#s.h2_url#}}"}
+    assert [v["variable"] for v in start.args["config"]["variables"]] == ["h_url", "h2_url"]
+    assert all(v["required"] is True for v in start.args["config"]["variables"])
+
+
+def test_build_nodes_does_not_duplicate_an_endpoint_variable_the_start_node_already_declares():
+    gen_graph = _gen_graph_with_http("https://api.example.com/ppt/generate")
+    start_node = gen_graph["graph"]["nodes"][0]
+    start_node["data"]["variables"] = [
+        {"variable": "h_url", "label": "PPT API URL", "type": "text-input", "required": True, "max_length": 2048}
+    ]
+
+    intents = _build_with(gen_graph)
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}"
+    assert [v["variable"] for v in start.args["config"]["variables"]] == ["h_url"]
+    assert start.args["config"]["variables"][0]["label"] == "PPT API URL"  # the declared one is kept
+
+
 def test_build_nodes_leaves_a_real_endpoint_and_a_templated_url_alone():
     for url in ("https://api.openai.com/v1/chat", "{{#s.endpoint#}}/generate"):
         intents = _build_with(_gen_graph_with_http(url))

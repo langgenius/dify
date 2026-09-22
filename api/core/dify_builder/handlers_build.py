@@ -50,7 +50,6 @@ from core.dify_builder.handlers_fix import (
     dead_end_branch_node_id,
     drop_unapplied_repair,
     emit_canvas,
-    endpoint_variable_names,
     failure_signature,
     first_failed_node,
     is_input_failure,
@@ -714,7 +713,7 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
             # grounding) -- stay empty too: a mocked endpoint is just another
             # invented URL, so the form asks for those alone as well.
             mocked = without_upload_values(schema, env.agent.generate_mock_inputs(schema, {}))
-            prefill = {k: v for k, v in mocked.items() if k not in endpoint_variable_names(graph)}
+            prefill = without_endpoint_values(graph, mocked)
             form_items = append_card(
                 fc,
                 FormCard(

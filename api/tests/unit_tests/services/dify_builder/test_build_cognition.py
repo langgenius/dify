@@ -256,13 +256,17 @@ def test_bind_resources_names_bound_label(monkeypatch):
 def test_bind_resources_binds_each_resource_to_the_step_it_covers(monkeypatch):
     """bind_resources appended "(using ...)" to the LAST plan item -- in the
     ESQ1-302 session that was the end node step. Each resource now lands on
-    the step it covers; the last step is only the fallback."""
+    the step it covers; the last step is only the fallback. A model's label is
+    its full ``provider/model`` id (``resources.list_tenant_resources``)."""
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
         lambda t: resources.TenantResources(  # noqa: ARG005
             models=[
-                resources.ResourceRef(id="langgenius/tokener/tokener/deepseek-v4-flash", label="deepseek-v4-flash")
+                resources.ResourceRef(
+                    id="langgenius/tokener/tokener/deepseek-v4-flash",
+                    label="langgenius/tokener/tokener/deepseek-v4-flash",
+                )
             ],
             datasets=[resources.ResourceRef(id="kb-1", label="Company KB")],
             tools=[
@@ -286,7 +290,7 @@ def test_bind_resources_binds_each_resource_to_the_step_it_covers(monkeypatch):
     )
 
     assert out[0] == plan[0]
-    assert out[1] == plan[1] + " (using deepseek-v4-flash)"
+    assert out[1] == plan[1] + " (using langgenius/tokener/tokener/deepseek-v4-flash)"
     assert out[2] == plan[2] + " (using Company KB)"
     assert out[3] == plan[3] + " (using Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx])"
     assert out[4] == plan[4]
@@ -517,21 +521,26 @@ def test_bind_resources_cleans_an_old_aggregate_suffix_before_rebinding(monkeypa
         build.resources,
         "list_tenant_resources",
         lambda t: resources.TenantResources(  # noqa: ARG005
-            models=[resources.ResourceRef(id="model-a", label="deepseek-v4-flash")],
+            models=[
+                resources.ResourceRef(
+                    id="langgenius/tokener/tokener/deepseek-v4-flash",
+                    label="langgenius/tokener/tokener/deepseek-v4-flash",
+                )
+            ],
             datasets=[],
-            tools=[resources.ResourceRef(id="tool-b", label="Code Interpreter")],
+            tools=[resources.ResourceRef(id="code/simple_code", label="Code Interpreter")],
         ),
     )
     plan = [
         "llm node: draft",
         "tool node: run something",
-        "end node: return output (using deepseek-v4-flash, Code Interpreter)",
+        "end node: return output (using langgenius/tokener/tokener/deepseek-v4-flash, Code Interpreter)",
     ]
 
-    out = build.bind_resources(None, "t1", plan, ["model-a", "tool-b"])
+    out = build.bind_resources(None, "t1", plan, ["langgenius/tokener/tokener/deepseek-v4-flash", "code/simple_code"])
 
-    assert out[0] == "llm node: draft (using deepseek-v4-flash)"
-    assert out[1] == "tool node: run something (using Code Interpreter [tool-b])"
+    assert out[0] == "llm node: draft (using langgenius/tokener/tokener/deepseek-v4-flash)"
+    assert out[1] == "tool node: run something (using Code Interpreter [code/simple_code])"
     assert out[2] == "end node: return output"
 
 
