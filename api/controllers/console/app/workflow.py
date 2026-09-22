@@ -1350,9 +1350,11 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
-            published_graph = workflow.graph_dict
+            published_graph = getattr(workflow, "graph_dict", None)
 
-        warning = _advisory_variable_reference_warning(published_graph)
+        warning = (
+            _advisory_variable_reference_warning(published_graph) if isinstance(published_graph, Mapping) else None
+        )
         return {
             "result": "success",
             "created_at": workflow_created_at,

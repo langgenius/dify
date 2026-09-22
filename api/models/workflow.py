@@ -5,7 +5,7 @@ from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
-from uuid import uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -1488,13 +1488,23 @@ class ConversationVariable(TypeBase):
 
     @classmethod
     def from_variable(cls, *, app_id: str, conversation_id: str, variable: VariableBase) -> "ConversationVariable":
-        obj = cls(
-            id=variable.id,
+        # The table primary key is a UUID. Draft and DSL ids are namespaced strings
+        # such as ``opt-comp-prompt-var`` and must not be inserted as-is. The
+        # replacement is uuid5-stable for the variable name. The in-memory workflow
+        # variable keeps the author id so draft reads still round-trip.
+        row_id = variable.id
+        stored = variable
+        try:
+            UUID(str(row_id))
+        except (ValueError, TypeError, AttributeError):
+            row_id = str(uuid5(NAMESPACE_URL, f"dify:conversation-variable:{variable.name}"))
+            stored = variable.model_copy(update={"id": row_id})
+        return cls(
+            id=row_id,
             app_id=app_id,
             conversation_id=conversation_id,
-            data=variable.model_dump_json(),
+            data=stored.model_dump_json(),
         )
-        return obj
 
     def to_variable(self) -> VariableBase:
         mapping = json.loads(self.data)

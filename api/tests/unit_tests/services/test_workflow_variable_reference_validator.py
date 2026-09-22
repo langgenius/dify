@@ -22,15 +22,22 @@ _CAN_LOAD_FIXTURE = _FIXTURE_DIR / "minimal_non_uuid_conversation_variable.yml"
 _CANNOT_LOAD_FIXTURE = _FIXTURE_DIR / "minimal_not_an_app.yml"
 
 
-def _node(node_id: str, node_type: str, title: str = "", *, selector: list[str] | None = None) -> dict:
-    data: dict = {"type": node_type, "title": title or node_id}
+def _node(node_id: str, node_type: str, title: str = "", *, selector: list[str] | None = None) -> dict[str, object]:
+    data: dict[str, object] = {"type": node_type, "title": title or node_id}
     if selector is not None:
         data["variables"] = [{"value_selector": selector, "variable": "x"}]
     return {"id": node_id, "data": data}
 
 
-def _edge(source: str, target: str, handle: str = "source") -> dict:
+def _edge(source: str, target: str, handle: str = "source") -> dict[str, str]:
     return {"source": source, "target": target, "sourceHandle": handle}
+
+
+def _node_data(node: dict[str, object]) -> dict[str, object]:
+    raw = node["data"]
+    if not isinstance(raw, dict):
+        raise AssertionError("node data must be a mapping")
+    return raw
 
 
 class TestValidateVariableReferences:
@@ -112,7 +119,7 @@ class TestValidateVariableReferences:
     def test_single_wired_branch_handle_is_flagged(self) -> None:
         """A branch node with one wired handle can still select an unwired outcome."""
         cons = _node("cons", "llm", "Consumer")
-        cons["data"]["prompt"] = "Use {{#prod.text#}}"
+        _node_data(cons)["prompt"] = "Use {{#prod.text#}}"
         graph = {
             "nodes": [
                 _node("start", "start"),
@@ -153,7 +160,7 @@ class TestValidateVariableReferences:
     def test_fail_branch_producer_is_flagged(self) -> None:
         """A producer behind a fail-branch node's success handle is skipped on failure."""
         risky = _node("risky", "tool", "Risky")
-        risky["data"]["error_strategy"] = "fail-branch"
+        _node_data(risky)["error_strategy"] = "fail-branch"
         graph = {
             "nodes": [
                 _node("start", "start"),
@@ -192,7 +199,7 @@ class TestValidateVariableReferences:
     def test_template_reference_is_detected(self) -> None:
         """A reference expressed as a {{#node.field#}} template is detected."""
         b = _node("b", "llm", "B")
-        b["data"]["prompt"] = "Use {{#a.text#}} here"
+        _node_data(b)["prompt"] = "Use {{#a.text#}} here"
         graph = {
             "nodes": [
                 _node("start", "start"),
@@ -213,7 +220,7 @@ class TestValidateVariableReferences:
     def test_variable_typed_parameter_reference_is_detected(self) -> None:
         """A {type: variable} parameter selector is detected."""
         consumer = _node("c", "tool", "Consumer")
-        consumer["data"]["parameters"] = [{"type": "variable", "value": ["a", "text"]}]
+        _node_data(consumer)["parameters"] = [{"type": "variable", "value": ["a", "text"]}]
         graph = {
             "nodes": [
                 _node("start", "start"),
@@ -234,7 +241,7 @@ class TestValidateVariableReferences:
     def test_bare_hash_text_is_not_a_placeholder(self) -> None:
         """Bare #a.text# text without braces is not treated as a reference."""
         b = _node("b", "llm", "B")
-        b["data"]["prompt"] = "see #a.text# (not a placeholder)"
+        _node_data(b)["prompt"] = "see #a.text# (not a placeholder)"
         graph = {
             "nodes": [
                 _node("start", "start"),
@@ -309,7 +316,7 @@ class TestValidateVariableReferences:
     def test_variable_aggregator_reference_is_exempt(self) -> None:
         """A Variable Aggregator merging branch outputs is exempt."""
         agg = _node("agg", "variable-aggregator", "Aggregator")
-        agg["data"]["variables"] = [["a", "text"], ["b", "text"]]
+        _node_data(agg)["variables"] = [["a", "text"], ["b", "text"]]
         graph = {
             "nodes": [
                 _node("start", "start"),
@@ -331,7 +338,7 @@ class TestValidateVariableReferences:
     def test_reserved_selector_heads_are_ignored(self) -> None:
         """sys/conversation/env selector heads are always available and never flagged."""
         b = _node("b", "llm", "B", selector=["sys", "query"])
-        b["data"]["prompt"] = "{{#conversation.foo#}} {{#env.bar#}}"
+        _node_data(b)["prompt"] = "{{#conversation.foo#}} {{#env.bar#}}"
         graph = {
             "nodes": [
                 _node("start", "start"),
@@ -373,7 +380,7 @@ def test_minimal_fake_node_fixture_coerces_id_and_flags_skipped_branch() -> None
     assert document["app"]["mode"] == "advanced-chat"
     variable = document["workflow"]["conversation_variables"][0]
     built = variable_factory.build_conversation_variable_from_mapping(variable)
-    assert built.id != "opt-comp-prompt-var"
+    assert built.id == "opt-comp-prompt-var"
     issues = validate_variable_references(document["workflow"]["graph"])
     assert any(issue.node_id == "answer" and issue.referenced_node_id == "producer" for issue in issues)
 
