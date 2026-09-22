@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -8,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Microphone01 } from '@/app/components/base/icons/src/vender/features'
-import { Infotip } from '@/app/components/base/infotip'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 
@@ -54,11 +54,16 @@ const ConfigAudio: FC = () => {
         <div className="mr-1 system-sm-semibold text-text-secondary">
           {t(($) => $['feature.audioUpload.title'], { ns: 'appDebug' })}
         </div>
-        <Infotip
-          aria-label={t(($) => $['feature.audioUpload.description'], { ns: 'appDebug' })}
-          popupClassName="w-[180px]"
-        >
-          {t(($) => $['feature.audioUpload.description'], { ns: 'appDebug' })}
+        <Infotip>
+          <InfotipTrigger
+            aria-label={t(($) => $['feature.audioUpload.description'], { ns: 'appDebug' })}
+          />
+          <InfotipContent
+            aria-label={t(($) => $['feature.audioUpload.description'], { ns: 'appDebug' })}
+            className="w-45"
+          >
+            {t(($) => $['feature.audioUpload.description'], { ns: 'appDebug' })}
+          </InfotipContent>
         </Infotip>
       </div>
       {!readonly && (

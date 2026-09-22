@@ -12,11 +12,11 @@ import type {
 } from './working-directory-breadcrumb'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Dialog } from '@langgenius/dify-ui/dialog'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
@@ -575,12 +575,14 @@ export function AgentWorkingDirectoryPanel({
                     >
                       {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
                     </TabsTab>
-                    <Infotip
-                      aria-label={persistentFilesTooltip}
-                      iconVariant="information"
-                      popupClassName="w-64"
-                    >
-                      {persistentFilesTooltip}
+                    <Infotip>
+                      <InfotipTrigger
+                        aria-label={persistentFilesTooltip}
+                        iconVariant="information"
+                      />
+                      <InfotipContent aria-label={persistentFilesTooltip} className="w-64">
+                        {persistentFilesTooltip}
+                      </InfotipContent>
                     </Infotip>
                   </div>
                   <div className="flex h-full items-center gap-0.5">
@@ -590,12 +592,14 @@ export function AgentWorkingDirectoryPanel({
                     >
                       {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
                     </TabsTab>
-                    <Infotip
-                      aria-label={temporaryFilesTooltip}
-                      iconVariant="information"
-                      popupClassName="w-64"
-                    >
-                      {temporaryFilesTooltip}
+                    <Infotip>
+                      <InfotipTrigger
+                        aria-label={temporaryFilesTooltip}
+                        iconVariant="information"
+                      />
+                      <InfotipContent aria-label={temporaryFilesTooltip} className="w-64">
+                        {temporaryFilesTooltip}
+                      </InfotipContent>
                     </Infotip>
                   </div>
                   <TabsIndicator

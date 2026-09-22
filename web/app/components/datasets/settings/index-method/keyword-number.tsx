@@ -1,4 +1,5 @@
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   NumberField,
   NumberFieldControls,
@@ -18,7 +19,6 @@ import {
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 
 const MIN_KEYWORD_NUMBER = 0
 const MAX_KEYWORD_NUMBER = 50
@@ -44,8 +44,9 @@ const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberPr
       <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex grow items-center gap-x-0.5">
         <div className="truncate system-xs-medium text-text-secondary">{label}</div>
-        <Infotip aria-label={label} className="size-3.5">
-          {label}
+        <Infotip>
+          <InfotipTrigger aria-label={label} className="size-3.5" />
+          <InfotipContent aria-label={label}>{label}</InfotipContent>
         </Infotip>
       </div>
       <Slider

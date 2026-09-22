@@ -64,12 +64,9 @@ export const useVarColor = (
 
 export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
   const showName = VAR_SHOW_NAME_MAP[variables.join('.')]
-  let variableFullPathName = variables.slice(1).join('.')
-
-  if (isRagVariableVar(variables)) variableFullPathName = variables.slice(2).join('.')
 
   const varName = useMemo(() => {
-    variableFullPathName = variables.slice(1).join('.')
+    let variableFullPathName = variables.slice(1).join('.')
 
     if (isRagVariableVar(variables)) variableFullPathName = variables.slice(2).join('.')
 

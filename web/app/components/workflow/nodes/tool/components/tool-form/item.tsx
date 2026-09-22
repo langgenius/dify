@@ -5,8 +5,8 @@ import type { CredentialFormSchema } from '@/app/components/header/account-setti
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useId, useState } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal'
@@ -102,12 +102,11 @@ const ToolFormItem: FC<Props> = ({
             <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
           )}
           {!showDescription && tooltip && (
-            <Infotip
-              aria-label={tooltip[language] || tooltip.en_US}
-              className="ml-1"
-              popupClassName="w-[200px]"
-            >
-              {tooltip[language] || tooltip.en_US}
+            <Infotip>
+              <InfotipTrigger aria-label={tooltip[language] || tooltip.en_US} className="ml-1" />
+              <InfotipContent aria-label={tooltip[language] || tooltip.en_US} className="w-50">
+                {tooltip[language] || tooltip.en_US}
+              </InfotipContent>
             </Infotip>
           )}
           {showSchemaButton && (

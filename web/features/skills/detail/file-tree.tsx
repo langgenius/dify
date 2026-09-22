@@ -61,6 +61,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { formatForDisplay, matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
+import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
@@ -189,7 +190,17 @@ export function FileTree({
   const [draggingPaths, setDraggingPaths] = useState<string[]>([])
   const [dropTarget, setDropTarget] = useState<SkillDropTarget>()
   const [collapsedFolderPaths, setCollapsedFolderPaths] = useState<string[]>([])
-  const [skillRenameEditing, setSkillRenameEditing] = useState(false)
+  const [renameRequested, setRenameRequested] = useQueryState(
+    'rename',
+    parseAsBoolean.withDefault(false),
+  )
+  const [skillRenameEditing, setSkillRenameEditing] = useState(
+    () => canEdit && !readonly && renameRequested,
+  )
+  useEffect(() => {
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Consume the URL navigation flag after the loaded detail initializes its local editor.
+    if (renameRequested) void setRenameRequested(null)
+  }, [renameRequested, setRenameRequested])
   const [selectedPaths, setSelectedPaths] = useState<string[]>([])
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string>()
   const [clipboard, setClipboard] = useState<SkillFileClipboard>()
@@ -1248,10 +1259,7 @@ export function FileTree({
                   />
                 }
               />
-              <TooltipContent
-                placement="bottom"
-                className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
-              >
+              <TooltipContent placement="bottom" className="flex items-center gap-1">
                 <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
                 <KbdGroup>
                   {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (

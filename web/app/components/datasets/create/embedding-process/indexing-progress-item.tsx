@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiCheckboxCircleFill, RiErrorWarningFill } from '@remixicon/react'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
@@ -28,18 +28,21 @@ const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) =
     const errorLabel = error || t(($) => $.error, { ns: 'common' })
 
     return (
-      <Tooltip>
-        <TooltipTrigger render={<span />}>
-          <RiErrorWarningFill aria-hidden className="size-4 shrink-0 text-text-destructive" />
-          <span className="sr-only">{errorLabel}</span>
-        </TooltipTrigger>
-        <TooltipContent
+      <Infotip>
+        <InfotipTrigger
+          aria-label={t(($) => $.error, { ns: 'common' })}
+          iconVariant="warning"
+          iconSize="large"
+          className="text-text-destructive"
+        />
+        <InfotipContent
+          aria-label={t(($) => $.error, { ns: 'common' })}
+          className="whitespace-pre-wrap"
           sideOffset={4}
-          className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-3.5 body-xs-regular text-text-secondary"
         >
           {errorLabel}
-        </TooltipContent>
-      </Tooltip>
+        </InfotipContent>
+      </Infotip>
     )
   }
 

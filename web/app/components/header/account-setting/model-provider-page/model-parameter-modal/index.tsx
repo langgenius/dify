@@ -92,10 +92,16 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
-  const isRulesLoading = !!provider && !!modelId && isLoading
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
+  const canFetchParameterRules =
+    !!currentProvider && currentModel?.status === ModelStatusEnum.active
+  const { data: parameterRulesData, isLoading } = useModelParameterRules(
+    provider,
+    modelId,
+    canFetchParameterRules,
+  )
+  const isRulesLoading = canFetchParameterRules && !!provider && !!modelId && isLoading
   const selectableModelList = modelList ?? activeTextGenerationModelList
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {

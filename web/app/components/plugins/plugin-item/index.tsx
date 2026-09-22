@@ -79,7 +79,8 @@ const PluginItem: FC<Props> = ({
   const hasEndpointDeclaration = !!plugin.declaration.endpoint
 
   const orgName = useMemo(() => {
-    return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
+    const sourcesWithAuthor: PluginSource[] = [PluginSource.github, PluginSource.marketplace]
+    return sourcesWithAuthor.includes(source) ? author : ''
   }, [source, author])
 
   const { data: currentVersion } = useSuspenseQuery({

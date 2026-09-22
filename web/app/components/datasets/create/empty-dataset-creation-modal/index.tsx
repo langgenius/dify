@@ -76,7 +76,7 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
         </div>
         <div className={s.tip}>{t(($) => $['stepOne.modal.tip'], { ns: 'datasetCreation' })}</div>
         <Form onFormSubmit={() => void submit()}>
-          <Field name="datasetName" className={cn(s.form, 'gap-2')}>
+          <Field name="datasetName" className={s.form}>
             <FieldLabel className={s.label}>
               {t(($) => $['stepOne.modal.input'], { ns: 'datasetCreation' })}
             </FieldLabel>

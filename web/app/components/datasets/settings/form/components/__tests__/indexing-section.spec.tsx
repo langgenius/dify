@@ -1,4 +1,5 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ComponentProps } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -241,7 +242,7 @@ describe('IndexingSection', () => {
     enable: false,
   }
 
-  const defaultProps = {
+  const defaultProps: ComponentProps<typeof IndexingSection> = {
     currentDataset: mockDataset,
     indexMethod: IndexingType.QUALIFIED,
     setIndexMethod: vi.fn(),

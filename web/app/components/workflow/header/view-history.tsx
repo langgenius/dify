@@ -20,6 +20,12 @@ export type ViewHistoryProps = {
   onClearLogAndMessageModal?: () => void
   historyUrl?: string
 }
+
+const INTERRUPTED_STATUSES: readonly WorkflowRunningStatus[] = [
+  WorkflowRunningStatus.Stopped,
+  WorkflowRunningStatus.Paused,
+]
+
 const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHistoryProps) => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
@@ -119,7 +125,8 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                 </div>
               )}
               {data?.data.map((item) => (
-                <div
+                <button
+                  type="button"
                   key={item.id}
                   className={cn(
                     'mb-0.5 flex cursor-pointer rounded-lg px-2 py-1.75 hover:bg-state-base-hover',
@@ -141,12 +148,9 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                     setControlMode(ControlMode.Hand)
                   }}
                 >
-                  {!isChatMode &&
-                    [WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Paused].includes(
-                      item.status,
-                    ) && (
-                      <span className="mt-0.5 mr-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
-                    )}
+                  {!isChatMode && INTERRUPTED_STATUSES.includes(item.status) && (
+                    <span className="mt-0.5 mr-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
+                  )}
                   {!isChatMode && item.status === WorkflowRunningStatus.Failed && (
                     <span className="mt-0.5 mr-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
                   )}
@@ -167,7 +171,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                       {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}

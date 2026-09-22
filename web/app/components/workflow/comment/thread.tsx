@@ -476,7 +476,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
+                <TooltipContent placement="top">
                   {t(($) => $['comments.aria.deleteComment'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>
@@ -500,7 +500,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
+                <TooltipContent placement="top">
                   {t(($) => $['comments.aria.resolveComment'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>
@@ -521,7 +521,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
+                <TooltipContent placement="top">
                   {t(($) => $['comments.aria.previousComment'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>
@@ -541,7 +541,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
+                <TooltipContent placement="top">
                   {t(($) => $['comments.aria.nextComment'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>

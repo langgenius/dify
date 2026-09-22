@@ -3,6 +3,7 @@ import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
@@ -25,7 +26,6 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import TagInput from '@/app/components/base/tag-input'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -447,12 +447,17 @@ function ParameterItem({
             {sliderLabel}
           </div>
           {parameterRule.help && (
-            <Infotip
-              aria-label={parameterRule.help[language] || parameterRule.help.en_US}
-              className="mr-1"
-              popupClassName="w-[150px] whitespace-pre-wrap"
-            >
-              {parameterRule.help[language] || parameterRule.help.en_US}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={parameterRule.help[language] || parameterRule.help.en_US}
+                className="mr-1"
+              />
+              <InfotipContent
+                aria-label={parameterRule.help[language] || parameterRule.help.en_US}
+                className="w-37.5 whitespace-pre-wrap"
+              >
+                {parameterRule.help[language] || parameterRule.help.en_US}
+              </InfotipContent>
             </Infotip>
           )}
         </div>
