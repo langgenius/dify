@@ -7,6 +7,7 @@ import { Field as BaseField } from '@base-ui/react/field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { textControlFocusClassName } from '../form-control-shared'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const textareaVariants = cva(
   [
@@ -61,6 +62,7 @@ type TextareaElementProps = Omit<
   | 'onChange'
   | 'rows'
   | 'size'
+  | 'style'
   | 'value'
   | 'wrap'
 >
@@ -73,11 +75,11 @@ type FieldControlTextareaProps = Omit<
 >
 
 type TextareaProps = TextareaElementProps &
+  Pick<BaseFieldNS.Control.Props, 'className' | 'style'> &
   TextareaOnlyProps &
   TextareaControlProps &
   TextareaVariantProps & {
     children?: never
-    className?: string
   }
 
 function Textarea({
@@ -98,7 +100,7 @@ function Textarea({
   return (
     <BaseField.Control
       {...fieldControlProps}
-      className={cn(textareaVariants({ size }), className)}
+      className={(state) => cn(textareaVariants({ size }), resolveClassName(className, state))}
       defaultValue={defaultValue}
       onValueChange={onValueChange}
       ref={ref}

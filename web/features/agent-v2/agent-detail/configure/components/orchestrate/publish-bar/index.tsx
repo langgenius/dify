@@ -21,8 +21,7 @@ import { isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/sto
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { AgentVersionRestoreDialogs } from '../../preview/versions-panel/restore-dialogs'
-import { useAgentVersionRestore } from '../../preview/versions-panel/use-agent-version-restore'
+import { AgentVersionRestore } from '../../version-restore'
 import { AgentPublishImpactDetails } from './publish-impact-details'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
@@ -135,13 +134,6 @@ export function AgentConfigurePublishBar({
       enabled: publishIsAvailable && !isPublishing && !selectedVersionSnapshot,
     })
   useQuery(workflowReferencesQueryOptions)
-  const restore = useAgentVersionRestore({
-    agentId,
-    onRestored: async () => {
-      await onVersionRestored?.()
-      onExitVersions?.()
-    },
-  })
   const canPublish = publishIsAvailable && !isPublishing
 
   const handlePublish = async () => {
@@ -197,27 +189,25 @@ export function AgentConfigurePublishBar({
 
   if (selectedVersionSnapshot) {
     return (
-      <>
-        <AgentVersionRestoreBar
-          version={selectedVersionSnapshot}
-          isRestoring={restore.isPending}
-          restoreDisabled={restore.disabled}
-          onExitVersions={onExitVersions}
-          onRestoreVersion={
-            restore.canRestore ? () => restore.requestRestore(selectedVersionSnapshot) : undefined
-          }
-        />
-        <AgentVersionRestoreDialogs
-          version={restore.version}
-          isUpgradeOpen={restore.isUpgradeOpen}
-          onUpgradeClose={restore.closeUpgrade}
-          isConfirmOpen={restore.isConfirmOpen}
-          onConfirmOpenChange={restore.onConfirmOpenChange}
-          isPending={restore.isPending}
-          disabled={restore.disabled}
-          onConfirm={restore.confirmRestore}
-        />
-      </>
+      <AgentVersionRestore
+        agentId={agentId}
+        onRestored={async () => {
+          await onVersionRestored?.()
+          onExitVersions?.()
+        }}
+      >
+        {(restore) => (
+          <AgentVersionRestoreBar
+            version={selectedVersionSnapshot}
+            isRestoring={restore.isPending}
+            restoreDisabled={restore.disabled}
+            onExitVersions={onExitVersions}
+            onRestoreVersion={
+              restore.canRestore ? () => restore.requestRestore(selectedVersionSnapshot) : undefined
+            }
+          />
+        )}
+      </AgentVersionRestore>
     )
   }
 

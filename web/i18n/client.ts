@@ -9,6 +9,7 @@ import { getI18n, initReactI18next } from 'react-i18next'
 import { LOCALE_COOKIE_NAME } from '@/config'
 import { loadI18nResource } from './load-resource'
 import { normalizeLocale } from './locale'
+import { namespaces } from './resources'
 import { getInitOptions } from './settings'
 
 export function createI18nextInstance(lng: Locale, resources: Resource) {
@@ -21,7 +22,9 @@ export function createI18nextInstance(lng: Locale, resources: Resource) {
       ),
     )
     .init({
-      ...getInitOptions(),
+      ...getInitOptions(
+        namespaces.filter((namespace) => Object.hasOwn(resources[lng] ?? {}, namespace)),
+      ),
       lng,
       resources,
     })

@@ -52,6 +52,11 @@ const FormItem: FC<Props> = ({
   autoFocus,
   inStepRun = false,
 }) => {
+  const collectionInputTypes: readonly InputVarType[] = [
+    InputVarType.contexts,
+    InputVarType.iterator,
+  ]
+
   const { t } = useTranslation()
   const labelId = React.useId()
   const { type } = payload
@@ -124,7 +129,7 @@ const FormItem: FC<Props> = ({
   })()
 
   const isBooleanType = type === InputVarType.checkbox
-  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
+  const isArrayLikeType = collectionInputTypes.includes(type)
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
   const isIteratorItemFile = isIterator && payload.isFileItem

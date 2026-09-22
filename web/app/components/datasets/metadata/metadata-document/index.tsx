@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import useMetadataDocument from '../hooks/use-metadata-document'
 import InfoGroup from './info-group'
 import NoData from './no-data'
@@ -95,7 +95,7 @@ const MetadataDocument: FC<Props> = ({
       )}
       {builtInEnabled && (
         <div className="pl-2">
-          <Divider className="my-3" bgStyle="gradient" />
+          <Separator className="my-3 h-[0.5px]" variant="gradient" />
           <InfoGroup
             noHeader
             titleTooltip="Built-in metadata is system-generated metadata that is automatically added to the document. You can enable or disable built-in metadata here."

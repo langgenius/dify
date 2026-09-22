@@ -38,7 +38,8 @@ const DatePicker = ({
 }: DatePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
-  const [view, setView] = useState(ViewType.date)
+  const [view, setView] = useState<ViewType>(ViewType.date)
+  const dateConfirmationViews: readonly ViewType[] = [ViewType.date, ViewType.time]
   const isInitialRef = useRef(true)
   const triggerAreaRef = useRef<HTMLDivElement>(null)
 
@@ -366,7 +367,7 @@ const DatePicker = ({
           )}
 
           {/* Footer */}
-          {[ViewType.date, ViewType.time].includes(view) && !noConfirm && (
+          {dateConfirmationViews.includes(view) && !noConfirm && (
             <DatePickerFooter
               needTimePicker={needTimePicker}
               displayTime={displayTime}
@@ -376,7 +377,7 @@ const DatePicker = ({
               handleConfirmDate={handleConfirmDate}
             />
           )}
-          {![ViewType.date, ViewType.time].includes(view) && (
+          {!dateConfirmationViews.includes(view) && (
             <YearAndMonthPickerFooter
               handleYearMonthCancel={handleYearMonthCancel}
               handleYearMonthConfirm={handleYearMonthConfirm}

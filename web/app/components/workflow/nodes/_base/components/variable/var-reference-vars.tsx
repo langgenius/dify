@@ -98,10 +98,12 @@ const Item: FC<ItemProps> = ({
   isSelected,
   onActivate,
 }) => {
+  const nestedVariableTypes: readonly VarType[] = [VarType.object, VarType.file]
+
   const isStructureOutput =
     itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isObj =
-    [VarType.object, VarType.file].includes(itemData.type) &&
+    nestedVariableTypes.includes(itemData.type) &&
     itemData.children &&
     (itemData.children as Var[]).length > 0
   const isEnv = itemData.variable.startsWith('env.')

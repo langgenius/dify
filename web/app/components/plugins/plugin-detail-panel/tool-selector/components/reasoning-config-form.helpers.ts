@@ -22,18 +22,16 @@ export type ReasoningConfigValue = Record<string, ReasoningConfigInput>
 export const getVarKindType = (type: string) => {
   if (type === FormTypeEnum.file || type === FormTypeEnum.files) return VarKindType.variable
 
-  if (
-    [
-      FormTypeEnum.select,
-      FormTypeEnum.checkbox,
-      FormTypeEnum.textNumber,
-      FormTypeEnum.array,
-      FormTypeEnum.object,
-      FormTypeEnum.date,
-      FormTypeEnum.dateRange,
-    ].includes(type as FormTypeEnum)
-  )
-    return VarKindType.constant
+  const constantInputTypes: FormTypeEnum[] = [
+    FormTypeEnum.select,
+    FormTypeEnum.checkbox,
+    FormTypeEnum.textNumber,
+    FormTypeEnum.array,
+    FormTypeEnum.object,
+    FormTypeEnum.date,
+    FormTypeEnum.dateRange,
+  ]
+  if (constantInputTypes.includes(type as FormTypeEnum)) return VarKindType.constant
 
   if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) return VarKindType.mixed
 
@@ -61,11 +59,16 @@ export const createFilterVar = (type: string) => {
     type === FormTypeEnum.secretInput ||
     type === FormTypeEnum.date
   )
-    return (varPayload: Var) =>
-      [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+    return (varPayload: Var) => {
+      const textVarTypes: VarType[] = [VarType.string, VarType.number, VarType.secret]
+      return textVarTypes.includes(varPayload.type)
+    }
 
   if (type === FormTypeEnum.file || type === FormTypeEnum.files)
-    return (varPayload: Var) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return (varPayload: Var) => {
+      const fileVarTypes: VarType[] = [VarType.file, VarType.arrayFile]
+      return fileVarTypes.includes(varPayload.type)
+    }
 
   if (type === FormTypeEnum.checkbox)
     return (varPayload: Var) => varPayload.type === VarType.boolean
@@ -73,10 +76,15 @@ export const createFilterVar = (type: string) => {
   if (type === FormTypeEnum.object) return (varPayload: Var) => varPayload.type === VarType.object
 
   if (type === FormTypeEnum.array)
-    return (varPayload: Var) =>
-      [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(
-        varPayload.type,
-      )
+    return (varPayload: Var) => {
+      const arrayVarTypes: VarType[] = [
+        VarType.array,
+        VarType.arrayString,
+        VarType.arrayNumber,
+        VarType.arrayObject,
+      ]
+      return arrayVarTypes.includes(varPayload.type)
+    }
 
   return undefined
 }

@@ -8,10 +8,13 @@ import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
 
-export enum CreateFromDSLModalTab {
-  FROM_FILE = 'from-file',
-  FROM_URL = 'from-url',
-}
+export const CreateFromDSLModalTab = {
+  FROM_FILE: 'from-file',
+  FROM_URL: 'from-url',
+} as const
+
+export type CreateFromDSLModalTab =
+  (typeof CreateFromDSLModalTab)[keyof typeof CreateFromDSLModalTab]
 type UseDSLImportOptions = {
   activeTab?: CreateFromDSLModalTab
   dslUrl?: string

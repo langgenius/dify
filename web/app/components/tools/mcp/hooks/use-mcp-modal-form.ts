@@ -102,7 +102,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
   // Auth state
-  const [authMethod, setAuthMethod] = useState(MCPAuthMethod.authentication)
+  const [authMethod, setAuthMethod] = useState<MCPAuthMethod>(MCPAuthMethod.authentication)
   const [isDynamicRegistration, setIsDynamicRegistration] = useState(() =>
     isCreate ? true : (data?.is_dynamic_registration ?? true),
   )

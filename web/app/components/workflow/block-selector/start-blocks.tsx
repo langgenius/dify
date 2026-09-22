@@ -159,7 +159,7 @@ const StartBlocks = ({
           <Fragment key={block.type}>
             <Tooltip>
               <TooltipTrigger render={row} />
-              <TooltipContent className="rounded-xl">{disabledReason}</TooltipContent>
+              <TooltipContent>{disabledReason}</TooltipContent>
             </Tooltip>
             <span id={previewDescriptionId} className="sr-only">
               {description}

@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import type { AgentIteration } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import ToolCall from './tool-call'
 
 type Props = Readonly<{
@@ -26,7 +26,7 @@ const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
         {!isFinal && (
           <div className="mr-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary">{`${t(($) => $['agentLogDetail.iteration'], { ns: 'appLog' }).toUpperCase()} ${index}`}</div>
         )}
-        <Divider bgStyle="gradient" className="mx-0 h-px grow" />
+        <Separator decorative variant="gradient" className="mx-0 my-2 grow" />
       </div>
       <ToolCall
         isLLM

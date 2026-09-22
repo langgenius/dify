@@ -255,9 +255,7 @@ describe('WebhookTriggerPanel', () => {
       expect(input).toHaveAttribute('readonly')
       await user.click(screen.getByText('workflow.nodes.triggerWebhook.webhookUrl'))
       expect(input).toHaveFocus()
-      await user.click(
-        screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }),
-      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
       expect(await navigator.clipboard.readText()).toBe('https://example.com/webhook')
       expect(
         await screen.findByRole('button', { name: 'workflow.nodes.triggerWebhook.urlCopied' }),

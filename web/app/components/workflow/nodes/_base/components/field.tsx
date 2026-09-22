@@ -1,10 +1,10 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 
 type Props = Readonly<{
   className?: string
@@ -66,8 +66,9 @@ const Field: FC<Props> = ({
             {title} {required && <span className="text-text-destructive">*</span>}
           </div>
           {!!tooltip && !!tooltipLabel && (
-            <Infotip aria-label={tooltipLabel} className="ml-1">
-              {tooltip}
+            <Infotip>
+              <InfotipTrigger aria-label={tooltipLabel} className="ml-1" />
+              <InfotipContent aria-label={tooltipLabel}>{tooltip}</InfotipContent>
             </Infotip>
           )}
         </div>

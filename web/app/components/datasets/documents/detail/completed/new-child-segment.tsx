@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { toast } from '@/app/notifications'
 import { ChunkingMode } from '@/models/datasets'
 import { useParams } from '@/next/navigation'
@@ -121,7 +121,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
                 actionType="add"
                 isChildChunk={true}
               />
-              <Divider type="vertical" className="mr-2 ml-4 h-3.5 bg-divider-regular" />
+              <Separator orientation="vertical" className="mr-2 ml-4 h-3.5" />
             </>
           )}
           <button

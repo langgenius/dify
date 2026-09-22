@@ -6,6 +6,7 @@ import type {
 } from '@langgenius/dify-ui/number-field'
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   NumberField,
@@ -18,7 +19,6 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { env } from '@/env'
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
@@ -54,11 +54,16 @@ export const DelimiterInput: FC<
           <label htmlFor={inputId} className="mr-0.5 system-sm-semibold">
             {t(($) => $['stepTwo.separator'], { ns: 'datasetCreation' })}
           </label>
-          <Infotip
-            aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
-            popupClassName="max-w-[200px]"
-          >
-            {tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+            />
+            <InfotipContent
+              aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+              className="max-w-50"
+            >
+              {tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+            </InfotipContent>
           </Infotip>
         </div>
       }
@@ -185,11 +190,16 @@ export const OverlapInput: FC<LabeledCompoundNumberInputProps> = (props) => {
       label={
         <div className="mb-1 flex items-center">
           <span className="system-sm-semibold">{label}</span>
-          <Infotip
-            aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
-            popupClassName="max-w-[200px]"
-          >
-            {t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+            />
+            <InfotipContent
+              aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+              className="max-w-50"
+            >
+              {t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+            </InfotipContent>
           </Infotip>
         </div>
       }

@@ -2,9 +2,9 @@
 import type { Ref } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useImperativeHandle, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import TagsFilter from './tags-filter'
 
 type SearchBoxProps = {
@@ -70,7 +70,7 @@ function SearchBox({
             {showTags && (
               <>
                 <TagsFilter tags={tags} onTagsChange={onTagsChange} usedInMarketplace />
-                <Divider type="vertical" className="mx-1 h-3.5" />
+                <Separator decorative orientation="vertical" className="mx-1 h-3.5" />
               </>
             )}
             <div className="flex grow items-center gap-x-2 p-1">
@@ -154,7 +154,7 @@ function SearchBox({
             </div>
             {showTags && (
               <>
-                <Divider type="vertical" className="mx-0 mr-0.5 h-3.5" />
+                <Separator decorative orientation="vertical" className="mx-0 mr-0.5 h-3.5" />
                 <TagsFilter tags={tags} onTagsChange={onTagsChange} />
               </>
             )}

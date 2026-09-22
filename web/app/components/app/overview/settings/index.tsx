@@ -25,6 +25,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -36,7 +37,6 @@ import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Divider from '@/app/components/base/divider'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import {
   pricingQueryParamName,
@@ -476,7 +476,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {t(($) => $[`${prefixSettings}.webDescTip`], { ns: 'appOverview' })}
                     </FieldDescription>
                   </Field>
-                  <Divider className="my-0 h-px" />
+                  <Separator className="my-0" />
                   {/* answer icon */}
                   {isChat && (
                     <Field name="use_icon_as_answer_icon" className="w-full">
@@ -587,7 +587,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {t(($) => $[`${prefixSettings}.workflow.showDesc`], { ns: 'appOverview' })}
                     </FieldDescription>
                   </Field>
-                  <Divider className="my-0 h-px" />
+                  <Separator className="my-0" />
                   <div className="space-y-5">
                     {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
                       <div className="w-full">
