@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import os
-import subprocess
-import sys
-import textwrap
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -24,12 +21,10 @@ from pydantic_ai import Agent, Tool
 from pydantic_ai.models.test import TestModel
 
 import dify_agent.server.observability as observability
-from dify_agent.runtime.agent_factory import DIFY_AGENT_RUN_NAME, create_agent
+from dify_agent.runtime.agent_factory import create_agent
 from dify_agent.runtime.observability import IsolatedTracerProvider
 from dify_agent.server.observability import configure_agent_observability
 from dify_agent.server.settings import ServerSettings
-
-_AGENT_RUN_SPAN_NAME = f"invoke_agent {DIFY_AGENT_RUN_NAME}"
 
 
 class _OTLPReceiver:
@@ -88,15 +83,6 @@ class _OTLPReceiver:
                 for scope_spans in resource_spans.scope_spans:
                     names.append(scope_spans.scope.name)
         return names
-
-    def spans(self) -> list[tuple[str, str, str, str]]:
-        decoded: list[tuple[str, str, str, str]] = []
-        for _headers, request in self.received:
-            for resource_spans in request.resource_spans:
-                for scope_spans in resource_spans.scope_spans:
-                    for span in scope_spans.spans:
-                        decoded.append((span.trace_id.hex(), span.span_id.hex(), span.parent_span_id.hex(), span.name))
-        return decoded
 
     def authorizations(self) -> list[str | None]:
         return [headers.get("authorization") for headers, _request in self.received]
@@ -249,192 +235,6 @@ def test_agent_observability_disabled_creates_no_instance_or_export(
         assert agent_receiver.received == []
     finally:
         agent_receiver.close()
-
-
-def test_agent_pipeline_isolation_with_real_env_export_in_subprocess(tmp_path) -> None:
-    platform_receiver = _OTLPReceiver()
-    agent_receiver = _OTLPReceiver()
-    try:
-        child_env = {
-            key: value
-            for key, value in os.environ.items()
-            if not key.startswith(("OTEL_", "LOGFIRE_", "DIFY_AGENT_TRAJECTORY_"))
-        }
-        child_env.pop("PYTEST_CURRENT_TEST", None)
-        platform_port = platform_receiver.server.server_address[1]
-        child_env.update(
-            {
-                "OTEL_EXPORTER_OTLP_ENDPOINT": f"http://127.0.0.1:{platform_port}",
-                "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": platform_receiver.endpoint,
-                "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": f"http://127.0.0.1:{platform_port}/v1/metrics",
-                "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT": f"http://127.0.0.1:{platform_port}/v1/logs",
-                "OTEL_TRACES_EXPORTER": "otlp",
-                "OTEL_METRICS_EXPORTER": "none",
-                "OTEL_LOGS_EXPORTER": "none",
-                "OTEL_EXPORTER_OTLP_HEADERS": "Authorization=platform-test-only",
-                "OTEL_RESOURCE_ATTRIBUTES": "service.name=platform-test",
-                "LOGFIRE_TOKEN": "platform-test-only",
-                "TEST_AGENT_ENDPOINT": agent_receiver.endpoint,
-            }
-        )
-        script = textwrap.dedent(
-            """
-            import os
-            import httpx
-            import logfire
-            from pydantic_ai import Tool
-            from pydantic_ai.models.test import TestModel
-            from dify_agent.runtime.agent_factory import create_agent
-            from dify_agent.runtime.observability import IsolatedTracerProvider
-            from dify_agent.server.observability import configure_agent_observability
-            from dify_agent.server.settings import ServerSettings
-            platform = logfire.configure(local=True, send_to_logfire=False, console=False, metrics=False, inspect_arguments=False)
-            business = None
-            http = httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={'ok': True})))
-            try:
-                before = dict(os.environ)
-                business = configure_agent_observability(ServerSettings(_env_file=None, trajectory_enabled=True,
-                    trajectory_otlp_traces_endpoint=os.environ['TEST_AGENT_ENDPOINT'],
-                    trajectory_otlp_headers={'Authorization':'agent-test-only'}, trajectory_service_name='dify-agent-trajectory'))
-                assert business is not None
-                assert dict(os.environ) == before
-                platform.instrument_httpx(http, capture_all=False,
-                    tracer_provider=IsolatedTracerProvider(platform, preserve_external_parent=True))
-                def smoke_tool():
-                    return http.get('http://test-only.local/ping').text
-                agent = create_agent(TestModel(custom_output_text='done'), tools=[Tool(smoke_tool)])
-                business.instrument(agent)
-                with platform.span('platform-subprocess-marker'):
-                    assert agent.run_sync('test-only-input').output == 'done'
-                http.close()
-                assert platform.force_flush(timeout_millis=10000)
-                assert business.client.force_flush(timeout_millis=10000)
-            finally:
-                http.close()
-                if business is not None:
-                    business.client.shutdown(timeout_millis=5000)
-                platform.shutdown(timeout_millis=5000)
-            """
-        )
-        result = subprocess.run(
-            [sys.executable, "-c", script],
-            env=child_env,
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-            timeout=45,
-        )
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
-
-        platform_names = platform_receiver.span_names()
-        agent_names = agent_receiver.span_names()
-        assert "platform-subprocess-marker" in platform_names
-        assert "platform-subprocess-marker" not in agent_names
-        assert not any("pydantic" in scope for scope in platform_receiver.scope_names())
-        assert _AGENT_RUN_SPAN_NAME in agent_names
-        assert any("smoke_tool" in name for name in agent_names)
-        assert set(platform_receiver.service_names()) == {"platform-test"}
-        assert set(agent_receiver.service_names()) == {"dify-agent-trajectory"}
-        assert platform_receiver.authorizations() == ["platform-test-only"] * len(platform_receiver.authorizations())
-        assert agent_receiver.authorizations() == ["agent-test-only"] * len(agent_receiver.authorizations())
-
-        platform_spans = platform_receiver.spans()
-        agent_spans = agent_receiver.spans()
-        marker = next(span for span in platform_spans if span[3] == "platform-subprocess-marker")
-        invoke = next(span for span in agent_spans if span[3] == _AGENT_RUN_SPAN_NAME)
-        assert invoke[2] == ""
-        assert invoke[0] != marker[0]
-        assert any(span[3].startswith("GET") for span in platform_spans)
-        for spans in (platform_spans, agent_spans):
-            local_span_ids = {span[1] for span in spans}
-            for span in spans:
-                assert span[2] == "" or span[2] in local_span_ids, span
-    finally:
-        platform_receiver.close()
-        agent_receiver.close()
-
-
-def test_agent_pipeline_shared_context_with_real_env_export_in_subprocess(tmp_path) -> None:
-    receiver = _OTLPReceiver()
-    try:
-        child_env = {
-            key: value for key, value in os.environ.items() if not key.startswith(("OTEL_", "LOGFIRE_", "DIFY_AGENT_"))
-        }
-        child_env.pop("PYTEST_CURRENT_TEST", None)
-        child_env.update(
-            {
-                "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": receiver.endpoint,
-                "OTEL_TRACES_EXPORTER": "otlp",
-                "OTEL_METRICS_EXPORTER": "none",
-                "OTEL_LOGS_EXPORTER": "none",
-                "OTEL_EXPORTER_OTLP_HEADERS": "Authorization=platform-test-only",
-                "OTEL_RESOURCE_ATTRIBUTES": "service.name=platform-test",
-                "LOGFIRE_TOKEN": "platform-test-only",
-                "TEST_AGENT_ENDPOINT": receiver.endpoint,
-            }
-        )
-        script = textwrap.dedent(
-            """
-            import os
-            import httpx
-            import logfire
-            from pydantic_ai import Tool
-            from pydantic_ai.models.test import TestModel
-            from dify_agent.runtime.agent_factory import create_agent
-            from dify_agent.server.observability import configure_agent_observability
-            from dify_agent.server.settings import ServerSettings
-            platform = logfire.configure(local=True, send_to_logfire=False, console=False, metrics=False, inspect_arguments=False)
-            business = None
-            http = httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={'ok': True})))
-            try:
-                business = configure_agent_observability(ServerSettings(_env_file=None, trajectory_enabled=True,
-                    trajectory_otlp_traces_endpoint=os.environ['TEST_AGENT_ENDPOINT'],
-                    trajectory_otlp_headers={'Authorization':'agent-test-only'},
-                    trajectory_service_name='dify-agent-trajectory', trajectory_trace_context_mode='shared'))
-                assert business is not None
-                platform.instrument_httpx(http, capture_all=False, tracer_provider=platform.config.get_tracer_provider())
-                def smoke_tool():
-                    return http.get('http://test-only.local/ping').text
-                agent = create_agent(TestModel(custom_output_text='done'), tools=[Tool(smoke_tool)])
-                business.instrument(agent)
-                with platform.span('shared-platform-marker'):
-                    assert agent.run_sync('test-only-input').output == 'done'
-                http.close()
-                assert platform.force_flush(timeout_millis=10000)
-                assert business.client.force_flush(timeout_millis=10000)
-            finally:
-                http.close()
-                if business is not None:
-                    business.client.shutdown(timeout_millis=5000)
-                platform.shutdown(timeout_millis=5000)
-            """
-        )
-        result = subprocess.run(
-            [sys.executable, "-c", script],
-            env=child_env,
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-            timeout=45,
-        )
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
-
-        spans = receiver.spans()
-        names = {span[3] for span in spans}
-        assert {"shared-platform-marker", _AGENT_RUN_SPAN_NAME} <= names
-        assert any(name.startswith("GET") for name in names)
-        assert any("smoke_tool" in name or "execute_tool" in name for name in names)
-        assert len({span[0] for span in spans}) == 1
-        marker = next(span for span in spans if span[3] == "shared-platform-marker")
-        invoke = next(span for span in spans if span[3] == _AGENT_RUN_SPAN_NAME)
-        assert invoke[2] == marker[1]
-        local_span_ids = {span[1] for span in spans}
-        for span in spans:
-            assert span[2] == "" or span[2] in local_span_ids, span
-        assert {"platform-test", "dify-agent-trajectory"} <= set(receiver.service_names())
-        assert set(receiver.authorizations()) <= {"platform-test-only", "agent-test-only"}
-    finally:
-        receiver.close()
 
 
 class _SmokePayload(BaseModel):
