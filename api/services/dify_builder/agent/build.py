@@ -18,7 +18,7 @@ from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, MutationIntent
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import graph_ops
-from services.dify_builder.agent import form_schema, graph_translate, llm, resources
+from services.dify_builder.agent import form_schema, graph_translate, llm, resources, user_supplied
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.dify_builder.agent.resources import ResourceRef
 from services.workflow_generator_service import WorkflowGeneratorService
@@ -41,7 +41,9 @@ def analyze_goal(
     system = (
         "You are a Dify workflow requirements analyst. Given a build goal, propose 3-6 "
         "clarifying requirement fields SHAPED BY THE GOAL, and a sensible default value per "
-        f"field. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
+        "field. Never invent a URL/endpoint, API key, token, password, or account/resource id "
+        "the goal does not state -- give such a field an empty string as its default so the "
+        f"user fills it in. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
         'Reply with ONLY JSON: {"fields": [{"key": "...", "label": "...", "type": "...", '
         '"options": ["..."]}], "values": {"<key>": <default>}}.'
     ) + llm.json_language_instruction("field labels and values")
@@ -53,7 +55,65 @@ def analyze_goal(
     values = data.get("values")
     if not isinstance(fields, list) or not isinstance(values, dict):
         return _degraded_form(goal_text)
-    return {"fields": form_schema.reconcile_form_fields(fields, values), "values": values}
+    scrubbed_values = _scrub_invented_defaults(values, goal_text)
+    return {"fields": form_schema.reconcile_form_fields(fields, scrubbed_values), "values": scrubbed_values}
+
+
+# A dict key naming a credential -- checked against ``is_user_supplied_secret``
+# rather than the plain placeholder regex, so a realistic-looking but
+# never-stated secret (e.g. a made-up ``sk-live-...`` string) is still caught
+# even though it doesn't match any of CREDENTIAL_PLACEHOLDER_RE's shapes.
+_CREDENTIAL_KEY_RE = re.compile(r"(?i)(authorization|api[_-]?key|token|secret|password)")
+
+# Mirrors the prefix ``user_supplied.is_user_supplied_secret`` strips, so a
+# literal is checked against CREDENTIAL_PLACEHOLDER_RE the same way regardless
+# of which of the two credential checks below is doing the looking.
+_AUTH_SCHEME_PREFIX_RE = re.compile(r"^(?:bearer|basic|token)\s+", re.IGNORECASE)
+
+
+def _is_invented_literal(value: Any, key: str | None, goal_text: str, trusted_hosts: set[str]) -> bool:
+    """True when ``value`` (found under ``key``, possibly nested inside a
+    field's dict/list default) is a URL or credential the LLM invented
+    rather than one the goal actually states."""
+    if isinstance(value, dict):
+        return any(_is_invented_literal(v, k, goal_text, trusted_hosts) for k, v in value.items())
+    if isinstance(value, list):
+        return any(_is_invented_literal(item, None, goal_text, trusted_hosts) for item in value)
+    if not isinstance(value, str):
+        return False
+    if user_supplied.url_hosts(value) - trusted_hosts:
+        return True
+    stripped = _AUTH_SCHEME_PREFIX_RE.sub("", value, count=1)
+    if user_supplied.CREDENTIAL_PLACEHOLDER_RE.search(stripped):
+        return True
+    if (
+        key is not None
+        and _CREDENTIAL_KEY_RE.search(key)
+        and not user_supplied.is_user_supplied_secret(value, goal_text)
+    ):
+        return True
+    return False
+
+
+def _scrub_invented_defaults(values: dict[str, Any], goal_text: str) -> dict[str, Any]:
+    """Blank any top-level field whose default is an invented URL or
+    credential rather than one the goal states (S5b/F2: analysis prefilled
+    ``render_api_url=https://api.yourcompany.com/...`` and
+    ``Authorization: Bearer YOUR_API_KEY`` for a goal that named neither).
+
+    The whole field is replaced with ``""`` -- even one whose default was a
+    dict -- so the user is prompted to fill it in themselves rather than the
+    workflow running against a host or secret that doesn't exist.
+    """
+    trusted_hosts = user_supplied.url_hosts(goal_text)
+    blanked = [key for key, value in values.items() if _is_invented_literal(value, key, goal_text, trusted_hosts)]
+    if not blanked:
+        return values
+    scrubbed = dict(values)
+    for key in blanked:
+        scrubbed[key] = ""
+    logger.info("dify_builder: blanked invented default(s) for %s", ", ".join(sorted(blanked)))
+    return scrubbed
 
 
 def propose_app_name(
