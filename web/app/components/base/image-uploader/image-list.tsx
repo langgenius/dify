@@ -4,7 +4,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { TransferMethod } from '@/types/app'
 
@@ -105,7 +104,14 @@ const ImageList: FC<ImageListProps> = ({
                 )}
                 {item.progress === -1 && (
                   <Tooltip>
-                    <TooltipTrigger render={<AlertTriangle className="h-4 w-4 text-[#DC6803]" />} />
+                    <TooltipTrigger
+                      render={
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-solid-alertsAndFeedback-alert-triangle h-4 w-4 text-[#DC6803]"
+                        />
+                      }
+                    />
                     <TooltipContent>
                       {t(($) => $['imageUploader.pasteImageLinkInvalid'], { ns: 'common' })}
                     </TooltipContent>

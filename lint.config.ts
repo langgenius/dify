@@ -877,11 +877,6 @@ export const lintConfig = {
             },
             libraries: [
               {
-                prefix: 'i-custom-',
-                source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-                name: '^(?<name>.*)$',
-              },
-              {
                 source: '^@remixicon/react$',
                 name: '^(?<set>Ri)(?<name>.+)$',
               },

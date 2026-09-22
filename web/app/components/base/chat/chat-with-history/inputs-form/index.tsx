@@ -4,7 +4,6 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
-import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = Readonly<{
@@ -34,7 +33,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
             isMobile && 'px-4 py-3',
           )}
         >
-          <Message3Fill className="size-6 shrink-0" />
+          <span aria-hidden className="i-custom-public-other-message-3-fill size-6 shrink-0" />
           <div className="grow system-xl-semibold text-text-secondary">
             {t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
           </div>

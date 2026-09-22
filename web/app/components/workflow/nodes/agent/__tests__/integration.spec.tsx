@@ -66,10 +66,6 @@ vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ icon, background }: any) => <div>{`app-icon:${background}:${icon}`}</div>,
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/other', () => ({
-  Group: () => <div>group-icon</div>,
-}))
-
 vi.mock('@/utils/get-icon', () => ({
   getIconFromMarketPlace: () => mockMarketplaceIcon,
 }))
@@ -315,7 +311,7 @@ describe('agent path', () => {
       expect(screen.getByRole('img', { name: 'tool icon' })).toBeInTheDocument()
 
       fireEvent.error(screen.getByRole('img', { name: 'tool icon' }))
-      expect(screen.getByText('group-icon')).toBeInTheDocument()
+      expect(screen.queryByRole('img', { name: 'tool icon' })).not.toBeInTheDocument()
 
       unmount()
       const secondRender = render(<ToolIcon id="tool-1" providerName="author/tool-b" />)
@@ -324,7 +320,7 @@ describe('agent path', () => {
 
       mockBuiltInTools = undefined
       secondRender.rerender(<ToolIcon id="tool-2" providerName="author/tool-c" />)
-      expect(screen.getByText('group-icon')).toBeInTheDocument()
+      expect(screen.queryByRole('img', { name: 'tool icon' })).not.toBeInTheDocument()
 
       mockBuiltInTools = []
       secondRender.rerender(<ToolIcon id="tool-3" providerName="market/tool-d" />)

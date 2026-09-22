@@ -10,7 +10,6 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
 import AddButton from '../../_base/components/add-button'
@@ -130,12 +129,15 @@ const ClassList: FC<Props> = ({
           {t(($) => $[`${i18nPrefix}.class`], { ns: 'workflow' })}{' '}
           <span className="text-text-destructive">*</span>
           {list.length > 0 && (
-            <ArrowDownRoundFill
-              className={cn(
-                'size-4 text-text-quaternary transition-transform duration-200',
-                collapsed && '-rotate-90',
-              )}
+            <span
               aria-hidden="true"
+              className={cn(
+                'i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4',
+                cn(
+                  'size-4 text-text-quaternary transition-transform duration-200',
+                  collapsed && '-rotate-90',
+                ),
+              )}
             />
           )}
         </button>

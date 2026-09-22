@@ -5,7 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '@/app/components/plugins/hooks'
 
@@ -72,7 +71,10 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
-                  <Tag03 className="size-6 text-text-quaternary" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-financeAndECommerce-tag-03 size-6 text-text-quaternary"
+                  />
                   <div className="text-xs leading-3.5 text-text-tertiary">
                     {t(($) => $['tag.noTag'], { ns: 'common' })}
                   </div>

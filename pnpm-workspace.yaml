@@ -94,7 +94,6 @@ catalog:
   '@orpc/tanstack-query': 1.15.1
   '@playwright/test': 1.63.0
   '@remixicon/react': 4.9.0
-  '@rgrove/parse-xml': 5.0.0
   '@sentry/react': 10.75.0
   '@shadcn/lint': 0.1.3
   '@storybook/addon-a11y': 10.6.0

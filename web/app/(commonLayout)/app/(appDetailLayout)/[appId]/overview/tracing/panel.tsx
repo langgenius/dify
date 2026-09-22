@@ -24,18 +24,6 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  AliyunIcon,
-  ArizeIcon,
-  DatabricksIcon,
-  LangfuseIcon,
-  LangsmithIcon,
-  MlflowIcon,
-  OpikIcon,
-  PhoenixIcon,
-  TencentIcon,
-  WeaveIcon,
-} from '@/app/components/base/icons/src/public/tracing'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -105,19 +93,21 @@ const Panel: FC = () => {
   }
   const inUseTracingProvider: TracingProvider | null = tracingStatus?.tracing_provider || null
 
-  const providerIconMap: Record<TracingProvider, React.FC<{ className?: string }>> = {
-    [TracingProvider.arize]: ArizeIcon,
-    [TracingProvider.phoenix]: PhoenixIcon,
-    [TracingProvider.langSmith]: LangsmithIcon,
-    [TracingProvider.langfuse]: LangfuseIcon,
-    [TracingProvider.opik]: OpikIcon,
-    [TracingProvider.weave]: WeaveIcon,
-    [TracingProvider.aliyun]: AliyunIcon,
-    [TracingProvider.mlflow]: MlflowIcon,
-    [TracingProvider.databricks]: DatabricksIcon,
-    [TracingProvider.tencent]: TencentIcon,
+  const providerIconClassMap: Record<TracingProvider, string> = {
+    [TracingProvider.arize]: 'i-custom-public-tracing-arize-icon w-18.5',
+    [TracingProvider.phoenix]: 'i-custom-public-tracing-phoenix-icon w-18.5',
+    [TracingProvider.langSmith]: 'i-custom-public-tracing-langsmith-icon w-21',
+    [TracingProvider.langfuse]: 'i-custom-public-tracing-langfuse-icon w-18.5',
+    [TracingProvider.opik]: 'i-custom-public-tracing-opik-icon w-[47.133904px]',
+    [TracingProvider.weave]: 'i-custom-public-tracing-weave-icon w-30',
+    [TracingProvider.aliyun]: 'i-custom-public-tracing-aliyun-icon w-16.25',
+    [TracingProvider.mlflow]: 'i-custom-public-tracing-mlflow-icon w-11',
+    [TracingProvider.databricks]: 'i-custom-public-tracing-databricks-icon w-25',
+    [TracingProvider.tencent]: 'i-custom-public-tracing-tencent-icon w-20',
   }
-  const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
+  const inUseProviderIconClassName = inUseTracingProvider
+    ? providerIconClassMap[inUseTracingProvider]
+    : undefined
 
   const [arizeConfig, setArizeConfig] = useState<ArizeConfig | null>(null)
   const [phoenixConfig, setPhoenixConfig] = useState<PhoenixConfig | null>(null)
@@ -339,7 +329,9 @@ const Panel: FC = () => {
                 {t(($) => $[`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`], { ns: 'app' })}
               </div>
             </div>
-            {InUseProviderIcon && <InUseProviderIcon className="ml-1 h-4" />}
+            {inUseProviderIconClassName && (
+              <span aria-hidden className={cn(inUseProviderIconClassName, 'ml-1 h-4')} />
+            )}
             <div className="ml-2 rounded-md p-1">
               <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </div>

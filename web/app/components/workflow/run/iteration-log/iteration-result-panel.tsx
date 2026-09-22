@@ -11,7 +11,6 @@ import {
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 
@@ -105,7 +104,10 @@ const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
             >
               <div className={cn('flex grow items-center gap-2')}>
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
-                  <Iteration className="size-3 text-text-primary-on-surface" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-workflow-iteration size-3 text-text-primary-on-surface"
+                  />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
                   {t(($) => $[`${i18nPrefix}.iteration`], { ns: 'workflow' })} {index + 1}

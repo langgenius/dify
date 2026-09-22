@@ -24,15 +24,15 @@ import { PreferredProviderTypeEnum } from '../declarations'
 import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelNameMap,
-  providerIconMap,
   providerKeyToPluginId,
+  providerLogoMap,
 } from '../utils'
 import styles from './quota-panel.module.css'
 import { useTrialCredits } from './use-trial-credits'
 
 const allProviders = MODEL_PROVIDER_QUOTA_GET_PAID.map((key) => ({
   key,
-  Icon: providerIconMap[key],
+  logo: providerLogoMap[key],
 }))
 
 type QuotaInfotipProps = {
@@ -253,7 +253,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
           <div className="flex shrink-0 items-center gap-1">
             {allProviders
               .filter(({ key }) => trialModels.includes(key))
-              .map(({ key, Icon }) => {
+              .map(({ key, logo }) => {
                 const providerType = providerMap.get(key)
                 const isLoadingPlugin = loadingPluginId === providerKeyToPluginId[key]
                 const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0
@@ -286,7 +286,21 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                           )}
                           onClick={() => handleIconClick(key)}
                         >
-                          <Icon className="size-6 rounded-lg" />
+                          {'image' in logo ? (
+                            <img
+                              aria-hidden
+                              src={logo.image.src}
+                              width={24}
+                              height={24}
+                              alt=""
+                              className="size-6 rounded-lg"
+                            />
+                          ) : (
+                            <span
+                              aria-hidden
+                              className={cn(logo.iconClassName, 'size-6 rounded-lg')}
+                            />
+                          )}
                           {isLoadingPlugin && (
                             <span
                               aria-hidden

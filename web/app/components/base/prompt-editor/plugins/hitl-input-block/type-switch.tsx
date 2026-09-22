@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '../../../icons/src/vender/solid/development'
 
 type Props = Readonly<{
   className?: string
@@ -22,7 +21,7 @@ const TypeSwitch: FC<Props> = ({ className, isVariable, onIsVariableChange }) =>
       )}
       onClick={() => onIsVariableChange?.(!isVariable)}
     >
-      <Variable02 className="size-3.5" aria-hidden="true" />
+      <span aria-hidden="true" className="i-custom-vender-solid-development-variable-02 size-3.5" />
       <div className="system-xs-medium">
         {t(
           ($) =>

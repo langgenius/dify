@@ -15,7 +15,6 @@ import * as React from 'react'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 
 type FieldItemProps = {
@@ -69,10 +68,16 @@ const FieldItem = ({
       )}
     >
       <div className="relative size-4 shrink-0">
-        <InputField
+        <span
+          aria-hidden
           className={cn(
-            'size-4 text-text-accent',
-            !readonly && !!dragHandleProps && 'group-focus-within:opacity-0 group-hover:opacity-0',
+            'i-custom-vender-pipeline-input-field h-4 w-4',
+            cn(
+              'size-4 text-text-accent',
+              !readonly &&
+                !!dragHandleProps &&
+                'group-focus-within:opacity-0 group-hover:opacity-0',
+            ),
           )}
         />
         {!readonly && dragHandleProps && (
