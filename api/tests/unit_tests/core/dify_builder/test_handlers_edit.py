@@ -557,7 +557,11 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
     reverted's retry_after_revert) must clear fc.test_input_ref and
     fc.verify_run_id -- otherwise the retest after a rebuild reuses the
     FIRST build's stale mock inputs instead of regenerating fresh
-    schema-shaped ones."""
+    schema-shaped ones. They must also reset the repair breaker's counter
+    (fc.repair_attempts / fc.last_repair_error), same as Build's parallel
+    handlers -- otherwise a count left over from an earlier repair cycle
+    survives into the next adjustment and the breaker can trip one round
+    early."""
     from core.dify_builder.handlers_edit import handle_reverted, handle_review
 
     env, repo = _new_env()
@@ -568,11 +572,15 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
         edit_target_node_ids=["llm"],
         test_input_ref="ti-old",
         verify_run_id="run-old",
+        repair_attempts=1,
+        last_repair_error="llm|boom",
     )
     turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res = handle_review(env, turn, *repo.get_session(s.id))
     assert res.context.test_input_ref == ""
     assert res.context.verify_run_id == ""
+    assert res.context.repair_attempts == 0
+    assert res.context.last_repair_error == ""
 
     env2, repo2 = _new_env()
     s2 = _seed_edit_session(
@@ -581,11 +589,15 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
         edit_rules={"risk_threshold": "high"},
         test_input_ref="ti-old",
         verify_run_id="run-old",
+        repair_attempts=1,
+        last_repair_error="llm|boom",
     )
     turn2 = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res2 = handle_reverted(env2, turn2, *repo2.get_session(s2.id))
     assert res2.context.test_input_ref == ""
     assert res2.context.verify_run_id == ""
+    assert res2.context.repair_attempts == 0
+    assert res2.context.last_repair_error == ""
 
 
 def test_edit_await_repair_approve_applies_and_waits_for_retest():
