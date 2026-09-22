@@ -176,6 +176,9 @@ catalogs:
     '@base-ui/react':
       specifier: 1.8.0
       version: 1.8.0
+    '@base-ui/utils':
+      specifier: 0.4.0
+      version: 0.4.0
     '@chromatic-com/storybook':
       specifier: 5.3.1
       version: 5.3.1
@@ -1134,6 +1137,9 @@ importers:
 
   packages/dify-ui:
     dependencies:
+      '@base-ui/utils':
+        specifier: 'catalog:'
+        version: 0.4.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       cn:
         specifier: 'catalog:'
         version: 0.3.0
@@ -18263,6 +18269,7 @@ time:
   '@amplitude/plugin-session-replay-browser@1.35.1': '2026-09-16T19:27:10.945Z'
   '@axe-core/playwright@4.13.0': '2026-08-11T17:07:40.763Z'
   '@base-ui/react@1.8.0': '2026-09-04T08:52:51.986Z'
+  '@base-ui/utils@0.4.0': '2026-09-04T08:49:31.070Z'
   '@chromatic-com/storybook@5.3.1': '2026-09-02T13:43:27.595Z'
   '@cucumber/cucumber@13.2.1': '2026-08-04T07:20:28.681Z'
   '@egoist/tailwindcss-icons@1.9.2': '2026-01-31T10:48:44.594Z'

@@ -4,6 +4,7 @@ import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
+import { useMergedRefs } from '@base-ui/utils/useMergedRefs'
 import * as React from 'react'
 import { cn } from '../cn'
 import { resolveClassName } from '../internals/resolve-class-name'
@@ -302,21 +303,7 @@ function PaginationPageJump({
   const [editing, setEditing] = React.useState(false)
   const summaryButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const restoreSummaryFocusRef = React.useRef(false)
-  const handleSummaryRef = React.useCallback(
-    (element: HTMLButtonElement | null) => {
-      summaryButtonRef.current = element
-      const cleanup = typeof ref === 'function' ? ref(element) : undefined
-      if (ref && typeof ref !== 'function') ref.current = element
-
-      return () => {
-        summaryButtonRef.current = null
-        if (typeof cleanup === 'function') cleanup()
-        else if (typeof ref === 'function') ref(null)
-        else if (ref) ref.current = null
-      }
-    },
-    [ref],
-  )
+  const mergedSummaryRef = useMergedRefs(summaryButtonRef, ref)
 
   useIsoLayoutEffect(() => {
     if (editing || !restoreSummaryFocusRef.current) return
@@ -387,7 +374,7 @@ function PaginationPageJump({
   return (
     <BaseButton
       {...props}
-      ref={handleSummaryRef}
+      ref={mergedSummaryRef}
       type="button"
       aria-label={
         ariaLabel ?? `Edit page number, current page ${pagination.page} of ${pagination.totalPages}`
