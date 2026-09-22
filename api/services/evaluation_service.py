@@ -16,15 +16,16 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     METRIC_NODE_TYPE_MAPPING,
     METRIC_VALUE_TYPE_MAPPING,
+    AgentToolCall,
     CustomizedMetrics,
     DefaultMetric,
     EvaluationCategory,
     EvaluationConfigData,
     EvaluationDatasetInput,
-    EvaluationMetricName,
     EvaluationRunData,
     EvaluationRunRequest,
     EvaluationRunSnapshot,
@@ -33,6 +34,7 @@ from core.evaluation.entities.evaluation_entity import (
 from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.node_events.base import NodeRunResult
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
@@ -76,20 +78,9 @@ class EvaluationService:
     """
 
     ALLOWED_APP_MODES = {AppMode.WORKFLOW}
-    CONSOLE_DISABLED_CATEGORIES = {"agent"}
-    SUPPORTED_NODE_TYPES = {"llm", "knowledge-retrieval", "knowledge_retrieval"}
+    CONSOLE_DISABLED_CATEGORIES: set[str] = set()
+    SUPPORTED_NODE_TYPES = {"llm", "knowledge-retrieval", "knowledge_retrieval", "agent"}
     CONSOLE_DISABLED_METRICS = {"tool_correctness", "task_completion"}
-    METRICS_REQUIRING_EXPECTED_OUTPUT = {
-        EvaluationMetricName.ANSWER_CORRECTNESS.value,
-        EvaluationMetricName.SEMANTIC_SIMILARITY.value,
-        EvaluationMetricName.CONTEXT_PRECISION.value,
-        EvaluationMetricName.CONTEXT_RECALL.value,
-    }
-    METRICS_REQUIRING_EMBEDDINGS = {
-        EvaluationMetricName.ANSWER_RELEVANCY.value,
-        EvaluationMetricName.ANSWER_CORRECTNESS.value,
-        EvaluationMetricName.SEMANTIC_SIMILARITY.value,
-    }
     STRING_DATASET_INPUT_TYPES = {"", "string", "text", "text-input", "paragraph", "select"}
     NUMBER_DATASET_INPUT_TYPES = {"number", "integer", "float", "int"}
     BOOLEAN_DATASET_INPUT_TYPES = {"boolean", "bool", "checkbox", "switch"}
@@ -450,15 +441,20 @@ class EvaluationService:
         if data.default_metrics and (not data.evaluation_model_provider or not data.evaluation_model):
             raise ValueError("evaluation_model_provider and evaluation_model are required for default metrics.")
         if data.default_metrics:
+            evaluation_instance = EvaluationManager.get_evaluation_instance()
+            if evaluation_instance is None:
+                raise EvaluationFrameworkNotConfiguredError()
             cls._validate_evaluation_model(
                 tenant_id=tenant_id,
                 provider=data.evaluation_model_provider,
                 model_name=data.evaluation_model,
             )
-            if any(metric.metric in cls.METRICS_REQUIRING_EMBEDDINGS for metric in data.default_metrics):
+            if any(evaluation_instance.metric_requires_embeddings(metric.metric) for metric in data.default_metrics):
                 cls._validate_default_embedding_model(tenant_id=tenant_id)
+        else:
+            evaluation_instance = None
 
-        published_node_types: dict[str, str] = {}
+        published_nodes: dict[str, Mapping[str, Any]] = {}
         if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
             dataset = session.scalar(
                 select(Dataset).where(
@@ -504,9 +500,7 @@ class EvaluationService:
                 else []
             )
             cls._dataset_input_types([field for field in target_input_fields if isinstance(field, Mapping)])
-            published_node_types = {
-                node_id: str(node_data.get("type", "")) for node_id, node_data in published_workflow.walk_nodes()
-            }
+            published_nodes = dict(published_workflow.walk_nodes())
 
         for metric in data.default_metrics:
             if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
@@ -515,9 +509,14 @@ class EvaluationService:
                 if not metric.node_info_list:
                     raise ValueError(f"Metric '{metric.metric}' must select at least one node.")
                 for node in metric.node_info_list:
-                    published_type = published_node_types.get(node.node_id)
-                    if published_type is None:
+                    published_node = published_nodes.get(node.node_id)
+                    if published_node is None:
                         raise ValueError(f"Node '{node.node_id}' is not in the published target workflow.")
+                    if is_dify_agent_node_data(published_node):
+                        raise ValueError(
+                            f"Node '{node.node_id}' is an Agent V2 node, which evaluation does not support yet."
+                        )
+                    published_type = str(published_node.get("type", ""))
                     if cls.category_for_node_type(published_type) != cls.category_for_node_type(node.type):
                         raise ValueError(f"Node '{node.node_id}' type does not match the published workflow.")
                 categories = {cls.category_for_node_type(node.type) for node in metric.node_info_list}
@@ -577,7 +576,7 @@ class EvaluationService:
             cls._validate_customized_inputs(
                 customized_metrics=customized_metrics,
                 evaluator_workflow=evaluator_workflow,
-                published_node_ids=set(published_node_types),
+                published_node_ids=set(published_nodes),
             )
 
         cls._validate_judgment_config(
@@ -712,6 +711,7 @@ class EvaluationService:
             "llm": EvaluationCategory.LLM,
             "knowledge-retrieval": EvaluationCategory.RETRIEVAL,
             "knowledge_retrieval": EvaluationCategory.RETRIEVAL,
+            "agent": EvaluationCategory.AGENT,
         }
         try:
             return mapping[node_type]
@@ -830,7 +830,8 @@ class EvaluationService:
         the latest saved evaluation config for the target is reused.
         """
         # Check framework is configured
-        evaluation_instance = EvaluationManager.get_evaluation_instance()
+        evaluation_framework = EvaluationManager.get_configured_framework()
+        evaluation_instance = EvaluationManager.get_evaluation_instance(evaluation_framework)
         if evaluation_instance is None:
             raise EvaluationFrameworkNotConfiguredError()
 
@@ -875,7 +876,11 @@ class EvaluationService:
         max_rows = dify_config.EVALUATION_MAX_DATASET_ROWS
         if len(items) > max_rows:
             raise EvaluationDatasetInvalidError(f"Dataset has {len(items)} rows, max is {max_rows}.")
-        cls._validate_dataset_expected_outputs(items, resolved_run_request.default_metrics)
+        cls._validate_dataset_expected_outputs(
+            items,
+            resolved_run_request.default_metrics,
+            evaluation_instance=evaluation_instance,
+        )
         if target_type == EvaluationTargetType.KNOWLEDGE_BASE.value:
             missing_query_indices = [item.index for item in items if not str(item.inputs.get("query", "")).strip()]
             if missing_query_indices:
@@ -902,6 +907,7 @@ class EvaluationService:
         run_snapshot = EvaluationRunSnapshot.model_validate(
             {
                 **pinned_run_request.model_dump(mode="json"),
+                "evaluation_framework": evaluation_framework,
                 "dataset_input_types": dataset_input_types,
             }
         )
@@ -930,6 +936,7 @@ class EvaluationService:
             target_type=target_type,
             target_id=target_id,
             target_workflow_version_id=target_workflow_version_id,
+            evaluation_framework=evaluation_framework,
             evaluation_model_provider=pinned_run_request.evaluation_model_provider,
             evaluation_model=pinned_run_request.evaluation_model,
             default_metrics=pinned_run_request.default_metrics,
@@ -969,15 +976,17 @@ class EvaluationService:
         dataset_filename: str,
     ) -> EvaluationRun:
         """Redispatch a failed run while retaining its immutable snapshot and row checkpoints."""
-        if EvaluationManager.get_evaluation_instance() is None:
-            raise EvaluationFrameworkNotConfiguredError()
-
         run = cls.get_evaluation_run_detail(session, tenant_id, target_type, target_id, run_id)
         if run.status != EvaluationRunStatus.FAILED:
             raise ValueError("Only failed evaluation runs can be retried.")
 
         run_snapshot = EvaluationRunSnapshot.model_validate(run.config_snapshot_dict)
-        run_request = EvaluationRunRequest.model_validate(run_snapshot.model_dump(exclude={"dataset_input_types"}))
+        evaluation_instance = EvaluationManager.get_evaluation_instance(run_snapshot.evaluation_framework)
+        if evaluation_instance is None:
+            raise EvaluationFrameworkNotConfiguredError()
+        run_request = EvaluationRunRequest.model_validate(
+            run_snapshot.model_dump(exclude={"dataset_input_types", "evaluation_framework"})
+        )
         pinned_workflow = cls._resolve_pinned_target_workflow_for_run(session=session, run=run)
         if run_snapshot.dataset_input_types:
             input_types = run_snapshot.dataset_input_types
@@ -999,7 +1008,11 @@ class EvaluationService:
         )
         if len(items) != run.total_items:
             raise EvaluationDatasetInvalidError("The persisted evaluation dataset no longer matches the run.")
-        cls._validate_dataset_expected_outputs(items, run_request.default_metrics)
+        cls._validate_dataset_expected_outputs(
+            items,
+            run_request.default_metrics,
+            evaluation_instance=evaluation_instance,
+        )
         if target_type == EvaluationTargetType.KNOWLEDGE_BASE.value:
             missing_query_indices = [item.index for item in items if not str(item.inputs.get("query", "")).strip()]
             if missing_query_indices:
@@ -1014,6 +1027,7 @@ class EvaluationService:
             target_type=EvaluationTargetType(run.target_type).value,
             target_id=run.target_id,
             target_workflow_version_id=run.target_workflow_version_id,
+            evaluation_framework=run_snapshot.evaluation_framework,
             evaluation_model_provider=run_request.evaluation_model_provider,
             evaluation_model=run_request.evaluation_model,
             default_metrics=run_request.default_metrics,
@@ -1153,30 +1167,50 @@ class EvaluationService:
         cls,
         items: Sequence[EvaluationDatasetInput],
         default_metrics: Sequence[DefaultMetric],
+        *,
+        evaluation_instance: BaseEvaluationInstance | None = None,
     ) -> None:
-        """Fail early when a selected metric requires references absent from the dataset."""
-        required_nodes: list[str | None] = []
-        for metric in default_metrics:
-            if metric.metric not in cls.METRICS_REQUIRING_EXPECTED_OUTPUT:
-                continue
-            if metric.node_info_list:
-                required_nodes.extend(node.title or node.node_id for node in metric.node_info_list)
-            else:
-                required_nodes.append(None)
-
-        if not required_nodes:
+        """Fail early when selected metrics require references absent from the dataset."""
+        if not default_metrics:
             return
+        evaluation_instance = evaluation_instance or EvaluationManager.get_evaluation_instance()
+        if evaluation_instance is None:
+            raise EvaluationFrameworkNotConfiguredError()
 
-        missing_indices = [
+        required_output_nodes: list[str | None] = []
+        required_tool_call_nodes: list[str | None] = []
+        for metric in default_metrics:
+            node_titles: list[str | None] = (
+                [node.title or node.node_id for node in metric.node_info_list] if metric.node_info_list else [None]
+            )
+            if evaluation_instance.metric_requires_expected_output(metric.metric):
+                required_output_nodes.extend(node_titles)
+            if evaluation_instance.metric_requires_expected_tool_calls(metric.metric) is True:
+                required_tool_call_nodes.extend(node_titles)
+
+        missing_output_indices = [
             item.index
             for item in items
             if any(
-                not str(item.get_expected_output_for_node(node_title) or "").strip() for node_title in required_nodes
+                not str(item.get_expected_output_for_node(node_title) or "").strip()
+                for node_title in required_output_nodes
             )
         ]
-        if missing_indices:
+        if missing_output_indices:
             raise EvaluationDatasetInvalidError(
-                f"The selected metrics require a non-empty expected_output; invalid rows: {missing_indices[:10]}."
+                "The selected metrics require a non-empty expected_output; "
+                f"invalid rows: {missing_output_indices[:10]}."
+            )
+
+        missing_tool_call_indices = [
+            item.index
+            for item in items
+            if any(not item.get_expected_tool_calls_for_node(node_title) for node_title in required_tool_call_nodes)
+        ]
+        if missing_tool_call_indices:
+            raise EvaluationDatasetInvalidError(
+                "The selected metrics require non-empty expected_tool_calls; "
+                f"invalid rows: {missing_tool_call_indices[:10]}."
             )
 
     @classmethod
@@ -1528,7 +1562,7 @@ class EvaluationService:
         cls,
         default_metrics: Sequence[DefaultMetric | Mapping[str, Any]],
     ) -> list[DefaultMetric]:
-        """Drop agent-only metrics/nodes from console-facing evaluation configs."""
+        """Drop obsolete metrics/nodes from console-facing evaluation configs."""
         filtered: list[DefaultMetric] = []
         for raw_metric in default_metrics:
             metric = raw_metric if isinstance(raw_metric, DefaultMetric) else DefaultMetric.model_validate(raw_metric)
@@ -1594,7 +1628,13 @@ class EvaluationService:
         """Build dataset template columns from target inputs and the selected evaluation config."""
         input_columns = cls._get_target_input_columns(target, target_type, session)
         expected_output_columns = cls._get_expected_output_columns(data.default_metrics)
-        return [{"name": "index", "type": "number"}, *input_columns, *expected_output_columns]
+        expected_tool_call_columns = cls._get_expected_tool_call_columns(data.default_metrics)
+        return [
+            {"name": "index", "type": "number"},
+            *input_columns,
+            *expected_output_columns,
+            *expected_tool_call_columns,
+        ]
 
     @classmethod
     def _get_target_input_columns(
@@ -1632,16 +1672,54 @@ class EvaluationService:
     def _get_expected_output_columns(
         cls,
         default_metrics: Sequence[DefaultMetric | Mapping[str, Any]],
+        *,
+        evaluation_instance: BaseEvaluationInstance | None = None,
     ) -> list[EvaluationTemplateColumn]:
         """Build one expected_output column per visible node that needs a reference answer."""
+        filtered_metrics = cls.filter_console_default_metrics(default_metrics)
+        if not filtered_metrics:
+            return []
+        evaluation_instance = evaluation_instance or EvaluationManager.get_evaluation_instance()
+        if evaluation_instance is None:
+            raise EvaluationFrameworkNotConfiguredError()
+
         columns: list[EvaluationTemplateColumn] = []
         seen: set[str] = set()
-        for metric in cls.filter_console_default_metrics(default_metrics):
-            if metric.metric not in cls.METRICS_REQUIRING_EXPECTED_OUTPUT:
+        for metric in filtered_metrics:
+            if not evaluation_instance.metric_requires_expected_output(metric.metric):
                 continue
             for node_info in metric.node_info_list:
                 node_title = node_info.title or node_info.node_id
                 column_name = f"{node_title} : expected_output"
+                if column_name in seen:
+                    continue
+                seen.add(column_name)
+                columns.append({"name": column_name, "type": "string"})
+        return columns
+
+    @classmethod
+    def _get_expected_tool_call_columns(
+        cls,
+        default_metrics: Sequence[DefaultMetric | Mapping[str, Any]],
+        *,
+        evaluation_instance: BaseEvaluationInstance | None = None,
+    ) -> list[EvaluationTemplateColumn]:
+        """Build JSON reference-tool-call columns for reference-based Agent metrics."""
+        filtered_metrics = cls.filter_console_default_metrics(default_metrics)
+        if not filtered_metrics:
+            return []
+        evaluation_instance = evaluation_instance or EvaluationManager.get_evaluation_instance()
+        if evaluation_instance is None:
+            raise EvaluationFrameworkNotConfiguredError()
+
+        columns: list[EvaluationTemplateColumn] = []
+        seen: set[str] = set()
+        for metric in filtered_metrics:
+            if evaluation_instance.metric_requires_expected_tool_calls(metric.metric) is not True:
+                continue
+            for node_info in metric.node_info_list:
+                node_title = node_info.title or node_info.node_id
+                column_name = f"{node_title} : expected_tool_calls"
                 if column_name in seen:
                     continue
                 seen.add(column_name)
@@ -1683,9 +1761,9 @@ class EvaluationService:
     ) -> dict[str, list[dict[str, str]]]:
         node_type_to_nodes: dict[str, list[dict[str, str]]] = {}
         for node_id, node_data in workflow.walk_nodes():
-            ntype = node_data.get("type", "")
-            if ntype in cls.CONSOLE_DISABLED_CATEGORIES:
+            if not cls._is_supported_evaluation_node(node_data):
                 continue
+            ntype = str(node_data.get("type", ""))
             node_type_to_nodes.setdefault(ntype, []).append(
                 NodeInfo(node_id=node_id, type=ntype, title=node_data.get("title", "")).model_dump()
             )
@@ -1698,6 +1776,12 @@ class EvaluationService:
                 continue
             result[metric] = node_type_to_nodes.get(required_node_type, [])
         return result
+
+    @classmethod
+    def _is_supported_evaluation_node(cls, node_data: Mapping[str, Any]) -> bool:
+        """Allow legacy Agent nodes while explicitly excluding Agent V2."""
+        node_type = str(node_data.get("type", ""))
+        return node_type in cls.SUPPORTED_NODE_TYPES and not is_dify_agent_node_data(node_data)
 
     @classmethod
     def _union_supported_metric_names(cls) -> list[str]:
@@ -1768,7 +1852,7 @@ class EvaluationService:
             all_nodes = [
                 NodeInfo(node_id=node_id, type=node_data.get("type", ""), title=node_data.get("title", "")).model_dump()
                 for node_id, node_data in workflow.walk_nodes()
-                if node_data.get("type", "") in cls.SUPPORTED_NODE_TYPES
+                if cls._is_supported_evaluation_node(node_data)
             ]
             return {"all": all_nodes}
 
@@ -2142,6 +2226,7 @@ class EvaluationService:
 
         - ``index,<input...>,expected_output`` for the legacy single-reference flow
         - ``index,<input...>,<node title> : expected_output`` for node-specific references
+        - ``index,<input...>,<node title> : expected_tool_calls`` for Agent trace references
 
         Column parsing treats the *last* ``:`` as the separator so node titles
         can themselves contain ``:`` characters.
@@ -2192,6 +2277,7 @@ class EvaluationService:
         the first column must be `index`, remaining columns become inputs,
         and expected-output columns can be either the legacy
         ``expected_output`` or node-scoped ``<node title> : expected_output``.
+        Agent tool-call references use JSON in ``expected_tool_calls`` columns.
         """
         try:
             decoded = csv_content.decode("utf-8-sig")
@@ -2244,9 +2330,24 @@ class EvaluationService:
             inputs: dict[str, Any] = {}
             expected_output: str | None = None
             expected_outputs: dict[str, str] = {}
+            expected_tool_calls: list[AgentToolCall] | None = None
+            expected_tool_calls_by_node: dict[str, list[AgentToolCall]] = {}
             for col_idx, header in enumerate(input_headers):
                 val = values[col_idx + 1] if col_idx + 1 < len(values) else None
                 string_value = str(val) if val is not None else ""
+                expected_tool_calls_target = cls._parse_expected_tool_calls_header(header)
+                if expected_tool_calls_target is not None:
+                    parsed_tool_calls = cls._parse_expected_tool_calls_cell(
+                        val,
+                        header=header,
+                        row_index=index,
+                    )
+                    if expected_tool_calls_target == "":
+                        expected_tool_calls = parsed_tool_calls
+                    elif parsed_tool_calls is not None:
+                        expected_tool_calls_by_node[expected_tool_calls_target] = parsed_tool_calls
+                    continue
+
                 expected_output_target = cls._parse_expected_output_header(header)
                 if expected_output_target is None:
                     inputs[header] = cls._coerce_dataset_input(
@@ -2268,6 +2369,8 @@ class EvaluationService:
                     inputs=inputs,
                     expected_output=expected_output,
                     expected_outputs=expected_outputs,
+                    expected_tool_calls=expected_tool_calls,
+                    expected_tool_calls_by_node=expected_tool_calls_by_node,
                 )
             )
 
@@ -2343,6 +2446,41 @@ class EvaluationService:
 
         normalized_title = node_title.strip()
         return normalized_title or None
+
+    @staticmethod
+    def _parse_expected_tool_calls_header(header: str) -> str | None:
+        """Return the node title for an expected-tool-calls column, if any."""
+        normalized_header = header.strip()
+        if normalized_header == "expected_tool_calls":
+            return ""
+        if ":" not in normalized_header:
+            return None
+
+        node_title, suffix = normalized_header.rsplit(":", 1)
+        if suffix.strip() != "expected_tool_calls":
+            return None
+        normalized_title = node_title.strip()
+        return normalized_title or None
+
+    @staticmethod
+    def _parse_expected_tool_calls_cell(
+        value: Any,
+        *,
+        header: str,
+        row_index: int,
+    ) -> list[AgentToolCall] | None:
+        """Parse one JSON array of ``{"name", "arguments"}`` tool-call objects."""
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        try:
+            payload = json.loads(value) if isinstance(value, str) else value
+            if not isinstance(payload, list):
+                raise ValueError("expected a JSON array")
+            return [AgentToolCall.model_validate(tool_call) for tool_call in payload]
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise EvaluationDatasetInvalidError(
+                f"Dataset column '{header}' must contain a JSON array of tool calls; invalid row: {row_index}."
+            ) from exc
 
     @classmethod
     def execute_retrieval_test_targets(

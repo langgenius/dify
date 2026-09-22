@@ -11,9 +11,11 @@ from celery.exceptions import Retry
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import (
     CustomizedMetricOutputField,
     CustomizedMetrics,
+    EvaluationCategory,
     EvaluationDatasetInput,
     EvaluationItemResult,
     EvaluationMetric,
@@ -22,6 +24,7 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig, JudgmentResult
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
+from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunItemStatus, EvaluationRunStatus
@@ -32,6 +35,7 @@ from tasks.evaluation_task import (
     _apply_judgment,
     _build_missing_result_errors,
     _compute_metrics_summary,
+    _create_runner,
     _execute_evaluation,
     _execute_evaluation_runner,
     _finalize_results,
@@ -78,6 +82,10 @@ def test_merge_and_stamp_results_use_dataset_indices() -> None:
         "answer_correctness",
     ]
     assert results_by_index[42].metrics[0].node_info == _NODE_INFO
+
+
+def test_create_runner_supports_agent_category() -> None:
+    assert isinstance(_create_runner(EvaluationCategory.AGENT, MagicMock()), AgentEvaluationRunner)
 
 
 def test_customized_results_remap_positional_indices() -> None:
@@ -240,9 +248,10 @@ def test_execute_evaluation_starts_running_lease_before_work(
         session.commit()
 
     evaluation_instance = MagicMock()
+    get_evaluation_instance = MagicMock(return_value=evaluation_instance)
     monkeypatch.setattr(
         "tasks.evaluation_task.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=evaluation_instance),
+        get_evaluation_instance,
     )
     execute_running = MagicMock()
     monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", execute_running)
@@ -275,8 +284,9 @@ def test_execute_evaluation_starts_running_lease_before_work(
         assert run.status == EvaluationRunStatus.RUNNING
         assert run.execution_token == lease.token
         assert run.started_at is not None
-        assert run.heartbeat_at is not None
+    assert run.heartbeat_at is not None
     assert maintained_leases == [lease]
+    get_evaluation_instance.assert_called_once_with(EvaluationFrameworkEnum.RAGAS)
     execute_running.assert_called_once()
     assert execute_running.call_args.args[-1] == lease
 

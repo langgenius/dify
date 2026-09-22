@@ -820,7 +820,7 @@ class EvaluationMetricsApi(Resource):
     def get(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
         metrics = {
             category.value: EvaluationService.get_supported_metrics(category)
-            for category in (EvaluationCategory.LLM, EvaluationCategory.RETRIEVAL)
+            for category in (EvaluationCategory.LLM, EvaluationCategory.RETRIEVAL, EvaluationCategory.AGENT)
         }
         return dump_response(EvaluationMetricsResponse, {"metrics": metrics})
 
