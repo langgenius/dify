@@ -5,6 +5,7 @@ from collections.abc import Callable
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.public_runtime import published_app_filter
 from models.enums import AppStatus, EndUserType
 from models.model import App, EndUser, Site
 from services.entities.passport_entities import EndUserRecord, WebAppRecord, WebPassportEndUserResolution
@@ -88,6 +89,7 @@ class WebPassportRepository:
                 Site.status == AppStatus.NORMAL,
                 App.status == AppStatus.NORMAL,
                 App.enable_site.is_(True),
+                published_app_filter(),
             )
         )
 

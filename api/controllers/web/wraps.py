@@ -10,11 +10,13 @@ from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError, WebAppNotFoundError
+from core.app.public_runtime import published_app_filter
 from core.db.session_factory import session_factory
 from core.logging.context import set_identity_context
 from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
+from models.enums import AppStatus
 from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
@@ -56,16 +58,28 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         app_code = decoded.get("app_code")
         app_id = decoded.get("app_id")
         with session_factory.create_session() as session:
-            app_model = session.scalar(select(App).where(App.id == app_id))
-            site = session.scalar(select(Site).where(Site.code == app_code))
+            # A previously issued passport cannot expose an App after its
+            # published artifact disappears. Console/Debug never use this gate.
+            app_model = session.scalar(
+                select(App).where(App.id == app_id, App.status == AppStatus.NORMAL, published_app_filter())
+            )
             if not app_model:
                 raise WebAppNotFoundError()
+            site = session.scalar(
+                select(Site).where(Site.code == app_code, Site.app_id == app_model.id, Site.status == AppStatus.NORMAL)
+            )
             if not app_code or not site:
                 raise WebAppNotFoundError()
             if app_model.enable_site is False:
                 raise WebAppNotFoundError()
             end_user_id = decoded.get("end_user_id")
-            end_user = session.scalar(select(EndUser).where(EndUser.id == end_user_id))
+            end_user = session.scalar(
+                select(EndUser).where(
+                    EndUser.id == end_user_id,
+                    EndUser.app_id == app_model.id,
+                    EndUser.tenant_id == app_model.tenant_id,
+                )
+            )
             if not end_user:
                 raise NotFound()
 

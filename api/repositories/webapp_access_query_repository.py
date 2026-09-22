@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import DBAPIError, TimeoutError
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.public_runtime import published_app_filter
 from models.enums import AppStatus
 from models.model import App, Site
 from services.webapp_access_query_service import WebAppAccessQuery, WebAppAccessUnavailableError
@@ -28,6 +29,7 @@ class WebAppAccessQueryRepository(WebAppAccessQuery):
                         Site.status == AppStatus.NORMAL,
                         App.status == AppStatus.NORMAL,
                         App.enable_site.is_(True),
+                        published_app_filter(),
                     )
                     .limit(1)
                 )
@@ -52,6 +54,7 @@ class WebAppAccessQueryRepository(WebAppAccessQuery):
                             Site.status == AppStatus.NORMAL,
                             App.status == AppStatus.NORMAL,
                             App.enable_site.is_(True),
+                            published_app_filter(),
                         )
                         .limit(1)
                     )

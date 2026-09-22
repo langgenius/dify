@@ -41,7 +41,7 @@ class WebAppAccessQueryService:
         self._is_user_allowed_for_app = is_user_allowed_for_app
 
     def resolve_app_id(self, *, app_id: str | None = None, app_code: str | None = None) -> str:
-        """Resolve a live public App identity without loading authentication settings."""
+        """Resolve a published public App identity without tokens or user writes."""
         if app_code:
             app_id = self._access.find_app_id_by_code(app_code)
             if app_id is None:

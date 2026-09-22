@@ -221,7 +221,7 @@ class TestDecodeJwtToken:
         return flask_app_with_containers
 
     def _create_app_site_enduser(self, db_session: Session, *, enable_site: bool = True):
-        from models.model import App, AppMode, CustomizeTokenStrategy, EndUser, Site
+        from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, EndUser, Site
 
         tenant_id = str(uuid4())
         app_model = App(
@@ -234,6 +234,13 @@ class TestDecodeJwtToken:
         db_session.add(app_model)
         db_session.commit()
         db_session.expire_all()
+
+        # The happy-path fixture represents a published public App.
+        config = AppModelConfig(app_id=app_model.id)
+        db_session.add(config)
+        db_session.flush()
+        app_model.app_model_config_id = config.id
+        db_session.commit()
 
         site = Site(
             app_id=app_model.id,
