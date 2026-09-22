@@ -124,6 +124,17 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
     result), "advanced-chat" for conversational multi-turn assistants. The
     terminal node must match the chosen mode (rule 2): "end" for workflow,
     "answer" for advanced-chat.
+16. Declare producer output names in ``node_outputs``:
+    ``{"<node id>": ["<output name>", ...]}``. Add an entry ONLY for the node
+    types that choose their own output names — "code" (its ``outputs`` keys),
+    "parameter-extractor" (its parameter names), "human-input" (its inputs'
+    variable names), and an "llm" node you intend to emit structured output
+    (its schema fields). Every other type has fixed engine outputs; never
+    list those. Each node's config is generated in isolation, so a consumer
+    may reference ONLY the names declared here — name them after the data the
+    consumers actually need. Keep the declaration small: at most 6 names per
+    node, and at most 10 declared nodes in the whole map. If a workflow has
+    more producers than that, declare the ones other nodes actually read.
 
 # Output schema
 
@@ -144,7 +155,8 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
   "edges": [
     {"source": "node1", "target": "node2"},
     {"source": "node2", "target": "node3"}
-  ]
+  ],
+  "node_outputs": {"<producer node id>": ["<output name>"]}
 }
 """
 

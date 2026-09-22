@@ -108,6 +108,12 @@ class PlannerResultDict(TypedDict):
     app_name: NotRequired[str]
     icon: NotRequired[str]
     start_inputs: NotRequired[list[PlannerStartInputDict]]
+    # ``{"<node id>": ["<output name>", …]}`` for the producers whose output
+    # names their own config chooses (code / parameter-extractor /
+    # human-input / structured-output llm). Optional — a plan without it
+    # builds exactly as it did before, with each isolated node builder
+    # guessing the names again.
+    node_outputs: NotRequired[dict[str, list[str]]]
     nodes: list[PlannerNodeDict]
     edges: NotRequired[list[PlannerEdgeDict]]
 
