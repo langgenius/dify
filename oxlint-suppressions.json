@@ -2582,16 +2582,6 @@
       "count": 3
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/endpoint-list.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/endpoint-modal.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 7
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/model-list.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -2689,7 +2679,7 @@
   },
   "web/app/components/plugins/types.ts": {
     "typescript/no-explicit-any": {
-      "count": 25
+      "count": 24
     }
   },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/hidden-fields.spec.tsx": {
@@ -5036,17 +5026,6 @@
     },
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "web/service/use-endpoints.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 7
     }
   },
   "web/service/use-explore.ts": {

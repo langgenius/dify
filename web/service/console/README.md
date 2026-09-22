@@ -17,8 +17,27 @@ transport for the Python Console API.
 - Routes/layouts own prefetching and hydration. Use the existing
   [QueryClient factory].
 
+## Policy ownership
+
+Shared operation defaults belong in `query-policies.ts`. Call sites own inputs,
+execution conditions, projections, and interaction feedback. A local option
+overrides the corresponding default; callbacks are not composed automatically.
+When a mutation uses shared `onSettled` invalidation, keep local toast, close, and
+navigation behavior in `onSuccess` / `onError`. Do not override `onSettled` without
+preserving that cache contract. The returned invalidation promise keeps the
+mutation pending until active consumers have refreshed.
+
+Use generated options and types directly. A feature-owned options factory is
+appropriate only when it owns a shared request policy or a composed query;
+forwarding hooks and handwritten API DTOs create a second owner.
+
+Module contracts record backend ownership, affected caches, and call-site choices:
+
+- [Plugin endpoints]
+
 [Browser transport]: ./browser.ts
 [Instrumentation]: ../../instrumentation.ts
+[Plugin endpoints]: ../../app/components/plugins/plugin-detail-panel/endpoints.md
 [QueryClient factory]: ../../app/get-query-client.ts
 [Server transport]: ./server.ts
 [query-policies.ts]: ./query-policies.ts

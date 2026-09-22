@@ -34,6 +34,7 @@ import type {
   VersionListResponse,
 } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
+import { zEndpointProviderDeclarationResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { useAtomValue } from 'jotai'
@@ -225,14 +226,7 @@ const normalizePluginToolDeclaration = (value: unknown): PluginDeclaration['tool
 const normalizePluginEndpointDeclaration = (value: unknown): PluginDeclaration['endpoint'] => {
   if (!isRecord(value)) return undefined
 
-  return {
-    settings: getRecordArray(value, 'settings').map(normalizeToolCredential),
-    endpoints: getRecordArray(value, 'endpoints').map((endpoint) => ({
-      path: getString(endpoint.path),
-      method: getString(endpoint.method),
-      hidden: endpoint.hidden === undefined ? undefined : getBoolean(endpoint.hidden),
-    })),
-  }
+  return zEndpointProviderDeclarationResponse.parse(value)
 }
 
 const normalizeParameterDefault = (value: unknown) => {

@@ -63,10 +63,10 @@ export const zEndpointCreatePayload = z.object({
 })
 
 /**
- * SuccessResponse
+ * EndpointMutationResponse
  */
-export const zSuccessResponse = z.object({
-  success: z.boolean(),
+export const zEndpointMutationResponse = z.object({
+  success: z.literal(true),
 })
 
 /**
@@ -275,6 +275,13 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
  */
 export const zPluginAutoUpgradeChangeResponse = z.object({
   message: z.string().nullish(),
+  success: z.boolean(),
+})
+
+/**
+ * SuccessResponse
+ */
+export const zSuccessResponse = z.object({
   success: z.boolean(),
 })
 
@@ -4118,35 +4125,35 @@ export const zPostWorkspacesCurrentEndpointsBody = zEndpointCreatePayload
 /**
  * Endpoint created successfully
  */
-export const zPostWorkspacesCurrentEndpointsResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsResponse = zEndpointMutationResponse
 
 export const zPostWorkspacesCurrentEndpointsCreateBody = zEndpointCreatePayload
 
 /**
  * Endpoint created successfully
  */
-export const zPostWorkspacesCurrentEndpointsCreateResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsCreateResponse = zEndpointMutationResponse
 
 export const zPostWorkspacesCurrentEndpointsDeleteBody = zEndpointIdPayload
 
 /**
  * Endpoint deleted successfully
  */
-export const zPostWorkspacesCurrentEndpointsDeleteResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsDeleteResponse = zEndpointMutationResponse
 
 export const zPostWorkspacesCurrentEndpointsDisableBody = zEndpointIdPayload
 
 /**
  * Endpoint disabled successfully
  */
-export const zPostWorkspacesCurrentEndpointsDisableResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsDisableResponse = zEndpointMutationResponse
 
 export const zPostWorkspacesCurrentEndpointsEnableBody = zEndpointIdPayload
 
 /**
  * Endpoint enabled successfully
  */
-export const zPostWorkspacesCurrentEndpointsEnableResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsEnableResponse = zEndpointMutationResponse
 
 export const zGetWorkspacesCurrentEndpointsListQuery = z.object({
   page: z.int().gte(1),
@@ -4174,7 +4181,7 @@ export const zPostWorkspacesCurrentEndpointsUpdateBody = zLegacyEndpointUpdatePa
 /**
  * Endpoint updated successfully
  */
-export const zPostWorkspacesCurrentEndpointsUpdateResponse = zSuccessResponse
+export const zPostWorkspacesCurrentEndpointsUpdateResponse = zEndpointMutationResponse
 
 export const zDeleteWorkspacesCurrentEndpointsByIdPath = z.object({
   id: z.string(),
@@ -4183,7 +4190,7 @@ export const zDeleteWorkspacesCurrentEndpointsByIdPath = z.object({
 /**
  * Endpoint deleted successfully
  */
-export const zDeleteWorkspacesCurrentEndpointsByIdResponse = zSuccessResponse
+export const zDeleteWorkspacesCurrentEndpointsByIdResponse = zEndpointMutationResponse
 
 export const zPatchWorkspacesCurrentEndpointsByIdBody = zEndpointUpdatePayload
 
@@ -4194,7 +4201,7 @@ export const zPatchWorkspacesCurrentEndpointsByIdPath = z.object({
 /**
  * Endpoint updated successfully
  */
-export const zPatchWorkspacesCurrentEndpointsByIdResponse = zSuccessResponse
+export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointMutationResponse
 
 /**
  * Success

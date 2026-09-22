@@ -15,6 +15,54 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
     experimental_defaults: {
       workspaces: {
         current: {
+          endpoints: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return invalidateEndpointQueries(consoleQuery, context.client)
+                },
+              },
+            },
+            byId: {
+              patch: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return invalidateEndpointQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return invalidateEndpointQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+            },
+            enable: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return invalidateEndpointQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+            },
+            disable: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return invalidateEndpointQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+            },
+          },
           skills: {
             bySkillId: {
               delete: {
@@ -1254,6 +1302,14 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
+}
+
+function invalidateEndpointQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.endpoints.list.key(),
+    query.workspaces.current.plugin.list.get.key(),
+    query.workspaces.current.plugin.byCategory.list.get.key(),
+  ])
 }
 
 function invalidateAccessPolicyQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
