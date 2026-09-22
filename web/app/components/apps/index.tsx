@@ -1,7 +1,6 @@
 'use client'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
-import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
@@ -39,32 +38,26 @@ const AppsContent = () => {
   const templateId = searchParams.get('template-id')
   const templateDismissedRef = useRef(false)
 
-  const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(
-    undefined,
-  )
+  const [currApp, setCurrApp] = useState<RecommendedAppResponse | undefined>(undefined)
   const currentCreateAppModeRef = useRef<TrackCreateAppParams['appMode'] | null>(null)
   const currentCreateAppTrackingRef = useRef<Pick<
     TrackCreateAppParams,
     'source' | 'templateId'
   > | null>(null)
-  const currApp = currentTryAppParams?.app
   const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(false)
   const hideTryAppPanel = useCallback(() => {
     setIsShowTryAppPanel(false)
   }, [])
-  const openTryAppPanel = useCallback((selection: TryAppSelection) => {
-    setCurrentTryAppParams(selection)
+  const openTryAppPanel = useCallback((app: RecommendedAppResponse) => {
+    setCurrApp(app)
     setIsShowTryAppPanel(true)
   }, [])
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
 
-  const handleTryLearnDify = (params: TryAppSelection) => {
-    openTryAppPanel(params)
-  }
   const handleCreateLearnDify = (app: RecommendedAppResponse) => {
     if (!canCreateApp) return
 
-    setCurrentTryAppParams({ appId: app.app_id, app })
+    setCurrApp(app)
     setIsShowCreateModal(true)
   }
 
@@ -73,10 +66,10 @@ const AppsContent = () => {
 
     currentCreateAppTrackingRef.current = {
       source: 'studio_template_preview',
-      templateId: currentTryAppParams?.appId || currentTryAppParams?.app.app_id,
+      templateId: currApp?.app_id,
     }
     setIsShowCreateModal(true)
-  }, [canCreateApp, currentTryAppParams?.app.app_id, currentTryAppParams?.appId])
+  }, [canCreateApp, currApp?.app_id])
   const trackCurrentCreateApp = useCallback((appMode?: TrackCreateAppParams['appMode'] | null) => {
     const currentCreateAppTracking = currentCreateAppTrackingRef.current
     const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
@@ -184,15 +177,9 @@ const AppsContent = () => {
         }}
       >
         <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-background-body">
-          <List onCreateLearnDify={handleCreateLearnDify} onTryLearnDify={handleTryLearnDify} />
-          {isShowTryAppPanel && currentTryAppParams && (
-            <TryApp
-              appId={currentTryAppParams.appId}
-              app={currentTryAppParams.app}
-              categories={currentTryAppParams.app.categories ?? []}
-              onClose={hideTryAppPanel}
-              onCreate={handleShowFromTryApp}
-            />
+          <List onCreateLearnDify={handleCreateLearnDify} onTryLearnDify={openTryAppPanel} />
+          {isShowTryAppPanel && currApp && (
+            <TryApp app={currApp} onClose={hideTryAppPanel} onCreate={handleShowFromTryApp} />
           )}
 
           {showDSLConfirmModal && (

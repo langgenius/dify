@@ -1,7 +1,6 @@
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import type { TryAppSelection } from '@/types/try-app'
 import { keepPreviousData } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -441,7 +440,7 @@ vi.mock('@/app/components/explore/learn-dify', () => ({
   }: {
     title?: string
     onCreate?: (app: RecommendedAppResponse) => void
-    onTry?: (params: TryAppSelection) => void
+    onTry?: (app: RecommendedAppResponse) => void
   }) =>
     React.createElement(
       'section',
@@ -451,7 +450,7 @@ vi.mock('@/app/components/explore/learn-dify', () => ({
         'button',
         {
           type: 'button',
-          onClick: () => onTry?.({ appId: mockLearnDifyApp.app_id, app: mockLearnDifyApp }),
+          onClick: () => onTry?.(mockLearnDifyApp),
         },
         'Preview Learn Dify template',
       ),
@@ -485,7 +484,7 @@ beforeAll(() => {
 
 type RenderListOptions = {
   onCreateLearnDify?: (app: RecommendedAppResponse) => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
   systemFeatures?: Partial<GetSystemFeaturesResponse>
 }
 
@@ -1014,10 +1013,7 @@ describe('List', () => {
       })
 
       await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
-      expect(onTryLearnDify).toHaveBeenCalledWith({
-        appId: mockLearnDifyApp.app_id,
-        app: mockLearnDifyApp,
-      })
+      expect(onTryLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
 
       await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
       expect(onCreateLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)

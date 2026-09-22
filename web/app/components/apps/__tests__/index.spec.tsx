@@ -4,7 +4,6 @@ import type {
   RecommendedAppResponse,
 } from '@dify/contracts/api/console/explore/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import type { TryAppSelection } from '@/types/try-app'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -60,7 +59,7 @@ vi.mock('../list', async () => {
       onTryLearnDify,
     }: {
       onCreateLearnDify: (app: RecommendedAppResponse) => void
-      onTryLearnDify: (selection: TryAppSelection) => void
+      onTryLearnDify: (app: RecommendedAppResponse) => void
     }) => (
       <LearnDify
         canCreate

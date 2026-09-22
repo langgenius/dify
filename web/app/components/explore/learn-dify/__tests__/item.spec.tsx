@@ -80,7 +80,7 @@ describe('LearnDifyItem', () => {
 
     await user.click(screen.getByRole('button', { name: 'Learn Dify App' }))
 
-    expect(onTry).toHaveBeenCalledWith({ appId: app.app_id, app })
+    expect(onTry).toHaveBeenCalledWith(app)
     expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
       template_id: app.app_id,
       template_name: app.app?.name,
@@ -104,7 +104,7 @@ describe('LearnDifyItem', () => {
     card.focus()
     await user.keyboard('{Enter}')
 
-    expect(onTry).toHaveBeenCalledWith({ appId: app.app_id, app })
+    expect(onTry).toHaveBeenCalledWith(app)
   })
 
   it('keeps nullable catalog metadata raw when previewing a card', async () => {
@@ -120,7 +120,7 @@ describe('LearnDifyItem', () => {
     render(<LearnDifyItem canCreate={false} item={app} onTry={onTry} />)
     await user.click(screen.getByRole('button'))
 
-    expect(onTry).toHaveBeenCalledWith({ appId: 'nullable-app', app })
+    expect(onTry).toHaveBeenCalledWith(app)
     expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
       template_id: 'nullable-app',
       template_name: '',

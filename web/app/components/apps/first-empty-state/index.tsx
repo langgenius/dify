@@ -2,7 +2,6 @@
 
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ReactNode } from 'react'
-import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import LearnDify from '@/app/components/explore/learn-dify'
@@ -29,7 +28,7 @@ type Props = {
   onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onCreateTemplate: () => void
   onImportDSL: () => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
   showLearnDify: boolean
 }
 

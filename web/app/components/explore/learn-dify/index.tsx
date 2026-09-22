@@ -1,7 +1,6 @@
 'use client'
 
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -22,7 +21,7 @@ type LearnDifyProps = {
   itemLimit?: number
   loadingFallback?: React.ReactNode
   onCreate?: (app: RecommendedAppResponse) => void
-  onTry?: (params: TryAppSelection) => void
+  onTry?: (app: RecommendedAppResponse) => void
   showDescription?: boolean
   stepByStepTourTarget?: string
   title?: string

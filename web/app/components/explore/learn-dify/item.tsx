@@ -1,7 +1,6 @@
 'use client'
 
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -13,7 +12,7 @@ type LearnDifyItemProps = {
   canCreate: boolean
   item: RecommendedAppResponse
   onCreate?: (app: RecommendedAppResponse) => void
-  onTry?: (params: TryAppSelection) => void
+  onTry?: (app: RecommendedAppResponse) => void
 }
 
 const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps) => {
@@ -44,7 +43,7 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
       template_categories: item.categories ?? [],
       page: 'explore',
     })
-    onTry?.({ appId: item.app_id, app: item })
+    onTry?.(item)
   }
   const handleCardClick = () => {
     if (canViewApp) {

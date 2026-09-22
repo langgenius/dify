@@ -97,7 +97,7 @@ describe('AppCard', () => {
       'preview_template',
       expect.objectContaining({ template_id: 'app-1', page: 'studio' }),
     )
-    expect(openPreview).toHaveBeenCalledWith({ appId: 'app-1', app })
+    expect(openPreview).toHaveBeenCalledWith(app)
   })
 
   it('allows creation and preview with nullable metadata without normalizing the selection', async () => {
@@ -121,7 +121,7 @@ describe('AppCard', () => {
     expect(onCreate).toHaveBeenCalledOnce()
     await user.click(screen.getByRole('button', { name: 'explore.appCard.try' }))
 
-    expect(openPreview).toHaveBeenCalledWith({ appId: 'nullable-app', app: nullableApp })
+    expect(openPreview).toHaveBeenCalledWith(nullableApp)
     expect(trackEvent).toHaveBeenCalledWith('preview_template', {
       template_id: 'nullable-app',
       template_name: '',

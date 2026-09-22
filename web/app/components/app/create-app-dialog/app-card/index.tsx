@@ -45,7 +45,7 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
       template_categories: app.categories ?? [],
       page: 'studio',
     })
-    openTryAppPanel({ appId: app.app_id, app })
+    openTryAppPanel(app)
   }, [openTryAppPanel, app, appName, appMode])
   return (
     <div
