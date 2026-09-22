@@ -200,7 +200,6 @@
   "openInExplore": "Deschide Web App din bara laterală",
   "publishApp.notSet": "Nu este setat",
   "removeOriginal": "Șterge aplicația originală",
-  "structOutput.LLMResponse": "Răspuns LLM",
   "structOutput.configure": "Configurează",
   "structOutput.modelNotSupported": "Modelul nu este suportat",
   "structOutput.modelNotSupportedTip": "Modelul actual nu suportă această funcție și este downgradat automat la injecția de prompt.",

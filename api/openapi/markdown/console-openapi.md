@@ -7671,7 +7671,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelineDatasourceListResponse](#ragpipelinedatasourcelistresponse)<br> |
 
 ### [POST] /rag/pipelines/imports
 #### Request Body
@@ -17561,6 +17561,25 @@ Model class for provider custom model configuration.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 
+#### DatasourceEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | [I18nObject](#i18nobject) | The label of the datasource | Yes |
+| identity | [DatasourceIdentity](#datasourceidentity) |  | Yes |
+| output_schema | object |  | No |
+| parameters | [ [DatasourceParameter](#datasourceparameter) ] |  | No |
+
+#### DatasourceIdentity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the datasource | Yes |
+| icon | string |  | No |
+| label | [I18nObject](#i18nobject) | The label of the datasource | Yes |
+| name | string | The name of the datasource | Yes |
+| provider | string | The provider of the datasource | Yes |
+
 #### DatasourceNodeRunPayload
 
 | Name | Type | Description | Required |
@@ -17596,6 +17615,35 @@ Model class for provider custom model configuration.
 | oauth_custom_client_params | object | Masked plugin-defined OAuth client parameters, when configured for the tenant. | Yes |
 | redirect_uri | string |  | Yes |
 
+#### DatasourceParameter
+
+Overrides type
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) |  | No |
+| default | number<br>integer<br>string<br>boolean<br>[ object ]<br>object |  | No |
+| description | [I18nObject](#i18nobject) | The description of the parameter | Yes |
+| label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
+| max | number<br>integer |  | No |
+| min | number<br>integer |  | No |
+| name | string | The name of the parameter | Yes |
+| options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |
+| precision | integer |  | No |
+| required | boolean |  | No |
+| scope | string |  | No |
+| template | [PluginParameterTemplate](#pluginparametertemplate) |  | No |
+| type | [DatasourceParameterType](#datasourceparametertype) | The type of the parameter | Yes |
+
+#### DatasourceParameterType
+
+removes TOOLS_SELECTOR from PluginParameterType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasourceParameterType | string | removes TOOLS_SELECTOR from PluginParameterType |  |
+
 #### DatasourceProviderAuthListResponse
 
 | Name | Type | Description | Required |
@@ -17625,6 +17673,16 @@ Datasource provider entity
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | No |
+| identity | [DatasourceProviderIdentity](#datasourceprovideridentity) |  | Yes |
+| oauth_schema | [OAuthSchema](#oauthschema) |  | No |
+| provider_type | [DatasourceProviderType](#datasourceprovidertype) |  | Yes |
+
+#### DatasourceProviderEntityWithPlugin
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | No |
+| datasources | [ [DatasourceEntity](#datasourceentity) ] |  | No |
 | identity | [DatasourceProviderIdentity](#datasourceprovideridentity) |  | Yes |
 | oauth_schema | [OAuthSchema](#oauthschema) |  | No |
 | provider_type | [DatasourceProviderType](#datasourceprovidertype) |  | Yes |
@@ -21525,6 +21583,22 @@ Resource types understood by access policies.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | yaml_content | string |  | Yes |
+
+#### RagPipelineDatasourceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RagPipelineDatasourceListResponse | array |  |  |
+
+#### RagPipelineDatasourceProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| declaration | [DatasourceProviderEntityWithPlugin](#datasourceproviderentitywithplugin) |  | Yes |
+| is_authorized | boolean |  | No |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| provider | string |  | Yes |
 
 #### RagPipelineImportCheckDependenciesResponse
 

@@ -13,6 +13,15 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
     path: ['console'],
     experimental_defaults: {
+      rag: {
+        pipelines: {
+          datasourcePlugins: {
+            get: {
+              queryOptions: { staleTime: 0, retry: false },
+            },
+          },
+        },
+      },
       workspaces: {
         current: {
           endpoints: {

@@ -1,9 +1,7 @@
 'use client'
 
-import type {
-  CredentialFormSchema,
-  FormOption,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { FormInputSchema } from '../form-input-item.helpers'
+import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type {
   CommonNodeType,
@@ -24,7 +22,7 @@ import {
 type DynamicSchemaParams = {
   dynamicOptions: FormOption[] | null
   isLoading: boolean
-  schema?: Partial<CredentialFormSchema>
+  schema?: Partial<Omit<FormInputSchema, 'default'>>
   value: ValueSelector | string
 }
 

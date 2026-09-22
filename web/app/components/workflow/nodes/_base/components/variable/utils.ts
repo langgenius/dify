@@ -30,9 +30,9 @@ import type {
   Node,
   NodeOutPutVar,
   PromptItem,
-  ToolWithProvider,
   ValueSelector,
   Var,
+  WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { SchemaTypeDefinition } from '@/service/use-common'
@@ -316,7 +316,7 @@ const formatItem = (
   item: any,
   isChatMode: boolean,
   filterVar: (payload: Var, selector: ValueSelector) => boolean,
-  allPluginInfoList: Record<string, ToolWithProvider[]>,
+  allPluginInfoList: WorkflowPluginCatalogs,
   ragVars?: Var[],
   schemaTypeDefinitions: SchemaTypeDefinition[] = [],
 ): NodeOutPutVar => {
@@ -761,7 +761,7 @@ export const toNodeOutputVars = (
   environmentVariables: EnvironmentVariable[] = [],
   conversationVariables: ConversationVariable[] = [],
   ragVariables: RAGPipelineVariable[] = [],
-  allPluginInfoList: Record<string, ToolWithProvider[]>,
+  allPluginInfoList: WorkflowPluginCatalogs,
   schemaTypeDefinitions?: SchemaTypeDefinition[],
 ): NodeOutPutVar[] => {
   // ENV_NODE data format
@@ -980,7 +980,7 @@ export const getVarType = ({
   environmentVariables?: EnvironmentVariable[]
   conversationVariables?: ConversationVariable[]
   ragVariables?: RAGPipelineVariable[]
-  allPluginInfoList: Record<string, ToolWithProvider[]>
+  allPluginInfoList: WorkflowPluginCatalogs
   schemaTypeDefinitions?: SchemaTypeDefinition[]
   preferSchemaType?: boolean
 }): VarType => {
@@ -1124,7 +1124,7 @@ export const toNodeAvailableVars = ({
   // rag variables
   ragVariables?: RAGPipelineVariable[]
   filterVar: (payload: Var, selector: ValueSelector) => boolean
-  allPluginInfoList: Record<string, ToolWithProvider[]>
+  allPluginInfoList: WorkflowPluginCatalogs
   schemaTypeDefinitions?: SchemaTypeDefinition[]
 }): NodeOutPutVar[] => {
   const beforeNodesOutputVars = toNodeOutputVars(

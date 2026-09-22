@@ -1,10 +1,12 @@
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { EnvironmentVariable, Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vite-plus/test'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import {
   BlockEnum,
@@ -434,4 +436,61 @@ describe('variable utils', () => {
       })
     })
   })
+})
+
+it('keeps datasource output variables typed through the public picker projection', () => {
+  const provider = createDatasourceProvider()
+  provider.declaration.datasources![0]!.output_schema = {
+    properties: {
+      title: { type: 'string' },
+      count: { type: 'integer' },
+      names: { type: 'array', items: { type: 'string' } },
+      metadata: {
+        type: 'object',
+        properties: { summary: { type: 'string' }, enabled: { type: 'boolean' } },
+      },
+      unrestricted: true,
+      forbidden: false,
+      unknown: null,
+    },
+  }
+  const node = createNode<DataSourceNodeType>({
+    type: BlockEnum.DataSource,
+    title: 'Datasource',
+    desc: '',
+    plugin_id: provider.plugin_id,
+    provider_name: provider.provider,
+    provider_type: 'local_file',
+    datasource_name: 'local-file',
+    datasource_label: 'Local file',
+    datasource_parameters: {},
+    datasource_configurations: {},
+  })
+  const options = {
+    beforeNodes: [node],
+    isChatMode: false,
+    allPluginInfoList: { dataSourceList: [provider] },
+  }
+  const all = toNodeAvailableVars({ ...options, filterVar: () => true }).find(
+    (item) => item.nodeId === node.id,
+  )?.vars
+  expect(all).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ variable: 'file', type: VarType.file }),
+      expect.objectContaining({ variable: 'title', type: VarType.string }),
+      expect.objectContaining({ variable: 'count', type: VarType.integer }),
+      expect.objectContaining({ variable: 'names', type: VarType.arrayString }),
+      expect.objectContaining({ variable: 'unrestricted', type: VarType.any }),
+      expect.objectContaining({ variable: 'forbidden', type: VarType.any }),
+      expect.objectContaining({ variable: 'unknown', type: VarType.any }),
+    ]),
+  )
+  const strings = toNodeAvailableVars({
+    ...options,
+    filterVar: (variable) => variable.type === VarType.string,
+  }).find((item) => item.nodeId === node.id)?.vars
+  expect(strings?.find((variable) => variable.variable === 'metadata')?.children).toEqual([
+    expect.objectContaining({ variable: 'summary', type: VarType.string }),
+  ])
+  expect(strings?.find((variable) => variable.variable === 'unrestricted')).toBeUndefined()
 })

@@ -1,10 +1,8 @@
 'use client'
 
 import type { FC, ReactElement } from 'react'
-import type {
-  CredentialFormSchema,
-  CredentialFormSchemaSelect,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { FormInputSchema } from '../form-input-item.helpers'
+import type { CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
@@ -71,7 +69,7 @@ type Props = Readonly<{
   outputVarNodeId?: string
   placeholder?: string
   readonly: boolean
-  schemaWithDynamicSelect?: Partial<CredentialFormSchema>
+  schemaWithDynamicSelect?: Partial<Omit<FormInputSchema, 'default'>>
   setControlFocus: (value: number) => void
   setOpen: (value: boolean) => void
   showErrorIcon?: boolean
