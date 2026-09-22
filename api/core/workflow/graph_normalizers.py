@@ -348,19 +348,63 @@ _NAMED_BRANCH_TYPES = frozenset({"if-else", "question-classifier", "human-input"
 # which this module's own contract (see the module docstring) keeps out --
 # "no engine imports beyond the graph dict shape".
 _HUMAN_INPUT_TIMEOUT_HANDLE = "__timeout"
+# Names a planner might use for that implicit timeout arm.
+_HUMAN_INPUT_TIMEOUT_ALIASES = frozenset(
+    {"timeout", "time_out", "timed_out", "timedout", "on_timeout", "expired", "expire", "expiry"}
+)
 
-# Declared handles that exist on every node of their type regardless of what
-# the author configured (unlike a case id, a class id or an action id, which
-# only exist because the author added them). An author routinely leaves them
-# unwired, so they must not count as "the one remaining slot" when repair is
-# deciding whether an unnamed/misnamed edge unambiguously belongs to the last
-# free arm -- otherwise that arm would never resolve. An edge already ON one
-# of them still matches it exactly (the pass above, not this set).
-_UNCOUNTED_UNUSED_HANDLES = frozenset({_HUMAN_INPUT_TIMEOUT_HANDLE})
+# A fail-branch node's SUCCESS arm keeps routing on "source" (graphon's real
+# default), never an invented "success" handle; these are the words a
+# planner might use for it. Only added on a non-branch-type node -- a
+# branch-type node (if-else / question-classifier / human-input) does not
+# declare "source" at all, so mapping onto it would invent a handle nothing
+# routes on.
+_FAIL_BRANCH_SUCCESS_ALIASES = frozenset({"success", "ok", "next", "on_success"})
+# ...and the words a planner might use for the failure arm. Valid on any
+# fail-branch node regardless of type.
+_FAIL_BRANCH_FAILURE_ALIASES = frozenset({"fail", "failure", "failed", "error", "on_error", "on_failure", "exception"})
+
+# Declared handles that exist because of the node's configuration, not
+# because the author wired a branch: human-input's implicit "__timeout" arm
+# exists on every human-input node regardless of what the author set up, and
+# a fail-branch node's "fail-branch" arm exists because the author chose
+# that error strategy, not because they connected anything to it. Both are
+# routinely left unwired, so they must never count as "the one remaining
+# slot" the fan-out (rule 2) / default-order (rule 3) heuristics assign to --
+# otherwise they would (a) block resolution of the arm the author DID
+# configure, or (b) silently steal an edge that belongs there instead. An
+# edge already ON one of them still matches it exactly (the pass above, not
+# this set); a named edge reaches either one through an explicit alias
+# (_HUMAN_INPUT_TIMEOUT_ALIASES, _FAIL_BRANCH_*_ALIASES) instead.
+_UNCOUNTED_UNUSED_HANDLES = frozenset({_HUMAN_INPUT_TIMEOUT_HANDLE, "fail-branch"})
 
 
 def _canon(handle: Any) -> str:
+    """Case-folds a HANDLE identifier for exact/stem comparison: alnum and
+    underscore are kept (both are meaningful in a handle id like
+    ``"__timeout"`` or ``"true_branch"``), everything else -- hyphens,
+    spaces -- is dropped."""
     return "".join(ch for ch in str(handle or "").lower() if ch.isalnum() or ch == "_")
+
+
+def _canon_name(text: Any) -> str:
+    """Case-folds a human-typed NAME (a class name, an action title, or an
+    alias word) for name-based lookups: unlike ``_canon``, an underscore is
+    folded away too, so ``"Tech Support"``, ``"tech_support"`` and
+    ``"tech-support"`` all collapse to the same key. Exact/stem matching
+    against a real declared handle id stays on ``_canon`` -- ``"__timeout"``
+    must never collide with a literal edge handle ``"timeout"``."""
+    return "".join(ch for ch in str(text or "").lower() if ch.isalnum())
+
+
+def _effective_handle(handle: Any) -> Any:
+    """The handle graphon actually routes an edge on: a missing (or
+    explicitly ``None``) ``sourceHandle`` defaults to ``"source"``
+    (``edge_config.get("sourceHandle", "source")``, graphon
+    ``graph/graph.py:131``). A graph that already relies on that default --
+    a fail-branch node's unkeyed success edges -- must come out identical,
+    not get re-homed or reported as if ``"source"`` were undeclared."""
+    return "source" if handle is None else handle
 
 
 def declared_branch_handles(node: Mapping[str, Any]) -> list[str]:
@@ -398,37 +442,78 @@ def declared_branch_handles(node: Mapping[str, Any]) -> list[str]:
     return handles
 
 
+def _is_plain_fail_branch(node: Mapping[str, Any]) -> bool:
+    """True for a non-branch-type node with ``error_strategy: "fail-branch"``:
+    it declares only ``["source", "fail-branch"]``, two handles with
+    opposite meanings. Eliminating between them by "the one arm left unused"
+    is too risky when a name is unrecognized -- only an explicit alias (or
+    the exact handle) may route onto either one."""
+    data = node.get("data")
+    if not isinstance(data, Mapping):
+        return False
+    return data.get("type") not in _NAMED_BRANCH_TYPES and data.get("error_strategy") == "fail-branch"
+
+
 def _name_aliases(node: Mapping[str, Any], handles: list[str]) -> dict[str, str]:
-    """canonical name -> declared handle, for the names a planner might use."""
+    """canonical name -> declared handle, for the names a planner might use.
+
+    A canonical name that would resolve to more than one handle (e.g. two
+    question-classifier classes named "Support" and "support") is dropped
+    instead of picking one: an ambiguous alias must fail closed, not
+    silently pick a winner.
+    """
     data = node.get("data") or {}
-    names: dict[str, str] = {}
-    if data.get("type") == "if-else":
+    node_type = data.get("type")
+    candidates: dict[str, set[str]] = {}
+
+    def add(name: Any, target: str) -> None:
+        candidates.setdefault(_canon_name(name), set()).add(target)
+
+    if node_type == "if-else":
         for alias in _ELSE_ALIASES:
-            names[alias] = "false"
-        if len(handles) == 2:  # one case + ELSE: an IF alias is unambiguous
+            add(alias, "false")
+        case_count = sum(1 for c in data.get("cases") or [] if isinstance(c, Mapping) and c.get("case_id"))
+        if case_count == 1:  # one case + the implicit ELSE: an IF alias is unambiguous
             for alias in _IF_ALIASES:
-                names[alias] = handles[0]
-    elif data.get("type") == "question-classifier":
+                add(alias, handles[0])
+    elif node_type == "question-classifier":
         for klass in data.get("classes") or []:
             if isinstance(klass, Mapping) and klass.get("id") and klass.get("name"):
-                names[_canon(klass["name"])] = str(klass["id"])
-    elif data.get("type") == "human-input":
+                add(klass["name"], str(klass["id"]))
+    elif node_type == "human-input":
         for action in data.get("user_actions") or []:
             if isinstance(action, Mapping) and action.get("id"):
                 for key in ("title", "label", "name"):
                     if action.get(key):
-                        names[_canon(action[key])] = str(action["id"])
-    return names
+                        add(action[key], str(action["id"]))
+        for alias in _HUMAN_INPUT_TIMEOUT_ALIASES:
+            add(alias, _HUMAN_INPUT_TIMEOUT_HANDLE)
+
+    if data.get("error_strategy") == "fail-branch":
+        if node_type not in _NAMED_BRANCH_TYPES:  # only a plain node declares "source"
+            for alias in _FAIL_BRANCH_SUCCESS_ALIASES:
+                add(alias, "source")
+        for alias in _FAIL_BRANCH_FAILURE_ALIASES:
+            add(alias, "fail-branch")
+
+    return {name: next(iter(ids)) for name, ids in candidates.items() if len(ids) == 1}
 
 
 def _match_handle(handle: str, handles: list[str], names: Mapping[str, str]) -> str | None:
-    """A declared handle that ``handle`` unambiguously means, else ``None``."""
+    """A declared handle that ``handle`` unambiguously means, else ``None``.
+
+    An alias/name match and a stem match are cross-checked: if they disagree
+    (an alias word that also happens to be the unambiguous prefix of a real
+    declared handle -- the ELSE alias ``"default"`` against a case literally
+    named ``"default_case"``), that is not resolvable and fails closed
+    rather than silently picking one.
+    """
     canon = _canon(handle)
     for declared in handles:
         if _canon(declared) == canon:
             return declared
-    if canon in names:
-        return names[canon]
+    alias_match = names.get(_canon_name(handle))
+    stem_match: str | None = None
     if len(canon) >= _MIN_STEM:
         stems = [
             declared
@@ -437,35 +522,48 @@ def _match_handle(handle: str, handles: list[str], names: Mapping[str, str]) -> 
             and (canon.startswith(_canon(declared)) or _canon(declared).startswith(canon))
         ]
         if len(stems) == 1:
-            return stems[0]
-    return None
+            stem_match = stems[0]
+    if alias_match is not None and stem_match is not None:
+        return alias_match if alias_match == stem_match else None
+    return alias_match if alias_match is not None else stem_match
 
 
 def repair_branch_edge_handles(nodes: list[Any], edges: list[Any]) -> list[dict[str, Any]]:
     """Re-home edges leaving a branch node onto the handles the node declares.
 
+    A missing or ``None`` ``sourceHandle`` is resolved the way graphon
+    resolves it at run time -- ``"source"`` -- before anything else: an
+    already-valid graph (a fail-branch node's unkeyed success edges) must
+    come out identical, never re-homed.
+
     Three passes per branch node, each only when it is forced:
 
     1. exact / alias / name / stem match (``else`` -> ``false``, a class name
-       -> its id, ``approved`` -> ``approve``);
+       -> its id, ``approved`` -> ``approve``, ``success``/``error`` on a
+       fail-branch node -> ``source``/``fail-branch``);
     2. edges still unmatched, all carrying the SAME unknown handle, when
        exactly one declared handle is unused -> that handle (one arm fanning
-       out under an invented name);
+       out under an invented name). Never applied to a plain (non-branch)
+       fail-branch node (see ``_is_plain_fail_branch``): with only "source"
+       and "fail-branch" declared, an unrecognized name is as likely to mean
+       one as the other, so only an explicit alias may resolve it;
     3. edges on the default ``source`` handle, when there are at least as
        many unused declared handles -> unused handles in declaration order
        (the pre-existing behaviour).
 
     "Unused" for (2) and (3) never counts a handle in
-    ``_UNCOUNTED_UNUSED_HANDLES`` (human-input's implicit ``"__timeout"``
-    arm): it exists on every node of its type whether or not the author
-    wired it, so it must not silently absorb an edge meant for the one real
-    arm that IS left unused, and must not block that arm's resolution either.
+    ``_UNCOUNTED_UNUSED_HANDLES`` (human-input's implicit ``"__timeout"`` arm,
+    a fail-branch node's ``"fail-branch"`` arm): both exist because of the
+    node's configuration, not because the author wired a branch, and are
+    routinely left unwired, so they must not silently absorb an edge meant
+    for the one real arm that IS left unused, and must not block that arm's
+    resolution either.
 
     Anything else -- two different unknown names, one unknown edge with two
     free arms, a three-case node with invented names -- is left exactly as it
     was and returned, so ``undeclared_branch_handles`` fails the graph closed.
-    A wrong guess would silently swap the IF and ELSE arms; a visible rejection
-    is better.
+    A wrong guess would silently swap the IF and ELSE arms, or a success arm
+    for a failure arm; a visible rejection is better.
     """
     unresolved: list[dict[str, Any]] = []
     for node in nodes:
@@ -482,9 +580,10 @@ def repair_branch_edge_handles(nodes: list[Any], edges: list[Any]) -> list[dict[
         unknown: list[MutableMapping[str, Any]] = []
         for edge in outgoing:
             handle = edge.get("sourceHandle")
-            if handle in handles:
+            effective = _effective_handle(handle)
+            if effective in handles:
                 continue
-            if handle is None or handle in _DEFAULT_HANDLES:
+            if effective in _DEFAULT_HANDLES:
                 unknown.append(edge)
                 continue
             matched = _match_handle(str(handle), handles, names)
@@ -494,7 +593,11 @@ def repair_branch_edge_handles(nodes: list[Any], edges: list[Any]) -> list[dict[
                 edge["sourceHandle"] = matched
         if not unknown:
             continue
-        taken = {e.get("sourceHandle") for e in outgoing if e.get("sourceHandle") in handles}
+        taken = {
+            _effective_handle(e.get("sourceHandle"))
+            for e in outgoing
+            if _effective_handle(e.get("sourceHandle")) in handles
+        }
         unused = [h for h in handles if h not in taken and h not in _UNCOUNTED_UNUSED_HANDLES]
         named = [
             e
@@ -503,7 +606,13 @@ def repair_branch_edge_handles(nodes: list[Any], edges: list[Any]) -> list[dict[
         ]
         defaulted = [e for e in unknown if e not in named]
         distinct_names = {str(e.get("sourceHandle")) for e in named}
-        if named and not defaulted and len(distinct_names) == 1 and len(unused) == 1:
+        if (
+            named
+            and not defaulted
+            and len(distinct_names) == 1
+            and len(unused) == 1
+            and not _is_plain_fail_branch(node)
+        ):
             for edge in named:
                 edge["sourceHandle"] = unused[0]
             continue
@@ -538,14 +647,14 @@ def undeclared_branch_handles(nodes: list[Any], edges: list[Any]) -> list[dict[s
         for edge in edges:
             if not isinstance(edge, Mapping) or edge.get("source") != node_id:
                 continue
-            handle = edge.get("sourceHandle")
-            if handle in handles:
+            effective = _effective_handle(edge.get("sourceHandle"))
+            if effective in handles:
                 continue
             bad.append(
                 {
                     "node_id": node_id,
                     "target": str(edge.get("target") or ""),
-                    "handle": "source" if handle is None else handle,
+                    "handle": effective,
                     "declared": list(handles),
                 }
             )
