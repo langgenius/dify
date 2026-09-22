@@ -18,3 +18,12 @@ class HashMismatchError(Exception):
     catches the OSS error and re-raises this instead, so callers only need
     to know about ``core``/``services.dify_builder`` error types.
     """
+
+
+class PreflightError(ValueError):
+    """Raised by ``apply_repair`` when the graph it was about to write would
+    not start: ``services.dify_builder.preflight.preflight_errors`` found a
+    node ``Graph.init`` would reject. A ``ValueError`` so every handler's
+    existing ``except ValueError`` around ``apply_repair`` (the stale-intent
+    guard) already turns it into a card instead of a crashed advance.
+    """
