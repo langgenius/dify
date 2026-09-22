@@ -37,6 +37,8 @@ from core.dify_builder.contract import (
 from core.dify_builder.handlers_fix import (
     NO_OUTPUT_BODY,
     NO_OUTPUT_REPLY,
+    UNKNOWN_OUTCOME_STUCK_BODY,
+    UNKNOWN_OUTCOME_STUCK_REPLY,
     UNKNOWN_TEST_OUTCOME_NOTICE,
     action_kind,
     action_string,
@@ -51,6 +53,7 @@ from core.dify_builder.handlers_fix import (
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
+    note_unknown_outcome,
     perform_revert,
     run_finished_without_output,
     start_schema,
@@ -808,6 +811,9 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         immutable=True,
     )
 
+    if status != "running":
+        fc.unknown_outcome_count = 0
+
     if status == "succeeded" and run_finished_without_output(graph, per_node):
         # A branch node ran and none of its arms did -- the engine skipped
         # every one (ESQ1-303: both if-else edges on undeclared handles) --
@@ -901,7 +907,33 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         # Diagnosing/staging a repair here would edit the draft under a run
         # that may still be executing -- surface a neutral notice instead and
         # return to build.execution (re-runnable), without ever calling
-        # diagnose or propose_repair.
+        # diagnose or propose_repair. The second consecutive unknown outcome
+        # stops the re-run loop at the gate (no staged repair) instead.
+        if note_unknown_outcome(fc):
+            fc.verify_run_id = run.id
+            fc.diagnosis = None
+            fc.staged_repair = []
+            stuck_items = append_card(
+                fc, ErrorCard(title="Test outcome unknown", body=UNKNOWN_OUTCOME_STUCK_BODY, tone="danger")
+            )
+            execution = progress.finish()
+            turn_items = append_card(
+                fc,
+                AssistantTurnItem(
+                    turn_id=progress.operation_id,
+                    stage_id=str(s.current_state),
+                    execution=execution,
+                    reply_text=UNKNOWN_OUTCOME_STUCK_REPLY,
+                    cards=["error"],
+                ),
+            )
+            return StepResult(
+                next=PcState.BUILD_AWAIT_REPAIR,
+                context=fc,
+                items=[*stuck_items, *turn_items],
+                run=run,
+                run_id_sink=[run.id],
+            )
         notice_items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
         execution = progress.finish()
         turn_items = append_card(

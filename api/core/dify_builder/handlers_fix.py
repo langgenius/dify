@@ -67,8 +67,11 @@ from core.dify_builder.state import PcState
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "MAX_UNKNOWN_OUTCOMES",
     "NO_OUTPUT_BODY",
     "NO_OUTPUT_REPLY",
+    "UNKNOWN_OUTCOME_STUCK_BODY",
+    "UNKNOWN_OUTCOME_STUCK_REPLY",
     "UNKNOWN_TEST_OUTCOME_NOTICE",
     "action_kind",
     "action_string",
@@ -124,6 +127,24 @@ NO_OUTPUT_BODY = (
     "and the edges after the last node that ran, then edit the canvas, keep the draft, or revert."
 )
 NO_OUTPUT_REPLY = "The test finished without producing any output — see the notice."
+
+# How many CONSECUTIVE unknown outcomes a flow tolerates before it stops
+# offering a re-run. The first is genuinely re-runnable (a transient early end
+# of the stream); the second in a row means something structural and the user
+# must look at the run itself.
+MAX_UNKNOWN_OUTCOMES = 2
+UNKNOWN_OUTCOME_STUCK_BODY = (
+    "The test's outcome couldn't be determined twice in a row, so I've stopped re-running it. "
+    "Open the run in the app's logs to see how it ended, then edit the canvas, keep the draft, or revert."
+)
+UNKNOWN_OUTCOME_STUCK_REPLY = "I couldn't determine the test's outcome twice in a row — see the notice."
+
+
+def note_unknown_outcome(fc: DifyBuilderContext) -> bool:
+    """Count one more unknown outcome; True when the cap is reached."""
+    fc.unknown_outcome_count += 1
+    return fc.unknown_outcome_count >= MAX_UNKNOWN_OUTCOMES
+
 
 # Node statuses that mean "this node ran to completion": the engine's
 # ``WorkflowNodeExecutionStatus.SUCCEEDED`` and the fakes' ``success``.
@@ -819,8 +840,21 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         # publish (or re-fix) against a run that may still be executing --
         # surface a neutral notice instead and return to fix.await_testdata
         # (re-runnable), never diagnosing or staging a repair against an
-        # unknown result.
+        # unknown result. The second consecutive unknown outcome stops the
+        # re-run loop at the decision gate instead.
         fc.verify_run_id = run.id
+        if note_unknown_outcome(fc):
+            items = append_card(
+                fc, ErrorCard(title="Test outcome unknown", body=UNKNOWN_OUTCOME_STUCK_BODY, tone="danger")
+            )
+            progress.finish()
+            return StepResult(
+                next=PcState.FIX_AWAIT_DECISION,
+                context=fc,
+                items=items,
+                run=run,
+                run_id_sink=[run.id],
+            )
         items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
         progress.finish()
         return StepResult(
@@ -830,6 +864,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             run=run,
             run_id_sink=[run.id],
         )
+    fc.unknown_outcome_count = 0
 
     if result.status != "succeeded":
         run.culprit_node_id = first_failed_node(result.per_node)

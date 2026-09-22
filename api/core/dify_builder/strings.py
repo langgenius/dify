@@ -55,6 +55,9 @@ PLAIN: frozenset[str] = frozenset(
         "The run finished but reached no End node, so it produced no output. Check the branch handles "
         "and the edges after the last node that ran, then edit the canvas, keep the draft, or revert.",
         "The test finished without producing any output — see the notice.",
+        "The test's outcome couldn't be determined twice in a row, so I've stopped re-running it. "
+        "Open the run in the app's logs to see how it ended, then edit the canvas, keep the draft, or revert.",
+        "I couldn't determine the test's outcome twice in a row — see the notice.",
         "No fix is staged for this failure -- keep the draft or revert.",
         "I didn't apply the workflow: it would fail before its first node. Adjust the plan and approve again.",
         "I didn't apply the change: the workflow would fail before its first node. Adjust it and approve again.",
@@ -78,6 +81,7 @@ PLAIN: frozenset[str] = frozenset(
         "Repeated failure",
         "The workflow can't start",
         "No output produced",
+        "Test outcome unknown",
         "Finished without output",
         "Test failed",
         "Validation",
