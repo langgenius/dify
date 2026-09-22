@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 import Input from './text-input'
 
 type Props = Readonly<{
@@ -43,8 +43,11 @@ const Field: FC<Props> = ({
           <span className="ml-0.5 text-xs font-semibold text-text-destructive">*</span>
         )}
         {tooltip && (
-          <Infotip aria-label={tooltip} className="ml-0.5" popupClassName="w-[200px]">
-            {tooltip}
+          <Infotip>
+            <InfotipTrigger aria-label={tooltip} className="ml-0.5" />
+            <InfotipContent aria-label={tooltip} className="w-50">
+              {tooltip}
+            </InfotipContent>
           </Infotip>
         )}
       </div>

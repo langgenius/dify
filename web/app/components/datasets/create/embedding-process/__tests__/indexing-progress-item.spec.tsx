@@ -1,5 +1,6 @@
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import IndexingProgressItem from '../indexing-progress-item'
@@ -85,7 +86,8 @@ describe('IndexingProgressItem', () => {
     expect(screen.queryByText(/%/)).not.toBeInTheDocument()
   })
 
-  it('should render error icon with tooltip for error status', () => {
+  it('opens the full indexing error from the warning button', async () => {
+    const user = userEvent.setup()
     render(
       <IndexingProgressItem
         detail={makeDetail({ indexing_status: 'error', error: 'Parse failed' })}
@@ -93,10 +95,15 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    expect(screen.getByText('Parse failed')).toBeInTheDocument()
+    expect(screen.queryByText('Parse failed')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.error' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Parse failed')
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('button', { name: 'common.error' })).toHaveFocus()
   })
 
-  it('should use the localized fallback when an error has no message', () => {
+  it('should use the localized fallback when an error has no message', async () => {
+    const user = userEvent.setup()
     render(
       <IndexingProgressItem
         detail={makeDetail({ indexing_status: 'error', error: null })}
@@ -104,6 +111,7 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    expect(screen.getByText('common.error')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.error' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('common.error')
   })
 })

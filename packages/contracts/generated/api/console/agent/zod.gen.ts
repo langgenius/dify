@@ -196,6 +196,16 @@ export const zSandboxReadResponse = z.object({
 })
 
 /**
+ * TextToSpeechPayload
+ */
+export const zTextToSpeechPayload = z.object({
+  message_id: z.string().nullish(),
+  streaming: z.boolean().nullish(),
+  text: z.string(),
+  voice: z.string().nullish(),
+})
+
+/**
  * AgentConfigSnapshotRestoreResponse
  */
 export const zAgentConfigSnapshotRestoreResponse = z.object({
@@ -810,6 +820,21 @@ export const zAgentStatisticSummaryResponse = z.object({
 })
 
 /**
+ * TextToSpeechVoiceResponse
+ */
+export const zTextToSpeechVoiceResponse = z.object({
+  name: z.string(),
+  value: z.string(),
+})
+
+/**
+ * TextToSpeechVoiceListResponse
+ *
+ * Available voices
+ */
+export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
+
+/**
  * ModelConfigPartial
  */
 export const zModelConfigPartial = z.object({
@@ -1077,6 +1102,7 @@ export const zAgentPublishResponse = z.object({
   active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
   active_config_snapshot_id: z.string(),
   draft: zAgentConfigDraftSummaryResponse.nullish(),
+  publication_kind: z.enum(['first', 'update']),
   result: z.string(),
 })
 
@@ -3264,6 +3290,32 @@ export const zGetAgentByAgentIdStatisticsSummaryQuery = z.object({
  * Agent monitoring summary and chart data
  */
 export const zGetAgentByAgentIdStatisticsSummaryResponse = zAgentStatisticSummaryEnvelopeResponse
+
+export const zPostAgentByAgentIdTextToAudioBody = zTextToSpeechPayload
+
+export const zPostAgentByAgentIdTextToAudioPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Generated audio bytes in the provider audio format
+ */
+export const zPostAgentByAgentIdTextToAudioResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+export const zGetAgentByAgentIdTextToAudioVoicesPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdTextToAudioVoicesQuery = z.object({
+  language: z.string(),
+})
+
+/**
+ * TTS voices retrieved successfully
+ */
+export const zGetAgentByAgentIdTextToAudioVoicesResponse = zTextToSpeechVoiceListResponse
 
 export const zGetAgentByAgentIdVersionsPath = z.object({
   agent_id: z.uuid(),

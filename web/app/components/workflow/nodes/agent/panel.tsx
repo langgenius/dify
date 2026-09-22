@@ -1,11 +1,8 @@
 import type { FC } from 'react'
 import type { NodePanelProps } from '../../types'
 import type { AgentNodeType } from './types'
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { StrategyParamItem } from '@/app/components/plugins/types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toType } from '@/app/components/tools/utils/to-form-schema'
 import { isSupportMCP } from '@/utils/plugin-version-feature'
 import { useStore } from '../../store'
 import { AgentStrategy } from '../_base/components/agent-strategy'
@@ -14,20 +11,9 @@ import { MCPToolAvailabilityProvider } from '../_base/components/mcp-tool-availa
 import MemoryConfig from '../_base/components/memory-config'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import Split from '../_base/components/split'
-import { AgentFeature } from './types'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.agent'
-
-function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
-  return {
-    ...(param as any),
-    variable: param.name,
-    show_on: [],
-    type: toType(param.type),
-    tooltip: param.help,
-  }
-}
 
 const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   const {
@@ -44,7 +30,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     handleMemoryChange,
   } = useConfig(props.id, props.data)
   const { t } = useTranslation()
-  const isMCPVersionSupported = isSupportMCP(inputs.meta?.version)
+  const isMCPVersionSupported = isSupportMCP(inputs.meta?.version ?? undefined)
 
   const resetEditor = useStore((s) => s.setControlPromptEditorRerenderKey)
   return (
@@ -58,13 +44,13 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         <MCPToolAvailabilityProvider versionSupported={isMCPVersionSupported}>
           <AgentStrategy
             strategy={
-              inputs.agent_strategy_name
+              inputs.agent_strategy_name && inputs.agent_strategy_provider_name
                 ? {
-                    agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
-                    agent_strategy_name: inputs.agent_strategy_name!,
-                    agent_strategy_label: inputs.agent_strategy_label!,
+                    agent_strategy_provider_name: inputs.agent_strategy_provider_name,
+                    agent_strategy_name: inputs.agent_strategy_name,
+                    agent_strategy_label: inputs.agent_strategy_label ?? inputs.agent_strategy_name,
                     agent_output_schema: inputs.output_schema,
-                    plugin_unique_identifier: inputs.plugin_unique_identifier!,
+                    plugin_unique_identifier: inputs.plugin_unique_identifier,
                     meta: inputs.meta,
                   }
                 : undefined
@@ -75,13 +61,13 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
                 agent_strategy_provider_name: strategy?.agent_strategy_provider_name,
                 agent_strategy_name: strategy?.agent_strategy_name,
                 agent_strategy_label: strategy?.agent_strategy_label,
-                output_schema: strategy!.agent_output_schema,
-                plugin_unique_identifier: strategy!.plugin_unique_identifier,
+                output_schema: strategy?.agent_output_schema,
+                plugin_unique_identifier: strategy?.plugin_unique_identifier,
                 meta: strategy?.meta,
               })
               resetEditor(Date.now())
             }}
-            formSchema={currentStrategy?.parameters?.map(strategyParamToCredientialForm) || []}
+            formSchema={currentStrategy?.parameters ?? []}
             formValue={formData}
             onFormValueChange={onFormChange}
             nodeOutputVars={availableVars}
@@ -91,7 +77,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         </MCPToolAvailabilityProvider>
       </Field>
       <div className="px-4 py-2">
-        {isChatMode && currentStrategy?.features?.includes(AgentFeature.HISTORY_MESSAGES) && (
+        {isChatMode && currentStrategy?.features?.includes('history-messages') && (
           <>
             <Split />
             <MemoryConfig

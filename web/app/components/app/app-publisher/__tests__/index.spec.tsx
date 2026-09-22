@@ -632,7 +632,7 @@ describe('AppPublisher', () => {
       expect(environmentDeploymentListRequests.length).toBeGreaterThan(0)
     })
     expect(environmentDeploymentDetailRequests).toHaveLength(0)
-    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText(/studio\.accessPoint\.noPublishedTitle/)).not.toBeInTheDocument()
     expect(screen.queryByText(/studio\.publisher\.notDeployedYet/)).not.toBeInTheDocument()
 

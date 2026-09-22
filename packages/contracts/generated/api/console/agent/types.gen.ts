@@ -366,6 +366,7 @@ export type AgentPublishResponse = {
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   active_config_snapshot_id: string
   draft?: AgentConfigDraftSummaryResponse | null
+  publication_kind: 'first' | 'update'
   result: string
 }
 
@@ -406,6 +407,15 @@ export type AgentStatisticSummaryEnvelopeResponse = {
   source: string
   summary: AgentStatisticSummaryResponse
 }
+
+export type TextToSpeechPayload = {
+  message_id?: string | null
+  streaming?: boolean | null
+  text: string
+  voice?: string | null
+}
+
+export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
 
 export type AgentConfigSnapshotListResponse = {
   data: Array<AgentConfigSnapshotSummaryResponse>
@@ -956,6 +966,11 @@ export type AgentStatisticSummaryResponse = {
   total_price: string
   total_tokens: number
   user_satisfaction_rate: number
+}
+
+export type TextToSpeechVoiceResponse = {
+  name: string
+  value: string
 }
 
 export type AgentConfigRevisionResponse = {
@@ -2901,6 +2916,51 @@ export type GetAgentByAgentIdStatisticsSummaryResponses = {
 
 export type GetAgentByAgentIdStatisticsSummaryResponse =
   GetAgentByAgentIdStatisticsSummaryResponses[keyof GetAgentByAgentIdStatisticsSummaryResponses]
+
+export type PostAgentByAgentIdTextToAudioData = {
+  body: TextToSpeechPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/text-to-audio'
+}
+
+export type PostAgentByAgentIdTextToAudioErrors = {
+  400: unknown
+  403: unknown
+  404: unknown
+}
+
+export type PostAgentByAgentIdTextToAudioResponses = {
+  200: Blob | File
+}
+
+export type PostAgentByAgentIdTextToAudioResponse =
+  PostAgentByAgentIdTextToAudioResponses[keyof PostAgentByAgentIdTextToAudioResponses]
+
+export type GetAgentByAgentIdTextToAudioVoicesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    language: string
+  }
+  url: '/agent/{agent_id}/text-to-audio/voices'
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesResponses = {
+  200: TextToSpeechVoiceListResponse
+}
+
+export type GetAgentByAgentIdTextToAudioVoicesResponse =
+  GetAgentByAgentIdTextToAudioVoicesResponses[keyof GetAgentByAgentIdTextToAudioVoicesResponses]
 
 export type GetAgentByAgentIdVersionsData = {
   body?: never

@@ -7,9 +7,8 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Folder } from '@/app/components/base/icons/src/vender/line/files'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
@@ -116,7 +115,7 @@ const VarGroupItem: FC<Props> = ({
         groupEnabled ? (
           <div className="flex items-center">
             <div className="flex items-center normal-case!">
-              <Folder className="mr-0.5 size-3.5" />
+              <span aria-hidden className="mr-0.5 i-custom-vender-line-files-folder size-3.5" />
               {!isEditGroupName ? (
                 <div
                   className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100"

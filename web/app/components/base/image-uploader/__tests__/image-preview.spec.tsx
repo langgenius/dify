@@ -82,7 +82,11 @@ describe('ImagePreview', () => {
     })
 
     globalThis.ClipboardItem = class {
-      constructor(public readonly data: Record<string, Blob | Promise<Blob>>) {}
+      public readonly data: Record<string, Blob | Promise<Blob>>
+
+      constructor(data: Record<string, Blob | Promise<Blob>>) {
+        this.data = data
+      }
     } as unknown as typeof ClipboardItem
     vi.spyOn(window, 'open').mockImplementation((...args: Parameters<Window['open']>) => {
       return mocks.windowOpen(...args)
@@ -490,11 +494,11 @@ describe('ImagePreview', () => {
         .mockReturnValue('blob:download-image')
       const revokeObjectURL = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {})
       const downloads: { href: string; name: string; target: string }[] = []
-      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(
-        function (this: HTMLAnchorElement) {
-          downloads.push({ href: this.href, name: this.download, target: this.target })
-        },
-      )
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+        this: HTMLAnchorElement,
+      ) {
+        downloads.push({ href: this.href, name: this.download, target: this.target })
+      })
       render(<ImagePreview url={url} title={title} onCancel={vi.fn()} />)
       await user.click(getDownloadButton())
 

@@ -22,6 +22,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalS
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
 import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
 
@@ -150,7 +151,7 @@ export function ProcessingTasksDrawer({
   const retryTask = useMutation(
     consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry.mutationOptions(),
   )
-  const pendingActionsRef = useRef(new Set<string>())
+  const pendingActionsRef = useRefWithInit(() => new Set<string>())
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const taskQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
   const documentQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
@@ -222,8 +223,8 @@ export function ProcessingTasksDrawer({
     () => new Map(tasks.map((task) => [task.id, taskLifecycle(task)])),
     [tasks],
   )
-  const taskLifecycleGenerationsRef = useRef(
-    new Map<string, { generation: number; lifecycle: string }>(),
+  const taskLifecycleGenerationsRef = useRefWithInit(
+    () => new Map<string, { generation: number; lifecycle: string }>(),
   )
   useLayoutEffect(() => {
     actionResultsValidRef.current = actionResultsValid
@@ -240,7 +241,7 @@ export function ProcessingTasksDrawer({
     for (const taskId of taskLifecycleGenerationsRef.current.keys()) {
       if (!currentTaskIds.has(taskId)) taskLifecycleGenerationsRef.current.delete(taskId)
     }
-  }, [actionResultsValid, tasks])
+  }, [actionResultsValid, tasks, taskLifecycleGenerationsRef])
 
   useEffect(() => {
     openRef.current = open

@@ -6,12 +6,12 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import Divider from '@/app/components/base/divider'
-import { Infotip } from '@/app/components/base/infotip'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -209,7 +209,7 @@ const ConfigContent: FC<Props> = ({
             <div className="mr-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
               {t(($) => $.rerankSettings, { ns: 'dataset' })}
             </div>
-            <Divider bgStyle="gradient" className="m-0 h-px!" />
+            <Separator decorative variant="gradient" className="m-0" />
           </div>
           {selectedDatasetsMode.inconsistentEmbeddingModel && (
             <div className="mt-4 system-xs-medium text-text-warning">
@@ -244,12 +244,11 @@ const ConfigContent: FC<Props> = ({
                   onClick={() => handleRerankModeChange(option.value)}
                 >
                   <div className="truncate">{option.label}</div>
-                  <Infotip
-                    aria-label={option.tips}
-                    className="ml-0.5 size-3.5"
-                    popupClassName="w-[200px]"
-                  >
-                    {option.tips}
+                  <Infotip>
+                    <InfotipTrigger aria-label={option.tips} className="ml-0.5 size-3.5" />
+                    <InfotipContent aria-label={option.tips} className="w-50">
+                      {option.tips}
+                    </InfotipContent>
                   </Infotip>
                 </div>
               ))}
@@ -268,12 +267,17 @@ const ConfigContent: FC<Props> = ({
                 <div className="ml-1 system-sm-semibold leading-8 text-text-secondary">
                   {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
                 </div>
-                <Infotip
-                  aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                  className="ml-1"
-                  popupClassName="w-[200px]"
-                >
-                  {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                <Infotip>
+                  <InfotipTrigger
+                    aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                    className="ml-1"
+                  />
+                  <InfotipContent
+                    aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                    className="w-50"
+                  >
+                    {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                  </InfotipContent>
                 </Infotip>
               </div>
               {showRerankModel && (
@@ -344,10 +348,15 @@ const ConfigContent: FC<Props> = ({
             <div className="text-[13px] leading-8 font-medium text-text-primary">
               {t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'common' })}
             </div>
-            <Infotip
-              aria-label={t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
-            >
-              {t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
+              />
+              <InfotipContent
+                aria-label={t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
+              >
+                {t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <ModelParameterModal

@@ -60,7 +60,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange, errorMessage,
               >
                 <IconButton
                   {...getHandleProps(index)}
-                  className="handle size-6 shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
+                  className="handle shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
                 >
                   <RiDraggable aria-hidden="true" className="size-4 text-text-quaternary" />
                 </IconButton>

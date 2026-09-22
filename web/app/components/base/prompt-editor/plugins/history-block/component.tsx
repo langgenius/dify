@@ -5,7 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiMoreFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_HISTORY_EVENT_EMITTER } from '../../constants'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
@@ -44,7 +43,10 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
       className={`group inline-flex h-6 items-center rounded-[5px] border border-transparent pr-0.5 pl-1 text-[#DD2590] hover:bg-[#FCE7F6] ${open ? 'bg-[#FCE7F6]' : 'bg-[#FDF2FA]'} ${isSelected && 'border-[#F670C7]!'} `}
       ref={ref}
     >
-      <MessageClockCircle className="mr-1 h-3.5 w-3.5" />
+      <span
+        aria-hidden
+        className="mr-1 i-custom-vender-solid-general-message-clock-circle h-3.5 w-3.5"
+      />
       <div className="mr-1 text-xs font-medium">
         {t(($) => $['promptEditor.history.item.title'], { ns: 'common' })}
       </div>

@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCSVDownloader } from 'react-papaparse'
-import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 
 type ICSVDownloadProps = {
   vars: { name: string }[]
@@ -62,7 +61,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({ vars }) => {
         data={[template]}
       >
         <div className="flex h-4.5 items-center space-x-1 system-xs-medium text-text-accent">
-          <DownloadIcon className="size-3" />
+          <span aria-hidden className="i-custom-vender-solid-general-download-02 size-3" />
           <span>{t(($) => $['generation.downloadTemplate'], { ns: 'share' })}</span>
         </div>
       </CSVDownloader>

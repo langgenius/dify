@@ -119,13 +119,13 @@ const useConfig = (id: string, payload: CodeNodeType) => {
       let mainDefRe
       let newMainDef
       if (inputs.code_language === CodeLanguage.javascript) {
-        mainDefRe = /function\s+main\b\s*\([\s\S]*?\)/g
+        mainDefRe = /function\s+main\s*\([\s\S]*?\)/g
         newMainDef = 'function main({{var_list}})'
         let param_list = inputs.variables?.map((item) => item.variable).join(', ') || ''
         param_list = param_list ? `{${param_list}}` : ''
         newMainDef = newMainDef.replace('{{var_list}}', param_list)
       } else if (inputs.code_language === CodeLanguage.python3) {
-        mainDefRe = /def\s+main\b\s*\([\s\S]*?\)/g
+        mainDefRe = /def\s+main\s*\([\s\S]*?\)/g
         const param_list = []
         for (const item of inputs.variables) {
           let param = item.variable
@@ -188,7 +188,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   })
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [
+    const supportedVariableTypes: readonly VarType[] = [
       VarType.string,
       VarType.number,
       VarType.boolean,
@@ -201,7 +201,9 @@ const useConfig = (id: string, payload: CodeNodeType) => {
       VarType.arrayBoolean,
       VarType.file,
       VarType.arrayFile,
-    ].includes(varPayload.type)
+    ]
+
+    return supportedVariableTypes.includes(varPayload.type)
   }, [])
 
   const handleCodeAndVarsChange = useCallback(

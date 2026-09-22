@@ -7,7 +7,6 @@ import ConfigModalFormFields from '../form-fields'
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
-  const React = await import('react')
   return {
     useTranslation: () => ({
       t: withSelectorKey((key: string, options?: Record<string, unknown>) => {

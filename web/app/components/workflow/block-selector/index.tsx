@@ -1,3 +1,4 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type {
   PopoverPopupProps,
   PopoverPositionerProps,
@@ -5,13 +6,7 @@ import type {
   PopoverTriggerProps,
 } from '@langgenius/dify-ui/popover'
 import type { CSSProperties, KeyboardEvent, MouseEventHandler, Ref } from 'react'
-import type {
-  CommonNodeType,
-  NodeDefault,
-  OnNodeAdd,
-  OnSelectBlock,
-  ToolWithProvider,
-} from '../types'
+import type { CommonNodeType, NodeDefault, OnNodeAdd, OnSelectBlock } from '../types'
 import type { TabType } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -56,7 +51,7 @@ export type BlockSelectorProps = Pick<
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
   blocks?: NodeDefault[]
-  dataSources?: ToolWithProvider[]
+  dataSources?: RagPipelineDatasourceProviderResponse[]
   noBlocks?: boolean
   noTools?: boolean
   standalonePanel?: TabType
@@ -241,7 +236,7 @@ type BlockSelectorContentProps = Pick<
   searchInputRef: React.RefObject<HTMLInputElement | null>
 }
 
-function BlockSelectorContent({
+export function BlockSelectorContent({
   allowUserInputSelection,
   availableBlocksTypes,
   blocks: blocksFromProps,
@@ -266,7 +261,7 @@ function BlockSelectorContent({
     if (blocksFromProps) return blocksFromProps
 
     return (availableNodesMetaData?.nodes ?? []).filter((block) => {
-      return ![
+      const excludedBlockTypes: readonly BlockEnum[] = [
         BlockEnum.Start,
         BlockEnum.StartPlaceholder,
         BlockEnum.DataSource,
@@ -274,7 +269,9 @@ function BlockSelectorContent({
         BlockEnum.IterationStart,
         BlockEnum.LoopStart,
         BlockEnum.DataSourceEmpty,
-      ].includes(block.metaData.type)
+      ]
+
+      return !excludedBlockTypes.includes(block.metaData.type)
     })
   }, [availableNodesMetaData?.nodes, blocksFromProps])
   const dataSources = dataSourcesFromProps ?? fallbackDataSources ?? []

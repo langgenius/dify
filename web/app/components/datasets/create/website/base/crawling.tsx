@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RowStruct } from '@/app/components/base/icons/src/public/other'
 
 type Props = Readonly<{
   className?: string
@@ -23,7 +22,10 @@ const Crawling: FC<Props> = ({ className = '', crawledNum, totalNum }) => {
       <div className="p-2">
         {['', '', '', ''].map((item, index) => (
           <div className="py-1.25" key={index}>
-            <RowStruct className="text-text-quaternary" />
+            <span
+              aria-hidden
+              className="i-custom-public-other-row-struct h-12 w-156 text-text-quaternary"
+            />
           </div>
         ))}
       </div>

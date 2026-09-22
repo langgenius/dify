@@ -3,7 +3,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { ArrowShape } from '../../base/icons/src/vender/knowledge'
 import { EffectColor } from './chunk-structure/types'
 
 const HEADER_EFFECT_MAP: Record<EffectColor, string> = {
@@ -95,7 +94,10 @@ const OptionCard = <T,>({
       </div>
       {!!(children && showChildren) && (
         <div className="relative rounded-b-xl bg-components-panel-bg p-4">
-          <ArrowShape className="absolute -top-2.75 left-3.5 size-4 text-components-panel-bg" />
+          <span
+            aria-hidden
+            className="absolute -top-2.75 left-3.5 i-custom-vender-knowledge-arrow-shape size-4 text-components-panel-bg"
+          />
           {children}
         </div>
       )}

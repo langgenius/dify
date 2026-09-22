@@ -707,6 +707,7 @@ class AgentComposerService:
         )
         return {
             "result": "success",
+            "publication_kind": "update" if access_was_ready else "first",
             "active_config_snapshot_id": version.id,
             "active_config_snapshot": cls._serialize_version(version),
             "draft": cls._serialize_draft(draft),

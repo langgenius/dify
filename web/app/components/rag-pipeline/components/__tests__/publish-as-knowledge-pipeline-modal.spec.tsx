@@ -158,22 +158,22 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should show icon picker when app icon clicked', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
     fireEvent.click(getIconButton())
 
-    expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
   })
 
   it('should update icon when emoji style is selected', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
     fireEvent.click(getIconButton())
-    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
   })
 
@@ -181,19 +181,19 @@ describe('PublishAsKnowledgePipelineModal', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
     fireEvent.click(getIconButton())
-    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
 
-    expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
   })
 
-  it('should close icon picker when cancel is clicked', async () => {
+  it('should close icon picker when Escape is pressed', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
     fireEvent.click(getIconButton())
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+    await userEvent.setup().keyboard('{Escape}')
 
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
   })
 

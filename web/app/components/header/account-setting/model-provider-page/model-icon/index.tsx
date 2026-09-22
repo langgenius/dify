@@ -6,7 +6,6 @@ import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
 import type { ModelSelectorProvider } from '../model-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
 import useTheme from '@/hooks/use-theme'
 import { renderI18nObject } from '@/i18n/metadata'
 import { Theme } from '@/types/app'
@@ -45,7 +44,7 @@ const ModelIcon: FC<ModelIconProps> = ({
   )
     return (
       <span className="flex items-center justify-center">
-        <OpenaiYellow className={cn('size-5', className)} />
+        <span aria-hidden className={cn('i-custom-public-llm-openai-yellow size-5', className)} />
       </span>
     )
 

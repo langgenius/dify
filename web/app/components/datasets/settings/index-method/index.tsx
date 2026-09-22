@@ -2,7 +2,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
-import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
 import { IndexingType } from '../../create/step-two'
 import { EffectColor } from '../chunk-structure/types'
 import OptionCard from '../option-card'
@@ -35,7 +34,7 @@ const IndexMethod = ({
         id={IndexingType.QUALIFIED}
         isActive={value === IndexingType.QUALIFIED}
         onClick={onChange}
-        icon={<HighQuality className="size-4.5" />}
+        icon={<span aria-hidden className="i-custom-vender-knowledge-high-quality size-4.5" />}
         iconActiveColor="text-util-colors-orange-orange-500"
         title={t(($) => $['stepTwo.qualified'], { ns: 'datasetCreation' })}
         description={t(($) => $['form.indexMethodHighQualityTip'], { ns: 'datasetSettings' })}
@@ -52,7 +51,7 @@ const IndexMethod = ({
             id={IndexingType.ECONOMICAL}
             isActive={value === IndexingType.ECONOMICAL}
             onClick={onChange}
-            icon={<Economic className="size-4.5" />}
+            icon={<span aria-hidden className="i-custom-vender-knowledge-economic size-4.5" />}
             iconActiveColor="text-util-colors-indigo-indigo-600"
             title={t(($) => $['form.indexMethodEconomy'], { ns: 'datasetSettings' })}
             description={t(($) => $['form.indexMethodEconomyTip'], {

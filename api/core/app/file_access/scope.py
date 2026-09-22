@@ -21,6 +21,11 @@ class FileAccessScope:
     that were returned by trusted retrieval paths without changing persistent
     ownership markers.
 
+    ``granted_tool_file_ids`` is the same pattern for ToolFile records created
+    during this run (plugin downloads, workflow-as-tool outputs). Those files
+    may be owned by a different user_id than the chatting end user, which is
+    why later LLM nodes otherwise drop them.
+
     ``granted_retriever_segment_ids`` gates lazy attachment loading by segment
     ID, so user-provided context cannot make a later LLM node load arbitrary
     same-tenant knowledge attachments.
@@ -32,6 +37,7 @@ class FileAccessScope:
     invoke_from: InvokeFrom
     granted_upload_file_ids: frozenset[str] = field(default_factory=frozenset)
     granted_retriever_segment_ids: frozenset[str] = field(default_factory=frozenset)
+    granted_tool_file_ids: frozenset[str] = field(default_factory=frozenset)
 
     @property
     def requires_user_ownership(self) -> bool:
@@ -55,6 +61,24 @@ def grant_upload_file_access(upload_file_ids: Iterable[str]) -> None:
         replace(
             scope,
             granted_upload_file_ids=scope.granted_upload_file_ids | granted_upload_file_ids,
+        )
+    )
+
+
+def grant_tool_file_access(tool_file_ids: Iterable[str]) -> None:
+    """Allow this execution to read ToolFile records it just produced."""
+    scope = _current_file_access_scope.get()
+    if scope is None:
+        return
+
+    granted_tool_file_ids = frozenset(str(file_id) for file_id in tool_file_ids if file_id)
+    if not granted_tool_file_ids:
+        return
+
+    _current_file_access_scope.set(
+        replace(
+            scope,
+            granted_tool_file_ids=scope.granted_tool_file_ids | granted_tool_file_ids,
         )
     )
 

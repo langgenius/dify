@@ -38,7 +38,7 @@ const ensurePromptConfig = (draft: Draft<LLMNodeType>): { jinja2_variables: Vari
 }
 
 const filterInputVar = (varPayload: Var) => {
-  return [
+  const basicPromptVariableTypes: readonly VarType[] = [
     VarType.number,
     VarType.string,
     VarType.secret,
@@ -46,11 +46,13 @@ const filterInputVar = (varPayload: Var) => {
     VarType.arrayNumber,
     VarType.file,
     VarType.arrayFile,
-  ].includes(varPayload.type)
+  ]
+
+  return basicPromptVariableTypes.includes(varPayload.type)
 }
 
 const filterJinja2InputVar = (varPayload: Var) => {
-  return [
+  const jinjaPromptVariableTypes: readonly VarType[] = [
     VarType.number,
     VarType.string,
     VarType.secret,
@@ -61,11 +63,13 @@ const filterJinja2InputVar = (varPayload: Var) => {
     VarType.object,
     VarType.array,
     VarType.boolean,
-  ].includes(varPayload.type)
+  ]
+
+  return jinjaPromptVariableTypes.includes(varPayload.type)
 }
 
 const filterMemoryPromptVar = (varPayload: Var) => {
-  return [
+  const memoryPromptVariableTypes: readonly VarType[] = [
     VarType.arrayObject,
     VarType.array,
     VarType.number,
@@ -75,7 +79,9 @@ const filterMemoryPromptVar = (varPayload: Var) => {
     VarType.arrayNumber,
     VarType.file,
     VarType.arrayFile,
-  ].includes(varPayload.type)
+  ]
+
+  return memoryPromptVariableTypes.includes(varPayload.type)
 }
 
 const useLLMPromptConfig = ({ inputs, inputRef, isChatMode, isChatModel, setInputs }: Params) => {
