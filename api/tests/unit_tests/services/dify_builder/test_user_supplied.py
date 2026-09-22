@@ -203,3 +203,38 @@ def test_strip_auth_scheme_leaves_a_plain_value_unchanged():
 
 def test_strip_auth_scheme_handles_empty_value():
     assert us.strip_auth_scheme("") == ""
+
+
+# --- Final review F2: a host the user typed without a scheme counts --------
+
+_NO_URL_GOAL = "Render a slide deck from bullet points and return the download link."
+
+
+def test_is_user_supplied_url_true_for_a_scheme_less_host_in_the_goal_prose():
+    trusted = "Our renderer is at api.pptrender.io/v1/render."
+    assert us.is_user_supplied_url("https://api.pptrender.io/v1/render", trusted) is True
+
+
+def test_is_user_supplied_url_true_for_a_scheme_less_host_in_a_requirement_value():
+    trusted = us.trusted_text_for(_NO_URL_GOAL, {"render_api_url": "api.pptrender.io/v1/render"})
+    assert us.is_user_supplied_url("https://api.pptrender.io/v1/render", trusted) is True
+
+
+def test_is_user_supplied_url_scheme_less_match_is_case_insensitive():
+    assert us.is_user_supplied_url("https://api.pptrender.io/v1", "use API.PPTRender.IO for rendering") is True
+
+
+def test_is_user_supplied_url_false_for_a_host_that_only_shares_a_suffix_with_a_typed_one():
+    assert us.is_user_supplied_url("https://cdn.pptrender.io/v1", "Our renderer is at api.pptrender.io/v1") is False
+
+
+def test_is_user_supplied_url_scheme_less_match_needs_a_dotted_host():
+    # A single-label host would match any stray word in the goal.
+    assert us.is_user_supplied_url("http://renderer:8080/v1", "send it to the renderer") is False
+
+
+def test_is_user_supplied_host_checks_url_hosts_and_scheme_less_hosts():
+    assert us.is_user_supplied_host("API.x.com", "call https://api.x.com/v1") is True
+    assert us.is_user_supplied_host("api.x.com", "call api.x.com please") is True
+    assert us.is_user_supplied_host("api.y.com", "call api.x.com please") is False
+    assert us.is_user_supplied_host("", "anything") is False

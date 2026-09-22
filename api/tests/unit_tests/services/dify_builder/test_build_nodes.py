@@ -1080,3 +1080,30 @@ def test_every_variable_url_grounding_creates_is_excluded_from_mocks_and_path_da
 
         assert created == {"h_url"}
         assert endpoint_variable_names(_as_graph(intents)) == created
+
+
+# ---- Final review F2: a host the user typed without a scheme is not invented --
+
+
+def test_build_nodes_leaves_a_url_whose_host_the_goal_names_without_a_scheme():
+    from services.dify_builder.agent.user_supplied import trusted_text_for
+
+    goal = "Render a slide deck from bullet points. Our renderer is at api.pptrender.io/v1/render."
+    intents = _build_with(
+        _gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=trusted_text_for(goal, {})
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "https://api.pptrender.io/v1/render"
+    assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_leaves_a_url_whose_host_a_requirement_names_without_a_scheme():
+    from services.dify_builder.agent.user_supplied import trusted_text_for
+
+    trusted = trusted_text_for(_NO_URL_GOAL, {"render_api_url": "api.pptrender.io/v1/render"})
+    intents = _build_with(_gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=trusted)
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["url"] == "https://api.pptrender.io/v1/render"

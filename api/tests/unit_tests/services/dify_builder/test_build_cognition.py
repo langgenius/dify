@@ -941,3 +941,23 @@ def test_plan_prompt_without_tools_has_no_tool_section(monkeypatch):
     build.propose_plan_v1(_FakeInstance([]), {})
 
     assert "# Installed tools" not in captured["system"]
+
+
+# ---- Final review F2: a host the goal names without a scheme is not invented --
+
+
+def test_scrub_invented_defaults_keeps_a_url_whose_host_the_goal_names_without_a_scheme():
+    goal = "Our renderer is at api.pptrender.io/v1/render -- send it the slides."
+    values = {"render_api_url": "https://api.pptrender.io/v1/render"}
+
+    out = build._scrub_invented_defaults(values, goal)
+
+    assert out["render_api_url"] == "https://api.pptrender.io/v1/render"
+
+
+def test_scrub_invented_defaults_still_blanks_a_single_label_host_named_as_a_stray_word():
+    values = {"render_api_url": "http://renderer:8080/v1"}
+
+    out = build._scrub_invented_defaults(values, "send the slides to the renderer")
+
+    assert out["render_api_url"] == ""
