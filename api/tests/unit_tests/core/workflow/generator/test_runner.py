@@ -4876,15 +4876,17 @@ _INVENTED_STRUCTURED_OUTPUT_NAMES = (
 )
 
 
-def _llm_node(node_id="node2", *, structured_output_enabled=None, schema_properties=None, switch_on_key=False):
+def _llm_node(node_id="node2", *, structured_output_enabled=None, schema_properties=None):
     """Build a raw graph ``llm`` node dict. ``structured_output_enabled=None``
-    means the key is omitted entirely (never planned). ``switch_on_key`` uses
-    the older ``structured_output_switch_on`` alias instead of the current
-    ``structured_output_enabled`` key."""
+    means the key is omitted entirely (never planned). ``structured_output_enabled``
+    is the only key real graph data ever carries: it's the wire/JSON key
+    graphon's ``LLMNodeData`` serialises, while ``structured_output_switch_on``
+    is only that field's internal Python attribute name and is never a dict
+    key (see ``test_node_factory.py::test_create_node_passes_alias_preserving_llm_data_to_constructor``,
+    which asserts ``"structured_output_switch_on" not in data``)."""
     data: dict = {"type": "llm", "title": "LLM", "prompt_template": [{"role": "user", "text": "hi"}]}
     if structured_output_enabled is not None:
-        key = "structured_output_switch_on" if switch_on_key else "structured_output_enabled"
-        data[key] = structured_output_enabled
+        data["structured_output_enabled"] = structured_output_enabled
     if schema_properties is not None:
         data["structured_output"] = {"schema": {"properties": schema_properties}}
     return {"id": node_id, "data": data}
@@ -4911,22 +4913,6 @@ def test_invented_structured_output_name_aliases_to_text_when_flag_off_despite_a
 
     node = _llm_node(structured_output_enabled=False, schema_properties={"answer": {"type": "string"}})
     assert G._aliased_output(node, invented_name) == "text"
-
-
-@pytest.mark.parametrize("invented_name", _INVENTED_STRUCTURED_OUTPUT_NAMES)
-def test_invented_structured_output_name_respects_the_switch_on_alias_key(invented_name):
-    """The older ``structured_output_switch_on`` key must count too."""
-    from core.workflow.generator.runner import WorkflowGenerator as G
-
-    off_node = _llm_node(structured_output_enabled=False, switch_on_key=True)
-    assert G._aliased_output(off_node, invented_name) == "text"
-
-    on_node = _llm_node(
-        structured_output_enabled=True,
-        switch_on_key=True,
-        schema_properties={"answer": {"type": "string"}},
-    )
-    assert G._aliased_output(on_node, invented_name) is None
 
 
 @pytest.mark.parametrize("invented_name", _INVENTED_STRUCTURED_OUTPUT_NAMES)

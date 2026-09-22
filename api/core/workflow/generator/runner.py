@@ -1863,6 +1863,18 @@ class WorkflowGenerator:
             for item in value:
                 cls._collect_refs_in_data(item, out, allow_selector=allow_selector)
 
+    @staticmethod
+    def _llm_schema_properties(data: dict[str, Any]) -> dict[str, Any]:
+        """
+        An ``llm`` node's structured-output schema properties, or ``{}``
+        when there is none. Structured-output keys land under
+        ``structured_output.schema.properties`` (graphon's
+        ``LLMNodeData``) when structured output is enabled. Read once here
+        and shared by every caller that needs to know the node's declared
+        schema properties or whether it has a real (non-empty) one.
+        """
+        return ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
+
     @classmethod
     def _declares_variable(cls, node: dict[str, Any], var: str) -> bool:
         """
@@ -1880,8 +1892,7 @@ class WorkflowGenerator:
             # under ``structured_output.schema.properties`` when enabled.
             if var == "text":
                 return True
-            schema = ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
-            return var in schema
+            return var in cls._llm_schema_properties(data)
         if node_type == BuiltinNodeTypes.CODE:
             return var in (data.get("outputs") or {})
         if node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
@@ -1958,21 +1969,20 @@ class WorkflowGenerator:
     def _llm_is_schema_less(cls, data: dict[str, Any]) -> bool:
         """
         Whether an ``llm`` node's ``data`` describes a node with no usable
-        structured output. True when the enable flag -- current key
-        ``structured_output_enabled``, or its older alias
-        ``structured_output_switch_on`` -- is falsy, OR the
-        ``structured_output`` schema carries no properties. Either condition
-        alone makes the structured-output family not a real output here
-        (e.g. a schema block left behind by an isolated node-builder call
-        that never turned the flag on), so an invented reference to it
-        should fall back to the node's actual (default) output instead of
-        staying unresolved.
+        structured output. True when the enable flag,
+        ``structured_output_enabled`` (the wire/JSON key graphon's
+        ``LLMNodeData`` serialises -- its internal attribute name,
+        ``structured_output_switch_on``, is never the dict key a raw graph
+        carries), is falsy, OR the ``structured_output`` schema carries no
+        properties. Either condition alone makes the structured-output
+        family not a real output here (e.g. a schema block left behind by
+        an isolated node-builder call that never turned the flag on), so an
+        invented reference to it should fall back to the node's actual
+        (default) output instead of staying unresolved.
         """
-        enabled = bool(data.get("structured_output_enabled")) or bool(data.get("structured_output_switch_on"))
-        if not enabled:
+        if not data.get("structured_output_enabled"):
             return True
-        schema = ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
-        return not schema
+        return not cls._llm_schema_properties(data)
 
     @classmethod
     def _aliased_output(cls, node: dict[str, Any], var: str) -> str | None:
@@ -1998,8 +2008,7 @@ class WorkflowGenerator:
         data = node.get("data") or {}
         node_type = data.get("type")
         if node_type == BuiltinNodeTypes.LLM:
-            schema = ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
-            return "text" if not schema else None
+            return "text" if not cls._llm_schema_properties(data) else None
         if node_type == BuiltinNodeTypes.CODE:
             outputs = [key for key in (data.get("outputs") or {}) if isinstance(key, str)]
             return outputs[0] if len(outputs) == 1 else None
