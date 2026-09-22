@@ -159,3 +159,74 @@ def normalize_condition_values(nodes: list[Any]) -> list[str]:
         if touched:
             changed.append(str(node.get("id") or ""))
     return changed
+
+
+# ---------------------------------------------------------------------------
+# if-else ``varType`` (frontend-only operator hint)
+# ---------------------------------------------------------------------------
+
+# Start-variable ``type`` -> the canvas ``VarType`` it is certain to be. Anything
+# not listed (``json``, ``json_object``, ``iterator``, ...) is left alone: the
+# frontend copes with a missing ``varType`` (it defaults the operator list);
+# a wrong one steers the user to operators that fail at run time (ESQ1-285).
+_START_TYPE_TO_VAR_TYPE: Mapping[str, str] = {
+    "number": "number",
+    "text-input": "string",
+    "paragraph": "string",
+    "select": "string",
+    "url": "string",
+    "checkbox": "boolean",
+    "file": "file",
+    "file-list": "array[file]",
+}
+
+
+def _start_variable_types(nodes: list[Any]) -> dict[tuple[str, str], str]:
+    """``(start_node_id, variable_name) -> VarType`` for every certain start variable."""
+    out: dict[tuple[str, str], str] = {}
+    for node in nodes:
+        if not isinstance(node, Mapping):
+            continue
+        data = node.get("data")
+        if not isinstance(data, Mapping) or data.get("type") != "start":
+            continue
+        for variable in data.get("variables") or []:
+            if not isinstance(variable, Mapping):
+                continue
+            var_type = _START_TYPE_TO_VAR_TYPE.get(str(variable.get("type") or ""))
+            name = str(variable.get("variable") or "")
+            if var_type and name:
+                out[(str(node.get("id") or ""), name)] = var_type
+    return out
+
+
+def derive_if_else_var_types(nodes: list[Any]) -> list[str]:
+    """Fill ``varType`` on if-else conditions that lack it, ONLY when the
+    condition reads a start variable whose declared type maps to a certain
+    ``VarType``. Existing values are never overwritten. Returns the ids of the
+    nodes that changed."""
+    known = _start_variable_types(nodes)
+    changed: list[str] = []
+    for node in nodes:
+        if not isinstance(node, Mapping):
+            continue
+        data = node.get("data")
+        if not isinstance(data, Mapping) or data.get("type") != "if-else":
+            continue
+        touched = False
+        for case in data.get("cases") or []:
+            if not isinstance(case, Mapping):
+                continue
+            for condition in case.get("conditions") or []:
+                if not isinstance(condition, MutableMapping) or condition.get("varType"):
+                    continue
+                selector = condition.get("variable_selector")
+                if not isinstance(selector, list) or len(selector) != 2:
+                    continue
+                var_type = known.get((str(selector[0]), str(selector[1])))
+                if var_type:
+                    condition["varType"] = var_type
+                    touched = True
+        if touched:
+            changed.append(str(node.get("id") or ""))
+    return changed
