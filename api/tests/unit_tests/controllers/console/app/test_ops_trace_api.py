@@ -4,7 +4,7 @@ import inspect
 from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
@@ -13,6 +13,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.common.rbac import PlainApp
 from controllers.console import flask_admission
+from controllers.console.app import app as app_module
 from controllers.console.app import ops_trace as ops_trace_module
 from controllers.console.app.error import (
     AppNotFoundError,
@@ -21,12 +22,15 @@ from controllers.console.app.error import (
     TracingConfigNotFoundError,
     TracingConfigProcessingError,
     TracingConfigVerificationFailedError,
+    TracingProviderUnavailableError,
     UnsupportedTracingProviderError,
 )
+from core.ops.exceptions import TraceProviderNotInstalledError
 from libs.exception import BaseHTTPException
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
+from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import (
     AppTracingConfigAlreadyExistsError,
     AppTracingConfigAppNotFoundError,
@@ -34,7 +38,9 @@ from services.app_tracing_config_service import (
     AppTracingConfigInvalidProviderError,
     AppTracingConfigNotFoundError,
     AppTracingConfigProcessingError,
+    AppTracingConfigProviderUnavailableError,
     AppTracingConfigRecord,
+    AppTracingConfigService,
     AppTracingConfigVerificationFailedError,
 )
 from tests.unit_tests.config_override import apply_config_overrides
@@ -105,6 +111,52 @@ def tracing_configs(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
         lambda: SimpleNamespace(app_tracing_configs=service),
     )
     return service
+
+
+@pytest.mark.parametrize("method_name", ["get", "delete"])
+def test_trace_config_without_sdk_can_be_read_when_absent_or_deleted(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, method_name: str
+) -> None:
+    configs = MagicMock()
+    configs.get.return_value = None
+    configs.delete.return_value = True
+    service = AppTracingConfigService(configs=configs, provider=OpsTraceManagerGateway())
+    monkeypatch.setattr(
+        ops_trace_module,
+        "application_services",
+        lambda: SimpleNamespace(app_tracing_configs=service),
+    )
+
+    with patch.object(OpsTraceManagerGateway, "_provider_config") as load_provider:
+        load_provider.side_effect = TraceProviderNotInstalledError("weave", "wandb")
+        with app.test_request_context("/"):
+            result = _original(_CONTROLLER_METHODS[method_name])(
+                ops_trace_module.TraceAppConfigApi(),
+                ops_trace_module.TraceProviderQuery(tracing_provider="weave"),
+                _request_context(),
+                UUID(APP_ID),
+            )
+
+    assert result == ({"has_not_configured": True} if method_name == "get" else ("", 204))
+    load_provider.assert_not_called()
+    if method_name == "delete":
+        configs.delete.assert_called_once_with(workspace_id=WORKSPACE_ID, app_id=APP_ID, tracing_provider="weave")
+
+
+def test_enable_tracing_maps_missing_dependency_to_unavailable(app: Flask) -> None:
+    missing_dependency = TraceProviderNotInstalledError("weave", "wandb")
+    with patch.object(app_module.OpsTraceManager, "update_app_tracing_config", side_effect=missing_dependency):
+        with app.test_request_context("/"):
+            with pytest.raises(TracingProviderUnavailableError) as caught:
+                _original(app_module.AppTraceApi.post)(
+                    app_module.AppTraceApi(),
+                    app_module.AppTracePayload(enabled=True, tracing_provider="weave"),
+                    SimpleNamespace(id=APP_ID),
+                )
+
+    assert caught.value.code == 400
+    assert caught.value.error_code == "tracing_provider_unavailable"
+    assert caught.value.__cause__ is missing_dependency
 
 
 @pytest.mark.parametrize("method", _MUTATION_METHODS)
@@ -313,6 +365,30 @@ def test_trace_app_config_maps_missing_app_to_404(
 @pytest.mark.parametrize(
     ("method_name", "service_error", "expected_http_error", "expected_status", "expected_code"),
     [
+        pytest.param(
+            "get",
+            AppTracingConfigProviderUnavailableError(),
+            TracingProviderUnavailableError,
+            400,
+            "tracing_provider_unavailable",
+            id="get-unavailable-provider",
+        ),
+        pytest.param(
+            "post",
+            AppTracingConfigProviderUnavailableError(),
+            TracingProviderUnavailableError,
+            400,
+            "tracing_provider_unavailable",
+            id="post-unavailable-provider",
+        ),
+        pytest.param(
+            "patch",
+            AppTracingConfigProviderUnavailableError(),
+            TracingProviderUnavailableError,
+            400,
+            "tracing_provider_unavailable",
+            id="patch-unavailable-provider",
+        ),
         pytest.param(
             "post",
             AppTracingConfigAlreadyExistsError(),

@@ -1,4 +1,5 @@
 import collections
+import importlib.util
 import json
 import logging
 import os
@@ -39,6 +40,7 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
+from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.unified_trace.registry import UnifiedProviderConfigEntry, unified_provider_config_map
 from core.ops.utils import JSON_DICT_ADAPTER, get_message_data
 from extensions.ext_database import db
@@ -335,8 +337,10 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
 
                 case _:
                     raise KeyError(f"Unsupported tracing provider: {key}")
-        except ImportError:
-            raise ImportError(f"Provider {key} is not installed.")
+        except ModuleNotFoundError as error:
+            if error.name is None or importlib.util.find_spec(error.name.partition(".")[0]) is not None:
+                raise
+            raise TraceProviderNotInstalledError(key, error.name) from error
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -590,9 +594,11 @@ class OpsTraceManager:
         # auth check
         if tracing_provider is not None:
             try:
+                TracingProviderEnum(tracing_provider)
+            except ValueError as error:
+                raise ValueError(f"Invalid tracing provider: {tracing_provider}") from error
+            if enabled:
                 provider_config_map[tracing_provider]
-            except KeyError:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         app_config: App | None = db.session.get(App, app_id)
         if not app_config:

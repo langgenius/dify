@@ -14,6 +14,8 @@ Unlike VDB providers, trace plugins are **not** discovered via entry points. The
 
 At runtime, `OpsTraceManager` decrypts stored credentials, builds your config model, caches a trace instance, and calls `trace(trace_info)` with a concrete `BaseTraceInfo` subtype.
 
+Provider names are validated against `TracingProviderEnum` without importing the SDK. Reading an absent configuration, deleting a configuration, and disabling tracing do not require the provider's dependencies. Reading an existing configuration, creating or updating one, and enabling tracing load the provider. If its package or a required top-level module is not installed, the Console API returns HTTP 400 with `tracing_provider_unavailable`. Missing submodules of installed packages and other import failures retain their original errors.
+
 ## What you implement
 
 ### 1. Config model (`BaseTracingConfig`)
