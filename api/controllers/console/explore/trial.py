@@ -7,9 +7,8 @@ from uuid import UUID
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound, Unauthorized
+from werkzeug.exceptions import InternalServerError, NotFound, Unauthorized
 
 import services
 from controllers.common.fields import (
@@ -27,6 +26,7 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.app.error import (
+    AppNotFoundError,
     AppUnavailableError,
     AudioTooLargeError,
     CompletionRequestError,
@@ -40,7 +40,14 @@ from controllers.console.app.error import (
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
+from controllers.console.app.preview_admission import get_preview_app
 from controllers.console.app.wraps import get_previewable_app_model, with_session
+from controllers.console.explore.error import (
+    AppPreviewOwnerUnavailableError as AppPreviewOwnerUnavailableHttpError,
+)
+from controllers.console.explore.error import (
+    AppPreviewSiteUnavailableError as AppPreviewSiteUnavailableHttpError,
+)
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
@@ -74,17 +81,19 @@ from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
 from machinery.context import RequestContext
 from models import Account
-from models.account import TenantStatus
 from models.enums import CreatorUserRole
-from models.model import Site
 from models.workflow import Workflow
 from services.account_errors import AccountNotFoundError
-from services.account_service import TenantService
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.app_preview_query_service import (
+    AppPreviewOwnerUnavailableError,
+    AppPreviewRef,
+    AppPreviewSiteUnavailableError,
+    AppPreviewUnavailableError,
+)
 from services.app_ref_service import AppRefService
 from services.app_service import AppResponseView, AppService
 from services.audio_service import AudioService
-from services.dataset_service import DatasetService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -807,40 +816,31 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
-    @with_session(write=False)
-    @get_previewable_app_model(None)
-    def get(self, session: Session, app_model):
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app site info.
 
         Returns the site configuration for the application including theme, icons, and text.
         """
-        site = session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
-
-        if not site:
-            raise Forbidden()
-
-        tenant = TenantService.get_tenant_by_id(app_model.tenant_id, session=session)
-        assert tenant
-        if tenant.status == TenantStatus.ARCHIVE:
-            raise Forbidden()
-
-        return SiteResponse.model_validate(site).model_dump(mode="json")
+        try:
+            site = application_services().app_previews.get_site(app=app)
+        except AppPreviewSiteUnavailableError as error:
+            raise AppPreviewSiteUnavailableHttpError(str(error)) from error
+        except AppPreviewOwnerUnavailableError as error:
+            raise AppPreviewOwnerUnavailableHttpError(str(error)) from error
+        return dump_response(SiteResponse, site)
 
 
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
-    @with_session(write=False)
-    @get_previewable_app_model(None)
-    def get(self, session: Session, app_model):
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app parameters."""
 
-        if app_model is None:
-            raise AppUnavailableError()
-
         try:
-            parameters = application_services().app_definitions.get_parameters(app_model.id)
+            parameters = application_services().app_definitions.get_parameters(app.app_id)
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
 
@@ -885,23 +885,28 @@ class AppWorkflowApi(Resource):
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
-    @with_session(write=False)
-    @get_previewable_app_model(None)
-    def get(self, session: Session, app_model):
+    @get_preview_app
+    def get(self, app: AppPreviewRef) -> dict[str, object]:
+        # These legacy fields are response metadata: the query returns all
+        # requested IDs without pagination. Keep their integer fallback and echo behavior.
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         ids = request.args.getlist("ids")
 
-        tenant_id = app_model.tenant_id
-        if ids:
-            datasets, total = DatasetService.get_datasets_by_ids(ids, tenant_id, session=session)
-        else:
+        if not ids:
             raise NeedAddIdsError()
+        try:
+            datasets = application_services().app_previews.get_datasets(app=app, ids=ids)
+        except AppPreviewUnavailableError as error:
+            raise AppNotFoundError() from error
 
-        # `get_datasets_by_ids` resolves the ids it was handed in a single page
-        # (`per_page=len(ids)`), so `limit` never bounded this result and there is
-        # never a next page to ask for.
-        response = {"data": datasets, "has_more": False, "limit": limit, "total": total, "page": page}
+        response = {
+            "data": datasets,
+            "has_more": False,
+            "limit": limit,
+            "total": len(datasets),
+            "page": page,
+        }
         return dump_response(TrialDatasetListResponse, response)
 
 
