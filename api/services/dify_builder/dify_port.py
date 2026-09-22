@@ -69,8 +69,9 @@ from models.workflow import Workflow
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
-from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializedError
+from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
 from services.dify_builder.identity import load_app, resolve_account
+from services.dify_builder.preflight import preflight_errors
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.run_mapping import (
     error_from_stream_chunk,
@@ -286,6 +287,16 @@ class WorkflowServiceDifyPort:
                     scope="",
                     structure_fingerprint=graph_ops.structural_fingerprint(before_graph),
                 )
+
+            # Dry-validate what the draft would become. Whatever raises here
+            # would raise at Graph.init and kill the very first test run
+            # (ESQ1-302 and ESQ1-303 both died there). Only NEW problems count:
+            # a pre-existing broken node the repair did not touch must not veto
+            # an unrelated fix -- and a repair that heals it passes.
+            known_problems = set(preflight_errors(before_graph))
+            new_problems = [problem for problem in preflight_errors(graph) if problem not in known_problems]
+            if new_problems:
+                raise PreflightError("the draft would not start: " + "; ".join(new_problems))
 
             changes, scope = graph_ops.diff_graphs(before_graph, graph)
 
