@@ -419,6 +419,20 @@ def test_apply_connect_accepts_the_timeout_handle_on_a_human_input_node():
     assert new_graph["edges"][0]["sourceHandle"] == "__timeout"
 
 
+def test_apply_connect_accepts_true_on_a_legacy_if_else_without_cases():
+    # A pre-``cases`` if-else (top-level ``conditions``) routes its IF arm on
+    # "true" (graphon IfElseNodeData.iter_cases); it must not be refused.
+    legacy = {
+        "id": "legacy",
+        "data": {"type": "if-else", "logical_operator": "and", "conditions": []},
+    }
+    graph = {"nodes": [legacy, _TARGET], "edges": []}
+
+    new_graph, _ = apply_connect(graph, "legacy", "a", source_handle="true")
+
+    assert new_graph["edges"][0]["sourceHandle"] == "true"
+
+
 def test_apply_connect_still_accepts_any_handle_on_a_plain_node_type():
     plain = {"id": "llm1", "data": {"type": "llm"}}
     graph = {"nodes": [plain, _TARGET], "edges": []}
