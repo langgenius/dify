@@ -30,7 +30,7 @@ import re
 import uuid
 from typing import Any
 
-from core.dify_builder import credentials
+from core.dify_builder import credentials, urls
 from core.dify_builder.changes import describe_changed_nodes
 from core.dify_builder.contract import (
     AssistantTurnItem,
@@ -488,6 +488,23 @@ def _leading_start_var_name(text: str, start_id: str) -> str | None:
     return None
 
 
+def _host_start_var_names(url: str, start_id: str) -> set[str]:
+    """Start-node template variable names occupying ``url``'s HOST position
+    (``urls.host_is_templated``): the leading template of a url that starts
+    with one (``{{#s.h_url#}}/v1/render`` -- what grounding writes for an
+    invented host with a templated path/query), plus any template inside the
+    parsed host (``https://{{#s.host#}}/v1``). A template in the path or
+    query is never collected."""
+    names: set[str] = set()
+    leading = _leading_start_var_name(url, start_id)
+    if leading:
+        names.add(leading)
+    parts = urls.split_origin(url)
+    if parts is not None:
+        names |= _start_var_names(parts.host, start_id)
+    return names
+
+
 def _credential_line_var_names(text: str, start_id: str, key_is_credential) -> set[str]:
     """Start-variable templates in the VALUE half of each ``Key: Value`` line
     of a ``headers``/``params`` text block whose KEY names a credential per
@@ -533,9 +550,7 @@ def endpoint_variable_names(graph: Graph) -> set[str]:
         data = node.get("data") or {}
         if data.get("type") != "http-request":
             continue
-        leading = _leading_start_var_name(str(data.get("url") or ""), start_id)
-        if leading:
-            names.add(leading)
+        names |= _host_start_var_names(str(data.get("url") or ""), start_id)
         names |= _credential_line_var_names(str(data.get("headers") or ""), start_id, credentials.is_credential_key)
         names |= _credential_line_var_names(
             str(data.get("params") or ""), start_id, credentials.is_credential_param_key
