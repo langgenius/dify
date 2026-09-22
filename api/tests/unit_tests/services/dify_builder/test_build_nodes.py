@@ -789,3 +789,192 @@ def test_build_nodes_grounds_an_invented_api_key_param():
     assert http.args["config"]["params"] == "api_key: {{#s.h_api_key#}}"
     var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
     assert var["required"] is True
+
+
+# ---- Task 3 review fix round 1 ------------------------------------------
+
+
+def test_build_nodes_grounds_a_bare_key_param():
+    """Review item 2: a raw ``?key=...`` param is a common way an API names
+    its key; ``is_credential_key("key")`` alone is False (its last-segment
+    rule needs a qualifying prefix), so params get a params-only rule that
+    also treats a bare, whole ``key`` as a credential."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            params="key: YOUR_API_KEY",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["params"] == "key: {{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_leaves_cache_key_and_key_points_params_alone():
+    """The params-only bare-``key`` rule must not fire on a key that merely
+    ENDS in "key" as part of a longer word/segment."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            params="cache_key: YOUR_API_KEY\nkey_points: YOUR_API_KEY",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["params"] == "cache_key: YOUR_API_KEY\nkey_points: YOUR_API_KEY"
+    assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_grounds_an_empty_api_key_authorization_config():
+    """Review item 3: an empty ``config.api_key`` is never a valid credential
+    either -- it must ground exactly like a placeholder one, not pass through
+    and fail every run."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            authorization={"type": "api-key", "config": {"type": "bearer", "api_key": ""}},
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["authorization"]["config"]["api_key"] == "{{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_grounds_an_empty_credential_header_line():
+    """Review item 3, header/param side: ``Authorization:`` with nothing
+    after the colon is an empty credential, not a real one -- it must
+    ground too."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization:",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization:{{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_leaves_an_already_templated_credential_header_alone():
+    """Review item 4: a header that already reads a start variable (e.g.
+    from an earlier grounding pass, or one the model wrote itself) must
+    never be re-grounded -- even though the variable NAME can itself look
+    placeholder-shaped (``your_api_key`` matches CREDENTIAL_PLACEHOLDER_RE's
+    ``YOUR...KEY`` pattern). The template check must run BEFORE the
+    placeholder-shape check."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization: Bearer {{#s.your_api_key#}}",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.your_api_key#}}"
+    assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_grounds_a_bare_scheme_word_keeping_it():
+    """Review minor (b): a value that is EXACTLY a scheme word (nothing
+    after it -- ``strip_auth_scheme`` only strips a scheme FOLLOWED by
+    whitespace, so a bare word isn't recognised as empty by that helper
+    alone) is grounded while keeping the scheme word."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization: Bearer",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_grounds_a_credential_header_preserving_crlf_line_endings():
+    """Review minor (a): ``_replace_credential_value`` used to strip only
+    `` \\t``, so a ``\\r\\n``-terminated line's trailing ``\\r`` was treated
+    as part of the secret and silently dropped instead of preserved as a
+    line-ending character."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Content-Type: application/json\r\nAuthorization: Bearer YOUR_API_KEY\r\n",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["headers"] == (
+        "Content-Type: application/json\r\nAuthorization: Bearer {{#s.h_api_key#}}\r\n"
+    )
+
+
+def test_build_nodes_grounds_an_invented_secret_absent_from_trusted_text():
+    """Review minor (c), test 1: in trusted mode, a non-placeholder-shaped
+    but still invented secret (absent from what the user actually typed)
+    must ground -- not just an obviously placeholder-shaped one."""
+    goal = "Call https://api.acme.com/v1/render to render a slide deck."
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization: Bearer sk-invented",
+        ),
+        trusted_text=goal,
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_leaves_a_non_placeholder_secret_alone_in_placeholder_only_mode():
+    """Review minor (c), test 2: with no trusted_text at all, only an
+    unmistakably placeholder-shaped credential grounds -- a real-looking
+    secret is left alone rather than treated as invented just because there
+    is no goal text to check it against (mirrors the URL grounding's own
+    placeholder-only-mode behaviour)."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization: Bearer sk-live-abc123",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization: Bearer sk-live-abc123"
+    assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_grounds_both_an_invented_url_and_an_invented_header_on_the_same_node():
+    """Review minor (c), test 3: a node with both an invented URL and an
+    invented credential header gets BOTH a ``<node>_url`` and a
+    ``<node>_api_key`` start variable -- the two grounding passes share the
+    start-variable insertion write without clobbering each other."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.example.com/ppt/generate",
+            headers="Authorization: Bearer YOUR_API_KEY",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}"
+    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.h_api_key#}}"
+    assert {v["variable"] for v in start.args["config"]["variables"]} == {"h_url", "h_api_key"}
