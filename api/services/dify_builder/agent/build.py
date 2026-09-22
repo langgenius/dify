@@ -313,6 +313,12 @@ def _covering_step(plan_items: list[str], kind: str, label: str) -> int:
     return -1
 
 
+# A binder-produced suffix, or several stacked from repeated binds, trailing
+# a plan item. Stripped before each bind so a loop-back re-bind reflects only
+# the current selection instead of accumulating every past one.
+_TRAILING_USING_SUFFIX = re.compile(r"(\s*\(using [^()]*\))+\s*$")
+
+
 def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: list[str]) -> list[str]:
     """Name each selected resource on the plan step it covers.
 
@@ -320,6 +326,12 @@ def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: l
     end-node step read "(using deepseek-v4-flash, Code Interpreter)" while the
     step that needed a tool said nothing. The last step is now only the
     fallback for a resource no step names.
+
+    A loop-back (build.review / build.reverted -> re-walk resources ->
+    approve_plan) feeds the already-bound plan back in here, so every item's
+    trailing "(using ...)" suffix is stripped before binding fresh: a
+    deselected resource must not keep its old suffix, and a re-bind of the
+    same selection must not pile a duplicate on top of it.
     """
     inv = resources.list_tenant_resources(tenant_id)
     kinds: dict[str, str] = {}
@@ -328,15 +340,16 @@ def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: l
     kinds.update({r.id: "model" for r in inv.models})
     by_id = {r.id: r for r in (*inv.datasets, *inv.tools, *inv.models)}
     chosen = [by_id[rid] for rid in resource_ids if rid in by_id]
+    stripped = [_TRAILING_USING_SUFFIX.sub("", item) for item in plan_items]
     if not chosen:
-        return list(plan_items)
+        return stripped
     if not plan_items:
         return [f"Use {', '.join(r.label for r in chosen)}"]
     labels_by_step: dict[int, list[str]] = {}
     for ref in chosen:
-        index = _covering_step(plan_items, kinds[ref.id], ref.label)
-        labels_by_step.setdefault(index if index >= 0 else len(plan_items) - 1, []).append(ref.label)
-    bound = list(plan_items)
+        index = _covering_step(stripped, kinds[ref.id], ref.label)
+        labels_by_step.setdefault(index if index >= 0 else len(stripped) - 1, []).append(ref.label)
+    bound = list(stripped)
     for index, labels in labels_by_step.items():
         suffix = f" (using {', '.join(labels)})"
         if suffix not in bound[index]:
