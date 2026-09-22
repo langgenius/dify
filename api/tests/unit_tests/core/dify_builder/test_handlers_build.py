@@ -1555,6 +1555,50 @@ def test_run_test_prefills_the_form_with_mock_values():
     assert form.payload["values"]  # pre-filled from the mock, not an empty form
 
 
+def test_run_test_prefill_omits_a_placeholder_endpoint_but_keeps_other_fields():
+    """ESQ1-302 fix round 1: ``_ground_placeholder_endpoints`` re-points a
+    placeholder http-request URL at a required start variable, but the mock
+    generator invents just as plausible a URL for a text-input as it does for
+    anything else -- pre-filling that field hands the user another invented
+    endpoint instead of asking for the real one. It must stay empty, like an
+    upload field, while an ordinary text field is still pre-filled."""
+    from core.dify_builder.handlers_build import handle_execution
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "topic", "type": "text-input"},
+                        {"variable": "h_url", "type": "text-input", "required": True, "max_length": 2048},
+                    ],
+                },
+            },
+            {
+                "id": "h",
+                "data": {"type": "http-request", "title": "Call PPT API", "url": "{{#s.h_url#}}"},
+            },
+        ],
+        "edges": [],
+    }
+    env.agent.generate_mock_inputs = lambda _schema, _prior: {
+        "topic": "quarterly report",
+        "h_url": "https://api.example.com/invented",
+    }
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    fc = DifyBuilderContext(test_input_ref="")
+    result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
+    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    form = next(i for i in result.items if i.kind == "form")
+    assert form.payload["values"] == {"topic": "quarterly report"}  # h_url dropped, topic kept
+    assert [f["type"] for f in form.payload["fields"]] == ["text-input", "text-input"]  # both still asked for
+
+
 def test_run_test_still_asks_when_a_file_is_declared_among_other_variables():
     """Mixed schema: text can be mocked, but the file variable cannot -- the
     gate must still fire so a human can supply the upload."""
