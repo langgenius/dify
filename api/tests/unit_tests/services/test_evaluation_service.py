@@ -9,7 +9,9 @@ import pytest
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
+from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import (
+    AgentToolCall,
     CustomizedMetricOutputField,
     CustomizedMetrics,
     DefaultMetric,
@@ -64,6 +66,40 @@ def test_parse_csv_dataset_preserves_node_specific_references() -> None:
     assert items[0].index == 7
     assert items[0].inputs == {"query": "hello"}
     assert items[0].expected_outputs == {"Judge: final": "world"}
+
+
+def test_parse_dataset_preserves_node_specific_expected_tool_calls() -> None:
+    items = EvaluationService._rows_to_dataset_items(
+        [
+            ["index", "query", "Research Agent : expected_tool_calls"],
+            [
+                7,
+                "weather in Paris",
+                json.dumps([{"name": "weather", "arguments": {"city": "Paris"}}]),
+            ],
+        ]
+    )
+
+    assert items[0].inputs == {"query": "weather in Paris"}
+    assert items[0].expected_tool_calls_by_node == {
+        "Research Agent": [AgentToolCall(name="weather", arguments={"city": "Paris"})]
+    }
+    assert items[0].iter_expected_output_columns() == [
+        (
+            "Research Agent : expected_tool_calls",
+            '[{"arguments": {"city": "Paris"}, "name": "weather"}]',
+        )
+    ]
+
+
+def test_parse_dataset_rejects_invalid_expected_tool_calls() -> None:
+    with pytest.raises(EvaluationDatasetInvalidError, match="JSON array of tool calls.*7"):
+        EvaluationService._rows_to_dataset_items(
+            [
+                ["index", "query", "Agent : expected_tool_calls"],
+                [7, "hello", '{"name": "weather"}'],
+            ]
+        )
 
 
 def test_parse_csv_dataset_rejects_duplicate_indices() -> None:
@@ -127,6 +163,60 @@ def test_dataset_validation_allows_reference_free_metrics() -> None:
     EvaluationService._validate_dataset_expected_outputs(items, metrics)
 
 
+def test_dataset_validation_requires_reference_tool_calls_for_ragas_agent_metric() -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_output.return_value = False
+    evaluation_instance.metric_requires_expected_tool_calls.side_effect = lambda metric: metric == "tool_call_accuracy"
+    metrics = [
+        DefaultMetric(
+            metric="tool_call_accuracy",
+            node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Research Agent")],
+        )
+    ]
+
+    with pytest.raises(EvaluationDatasetInvalidError, match="expected_tool_calls.*7"):
+        EvaluationService._validate_dataset_expected_outputs(
+            [EvaluationDatasetInput(index=7, inputs={"query": "hello"})],
+            metrics,
+            evaluation_instance=evaluation_instance,
+        )
+
+    EvaluationService._validate_dataset_expected_outputs(
+        [
+            EvaluationDatasetInput(
+                index=7,
+                inputs={"query": "hello"},
+                expected_tool_calls_by_node={
+                    "Research Agent": [AgentToolCall(name="search", arguments={"query": "hello"})]
+                },
+            )
+        ],
+        metrics,
+        evaluation_instance=evaluation_instance,
+    )
+
+
+def test_expected_tool_call_columns_are_generated_for_reference_based_agent_metrics() -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_tool_calls.side_effect = lambda metric: metric == "tool_call_accuracy"
+
+    columns = EvaluationService._get_expected_tool_call_columns(
+        [
+            DefaultMetric(
+                metric="tool_call_accuracy",
+                node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Research Agent")],
+            ),
+            DefaultMetric(
+                metric="argument_correctness",
+                node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Research Agent")],
+            ),
+        ],
+        evaluation_instance=evaluation_instance,
+    )
+
+    assert columns == [{"name": "Research Agent : expected_tool_calls", "type": "string"}]
+
+
 def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPatch) -> None:
     session = MagicMock()
     session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
@@ -156,6 +246,72 @@ def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPa
             target_id="app-1",
             data=config,
         )
+
+
+def test_validate_config_rejects_agent_v2(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
+    workflow = SimpleNamespace(
+        walk_nodes=lambda: iter(
+            [
+                (
+                    "agent-1",
+                    {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+                )
+            ]
+        ),
+        user_input_form=lambda: [],
+    )
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
+    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["argument_correctness"]))
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_embeddings.return_value = False
+    monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=evaluation_instance),
+    )
+    config = EvaluationConfigData(
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="argument_correctness",
+                node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Agent")],
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="Agent V2.*does not support"):
+        EvaluationService.validate_evaluation_config(
+            session=session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="app-1",
+            data=config,
+        )
+
+
+def test_agent_node_discovery_includes_legacy_agent_and_excludes_agent_v2() -> None:
+    workflow = SimpleNamespace(
+        walk_nodes=lambda: iter(
+            [
+                ("legacy-agent", {"type": "agent", "version": "2", "title": "Legacy Agent"}),
+                (
+                    "agent-v2",
+                    {
+                        "type": "agent",
+                        "version": "2",
+                        "agent_node_kind": "dify_agent",
+                        "title": "Agent V2",
+                    },
+                ),
+            ]
+        )
+    )
+
+    nodes = EvaluationService._nodes_for_metrics_from_workflow(workflow, ["argument_correctness"])
+
+    assert nodes == {"argument_correctness": [{"node_id": "legacy-agent", "type": "agent", "title": "Legacy Agent"}]}
 
 
 def test_validate_config_requires_default_embedding_for_embedding_metrics(
@@ -191,6 +347,47 @@ def test_validate_config_requires_default_embedding_for_embedding_metrics(
     )
 
     validate_embeddings.assert_called_once_with(tenant_id="tenant-1")
+
+
+def test_validate_config_does_not_require_embeddings_for_deepeval_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
+    workflow = SimpleNamespace(
+        walk_nodes=lambda: iter([("node-1", {"type": "llm"})]),
+        user_input_form=lambda: [],
+    )
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_embeddings.return_value = False
+    evaluation_instance.get_supported_metrics.return_value = ["answer_relevancy"]
+    monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=evaluation_instance),
+    )
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
+    validate_embeddings = MagicMock()
+    monkeypatch.setattr(EvaluationService, "_validate_default_embedding_model", validate_embeddings)
+    config = EvaluationConfigData(
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="answer_relevancy",
+                node_info_list=[NodeInfo(node_id="node-1", type="llm", title="LLM")],
+            )
+        ],
+    )
+
+    EvaluationService.validate_evaluation_config(
+        session=session,
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        data=config,
+    )
+
+    validate_embeddings.assert_not_called()
 
 
 def test_validate_knowledge_base_config_uses_retrieval_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -750,6 +947,7 @@ def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
         evaluation_model_provider="provider",
         evaluation_model="model",
         default_metrics=[DefaultMetric(metric="context_relevance", node_info_list=[])],
+        evaluation_framework=EvaluationFrameworkEnum.DEEPEVAL,
         dataset_input_types={"query": "string"},
     )
     run = EvaluationRun(
@@ -780,9 +978,12 @@ def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
     )
     sqlite_session.add_all([tenant, run, checkpoint])
     sqlite_session.commit()
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_output.return_value = False
+    get_evaluation_instance = MagicMock(return_value=evaluation_instance)
     monkeypatch.setattr(
         "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=object()),
+        get_evaluation_instance,
     )
     apply_async = MagicMock()
     monkeypatch.setattr("tasks.evaluation_task.run_evaluation.apply_async", apply_async)
@@ -814,6 +1015,8 @@ def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
         {"query": "first"},
         {"query": "second"},
     ]
+    assert dispatched_payload["evaluation_framework"] == "deepeval"
+    get_evaluation_instance.assert_called_once_with(EvaluationFrameworkEnum.DEEPEVAL)
 
     with pytest.raises(ValueError, match="Only failed"):
         EvaluationService.retry_evaluation_run(
@@ -838,8 +1041,12 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
 
     session.add.side_effect = assign_run_id
     monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_configured_framework",
+        MagicMock(return_value=EvaluationFrameworkEnum.DEEPEVAL),
+    )
+    monkeypatch.setattr(
         "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=object()),
+        MagicMock(return_value=MagicMock()),
     )
     monkeypatch.setattr(
         EvaluationService,
@@ -875,9 +1082,11 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
     )
 
     assert run.target_workflow_version_id == "workflow-version-7"
+    assert run.config_snapshot_dict["evaluation_framework"] == "deepeval"
     assert run.config_snapshot_dict["dataset_input_types"] == {"query": "string", "enabled": "boolean"}
     dispatch_kwargs = apply_async.call_args.kwargs
     assert set(dispatch_kwargs) == {"args", "task_id"}
+    assert dispatch_kwargs["args"][0]["evaluation_framework"] == "deepeval"
     dispatched_payload = dispatch_kwargs["args"][0]
     assert dispatched_payload["target_workflow_version_id"] == "workflow-version-7"
     assert dispatched_payload["input_list"][0]["inputs"] == {"query": "hello", "enabled": True}

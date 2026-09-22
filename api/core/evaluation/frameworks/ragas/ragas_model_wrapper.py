@@ -3,7 +3,7 @@ import logging
 from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from langchain_core.outputs import ChatGeneration, LLMResult
+from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, Generation, GenerationChunk, LLMResult
 from langchain_core.prompt_values import PromptValue
 from ragas.llms.base import BaseRagasLLM
 
@@ -72,7 +72,7 @@ class DifyModelWrapper(BaseRagasLLM):
         prompt_messages = _convert_prompt_value(prompt)
         model_instance = self._get_model_instance()
 
-        generations: list[list[ChatGeneration]] = [[]]
+        generations: list[list[Generation | ChatGeneration | GenerationChunk | ChatGenerationChunk]] = [[]]
         completions = max(1, n)
         for _ in range(completions):
             result = model_instance.invoke_llm(

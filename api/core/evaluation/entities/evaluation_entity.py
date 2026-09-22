@@ -2,14 +2,16 @@ import json
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
+from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.judgment_entity import JudgmentConfig, JudgmentResult
 
 
 class EvaluationCategory(StrEnum):
     LLM = "llm"
     RETRIEVAL = "knowledge_retrieval"
+    AGENT = "agent"
     WORKFLOW = "workflow"
     SNIPPET = "snippet"
     KNOWLEDGE_BASE = "knowledge_base"
@@ -67,6 +69,18 @@ class EvaluationMetricName(StrEnum):
         than against a reference answer.
         Required fields: user_input, retrieved_contexts.
 
+    ── Agent metrics ──────────────────────────────────────────────────────────────
+    ARGUMENT_CORRECTNESS
+        Uses an LLM judge to decide whether the arguments passed to tools are
+        appropriate for the user's task. It does not require reference tool
+        calls and is intentionally distinct from exact trace matching.
+        Required fields: user_input, tools_called.
+
+    TOOL_CALL_ACCURACY
+        Compares the actual tool names, order, and arguments with reference
+        tool calls supplied in the evaluation dataset.
+        Required fields: tools_called, expected_tool_calls.
+
     """
 
     # LLM / general text-quality metrics
@@ -79,6 +93,12 @@ class EvaluationMetricName(StrEnum):
     CONTEXT_PRECISION = "context_precision"
     CONTEXT_RECALL = "context_recall"
     CONTEXT_RELEVANCE = "context_relevance"
+
+    # Agent metrics. These names intentionally preserve their framework
+    # semantics instead of presenting judge-based and reference-based scores
+    # as the same metric.
+    ARGUMENT_CORRECTNESS = "argument_correctness"
+    TOOL_CALL_ACCURACY = "tool_call_accuracy"
 
 
 # Per-category canonical metric lists used by get_supported_metrics().
@@ -95,6 +115,11 @@ RETRIEVAL_METRIC_NAMES: list[EvaluationMetricName] = [
     EvaluationMetricName.CONTEXT_RELEVANCE,  # Per-chunk relevance to the query
 ]
 
+AGENT_METRIC_NAMES: list[EvaluationMetricName] = [
+    EvaluationMetricName.ARGUMENT_CORRECTNESS,
+    EvaluationMetricName.TOOL_CALL_ACCURACY,
+]
+
 WORKFLOW_METRIC_NAMES: list[EvaluationMetricName] = [
     EvaluationMetricName.FAITHFULNESS,
     EvaluationMetricName.ANSWER_RELEVANCY,
@@ -104,6 +129,7 @@ WORKFLOW_METRIC_NAMES: list[EvaluationMetricName] = [
 METRIC_NODE_TYPE_MAPPING: dict[str, str] = {
     **{m.value: "llm" for m in LLM_METRIC_NAMES},
     **{m.value: "knowledge-retrieval" for m in RETRIEVAL_METRIC_NAMES},
+    **{m.value: "agent" for m in AGENT_METRIC_NAMES},
 }
 
 METRIC_VALUE_TYPE_MAPPING: dict[str, str] = {
@@ -114,6 +140,8 @@ METRIC_VALUE_TYPE_MAPPING: dict[str, str] = {
     EvaluationMetricName.CONTEXT_PRECISION: "number",
     EvaluationMetricName.CONTEXT_RECALL: "number",
     EvaluationMetricName.CONTEXT_RELEVANCE: "number",
+    EvaluationMetricName.ARGUMENT_CORRECTNESS: "number",
+    EvaluationMetricName.TOOL_CALL_ACCURACY: "number",
 }
 
 
@@ -138,19 +166,40 @@ class EvaluationItemInput(BaseModel):
     context: list[str] | None = None
 
 
+class AgentToolCall(BaseModel):
+    """Framework-neutral representation of one legacy Agent tool call."""
+
+    name: str = Field(min_length=1)
+    arguments: dict[str, Any] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("arguments", "args", "input_parameters"),
+    )
+    output: Any | None = None
+
+
+class AgentEvaluationItem(EvaluationItemInput):
+    """Agent evaluation input with actual and optional reference tool calls."""
+
+    tool_calls: list[AgentToolCall] = Field(default_factory=list)
+    expected_tool_calls: list[AgentToolCall] | None = None
+
+
 class EvaluationDatasetInput(BaseModel):
     """Parsed dataset row used throughout evaluation execution.
 
     ``expected_output`` keeps backward compatibility with the original
     single-reference template. When users upload node-specific reference
     columns such as ``LLM 1 : expected_output``, they are stored in
-    ``expected_outputs`` and resolved by node title at execution time.
+    ``expected_outputs`` and resolved by node title at execution time. Agent
+    reference traces follow the same convention with ``expected_tool_calls``.
     """
 
     index: int
     inputs: dict[str, Any]
     expected_output: str | None = None
     expected_outputs: dict[str, str] = Field(default_factory=dict)
+    expected_tool_calls: list[AgentToolCall] | None = None
+    expected_tool_calls_by_node: dict[str, list[AgentToolCall]] = Field(default_factory=dict)
 
     def get_expected_output_for_node(self, node_title: str | None) -> str | None:
         """Return the best matching reference answer for the given node title."""
@@ -166,6 +215,19 @@ class EvaluationDatasetInput(BaseModel):
 
         return None
 
+    def get_expected_tool_calls_for_node(self, node_title: str | None) -> list[AgentToolCall] | None:
+        """Return reference tool calls scoped to a node, with legacy fallback."""
+        if node_title and node_title in self.expected_tool_calls_by_node:
+            return self.expected_tool_calls_by_node[node_title]
+
+        if self.expected_tool_calls is not None:
+            return self.expected_tool_calls
+
+        if len(self.expected_tool_calls_by_node) == 1:
+            return next(iter(self.expected_tool_calls_by_node.values()))
+
+        return None
+
     def serialize_expected_output(self) -> str | None:
         """Serialize references for persistence and API responses.
 
@@ -173,15 +235,25 @@ class EvaluationDatasetInput(BaseModel):
         are stored as JSON so history/detail APIs can still expose the full
         uploaded payload without changing the database schema.
         """
-        if self.expected_output is not None and not self.expected_outputs:
+        has_tool_call_references = self.expected_tool_calls is not None or bool(self.expected_tool_calls_by_node)
+        if self.expected_output is not None and not self.expected_outputs and not has_tool_call_references:
             return self.expected_output
 
-        if not self.expected_outputs:
+        if not self.expected_outputs and not has_tool_call_references:
             return None
 
-        serialized_expected_outputs = dict(self.expected_outputs)
+        serialized_expected_outputs: dict[str, Any] = dict(self.expected_outputs)
         if self.expected_output is not None:
             serialized_expected_outputs = {"expected_output": self.expected_output, **serialized_expected_outputs}
+
+        if self.expected_tool_calls is not None:
+            serialized_expected_outputs["expected_tool_calls"] = [
+                tool_call.model_dump(mode="json", exclude_none=True) for tool_call in self.expected_tool_calls
+            ]
+        for node_title, tool_calls in self.expected_tool_calls_by_node.items():
+            serialized_expected_outputs[f"{node_title} : expected_tool_calls"] = [
+                tool_call.model_dump(mode="json", exclude_none=True) for tool_call in tool_calls
+            ]
 
         return json.dumps(serialized_expected_outputs, ensure_ascii=False, sort_keys=True)
 
@@ -194,7 +266,20 @@ class EvaluationDatasetInput(BaseModel):
         for node_title, value in self.expected_outputs.items():
             columns.append((f"{node_title} : expected_output", value))
 
+        if self.expected_tool_calls is not None:
+            columns.append(("expected_tool_calls", _serialize_tool_calls(self.expected_tool_calls)))
+        for node_title, tool_calls in self.expected_tool_calls_by_node.items():
+            columns.append((f"{node_title} : expected_tool_calls", _serialize_tool_calls(tool_calls)))
+
         return columns
+
+
+def _serialize_tool_calls(tool_calls: list[AgentToolCall]) -> str:
+    return json.dumps(
+        [tool_call.model_dump(mode="json", exclude_none=True) for tool_call in tool_calls],
+        ensure_ascii=False,
+        sort_keys=True,
+    )
 
 
 class EvaluationItemResult(BaseModel):
@@ -251,6 +336,7 @@ class EvaluationRunRequest(EvaluationConfigData):
 class EvaluationRunSnapshot(EvaluationRunRequest):
     """Immutable run configuration plus the target's pinned dataset input schema."""
 
+    evaluation_framework: EvaluationFrameworkEnum = EvaluationFrameworkEnum.RAGAS
     dataset_input_types: dict[str, str] = Field(default_factory=dict)
 
 
@@ -262,6 +348,7 @@ class EvaluationRunData(BaseModel):
     target_type: str
     target_id: str
     target_workflow_version_id: str | None = None
+    evaluation_framework: EvaluationFrameworkEnum = EvaluationFrameworkEnum.RAGAS
     evaluation_model_provider: str
     evaluation_model: str
     default_metrics: list[DefaultMetric] = Field(default_factory=list)
