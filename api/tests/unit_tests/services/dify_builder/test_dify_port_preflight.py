@@ -191,3 +191,40 @@ def test_apply_repair_counts_a_node_the_chokepoint_normalizer_heals_as_changed(m
     assert set(result.changed_nodes) == {"node1", "node2"}
     _, kwargs = sync.call_args
     assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] == "60"
+
+
+def _http_create_intent(node_id: str, authorization: dict) -> MutationIntent:
+    config = {
+        "title": "Call",
+        "method": "post",
+        "url": "https://x.test/a",
+        "authorization": authorization,
+        "headers": "",
+        "params": "",
+        "body": {"type": "none", "data": []},
+    }
+    return MutationIntent(op="create_node", args={"node_type": "http-request", "node_id": node_id, "config": config})
+
+
+def test_apply_repair_heals_an_authorization_without_type_and_writes(mock_session: MagicMock):
+    """The live E2E crash: this shape made the preflight raise KeyError out of
+    ``apply_repair`` and failed the Build session. The chokepoint normalizer
+    now fills the type, so the repair is written."""
+    intents = [_http_create_intent("node5", {"config": {"type": "bearer", "api_key": "{{#node1.key#}}"}})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+    assert "node5" in result.changed_nodes
+    _, kwargs = sync.call_args
+    written = next(n for n in kwargs["graph"]["nodes"] if n["id"] == "node5")
+    assert written["data"]["authorization"]["type"] == "api-key"
+
+
+def test_apply_repair_rejects_a_crashing_node_it_cannot_heal_instead_of_raising_it(mock_session: MagicMock):
+    """A shape no normalizer heals (a present but invalid ``type`` also makes
+    graphon raise KeyError) is a preflight PROBLEM -- a PreflightError the
+    handlers already catch -- never a KeyError that ends the session."""
+    intents = [_http_create_intent("node5", {"type": "bearer", "config": {"type": "bearer", "api_key": "x"}})]
+
+    with pytest.raises(PreflightError, match=r"node 'node5' \(http-request\): KeyError"):
+        _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
