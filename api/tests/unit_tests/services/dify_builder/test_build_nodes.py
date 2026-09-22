@@ -249,6 +249,9 @@ def test_terminal_retry_instruction_keeps_topology_text_for_a_topology_error():
     assert "'end' node" in instruction
     assert "answer" in instruction.lower()
     assert "PLAN TEXT" in instruction
+    # the reference-specific guidance is keyed on the error CODE -- absent when
+    # no error is UNRESOLVED_REFERENCE
+    assert build._UNRESOLVED_REFERENCE_GUIDANCE not in instruction
 
 
 def test_build_nodes_retries_twice_then_succeeds_within_budget():
@@ -336,6 +339,16 @@ def test_build_nodes_stops_after_three_attempts_and_reports_every_error():
     # the final attempt's errors are ALL present in the card -- not truncated to the first
     assert "Tool acme/render is not installed for this tenant" in result.error
     assert "Edge target node not found: 'e9'" in result.error
+    # the offending node id travels with its error, so a build with several tool
+    # nodes tells the user WHICH one -- not just that "a" tool is missing
+    assert "'h'" in result.error
+    # Assert the CARD TEXT, not the join argument: each error is already
+    # bullet-prefixed, so joining them with "; " rendered
+    # "- X (node 'h'); - Y" -- one run-on line with a stray bullet mid-sentence.
+    assert result.error == (
+        "- UNKNOWN_TOOL: Tool acme/render is not installed for this tenant (node 'h')\n"
+        "- DANGLING_EDGE: Edge target node not found: 'e9'"
+    )
     assert len(result.diagnostics) == 3
 
 
