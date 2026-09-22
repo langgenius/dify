@@ -38,8 +38,8 @@ accessible name. Use `render` only when the surrounding heading hierarchy calls 
 </Infotip>
 ```
 
-Use `InfotipDescription` only for a concise description that should be announced with the dialog.
-Do not wrap the whole popup body in it; links and structured content should remain normal children.
+Keep explanations, links, and other structured content as normal popup children rather than
+turning the whole body into the dialog description.
 
 A few rules:
 
