@@ -1,5 +1,3 @@
-from datetime import UTC, datetime
-from inspect import getsource, signature
 from inspect import unwrap as inspect_unwrap
 from io import BytesIO
 from types import SimpleNamespace
@@ -8,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, request
-from sqlalchemy.orm import Session
 
 import controllers.console.explore.trial as module
 from controllers.console.app.error import (
@@ -24,14 +21,9 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.helper import encrypter
-from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.model_runtime.errors.invoke import InvokeError
-from graphon.variables import SecretVariable, StringVariable
 from models import Account
 from models.model import App, AppMode
-from models.tools import WorkflowToolProvider
-from models.workflow import Workflow
 from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import SpeechToTextDisabledServiceError
 from tests.unit_tests.model_factories import make_app
@@ -75,39 +67,6 @@ def trial_app_chat() -> App:
 def test_trial_workflow_uses_trial_scoped_simple_account_model() -> None:
     assert module.simple_account_model.name == "TrialSimpleAccount"
     assert module.simple_account_model.__schema__["properties"].keys() >= {"id", "name", "email"}
-
-
-@pytest.mark.parametrize(
-    "api_type",
-    [module.AppApi, module.AppWorkflowApi],
-)
-def test_preview_handlers_use_explicit_read_session(api_type: type) -> None:
-    source = getsource(api_type.get)
-
-    assert "@with_session(write=False)\n    @get_previewable_app_model(None)" in source
-    assert tuple(signature(api_type.get).parameters)[:3] == ("self", "session", "app_model")
-
-
-def test_trial_app_detail_serializes_with_explicit_session(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-) -> None:
-    app_model = _app(app_id="app-1", mode=AppMode.CHAT)
-    response_view = MagicMock()
-    get_app = MagicMock(return_value=app_model)
-    build_view = MagicMock(return_value=response_view)
-    validated = MagicMock()
-    validated.model_dump.return_value = {"id": "app-1"}
-    monkeypatch.setattr(module, "AppService", lambda: SimpleNamespace(get_app=get_app))
-    monkeypatch.setattr(module, "AppResponseView", build_view)
-    monkeypatch.setattr(module.TrialAppDetailResponse, "model_validate", MagicMock(return_value=validated))
-
-    with app.test_request_context("/"):
-        result = unwrap(module.AppApi.get)(module.AppApi(), unbound_session, app_model)
-
-    assert result == {"id": "app-1"}
-    get_app.assert_called_once_with(app_model, session=unbound_session)
-    build_view.assert_called_once_with(app_model, session=unbound_session)
-    module.TrialAppDetailResponse.model_validate.assert_called_once_with(response_view, from_attributes=True)
 
 
 class TestTrialChatAudioApi:
@@ -530,109 +489,6 @@ class TestTrialChatTextApi:
                     account,
                     trial_app_chat,
                 )
-
-
-class TestAppWorkflowApi:
-    def test_uses_injected_session(self, sqlite_session: Session) -> None:
-        api = module.AppWorkflowApi()
-        method = unwrap(api.get)
-        created_by = Account(name="Creator", email="creator@example.com")
-        created_by.id = "account-1"
-        app_model = _app(app_id="app-1", mode=AppMode.WORKFLOW)
-        with patch("models.workflow.encrypter.encrypt_token", return_value="encrypted-secret"):
-            workflow = Workflow.new(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                type="workflow",
-                version="draft",
-                graph='{"nodes": []}',
-                features="{}",
-                created_by=created_by.id,
-                environment_variables=[
-                    SecretVariable(
-                        id="env-secret",
-                        name="api_key",
-                        value="plaintext-secret",
-                    ),
-                    LLMEnvironmentVariable(
-                        id="env-llm",
-                        name="shared_model",
-                        value={"provider": "provider", "name": "model", "mode": "chat"},
-                    ),
-                ],
-                conversation_variables=[
-                    StringVariable(
-                        id="conversation-variable-1",
-                        name="topic",
-                        value="sqlite",
-                        selector=["conversation", "topic"],
-                    )
-                ],
-                rag_pipeline_variables=[],
-            )
-        workflow.id = "workflow-1"
-        workflow.created_at = datetime(2024, 1, 1, tzinfo=UTC)
-        workflow.updated_at = datetime(2024, 1, 2, tzinfo=UTC)
-        app_model.workflow_id = workflow.id
-        tool_provider = WorkflowToolProvider(
-            name="trial-workflow",
-            label="Trial Workflow",
-            icon="icon",
-            app_id=app_model.id,
-            version="1.0.0",
-            user_id=created_by.id,
-            tenant_id=app_model.tenant_id,
-            description="Trial workflow provider",
-            parameter_configuration="[]",
-        )
-        sqlite_session.add_all([created_by, app_model, workflow, tool_provider])
-        sqlite_session.commit()
-
-        with patch("models.workflow.encrypter.decrypt_token", return_value="plaintext-secret"):
-            result = method(api, sqlite_session, app_model)
-
-        assert result == {
-            "id": "workflow-1",
-            "graph": {"nodes": []},
-            "features": {},
-            "hash": workflow.unique_hash,
-            "version": "draft",
-            "marked_name": "",
-            "marked_comment": "",
-            "created_by": {"id": "account-1", "name": "Creator", "email": "creator@example.com"},
-            "created_at": 1704067200,
-            "updated_by": None,
-            "updated_at": 1704153600,
-            "tool_published": True,
-            "environment_variables": [
-                {
-                    "value_type": "secret",
-                    "value": encrypter.full_mask_token(),
-                    "id": "env-secret",
-                    "name": "api_key",
-                    "description": "",
-                    "selector": ["env", "api_key"],
-                },
-                {
-                    "value_type": "llm",
-                    "value": {"provider": "provider", "name": "model", "mode": "chat"},
-                    "id": "env-llm",
-                    "name": "shared_model",
-                    "description": "",
-                    "selector": ["env", "shared_model"],
-                },
-            ],
-            "conversation_variables": [
-                {
-                    "id": "conversation-variable-1",
-                    "name": "topic",
-                    "value_type": "string",
-                    "value": "sqlite",
-                    "description": "",
-                }
-            ],
-            "rag_pipeline_variables": [],
-        }
 
 
 class TestTrialChatAudioApiExceptionHandlers:

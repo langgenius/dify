@@ -9351,7 +9351,7 @@ Remove one or more tag bindings from a target.
 | 200 | Success | **application/json**: [TagResponse](#tagresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}
-**Get app detail**
+**Get app detail using the viewer's workspace for tool configuration**
 
 #### Parameters
 
@@ -9540,7 +9540,7 @@ Returns the site configuration for the application including theme, icons, and t
 | 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/workflows
-**Get workflow detail**
+**Get a detached workflow definition after catalog preview admission**
 
 #### Parameters
 
