@@ -238,3 +238,39 @@ def test_is_user_supplied_host_checks_url_hosts_and_scheme_less_hosts():
     assert us.is_user_supplied_host("api.x.com", "call api.x.com please") is True
     assert us.is_user_supplied_host("api.y.com", "call api.x.com please") is False
     assert us.is_user_supplied_host("", "anything") is False
+
+
+# --- Final review M1: a short remainder is never a verbatim match ----------
+
+
+def test_is_user_supplied_secret_false_for_a_short_remainder_the_goal_merely_contains():
+    # "Bearer key" is not a supplied secret just because the goal says "key".
+    assert us.is_user_supplied_secret("Bearer key", "use my API key") is False
+    assert us.is_user_supplied_secret("abcdefg", "the key is abcdefg") is False  # 7 chars
+
+
+def test_is_user_supplied_secret_true_for_an_eight_character_remainder_in_the_goal():
+    assert us.is_user_supplied_secret("Bearer abcdefgh", "the key is abcdefgh") is True
+
+
+# --- Final review M2: more real credential keys, still no lookalikes -------
+
+
+def test_is_credential_key_true_for_subscription_cookie_credential_and_bearer_keys():
+    for key in (
+        "Ocp-Apim-Subscription-Key",
+        "subscription_key",
+        "Cookie",
+        "Set-Cookie",
+        "credential",
+        "client_credentials",
+        "X-Credentials",
+        "Bearer",
+        "x-bearer",
+    ):
+        assert us.is_credential_key(key), key
+
+
+def test_is_credential_key_still_false_for_header_and_limit_lookalikes():
+    for key in ("accept_header", "password_policy", "token_limit", "subscription", "subscription_plan"):
+        assert not us.is_credential_key(key), key

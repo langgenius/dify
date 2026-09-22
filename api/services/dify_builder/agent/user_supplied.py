@@ -54,6 +54,10 @@ _TEMPLATE_MARKER = "{{#"
 
 _AUTH_SCHEME_PREFIX_RE = re.compile(r"^(?:bearer|basic|token)\s+", re.IGNORECASE)
 
+# The shortest secret a verbatim match in the user's text can vouch for;
+# anything shorter is as likely an ordinary word of their prose.
+_MIN_VERBATIM_SECRET_LENGTH = 8
+
 # Case-insensitive tokens an LLM writes in place of a secret it doesn't have.
 CREDENTIAL_PLACEHOLDER_RE = re.compile(
     r"YOUR[_-]?(API[_-]?)?(KEY|TOKEN|SECRET)"
@@ -140,6 +144,11 @@ def is_user_supplied_secret(value: str, trusted_text: str) -> bool:
     """True iff ``value`` -- after stripping a leading ``Bearer ``/``Basic
     ``/``Token `` auth-scheme prefix -- is a literal the user actually
     wrote, rather than an LLM's placeholder for a secret it does not have.
+
+    The verbatim match needs a remainder of at least
+    ``_MIN_VERBATIM_SECRET_LENGTH`` characters: a short one (``Bearer key``)
+    is a substring of ordinary prose ("use my API key"), not proof the user
+    typed it, so it is treated as not user-supplied.
     """
     remainder = strip_auth_scheme(value)
     if not remainder:
@@ -148,7 +157,7 @@ def is_user_supplied_secret(value: str, trusted_text: str) -> bool:
         return True
     if CREDENTIAL_PLACEHOLDER_RE.search(remainder):
         return False
-    return remainder in (trusted_text or "")
+    return len(remainder) >= _MIN_VERBATIM_SECRET_LENGTH and remainder in (trusted_text or "")
 
 
 def trusted_text_for(goal_text: str, requirements: Mapping[str, Any]) -> str:
