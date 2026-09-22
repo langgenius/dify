@@ -442,7 +442,7 @@ def test_fake_dify_port_exposes_graph_primitives():
 
 
 def test_fake_build_dify_port_apply_repair_sets_structure_fingerprint():
-    from services.dify_builder import node_defaults
+    from core.dify_builder import node_defaults
     from services.dify_builder.graph_ops import structural_fingerprint
     from tests.unit_tests.core.dify_builder.fakes import BuiltinNodeTypes, FakeBuildDifyPort
 

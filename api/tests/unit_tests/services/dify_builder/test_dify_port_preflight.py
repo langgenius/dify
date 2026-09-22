@@ -305,3 +305,31 @@ def test_apply_repair_rejects_a_crashing_node_it_cannot_heal_instead_of_raising_
 
     with pytest.raises(PreflightError, match=r"node 'node5' \(http-request\): KeyError"):
         _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+
+def test_apply_repair_writes_a_template_transform_the_llm_created_without_variables(mock_session: MagicMock):
+    """F4 cause (b): the Edit LLM created a ``template-transform`` carrying only
+    ``title`` and ``template``. ``TemplateTransformNodeData.variables`` is
+    required with no default, so the preflight refused the WHOLE batch and the
+    session parked at ``edit.plan_approval``. The node-type defaults fill the
+    missing required field at the ``_build_node`` chokepoint, so the intent now
+    writes."""
+    intents = [
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "template-transform",
+                "node_id": "node7",
+                "config": {"title": "Excellent", "template": "excellent"},
+            },
+        ),
+        MutationIntent(op="connect", args={"from_node": "node1", "to_node": "node7"}),
+    ]
+
+    result, sync = _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+    assert "node7" in result.changed_nodes
+    _, kwargs = sync.call_args
+    written = next(n for n in kwargs["graph"]["nodes"] if n["id"] == "node7")
+    assert written["data"]["variables"] == []
+    assert written["data"]["template"] == "excellent"
