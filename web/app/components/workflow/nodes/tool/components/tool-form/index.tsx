@@ -1,15 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Tool } from '@/app/components/tools/types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
+import type { Tool } from '@/app/components/tools/types'
+import type { FormInputSchema } from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import ToolFormItem from './item'
 
 type Props = Readonly<{
+  staticSchema?: boolean
   readOnly: boolean
   nodeId: string
-  schema: CredentialFormSchema[]
+  schema: FormInputSchema[]
   value: ResourceVarInputs
   onChange: (value: ResourceVarInputs) => void
   onOpen?: (index: number) => void
@@ -23,6 +24,7 @@ type Props = Readonly<{
 
 const ToolForm: FC<Props> = ({
   readOnly,
+  staticSchema = false,
   nodeId,
   schema,
   value,
@@ -40,6 +42,7 @@ const ToolForm: FC<Props> = ({
         <ToolFormItem
           key={index}
           readOnly={readOnly}
+          staticSchema={staticSchema}
           nodeId={nodeId}
           schema={schema}
           value={value}
@@ -50,7 +53,7 @@ const ToolForm: FC<Props> = ({
           showManageInputField={showManageInputField}
           onManageInputField={onManageInputField}
           extraParams={extraParams}
-          providerType="tool"
+          providerType={staticSchema ? undefined : 'tool'}
         />
       ))}
     </div>

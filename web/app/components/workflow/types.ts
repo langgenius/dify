@@ -1,3 +1,4 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { Edge as ReactFlowEdge, Node as ReactFlowNode, Viewport, XYPosition } from 'reactflow'
 import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
@@ -122,7 +123,7 @@ export type CommonNodeType<T = {}> = {
   provider_id?: string
   _dimmed?: boolean
 } & T &
-  Partial<PluginDefaultValue>
+  Partial<Pick<PluginDefaultValue, keyof PluginDefaultValue>>
 
 export type CommonEdgeType = {
   _hovering?: boolean
@@ -353,6 +354,14 @@ export type NodeOutPutVar = {
   isFlat?: boolean
 }
 
+export type WorkflowPluginCatalogs = {
+  buildInTools?: ToolWithProvider[]
+  customTools?: ToolWithProvider[]
+  workflowTools?: ToolWithProvider[]
+  mcpTools?: ToolWithProvider[]
+  dataSourceList?: RagPipelineDatasourceProviderResponse[]
+}
+
 export type NodeDefault<T = {}> = {
   metaData: {
     classification: BlockClassification
@@ -377,7 +386,7 @@ export type NodeDefault<T = {}> = {
   ) => { isValid: boolean; errorMessage?: string }
   getOutputVars?: (
     payload: T,
-    allPluginInfoList: Record<string, ToolWithProvider[]>,
+    allPluginInfoList: WorkflowPluginCatalogs,
     ragVariables?: Var[],
     utils?: {
       schemaTypeDefinitions?: SchemaTypeDefinition[]

@@ -1,8 +1,9 @@
 'use client'
+
 import type { FC } from 'react'
+import type { FormInputSchema } from '../form-input-item.helpers'
 import type { HoverPopup } from './var-reference-picker.trigger'
 import type {
-  CredentialFormSchema,
   CredentialFormSchemaSelect,
   FormOption,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -74,7 +75,7 @@ type Props = Readonly<{
   isAddBtnTrigger?: boolean
   trigger?: React.ReactNode
   isJustShowValue?: boolean
-  schema?: Partial<CredentialFormSchema>
+  schema?: Partial<Omit<FormInputSchema, 'default'>>
   valueTypePlaceHolder?: string
   isInTable?: boolean
   onRemove?: () => void

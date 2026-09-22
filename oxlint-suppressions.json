@@ -2552,11 +2552,6 @@
       "count": 8
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/datasource-action-list.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/detail-header.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -3487,24 +3482,9 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/data-source/default.ts": {
-    "typescript/no-explicit-any": {
-      "count": 5
-    }
-  },
   "web/app/components/workflow/nodes/data-source/hooks/use-before-run-form.ts": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/data-source/hooks/use-config.ts": {
-    "typescript/no-explicit-any": {
-      "count": 6
-    }
-  },
-  "web/app/components/workflow/nodes/data-source/panel.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 3
     }
   },
   "web/app/components/workflow/nodes/data-source/types.ts": {
@@ -4451,11 +4431,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow/utils/data-source.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/utils/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 10
@@ -5007,7 +4982,7 @@
   },
   "web/service/use-pipeline.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 9
+      "count": 8
     },
     "no-restricted-imports": {
       "count": 1

@@ -7,12 +7,12 @@ import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { consoleQuery } from '@/service/console'
 import {
   useGetDataSourceListAuth,
   useGetDataSourceOAuthUrl,
   useInvalidDataSourceListAuth,
 } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import {
   useCheckInstalled,
   useInstalledPluginList,
@@ -42,10 +42,6 @@ vi.mock('@/service/use-datasource', () => ({
   useInvalidDataSourceListAuth: vi.fn(),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useInvalidDataSourceList: vi.fn(),
-}))
-
 vi.mock('@/service/use-plugins', () => ({
   useCheckInstalled: vi.fn(),
   useInstalledPluginList: vi.fn(),
@@ -57,8 +53,10 @@ vi.mock('@/app/components/plugins/hooks', () => ({
 }))
 
 vi.mock('../plugin-actions', () => ({
-  default: ({ detail }: { detail: { plugin_id: string } }) => (
-    <button data-testid={`plugin-actions-${detail.plugin_id}`}>Actions</button>
+  default: ({ detail, onUpdate }: { detail: { plugin_id: string }; onUpdate?: () => void }) => (
+    <button data-testid={`plugin-actions-${detail.plugin_id}`} onClick={onUpdate}>
+      Actions
+    </button>
   ),
 }))
 
@@ -184,7 +182,6 @@ describe('DataSourcePage Component', () => {
       mutateAsync: vi.fn(),
     } as unknown as ReturnType<typeof useGetDataSourceOAuthUrl>)
     vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(vi.fn())
-    vi.mocked(useInvalidDataSourceList).mockReturnValue(vi.fn())
     vi.mocked(useInstalledPluginList).mockReturnValue({
       data: { plugins: [], total: 0 },
     } as unknown as ReturnType<typeof useInstalledPluginList>)
@@ -294,9 +291,14 @@ describe('DataSourcePage Component', () => {
       } as unknown as ReturnType<typeof useInstalledPluginList>)
 
       // Act
-      renderWithConsoleQuery(<DataSourcePage />, {
+      const { queryClient } = renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
       })
+
+      const catalogKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
+      queryClient.setQueryData(catalogKey, [])
+      fireEvent.click(screen.getByTestId('plugin-actions-plugin-1'))
+      expect(queryClient.getQueryState(catalogKey)?.isInvalidated).toBe(true)
 
       // Assert
       expect(screen.getByTestId('plugin-actions-plugin-1')).toBeInTheDocument()

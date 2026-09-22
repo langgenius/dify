@@ -1,5 +1,6 @@
 import type { TriggerWithProvider } from '../../block-selector/types'
 import type { CommonNodeType, ToolWithProvider } from '../../types'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
 import {
@@ -72,7 +73,7 @@ describe('plugin install check', () => {
 
   describe('matchDataSource', () => {
     const dataSources = [
-      createTool({
+      createDatasourceProvider({
         provider: 'knowledge-provider',
         plugin_id: 'knowledge-plugin',
         plugin_unique_identifier: 'knowledge-plugin@1.0.0',
@@ -170,7 +171,7 @@ describe('plugin install check', () => {
         plugin_unique_identifier: 'missing-data-source@1.0.0',
       } as CommonNodeType
 
-      expect(isNodePluginMissing(node, { dataSourceList: [createTool()] })).toBe(true)
+      expect(isNodePluginMissing(node, { dataSourceList: [createDatasourceProvider()] })).toBe(true)
     })
 
     it('should keep data source nodes installable when the list has not loaded yet', () => {

@@ -1,16 +1,8 @@
-import type { DatasourceProviderType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ToolWithProvider } from '../types'
 import { CollectionType } from '../../tools/types'
 import { compareProviderLetters, getProviderLetter } from './utils'
 
-type ToolCategoryGroup = 'custom' | 'data-source' | 'mcp' | 'workflow'
-
-const datasourceProviderTypes: Record<DatasourceProviderType, true> = {
-  local_file: true,
-  online_document: true,
-  online_drive: true,
-  website_crawl: true,
-}
+type ToolCategoryGroup = 'custom' | 'mcp' | 'workflow'
 
 type AuthorToolGroup = {
   kind: 'author'
@@ -111,12 +103,7 @@ function addToolToAuthorGroup(bucket: LetterBucket, tool: ToolWithProvider) {
 function getToolCategoryGroup(type: ToolWithProvider['type']): ToolCategoryGroup | undefined {
   if (type === CollectionType.custom) return 'custom'
   if (type === CollectionType.workflow) return 'workflow'
-  if (isDatasourceProviderType(type)) return 'data-source'
   if (type === CollectionType.mcp) return 'mcp'
-}
-
-function isDatasourceProviderType(type: ToolWithProvider['type']): type is DatasourceProviderType {
-  return Object.hasOwn(datasourceProviderTypes, type)
 }
 
 function mergeGroupsByProvider(buckets: LetterBucket[]) {

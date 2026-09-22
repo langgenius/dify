@@ -36,8 +36,6 @@ export const ToolListTreeView = memo(
           return t(($) => $['tabs.customTool'], { ns: 'workflow' })
         case 'workflow':
           return t(($) => $['tabs.workflowTool'], { ns: 'workflow' })
-        case 'data-source':
-          return t(($) => $['tabs.sources'], { ns: 'workflow' })
         case 'mcp':
           return 'MCP'
       }

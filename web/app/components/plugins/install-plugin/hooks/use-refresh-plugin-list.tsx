@@ -5,7 +5,6 @@ import { useInvalidateDefaultModel } from '@/app/components/header/account-setti
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import {
   useInvalidateCheckInstalled,
   useInvalidateInstalledPluginList,
@@ -63,7 +62,6 @@ const useRefreshPluginList = () => {
 
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  const invalidateAllDataSources = useInvalidDataSourceList()
 
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
 
@@ -95,7 +93,9 @@ const useRefreshPluginList = () => {
         (manifest && PluginCategoryEnum.datasource.includes(manifest.category)) ||
         refreshAllType
       ) {
-        invalidateAllDataSources()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
+        })
         invalidateDataSourceListAuth()
       }
 

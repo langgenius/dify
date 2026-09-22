@@ -1,3 +1,4 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { TriggerWithProvider } from '../block-selector/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { ToolNodeType } from '../nodes/tool/types'
@@ -32,9 +33,9 @@ export function matchTriggerProvider(
 }
 
 export function matchDataSource(
-  list: ToolWithProvider[],
+  list: RagPipelineDatasourceProviderResponse[],
   data: { plugin_unique_identifier?: string; plugin_id?: string; provider_name?: string },
-): ToolWithProvider | undefined {
+): RagPipelineDatasourceProviderResponse | undefined {
   return list.find(
     (item) =>
       (data.plugin_unique_identifier &&
@@ -50,7 +51,7 @@ type PluginInstallCheckContext = {
   workflowTools?: ToolWithProvider[]
   mcpTools?: ToolWithProvider[]
   triggerPlugins?: TriggerWithProvider[]
-  dataSourceList?: ToolWithProvider[]
+  dataSourceList?: RagPipelineDatasourceProviderResponse[]
 }
 
 export function isNodePluginMissing(

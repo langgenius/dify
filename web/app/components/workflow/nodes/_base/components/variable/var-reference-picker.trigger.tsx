@@ -1,13 +1,11 @@
 'use client'
 
 import type { FC, ReactElement } from 'react'
-import type {
-  CredentialFormSchema,
-  CredentialFormSchemaSelect,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import type { FormInputSchema } from '../form-input-item.helpers'
+import type { CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { Node, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -19,7 +17,6 @@ import {
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
   RiArrowDownSLine,
   RiCloseLine,
   RiErrorWarningFill,
@@ -71,7 +68,7 @@ type Props = Readonly<{
   outputVarNodeId?: string
   placeholder?: string
   readonly: boolean
-  schemaWithDynamicSelect?: Partial<CredentialFormSchema>
+  schemaWithDynamicSelect?: Partial<Omit<FormInputSchema, 'default'>>
   setControlFocus: (value: number) => void
   setOpen: (value: boolean) => void
   showErrorIcon?: boolean
