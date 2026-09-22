@@ -16,16 +16,20 @@ mutates them in place, returning what it changed so callers can log it.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping
 from typing import Any
 
 # ---------------------------------------------------------------------------
-# Condition values (if-else, loop break conditions, list-operator filters)
+# Condition values (if-else/loop's Condition vs list-operator's FilterCondition)
 # ---------------------------------------------------------------------------
 
-# graphon ``Condition.value`` is ``str | Sequence[str] | bool | None``. The
-# operators below compare against a LIST, so a scalar written for them must
-# become a one-item list rather than a bare string.
+# graphon ``Condition.value`` (if-else, loop) is ``str | Sequence[str] | bool | None``.
+# graphon ``FilterCondition.value`` (list-operator) is ``str | Sequence[str] | bool``
+# (no None; default ""). For list operators filtering arrays, graphon requires a plain
+# string, not a list. The two need separate normalization rules.
+
+# if-else/loop conditions: operators below compare against a LIST, so a scalar
+# written for them must become a one-item list rather than a bare string.
 _LIST_OPERATORS = frozenset({"in", "not in", "all of"})
 
 
@@ -36,8 +40,17 @@ def _scalar_to_text(value: int | float) -> str:
     return str(value)
 
 
+def _normalize_list_item(item: Any) -> str:
+    """Normalize a single item in a condition value list."""
+    if isinstance(item, str):
+        return item
+    if isinstance(item, (int, float)):
+        return _scalar_to_text(item)
+    return str(item)
+
+
 def normalize_condition_value(value: Any, operator: str) -> Any:
-    """One condition ``value`` as graphon will accept it.
+    """One condition ``value`` (if-else/loop Condition) as graphon will accept it.
 
     ESQ1-303: the node builder wrote ``"value": 60`` (a JSON number). pydantic
     rejects a number for ``str | Sequence[str] | bool | None`` -- except that it
@@ -47,7 +60,7 @@ def normalize_condition_value(value: Any, operator: str) -> Any:
     if isinstance(value, bool) or value is None:
         return value
     if isinstance(value, list):
-        return [item if isinstance(item, str) else str(item) for item in value]
+        return [_normalize_list_item(item) for item in value]
     if isinstance(value, (int, float)):
         text = _scalar_to_text(value)
         return [text] if operator in _LIST_OPERATORS else text
@@ -56,9 +69,37 @@ def normalize_condition_value(value: Any, operator: str) -> Any:
     return value
 
 
-def _normalize_conditions(conditions: Any) -> bool:
+def normalize_filter_condition_value(value: Any) -> Any:
+    """One filter condition ``value`` (list-operator FilterCondition) normalized.
+
+    FilterCondition.value is str | Sequence[str] | bool (default ""), NOT None.
+    Filtering an array of strings or numbers requires a plain string, not a list.
+    Booleans are kept. Numbers become text. Lists get their items normalized.
+    """
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return ""
+    if isinstance(value, (int, float)):
+        return _scalar_to_text(value)
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_normalize_list_item(item) for item in value]
+    return value
+
+
+def _normalize_conditions(
+    conditions: Any,
+    value_normalizer: Callable[[Any, str], Any] | Callable[[Any], Any] = normalize_condition_value,
+) -> bool:
     """Normalize every ``value`` in a conditions list (recursing into
-    ``sub_variable_condition``). Returns True when anything changed."""
+    ``sub_variable_condition``). Returns True when anything changed.
+
+    The value_normalizer is called with (value, operator) for Condition-like
+    normalizers, or just (value,) for FilterCondition normalizers. Callers
+    must pass the right function for their context.
+    """
     changed = False
     if not isinstance(conditions, list):
         return False
@@ -66,12 +107,17 @@ def _normalize_conditions(conditions: Any) -> bool:
         if not isinstance(condition, MutableMapping):
             continue
         if "value" in condition:
-            new_value = normalize_condition_value(condition["value"], str(condition.get("comparison_operator") or ""))
+            # Try the normalizer with both signatures (Condition vs FilterCondition)
+            try:
+                new_value = value_normalizer(condition["value"], str(condition.get("comparison_operator") or ""))  # type: ignore
+            except TypeError:
+                # If that fails, try with just the value (FilterCondition path)
+                new_value = value_normalizer(condition["value"])  # type: ignore
             if new_value != condition["value"] or type(new_value) is not type(condition["value"]):
                 condition["value"] = new_value
                 changed = True
         sub = condition.get("sub_variable_condition")
-        if isinstance(sub, MutableMapping) and _normalize_conditions(sub.get("conditions")):
+        if isinstance(sub, MutableMapping) and _normalize_conditions(sub.get("conditions"), value_normalizer):
             changed = True
     return changed
 
@@ -80,8 +126,9 @@ def normalize_condition_values(nodes: list[Any]) -> list[str]:
     """Coerce every condition value in ``nodes`` to the shape graphon accepts.
 
     Covers if-else ``cases[].conditions[]`` (and the legacy top-level
-    ``conditions``), loop ``break_conditions[]`` and list-operator
-    ``filter_by.conditions[]`` -- all three use graphon's ``Condition`` model.
+    ``conditions``), loop ``break_conditions[]``, and list-operator
+    ``filter_by.conditions[]``. if-else and loop use graphon's ``Condition``
+    model; list-operator uses ``FilterCondition`` (different value shape).
     Returns the ids of the nodes that changed, in order.
     """
     changed: list[str] = []
@@ -97,16 +144,18 @@ def normalize_condition_values(nodes: list[Any]) -> list[str]:
             cases = data.get("cases")
             if isinstance(cases, list):
                 for case in cases:
-                    if isinstance(case, Mapping) and _normalize_conditions(case.get("conditions")):
+                    if isinstance(case, Mapping) and _normalize_conditions(
+                        case.get("conditions"), normalize_condition_value
+                    ):
                         touched = True
-            if _normalize_conditions(data.get("conditions")):
+            if _normalize_conditions(data.get("conditions"), normalize_condition_value):
                 touched = True
         elif node_type == "loop":
-            touched = _normalize_conditions(data.get("break_conditions"))
+            touched = _normalize_conditions(data.get("break_conditions"), normalize_condition_value)
         elif node_type == "list-operator":
             filter_by = data.get("filter_by")
             if isinstance(filter_by, Mapping):
-                touched = _normalize_conditions(filter_by.get("conditions"))
+                touched = _normalize_conditions(filter_by.get("conditions"), normalize_filter_condition_value)
         if touched:
             changed.append(str(node.get("id") or ""))
     return changed
