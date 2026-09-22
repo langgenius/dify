@@ -23,6 +23,13 @@ The Query cache and workflow store retain the generated response without mutatio
 Icon URLs are projected at display boundaries: root-relative URLs receive
 `basePath` once; absolute and protocol-relative URLs remain intact.
 
+Installed-plugin manifests use the generated `DatasourceProviderEntity` for
+their datasource declaration. This declaration is not the catalog response: it
+has no expanded action list or workspace authorization state. The unknown
+manifest input is validated once with its generated Zod schema; absent and null
+declarations remain absent and null. Plugin details only use its presence to
+admit the datasource section.
+
 ## Query and refresh ownership
 
 All consumers use `consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions()`.
@@ -47,7 +54,8 @@ availability when credentials change.
 
 `WorkflowPluginCatalogs` names each catalog explicitly: tool collections keep
 their tool type, while `dataSourceList` holds generated datasource providers.
-Common node fields include only the identities shared by plugin node kinds;
+Common node fields explicitly select `provider_type`, `provider_name`, `plugin_id`,
+and `plugin_unique_identifier` from plugin defaults;
 tool parameters and output schemas belong to their specific node payloads.
 The pipeline slice declares its complete output separately from the partially
 injected workflow state, so context injection needs no type assertion.

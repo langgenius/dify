@@ -1,5 +1,6 @@
 import type {
   AgentStrategyProviderEntity,
+  DatasourceProviderEntity,
   EndpointProviderDeclarationResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FormTypeEnum } from '../base/form/types'
@@ -64,7 +65,7 @@ export type PluginDeclaration = {
   verified: boolean
   endpoint?: EndpointProviderDeclarationResponse | null
   tool?: PluginToolDeclaration
-  datasource?: PluginToolDeclaration
+  datasource?: DatasourceProviderEntity | null
   model: any
   tags: string[]
   agent_strategy?: AgentStrategyProviderEntity | null

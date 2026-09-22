@@ -145,6 +145,7 @@ describe('DataSourcePage Component', () => {
       agent_strategy: undefined,
       trigger: undefined,
       datasource: {
+        provider_type: 'online_document',
         identity: {
           author: 'Dify',
           name: 'Dify Source',

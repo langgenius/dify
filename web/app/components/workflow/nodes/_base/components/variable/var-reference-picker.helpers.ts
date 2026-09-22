@@ -1,8 +1,8 @@
 'use client'
 
-import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { FormInputSchema } from '../form-input-item.helpers'
 import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type {
   CommonNodeType,
   Node,

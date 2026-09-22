@@ -36,6 +36,7 @@ import type {
 import type { Collection } from '@/app/components/tools/types'
 import {
   zAgentStrategyProviderEntity,
+  zDatasourceProviderEntity,
   zEndpointProviderDeclarationResponse,
 } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -435,7 +436,10 @@ const normalizePluginDeclaration = (plugin: InstalledPluginResponse): PluginDecl
       ? zEndpointProviderDeclarationResponse.parse(declaration.endpoint)
       : undefined,
     tool: normalizePluginToolDeclaration(declaration.tool),
-    datasource: normalizePluginToolDeclaration(declaration.datasource),
+    datasource:
+      declaration.datasource == null
+        ? declaration.datasource
+        : zDatasourceProviderEntity.parse(declaration.datasource),
     model: declaration.model,
     tags: declaration.tags ?? [],
     agent_strategy:

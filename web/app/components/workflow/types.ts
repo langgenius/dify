@@ -123,7 +123,12 @@ export type CommonNodeType<T = {}> = {
   provider_id?: string
   _dimmed?: boolean
 } & T &
-  Partial<Pick<PluginDefaultValue, keyof PluginDefaultValue>>
+  Partial<
+    Pick<
+      PluginDefaultValue,
+      'provider_type' | 'provider_name' | 'plugin_id' | 'plugin_unique_identifier'
+    >
+  >
 
 export type CommonEdgeType = {
   _hovering?: boolean
