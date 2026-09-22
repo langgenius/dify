@@ -73,7 +73,7 @@ const NoData: FC<Props> = ({ onConfig, provider }) => {
             {currentProvider.title}
             <span
               aria-hidden
-              className="relative -top-2.5 -left-1.5 i-custom-vender-line-others-icon-3-dots inline-block h-4 w-4"
+              className="relative -top-2.5 -left-1.5 i-custom-vender-line-others-icon-3-dots inline-block h-4 w-4 align-middle"
             />
           </span>
           <div className="system-sm-regular text-text-tertiary">{currentProvider.description}</div>

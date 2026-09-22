@@ -40,7 +40,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({ provider, className }) => {
       <div className={className}>
         <span
           aria-hidden
-          className="i-custom-vender-other-openai h-6 w-auto text-text-inverted-dimmed"
+          className="i-custom-vender-other-openai h-6 w-[calc(1.5rem*80/22)] text-text-inverted-dimmed"
         />
       </div>
     )

@@ -400,7 +400,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 provider.help.url.en_US}
               <span
                 aria-hidden
-                className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3"
+                className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
               />
             </a>
           ) : (
