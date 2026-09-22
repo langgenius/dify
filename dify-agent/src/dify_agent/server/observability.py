@@ -123,8 +123,15 @@ def configure_server_observability(app: FastAPI, *, settings: ServerSettings | N
 def configure_agent_observability(settings: ServerSettings) -> AgentObservability | None:
     """Build the opt-in Agent trajectory pipeline from deployment settings only.
 
-    NOTE: This is a platform scoped tracer. For user facing tracers, consider scope the instance
-    to Tenant.
+    This is one process-wide pipeline and is meant to stay that way. Per-tenant
+    destinations belong in a routing ``SpanExporter`` that reads a span's
+    ``dify.tenant_id`` and fans out to a cached per-tenant exporter, not in a
+    tracer instance per tenant: a second instance costs another
+    ``logfire.configure()``, which means another
+    ``_isolated_agent_environment()`` window on a live process and another batch
+    processor thread. Routing keeps setup static and makes a tenant destination
+    plain data. Such a router must fail closed on an unknown tenant rather than
+    fall back to this deployment-wide endpoint.
     """
     if not settings.trajectory_enabled:
         return None
