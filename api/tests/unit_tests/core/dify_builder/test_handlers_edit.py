@@ -1019,3 +1019,44 @@ def test_a_second_consecutive_unknown_outcome_stops_at_the_edit_gate():
     assert second.next == PcState.EDIT_AWAIT_REPAIR
     assert second.context.unknown_outcome_count == 2
     assert next(i for i in second.items if i.kind == "error").payload["title"] == "Test outcome unknown"
+
+
+def test_the_same_failing_affected_path_test_trips_the_breaker_on_the_third_repeat():
+    """Edit had no repair breaker at all: the same engine failure could be
+    diagnosed, repaired and re-run indefinitely. It now shares Build's."""
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.handlers_fix import MAX_REPEATED_REPAIRS
+    from core.dify_builder.models import TestInput
+
+    dify = FakeEditDifyPort()
+    dify.verify_pass = False  # the engine fails the same way every time
+    env, repo = _new_env(dify=dify, agent=StubAgent())
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(test_input_ref="ti-1")
+
+    snapshots = []  # the handler mutates the SAME context object; snapshot per call
+    result = None
+    for _ in range(MAX_REPEATED_REPAIRS + 1):
+        result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+        fc = result.context
+        snapshots.append((fc.repair_attempts, len(fc.staged_repair)))
+
+    assert snapshots == [(0, 1), (1, 1), (2, 0)]
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert next(i for i in result.items if i.kind == "error").payload["title"] == "Repeated failure"
+
+
+def test_sending_a_new_edit_goal_resets_the_breaker():
+    from core.dify_builder.handlers_edit import handle_capability_check
+
+    env, repo = _new_env()
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK, repair_attempts=3, last_repair_error="llm|boom")
+    turn = Turn(
+        action=Action(kind="send_edit_goal", payload={"text": "Make it faster"}, base_version=1), actor=_actor()
+    )
+
+    res = handle_capability_check(env, turn, *repo.get_session(s.id))
+
+    assert res.context.repair_attempts == 0
+    assert res.context.last_repair_error == ""
