@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Yeni çıktı",
   "nodes.agent.outputVars.requiredLabel": "Gerekli",
   "nodes.agent.outputVars.showAdvancedOptions": "Gelişmiş seçenekleri göster",
+  "nodes.agent.outputVars.switch": "Seçilen çıkış rotasının kimliği.",
   "nodes.agent.outputVars.text": "Temsilci Tarafından Oluşturulan İçerik",
   "nodes.agent.outputVars.typeLabel": "Çıktı türü",
   "nodes.agent.outputVars.usage": "Model Kullanım Bilgileri",

@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Nowe wyjście",
   "nodes.agent.outputVars.requiredLabel": "Wymagane",
   "nodes.agent.outputVars.showAdvancedOptions": "Pokaż opcje zaawansowane",
+  "nodes.agent.outputVars.switch": "Identyfikator wybranej ścieżki wyjściowej.",
   "nodes.agent.outputVars.text": "Treści generowane przez agentów",
   "nodes.agent.outputVars.typeLabel": "Typ wyjścia",
   "nodes.agent.outputVars.usage": "Informacje o użyciu modelu",

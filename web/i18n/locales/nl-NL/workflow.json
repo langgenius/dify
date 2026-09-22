@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Nieuwe uitvoer",
   "nodes.agent.outputVars.requiredLabel": "Verplicht",
   "nodes.agent.outputVars.showAdvancedOptions": "Geavanceerde opties tonen",
+  "nodes.agent.outputVars.switch": "ID van de geselecteerde uitvoerroute.",
   "nodes.agent.outputVars.text": "agent generated content",
   "nodes.agent.outputVars.typeLabel": "Uitvoertype",
   "nodes.agent.outputVars.usage": "Model Usage Information",

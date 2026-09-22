@@ -34,6 +34,8 @@ type Props = Readonly<{
   enabled?: boolean
   actions?: ReactNode
   onChange: (list: Topic[]) => void
+  /** Owns both the list update and edge removal instead of the default removal action. */
+  onRemove?: (id: string) => void
   readonly?: boolean
   filterVar: (payload: Var, valueSelector: ValueSelector) => boolean
   labels?: {
@@ -53,6 +55,7 @@ const ClassList: FC<Props> = ({
   enabled = true,
   actions,
   onChange,
+  onRemove,
   readonly,
   filterVar,
   labels,
@@ -91,6 +94,10 @@ const ClassList: FC<Props> = ({
     (index: number) => {
       return () => {
         if (list.length <= minItems) return
+        if (onRemove) {
+          onRemove(list[index]!.id)
+          return
+        }
         const newList = produce(list, (draft) => {
           draft.splice(index, 1)
         })
@@ -98,7 +105,7 @@ const ClassList: FC<Props> = ({
         handleEdgeDeleteByDeleteBranch(nodeId, list[index]!.id)
       }
     },
-    [list, minItems, onChange, handleEdgeDeleteByDeleteBranch, nodeId],
+    [list, minItems, onChange, onRemove, handleEdgeDeleteByDeleteBranch, nodeId],
   )
 
   const keyboardSort = useKeyboardSortable({

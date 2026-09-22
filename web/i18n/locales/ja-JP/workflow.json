@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "新しい出力",
   "nodes.agent.outputVars.requiredLabel": "必須",
   "nodes.agent.outputVars.showAdvancedOptions": "詳細オプションを表示",
+  "nodes.agent.outputVars.switch": "選択された出力ルートの ID。",
   "nodes.agent.outputVars.text": "エージェント生成コンテンツ",
   "nodes.agent.outputVars.typeLabel": "出力タイプ",
   "nodes.agent.outputVars.usage": "モデル使用量",

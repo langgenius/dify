@@ -284,6 +284,8 @@ export function isDefaultOutput(output: DeclaredOutputConfig) {
 
 export function getOutputDescription(output: EditableOutputConfig, t: TFunction) {
   if (output.name === 'text') return t(($) => $['nodes.agent.outputVars.text'], { ns: 'workflow' })
+  if (output.name === 'switch')
+    return t(($) => $['nodes.agent.outputVars.switch'], { ns: 'workflow' })
   return output.description || ''
 }
 

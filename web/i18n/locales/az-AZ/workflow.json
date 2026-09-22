@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Yeni çıxış",
   "nodes.agent.outputVars.requiredLabel": "Məcburi",
   "nodes.agent.outputVars.showAdvancedOptions": "Əlavə seçimləri göstər",
+  "nodes.agent.outputVars.switch": "Seçilmiş çıxış marşrutunun identifikatoru.",
   "nodes.agent.outputVars.text": "Agentin yaratdığı məzmun",
   "nodes.agent.outputVars.typeLabel": "Çıxış növü",
   "nodes.agent.outputVars.usage": "Model istifadəsi haqqında məlumat",

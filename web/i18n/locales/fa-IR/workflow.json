@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "خروجی جدید",
   "nodes.agent.outputVars.requiredLabel": "الزامی",
   "nodes.agent.outputVars.showAdvancedOptions": "نمایش گزینه‌های پیشرفته",
+  "nodes.agent.outputVars.switch": "شناسهٔ مسیر خروجی انتخاب‌شده.",
   "nodes.agent.outputVars.text": "محتوای متنی تولیدشده توسط عامل",
   "nodes.agent.outputVars.typeLabel": "نوع خروجی",
   "nodes.agent.outputVars.usage": "اطلاعات مصرف مدل",

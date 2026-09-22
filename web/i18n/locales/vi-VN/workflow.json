@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Đầu ra mới",
   "nodes.agent.outputVars.requiredLabel": "Bắt buộc",
   "nodes.agent.outputVars.showAdvancedOptions": "Hiện tùy chọn nâng cao",
+  "nodes.agent.outputVars.switch": "ID của tuyến đầu ra đã chọn.",
   "nodes.agent.outputVars.text": "Nội dung do tác nhân tạo",
   "nodes.agent.outputVars.typeLabel": "Loại đầu ra",
   "nodes.agent.outputVars.usage": "Thông tin sử dụng mô hình",

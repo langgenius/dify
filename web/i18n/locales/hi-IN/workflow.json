@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "नया आउटपुट",
   "nodes.agent.outputVars.requiredLabel": "आवश्यक",
   "nodes.agent.outputVars.showAdvancedOptions": "उन्नत विकल्प दिखाएँ",
+  "nodes.agent.outputVars.switch": "चुने गए आउटपुट रूट की आईडी।",
   "nodes.agent.outputVars.text": "एजेंट द्वारा उत्पन्न सामग्री",
   "nodes.agent.outputVars.typeLabel": "आउटपुट प्रकार",
   "nodes.agent.outputVars.usage": "मॉडल उपयोग जानकारी",

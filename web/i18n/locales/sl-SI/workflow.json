@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Nov izhod",
   "nodes.agent.outputVars.requiredLabel": "Obvezno",
   "nodes.agent.outputVars.showAdvancedOptions": "Pokaži napredne možnosti",
+  "nodes.agent.outputVars.switch": "ID izbrane izhodne poti.",
   "nodes.agent.outputVars.text": "vsebina, ki jo je ustvaril agent",
   "nodes.agent.outputVars.typeLabel": "Vrsta izhoda",
   "nodes.agent.outputVars.usage": "informacije o uporabi modela",

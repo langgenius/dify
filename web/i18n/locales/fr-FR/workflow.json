@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Nouvelle sortie",
   "nodes.agent.outputVars.requiredLabel": "Requis",
   "nodes.agent.outputVars.showAdvancedOptions": "Afficher les options avancées",
+  "nodes.agent.outputVars.switch": "Identifiant de la route de sortie sélectionnée.",
   "nodes.agent.outputVars.text": "Contenu généré par l’agent",
   "nodes.agent.outputVars.typeLabel": "Type de sortie",
   "nodes.agent.outputVars.usage": "Informations sur l’utilisation du modèle",

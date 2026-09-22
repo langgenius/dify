@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "새 출력",
   "nodes.agent.outputVars.requiredLabel": "필수",
   "nodes.agent.outputVars.showAdvancedOptions": "고급 옵션 표시",
+  "nodes.agent.outputVars.switch": "선택된 출력 경로의 ID입니다.",
   "nodes.agent.outputVars.text": "상담원이 생성한 콘텐츠",
   "nodes.agent.outputVars.typeLabel": "출력 유형",
   "nodes.agent.outputVars.usage": "모델 사용 정보",

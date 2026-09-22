@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "新增輸出",
   "nodes.agent.outputVars.requiredLabel": "必填",
   "nodes.agent.outputVars.showAdvancedOptions": "顯示進階選項",
+  "nodes.agent.outputVars.switch": "選取的輸出路由 ID。",
   "nodes.agent.outputVars.text": "代理生成的內容",
   "nodes.agent.outputVars.typeLabel": "輸出類型",
   "nodes.agent.outputVars.usage": "模型用量信息",

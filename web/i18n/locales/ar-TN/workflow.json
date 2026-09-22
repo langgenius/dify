@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "إخراج جديد",
   "nodes.agent.outputVars.requiredLabel": "مطلوب",
   "nodes.agent.outputVars.showAdvancedOptions": "إظهار الخيارات المتقدمة",
+  "nodes.agent.outputVars.switch": "معرّف مسار الإخراج المحدد.",
   "nodes.agent.outputVars.text": "محتوى تم إنشاؤه بواسطة الوكيل",
   "nodes.agent.outputVars.typeLabel": "نوع الإخراج",
   "nodes.agent.outputVars.usage": "معلومات استخدام النموذج",

@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Neue Ausgabe",
   "nodes.agent.outputVars.requiredLabel": "Erforderlich",
   "nodes.agent.outputVars.showAdvancedOptions": "Erweiterte Optionen anzeigen",
+  "nodes.agent.outputVars.switch": "ID der ausgewählten Ausgaberoute.",
   "nodes.agent.outputVars.text": "Von Agenten generierte Inhalte",
   "nodes.agent.outputVars.typeLabel": "Ausgabetyp",
   "nodes.agent.outputVars.usage": "Nutzungsinformationen des Modells",

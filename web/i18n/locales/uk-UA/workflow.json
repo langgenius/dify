@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Новий вихід",
   "nodes.agent.outputVars.requiredLabel": "Обов'язкове",
   "nodes.agent.outputVars.showAdvancedOptions": "Показати розширені параметри",
+  "nodes.agent.outputVars.switch": "ID вибраного маршруту виведення.",
   "nodes.agent.outputVars.text": "Контент, створений агентом",
   "nodes.agent.outputVars.typeLabel": "Тип виходу",
   "nodes.agent.outputVars.usage": "Інформація про використання моделі",

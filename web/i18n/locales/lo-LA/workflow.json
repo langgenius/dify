@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "ຜົນອອກໃໝ່",
   "nodes.agent.outputVars.requiredLabel": "ຈຳເປັນ",
   "nodes.agent.outputVars.showAdvancedOptions": "ສະແດງຕົວເລືອກຂັ້ນສູງ",
+  "nodes.agent.outputVars.switch": "ID ຂອງເສັ້ນທາງຜົນລັບທີ່ເລືອກ.",
   "nodes.agent.outputVars.text": "ເນື້ອໃນທີ່ສ້າງໂດຍ Agent",
   "nodes.agent.outputVars.typeLabel": "ປະເພດຜົນອອກ",
   "nodes.agent.outputVars.usage": "ຂໍ້ມູນການໃຊ້ຕົວແບບ",

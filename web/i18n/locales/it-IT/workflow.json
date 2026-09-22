@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Nuovo output",
   "nodes.agent.outputVars.requiredLabel": "Obbligatorio",
   "nodes.agent.outputVars.showAdvancedOptions": "Mostra opzioni avanzate",
+  "nodes.agent.outputVars.switch": "ID del percorso di output selezionato.",
   "nodes.agent.outputVars.text": "Contenuto generato dall'agente",
   "nodes.agent.outputVars.typeLabel": "Tipo di output",
   "nodes.agent.outputVars.usage": "Informazioni sull'utilizzo del modello",

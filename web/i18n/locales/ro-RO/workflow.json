@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Ieșire nouă",
   "nodes.agent.outputVars.requiredLabel": "Obligatoriu",
   "nodes.agent.outputVars.showAdvancedOptions": "Afișează opțiunile avansate",
+  "nodes.agent.outputVars.switch": "ID-ul rutei de ieșire selectate.",
   "nodes.agent.outputVars.text": "Conținut generat de agent",
   "nodes.agent.outputVars.typeLabel": "Tip de ieșire",
   "nodes.agent.outputVars.usage": "Informații de utilizare a modelului",

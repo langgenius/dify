@@ -15,13 +15,16 @@ const { removeEdges, removeVariable, saveHistory, update } = vi.hoisted(() => ({
   update: vi.fn(),
 }))
 vi.mock('@/app/components/workflow/hooks/use-node-data-update', () => ({
-  useNodeDataUpdate: () => ({ handleNodeDataUpdateWithSyncDraft: update }),
+  useNodeDataUpdate: () => ({ handleNodeDataUpdate: update }),
 }))
 vi.mock('@/app/components/workflow/hooks/use-edges-interactions', () => ({
-  useEdgesInteractions: () => ({ handleEdgeDeleteByDeleteBranch: removeEdges }),
+  useEdgesInteractions: () => ({ removeBranchEdges: removeEdges }),
+}))
+vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
+  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: vi.fn() }),
 }))
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  useNodesReadOnly: () => ({ nodesReadOnly: false, getNodesReadOnly: () => false }),
   useWorkflow: () => ({ removeUsedVarInNodes: removeVariable }),
 }))
 vi.mock('@/app/components/workflow/hooks/use-workflow-history', () => ({
@@ -112,11 +115,14 @@ it('enables two routes, preserves edited conditions through toggles, and changes
   await user.click(toggle)
   expect(screen.getAllByRole('textbox', { name: 'Condition' })).toHaveLength(2)
   expect(screen.getByLabelText('Available outputs')).toHaveTextContent('text,switch')
-  expect(removeEdges).toHaveBeenCalledWith('agent', 'source')
+  expect(removeEdges).toHaveBeenCalledWith('agent', ['source'])
   await user.type(screen.getAllByRole('textbox', { name: 'Condition' })[0]!, 'Request approved')
   const saved = update.mock.lastCall![0].data.agent_output_routes
   await user.click(toggle)
-  for (const route of saved.routes) expect(removeEdges).toHaveBeenCalledWith('agent', route.id)
+  expect(removeEdges).toHaveBeenCalledWith(
+    'agent',
+    saved.routes.map((route: { id: string }) => route.id),
+  )
   expect(removeVariable).toHaveBeenCalledWith(['agent', 'switch'])
   expect(screen.getByLabelText('Available outputs').textContent).toBe('text')
   await user.click(toggle)
@@ -140,7 +146,7 @@ it('removes a route by stable ID and keeps at least two routes with switch avail
     />,
   )
   await user.click(screen.getAllByRole('button', { name: 'Remove route' })[0]!)
-  expect(removeEdges).toHaveBeenCalledWith('agent', 'accepted')
+  expect(removeEdges).toHaveBeenCalledWith('agent', ['accepted'])
   expect(removeVariable).not.toHaveBeenCalled()
   expect(update.mock.lastCall![0].data._targetBranches).toEqual([
     { id: 'rejected', name: 'Reject' },

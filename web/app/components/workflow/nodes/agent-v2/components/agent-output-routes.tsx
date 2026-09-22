@@ -5,6 +5,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
 import {
   useWorkflowHistory,
@@ -19,9 +20,10 @@ const filterVar = (variable: Var) =>
 
 export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
   const { t } = useTranslation()
-  const { nodesReadOnly } = useNodesReadOnly()
-  const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
-  const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
+  const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const { removeBranchEdges } = useEdgesInteractions()
+  const { handleNodeDataUpdate } = useNodeDataUpdate()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
   const { removeUsedVarInNodes } = useWorkflow()
   const routes = data.agent_output_routes
@@ -30,19 +32,30 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
     t(($) => $['nodes.agent.outputRoutes.route'], { ns: 'workflow', index })
 
   const update = (next: WorkflowOutputRoutes) => {
+    if (getNodesReadOnly()) return
+
+    const nextRoutes = next.routes?.map(({ id, name, label }) => ({ id, name, label }))
+    const currentHandles = routes?.enabled ? list.map((route) => route.id) : ['source']
+    const nextHandles = next.enabled ? (nextRoutes ?? []).map((route) => route.id) : ['source']
+    // Downstream references must be removed before their connecting edges disappear.
     if (routes?.enabled && !next.enabled) removeUsedVarInNodes([id, 'switch'])
-    handleNodeDataUpdateWithSyncDraft({
+    handleNodeDataUpdate({
       id,
       data: {
-        agent_output_routes: next,
+        agent_output_routes: { ...next, routes: nextRoutes },
         ...(next.enabled && data.error_strategy === ErrorHandleTypeEnum.defaultValue
           ? { error_strategy: undefined, default_value: undefined }
           : {}),
         _targetBranches: next.enabled
-          ? next.routes?.map((route) => ({ id: route.id, name: route.name ?? '' }))
+          ? nextRoutes?.map((route) => ({ id: route.id, name: route.name ?? '' }))
           : [],
       },
     })
+    removeBranchEdges(
+      id,
+      currentHandles.filter((handle) => !nextHandles.includes(handle)),
+    )
+    handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeChange)
   }
   const toggle = (enabled: boolean) => {
@@ -55,11 +68,7 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
           label: defaultLabel(nextList.length + 1),
         })
     }
-    // Remove references while downstream nodes are still reachable, then remove
-    // success edges. The shared history debounce captures the complete change.
     update({ enabled, routes: nextList })
-    for (const handle of enabled ? ['source'] : list.map((route) => route.id))
-      handleEdgeDeleteByDeleteBranch(id, handle)
   }
 
   return (
@@ -78,6 +87,9 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
           />
         }
         onChange={(routes) => update({ enabled: true, routes })}
+        onRemove={(routeId) =>
+          update({ enabled: true, routes: list.filter((route) => route.id !== routeId) })
+        }
         handleSortTopic={(routes) => update({ enabled: true, routes })}
         readonly={nodesReadOnly}
         filterVar={filterVar}

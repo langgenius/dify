@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "New output",
   "nodes.agent.outputVars.requiredLabel": "Required",
   "nodes.agent.outputVars.showAdvancedOptions": "Show advanced options",
+  "nodes.agent.outputVars.switch": "Selected output route ID.",
   "nodes.agent.outputVars.text": "agent generated content",
   "nodes.agent.outputVars.typeLabel": "Output type",
   "nodes.agent.outputVars.usage": "Model Usage Information",

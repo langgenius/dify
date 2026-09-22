@@ -399,6 +399,7 @@
   "nodes.agent.outputVars.newOutput": "Output baru",
   "nodes.agent.outputVars.requiredLabel": "Wajib",
   "nodes.agent.outputVars.showAdvancedOptions": "Tampilkan opsi lanjutan",
+  "nodes.agent.outputVars.switch": "ID rute keluaran yang dipilih.",
   "nodes.agent.outputVars.text": "Konten yang dihasilkan agen",
   "nodes.agent.outputVars.typeLabel": "Tipe output",
   "nodes.agent.outputVars.usage": "Informasi Penggunaan Model",
