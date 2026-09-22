@@ -396,13 +396,11 @@ class AgentRunRunner:
                 )
                 if self.agent_observability is not None:
                     # The model layer's required execution-context dependency is the
-                    # run's only carrier of Dify ownership, and its node name is
-                    # caller-chosen, so read identity through the typed dependency.
-                    execution_context = llm_layer.deps.execution_context.config
+                    # run's only carrier of Dify identity, and its node name is
+                    # caller-chosen, so read it through the typed dependency.
                     self.agent_observability.instrument(
                         agent,
-                        tenant_id=execution_context.tenant_id,
-                        agent_id=execution_context.agent_id,
+                        execution_context=llm_layer.deps.execution_context.config,
                     )
                 run_timeout = asyncio.timeout(self.run_timeout_seconds)
                 try:

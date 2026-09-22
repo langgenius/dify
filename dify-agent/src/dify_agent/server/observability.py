@@ -92,8 +92,6 @@ def configure_server_observability(app: FastAPI, *, settings: ServerSettings | N
         )
 
         tracer_provider: IsolatedTracerProvider | Any = (
-            # NOTE: Be EXTREMELY careful about this
-            # data leakage risk if shared mode is used
             IsolatedTracerProvider(platform, preserve_external_parent=True)
             if mode == "isolated"
             else platform.config.get_tracer_provider()

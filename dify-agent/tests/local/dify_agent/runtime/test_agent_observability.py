@@ -20,12 +20,14 @@ from pydantic_ai.models.instrumented import InstrumentationSettings
 from pydantic_ai.models.test import TestModel
 
 import dify_agent.server.observability as server_observability
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.agent_factory import DIFY_AGENT_RUN_NAME, create_agent
 from dify_agent.runtime.observability import (
-    DIFY_AGENT_ID_ATTRIBUTE,
     DIFY_TENANT_ID_ATTRIBUTE,
+    GEN_AI_USER_ID_ATTRIBUTE,
     AgentObservability,
     IsolatedTracerProvider,
+    dify_run_attributes,
 )
 from dify_agent.server.settings import ServerSettings
 
@@ -584,17 +586,76 @@ def test_shared_mode_agent_pipeline_respects_remote_parent_sampling(monkeypatch:
         observability_instance.client.shutdown(timeout_millis=5000)
 
 
+def _workflow_execution_context() -> DifyExecutionContextLayerConfig:
+    return DifyExecutionContextLayerConfig(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        agent_id="agent-1",
+        user_id="user-1",
+        user_from="account",
+        workflow_id="workflow-1",
+        workflow_run_id="workflow-run-1",
+        node_id="node-1",
+        node_execution_id="node-execution-1",
+        agent_mode="workflow_run",
+        invoke_from="service-api",
+    )
+
+
+def test_dify_run_attributes_use_data_push_names_and_drop_absent_fields() -> None:
+    workflow_attributes = dict(dify_run_attributes(_workflow_execution_context()))
+
+    assert workflow_attributes == {
+        "dify.tenant_id": "tenant-1",
+        "dify.app_id": "app-1",
+        "dify.agent_id": "agent-1",
+        "gen_ai.user.id": "user-1",
+        "dify.invoke_from": "service-api",
+        "dify.workflow.id": "workflow-1",
+        "dify.workflow.run_id": "workflow-run-1",
+        "dify.node.id": "node-1",
+        "dify.node.execution_id": "node-execution-1",
+    }
+
+    agent_app_attributes = dict(
+        dify_run_attributes(
+            DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                agent_id="agent-1",
+                conversation_id="conversation-1",
+                trace_id="trace-1",
+                user_from="end-user",
+                agent_mode="agent_app",
+                invoke_from="web-app",
+            )
+        )
+    )
+
+    # An Agent App turn has no workflow graph, so those keys stay absent instead of
+    # being exported empty; the conversation and business trace ids take their place.
+    assert agent_app_attributes == {
+        "dify.trace_id": "trace-1",
+        "dify.tenant_id": "tenant-1",
+        "dify.app_id": "app-1",
+        "dify.agent_id": "agent-1",
+        "dify.invoke_from": "web-app",
+        "dify.conversation.id": "conversation-1",
+    }
+
+
 @pytest.mark.parametrize("trace_context_mode", ["isolated", "shared"])
-def test_agent_observability_stamps_dify_identity_on_every_run_span(trace_context_mode: str) -> None:
+def test_agent_observability_stamps_dify_context_on_every_run_span(trace_context_mode: str) -> None:
     exporter = InMemorySpanExporter()
     client = _local_client(exporter)
+    expected = dict(dify_run_attributes(_workflow_execution_context()))
     try:
         observability = AgentObservability(
             client=client,
             trace_context_mode=cast(Literal["isolated", "shared"], trace_context_mode),
         )
         agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
-        observability.instrument(agent, tenant_id="tenant-1", agent_id="agent-1")
+        observability.instrument(agent, execution_context=_workflow_execution_context())
 
         _ = agent.run_sync("test-only input")
         assert client.force_flush(timeout_millis=10000)
@@ -603,8 +664,7 @@ def test_agent_observability_stamps_dify_identity_on_every_run_span(trace_contex
         assert spans
         for span in spans:
             attributes = dict(span.attributes or {})
-            assert attributes[DIFY_TENANT_ID_ATTRIBUTE] == "tenant-1", span.name
-            assert attributes[DIFY_AGENT_ID_ATTRIBUTE] == "agent-1", span.name
+            assert {key: attributes.get(key) for key in expected} == expected, span.name
         run_span = _spans_by_name(exporter, _AGENT_RUN_SPAN_NAME)[0]
         assert run_span.attributes is not None
         assert run_span.attributes["gen_ai.operation.name"] == "invoke_agent"
@@ -612,13 +672,13 @@ def test_agent_observability_stamps_dify_identity_on_every_run_span(trace_contex
         client.shutdown(timeout_millis=5000)
 
 
-def test_agent_observability_omits_identity_attributes_when_run_has_no_dify_owner() -> None:
+def test_agent_observability_omits_dify_attributes_without_an_execution_context() -> None:
     exporter = InMemorySpanExporter()
     client = _local_client(exporter)
     try:
         observability = AgentObservability(client=client)
         agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
-        observability.instrument(agent, tenant_id=None, agent_id="")
+        observability.instrument(agent)
 
         _ = agent.run_sync("test-only input")
         assert client.force_flush(timeout_millis=10000)
@@ -627,13 +687,13 @@ def test_agent_observability_omits_identity_attributes_when_run_has_no_dify_owne
         assert spans
         for span in spans:
             attributes = dict(span.attributes or {})
-            assert DIFY_TENANT_ID_ATTRIBUTE not in attributes
-            assert DIFY_AGENT_ID_ATTRIBUTE not in attributes
+            assert not [key for key in attributes if key.startswith("dify.")], span.name
+            assert GEN_AI_USER_ID_ATTRIBUTE not in attributes
     finally:
         client.shutdown(timeout_millis=5000)
 
 
-def test_identity_attributes_do_not_break_isolated_parent_policy() -> None:
+def test_dify_attributes_do_not_break_isolated_parent_policy() -> None:
     platform_exporter = InMemorySpanExporter()
     platform_client = _local_client(platform_exporter)
     business_exporter = InMemorySpanExporter()
@@ -641,7 +701,7 @@ def test_identity_attributes_do_not_break_isolated_parent_policy() -> None:
     try:
         observability = AgentObservability(client=business_client)
         agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
-        observability.instrument(agent, tenant_id="tenant-1", agent_id="agent-1")
+        observability.instrument(agent, execution_context=_workflow_execution_context())
 
         with platform_client.span("platform-incoming-request"):
             _ = agent.run_sync("test-only input")

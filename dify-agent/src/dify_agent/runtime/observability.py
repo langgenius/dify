@@ -1,11 +1,3 @@
-"""Runtime-facing boundary for the opt-in Agent observability instance.
-
-Trajectory spans carry the Dify owners of the run so a trace can be attributed
-to a workspace and an Agent without joining other Dify data. The tenant and
-Agent ids are stamped on every span of one run through a tracer wrapper, because
-the run span is not the only span a trajectory consumer filters or aggregates on.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -26,12 +18,43 @@ from opentelemetry.trace import (
 )
 from opentelemetry.util.types import Attributes
 
+from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
+
 if TYPE_CHECKING:
     from logfire import Logfire
     from pydantic_ai import Agent
 
+DIFY_TRACE_ID_ATTRIBUTE: Final[str] = "dify.trace_id"
 DIFY_TENANT_ID_ATTRIBUTE: Final[str] = "dify.tenant_id"
+DIFY_APP_ID_ATTRIBUTE: Final[str] = "dify.app_id"
 DIFY_AGENT_ID_ATTRIBUTE: Final[str] = "dify.agent_id"
+DIFY_INVOKE_FROM_ATTRIBUTE: Final[str] = "dify.invoke_from"
+DIFY_CONVERSATION_ID_ATTRIBUTE: Final[str] = "dify.conversation.id"
+DIFY_WORKFLOW_ID_ATTRIBUTE: Final[str] = "dify.workflow.id"
+DIFY_WORKFLOW_RUN_ID_ATTRIBUTE: Final[str] = "dify.workflow.run_id"
+DIFY_NODE_ID_ATTRIBUTE: Final[str] = "dify.node.id"
+DIFY_NODE_EXECUTION_ID_ATTRIBUTE: Final[str] = "dify.node.execution_id"
+GEN_AI_USER_ID_ATTRIBUTE: Final[str] = "gen_ai.user.id"
+
+
+def dify_run_attributes(execution_context: DifyExecutionContextLayerConfig) -> tuple[tuple[str, str], ...]:
+    return tuple(
+        (key, value)
+        for key, value in (
+            (DIFY_TRACE_ID_ATTRIBUTE, execution_context.trace_id),
+            (DIFY_TENANT_ID_ATTRIBUTE, execution_context.tenant_id),
+            (DIFY_APP_ID_ATTRIBUTE, execution_context.app_id),
+            (DIFY_AGENT_ID_ATTRIBUTE, execution_context.agent_id),
+            (GEN_AI_USER_ID_ATTRIBUTE, execution_context.user_id),
+            (DIFY_INVOKE_FROM_ATTRIBUTE, execution_context.invoke_from),
+            (DIFY_CONVERSATION_ID_ATTRIBUTE, execution_context.conversation_id),
+            (DIFY_WORKFLOW_ID_ATTRIBUTE, execution_context.workflow_id),
+            (DIFY_WORKFLOW_RUN_ID_ATTRIBUTE, execution_context.workflow_run_id),
+            (DIFY_NODE_ID_ATTRIBUTE, execution_context.node_id),
+            (DIFY_NODE_EXECUTION_ID_ATTRIBUTE, execution_context.node_execution_id),
+        )
+        if value
+    )
 
 
 @dataclass(frozen=True)
@@ -204,35 +227,35 @@ class AgentObservability:
     include_content: bool = False
     trace_context_mode: Literal["isolated", "shared"] = "isolated"
 
-    def instrument(self, agent: Agent[Any, Any], *, tenant_id: str | None = None, agent_id: str | None = None) -> None:
-        """Instrument one run's agent and attribute its spans to the Dify owners.
+    def instrument(
+        self,
+        agent: Agent[Any, Any],
+        *,
+        execution_context: DifyExecutionContextLayerConfig | None = None,
+    ) -> None:
+        """Instrument one run's agent and attribute its spans to its Dify context.
 
-        ``tenant_id`` and ``agent_id`` identify the Dify workspace and Agent that
-        own the run. They are attached to every span the instrumented agent
-        produces, because the run span is not the only span a trajectory consumer
-        filters or aggregates on. Blank identifiers are omitted rather than
-        exported as empty attributes.
+        ``execution_context`` is the run's Dify identity and correlation context.
+        Its Data Push-aligned attributes are attached to every span the
+        instrumented agent produces; see ``dify_run_attributes``. Runs without an
+        execution context are still instrumented, just without Dify attribution.
         """
         self.client.instrument_pydantic_ai(
             agent,
             include_content=self.include_content,
             include_binary_content=False,
-            tracer_provider=self._tracer_provider(tenant_id=tenant_id, agent_id=agent_id),
+            tracer_provider=self._tracer_provider(execution_context),
         )
 
-    def _tracer_provider(self, *, tenant_id: str | None, agent_id: str | None) -> TracerProvider:
+    def _tracer_provider(self, execution_context: DifyExecutionContextLayerConfig | None) -> TracerProvider:
         provider: TracerProvider = (
-            # NOTE: Be EXTREMELY careful about this
-            # data leakage risk if shared mode is used
             IsolatedTracerProvider(self.client)
             if self.trace_context_mode == "isolated"
             else self.client.config.get_tracer_provider()
         )
-        run_attributes = tuple(
-            (key, value)
-            for key, value in ((DIFY_TENANT_ID_ATTRIBUTE, tenant_id), (DIFY_AGENT_ID_ATTRIBUTE, agent_id))
-            if value
-        )
+        if execution_context is None:
+            return provider
+        run_attributes = dify_run_attributes(execution_context)
         if not run_attributes:
             return provider
         return RunScopedTracerProvider(provider, run_attributes)
@@ -240,8 +263,18 @@ class AgentObservability:
 
 __all__ = [
     "DIFY_AGENT_ID_ATTRIBUTE",
+    "DIFY_APP_ID_ATTRIBUTE",
+    "DIFY_CONVERSATION_ID_ATTRIBUTE",
+    "DIFY_INVOKE_FROM_ATTRIBUTE",
+    "DIFY_NODE_EXECUTION_ID_ATTRIBUTE",
+    "DIFY_NODE_ID_ATTRIBUTE",
     "DIFY_TENANT_ID_ATTRIBUTE",
+    "DIFY_TRACE_ID_ATTRIBUTE",
+    "DIFY_WORKFLOW_ID_ATTRIBUTE",
+    "DIFY_WORKFLOW_RUN_ID_ATTRIBUTE",
+    "GEN_AI_USER_ID_ATTRIBUTE",
     "AgentObservability",
     "IsolatedTracerProvider",
     "RunScopedTracerProvider",
+    "dify_run_attributes",
 ]
