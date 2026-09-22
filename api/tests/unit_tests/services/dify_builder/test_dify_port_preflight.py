@@ -139,6 +139,56 @@ def test_apply_repair_coerces_a_numeric_condition_value_before_the_preflight(moc
     assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] == "60"
 
 
+def test_apply_repair_canonicalizes_an_ascii_comparison_operator_before_the_preflight(mock_session: MagicMock):
+    """F4 cause (a): the Edit LLM rewrote an if-else's ``cases`` with ``">="``,
+    which graphon's ``SupportedComparisonOperator`` refuses -- so the whole
+    batch was rejected and the session parked at ``edit.plan_approval``.
+    ``>=`` can only mean ``≥`` (graphon has no string ordering operator), so
+    the chokepoint canonicalizes it and the preflight then passes."""
+    ascii_cases = [
+        {
+            "case_id": "true",
+            "logical_operator": "and",
+            "conditions": [
+                {"id": "c1", "variable_selector": ["node1", "score"], "comparison_operator": ">=", "value": "90"}
+            ],
+        }
+    ]
+    valid_cases = json.loads(json.dumps(ascii_cases))
+    valid_cases[0]["conditions"][0]["comparison_operator"] = "="  # the draft is currently valid
+    node2 = {"id": "node2", "type": "custom", "data": {"type": "if-else", "title": "判断分数", "cases": valid_cases}}
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": ascii_cases})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, node2], "edges": []}, intents)
+
+    assert result.changed_nodes == ["node2"]
+    _, kwargs = sync.call_args
+    assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "≥"
+
+
+def test_apply_repair_still_rejects_an_ambiguous_equality_operator(mock_session: MagicMock):
+    """``==`` is ambiguous between graphon's number equality (``=``) and its
+    string equality (``is``), exactly like the word form ``equals``. Healing it
+    would silently pick one comparison; it must keep failing loudly instead."""
+    ambiguous_cases = json.loads(json.dumps(_BROKEN_IF_ELSE_CONFIG["cases"]))
+    ambiguous_cases[0]["conditions"][0]["comparison_operator"] = "=="
+    intents = [
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "if-else",
+                "node_id": "node2",
+                "config": {**_BROKEN_IF_ELSE_CONFIG, "cases": ambiguous_cases},
+            },
+        )
+    ]
+
+    with pytest.raises(PreflightError, match=r"node 'node2' \(if-else\)") as excinfo:
+        _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+    assert "comparison_operator" in str(excinfo.value)
+
+
 def test_apply_repair_fills_http_body_item_types_before_the_preflight(mock_session: MagicMock):
     body = {"type": "json", "data": [{"key": "", "value": '{"a": 1}'}]}  # one item, no ``type``
     http = {

@@ -12,8 +12,9 @@ from pathlib import Path
 import pytest
 
 from core.workflow.graph_normalizers import (
+    heal_nodes_for_preflight,
     normalize_condition_value,
-    normalize_condition_values,
+    normalize_conditions,
     normalize_filter_condition_value,
 )
 
@@ -94,30 +95,30 @@ class TestNormalizeConditionsDispatch:
     def test_a_type_error_inside_a_value_normalizer_is_not_masked(self):
         # The walker used to retry any TypeError as a one-argument call, which
         # replaced a genuine bug's error with an unrelated "missing argument".
-        from core.workflow.graph_normalizers import _normalize_conditions
+        from core.workflow.graph_normalizers import _normalize_condition_list
 
         def broken(_value, _operator):
             raise TypeError("genuine bug")
 
         with pytest.raises(TypeError, match="genuine bug"):
-            _normalize_conditions([{"comparison_operator": "=", "value": 1}], broken)
+            _normalize_condition_list([{"comparison_operator": "=", "value": 1}], broken)
 
 
-class TestNormalizeConditionValues:
+class TestNormalizeConditions:
     def test_heals_the_esq1_303_dev_draft_and_names_the_node(self):
         nodes = _esq1_303_nodes()
         assert _if_else_value(nodes) == 60
 
-        changed = normalize_condition_values(nodes)
+        changed = normalize_conditions(nodes)
 
         assert changed == ["node2"]
         assert _if_else_value(nodes) == "60"
 
     def test_is_idempotent_and_reports_nothing_on_a_clean_graph(self):
         nodes = _esq1_303_nodes()
-        normalize_condition_values(nodes)
+        normalize_conditions(nodes)
 
-        assert normalize_condition_values(nodes) == []
+        assert normalize_conditions(nodes) == []
 
     def test_covers_sub_variable_conditions_loop_break_conditions_and_list_operator_filters(self):
         nodes = [
@@ -163,7 +164,7 @@ class TestNormalizeConditionValues:
             {"id": "legacy", "data": {"type": "if-else", "conditions": [{"comparison_operator": "=", "value": 2}]}},
         ]
 
-        changed = normalize_condition_values(nodes)
+        changed = normalize_conditions(nodes)
 
         assert changed == ["branch", "loop", "filter", "legacy"]
         sub = nodes[0]["data"]["cases"][0]["conditions"][0]["sub_variable_condition"]["conditions"][0]
@@ -181,7 +182,7 @@ class TestNormalizeConditionValues:
         ]
         before = copy.deepcopy(nodes)
 
-        assert normalize_condition_values(nodes) == []
+        assert normalize_conditions(nodes) == []
         assert nodes == before
 
     def test_list_operator_with_none_bool_and_lists(self):
@@ -219,7 +220,7 @@ class TestNormalizeConditionValues:
             },
         ]
 
-        changed = normalize_condition_values(nodes)
+        changed = normalize_conditions(nodes)
 
         # filter_none changed (None → ""), filter_list changed (items normalized)
         # filter_bool unchanged (True stays True)
@@ -229,6 +230,242 @@ class TestNormalizeConditionValues:
         assert nodes[0]["data"]["filter_by"]["conditions"][0]["value"] == ""
         assert nodes[1]["data"]["filter_by"]["conditions"][0]["value"] is True
         assert nodes[2]["data"]["filter_by"]["conditions"][0]["value"] == ["a", "2"]
+
+
+class TestCanonicalizeComparisonOperators:
+    """graphon's ``SupportedComparisonOperator`` (``utils/condition/entities.py``)
+    and the list-operator's ``FilterOperator`` both spell the two ordering
+    comparisons ``≥`` / ``≤``; an LLM routinely writes ``>=`` / ``<=``, which
+    pydantic refuses at ``Graph.init``.
+
+    ONLY those two are canonicalized. Every equality-family ASCII form is
+    ambiguous: graphon's string equality is ``is`` / ``is not``
+    (``_assert_is`` accepts ``str | bool``) and its number equality is ``=`` /
+    ``≠`` (``_assert_equal`` accepts only numbers/bools), so ``==`` could mean
+    either and ``!=`` / ``<>`` likewise -- exactly the ambiguity that keeps
+    ``equals`` / ``gte`` rejected. The ordering forms carry no such ambiguity:
+    graphon has no string ordering operator at all (``_assert_greater_than``
+    and friends raise "Invalid actual value type: number" for anything but a
+    number), so ``>=`` can only mean ``≥``."""
+
+    def _if_else(self, operator: str, value: object = "9") -> list[dict]:
+        return [
+            {
+                "id": "node2",
+                "data": {
+                    "type": "if-else",
+                    "cases": [
+                        {
+                            "case_id": "true",
+                            "conditions": [
+                                {
+                                    "variable_selector": ["node1", "score"],
+                                    "comparison_operator": operator,
+                                    "value": value,
+                                }
+                            ],
+                        }
+                    ],
+                },
+            }
+        ]
+
+    def test_ascii_ordering_operators_become_the_engine_literals(self):
+        for ascii_form, literal in ((">=", "≥"), ("<=", "≤")):
+            nodes = self._if_else(ascii_form)
+
+            assert normalize_conditions(nodes) == ["node2"]
+            assert nodes[0]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == literal
+
+    def test_every_container_is_covered(self):
+        nodes = [
+            {
+                "id": "branch",
+                "data": {
+                    "type": "if-else",
+                    "cases": [
+                        {
+                            "case_id": "true",
+                            "conditions": [
+                                {
+                                    "variable_selector": ["s", "files"],
+                                    "comparison_operator": ">=",
+                                    "value": "1",
+                                    "sub_variable_condition": {
+                                        "logical_operator": "and",
+                                        "conditions": [{"key": "size", "comparison_operator": "<=", "value": "1024"}],
+                                    },
+                                }
+                            ],
+                        }
+                    ],
+                },
+            },
+            {
+                "id": "loop",
+                "data": {
+                    "type": "loop",
+                    "break_conditions": [
+                        {"variable_selector": ["loop", "i"], "comparison_operator": ">=", "value": "10"}
+                    ],
+                },
+            },
+            {
+                "id": "filter",
+                "data": {
+                    "type": "list-operator",
+                    "filter_by": {
+                        "enabled": True,
+                        "conditions": [{"key": "n", "comparison_operator": "<=", "value": "7"}],
+                    },
+                },
+            },
+            {
+                "id": "legacy",
+                "data": {"type": "if-else", "conditions": [{"comparison_operator": ">=", "value": "2"}]},
+            },
+        ]
+
+        assert normalize_conditions(nodes) == ["branch", "loop", "filter", "legacy"]
+
+        case_condition = nodes[0]["data"]["cases"][0]["conditions"][0]
+        assert case_condition["comparison_operator"] == "≥"
+        assert case_condition["sub_variable_condition"]["conditions"][0]["comparison_operator"] == "≤"
+        assert nodes[1]["data"]["break_conditions"][0]["comparison_operator"] == "≥"
+        assert nodes[2]["data"]["filter_by"]["conditions"][0]["comparison_operator"] == "≤"
+        assert nodes[3]["data"]["conditions"][0]["comparison_operator"] == "≥"
+
+    @pytest.mark.parametrize(
+        "operator",
+        [
+            "=",
+            "≠",
+            ">",
+            "<",
+            "≥",
+            "≤",
+            "is",
+            "is not",
+            "contains",
+            "not contains",
+            "start with",
+            "end with",
+            "in",
+            "not in",
+            "all of",
+            "empty",
+            "not empty",
+            "null",
+            "not null",
+            "exists",
+            "not exists",
+        ],
+    )
+    def test_an_operator_the_engine_accepts_is_left_alone(self, operator: str):
+        # ``in`` / ``not in`` / ``all of`` compare against a list, so they get a
+        # list value: this asserts the OPERATOR is untouched, not the
+        # pre-existing scalar-to-list value rule.
+        nodes = self._if_else(operator, ["9"] if operator in ("in", "not in", "all of") else "9")
+        before = copy.deepcopy(nodes)
+
+        assert normalize_conditions(nodes) == []
+        assert nodes == before
+
+    @pytest.mark.parametrize("operator", ["==", "!=", "<>", "equals", "not equals", "gte", "lte", "eq", "ne", "gt"])
+    def test_an_ambiguous_form_keeps_failing_loudly(self, operator: str):
+        # Every equality-family ASCII form is ambiguous between the number
+        # operator (``=`` / ``≠``) and the string operator (``is`` / ``is
+        # not``), as are all the word forms. Guessing would silently change
+        # which comparison the draft runs; the engine must refuse them instead.
+        nodes = self._if_else(operator)
+        before = copy.deepcopy(nodes)
+
+        assert normalize_conditions(nodes) == []
+        assert nodes == before
+
+    def test_the_operator_is_canonicalized_before_the_value_rule_reads_it(self):
+        # ``normalize_condition_value`` keys on the operator (a scalar under
+        # ``in`` / ``not in`` / ``all of`` becomes a one-item list), so it must
+        # never see an operator the engine is about to reject.
+        from core.workflow.graph_normalizers import _normalize_condition_list
+
+        seen: list[str] = []
+
+        def record(value, operator):
+            seen.append(operator)
+            return value
+
+        conditions = [{"comparison_operator": ">=", "value": "9"}]
+        assert _normalize_condition_list(conditions, record) is True
+        assert seen == ["≥"]
+
+    def test_a_missing_or_malformed_operator_is_left_alone(self):
+        nodes = [
+            {"id": "a", "data": {"type": "if-else", "cases": [{"conditions": [{"value": "x"}]}]}},
+            {"id": "b", "data": {"type": "if-else", "cases": [{"conditions": [{"comparison_operator": None}]}]}},
+        ]
+        before = copy.deepcopy(nodes)
+
+        assert normalize_conditions(nodes) == []
+        assert nodes == before
+
+
+class TestHealNodesForPreflight:
+    """The one deterministic heal set every pre-preflight caller runs, so the
+    Builder's write chokepoint and the dry run that decides which intents are
+    applicable cannot drift apart."""
+
+    def test_runs_the_whole_set_and_dedupes_the_ids_in_order(self):
+        nodes = [
+            {
+                "id": "node2",
+                "data": {
+                    "type": "if-else",
+                    "cases": [{"case_id": "true", "conditions": [{"comparison_operator": ">=", "value": 90}]}],
+                },
+            },
+            {
+                "id": "node3",
+                "data": {
+                    "type": "http-request",
+                    "body": {"type": "json", "data": [{"key": "", "value": "{}"}]},
+                },
+            },
+            {"id": "node4", "data": {"type": "parameter-extractor", "query": [["node2", "text"]]}},
+        ]
+
+        assert heal_nodes_for_preflight(nodes) == ["node2", "node3", "node4"]
+
+        condition = nodes[0]["data"]["cases"][0]["conditions"][0]
+        assert condition["comparison_operator"] == "≥"
+        assert condition["value"] == "90"
+        assert nodes[1]["data"]["body"]["data"][0]["type"] == "text"
+        assert nodes[2]["data"]["query"] == ["node2", "text"]
+
+    def test_reports_a_node_once_even_when_two_normalizers_heal_it(self):
+        # An http-request node whose authorization AND body both need filling
+        # is still one changed id; so is a re-run over an already-healed graph.
+        nodes = [
+            {
+                "id": "node3",
+                "data": {
+                    "type": "http-request",
+                    "authorization": {"config": None},
+                    "body": {"type": "json", "data": [{"key": "", "value": "{}"}]},
+                },
+            }
+        ]
+
+        assert heal_nodes_for_preflight(nodes) == ["node3"]
+        assert heal_nodes_for_preflight(nodes) == []
+
+    def test_leaves_a_graph_the_engine_already_accepts_untouched(self):
+        nodes = _esq1_303_nodes()
+        heal_nodes_for_preflight(nodes)
+        before = copy.deepcopy(nodes)
+
+        assert heal_nodes_for_preflight(nodes) == []
+        assert nodes == before
 
 
 class TestDeriveIfElseVarTypes:

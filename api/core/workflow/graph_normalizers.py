@@ -32,6 +32,30 @@ from typing import Any
 # written for them must become a one-item list rather than a bare string.
 _LIST_OPERATORS = frozenset({"in", "not in", "all of"})
 
+# ASCII spellings of a comparison operator that can mean ONE engine literal and
+# nothing else. graphon's ``SupportedComparisonOperator``
+# (``utils/condition/entities.py``) and the list-operator's ``FilterOperator``
+# (``nodes/list_operator/entities.py``) both spell the ordering comparisons
+# ``≥`` / ``≤``; pydantic refuses ``>=`` / ``<=`` at ``Graph.init``, and an LLM
+# writes them constantly (F4 cause (a): an Edit rewrote an if-else's ``cases``
+# with ``">="`` and the whole batch was rejected).
+#
+# ONLY the two ordering forms are here. Every equality-family ASCII form is
+# ambiguous: graphon's string equality is ``is`` / ``is not``
+# (``processor._assert_is`` accepts ``str | bool``) while its number equality is
+# ``=`` / ``≠`` (``_assert_equal`` accepts only numbers/bools), so ``==`` could
+# be either and ``!=`` / ``<>`` likewise -- the same ambiguity that keeps the
+# word forms (``equals``, ``gte``) rejected. The ordering forms carry none of
+# it: graphon has no string ordering operator at all
+# (``_assert_greater_than`` and its three siblings raise "Invalid actual value
+# type: number" for anything but a number), so ``>=`` can only mean ``≥``.
+# Guessing an equality would silently change which comparison the draft runs;
+# a loud refusal is the right outcome there.
+_ASCII_COMPARISON_OPERATORS: Mapping[str, str] = {
+    ">=": "≥",
+    "<=": "≤",
+}
+
 
 def _scalar_to_text(value: int | float) -> str:
     """``60`` -> ``"60"``, ``60.0`` -> ``"60"``, ``60.5`` -> ``"60.5"``."""
@@ -95,12 +119,18 @@ def normalize_filter_condition_value(value: Any, operator: str = "") -> Any:
     return value
 
 
-def _normalize_conditions(
+def _normalize_condition_list(
     conditions: Any,
     value_normalizer: Callable[[Any, str], Any] = normalize_condition_value,
 ) -> bool:
-    """Normalize every ``value`` in a conditions list (recursing into
-    ``sub_variable_condition``). Returns True when anything changed.
+    """Normalize every ``comparison_operator`` and ``value`` in a conditions
+    list (recursing into ``sub_variable_condition``). Returns True when
+    anything changed.
+
+    The operator is canonicalized FIRST (``_ASCII_COMPARISON_OPERATORS``),
+    because the value rule keys on it -- ``normalize_condition_value`` wraps a
+    scalar into a one-item list under ``in`` / ``not in`` / ``all of`` -- and
+    must never be shown an operator the engine is about to reject.
 
     ``value_normalizer`` is called as ``(value, comparison_operator)``:
     ``normalize_condition_value`` for if-else / loop Conditions,
@@ -113,25 +143,32 @@ def _normalize_conditions(
     for condition in conditions:
         if not isinstance(condition, MutableMapping):
             continue
+        operator = str(condition.get("comparison_operator") or "")
+        canonical = _ASCII_COMPARISON_OPERATORS.get(operator)
+        if canonical is not None:
+            condition["comparison_operator"] = canonical
+            operator = canonical
+            changed = True
         if "value" in condition:
-            new_value = value_normalizer(condition["value"], str(condition.get("comparison_operator") or ""))
+            new_value = value_normalizer(condition["value"], operator)
             if new_value != condition["value"] or type(new_value) is not type(condition["value"]):
                 condition["value"] = new_value
                 changed = True
         sub = condition.get("sub_variable_condition")
-        if isinstance(sub, MutableMapping) and _normalize_conditions(sub.get("conditions"), value_normalizer):
+        if isinstance(sub, MutableMapping) and _normalize_condition_list(sub.get("conditions"), value_normalizer):
             changed = True
     return changed
 
 
-def normalize_condition_values(nodes: list[Any]) -> list[str]:
-    """Coerce every condition value in ``nodes`` to the shape graphon accepts.
+def normalize_conditions(nodes: list[Any]) -> list[str]:
+    """Coerce every condition operator and value in ``nodes`` to the shape
+    graphon accepts.
 
     Covers if-else ``cases[].conditions[]`` (and the legacy top-level
     ``conditions``), loop ``break_conditions[]``, and list-operator
     ``filter_by.conditions[]``. if-else and loop use graphon's ``Condition``
-    model; list-operator uses ``FilterCondition`` (different value shape).
-    Returns the ids of the nodes that changed, in order.
+    model; list-operator uses ``FilterCondition`` (different value shape, same
+    operator spellings). Returns the ids of the nodes that changed, in order.
     """
     changed: list[str] = []
     for node in nodes:
@@ -146,18 +183,18 @@ def normalize_condition_values(nodes: list[Any]) -> list[str]:
             cases = data.get("cases")
             if isinstance(cases, list):
                 for case in cases:
-                    if isinstance(case, Mapping) and _normalize_conditions(
+                    if isinstance(case, Mapping) and _normalize_condition_list(
                         case.get("conditions"), normalize_condition_value
                     ):
                         touched = True
-            if _normalize_conditions(data.get("conditions"), normalize_condition_value):
+            if _normalize_condition_list(data.get("conditions"), normalize_condition_value):
                 touched = True
         elif node_type == "loop":
-            touched = _normalize_conditions(data.get("break_conditions"), normalize_condition_value)
+            touched = _normalize_condition_list(data.get("break_conditions"), normalize_condition_value)
         elif node_type == "list-operator":
             filter_by = data.get("filter_by")
             if isinstance(filter_by, Mapping):
-                touched = _normalize_conditions(filter_by.get("conditions"), normalize_filter_condition_value)
+                touched = _normalize_condition_list(filter_by.get("conditions"), normalize_filter_condition_value)
         if touched:
             changed.append(str(node.get("id") or ""))
     return changed
@@ -779,3 +816,47 @@ def undeclared_branch_handles(nodes: list[Any], edges: list[Any]) -> list[dict[s
                 }
             )
     return bad
+
+
+# ---------------------------------------------------------------------------
+# The deterministic heal set
+# ---------------------------------------------------------------------------
+
+
+def heal_nodes_for_preflight(nodes: list[Any]) -> list[str]:
+    """Run every deterministic node heal that must happen BEFORE a graph is
+    preflighted, and return the ids of the nodes that changed (in order, each
+    id once).
+
+    This is the single definition of "the heals a graph gets before it is
+    validated". Two callers must agree on it or the Builder contradicts
+    itself: ``dify_port.apply_repair`` (the write chokepoint, which preflights
+    what it is about to write) and ``graph_ops.filter_applicable`` (the dry run
+    that decides which intents are applicable, which preflights the same graph
+    a step earlier). If either kept its own list, an intent could be rejected
+    as inapplicable for a defect the chokepoint would have healed -- or
+    accepted for one it would not.
+
+    Each member only turns a graph the engine REFUSES into one it ACCEPTS:
+
+    - ``normalize_conditions`` -- a condition operator written the ASCII way
+      (``>=`` -> ``≥``) and a condition value written as a JSON number
+      (ESQ1-303's ``"value": 60``);
+    - ``normalize_http_request_bodies`` -- the ``type`` ``BodyData`` cannot
+      default (ESQ1-302) and an ``authorization`` with no ``type``;
+    - ``normalize_parameter_extractor_queries`` -- a ``query`` written as an
+      array of selector arrays.
+
+    NOT included: ``derive_if_else_var_types``. ``varType`` is a frontend-only
+    operator hint the engine ignores, so it is not something a preflight can
+    turn on; the generator's postprocess calls it separately.
+    """
+    changed: list[str] = []
+    for node_id in (
+        *normalize_conditions(nodes),
+        *normalize_http_request_bodies(nodes),
+        *normalize_parameter_extractor_queries(nodes),
+    ):
+        if node_id not in changed:
+            changed.append(node_id)
+    return changed
