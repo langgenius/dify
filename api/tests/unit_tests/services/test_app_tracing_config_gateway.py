@@ -1,9 +1,11 @@
-from unittest.mock import patch
+from functools import partial
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationInfo, field_validator
 
-from core.ops.entities.config_entity import BaseTracingConfig
+from core.ops.entities.config_entity import BaseTracingConfig, TracingProviderEnum
+from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.ops_trace_manager import TracingProviderConfigEntry
 from services import app_tracing_config_gateway as gateway_module
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
@@ -11,6 +13,7 @@ from services.app_tracing_config_service import (
     AppTracingConfigInvalidConfigurationError,
     AppTracingConfigInvalidProviderError,
     AppTracingConfigProcessingError,
+    AppTracingConfigProviderUnavailableError,
     AppTracingConfigVerificationFailedError,
 )
 
@@ -43,6 +46,47 @@ def test_validate_provider_rejects_unknown_provider(monkeypatch: pytest.MonkeyPa
 
     with pytest.raises(AppTracingConfigInvalidProviderError, match="Invalid tracing provider: unknown"):
         OpsTraceManagerGateway().validate_provider("unknown")
+
+
+@pytest.mark.parametrize("provider", TracingProviderEnum)
+def test_validate_provider_does_not_load_optional_dependencies(provider: TracingProviderEnum) -> None:
+    with patch.object(OpsTraceManagerGateway, "_provider_config") as load_provider:
+        load_provider.side_effect = AssertionError("Provider validation must not load an SDK")
+
+        OpsTraceManagerGateway().validate_provider(provider.value)
+
+    load_provider.assert_not_called()
+
+
+@pytest.mark.parametrize("update", [False, True])
+def test_prepare_config_reports_missing_provider_dependencies(monkeypatch: pytest.MonkeyPatch, update: bool) -> None:
+    missing_dependency = TraceProviderNotInstalledError("weave", "wandb")
+    providers = MagicMock()
+    providers.__getitem__.side_effect = missing_dependency
+    monkeypatch.setattr(gateway_module, "provider_config_map", providers)
+    gateway = OpsTraceManagerGateway()
+    prepare = (
+        partial(gateway.prepare_updated_config, current_tracing_config={}) if update else gateway.prepare_new_config
+    )
+
+    with pytest.raises(AppTracingConfigProviderUnavailableError) as caught:
+        prepare(workspace_id="workspace-1", tracing_provider="weave", tracing_config={})
+
+    assert caught.value.__cause__ is missing_dependency
+
+
+def test_present_config_reports_missing_provider_dependencies() -> None:
+    missing_dependency = TraceProviderNotInstalledError("weave", "wandb")
+    with patch.object(gateway_module, "OpsTraceManager") as manager:
+        manager.decrypt_tracing_config.side_effect = missing_dependency
+
+        with pytest.raises(AppTracingConfigProviderUnavailableError) as caught:
+            OpsTraceManagerGateway().present_config(
+                workspace_id="workspace-1", tracing_provider="weave", tracing_config={"api_key": "encrypted"}
+            )
+
+    assert caught.value.__cause__ is missing_dependency
+    manager.obfuscated_decrypt_token.assert_not_called()
 
 
 def test_prepare_new_config_applies_defaults_validates_and_encrypts(monkeypatch: pytest.MonkeyPatch) -> None:
