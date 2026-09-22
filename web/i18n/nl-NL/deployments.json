@@ -40,6 +40,7 @@
   "studio.accessControl.chipOff": "Off",
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} of {{m}}",
+  "studio.accessControl.chipPaused": "Gepauzeerd",
   "studio.accessControl.createIpPolicy": "IP-beleid toevoegen",
   "studio.accessControl.description": "Beheer de toegang tot deze app door een IP-beleid toe te passen.",
   "studio.accessControl.downgradeDescription": "Access control needs the Pro plan.",

@@ -40,6 +40,7 @@
   "studio.accessControl.chipOff": "Off",
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} / {{m}}",
+  "studio.accessControl.chipPaused": "暫停",
   "studio.accessControl.createIpPolicy": "新增 IP 原則",
   "studio.accessControl.description": "透過套用 IP 原則來控制對此應用程式的存取。",
   "studio.accessControl.downgradeDescription": "Access control needs the Pro plan.",

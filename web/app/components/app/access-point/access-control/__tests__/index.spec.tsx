@@ -871,6 +871,7 @@ describe('supported access points and binding permission', () => {
       expect(
         screen.getByText('Paused — Internal Network is configured but not enforcing'),
       ).toBeInTheDocument()
+      expect(within(getChip()).getByText('Pause')).toBeInTheDocument()
       expect(screen.queryByText(/Protecting/)).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
       await user.click(screen.getByRole('switch', { name: 'Enable access control' }))
@@ -881,6 +882,7 @@ describe('supported access points and binding permission', () => {
         access_points: ['webapp', 'mcp'],
         expected_version: 3,
       })
+      await waitFor(() => expect(within(getChip()).getByText('2 of 3')).toBeInTheDocument())
       await waitFor(() =>
         expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
       )
@@ -1164,7 +1166,7 @@ describe('trusted IP checks before saving', () => {
       expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
       await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
       await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
-      expect(within(getChip()).getByText('Off')).toBeInTheDocument()
+      expect(within(getChip()).getByText('Pause')).toBeInTheDocument()
       expect(server.writes).toHaveLength(0)
       const checksBeforeSave = server.checks
       await user.click(screen.getByRole('button', { name: 'Save' }))

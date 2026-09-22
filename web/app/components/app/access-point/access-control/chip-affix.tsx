@@ -1,6 +1,7 @@
 'use client'
 
 import type { AccessControlChipKind } from './chip-status'
+import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
@@ -41,7 +42,9 @@ export function AccessControlChipAffix({
             n: coveredCount,
             m: inServiceCount,
           })
-        : t(($) => $['studio.accessControl.chipOff'], { ns: 'deployments' })
+        : kind === 'paused'
+          ? t(($) => $['studio.accessControl.chipPaused'], { ns: 'deployments' })
+          : t(($) => $['studio.accessControl.chipOff'], { ns: 'deployments' })
 
   return (
     <>
@@ -53,7 +56,14 @@ export function AccessControlChipAffix({
             status={kind === 'off' ? 'disabled' : kind === 'paused' ? 'warning' : 'success'}
           />
         </span>
-        <span className="system-xs-semibold text-text-tertiary">{statusLabel}</span>
+        <span
+          className={cn(
+            'system-xs-semibold uppercase',
+            kind === 'paused' ? 'text-text-warning' : 'text-text-tertiary',
+          )}
+        >
+          {statusLabel}
+        </span>
       </span>
     </>
   )
