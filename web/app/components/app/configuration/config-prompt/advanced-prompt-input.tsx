@@ -196,7 +196,7 @@ const AdvancedPromptInput: FC<Props> = ({
                   />
                   <InfotipContent
                     aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                    className="w-[180px]"
+                    className="w-45"
                   >
                     {t(($) => $.promptTip, { ns: 'appDebug' })}
                   </InfotipContent>

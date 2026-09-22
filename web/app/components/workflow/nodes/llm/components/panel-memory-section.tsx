@@ -97,7 +97,7 @@ const PanelMemorySection: FC<Props> = ({
                     />
                     <InfotipContent
                       aria-label={t(($) => $['nodes.llm.roleDescription.user'], { ns: 'workflow' })}
-                      className="w-[180px]"
+                      className="w-45"
                     >
                       {t(($) => $['nodes.llm.roleDescription.user'], { ns: 'workflow' })}
                     </InfotipContent>

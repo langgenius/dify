@@ -129,7 +129,7 @@ const ConfigPromptItem: FC<Props> = ({
           {roleDescription && (
             <Infotip>
               <InfotipTrigger aria-label={roleDescription} />
-              <InfotipContent aria-label={roleDescription} className="w-[180px]">
+              <InfotipContent aria-label={roleDescription} className="w-45">
                 {roleDescription}
               </InfotipContent>
             </Infotip>

@@ -25,7 +25,7 @@ const ItemPanel: FC<Props> = ({ className, icon, name, description, children }) 
         <div className="mr-1 ml-3 text-sm/6 font-semibold text-text-secondary">{name}</div>
         <Infotip>
           <InfotipTrigger aria-label={description} />
-          <InfotipContent aria-label={description} className="w-[180px]">
+          <InfotipContent aria-label={description} className="w-45">
             {description}
           </InfotipContent>
         </Infotip>

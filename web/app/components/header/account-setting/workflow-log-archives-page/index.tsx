@@ -429,7 +429,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
             />
             <InfotipContent
               aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
-              className="wrap-anywhere whitespace-pre-wrap"
+              className="whitespace-pre-wrap"
             >
               {downloadHint}
             </InfotipContent>

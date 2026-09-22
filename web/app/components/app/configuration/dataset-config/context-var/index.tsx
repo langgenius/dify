@@ -35,7 +35,7 @@ const ContextVar: FC<Props> = (props) => {
           />
           <InfotipContent
             aria-label={t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
-            className="w-[180px]"
+            className="w-45"
           >
             {t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
           </InfotipContent>

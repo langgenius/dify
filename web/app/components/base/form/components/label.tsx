@@ -29,8 +29,8 @@ const Label = ({ htmlFor, label, isRequired, showOptional, tooltip, className }:
       )}
       {tooltip && (
         <Infotip>
-          <InfotipTrigger aria-label={tooltip} className="ml-0.5 size-4" />
-          <InfotipContent aria-label={tooltip} className="w-[200px]">
+          <InfotipTrigger aria-label={tooltip} className="ml-0.5" />
+          <InfotipContent aria-label={tooltip} className="w-50">
             {tooltip}
           </InfotipContent>
         </Infotip>

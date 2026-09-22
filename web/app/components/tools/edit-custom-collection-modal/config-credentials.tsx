@@ -218,13 +218,13 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                                 aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
                                   ns: 'tools',
                                 })}
-                                className="ml-0.5 size-4"
+                                className="ml-0.5"
                               />
                               <InfotipContent
                                 aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
                                   ns: 'tools',
                                 })}
-                                className="w-[261px] text-text-tertiary"
+                                className="w-65.25"
                               >
                                 {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
                               </InfotipContent>
@@ -285,13 +285,13 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                                 aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
                                   ns: 'tools',
                                 })}
-                                className="ml-0.5 size-4"
+                                className="ml-0.5"
                               />
                               <InfotipContent
                                 aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
                                   ns: 'tools',
                                 })}
-                                className="w-[261px] text-text-tertiary"
+                                className="w-65.25"
                               >
                                 {t(($) => $['createTool.authMethod.queryParamTooltip'], {
                                   ns: 'tools',

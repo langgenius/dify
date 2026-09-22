@@ -251,20 +251,18 @@ const AgentTools: FC = () => {
                         aria-label={item.tool_name}
                         className="ml-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                       />
-                      <InfotipContent aria-label={item.tool_name} className="w-[220px]">
-                        <div>
-                          <div className="mb-1.5 text-text-secondary">{item.tool_name}</div>
-                          <div className="mb-1.5 text-text-tertiary">
-                            {t(($) => $.toolNameUsageTip, { ns: 'tools' })}
-                          </div>
-                          <button
-                            type="button"
-                            className="cursor-pointer rounded-sm border-none bg-transparent p-0 text-left text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
-                            onClick={() => void writeTextToClipboard(item.tool_name)}
-                          >
-                            {t(($) => $.copyToolName, { ns: 'tools' })}
-                          </button>
+                      <InfotipContent aria-label={item.tool_name} className="w-55">
+                        <div className="mb-1.5">{item.tool_name}</div>
+                        <div className="mb-1.5 text-text-tertiary">
+                          {t(($) => $.toolNameUsageTip, { ns: 'tools' })}
                         </div>
+                        <button
+                          type="button"
+                          className="cursor-pointer rounded-sm border-none bg-transparent p-0 text-left text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                          onClick={() => void writeTextToClipboard(item.tool_name)}
+                        >
+                          {t(($) => $.copyToolName, { ns: 'tools' })}
+                        </button>
                       </InfotipContent>
                     </Infotip>
                   )}

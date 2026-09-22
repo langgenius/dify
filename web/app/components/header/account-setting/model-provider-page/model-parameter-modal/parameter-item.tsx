@@ -454,7 +454,7 @@ function ParameterItem({
               />
               <InfotipContent
                 aria-label={parameterRule.help[language] || parameterRule.help.en_US}
-                className="w-[150px] whitespace-pre-wrap"
+                className="w-37.5 whitespace-pre-wrap"
               >
                 {parameterRule.help[language] || parameterRule.help.en_US}
               </InfotipContent>

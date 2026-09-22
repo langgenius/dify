@@ -67,7 +67,7 @@ const PanelOutputSection: FC<Props> = ({
               />
               <InfotipContent
                 aria-label={t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
-                className="w-[150px]"
+                className="w-37.5"
               >
                 {t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
               </InfotipContent>

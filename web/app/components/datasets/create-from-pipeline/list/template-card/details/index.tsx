@@ -105,7 +105,7 @@ const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
               />
               <InfotipContent
                 aria-label={t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
-                className="max-w-[240px]"
+                className="max-w-60"
               >
                 {t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
               </InfotipContent>

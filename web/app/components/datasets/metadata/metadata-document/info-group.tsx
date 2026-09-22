@@ -72,7 +72,7 @@ const InfoGroup: FC<Props> = ({
             {titleTooltip && (
               <Infotip>
                 <InfotipTrigger aria-label={titleTooltip} />
-                <InfotipContent aria-label={titleTooltip} className="max-w-[240px]">
+                <InfotipContent aria-label={titleTooltip} className="max-w-60">
                   {titleTooltip}
                 </InfotipContent>
               </Infotip>

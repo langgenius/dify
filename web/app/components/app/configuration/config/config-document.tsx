@@ -61,7 +61,7 @@ const ConfigDocument: FC = () => {
           />
           <InfotipContent
             aria-label={t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
-            className="w-[180px]"
+            className="w-45"
           >
             {t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
           </InfotipContent>

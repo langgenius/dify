@@ -60,7 +60,7 @@ const ConfigAudio: FC = () => {
           />
           <InfotipContent
             aria-label={t(($) => $['feature.audioUpload.description'], { ns: 'appDebug' })}
-            className="w-[180px]"
+            className="w-45"
           >
             {t(($) => $['feature.audioUpload.description'], { ns: 'appDebug' })}
           </InfotipContent>

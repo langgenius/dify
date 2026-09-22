@@ -65,7 +65,7 @@ const OptionCard: FC<Props> = ({
       {tooltip && (
         <Infotip>
           <InfotipTrigger aria-label={tooltip} />
-          <InfotipContent aria-label={tooltip} className="w-[240px]">
+          <InfotipContent aria-label={tooltip} className="w-60">
             {tooltip}
           </InfotipContent>
         </Infotip>

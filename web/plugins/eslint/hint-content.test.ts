@@ -4,20 +4,20 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { expect, it } from 'vite-plus/test'
-import { tooltipContentRules } from '../../../lint.config'
+import { hintContentRules } from '../../../lint.config'
 
 function lintFixture(source: string) {
   const require = createRequire(import.meta.url)
   const viteRequire = createRequire(require.resolve('vite-plus/package.json'))
   const oxlintBin = join(dirname(dirname(viteRequire.resolve('oxlint'))), 'bin', 'oxlint')
-  const directory = mkdtempSync(join(tmpdir(), 'dify-tooltip-contract-'))
+  const directory = mkdtempSync(join(tmpdir(), 'dify-hint-contract-'))
   try {
     writeFileSync(
       join(directory, '.oxlintrc.json'),
       JSON.stringify({
         categories: { correctness: 'off' },
         jsPlugins: [require.resolve('@shadcn/lint')],
-        rules: tooltipContentRules,
+        rules: hintContentRules,
       }),
     )
     writeFileSync(join(directory, 'fixture.tsx'), source)
@@ -38,7 +38,7 @@ it('allows shortcut row composition and width constraints without restricting ot
   const diagnostics = lintFixture(`
     import { TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
     import { PopoverContent } from '@langgenius/dify-ui/popover'
-    import { InfotipContent } from '@langgenius/dify-ui/infotip'
+    import { InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
     const examples = <>
       <TooltipContent className="flex items-center gap-1 max-w-60" />
       <TooltipContent className="w-58 max-w-65" />
@@ -46,7 +46,8 @@ it('allows shortcut row composition and width constraints without restricting ot
       <TooltipContent />
       <TooltipTrigger className="border-0 bg-transparent" />
       <PopoverContent className="shadow-none" />
-      <InfotipContent className="shadow-none" />
+      <InfotipContent className="w-60 whitespace-pre-wrap" />
+      <InfotipTrigger className="ml-1 text-text-warning" />
       <div className="shadow-none" />
     </>
   `)
@@ -124,4 +125,71 @@ it('checks readable class helpers, local values, and props spreads', () => {
   expect(diagnostics).toHaveLength(2)
   expect(diagnostics.some(({ message }) => message.includes('"shadow-none"'))).toBe(true)
   expect(diagnostics.some(({ message }) => message.includes('"border-0"'))).toBe(true)
+})
+
+it('allows Infotip widths and content line breaks while retaining its own content contract', () => {
+  const diagnostics = lintFixture(`
+    import { InfotipContent as Explanation } from '@langgenius/dify-ui/infotip'
+    const examples = <>
+      <Explanation />
+      <Explanation className="w-60 max-w-75 whitespace-pre-wrap" />
+      <Explanation className="max-w-[261px] sm:w-60" />
+      <Explanation className={expanded ? 'w-60' : 'w-45'} />
+    </>
+  `)
+  expect(diagnostics).toEqual([])
+})
+
+it('rejects Infotip surface restyling and repeated defaults, including Tooltip-only layouts', () => {
+  const classes = [
+    'p-1.5',
+    'px-3',
+    'py-2',
+    'rounded-lg',
+    'border-[0.5px]',
+    'border-components-panel-border',
+    'bg-components-tooltip-bg',
+    'text-text-secondary',
+    'system-xs-medium',
+    'text-start',
+    'wrap-break-word',
+    'dark:shadow-none!',
+    'backdrop-blur-[5px]',
+    'transition-opacity',
+    'data-ending-style:opacity-0',
+    '[box-shadow:none]',
+    '[&>p]:text-red-500',
+    'flex',
+    'flex-1',
+    'items-center',
+    'gap-1',
+    'truncate',
+    'whitespace-nowrap',
+    'break-all',
+  ]
+  const diagnostics = lintFixture(`
+    import { InfotipContent as Explanation } from '@langgenius/dify-ui/infotip'
+    const example = <Explanation className="${classes.join(' ')}" />
+  `)
+  expect(diagnostics).toHaveLength(classes.length)
+  for (const className of classes)
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
+})
+
+it('checks Infotip class helpers and same-file props without restricting unrelated imports', () => {
+  const diagnostics = lintFixture(`
+    import { InfotipContent } from '@langgenius/dify-ui/infotip'
+    import { InfotipContent as Unrelated } from './feature'
+    import { cn } from '@langgenius/dify-ui/cn'
+    const surface = 'shadow-none'
+    const popup = { className: 'p-2' }
+    const examples = <>
+      <InfotipContent className={cn('w-60', surface)} />
+      <InfotipContent {...popup} />
+      <Unrelated className="p-2 shadow-none" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(2)
+  expect(diagnostics.some(({ message }) => message.includes('"shadow-none"'))).toBe(true)
+  expect(diagnostics.some(({ message }) => message.includes('"p-2"'))).toBe(true)
 })

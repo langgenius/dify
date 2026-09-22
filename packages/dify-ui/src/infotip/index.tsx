@@ -6,7 +6,7 @@ import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
 import { iconButtonVariants } from '../icon-button'
 import { resolveClassName } from '../internals/resolve-class-name'
-import { floatingPopupAnimationClassName } from '../overlay-shared'
+import { hintPopupClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
 const iconClassNames = {
@@ -95,12 +95,7 @@ function InfotipContent({
         <BasePopover.Popup
           {...props}
           className={(state) =>
-            cn(
-              'outline-hidden focus:outline-hidden focus-visible:outline-hidden',
-              floatingPopupAnimationClassName,
-              'max-w-75 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-secondary shadow-[0px_12px_16px_-4px_var(--color-shadow-shadow-5),0px_4px_6px_-2px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
-              resolveClassName(className, state),
-            )
+            cn(hintPopupClassName, 'outline-hidden', resolveClassName(className, state))
           }
         />
       </BasePopover.Positioner>

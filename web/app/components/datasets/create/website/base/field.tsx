@@ -45,7 +45,7 @@ const Field: FC<Props> = ({
         {tooltip && (
           <Infotip>
             <InfotipTrigger aria-label={tooltip} className="ml-0.5" />
-            <InfotipContent aria-label={tooltip} className="w-[200px]">
+            <InfotipContent aria-label={tooltip} className="w-50">
               {tooltip}
             </InfotipContent>
           </Infotip>

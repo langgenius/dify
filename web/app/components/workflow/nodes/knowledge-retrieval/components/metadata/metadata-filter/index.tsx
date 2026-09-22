@@ -64,7 +64,7 @@ const MetadataFilter = ({
           />
           <InfotipContent
             aria-label={t(($) => $['nodes.knowledgeRetrieval.metadata.tip'], { ns: 'workflow' })}
-            className="w-[200px]"
+            className="w-50"
           >
             {t(($) => $['nodes.knowledgeRetrieval.metadata.tip'], { ns: 'workflow' })}
           </InfotipContent>

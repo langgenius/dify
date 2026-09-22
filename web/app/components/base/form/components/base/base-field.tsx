@@ -313,7 +313,7 @@ const BaseField = ({
           {translatedTooltip && (
             <Infotip>
               <InfotipTrigger aria-label={translatedTooltip} className="ml-0.5" />
-              <InfotipContent aria-label={translatedTooltip} className="w-[200px]">
+              <InfotipContent aria-label={translatedTooltip} className="w-50">
                 {translatedTooltip}
               </InfotipContent>
             </Infotip>

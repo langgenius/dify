@@ -127,7 +127,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => 
                 />
                 <InfotipContent
                   aria-label={t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
-                  className="w-[120px]"
+                  className="w-30"
                 >
                   {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
                 </InfotipContent>

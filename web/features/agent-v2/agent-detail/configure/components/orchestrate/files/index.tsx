@@ -366,24 +366,20 @@ function AgentBuildNoteInfotip() {
     <Infotip>
       <InfotipTrigger
         aria-label={t(($) => $['agentDetail.configure.files.buildNote.tooltip'])}
-        className="size-5 text-text-quaternary hover:text-text-quaternary"
+        className="size-5 hover:text-text-quaternary"
         iconSize="large"
       />
       <InfotipContent
         aria-label={t(($) => $['agentDetail.configure.files.buildNote.tooltip'])}
-        className="w-[230px] rounded-xl px-4 py-3.5"
+        className="w-57.5"
       >
-        <p className="body-xs-regular text-text-secondary">
-          <Trans
-            i18nKey={($) => $['agentDetail.configure.files.buildNote.richTooltip']}
-            ns="agentV2"
-            components={{
-              docLink: (
-                <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />
-              ),
-            }}
-          />
-        </p>
+        <Trans
+          i18nKey={($) => $['agentDetail.configure.files.buildNote.richTooltip']}
+          ns="agentV2"
+          components={{
+            docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
+          }}
+        />
       </InfotipContent>
     </Infotip>
   )

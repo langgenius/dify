@@ -14,7 +14,7 @@ export const Item: FC<{ title: string; tooltip: string; children: React.JSX.Elem
         <div className="py-1 system-sm-semibold text-text-secondary">{title}</div>
         <Infotip>
           <InfotipTrigger aria-label={tooltip} />
-          <InfotipContent aria-label={tooltip} className="max-w-[200px] system-sm-regular">
+          <InfotipContent aria-label={tooltip} className="max-w-50">
             {tooltip}
           </InfotipContent>
         </Infotip>

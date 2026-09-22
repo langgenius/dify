@@ -275,7 +275,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                       aria-label={t(($) => $[`${i18nPrefix}.builtInDescription`], {
                         ns: 'dataset',
                       })}
-                      className="max-w-[100px]"
+                      className="max-w-25"
                     >
                       {t(($) => $[`${i18nPrefix}.builtInDescription`], { ns: 'dataset' })}
                     </InfotipContent>
