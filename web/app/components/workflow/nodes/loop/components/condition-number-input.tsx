@@ -16,16 +16,16 @@ import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { VarType } from '@/app/components/workflow/types'
 import { variableTransformer } from '@/app/components/workflow/utils'
 import VariableTag from '../../_base/components/variable-tag'
-import { VarType as NumberVarType } from '../../tool/types'
 
-const options = [NumberVarType.variable, NumberVarType.constant]
+const options = [VarKindType.variable, VarKindType.constant]
 
 type ConditionNumberInputProps = {
-  numberVarType?: NumberVarType
-  onNumberVarTypeChange: (v: NumberVarType) => void
+  numberVarType?: VarKindType
+  onNumberVarTypeChange: (v: VarKindType) => void
   value: string
   onValueChange: (v: string) => void
   variables: NodeOutPutVar[]
@@ -33,7 +33,7 @@ type ConditionNumberInputProps = {
   unit?: string
 }
 const ConditionNumberInput = ({
-  numberVarType = NumberVarType.constant,
+  numberVarType = VarKindType.constant,
   onNumberVarTypeChange,
   value,
   onValueChange,
@@ -86,7 +86,7 @@ const ConditionNumberInput = ({
       </DropdownMenu>
       <div className="mx-1 h-4 w-px bg-divider-regular"></div>
       <div className="ml-0.5 w-0 grow">
-        {numberVarType === NumberVarType.variable && (
+        {numberVarType === VarKindType.variable && (
           <Popover open={variableSelectorVisible} onOpenChange={setVariableSelectorVisible}>
             <PopoverTrigger nativeButton={false} render={<div className="w-full" />}>
               {value && (
@@ -126,7 +126,7 @@ const ConditionNumberInput = ({
             </PopoverContent>
           </Popover>
         )}
-        {numberVarType === NumberVarType.constant && (
+        {numberVarType === VarKindType.constant && (
           <div className="relative">
             <input
               className={cn(

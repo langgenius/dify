@@ -1,6 +1,6 @@
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 
 type Props = Readonly<{
   icon: React.ReactNode
@@ -40,11 +40,14 @@ const FeatureCard = ({
         <div className="flex grow items-center system-sm-semibold text-text-secondary">
           <span id={titleId}>{title}</span>
           {!!tooltip && (
-            <Infotip
-              aria-label={typeof tooltip === 'string' ? tooltip : String(title)}
-              className="ml-0.5 size-3.5"
-            >
-              {tooltip}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={typeof tooltip === 'string' ? tooltip : String(title)}
+                className="ml-0.5 size-3.5"
+              />
+              <InfotipContent aria-label={typeof tooltip === 'string' ? tooltip : String(title)}>
+                {tooltip}
+              </InfotipContent>
             </Infotip>
           )}
         </div>

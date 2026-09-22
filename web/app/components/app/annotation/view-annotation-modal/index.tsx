@@ -41,10 +41,12 @@ type Props = Readonly<{
   onRemove: () => void
 }>
 
-enum TabType {
-  annotation = 'annotation',
-  hitHistory = 'hitHistory',
-}
+const TabType = {
+  annotation: 'annotation',
+  hitHistory: 'hitHistory',
+} as const
+
+type TabType = (typeof TabType)[keyof typeof TabType]
 
 const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, onRemove }) => {
   const { id, question, answer, created_at: createdAt } = item
@@ -86,7 +88,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
     if (isShow && id) fetchHitHistory(1)
   }, [id, isShow])
 
-  const [activeTab, setActiveTab] = useState(TabType.annotation)
+  const [activeTab, setActiveTab] = useState<TabType>(TabType.annotation)
   const handleSave = async (type: EditItemType, editedContent: string) => {
     try {
       if (type === EditItemType.Query) {

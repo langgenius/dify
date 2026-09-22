@@ -41,6 +41,11 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
     })
 
     payload.break_conditions!.forEach((condition) => {
+      const emptyOperators: readonly ComparisonOperator[] = [
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+
       if (
         !errorMessages &&
         (!condition.variable_selector || condition.variable_selector.length === 0)
@@ -57,9 +62,7 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
       if (!errorMessages) {
         if (
           condition.sub_variable_condition &&
-          ![ComparisonOperator.empty, ComparisonOperator.notEmpty].includes(
-            condition.comparison_operator!,
-          )
+          !emptyOperators.includes(condition.comparison_operator!)
         ) {
           const isSet = condition.sub_variable_condition.conditions.every((c) => {
             if (!c.comparison_operator) return false

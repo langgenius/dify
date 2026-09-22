@@ -30,9 +30,9 @@ import type {
   Node,
   NodeOutPutVar,
   PromptItem,
-  ToolWithProvider,
   ValueSelector,
   Var,
+  WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { SchemaTypeDefinition } from '@/service/use-common'
@@ -53,19 +53,20 @@ import {
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { getAgentV2OutputVars } from '@/app/components/workflow/nodes/agent-v2/output-variables'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
+import { resolveVarType } from '@/app/components/workflow/nodes/tool/output-schema-utils'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { VAR_REGEX } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
 import { Type } from '../../../llm/types'
-import { VarType as ToolVarType } from '../../../tool/types'
 
 type WorkflowTranslate = <const Selector extends SelectorParam<'workflow'>>(
   selector: Selector,
@@ -315,7 +316,7 @@ const formatItem = (
   item: any,
   isChatMode: boolean,
   filterVar: (payload: Var, selector: ValueSelector) => boolean,
-  allPluginInfoList: Record<string, ToolWithProvider[]>,
+  allPluginInfoList: WorkflowPluginCatalogs,
   ragVars?: Var[],
   schemaTypeDefinitions: SchemaTypeDefinition[] = [],
 ): NodeOutPutVar => {
@@ -571,16 +572,14 @@ const formatItem = (
 
       const payload = data as AgentNodeType
       const outputs: Var[] = []
-      Object.keys(payload.output_schema?.properties || {}).forEach((outputKey) => {
-        const output = payload.output_schema.properties[outputKey]
-        outputs.push({
-          variable: outputKey,
-          type:
-            output.type === 'array'
-              ? (`Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]` as VarType)
-              : (`${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}` as VarType),
+      const properties = payload.output_schema?.properties
+      if (properties && typeof properties === 'object' && !Array.isArray(properties)) {
+        Object.entries(properties).forEach(([variable, output]: [string, unknown]) => {
+          const schema =
+            output && typeof output === 'object' && !Array.isArray(output) ? output : {}
+          outputs.push({ variable, type: resolveVarType(schema).type })
         })
-      })
+      }
       res.vars = [...outputs, ...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT]
       break
     }
@@ -762,7 +761,7 @@ export const toNodeOutputVars = (
   environmentVariables: EnvironmentVariable[] = [],
   conversationVariables: ConversationVariable[] = [],
   ragVariables: RAGPipelineVariable[] = [],
-  allPluginInfoList: Record<string, ToolWithProvider[]>,
+  allPluginInfoList: WorkflowPluginCatalogs,
   schemaTypeDefinitions?: SchemaTypeDefinition[],
 ): NodeOutPutVar[] => {
   // ENV_NODE data format
@@ -981,7 +980,7 @@ export const getVarType = ({
   environmentVariables?: EnvironmentVariable[]
   conversationVariables?: ConversationVariable[]
   ragVariables?: RAGPipelineVariable[]
-  allPluginInfoList: Record<string, ToolWithProvider[]>
+  allPluginInfoList: WorkflowPluginCatalogs
   schemaTypeDefinitions?: SchemaTypeDefinition[]
   preferSchemaType?: boolean
 }): VarType => {
@@ -1125,7 +1124,7 @@ export const toNodeAvailableVars = ({
   // rag variables
   ragVariables?: RAGPipelineVariable[]
   filterVar: (payload: Var, selector: ValueSelector) => boolean
-  allPluginInfoList: Record<string, ToolWithProvider[]>
+  allPluginInfoList: WorkflowPluginCatalogs
   schemaTypeDefinitions?: SchemaTypeDefinition[]
 }): NodeOutPutVar[] => {
   const beforeNodesOutputVars = toNodeOutputVars(
@@ -1329,12 +1328,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       const payload = data as ToolNodeType
       const mixVars = matchNotSystemVars(
         Object.keys(payload.tool_parameters)
-          ?.filter((key) => payload.tool_parameters[key]!.type === ToolVarType.mixed)
+          ?.filter((key) => payload.tool_parameters[key]!.type === VarKindType.mixed)
           .map((key) => payload.tool_parameters[key]!.value) as string[],
       )
       const vars =
         Object.keys(payload.tool_parameters)
-          .filter((key) => payload.tool_parameters[key]!.type === ToolVarType.variable)
+          .filter((key) => payload.tool_parameters[key]!.type === VarKindType.variable)
           .map((key) => payload.tool_parameters[key]!.value as string) || []
       res = [...(mixVars as ValueSelector[]), ...(vars as any)]
       break
@@ -1366,12 +1365,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       const payload = data as DataSourceNodeType
       const mixVars = matchNotSystemVars(
         Object.keys(payload.datasource_parameters)
-          ?.filter((key) => payload.datasource_parameters[key]!.type === ToolVarType.mixed)
+          ?.filter((key) => payload.datasource_parameters[key]!.type === VarKindType.mixed)
           .map((key) => payload.datasource_parameters[key]!.value) as string[],
       )
       const vars =
         Object.keys(payload.datasource_parameters)
-          .filter((key) => payload.datasource_parameters[key]!.type === ToolVarType.variable)
+          .filter((key) => payload.datasource_parameters[key]!.type === VarKindType.variable)
           .map((key) => payload.datasource_parameters[key]!.value as string) || []
       res = [...(mixVars as ValueSelector[]), ...(vars as any)]
       break
@@ -1697,14 +1696,14 @@ export const updateNodeVars = (
       case BlockEnum.Tool: {
         const payload = data as ToolNodeType
         const hasShouldRenameVar = Object.keys(payload.tool_parameters)?.filter(
-          (key) => payload.tool_parameters[key]!.type !== ToolVarType.constant,
+          (key) => payload.tool_parameters[key]!.type !== VarKindType.constant,
         )
         if (hasShouldRenameVar) {
           Object.keys(payload.tool_parameters).forEach((key) => {
             const value = payload.tool_parameters[key]!
             const { type } = value!
             if (
-              type === ToolVarType.variable &&
+              type === VarKindType.variable &&
               value!.value.join('.') === oldVarSelector.join('.')
             ) {
               payload.tool_parameters[key] = {
@@ -1713,7 +1712,7 @@ export const updateNodeVars = (
               }
             }
 
-            if (type === ToolVarType.mixed) {
+            if (type === VarKindType.mixed) {
               payload.tool_parameters[key] = {
                 ...value,
                 value: replaceOldVarInText(
@@ -1745,7 +1744,7 @@ export const updateNodeVars = (
             const { type } = value!
 
             if (
-              type === ToolVarType.variable &&
+              type === VarKindType.variable &&
               Array.isArray(value!.value) &&
               value!.value.join('.') === oldVarSelector.join('.')
             ) {
@@ -1755,7 +1754,7 @@ export const updateNodeVars = (
               }
             }
 
-            if (type === ToolVarType.mixed && typeof value!.value === 'string') {
+            if (type === VarKindType.mixed && typeof value!.value === 'string') {
               payload.agent_parameters![key] = {
                 ...value,
                 value: replaceOldVarInText(value!.value, oldVarSelector, newVarSelector),
@@ -1785,14 +1784,14 @@ export const updateNodeVars = (
       case BlockEnum.DataSource: {
         const payload = data as DataSourceNodeType
         const hasShouldRenameVar = Object.keys(payload.datasource_parameters)?.filter(
-          (key) => payload.datasource_parameters[key]!.type !== ToolVarType.constant,
+          (key) => payload.datasource_parameters[key]!.type !== VarKindType.constant,
         )
         if (hasShouldRenameVar) {
           Object.keys(payload.datasource_parameters).forEach((key) => {
             const value = payload.datasource_parameters[key]!
             const { type } = value!
             if (
-              type === ToolVarType.variable &&
+              type === VarKindType.variable &&
               value!.value.join('.') === oldVarSelector.join('.')
             ) {
               payload.datasource_parameters[key] = {
@@ -1801,7 +1800,7 @@ export const updateNodeVars = (
               }
             }
 
-            if (type === ToolVarType.mixed) {
+            if (type === VarKindType.mixed) {
               payload.datasource_parameters[key] = {
                 ...value,
                 value: replaceOldVarInText(

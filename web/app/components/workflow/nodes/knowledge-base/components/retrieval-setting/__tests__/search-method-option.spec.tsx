@@ -1,4 +1,5 @@
 import type { ComponentType, SVGProps } from 'react'
+import type { SearchMethodOptionProps } from '../search-method-option'
 import { Field } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
@@ -80,7 +81,11 @@ const createProps = () => ({
   },
 })
 
-function renderSearchMethodOption(props: ReturnType<typeof createProps>) {
+function renderSearchMethodOption(
+  props: SearchMethodOptionProps & {
+    onRetrievalSearchMethodChange: (value: RetrievalSearchMethodEnum) => void
+  },
+) {
   const { onRetrievalSearchMethodChange, ...optionProps } = props
 
   render(

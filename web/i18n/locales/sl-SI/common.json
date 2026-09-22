@@ -476,6 +476,8 @@
   "operation.more": "Več",
   "operation.moreActions": "Več dejanj",
   "operation.moreActionsFor": "Več dejanj za {{name}}",
+  "operation.moveDown": "Premakni navzdol",
+  "operation.moveUp": "Premakni navzgor",
   "operation.no": "Ne",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Ni bilo najdenih {{content}}",

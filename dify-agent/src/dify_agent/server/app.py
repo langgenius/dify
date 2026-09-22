@@ -11,9 +11,11 @@ adds no reporting to business operations. Redis is not used as a run job queue. 
 stay state-only: they borrow the lifespan-owned clients through the runner and
 receive runtime-backend and Shell settings through provider construction rather
 than reading environment variables themselves. The standard server mounts the
-HTTP Agent Stub router. Process-level Logfire instrumentation is configured at
-app construction time and only exports remotely when Logfire's default
-environment configuration provides a token.
+HTTP Agent Stub router. Process-level platform Logfire instrumentation is
+configured at app construction time. Logfire-platform export is token-gated;
+standard OTLP export follows the SDK environment configuration, including
+server dotenv files. Agent trajectory export is a separate opt-in Logfire
+instance owned by the app lifespan and injected into each run's runner.
 """
 
 from collections.abc import AsyncGenerator
@@ -30,7 +32,7 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.auth import create_bearer_token_dependency
-from dify_agent.server.observability import configure_server_observability
+from dify_agent.server.observability import configure_agent_observability, configure_server_observability
 from dify_agent.server.routes.e2b_usage import create_e2b_usage_router
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.execution_bindings import create_execution_bindings_router
@@ -102,6 +104,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+        agent_observability = configure_agent_observability(resolved_settings)
+        _app.state.agent_observability = agent_observability
         redis = Redis.from_url(resolved_settings.redis_url)
         plugin_daemon_http_client = create_plugin_daemon_http_client(resolved_settings)
         dify_api_inner_http_client = create_dify_api_inner_http_client(resolved_settings)
@@ -121,6 +125,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             stream_text_delta_flush_interval_seconds=(resolved_settings.stream_text_delta_flush_interval_ms / 1000),
             stream_text_delta_max_chars=resolved_settings.stream_text_delta_max_chars,
             layer_providers=layer_providers,
+            agent_observability=agent_observability,
         )
         state["store"] = store
         state["scheduler"] = scheduler
@@ -131,9 +136,12 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             await dify_api_inner_http_client.aclose()
             await plugin_daemon_http_client.aclose()
             await redis.aclose()
+            # Closed last so runs draining above still reach the exporter.
+            if agent_observability is not None:
+                await agent_observability.aclose()
 
     app = FastAPI(title="Dify Agent Run Server", version="0.1.0", lifespan=lifespan)
-    configure_server_observability(app)
+    app.state.platform_observability = configure_server_observability(app, settings=resolved_settings)
 
     def get_store() -> RedisRunStore:
         return cast(RedisRunStore, state["store"])

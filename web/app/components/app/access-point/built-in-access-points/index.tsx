@@ -109,7 +109,6 @@ export function BuiltInAccessPoints({
           appInfo={appInfo}
           availability={appCardAvailability}
           canDeploy={canDeploy}
-          canManageAccess={canReleaseAndVersion}
           canManageAccessPoint={canManageAccessPoint}
           showAccessControl={systemFeatures.webapp_auth.enabled}
           onRefreshApp={actions.refreshAppDetail}

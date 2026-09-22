@@ -5,6 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
@@ -14,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getInputKeys } from '@/app/components/base/block-input'
-import { Infotip } from '@/app/components/base/infotip'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { checkKeys, getNewVar } from '@/utils/var'
@@ -147,14 +147,21 @@ const OpeningSettingModal = ({
             <div className="text-sm font-medium text-text-primary">
               {t(($) => $['openingStatement.openingQuestion'], { ns: 'appDebug' })}
             </div>
-            <Infotip
-              aria-label={t(($) => $['openingStatement.openingQuestionDescription'], {
-                ns: 'appDebug',
-              })}
-              className="size-3.5"
-              popupClassName="max-w-[220px] system-sm-regular text-text-secondary"
-            >
-              {t(($) => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={t(($) => $['openingStatement.openingQuestionDescription'], {
+                  ns: 'appDebug',
+                })}
+                className="size-3.5"
+              />
+              <InfotipContent
+                aria-label={t(($) => $['openingStatement.openingQuestionDescription'], {
+                  ns: 'appDebug',
+                })}
+                className="max-w-55"
+              >
+                {t(($) => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <div className="text-xs leading-4.5 font-medium text-text-tertiary">

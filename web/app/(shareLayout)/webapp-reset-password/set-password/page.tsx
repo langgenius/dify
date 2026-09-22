@@ -102,40 +102,42 @@ const ChangePasswordForm = () => {
           <div className="mx-auto mt-6 w-full">
             <Form className="bg-white" onFormSubmit={() => void handleChangePassword()}>
               <Field name="password" className="mb-5">
-                <FieldLabel className="py-0 system-md-semibold text-text-secondary">
-                  {t(($) => $['account.newPassword'], { ns: 'common' })}
-                </FieldLabel>
-                <InputGroup>
-                  <InputGroupInput
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    spellCheck={false}
-                    value={password}
-                    onValueChange={setPassword}
-                    placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <IconButton
-                      aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                        ns: 'login',
-                      })}
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      <span
-                        className={
-                          showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
-                        }
-                        aria-hidden="true"
-                      />
-                    </IconButton>
-                  </InputGroupAddon>
-                </InputGroup>
+                <div className="grid gap-0">
+                  <FieldLabel className="system-md-semibold">
+                    {t(($) => $['account.newPassword'], { ns: 'common' })}
+                  </FieldLabel>
+                  <InputGroup>
+                    <InputGroupInput
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      spellCheck={false}
+                      value={password}
+                      onValueChange={setPassword}
+                      placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <IconButton
+                        aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
+                          ns: 'login',
+                        })}
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        <span
+                          className={
+                            showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
+                          }
+                          aria-hidden="true"
+                        />
+                      </IconButton>
+                    </InputGroupAddon>
+                  </InputGroup>
+                </div>
                 <FieldDescription className="py-0 body-xs-regular text-text-secondary">
                   {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
                 </FieldDescription>
               </Field>
-              <Field name="confirmPassword" className="mb-5">
-                <FieldLabel className="py-0 system-md-semibold text-text-secondary">
+              <Field name="confirmPassword" className="mb-5 gap-0">
+                <FieldLabel className="system-md-semibold">
                   {t(($) => $['account.confirmPassword'], { ns: 'common' })}
                 </FieldLabel>
                 <InputGroup>

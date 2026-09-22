@@ -7,9 +7,9 @@ import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import formatToTracingNodeList from '@/app/components/workflow/run/utils/format-log'
 import { useToolIcon } from '../../../hooks/use-tool-icon'
-import { VarType } from '../types'
 
 type Params = {
   id: string
@@ -32,7 +32,7 @@ const useSingleRunFormParams = ({
   const { inputs } = useNodeCrud<ToolNodeType>(id, payload)
 
   const hadVarParams = Object.keys(inputs.tool_parameters)
-    .filter((key) => inputs.tool_parameters[key]!.type !== VarType.constant)
+    .filter((key) => inputs.tool_parameters[key]!.type !== VarKindType.constant)
     .map((k) => inputs.tool_parameters[k])
 
   const hadVarSettings = Object.keys(inputs.tool_configurations)
@@ -40,13 +40,13 @@ const useSingleRunFormParams = ({
       (key) =>
         typeof inputs.tool_configurations[key] === 'object' &&
         inputs.tool_configurations[key].type &&
-        inputs.tool_configurations[key].type !== VarType.constant,
+        inputs.tool_configurations[key].type !== VarKindType.constant,
     )
     .map((k) => inputs.tool_configurations[k])
 
   const varInputs = getInputVars(
     [...hadVarParams, ...hadVarSettings].map((p) => {
-      if (p.type === VarType.variable) {
+      if (p.type === VarKindType.variable) {
         // handle the old wrong value not crash the page
         if (!(p.value as any).join) return `{{#${p.value}#}}`
 
@@ -69,7 +69,7 @@ const useSingleRunFormParams = ({
     const res = produce(inputVarValues, (draft) => {
       Object.keys(inputs.tool_parameters).forEach((key: string) => {
         const { type, value } = inputs.tool_parameters[key]!
-        if (type === VarType.constant && (value === undefined || value === null)) {
+        if (type === VarKindType.constant && (value === undefined || value === null)) {
           if (!draft.tool_parameters || !draft.tool_parameters[key]) return
           draft[key] = value
         }

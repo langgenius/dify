@@ -1,4 +1,3 @@
-import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
   HandleAddSubVariableCondition,
@@ -8,6 +7,7 @@ import type {
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
 } from '../../types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -77,6 +77,16 @@ const ConditionItem = ({
   numberVariables,
   availableVars,
 }: ConditionItemProps) => {
+  const containmentOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.contains,
+    ComparisonOperator.notContains,
+    ComparisonOperator.allOf,
+  ]
+  const membershipOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.in,
+    ComparisonOperator.notIn,
+  ]
+
   const { t } = useTranslation()
 
   const [isHovered, setIsHovered] = useState(false)
@@ -109,7 +119,7 @@ const ConditionItem = ({
   )
 
   const handleUpdateConditionNumberVarType = useCallback(
-    (numberVarType: NumberVarType) => {
+    (numberVarType: VarKindType) => {
       const newCondition = {
         ...condition,
         numberVarType,
@@ -122,11 +132,7 @@ const ConditionItem = ({
 
   const isSubVariable =
     condition.varType === VarType.arrayFile &&
-    [
-      ComparisonOperator.contains,
-      ComparisonOperator.notContains,
-      ComparisonOperator.allOf,
-    ].includes(condition.comparison_operator!)
+    containmentOperators.includes(condition.comparison_operator!)
   const fileAttr = useMemo(() => {
     if (file) return file
     if (isSubVariableKey) {
@@ -156,8 +162,7 @@ const ConditionItem = ({
   )
 
   const isSelect =
-    condition.comparison_operator &&
-    [ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
+    condition.comparison_operator && membershipOperators.includes(condition.comparison_operator)
   const selectOptions = useMemo<Array<{ name: string; value: string }>>(() => {
     if (isSelect) {
       if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {

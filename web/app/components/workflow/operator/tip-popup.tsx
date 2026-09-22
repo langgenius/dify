@@ -13,11 +13,9 @@ const TipPopup = ({ title, children, shortcut }: TipPopupProps) => {
   return (
     <Tooltip>
       <TooltipTrigger render={children} />
-      <TooltipContent sideOffset={4} className="max-w-none bg-transparent p-0 shadow-none">
-        <div className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg backdrop-blur-[5px]">
-          <span className="system-xs-medium text-text-secondary">{title}</span>
-          {shortcut && <ShortcutKbd shortcut={shortcut} />}
-        </div>
+      <TooltipContent sideOffset={4} className="flex max-w-none items-center gap-1">
+        <span className="px-0.5">{title}</span>
+        {shortcut && <ShortcutKbd shortcut={shortcut} />}
       </TooltipContent>
     </Tooltip>
   )

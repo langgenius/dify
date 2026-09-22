@@ -33,7 +33,6 @@ type DeployedEnvironmentAccessPointsProps = {
   appId: string
   environmentId: string
   canManageAccessPoint: boolean
-  canReleaseAndVersion: boolean
   highlightedAccessPoint?: AccessPoint | null
 }
 
@@ -41,7 +40,6 @@ export function DeployedEnvironmentAccessPoints({
   appId,
   environmentId,
   canManageAccessPoint,
-  canReleaseAndVersion,
   highlightedAccessPoint,
 }: DeployedEnvironmentAccessPointsProps) {
   const { t } = useTranslation()
@@ -70,7 +68,6 @@ export function DeployedEnvironmentAccessPoints({
         appId={appId}
         environmentId={environmentId}
         canManageAccessPoint={canManageAccessPoint}
-        canReleaseAndVersion={canReleaseAndVersion}
         highlighted={highlightedAccessPoint === 'webApp'}
       />
       <EnvironmentServiceApiCard

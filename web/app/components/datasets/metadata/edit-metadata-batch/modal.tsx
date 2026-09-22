@@ -5,6 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -12,7 +13,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
-import { Infotip } from '../../../base/infotip'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
 import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
 import { UpdateType } from '../types'
@@ -204,14 +204,21 @@ const EditMetadataBatchModal: FC<Props> = ({
                 {t(($) => $[`${i18nPrefix}.applyToAllSelectDocument`], { ns: 'dataset' })}
               </span>
             </label>
-            <Infotip
-              aria-label={t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], {
-                ns: 'dataset',
-              })}
-              className="p-px text-text-tertiary"
-              popupClassName="max-w-[240px]"
-            >
-              {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], {
+                  ns: 'dataset',
+                })}
+                className="p-px text-text-tertiary"
+              />
+              <InfotipContent
+                aria-label={t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], {
+                  ns: 'dataset',
+                })}
+                className="max-w-60"
+              >
+                {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <div className="flex items-center space-x-2">

@@ -4,12 +4,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -214,12 +214,11 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     return (
       <div className="flex min-h-6 items-center text-[13px] font-medium text-text-secondary">
         {t(($) => $[labelKey], { ns: 'common' })}
-        <Infotip
-          aria-label={tipText}
-          className="ml-0.5 text-text-tertiary"
-          popupClassName="w-[261px]"
-        >
-          {tipText}
+        <Infotip>
+          <InfotipTrigger aria-label={tipText} className="ml-0.5 text-text-tertiary" />
+          <InfotipContent aria-label={tipText} className="w-65.25">
+            {tipText}
+          </InfotipContent>
         </Infotip>
       </div>
     )

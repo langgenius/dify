@@ -321,13 +321,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   }, [pendingSingleRun, id, handleSingleRun, handleStop, setPendingSingleRun])
 
   const logParams = useLogs()
-  const passedLogParams = useMemo(
-    () =>
-      [BlockEnum.Tool, BlockEnum.Agent, BlockEnum.Iteration, BlockEnum.Loop].includes(data.type)
-        ? logParams
-        : {},
-    [data.type, logParams],
-  )
+  const passedLogParams = useMemo(() => {
+    const nestedLogBlockTypes: readonly BlockEnum[] = [
+      BlockEnum.Tool,
+      BlockEnum.Agent,
+      BlockEnum.Iteration,
+      BlockEnum.Loop,
+    ]
+    return nestedLogBlockTypes.includes(data.type) ? logParams : {}
+  }, [data.type, logParams])
 
   const storeBuildInTools = useStore((s) => s.buildInTools)
   const { data: buildInTools } = useAllBuiltInTools()
@@ -406,13 +408,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   )
 
   const readmeEntranceComponent = useMemo(() => {
+    if (data.type === BlockEnum.DataSource)
+      return currentDataSource ? (
+        <ReadmeEntrance pluginDetail={currentDataSource} className="mt-auto" />
+      ) : null
+
     let pluginDetail
     switch (data.type) {
       case BlockEnum.Tool:
         pluginDetail = currToolCollection
-        break
-      case BlockEnum.DataSource:
-        pluginDetail = currentDataSource
         break
       case BlockEnum.TriggerPlugin:
         pluginDetail = currentTriggerPlugin
@@ -618,7 +622,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                       </IconButton>
                     }
                   />
-                  <TooltipContent className="mr-1">{runThisStepLabel}</TooltipContent>
+                  <TooltipContent>{runThisStepLabel}</TooltipContent>
                 </Tooltip>
               )}
               <HelpLink nodeType={nodeMetaType} />

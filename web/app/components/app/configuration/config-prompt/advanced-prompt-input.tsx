@@ -4,6 +4,7 @@ import type { ExternalDataTool } from '@/models/common'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiDeleteBinLine, RiErrorWarningFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
@@ -14,7 +15,6 @@ import { useContext } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import { toast } from '@/app/components/app/configuration/toast'
 import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
@@ -189,12 +189,17 @@ const AdvancedPromptInput: FC<Props> = ({
                 <div className="text-sm font-semibold text-indigo-800 uppercase">
                   {t(($) => $['pageTitle.line1'], { ns: 'appDebug' })}
                 </div>
-                <Infotip
-                  aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                  className="ml-1"
-                  popupClassName="w-[180px]"
-                >
-                  {t(($) => $.promptTip, { ns: 'appDebug' })}
+                <Infotip>
+                  <InfotipTrigger
+                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
+                    className="ml-1"
+                  />
+                  <InfotipContent
+                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
+                    className="w-45"
+                  >
+                    {t(($) => $.promptTip, { ns: 'appDebug' })}
+                  </InfotipContent>
                 </Infotip>
               </div>
             )}
