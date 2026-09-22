@@ -1122,3 +1122,30 @@ def test_a_second_consecutive_unknown_outcome_stops_at_the_fix_decision_gate():
     assert second.next == PcState.FIX_AWAIT_DECISION
     assert second.context.unknown_outcome_count == 2
     assert next(i for i in second.items if i.kind == "error").payload["title"] == "Test outcome unknown"
+
+
+def test_re_fix_starts_a_fresh_unknown_outcome_count():
+    """After the cap trips, re_fix clears the rest of the repair loop's state
+    (diagnosis, staged_repair, ...) but previously left unknown_outcome_count
+    at 2 -- so the FIRST unknown outcome of the new repair cycle re-capped
+    immediately instead of being re-runnable once, violating "second
+    CONSECUTIVE"."""
+    from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
+
+    env, _ = _new_env()
+    env.dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+    )
+    s = _session(current_state=PcState.FIX_VERIFY)
+
+    first = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+    second = handle_verify(env, Turn(actor=_actor()), s, first.context)
+    assert second.next == PcState.FIX_AWAIT_DECISION
+    assert second.context.unknown_outcome_count == 2
+
+    turn = Turn(action=Action(kind="re_fix", base_version=s.version), actor=_actor())
+    re_fixed = handle_await_decision(env, turn, s, second.context)
+    assert re_fixed.context.unknown_outcome_count == 0
+
+    third = handle_verify(env, Turn(actor=_actor()), s, re_fixed.context)
+    assert third.next == PcState.FIX_AWAIT_TESTDATA
