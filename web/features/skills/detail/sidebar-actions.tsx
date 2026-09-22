@@ -145,7 +145,7 @@ function SkillDetailDeleteDialog({
           )}
           {referenceCount > 0 && (
             <Field name="confirm-skill-name" className="mt-2">
-              <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
+              <FieldLabel className="system-sm-regular">
                 <Trans
                   i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
                   ns="skill"
@@ -212,6 +212,7 @@ export function SkillDetailSidebarActions({
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const router = useRouter()
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
   )
@@ -235,9 +236,10 @@ export function SkillDetailSidebarActions({
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (copiedSkill) => {
           toast.success(t(($) => $['skillManagement.duplicateSuccess']))
           invalidateSkillListQueries(queryClient)
+          router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
         onError: () => {
           toast.error(t(($) => $['skillManagement.duplicateFailed']))

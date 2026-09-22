@@ -476,6 +476,8 @@
   "operation.more": "Mai mult",
   "operation.moreActions": "Mai multe acțiuni",
   "operation.moreActionsFor": "Mai multe acțiuni pentru {{name}}",
+  "operation.moveDown": "Mută în jos",
+  "operation.moveUp": "Mută în sus",
   "operation.no": "Nu",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Nu au fost găsite {{content}}",

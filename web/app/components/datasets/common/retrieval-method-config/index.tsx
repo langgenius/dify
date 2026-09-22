@@ -5,11 +5,6 @@ import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  FullTextSearch,
-  HybridSearch,
-  VectorSearch,
-} from '@/app/components/base/icons/src/vender/knowledge'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
@@ -115,7 +110,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         <OptionCard
           id={RETRIEVE_METHOD.semantic}
           disabled={disabled}
-          icon={<VectorSearch className="size-4" />}
+          icon={<span aria-hidden className="i-custom-vender-knowledge-vector-search size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
           title={t(($) => $['retrieval.semantic_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.semantic_search.description'], { ns: 'dataset' })}
@@ -139,7 +134,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         <OptionCard
           id={RETRIEVE_METHOD.fullText}
           disabled={disabled}
-          icon={<FullTextSearch className="size-4" />}
+          icon={<span aria-hidden className="i-custom-vender-knowledge-full-text-search size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
           title={t(($) => $['retrieval.full_text_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.full_text_search.description'], { ns: 'dataset' })}
@@ -163,7 +158,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         <OptionCard
           id={RETRIEVE_METHOD.hybrid}
           disabled={disabled}
-          icon={<HybridSearch className="size-4" />}
+          icon={<span aria-hidden className="i-custom-vender-knowledge-hybrid-search size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
           title={t(($) => $['retrieval.hybrid_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.hybrid_search.description'], { ns: 'dataset' })}

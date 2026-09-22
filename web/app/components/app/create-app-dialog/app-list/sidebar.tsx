@@ -4,9 +4,11 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { RiStickyNoteAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 
-export enum AppCategories {
-  RECOMMENDED = 'Recommended',
-}
+export const AppCategories = {
+  RECOMMENDED: 'Recommended',
+} as const
+
+export type AppCategories = (typeof AppCategories)[keyof typeof AppCategories]
 
 type SidebarProps = {
   current: AppCategories | string

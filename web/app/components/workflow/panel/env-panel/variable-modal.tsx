@@ -3,6 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -10,7 +11,6 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import { Infotip } from '@/app/components/base/infotip'
 import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import { LLMEnvironmentVariableValueField } from '@/app/components/workflow/llm-environment-variable-value-field'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -199,12 +199,17 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
               >
                 Secret
               </button>
-              <Infotip
-                aria-label={t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
-                className="absolute top-1/2 right-1 size-3.5 -translate-y-1/2"
-                popupClassName="w-[240px]"
-              >
-                {t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
+              <Infotip>
+                <InfotipTrigger
+                  aria-label={t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
+                  className="absolute top-1/2 right-1 size-3.5 -translate-y-1/2"
+                />
+                <InfotipContent
+                  aria-label={t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
+                  className="w-60"
+                >
+                  {t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
+                </InfotipContent>
               </Infotip>
             </div>
             <button

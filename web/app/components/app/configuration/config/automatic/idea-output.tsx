@@ -4,7 +4,6 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/d
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
 const i18nPrefix = 'generate'
 
@@ -25,9 +24,9 @@ const IdeaOutput: FC<Props> = ({ value, onChange }) => {
         <span className="system-xs-regular text-text-tertiary">
           ({t(($) => $[`${i18nPrefix}.optional`], { ns: 'appDebug' })})
         </span>
-        <ArrowDownRoundFill
+        <span
           aria-hidden
-          className="size relative top-px -rotate-90 text-text-quaternary group-data-panel-open:top-0 group-data-panel-open:rotate-0"
+          className="size relative top-px i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 -rotate-90 text-text-quaternary group-data-panel-open:top-0 group-data-panel-open:rotate-0"
         />
       </CollapsibleTrigger>
       <CollapsiblePanel>

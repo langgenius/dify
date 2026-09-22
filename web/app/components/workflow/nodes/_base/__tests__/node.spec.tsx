@@ -180,8 +180,9 @@ describe('BaseNode', () => {
       </BaseNode>,
     )
 
+    expect(screen.getByText('workflow.nodes.iteration.parallelModeUpper')).toBeInTheDocument()
     const parallelButton = screen.getByRole('button', {
-      name: /workflow\.nodes\.iteration\.parallelModeUpper/,
+      name: /workflow\.nodes\.iteration\.parallelModeEnableTitle/,
     })
 
     expect(parallelButton).toBeInTheDocument()

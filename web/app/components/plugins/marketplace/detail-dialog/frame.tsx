@@ -142,8 +142,8 @@ export default function MarketplaceDetailDialogFrame({
                 <IconButton
                   ref={closeButtonRef}
                   aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  size="sm"
-                  className="absolute top-5 right-5 z-10 size-8 rounded-lg"
+                  size="lg"
+                  className="absolute top-5 right-5 z-10"
                 >
                   <span aria-hidden className="i-ri-close-line size-4" />
                 </IconButton>

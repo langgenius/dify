@@ -6,7 +6,6 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const I18N_PREFIX = 'stepOne.website'
 
@@ -36,7 +35,13 @@ const OptionsWrap: FC<Props> = ({ className = '', children, controlFoldOptions }
             {t(($) => $[`${I18N_PREFIX}.options`], { ns: 'datasetCreation' })}
           </span>
         </div>
-        <ChevronRight className={cn(!fold && 'rotate-90', 'size-4 shrink-0 text-text-tertiary')} />
+        <span
+          aria-hidden
+          className={cn(
+            'i-custom-vender-line-arrows-chevron-right h-3.5 w-3.5',
+            cn(!fold && 'rotate-90', 'size-4 shrink-0 text-text-tertiary'),
+          )}
+        />
       </div>
       {!fold && <div className="mb-4">{children}</div>}
     </div>

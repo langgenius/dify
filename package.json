@@ -25,6 +25,7 @@
     "@eslint/markdown": "catalog:",
     "@iconify-json/heroicons": "catalog:",
     "@iconify-json/ri": "catalog:",
+    "@shadcn/lint": "catalog:",
     "@tanstack/eslint-plugin-query": "catalog:",
     "@types/node": "catalog:",
     "@typescript-eslint/parser": "catalog:",

@@ -2,10 +2,9 @@
 import type { FC } from 'react'
 import type { Props } from './var-picker'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
-import { Infotip } from '@/app/components/base/infotip'
 import VarPicker from './var-picker'
 
 const ContextVar: FC<Props> = (props) => {
@@ -24,16 +23,24 @@ const ContextVar: FC<Props> = (props) => {
     >
       <div className="flex shrink-0 items-center space-x-1">
         <div className="p-1">
-          <BracketsX className="size-4 text-text-accent" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-development-brackets-x size-4 text-text-accent"
+          />
         </div>
         <div className="mr-1 text-sm font-medium text-text-secondary">
           {t(($) => $['feature.dataSet.queryVariable.title'], { ns: 'appDebug' })}
         </div>
-        <Infotip
-          aria-label={t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
-          popupClassName="w-[180px]"
-        >
-          {t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
+        <Infotip>
+          <InfotipTrigger
+            aria-label={t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
+          />
+          <InfotipContent
+            aria-label={t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
+            className="w-45"
+          >
+            {t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
+          </InfotipContent>
         </Infotip>
       </div>
 

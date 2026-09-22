@@ -1,17 +1,18 @@
 'use client'
 
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { App } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import AppTypeSelector from '@/app/components/app/type-selector'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
@@ -21,9 +22,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
-import { fetchAppDetail } from '@/service/explore'
-import { useExploreAppList } from '@/service/use-explore'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -36,13 +35,9 @@ type AppsProps = {
   onCreateFromBlank?: () => void
 }
 
-// export enum PageType {
-//   EXPLORE = 'explore',
-//   CREATE = 'create',
-// }
-
 const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
   const { t } = useTranslation()
+  const locale = useLocale()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -71,14 +66,22 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
   const [currCategory, setCurrCategory] = useState<AppCategories | string>(allCategoriesEn)
 
-  const { data, isLoading } = useExploreAppList()
+  const { data, isLoading } = useQuery(
+    consoleQuery.explore.apps.get.queryOptions({
+      input: { query: { language: locale } },
+    }),
+  )
+  const allList = useMemo(
+    () => [...(data?.recommended_apps ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+    [data?.recommended_apps],
+  )
 
   const visibleCategories = useMemo(() => {
     if (!data) return []
 
     const categoriesWithApps = new Set<string>()
-    data.allList.forEach((app) => {
-      app.categories.forEach((category) => categoriesWithApps.add(category))
+    data.recommended_apps.forEach((app) => {
+      app.categories?.forEach((category) => categoriesWithApps.add(category))
     })
 
     return data.categories.filter((category) => categoriesWithApps.has(category))
@@ -88,28 +91,27 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
 
   const filteredList = useMemo(() => {
     if (!data) return []
-    const { allList } = data
     const filteredByCategory = allList.filter((item) => {
       if (activeCategory === allCategoriesEn) return true
       return item.categories?.includes(activeCategory) ?? false
     })
     if (currentType.length === 0) return filteredByCategory
     return filteredByCategory.filter((item) => {
-      if (currentType.includes(AppModeEnum.CHAT) && item.app.mode === AppModeEnum.CHAT) return true
+      if (currentType.includes(AppModeEnum.CHAT) && item.app?.mode === AppModeEnum.CHAT) return true
       if (
         currentType.includes(AppModeEnum.ADVANCED_CHAT) &&
-        item.app.mode === AppModeEnum.ADVANCED_CHAT
+        item.app?.mode === AppModeEnum.ADVANCED_CHAT
       )
         return true
-      if (currentType.includes(AppModeEnum.AGENT_CHAT) && item.app.mode === AppModeEnum.AGENT_CHAT)
+      if (currentType.includes(AppModeEnum.AGENT_CHAT) && item.app?.mode === AppModeEnum.AGENT_CHAT)
         return true
-      if (currentType.includes(AppModeEnum.COMPLETION) && item.app.mode === AppModeEnum.COMPLETION)
+      if (currentType.includes(AppModeEnum.COMPLETION) && item.app?.mode === AppModeEnum.COMPLETION)
         return true
-      if (currentType.includes(AppModeEnum.WORKFLOW) && item.app.mode === AppModeEnum.WORKFLOW)
+      if (currentType.includes(AppModeEnum.WORKFLOW) && item.app?.mode === AppModeEnum.WORKFLOW)
         return true
       return false
     })
-  }, [currentType, activeCategory, allCategoriesEn, data])
+  }, [currentType, activeCategory, allCategoriesEn, data, allList])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0) return filteredList
@@ -122,7 +124,7 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
     )
   }, [searchKeywords, filteredList])
 
-  const [currApp, setCurrApp] = React.useState<App | null>(null)
+  const [currApp, setCurrApp] = React.useState<RecommendedAppResponse | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
@@ -132,8 +134,11 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
     icon_background,
     description,
   }) => {
-    const { export_data, mode } = await fetchAppDetail(currApp?.app.id as string)
+    if (!currApp || !canCreateAppFromTemplate) return
     try {
+      const { export_data, mode } = await consoleClient.explore.apps.byAppId.get({
+        params: { app_id: currApp.app_id },
+      })
       const app = await importApp({
         body: {
           mode: 'yaml-content',
@@ -147,7 +152,7 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
       })
       if (!app.app_id || !app.app_mode) throw new Error('Completed import is missing app metadata')
 
-      trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
+      trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp.app_id })
 
       setIsShowCreateModal(false)
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
@@ -222,7 +227,7 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
         {!searchKeywords && (
           <div className="h-full w-50 p-4">
             <Sidebar
-              current={activeCategory as AppCategories}
+              current={activeCategory}
               categories={visibleCategories}
               onClick={(category) => {
                 setCurrCategory(category)
@@ -250,7 +255,7 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
                 ) : (
                   <div className="flex h-5.5 items-center">
                     <AppCategoryLabel
-                      category={activeCategory as AppCategories}
+                      category={activeCategory}
                       className="title-md-semi-bold text-text-primary"
                     />
                   </div>
@@ -280,12 +285,16 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
       </div>
       {isShowCreateModal && (
         <CreateAppModal
-          appIconType={currApp?.app.icon_type || 'emoji'}
-          appIcon={currApp?.app.icon || ''}
-          appIconBackground={currApp?.app.icon_background || ''}
-          appIconUrl={currApp?.app.icon_url}
-          appName={currApp?.app.name || ''}
-          appDescription={currApp?.app.description || ''}
+          appIconType={
+            currApp?.app?.icon_type === 'image' || currApp?.app?.icon_type === 'link'
+              ? currApp.app.icon_type
+              : 'emoji'
+          }
+          appIcon={currApp?.app?.icon ?? ''}
+          appIconBackground={currApp?.app?.icon_background ?? ''}
+          appIconUrl={currApp?.app?.icon_url}
+          appName={currApp?.app?.name ?? ''}
+          appDescription=""
           show={isShowCreateModal}
           onConfirm={onCreate}
           onHide={() => setIsShowCreateModal(false)}

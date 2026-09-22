@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useRouter } from '@/next/navigation'
 import InputCombined from '../edit-metadata-batch/input-combined'
@@ -70,8 +70,11 @@ const InfoGroup: FC<Props> = ({
               {title}
             </div>
             {titleTooltip && (
-              <Infotip aria-label={titleTooltip} popupClassName="max-w-[240px]">
-                {titleTooltip}
+              <Infotip>
+                <InfotipTrigger aria-label={titleTooltip} />
+                <InfotipContent aria-label={titleTooltip} className="max-w-60">
+                  {titleTooltip}
+                </InfotipContent>
               </Infotip>
             )}
           </div>

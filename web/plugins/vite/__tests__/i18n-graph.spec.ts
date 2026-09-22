@@ -1,9 +1,35 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
-import { checkTranslationGraph } from '../i18n-analysis/graph'
+import {
+  checkTranslationGraph as analyzeTranslationGraph,
+  createAnalysisContext,
+} from '../i18n-analysis/graph'
+
+const checkTranslationGraph = (root: string, modules: ReadonlyMap<string, string>) =>
+  analyzeTranslationGraph(
+    root,
+    modules,
+    undefined,
+    createAnalysisContext(root, [
+      { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
+      {
+        module: 'i18n/lib.server.ts',
+        exportName: 'useTranslation',
+        namespaceArgument: 0,
+        implementationFunctions: ['getI18nConfig'],
+      },
+      { module: 'i18n/server.ts', exportName: 'getTranslation', namespaceArgument: 1 },
+      {
+        module: 'app/route-metadata.ts',
+        exportName: 'getRouteMetadata',
+        namespaceArgument: 0,
+        selectorArgument: 1,
+      },
+    ]),
+  )
 
 let webRoot: string
 let modules: Map<string, string>
@@ -29,7 +55,20 @@ describe('translation graph analysis', () => {
   beforeEach(() => {
     modules = new Map()
     webRoot = mkdtempSync(path.join(tmpdir(), 'dify-i18n-analysis-'))
+    mkdirSync(path.join(webRoot, 'node_modules'), { recursive: true })
+    symlinkSync(
+      path.resolve(import.meta.dirname, '../../../node_modules/react-i18next'),
+      path.join(webRoot, 'node_modules/react-i18next'),
+    )
     writeSource('placeholder.ts', '')
+    writeSource(
+      'i18n/server.ts',
+      'export function getTranslation(locale: string, ns: string) { return {} }',
+    )
+    writeFileSync(
+      path.join(webRoot, 'tsconfig.json'),
+      JSON.stringify({ compilerOptions: { paths: { '@/*': [path.join(webRoot, '*')] } } }),
+    )
   })
 
   afterEach(() => {
@@ -37,13 +76,197 @@ describe('translation graph analysis', () => {
   })
 
   describe('Usage Analysis', () => {
+    it.each(['static', 'dynamic'] as const)(
+      'analyzes repository adapter calls with %s namespaces',
+      (mode) => {
+        writeJson('i18n/locales/en-US/common.json', { used: 'Used', unused: 'Unused' })
+        for (const file of ['i18n/lib.client.ts', 'i18n/lib.server.ts', 'app/route-metadata.ts']) {
+          writeSource(
+            file,
+            readFileSync(path.resolve(import.meta.dirname, '../../..', file), 'utf8'),
+          )
+        }
+        writeSource(
+          'src/page.ts',
+          `
+        import { useTranslation as clientTranslation } from '../i18n/lib.client'
+        import { useTranslation as serverTranslation } from '../i18n/lib.server'
+        import { getRouteMetadata as metadata } from '../app/route-metadata'
+        export function page(ns: string) {
+          clientTranslation(${mode === 'static' ? "'common'" : 'ns'})
+          serverTranslation(${mode === 'static' ? "'common'" : 'ns'})
+          return metadata(${mode === 'static' ? "'common'" : 'ns'}, $ => $.used)
+        }
+      `,
+        )
+        const result = checkTranslationGraph(webRoot, modules)
+        const unknown = result.evidence.filter((item) => item.kind === 'unknown-namespace')
+        expect(unknown).toHaveLength(mode === 'static' ? 0 : 3)
+        expect(unknown.every((item) => item.file === 'src/page.ts')).toBe(true)
+        expect(result.unused).toEqual({ common: ['unused'] })
+        expect(result.protectedNamespaces).toEqual([])
+        for (const file of ['i18n/lib.client.ts', 'i18n/lib.server.ts', 'app/route-metadata.ts']) {
+          expect(result.moduleNamespaces.get(path.join(webRoot, file))).toEqual(new Set())
+        }
+      },
+    )
+
+    it.each(['direct', 'alias', 'barrel'] as const)(
+      'supports custom adapters exported through %s exports',
+      (kind) => {
+        writeJson('i18n/locales/en-US/common.json', {
+          used: 'Used',
+          other: 'Other',
+          unused: 'Unused',
+        })
+        writeSource(
+          'custom/labels.ts',
+          `
+        import { useTranslation } from 'react-i18next'
+        ${kind === 'direct' ? 'export const label' : 'const internal'} = (selector: (source: Record<string, string>) => string, ns: string) => {
+          const { t } = useTranslation(ns)
+          return t(selector)
+        }
+        ${kind === 'direct' ? '' : 'export { internal as label }'}
+      `,
+        )
+        writeSource('custom/barrel.ts', `export { label as caption } from './labels'`)
+        writeSource(
+          'entry.ts',
+          `
+        import { label as caption } from './custom/labels'
+        import * as labels from './custom/labels'
+        caption($ => $.used, 'common')
+        labels.label($ => $.other, 'common')
+      `,
+        )
+        const unconfigured = analyzeTranslationGraph(webRoot, modules)
+        expect(
+          unconfigured.evidence.some(
+            (item) => item.kind === 'unknown-namespace' && item.file === 'custom/labels.ts',
+          ),
+        ).toBe(true)
+        const configured = analyzeTranslationGraph(
+          webRoot,
+          modules,
+          undefined,
+          createAnalysisContext(webRoot, [
+            {
+              module: kind === 'barrel' ? 'custom/barrel.ts' : 'custom/labels.ts',
+              exportName: kind === 'barrel' ? 'caption' : 'label',
+              namespaceArgument: 1,
+              selectorArgument: 0,
+            },
+          ]),
+        )
+        expect(configured.evidence.some((item) => item.kind === 'unknown-namespace')).toBe(false)
+        expect(configured.unused).toEqual({ common: ['unused'] })
+        expect(configured.protectedNamespaces).toEqual([])
+      },
+    )
+
+    it('does not exempt unrelated functions or all code in an adapter module', () => {
+      writeJson('i18n/locales/en-US/common.json', { unused: 'Unused' })
+      writeSource(
+        'app/route-metadata.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+        export function other(ns: string) { useTranslation(ns) }
+      `,
+      )
+      writeSource(
+        'src/other.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+        export function getRouteMetadata(ns: string) { useTranslation(ns) }
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(
+        result.evidence
+          .filter((item) => item.kind === 'unknown-namespace')
+          .map((item) => item.file)
+          .sort(),
+      ).toEqual(['app/route-metadata.ts', 'src/other.ts'])
+    })
+
+    it.each([
+      "function load(ns: string) { return useTranslation(ns) }; load('login')",
+      "function load(ns = 'login') { return useTranslation(ns) }; load()",
+      "function load(...ns: string[]) { return useTranslation(ns) }; load('login')",
+      "const ns = ['login'] as const; useTranslation(ns)",
+      "let ns = 'app'; ns = 'login'; useTranslation(ns)",
+      "const holder = { ns: 'login' }; useTranslation(holder.ns)",
+      "function namespace() { return 'login' }; useTranslation(namespace())",
+    ])('leaves runtime namespace values unknown: %s', (body) => {
+      writeJson('i18n/locales/en-US/app.json', {})
+      writeSource('page.ts', `import { useTranslation } from 'react-i18next'; ${body}`)
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.moduleNamespaces.get(path.join(webRoot, 'page.ts'))).toEqual(new Set())
+      expect(result.evidence.some((item) => item.kind === 'unknown-namespace')).toBe(true)
+    })
+
+    it('keeps known loads and conservatively checks keys for unknown array members', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'Used', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/common.json', { used: 'Used', unused: 'Unused' })
+      writeSource(
+        'page.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+        export function page(ns: string) {
+          const { t } = useTranslation(['login', ns])
+          return t('used')
+        }
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.moduleNamespaces.get(path.join(webRoot, 'page.ts'))).toEqual(
+        new Set(['login', 'app', 'common']),
+      )
+      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toHaveLength(1)
+      expect(result.unused).toEqual({ app: ['unused'], common: ['unused'] })
+    })
+
+    it('preserves a finite key type when an initializer cannot be evaluated', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'Used', unused: 'Unused' })
+      writeSource(
+        'entry.ts',
+        `
+        declare function remote(): any
+        export function label(t: (selector: (value: Record<string, string>) => string) => string) {
+          const key: 'used' = remote()
+          return t($ => $[key])
+        }
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.unused.app).toEqual(['unused'])
+      expect(result.protectedNamespaces).toEqual([])
+    })
+
+    it('reports unknown namespaces in shorthand options and Trans attributes', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'Used' })
+      writeSource(
+        'entry.tsx',
+        `
+        import { Trans } from 'react-i18next'
+        export function label(t: (key: string, options: { ns: string }) => string, ns: string) {
+          t('used', { ns })
+          return <Trans ns={ns} i18nKey="used" />
+        }
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toHaveLength(2)
+    })
+
     it('reports explicit namespace loads even when no translation key is consumed', () => {
       writeJson('i18n/locales/en-US/app.json', { unused: 'Unused' })
       writeSource(
         'src/page.ts',
         `
-        declare function useTranslation(ns: string[]): unknown
-        declare function getTranslation(locale: string, ns: string): unknown
+        import { useTranslation } from 'react-i18next'
+        import { getTranslation } from '@/i18n/server'
         useTranslation(['app', 'common'])
         getTranslation('en-US', 'login')
         export function boundary(requiredNamespaces: ('workflow' | 'dataset')[]) {
@@ -60,7 +283,7 @@ describe('translation graph analysis', () => {
       expect(result.unused).toEqual({ app: ['unused'] })
     })
 
-    it('resolves namespace constants, imported arrays and nested static spreads without consuming keys', () => {
+    it('resolves const strings but keeps bound arrays and cyclic values unknown', () => {
       writeJson('i18n/locales/en-US/workflow.json', { unused: 'Unused' })
       writeSource(
         'src/namespaces.ts',
@@ -73,10 +296,11 @@ describe('translation graph analysis', () => {
         'src/page.ts',
         `
         import { workflow, extras } from './namespaces'
-        declare function useTranslation(ns: readonly string[]): unknown
-        declare function getTranslation(locale: string, ns: string): unknown
+        import { useTranslation } from 'react-i18next'
+        import { getTranslation } from '@/i18n/server'
         const shared = ['common', ...extras] as const
-        useTranslation([workflow, ...shared])
+        useTranslation([workflow, ...['common']])
+        useTranslation(shared)
         const cyclic = [cyclic]
         useTranslation(cyclic)
       `,
@@ -84,10 +308,74 @@ describe('translation graph analysis', () => {
       const result = checkTranslationGraph(webRoot, modules)
       expect([...result.moduleNamespaces.get(path.join(webRoot, 'src/page.ts'))!].sort()).toEqual([
         'common',
-        'login',
         'workflow',
       ])
+      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toHaveLength(2)
       expect(result.unused).toEqual({ workflow: ['unused'] })
+    })
+
+    it('recognizes imported aliases and ignores unrelated same-name functions', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'Used', unused: 'Unused' })
+      writeSource(
+        'src/aliases.tsx',
+        `
+        import { useTranslation as useT, Trans as Translation } from 'react-i18next'
+        const load = useT
+        load('common')
+        export function View() { return <Translation ns="app" i18nKey="used" /> }
+        function useTranslation(value: string) { return value }
+        function getTranslation(locale: string, value: string) { return value }
+        useTranslation('unrelated')
+        getTranslation('en-US', 'also-unrelated')
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(
+        [...result.moduleNamespaces.get(path.join(webRoot, 'src/aliases.tsx'))!].sort(),
+      ).toEqual(['app', 'common'])
+      expect(result.unused).toEqual({ app: ['unused'] })
+    })
+
+    it('follows API re-exports and namespace imports through their declarations', () => {
+      writeJson('i18n/locales/en-US/app.json', { unused: 'Unused' })
+      writeSource('i18n/lib.client.ts', `export function useTranslation(ns: string) { return ns }`)
+      writeSource('src/barrel.ts', `export { useTranslation as useT } from '../i18n/lib.client'`)
+      writeSource(
+        'src/page.ts',
+        `
+        import { useT } from './barrel'
+        import * as reactI18n from 'react-i18next'
+        useT('login')
+        reactI18n.useTranslation('common')
+      `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect([...result.moduleNamespaces.get(path.join(webRoot, 'src/page.ts'))!].sort()).toEqual([
+        'common',
+        'login',
+      ])
+    })
+
+    it('reports dynamic protection with the originating module and line', () => {
+      writeJson('i18n/locales/en-US/app.json', { dynamic: 'Dynamic' })
+      writeSource(
+        'src/dynamic.ts',
+        `export function label(t: (key: string) => string, key: string) {
+  return t(key)
+}`,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect(result.evidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'dynamic-key',
+            file: 'src/dynamic.ts',
+            line: 2,
+            namespaces: ['app'],
+          }),
+        ]),
+      )
+      expect(result.unused).toEqual({})
     })
 
     it('resolves generic metadata selectors using the namespace at each call site', () => {
@@ -1124,7 +1412,7 @@ describe('translation graph analysis', () => {
       })
     })
 
-    it('should treat simple i18n key identity helpers as their literal argument', () => {
+    it('protects the namespace for keys returned by runtime helpers', () => {
       // Arrange
       writeJson('i18n/locales/en-US/common.json', {
         'mainNav.workspace.searchPlaceholder': 'Search',
@@ -1148,9 +1436,8 @@ describe('translation graph analysis', () => {
       const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
-      expect(sortedUnusedKeysByNamespace(result)).toEqual({
-        common: ['mainNav.workspace.unused'],
-      })
+      expect(sortedUnusedKeysByNamespace(result)).toEqual({})
+      expect(result.protectedNamespaces).toEqual(['common'])
     })
 
     it('should keep i18next plural variants when the base key is referenced', () => {

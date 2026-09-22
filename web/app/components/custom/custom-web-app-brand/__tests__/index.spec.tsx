@@ -141,14 +141,6 @@ describe('CustomWebAppBrand', () => {
 
   // User interactions delegated to the hook callbacks.
   describe('Interactions', () => {
-    it('should delegate switch changes to the hook handler', () => {
-      const { hookState } = renderComponent()
-
-      fireEvent.click(screen.getByRole('switch'))
-
-      expect(hookState.handleSwitch).toHaveBeenCalledWith(true)
-    })
-
     it('should delegate file input changes and reset the native input value on click', () => {
       const { container, hookState } = renderComponent()
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement

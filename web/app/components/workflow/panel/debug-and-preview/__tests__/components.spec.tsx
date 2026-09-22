@@ -1,7 +1,7 @@
 import type { ChatWrapperRefType } from '../index'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { ConversationVariable } from '@/app/components/workflow/types'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -311,7 +311,8 @@ describe('debug-and-preview components', () => {
     })
 
     it('should copy the current variable value and reset the copied state after the timeout', async () => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       renderWorkflowComponent(
         <ConversationVariableModal conversationID="conversation-1" onHide={vi.fn()} />,
         {
@@ -322,12 +323,8 @@ describe('debug-and-preview components', () => {
         },
       )
 
-      const copyTrigger = document.querySelector(
-        '.flex.items-center.p-1 svg.cursor-pointer',
-      ) as HTMLElement
-      act(() => {
-        fireEvent.click(copyTrigger)
-      })
+      const copyTrigger = screen.getByRole('button', { name: 'common.operation.copy' })
+      await user.click(copyTrigger)
       expect(mockCopy).toHaveBeenCalledWith('{"draft":true}')
 
       act(() => {

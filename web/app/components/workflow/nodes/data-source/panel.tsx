@@ -4,12 +4,12 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TagInput from '@/app/components/base/tag-input'
-import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { BoxGroupField } from '@/app/components/workflow/nodes/_base/components/layout'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useStore } from '@/app/components/workflow/store'
-import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
+import { datasourceParametersToFormSchemas } from '@/app/components/workflow/utils/data-source'
+import { matchDataSource } from '@/app/components/workflow/utils/plugin-install-check'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import useMatchSchemaType, {
   getMatchedSchemaType,
@@ -23,19 +23,18 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
   const { nodesReadOnly } = useNodesReadOnly()
   const dataSourceList = useStore((s) => s.dataSourceList)
-  const { provider_type, plugin_id, fileExtensions = [], datasource_parameters } = data
+  const { provider_type, fileExtensions = [], datasource_parameters } = data
   const { handleFileExtensionsChange, handleParametersChange, outputSchema, hasObjectOutput } =
-    useConfig(id, dataSourceList)
+    useConfig(id, data, dataSourceList)
   const isLocalFile = provider_type === DataSourceClassification.localFile
-  const currentDataSource = dataSourceList?.find((ds) => ds.plugin_id === plugin_id)
-  const currentDataSourceItem: any = currentDataSource?.tools?.find(
-    (tool: any) => tool.name === data.datasource_name,
+  const currentDataSource = matchDataSource(dataSourceList ?? [], data)
+  const currentDataSourceItem = currentDataSource?.declaration.datasources?.find(
+    (item) => item.identity.name === data.datasource_name,
   )
-  const formSchemas = useMemo(() => {
-    return currentDataSourceItem
-      ? toolParametersToFormSchemas(currentDataSourceItem.parameters)
-      : []
-  }, [currentDataSourceItem])
+  const formSchemas = useMemo(
+    () => datasourceParametersToFormSchemas(currentDataSourceItem?.parameters),
+    [currentDataSourceItem],
+  )
 
   const pipelineId = useStore((s) => s.pipelineId)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
@@ -58,11 +57,10 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
             <ToolForm
               readOnly={nodesReadOnly}
               nodeId={id}
-              schema={formSchemas as any}
+              schema={formSchemas}
+              staticSchema
               value={datasource_parameters}
               onChange={handleParametersChange}
-              currentProvider={currentDataSource}
-              currentTool={currentDataSourceItem}
               showManageInputField={!!pipelineId}
               onManageInputField={() => setShowInputFieldPanel?.(true)}
             />
@@ -119,14 +117,22 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
             />
           ))}
         {outputSchema.map((outputItem) => {
-          const schemaType = getMatchedSchemaType(outputItem.value, schemaTypeDefinitions)
+          const schema =
+            outputItem.value &&
+            typeof outputItem.value === 'object' &&
+            !Array.isArray(outputItem.value)
+              ? outputItem.value
+              : {}
+          const schemaType = getMatchedSchemaType(schema, schemaTypeDefinitions)
 
           return (
             <div key={outputItem.name}>
-              {outputItem.value?.type === 'object' ? (
+              {outputItem.isObject ? (
                 <StructureOutputItem
                   rootClassName="code-sm-semibold text-text-secondary"
-                  payload={wrapStructuredVarItem(outputItem, schemaType)}
+                  payload={{
+                    schema: { properties: { [outputItem.name]: { ...schema, schemaType } } },
+                  }}
                 />
               ) : (
                 <VarItem
