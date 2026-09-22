@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from services.dify_builder.agent import build, resources
 
 
@@ -286,8 +288,151 @@ def test_bind_resources_binds_each_resource_to_the_step_it_covers(monkeypatch):
     assert out[0] == plan[0]
     assert out[1] == plan[1] + " (using deepseek-v4-flash)"
     assert out[2] == plan[2] + " (using Company KB)"
-    assert out[3] == plan[3] + " (using Markdown ⮕ PPTX)"
+    assert out[3] == plan[3] + " (using Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx])"
     assert out[4] == plan[4]
+
+
+def test_bind_resources_binds_each_tool_to_the_step_naming_its_id(monkeypatch):
+    """The planner is told to name a tool by its id (``_planner_tool_section``),
+    but binding matched only the LABEL, then the "tool" keyword -- so with two
+    tool steps naming ids, BOTH tools bound to the first tool step."""
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[],
+            datasets=[],
+            tools=[
+                resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX"),
+                resources.ResourceRef(id="langgenius/google/google/google_search", label="Google Search"),
+            ],
+        ),
+    )
+    plan = [
+        "start节点：定义输入变量 topic",
+        "tool节点：使用 bowenliang123/md_exporter/md_exporter/md_to_pptx 把大纲转换成 PPTX 文件",
+        "tool节点：使用 langgenius/google/google/google_search 搜索主题相关资料",
+        "end节点：返回生成的PPT文件",
+    ]
+
+    out = build.bind_resources(
+        None,
+        "t1",
+        plan,
+        ["bowenliang123/md_exporter/md_exporter/md_to_pptx", "langgenius/google/google/google_search"],
+    )
+
+    assert out[0] == plan[0]
+    assert out[1] == plan[1] + " (using Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx])"
+    assert out[2] == plan[2] + " (using Google Search [langgenius/google/google/google_search])"
+    assert out[3] == plan[3]
+
+
+@pytest.mark.parametrize(
+    "tool_step",
+    [
+        # names neither the id nor the label -- bound by the "tool" keyword
+        "tool节点：把 Markdown 转成 PPTX 文件",
+        # names the id glued to CJK text -- the generator's identifier
+        # boundary treats CJK as a word character, so this alone never pins
+        "tool节点：使用bowenliang123/md_exporter/md_exporter/md_to_pptx转换",
+    ],
+)
+def test_bind_resources_tool_suffix_carries_the_id_the_generator_pins_on(monkeypatch, tool_step):
+    """The shared generator pins a tool deterministically only through
+    ``tool_catalogue._find_explicit_tool_keys``, which looks for the
+    ``provider/tool`` IDENTIFIER in the instruction text between
+    ``_TOOL_IDENTIFIER_LEFT_BOUNDARY`` = ``(?<![\\w/.:@-])`` and
+    ``_TOOL_IDENTIFIER_RIGHT_BOUNDARY`` = ``(?![\\w/@-]|[.:][\\w])`` -- never
+    the label. A label-only suffix therefore pinned nothing; the id in ASCII
+    brackets does ('[' and ']' are outside both boundary classes)."""
+    from core.workflow.generator.tool_catalogue import _find_explicit_tool_keys
+
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[],
+            datasets=[],
+            tools=[
+                resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX")
+            ],
+        ),
+    )
+    entries = [
+        {
+            "provider_name": "bowenliang123/md_exporter/md_exporter",
+            "provider_type": "builtin",
+            "plugin_id": "bowenliang123/md_exporter",
+            "tool_name": "md_to_pptx",
+            "tool_label": "Markdown ⮕ PPTX",
+            "description": "Convert Markdown to a PPTX file",
+            "needs_credentials": False,
+        },
+        {
+            "provider_name": "langgenius/google/google",
+            "provider_type": "builtin",
+            "plugin_id": "langgenius/google",
+            "tool_name": "google_search",
+            "tool_label": "Google Search",
+            "description": "Search the web with Google",
+            "needs_credentials": True,
+        },
+    ]
+    plan = ["start节点：输入主题", "llm节点：写出 Markdown 大纲", tool_step, "end节点：返回PPT文件"]
+
+    out = build.bind_resources(None, "t1", plan, ["bowenliang123/md_exporter/md_exporter/md_to_pptx"])
+
+    assert out[2] == tool_step + " (using Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx])"
+    assert _find_explicit_tool_keys(entries, "\n".join(plan)) == set()
+    assert _find_explicit_tool_keys(entries, "\n".join(out)) == {
+        ("bowenliang123/md_exporter/md_exporter", "md_to_pptx")
+    }
+
+
+def test_bind_resources_names_the_tool_id_on_an_empty_plan_too(monkeypatch):
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[],
+            datasets=[],
+            tools=[
+                resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX")
+            ],
+        ),
+    )
+
+    out = build.bind_resources(None, "t1", [], ["bowenliang123/md_exporter/md_exporter/md_to_pptx"])
+
+    assert out == ["Use Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx]"]
+
+
+def test_bind_resources_keeps_models_and_knowledge_label_only(monkeypatch):
+    """Only a tool is pinned by id; a model's label already IS its full id and
+    a dataset is grounded by its name (``_ground``), so neither gets brackets."""
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda t: resources.TenantResources(  # noqa: ARG005
+            models=[
+                resources.ResourceRef(
+                    id="langgenius/tokener/tokener/deepseek-v4-flash",
+                    label="langgenius/tokener/tokener/deepseek-v4-flash",
+                )
+            ],
+            datasets=[resources.ResourceRef(id="9f1c2b7e-kb", label="Company KB")],
+            tools=[],
+        ),
+    )
+    plan = ["llm node: draft the outline", "knowledge-retrieval node: fetch the style guide"]
+
+    out = build.bind_resources(None, "t1", plan, ["langgenius/tokener/tokener/deepseek-v4-flash", "9f1c2b7e-kb"])
+
+    assert out[0] == plan[0] + " (using langgenius/tokener/tokener/deepseek-v4-flash)"
+    assert out[1] == plan[1] + " (using Company KB)"
+    assert "[" not in out[0]
+    assert "[" not in out[1]
 
 
 def test_bind_resources_falls_back_to_the_last_step_when_nothing_matches(monkeypatch):
@@ -301,25 +446,39 @@ def test_bind_resources_falls_back_to_the_last_step_when_nothing_matches(monkeyp
 
     out = build.bind_resources(None, "t1", ["start node: inputs", "end node: output"], ["p/t"])
 
-    assert out == ["start node: inputs", "end node: output (using Some Tool)"]
+    assert out == ["start node: inputs", "end node: output (using Some Tool [p/t])"]
 
 
 def test_bind_resources_rebind_with_the_same_selection_is_idempotent(monkeypatch):
+    """A loop-back re-bind must strip the previous suffix, bracketed tool id
+    and all (``_TRAILING_USING_SUFFIX`` excludes only parentheses, so the
+    ``[provider/tool]`` part is stripped with it) -- not pile a second one on."""
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
         lambda t: resources.TenantResources(  # noqa: ARG005
-            models=[resources.ResourceRef(id="model-a", label="Model A")],
+            models=[
+                resources.ResourceRef(
+                    id="langgenius/tokener/tokener/deepseek-v4-flash",
+                    label="langgenius/tokener/tokener/deepseek-v4-flash",
+                )
+            ],
             datasets=[],
-            tools=[resources.ResourceRef(id="tool-b", label="Tool B")],
+            tools=[
+                resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX")
+            ],
         ),
     )
-    plan = ["llm node: draft", "tool node: run something"]
+    plan = ["llm节点：根据主题生成大纲", "tool节点：把 Markdown 转成 PPTX 文件"]
+    selection = ["langgenius/tokener/tokener/deepseek-v4-flash", "bowenliang123/md_exporter/md_exporter/md_to_pptx"]
 
-    first = build.bind_resources(None, "t1", plan, ["model-a", "tool-b"])
-    second = build.bind_resources(None, "t1", first, ["model-a", "tool-b"])
+    first = build.bind_resources(None, "t1", plan, selection)
+    second = build.bind_resources(None, "t1", first, selection)
 
+    assert first[1] == plan[1] + " (using Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx])"
     assert second == first
+    assert second[1].count("(using") == 1
+    assert second[1].count("[bowenliang123/md_exporter/md_exporter/md_to_pptx]") == 1
 
 
 def test_bind_resources_rebind_with_a_changed_selection_drops_the_deselected_label(monkeypatch):
@@ -345,7 +504,7 @@ def test_bind_resources_rebind_with_a_changed_selection_drops_the_deselected_lab
     first = build.bind_resources(None, "t1", plan, ["model-a", "tool-b"])
     second = build.bind_resources(None, "t1", first, ["model-a", "tool-c"])
 
-    assert second[1] == "tool node: run something (using Markdown Exporter)"
+    assert second[1] == "tool node: run something (using Markdown Exporter [tool-c])"
     assert "Code Interpreter" not in second[1]
     assert second[1].count("(using") == 1
 
@@ -372,7 +531,7 @@ def test_bind_resources_cleans_an_old_aggregate_suffix_before_rebinding(monkeypa
     out = build.bind_resources(None, "t1", plan, ["model-a", "tool-b"])
 
     assert out[0] == "llm node: draft (using deepseek-v4-flash)"
-    assert out[1] == "tool node: run something (using Code Interpreter)"
+    assert out[1] == "tool node: run something (using Code Interpreter [tool-b])"
     assert out[2] == "end node: return output"
 
 
@@ -381,7 +540,7 @@ def test_covering_step_tool_keyword_does_not_match_a_toolkit_substring():
     # there when an actual tool step exists further down the plan.
     plan = ["code node: build a toolkit summary string", "tool node: send a slack notification"]
 
-    assert build._covering_step(plan, "plugin", "Slack Notifier") == 1
+    assert build._covering_step(plan, "plugin", resources.ResourceRef(id="p/slack", label="Slack Notifier")) == 1
 
 
 def test_covering_step_llm_keyword_does_not_match_a_fulfillment_substring():
@@ -391,13 +550,23 @@ def test_covering_step_llm_keyword_does_not_match_a_fulfillment_substring():
     # caller's fallback then applies).
     plan = ["step: order fulfillment notes", "end node: wrap up"]
 
-    assert build._covering_step(plan, "model", "GPT-5") == -1
+    assert build._covering_step(plan, "model", resources.ResourceRef(id="openai/gpt-5", label="openai/gpt-5")) == -1
 
 
 def test_covering_step_still_matches_llm_in_cjk_step_text():
     plan = ["start节点：输入", "llm节点：总结", "end节点：输出"]
 
-    assert build._covering_step(plan, "model", "Some Model") == 1
+    assert build._covering_step(plan, "model", resources.ResourceRef(id="p/some-model", label="p/some-model")) == 1
+
+
+def test_covering_step_prefers_the_step_naming_the_resource_id_over_the_kind_keyword():
+    plan = [
+        "tool节点：使用 bowenliang123/md_exporter/md_exporter/md_to_pptx 生成PPT",
+        "tool节点：使用 langgenius/google/google/google_search 搜索资料",
+    ]
+    ref = resources.ResourceRef(id="langgenius/google/google/google_search", label="Google Search")
+
+    assert build._covering_step(plan, "plugin", ref) == 1
 
 
 def test_learn_from_build_degrades_to_generic():
@@ -598,6 +767,10 @@ def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch):
     # http-request survives, but only for an endpoint the user actually supplied
     assert "http-request" in system
     assert "invent" in system.lower()
+    # the generator pins a tool only on its id as a whole word -- an id glued
+    # to CJK text ("使用bowenliang123/...") does not pin
+    assert "exactly as listed" in system
+    assert "separate word" in system
 
 
 def test_plan_prompt_without_tools_has_no_tool_section(monkeypatch):
