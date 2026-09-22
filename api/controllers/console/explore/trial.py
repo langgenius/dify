@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable, Mapping
 from dataclasses import asdict
 from datetime import datetime
-from functools import wraps
+from functools import partial, wraps
 from typing import Any, Literal
 from uuid import UUID
 
@@ -612,7 +612,7 @@ class TrialChatApi(Resource):
 class TrialChatTaskStopApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
-    @get_trial_app
+    @partial(get_trial_app, check_usage=False)
     def post(self, request_context: RequestContext, trial_app: TrialAppRef, task_id: str):
         if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
             raise NotChatAppError()

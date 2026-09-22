@@ -428,6 +428,30 @@ def test_stop_chat_rejects_workflow(harness: _Harness):
     assert harness.services.app_tasks.chat_calls == []
 
 
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.ADVANCED_CHAT])
+def test_last_trial_can_be_stopped_without_allowing_another_generation(harness: _Harness, mode: AppMode):
+    harness.set_mode(mode)
+    with harness.factory.begin() as session:
+        session.add(AccountTrialAppRecord(app_id=harness.target.id, account_id=harness.account.id, count=2))
+
+    response = harness.post("chat-messages", payload={"inputs": {}, "query": "hello"})
+    assert response.status_code == 200
+    assert harness.usage() == 3
+
+    stopped = harness.post("chat-messages/task-last/stop")
+    assert stopped.status_code == 200
+    assert harness.services.app_tasks.chat_calls == [("task-last", harness.account.id, mode)]
+    assert harness.usage() == 3
+    unavailable = harness.app.test_client().post(harness.url("chat-messages/task-last/stop", app_id=str(uuid4())))
+    _assert_error(unavailable, 403, "trial_app_not_allowed")
+    assert len(harness.services.app_tasks.chat_calls) == 1
+    _assert_error(
+        harness.post("chat-messages", payload={"inputs": {}, "query": "again"}),
+        403,
+        "trial_app_limit_exceeded",
+    )
+
+
 def test_chat_normalizes_uuid_and_preserves_empty_ids(harness: _Harness) -> None:
     harness.set_mode(AppMode.CHAT)
     conversation_id = uuid4()
