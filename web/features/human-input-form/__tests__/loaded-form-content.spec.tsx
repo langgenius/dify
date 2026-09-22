@@ -6,6 +6,10 @@ import { InputVarType } from '@/app/components/workflow/types'
 import LoadedFormContent from '../loaded-form-content'
 import { normalizeLegacyHumanInputForm } from '../normalize-legacy-definition'
 
+vi.mock('next/font/google', () => ({
+  Inter: () => ({ className: 'font-inter' }),
+}))
+
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item', () => ({
   default: ({
     content,

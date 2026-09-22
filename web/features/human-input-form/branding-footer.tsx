@@ -1,19 +1,25 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 
 type BrandingFooterProps = {
+  variant?: 'form' | 'status'
   removeWebappBrand?: boolean
   replaceWebappLogo?: string | null
 }
 
-const BrandingFooter = ({ removeWebappBrand, replaceWebappLogo }: BrandingFooterProps) => {
+const BrandingFooter = ({
+  variant = 'form',
+  removeWebappBrand,
+  replaceWebappLogo,
+}: BrandingFooterProps) => {
   const { t } = useTranslation()
 
   if (removeWebappBrand) return null
 
   return (
     <div className="flex flex-row-reverse px-2 py-3">
-      <div className="flex shrink-0 items-center gap-1.5 px-1">
+      <div className={cn('flex shrink-0 items-center', variant === 'status' ? 'gap-2' : 'gap-1.5')}>
         <div className="system-2xs-medium-uppercase text-text-tertiary">
           {t(($) => $['chat.poweredBy'], { ns: 'share' })}
         </div>
