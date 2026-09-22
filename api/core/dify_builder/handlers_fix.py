@@ -466,14 +466,16 @@ _ENDPOINT_TEMPLATE_RE = re.compile(r"\{\{#([^.#{}]+)\.([^.#{}]+)#\}\}")
 
 
 def endpoint_variable_names(graph: Graph) -> set[str]:
-    """Names of the start variables an http-request node reads its URL from.
+    """Names of the start variables an http-request node reads its URL,
+    headers, params, or API-key authorization from.
 
-    Nothing can invent a real endpoint any more than it can invent an upload
-    (ESQ1-302 / build.py's ``_ground_placeholder_endpoints``), so these are
-    values a human still has to supply even when every other field is mocked
-    for them. Only a reference to the graph's own START node counts -- a
-    reference to some other node's output is an ordinary wired value, not an
-    endpoint waiting on the user.
+    Nothing can invent a real endpoint or credential any more than it can
+    invent an upload (ESQ1-302 / build.py's ``_ground_placeholder_endpoints``
+    and Task 3's credential grounding), so these are values a human still has
+    to supply even when every other field is mocked for them. Only a
+    reference to the graph's own START node counts -- a reference to some
+    other node's output is an ordinary wired value, not an endpoint/credential
+    waiting on the user.
     """
     start_id = ""
     for node in graph.get("nodes", []):
@@ -484,14 +486,23 @@ def endpoint_variable_names(graph: Graph) -> set[str]:
     if not start_id:
         return set()
     names: set[str] = set()
+
+    def _collect(text: str) -> None:
+        for node_id, var_name in _ENDPOINT_TEMPLATE_RE.findall(text):
+            if node_id == start_id:
+                names.add(var_name)
+
     for node in graph.get("nodes", []):
         data = node.get("data") or {}
         if data.get("type") != "http-request":
             continue
-        url = str(data.get("url") or "")
-        for node_id, var_name in _ENDPOINT_TEMPLATE_RE.findall(url):
-            if node_id == start_id:
-                names.add(var_name)
+        _collect(str(data.get("url") or ""))
+        _collect(str(data.get("headers") or ""))
+        _collect(str(data.get("params") or ""))
+        authorization = data.get("authorization")
+        auth_config = authorization.get("config") if isinstance(authorization, dict) else None
+        if isinstance(auth_config, dict):
+            _collect(str(auth_config.get("api_key") or ""))
     return names
 
 

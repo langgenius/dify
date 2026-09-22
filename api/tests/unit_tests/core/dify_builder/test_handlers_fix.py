@@ -825,6 +825,75 @@ def test_endpoint_variable_names_empty_when_there_is_no_http_request_node():
     assert endpoint_variable_names(graph) == set()
 
 
+def test_endpoint_variable_names_collects_headers_too():
+    """A node whose url and header both read the start node counts both; a
+    header reading another node's output is an ordinary wired value, not a
+    credential waiting on the user."""
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    graph = {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "h_url", "type": "text-input"},
+                        {"variable": "h_api_key", "type": "text-input"},
+                    ],
+                },
+            },
+            {"id": "llm1", "data": {"type": "llm"}},
+            {
+                "id": "h",
+                "data": {
+                    "type": "http-request",
+                    "url": "{{#s.h_url#}}",
+                    "headers": "Authorization: Bearer {{#s.h_api_key#}}\nX-Trace: {{#llm1.text#}}",
+                    "params": "",
+                    "authorization": {"type": "no-auth", "config": None},
+                },
+            },
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"h_url", "h_api_key"}
+
+
+def test_endpoint_variable_names_also_collects_params_and_authorization_api_key():
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    graph = {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "p_key", "type": "text-input"},
+                        {"variable": "auth_key", "type": "text-input"},
+                    ],
+                },
+            },
+            {
+                "id": "h",
+                "data": {
+                    "type": "http-request",
+                    "url": "https://api.acme.com/v1",
+                    "headers": "",
+                    "params": "api_key: {{#s.p_key#}}",
+                    "authorization": {
+                        "type": "api-key",
+                        "config": {"type": "bearer", "api_key": "{{#s.auth_key#}}"},
+                    },
+                },
+            },
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"p_key", "auth_key"}
+
+
 # ---- without_endpoint_values -------------------------------------------------
 
 

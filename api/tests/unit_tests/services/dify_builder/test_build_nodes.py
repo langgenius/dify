@@ -583,7 +583,15 @@ def test_build_nodes_grounds_a_placeholder_endpoint_into_a_required_start_variab
     assert "Call PPT API" in var["label"]
 
 
-def _http_node(node_id: str, title: str, url: str) -> dict:
+def _http_node(
+    node_id: str,
+    title: str,
+    url: str,
+    *,
+    headers: str = "",
+    params: str = "",
+    authorization: dict | None = None,
+) -> dict:
     return {
         "id": node_id,
         "type": "custom",
@@ -592,11 +600,32 @@ def _http_node(node_id: str, title: str, url: str) -> dict:
             "title": title,
             "method": "post",
             "url": url,
-            "authorization": {"type": "no-auth", "config": None},
-            "headers": "",
-            "params": "",
+            "authorization": authorization or {"type": "no-auth", "config": None},
+            "headers": headers,
+            "params": params,
             "body": _HTTP_BODY,
         },
+    }
+
+
+def _gen_graph_with_http_full(
+    url: str,
+    *,
+    headers: str = "",
+    params: str = "",
+    authorization: dict | None = None,
+) -> dict:
+    return {
+        "graph": {
+            "nodes": [
+                {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
+                _http_node("h", "Call PPT API", url, headers=headers, params=params, authorization=authorization),
+                {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
+            ],
+            "edges": [{"id": "e1", "source": "s", "target": "h"}, {"id": "e2", "source": "h", "target": "e"}],
+        },
+        "error": "",
+        "errors": [],
     }
 
 
@@ -685,3 +714,78 @@ def test_is_placeholder_endpoint_recognises_the_usual_inventions():
     assert not build._is_placeholder_endpoint(
         "https://abc123.localhost.run/webhook"
     )  # a real tunnel domain, not the localhost host
+
+
+# ---- Task 3: invented credentials become an input ---------------------------
+
+
+def test_build_nodes_grounds_an_invented_credential_header_into_a_required_start_variable():
+    """S5b/F2: requirements analysis invented an ``Authorization: Bearer
+    YOUR_API_KEY`` header the goal never supplied. Grounding it into a start
+    variable means the test-data gate asks the user for the real key instead
+    of the workflow shipping a header the run can never satisfy. The
+    Content-Type line is not a credential and must pass through byte-identical."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Content-Type: application/json\nAuthorization: Bearer YOUR_API_KEY",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == ("Content-Type: application/json\nAuthorization: Bearer {{#s.h_api_key#}}")
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["type"] == "text-input"
+    assert var["required"] is True
+    assert var["max_length"] == 2048
+    assert "Call PPT API" in var["label"]
+
+
+def test_build_nodes_leaves_a_header_credential_alone_when_the_user_actually_supplied_it():
+    """The mirror case: the goal literally names the secret, so it is not a
+    fabrication and must be left alone."""
+    goal = "Call https://api.acme.com/v1/render with Authorization: Bearer sk-live-abc123."
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization: Bearer sk-live-abc123",
+        ),
+        trusted_text=goal,
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization: Bearer sk-live-abc123"
+    assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_grounds_an_invented_api_key_authorization_config():
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            authorization={"type": "api-key", "config": {"type": "bearer", "api_key": "YOUR_TOKEN"}},
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["authorization"]["config"]["api_key"] == "{{#s.h_api_key#}}"
+    assert http.args["config"]["authorization"]["config"]["type"] == "bearer"  # untouched
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_grounds_an_invented_api_key_param():
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            params="api_key: xxxxxxxx",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["params"] == "api_key: {{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
