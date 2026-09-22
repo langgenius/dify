@@ -191,7 +191,9 @@ describe('AccessControlEntry', () => {
       expect(within(getChip()).getByText('PRO')).toBeInTheDocument()
       await user.click(getChip())
       expect(screen.getByText('This app is no longer protected')).toBeInTheDocument()
-      expect(screen.getByText('Access control needs the Pro plan.')).toBeInTheDocument()
+      expect(
+        screen.getByText('Access control is available on Professional and Team plans.'),
+      ).toBeInTheDocument()
       expect(screen.getByText('Ready to resume')).toBeInTheDocument()
       expect(screen.getByText('Internal Network')).toBeInTheDocument()
       expect(screen.getByText(`Protects ${coverage} access points`)).toBeInTheDocument()
