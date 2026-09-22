@@ -428,6 +428,57 @@ class TestNormalizeHttpRequestBodies:
         assert nodes == before
 
 
+class TestNormalizeHttpRequestAuthorization:
+    """A generated ``authorization`` without ``type`` makes graphon's
+    ``HttpRequestNodeAuthorization.check_config`` raise KeyError (the live
+    E2E Build crash). The shared http normalizer fills it: ``api-key`` when
+    the config carries a key, else ``no-auth``."""
+
+    @staticmethod
+    def _node(authorization) -> dict:
+        return {
+            "id": "h",
+            "data": {"type": "http-request", "authorization": authorization, "body": {"type": "none", "data": []}},
+        }
+
+    def test_a_config_carrying_an_api_key_becomes_api_key(self):
+        from core.workflow.graph_normalizers import normalize_http_request_bodies
+
+        node = self._node({"config": {"type": "bearer", "api_key": "x"}})
+
+        assert normalize_http_request_bodies([node]) == ["h"]
+        assert node["data"]["authorization"] == {"type": "api-key", "config": {"type": "bearer", "api_key": "x"}}
+
+    def test_an_empty_authorization_becomes_no_auth(self):
+        from core.workflow.graph_normalizers import normalize_http_request_bodies
+
+        node = self._node({})
+
+        assert normalize_http_request_bodies([node]) == ["h"]
+        assert node["data"]["authorization"] == {"type": "no-auth", "config": None}
+
+    def test_a_config_without_a_key_becomes_no_auth(self):
+        from core.workflow.graph_normalizers import normalize_http_request_bodies
+
+        node = self._node({"config": {"type": "bearer", "api_key": ""}})
+
+        assert normalize_http_request_bodies([node]) == ["h"]
+        assert node["data"]["authorization"] == {"type": "no-auth", "config": None}
+
+    def test_an_authorization_with_a_type_or_not_a_dict_is_left_alone(self):
+        from core.workflow.graph_normalizers import normalize_http_request_bodies
+
+        nodes = [
+            self._node({"type": "api-key", "config": {"type": "bearer", "api_key": "x"}}),
+            self._node({"type": "no-auth", "config": None}),
+            self._node(None),
+        ]
+        before = copy.deepcopy(nodes)
+
+        assert normalize_http_request_bodies(nodes) == []
+        assert nodes == before
+
+
 class TestHttpRequestBodyErrors:
     """What the normalizer must NOT paper over: a json body with two ``{key,
     value}`` items has no single correct collapse (quoting breaks JSON-valued

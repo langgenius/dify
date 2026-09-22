@@ -26,9 +26,17 @@ _CANVAS_ONLY_NODE_TYPE = "custom-note"
 
 def preflight_errors(graph: Graph) -> list[str]:
     """Every node of ``graph`` that ``Graph.init`` would reject, one message
-    each, in node order. Each message starts with ``node <id> (<type>):``
+    each, in node order. Each message starts with ``node '<id>' (<type>):``
     (see ``core.workflow.node_factory.validate_node_config``). Empty when the
-    draft would start."""
+    draft would start.
+
+    A validation step must never crash the Builder: a node whose validation
+    raises something OTHER than ``ValueError`` (graphon's
+    ``HttpRequestNodeAuthorization.check_config`` raises ``KeyError`` for an
+    ``authorization`` with no ``type``, and pydantic does not wrap it) is
+    reported as ``node '<id>' (<type>): <ExcName>: <message>`` -- the engine
+    would not start that draft either -- and the next node is still checked.
+    """
     errors: list[str] = []
     for node in graph.get("nodes") or []:
         if not isinstance(node, Mapping) or node.get("type") == _CANVAS_ONLY_NODE_TYPE:
@@ -37,4 +45,14 @@ def preflight_errors(graph: Graph) -> list[str]:
             validate_node_config(node)
         except ValueError as exc:
             errors.append(str(exc))
+        except Exception as exc:
+            errors.append(f"{_node_label(node)}: {type(exc).__name__}: {exc}")
     return errors
+
+
+def _node_label(node: Mapping) -> str:
+    """``node '<id>' (<type>)``, the prefix ``validate_node_config`` gives its
+    own ``ValueError`` messages."""
+    data = node.get("data")
+    node_type = str(data.get("type") or "") if isinstance(data, Mapping) else ""
+    return f"node {str(node.get('id') or '')!r} ({node_type or 'unknown type'})"
