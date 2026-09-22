@@ -1,7 +1,7 @@
 import type { FC, MouseEvent } from 'react'
 import type { Resources } from './index'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Fragment, useState } from 'react'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
 import Link from '@/next/link'
@@ -17,7 +17,6 @@ type PopupProps = {
 
 const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
   const fileType =
     data.dataSourceType !== 'notion' ? /\.([^.]*)$/.exec(data.documentName)?.[1] || '' : 'notion'
 
@@ -37,7 +36,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         nativeButton={false}
         render={

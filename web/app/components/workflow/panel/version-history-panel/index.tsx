@@ -2,6 +2,7 @@
 
 import type { AppModeEnum } from '@/types/app'
 import type { VersionHistory } from '@/types/workflow'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import { useAtomValue } from 'jotai'
@@ -9,7 +10,6 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
-import Divider from '@/app/components/base/divider'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
@@ -386,7 +386,7 @@ export const VersionHistoryPanel = ({
           onClickFilterItem={handleClickFilterItem}
           handleSwitch={handleSwitch}
         />
-        <Divider type="vertical" className="mx-1 h-3.5" />
+        <Separator decorative orientation="vertical" className="mx-1 h-3.5" />
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}

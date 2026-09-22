@@ -524,3 +524,47 @@ def test_server_settings_rejects_non_array_shell_redact_patterns(monkeypatch: py
 
     with pytest.raises(ValueError, match="must be a JSON array"):
         _ = settings.get_shell_redact_patterns()
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [{"runtime_backend": "local"}, {"e2b_api_key": None}, {"e2b_project_id": " "}, {"inner_api_key": None}],
+)
+def test_metering_configuration_is_checked_only_by_collection_endpoint(overrides: dict[str, object]) -> None:
+    config: dict[str, object] = {
+        "sandbox_metering_enabled": True,
+        "runtime_backend": "e2b",
+        "e2b_api_key": "provider-key",
+        "e2b_project_id": "project",
+        "inner_api_key": "inner-key",
+        "_env_file": None,
+    }
+    config.update(overrides)
+    # Optional accounting must not prevent unrelated runtime startup. Missing
+    # project/credentials/backend compatibility are checked by the one-shot route.
+    settings = ServerSettings(**config)
+    assert settings.sandbox_metering_enabled
+
+
+def test_metering_defaults_off_and_reads_env_when_explicitly_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert not ServerSettings(_env_file=None).sandbox_metering_enabled
+    monkeypatch.setenv("DIFY_AGENT_SANDBOX_METERING_ENABLED", "true")
+    monkeypatch.setenv("DIFY_AGENT_RUNTIME_BACKEND", "e2b")
+    monkeypatch.setenv("DIFY_AGENT_E2B_API_KEY", "provider-key")
+    monkeypatch.setenv("DIFY_AGENT_E2B_PROJECT_ID", "project")
+    monkeypatch.setenv("DIFY_AGENT_INNER_API_KEY", "inner-key")
+    settings = ServerSettings(_env_file=None)
+    assert settings.sandbox_metering_enabled
+    assert settings.sandbox_metering_max_pages == 1000
+    assert settings.sandbox_metering_overlap_seconds == 900
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "not-a-number"])
+@pytest.mark.parametrize("enabled", ["true", "false"])
+def test_invalid_optional_metering_number_does_not_block_settings_startup(
+    monkeypatch: pytest.MonkeyPatch, value: str, enabled: str
+) -> None:
+    monkeypatch.setenv("DIFY_AGENT_SANDBOX_METERING_ENABLED", enabled)
+    monkeypatch.setenv("DIFY_AGENT_SANDBOX_METERING_MAX_PAGES", value)
+    settings = ServerSettings(_env_file=None)
+    assert settings.sandbox_metering_max_pages == value

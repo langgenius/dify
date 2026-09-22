@@ -14,12 +14,6 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import IndexingSection from '../indexing-section'
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: ({ className }: { className?: string }) => (
-    <div data-testid="divider" className={className} />
-  ),
-}))
-
 vi.mock('@/app/components/datasets/settings/chunk-structure', () => ({
   default: ({ chunkStructure }: { chunkStructure: string }) => (
     <div data-testid="chunk-structure" data-mode={chunkStructure}>
@@ -508,12 +502,6 @@ describe('IndexingSection', () => {
   })
 
   describe('Conditional Rendering', () => {
-    it('should render dividers between visible sections', () => {
-      renderComponent()
-
-      expect(screen.getAllByTestId('divider').length).toBeGreaterThan(0)
-    })
-
     it('should hide the index method section when the dataset lacks an indexing technique', () => {
       renderComponent({
         currentDataset: {

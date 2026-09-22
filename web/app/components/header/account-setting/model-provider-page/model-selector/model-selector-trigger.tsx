@@ -202,7 +202,8 @@ function ModelSelectorTrigger({
                     <span
                       className={cn(
                         'flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning px-1.25 py-0.5',
-                        'group-focus-within/model-selector-clearable:hidden group-focus-within/model-selector-trigger:hidden group-hover/model-selector-clearable:hidden group-hover/model-selector-trigger:hidden',
+                        showClear &&
+                          'group-focus-within/model-selector-clearable:hidden group-focus-within/model-selector-trigger:hidden group-hover/model-selector-clearable:hidden group-hover/model-selector-trigger:hidden',
                         isCreditsExhausted && 'min-w-5 justify-center bg-components-badge-bg-dimm',
                       )}
                     >
@@ -214,7 +215,13 @@ function ModelSelectorTrigger({
                   )}
 
                 {isDeprecated && !isStatusUnavailable && showDeprecatedWarnIcon && (
-                  <span className="flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning bg-components-badge-bg-dimm px-1.25 py-0.5 group-focus-within/model-selector-clearable:hidden group-focus-within/model-selector-trigger:hidden group-hover/model-selector-clearable:hidden group-hover/model-selector-trigger:hidden">
+                  <span
+                    className={cn(
+                      'flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning bg-components-badge-bg-dimm px-1.25 py-0.5',
+                      showClear &&
+                        'group-focus-within/model-selector-clearable:hidden group-focus-within/model-selector-trigger:hidden group-hover/model-selector-clearable:hidden group-hover/model-selector-trigger:hidden',
+                    )}
+                  >
                     <span aria-hidden className="i-ri-alert-fill size-3 text-text-warning" />
                     <span className="system-xs-medium whitespace-nowrap text-text-warning">
                       {statusLabel}

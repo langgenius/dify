@@ -121,4 +121,26 @@ describe('llm/panel-output-section', () => {
     await user.click(screen.getByRole('switch'))
     expect(handleStructureOutputEnableChange).toHaveBeenCalledWith(false)
   })
+  it('opens the model warning with the keyboard without changing structured output', async () => {
+    const user = userEvent.setup()
+    const onEnable = vi.fn()
+    render(
+      <PanelOutputSection
+        readOnly={false}
+        inputs={createInputs({ structured_output_enabled: true })}
+        isModelSupportStructuredOutput={false}
+        structuredOutputCollapsed={false}
+        setStructuredOutputCollapsed={vi.fn()}
+        handleStructureOutputEnableChange={onEnable}
+        handleStructureOutputChange={vi.fn()}
+      />,
+    )
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'app.structOutput.modelNotSupported' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog')).toHaveTextContent(
+      'app.structOutput.modelNotSupportedTip',
+    )
+    expect(onEnable).not.toHaveBeenCalled()
+  })
 })

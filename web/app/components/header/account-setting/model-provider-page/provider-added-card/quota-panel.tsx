@@ -257,16 +257,20 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 const providerType = providerMap.get(key)
                 const isLoadingPlugin = loadingPluginId === providerKeyToPluginId[key]
                 const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0
-                const getTooltipKey = () => {
-                  if (!providerType) return 'modelProvider.card.modelNotSupported'
-                  if (isConfigured && providerType === PreferredProviderTypeEnum.custom)
-                    return 'modelProvider.card.modelAPI'
-                  return 'modelProvider.card.modelSupported'
-                }
-                const tooltipText = t(($) => $[getTooltipKey()], {
-                  modelName: modelNameMap[key],
-                  ns: 'common',
-                })
+                const tooltipText = !providerType
+                  ? t(($) => $['modelProvider.card.modelNotSupported'], {
+                      modelName: modelNameMap[key],
+                      ns: 'common',
+                    })
+                  : isConfigured && providerType === PreferredProviderTypeEnum.custom
+                    ? t(($) => $['modelProvider.card.modelAPI'], {
+                        modelName: modelNameMap[key],
+                        ns: 'common',
+                      })
+                    : t(($) => $['modelProvider.card.modelSupported'], {
+                        modelName: modelNameMap[key],
+                        ns: 'common',
+                      })
                 return (
                   <Tooltip key={key}>
                     <TooltipTrigger

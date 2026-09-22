@@ -476,6 +476,8 @@
   "operation.more": "更多",
   "operation.moreActions": "更多操作",
   "operation.moreActionsFor": "{{name}} 的更多操作",
+  "operation.moveDown": "下移",
+  "operation.moveUp": "上移",
   "operation.no": "不",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "未找到 {{content}}",

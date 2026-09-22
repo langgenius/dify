@@ -53,10 +53,6 @@ vi.mock('@/app/components/app-sidebar/nav-link', () => ({
   default: ({ href, name }: { href: string; name: string }) => <a href={href}>{name}</a>,
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
-}))
-
 vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {

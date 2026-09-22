@@ -21,12 +21,11 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Badge from '@/app/components/base/badge'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
-import TabSlider from '@/app/components/base/tab-slider-plain'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchHitHistoryList } from '@/service/annotation'
@@ -87,26 +86,6 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
     if (isShow && id) fetchHitHistory(1)
   }, [id, isShow])
 
-  const tabs = [
-    {
-      value: TabType.annotation,
-      text: t(($) => $['viewModal.annotatedResponse'], { ns: 'appAnnotation' }),
-    },
-    {
-      value: TabType.hitHistory,
-      text:
-        hitHistoryList.length > 0 ? (
-          <div className="flex items-center space-x-1">
-            <div>{t(($) => $['viewModal.hitHistory'], { ns: 'appAnnotation' })}</div>
-            <Badge
-              text={`${total} ${t(($) => $[`viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`], { ns: 'appAnnotation' })}`}
-            />
-          </div>
-        ) : (
-          t(($) => $['viewModal.hitHistory'], { ns: 'appAnnotation' })
-        ),
-    },
-  ]
   const [activeTab, setActiveTab] = useState(TabType.annotation)
   const handleSave = async (type: EditItemType, editedContent: string) => {
     try {
@@ -237,61 +216,74 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
           <DrawerViewport>
             <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-200 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-                <div className="shrink-0 border-b border-divider-subtle py-4">
-                  <div className="flex h-6 items-center justify-between pr-5 pl-6">
-                    <DrawerTitle render={<div />} className="min-w-0">
-                      <TabSlider
-                        className="relative top-2.25 shrink-0"
-                        value={activeTab}
-                        onChange={(v) => setActiveTab(v as TabType)}
-                        options={tabs}
-                        noBorderBottom
-                        itemClassName="pb-3.5!"
-                      />
-                    </DrawerTitle>
+                <DrawerTitle className="sr-only">
+                  {t(($) => $['viewModal.annotatedResponse'], { ns: 'appAnnotation' })}
+                </DrawerTitle>
+                <Tabs
+                  value={activeTab}
+                  onValueChange={setActiveTab}
+                  className="flex min-h-0 flex-1 flex-col"
+                >
+                  <div className="flex shrink-0 items-center justify-between gap-4 border-b border-divider-subtle pr-5 pl-6">
+                    <TabsList>
+                      <TabsTab value={TabType.annotation}>
+                        {t(($) => $['viewModal.annotatedResponse'], { ns: 'appAnnotation' })}
+                      </TabsTab>
+                      <TabsTab value={TabType.hitHistory}>
+                        {t(($) => $['viewModal.hitHistory'], { ns: 'appAnnotation' })}
+                        {hitHistoryList.length > 0 && (
+                          <span className="ml-1 system-xs-medium text-text-tertiary">
+                            {`${total} ${t(($) => $[`viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`], { ns: 'appAnnotation' })}`}
+                          </span>
+                        )}
+                      </TabsTab>
+                    </TabsList>
                     <DrawerCloseButton
                       aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                       className="size-6 rounded-md"
                     />
                   </div>
-                </div>
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                  <div className="space-y-6 p-6 pb-4">
-                    {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    <TabsPanel value={TabType.annotation} className="space-y-6 p-6 pb-4">
+                      {annotationTab}
+                    </TabsPanel>
+                    <TabsPanel value={TabType.hitHistory} className="p-6 pb-4">
+                      {hitHistoryTab}
+                    </TabsPanel>
+                    <AlertDialog
+                      open={showModal}
+                      onOpenChange={(open) => !open && setShowModal(false)}
+                    >
+                      <AlertDialogContent>
+                        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                          <AlertDialogTitle
+                            title={t(($) => $['feature.annotation.removeConfirm'], {
+                              ns: 'appDebug',
+                            })}
+                            className="w-full truncate title-2xl-semi-bold text-text-primary"
+                          >
+                            {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
+                          </AlertDialogTitle>
+                        </div>
+                        <AlertDialogActions>
+                          <AlertDialogCancelButton>
+                            {t(($) => $['operation.cancel'], { ns: 'common' })}
+                          </AlertDialogCancelButton>
+                          <AlertDialogConfirmButton
+                            tone="destructive"
+                            onClick={async () => {
+                              await onRemove()
+                              setShowModal(false)
+                              onHide()
+                            }}
+                          >
+                            {t(($) => $['operation.confirm'], { ns: 'common' })}
+                          </AlertDialogConfirmButton>
+                        </AlertDialogActions>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
-                  <AlertDialog
-                    open={showModal}
-                    onOpenChange={(open) => !open && setShowModal(false)}
-                  >
-                    <AlertDialogContent>
-                      <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                        <AlertDialogTitle
-                          title={t(($) => $['feature.annotation.removeConfirm'], {
-                            ns: 'appDebug',
-                          })}
-                          className="w-full truncate title-2xl-semi-bold text-text-primary"
-                        >
-                          {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
-                        </AlertDialogTitle>
-                      </div>
-                      <AlertDialogActions>
-                        <AlertDialogCancelButton>
-                          {t(($) => $['operation.cancel'], { ns: 'common' })}
-                        </AlertDialogCancelButton>
-                        <AlertDialogConfirmButton
-                          tone="destructive"
-                          onClick={async () => {
-                            await onRemove()
-                            setShowModal(false)
-                            onHide()
-                          }}
-                        >
-                          {t(($) => $['operation.confirm'], { ns: 'common' })}
-                        </AlertDialogConfirmButton>
-                      </AlertDialogActions>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+                </Tabs>
                 {id && (
                   <div className="flex h-16 shrink-0 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
                     <button

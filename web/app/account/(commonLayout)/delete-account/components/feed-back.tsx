@@ -79,8 +79,8 @@ export default function FeedBack(props: DeleteAccountProps) {
             void handleSubmit(feedback)
           }}
         >
-          <Field name="feedback" className="mt-3">
-            <FieldLabel className="py-0 system-sm-semibold">
+          <Field name="feedback" className="mt-3 gap-0">
+            <FieldLabel className="system-sm-semibold">
               {t(($) => $['account.feedbackLabel'], { ns: 'common' })}
             </FieldLabel>
             <Textarea

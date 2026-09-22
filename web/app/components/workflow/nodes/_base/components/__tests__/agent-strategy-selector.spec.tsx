@@ -310,7 +310,9 @@ describe('AgentStrategySelector', () => {
       />,
     )
 
-    await user.hover(document.querySelector('[data-base-ui-tooltip-trigger]')!)
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.agent\.pluginNotInstalled(?=$|:)/ }),
+    )
 
     expect(
       await screen.findByText(/(?:^|\.)nodes\.agent\.pluginNotInstalled(?=$|:)/),
@@ -318,6 +320,26 @@ describe('AgentStrategySelector', () => {
     expect(
       screen.getByText(/(?:^|\.)nodes\.agent\.pluginNotInstalledDesc(?=$|:)/),
     ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /nodes\.agent\.linkToPlugin/ })).toHaveAttribute(
+      'href',
+      '/plugins',
+    )
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+
+    for (const key of ['{Enter}', ' ']) {
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(
+        screen.getByRole('button', { name: /(?:^|\.)nodes\.agent\.pluginNotInstalled(?=$|:)/ }),
+      ).toHaveFocus()
+      await user.keyboard(key)
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      expect(screen.queryByTestId('tools-list')).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /nodes\.agent\.linkToPlugin/ })).toHaveAttribute(
+        'href',
+        '/plugins',
+      )
+    }
   })
 
   it('renders install and switch-version actions for marketplace strategies', async () => {
