@@ -9,7 +9,11 @@ import copy
 import json
 from pathlib import Path
 
-from core.workflow.graph_normalizers import normalize_condition_value, normalize_condition_values
+from core.workflow.graph_normalizers import (
+    normalize_condition_value,
+    normalize_condition_values,
+    normalize_filter_condition_value,
+)
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -48,6 +52,32 @@ class TestNormalizeConditionValue:
         assert normalize_condition_value(3, "not in") == ["3"]
         assert normalize_condition_value(3, "all of") == ["3"]
         assert normalize_condition_value("x", "in") == ["x"]
+
+    def test_list_items_use_integral_float_rule(self):
+        # integral floats in lists should become strings without decimal point
+        assert normalize_condition_value([1.0, 2.5], "=") == ["1", "2.5"]
+
+
+class TestNormalizeFilterConditionValue:
+    def test_none_becomes_empty_string(self):
+        assert normalize_filter_condition_value(None) == ""
+
+    def test_bool_is_preserved(self):
+        assert normalize_filter_condition_value(True) is True
+        assert normalize_filter_condition_value(False) is False
+
+    def test_numbers_become_strings_not_lists(self):
+        assert normalize_filter_condition_value(7) == "7"
+        assert normalize_filter_condition_value(7.0) == "7"
+        assert normalize_filter_condition_value(7.5) == "7.5"
+
+    def test_strings_pass_through(self):
+        assert normalize_filter_condition_value("value") == "value"
+
+    def test_list_items_normalized_no_wrapping(self):
+        # Unlike Condition, we don't wrap in a list—we keep the list but normalize items
+        assert normalize_filter_condition_value(["a", 2]) == ["a", "2"]
+        assert normalize_filter_condition_value([1.0, "b"]) == ["1", "b"]
 
 
 class TestNormalizeConditionValues:
@@ -116,7 +146,7 @@ class TestNormalizeConditionValues:
         sub = nodes[0]["data"]["cases"][0]["conditions"][0]["sub_variable_condition"]["conditions"][0]
         assert sub["value"] == "1024"
         assert nodes[1]["data"]["break_conditions"][0]["value"] == "10"
-        assert nodes[2]["data"]["filter_by"]["conditions"][0]["value"] == ["7"]
+        assert nodes[2]["data"]["filter_by"]["conditions"][0]["value"] == "7"
         assert nodes[3]["data"]["conditions"][0]["value"] == "2"
 
     def test_other_node_types_and_malformed_shapes_are_left_alone(self):
@@ -130,3 +160,49 @@ class TestNormalizeConditionValues:
 
         assert normalize_condition_values(nodes) == []
         assert nodes == before
+
+    def test_list_operator_with_none_bool_and_lists(self):
+        """List-operator filters follow FilterCondition (None → "", no wrapping)."""
+        nodes = [
+            {
+                "id": "filter_none",
+                "data": {
+                    "type": "list-operator",
+                    "filter_by": {
+                        "enabled": True,
+                        "conditions": [{"key": "x", "comparison_operator": "empty", "value": None}],
+                    },
+                },
+            },
+            {
+                "id": "filter_bool",
+                "data": {
+                    "type": "list-operator",
+                    "filter_by": {
+                        "enabled": True,
+                        "conditions": [{"key": "x", "comparison_operator": "is", "value": True}],
+                    },
+                },
+            },
+            {
+                "id": "filter_list",
+                "data": {
+                    "type": "list-operator",
+                    "filter_by": {
+                        "enabled": True,
+                        "conditions": [{"key": "x", "comparison_operator": "in", "value": ["a", 2]}],
+                    },
+                },
+            },
+        ]
+
+        changed = normalize_condition_values(nodes)
+
+        # filter_none changed (None → ""), filter_list changed (items normalized)
+        # filter_bool unchanged (True stays True)
+        assert "filter_none" in changed
+        assert "filter_list" in changed
+        assert "filter_bool" not in changed
+        assert nodes[0]["data"]["filter_by"]["conditions"][0]["value"] == ""
+        assert nodes[1]["data"]["filter_by"]["conditions"][0]["value"] is True
+        assert nodes[2]["data"]["filter_by"]["conditions"][0]["value"] == ["a", "2"]
