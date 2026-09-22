@@ -114,6 +114,7 @@ __all__ = [
     "start_schema",
     "testdata_form_fields",
     "upload_variable_names",
+    "without_endpoint_values",
     "without_upload_values",
 ]
 
@@ -511,6 +512,22 @@ def without_upload_values(schema: StartSchema, inputs: Inputs) -> Inputs:
     return {key: value for key, value in inputs.items() if key not in dropped}
 
 
+def without_endpoint_values(graph: Graph, inputs: Inputs) -> Inputs:
+    """``inputs`` minus anything bound to an endpoint variable
+    (``endpoint_variable_names``).
+
+    A mocked URL is just another invented endpoint, and unlike a mocked file
+    the engine ACCEPTS it at launch: the http-request node then fails on
+    connection, which ``is_input_failure`` rightly reads as a config failure,
+    so the flow thrashes in config repair (ESQ1-302). Without the key, the
+    launch fails with "<var> is required in input form" -- an input failure
+    that routes back to the test-data gate, where the user supplies the real
+    endpoint.
+    """
+    dropped = endpoint_variable_names(graph)
+    return {key: value for key, value in inputs.items() if key not in dropped}
+
+
 def _string_list(value: object) -> list[str]:
     """Copy only string members from a JSON-style list."""
     return [item for item in value if isinstance(item, str)] if isinstance(value, list) else []
@@ -885,7 +902,7 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         )
         progress.activate("fix-generate-test-inputs")
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
         progress.finish()
     else:
         # upload / reuse: payload carries the inputs directly for the slice.

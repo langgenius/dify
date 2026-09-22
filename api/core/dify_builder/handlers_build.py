@@ -65,6 +65,7 @@ from core.dify_builder.handlers_fix import (
     run_finished_without_output,
     start_schema,
     testdata_form_fields,
+    without_endpoint_values,
     without_upload_values,
 )
 from core.dify_builder.models import (
@@ -755,7 +756,9 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         )
         progress.activate("build-generate-test-inputs")
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        # An endpoint is left out, never mocked: its missing required key fails
+        # the launch as an input, which routes back to this gate.
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
         progress.finish()
     else:
         inputs = {}
@@ -816,7 +819,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     if fc.test_input_ref:
         inputs = env.repo.get_test_input(fc.test_input_ref).inputs
     else:  # defensive: the gate normally prepares inputs first
-        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
         ti = TestInput(session_id=s.id, source="mock", inputs=inputs)
         env.repo.save_test_input(ti)
         fc.test_input_ref = ti.id
