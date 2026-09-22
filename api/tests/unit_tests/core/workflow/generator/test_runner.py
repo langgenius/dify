@@ -4861,3 +4861,132 @@ class TestPostprocessGraphNormalizers:
         WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
 
         assert [e["sourceHandle"] for e in edges] == ["true", "false"]
+
+
+class TestValidateStructureBranchHandlesAndHttpBodies:
+    """Fail-closed structural checks for two defects that used to reach the
+    canvas silently: an edge leaving a branch node on a handle the node does not
+    declare (ESQ1-303 -- the run "succeeds" with every arm skipped) and a
+    json / raw-text / binary http-request body with a number of items other
+    than one (ESQ1-302 -- rejected by the executor at run time).
+
+    Both change what cmd+K /create and /refine return: a graph that used to
+    come back clean now comes back with a structured error."""
+
+    @staticmethod
+    def _graph(nodes, edges) -> GraphDict:
+        return cast(GraphDict, {"nodes": nodes, "edges": edges, "viewport": {"x": 0, "y": 0, "zoom": 0.7}})
+
+    _START = {
+        "id": "node1",
+        "type": "custom",
+        "position": {"x": 0, "y": 0},
+        "data": {"type": "start", "title": "Start", "variables": []},
+    }
+    _END = {
+        "id": "node6",
+        "type": "custom",
+        "position": {"x": 0, "y": 0},
+        "data": {"type": "end", "title": "End", "outputs": []},
+    }
+
+    def test_an_unrepairable_branch_handle_is_an_invalid_branch_handle_error_naming_the_node(self):
+        branch = {
+            "id": "node2",
+            "type": "custom",
+            "position": {"x": 0, "y": 0},
+            "data": {
+                "type": "if-else",
+                "title": "Check",
+                "cases": [{"case_id": "true", "logical_operator": "and", "conditions": []}],
+            },
+        }
+        # "pass" / "fail": no alias, both unknown -- postprocess must NOT guess,
+        # so the validator must reject.
+        edges = [
+            {"source": "node1", "target": "node2", "sourceHandle": "source"},
+            {"source": "node2", "target": "node6", "sourceHandle": "pass"},
+            {"source": "node2", "target": "node6", "sourceHandle": "fail"},
+        ]
+
+        errors = WorkflowGenerator._validate_structure(
+            graph=self._graph([self._START, branch, self._END], edges), mode="workflow"
+        )
+
+        branch_errors = [e for e in errors if e["code"] == "INVALID_BRANCH_HANDLE"]
+        assert len(branch_errors) == 2
+        assert all(e["node_id"] == "node2" for e in branch_errors)
+        assert "'pass'" in branch_errors[0]["detail"]
+        assert "['true', 'false']" in branch_errors[0]["detail"]
+
+    def test_declared_handles_pass(self):
+        branch = {
+            "id": "node2",
+            "type": "custom",
+            "position": {"x": 0, "y": 0},
+            "data": {
+                "type": "if-else",
+                "title": "Check",
+                "cases": [{"case_id": "true", "logical_operator": "and", "conditions": []}],
+            },
+        }
+        edges = [
+            {"source": "node1", "target": "node2", "sourceHandle": "source"},
+            {"source": "node2", "target": "node6", "sourceHandle": "true"},
+            {"source": "node2", "target": "node6", "sourceHandle": "false"},
+        ]
+
+        errors = WorkflowGenerator._validate_structure(
+            graph=self._graph([self._START, branch, self._END], edges), mode="workflow"
+        )
+
+        assert [e for e in errors if e["code"] == "INVALID_BRANCH_HANDLE"] == []
+
+    def test_the_esq1_302_json_body_is_an_invalid_http_body_error_naming_the_node(self):
+        http = {
+            "id": "node4",
+            "type": "custom",
+            "position": {"x": 0, "y": 0},
+            "data": {
+                "type": "http-request",
+                "title": "Call PPT API",
+                "method": "post",
+                "url": "https://api.example.com/ppt/generate",
+                "authorization": {"config": None, "type": "no-auth"},
+                "headers": "",
+                "params": "",
+                "body": {
+                    "type": "json",
+                    "data": [
+                        {"type": "text", "value": "{{#node1.slides#}}", "key": "slides"},
+                        {"type": "text", "value": "{{#node1.filename#}}", "key": "filename"},
+                    ],
+                },
+            },
+        }
+        start = {
+            **self._START,
+            "data": {
+                **self._START["data"],
+                "variables": [
+                    {"variable": "slides", "type": "paragraph"},
+                    {"variable": "filename", "type": "text-input"},
+                ],
+            },
+        }
+        edges = [{"source": "node1", "target": "node4"}, {"source": "node4", "target": "node6"}]
+
+        errors = WorkflowGenerator._validate_structure(
+            graph=self._graph([start, http, self._END], edges), mode="workflow"
+        )
+
+        body_errors = [e for e in errors if e["code"] == "INVALID_HTTP_BODY"]
+        assert len(body_errors) == 1
+        assert body_errors[0]["node_id"] == "node4"
+        assert "exactly one item" in body_errors[0]["detail"]
+
+    def test_the_error_codes_are_stable_enum_members(self):
+        from core.workflow.generator.types import WorkflowGenerateErrorCode
+
+        assert WorkflowGenerateErrorCode.INVALID_BRANCH_HANDLE == "INVALID_BRANCH_HANDLE"
+        assert WorkflowGenerateErrorCode.INVALID_HTTP_BODY == "INVALID_HTTP_BODY"

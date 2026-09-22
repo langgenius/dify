@@ -2576,6 +2576,28 @@ class WorkflowGenerator:
         if installed_tools is not None:
             errors.extend(cls._collect_unknown_tools(nodes=nodes, installed_tools=installed_tools))
 
+        # Branch edges must leave on a handle the node declares. Postprocess
+        # re-homed every edge it could do so unambiguously; whatever is left
+        # would hang off a handle that does not exist and its arm would never
+        # run, while the run still reports "succeeded" (ESQ1-303).
+        edges_raw = list(cast(list[dict[str, Any]], graph.get("edges", [])))
+        for bad in graph_normalizers.undeclared_branch_handles(nodes, edges_raw):
+            errors.append(
+                _err(
+                    WorkflowGenerateErrorCode.INVALID_BRANCH_HANDLE,
+                    f"Edge {bad['node_id']} -> {bad['target']} uses handle {bad['handle']!r}, "
+                    f"which the branch node does not declare; it declares {bad['declared']}",
+                    node_id=bad["node_id"],
+                )
+            )
+
+        # A json / raw-text / binary http-request body is sent as ONE rendered
+        # template; the executor rejects any other item count at run time
+        # (ESQ1-302). There is no correct automatic collapse of several
+        # key/value items into one JSON template, so this is a rejection.
+        for node_id, detail in graph_normalizers.http_request_body_errors(nodes):
+            errors.append(_err(WorkflowGenerateErrorCode.INVALID_HTTP_BODY, detail, node_id=node_id))
+
         # Variable-reference resolution — walks ``{{#node.var#}}`` placeholders
         # and value selectors and flags anything pointing at a node that
         # doesn't declare the variable. Start-node refs are auto-fixed
