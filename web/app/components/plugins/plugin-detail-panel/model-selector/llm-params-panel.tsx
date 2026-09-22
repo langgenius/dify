@@ -29,7 +29,7 @@ const LLMParamsPanel = ({
   completionParams,
   onCompletionParamsChange,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
   const isRulesLoading = !!provider && !!modelId && isLoading
 

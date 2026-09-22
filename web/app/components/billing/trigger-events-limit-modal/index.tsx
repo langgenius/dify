@@ -1,6 +1,5 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import UsageInfo from '@/app/components/billing/usage-info'
 
@@ -19,19 +18,19 @@ export default function TriggerEventsLimitModal({
   total,
   resetInDays,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
 
   return (
     <PlanUpgradeModal
       show={show}
       onClose={onClose}
-      Icon={TriggerAll}
+      iconClassName={'i-custom-vender-workflow-trigger-all'}
       title={t(($) => $['triggerLimitModal.title'], { ns: 'billing' })}
       description={t(($) => $['triggerLimitModal.description'], { ns: 'billing' })}
       extraInfo={
         <UsageInfo
           className="mt-4 w-full rounded-xl bg-components-panel-on-panel-item-bg"
-          Icon={TriggerAll}
+          iconClassName={'i-custom-vender-workflow-trigger-all'}
           name={t(($) => $['triggerLimitModal.usageTitle'], { ns: 'billing' })}
           usage={usage}
           total={total}

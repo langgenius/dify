@@ -24,7 +24,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
   onClose,
   onSelectStartNode,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   return (
     <Dialog open={isShow} onOpenChange={onClose} disablePointerDismissal>

@@ -29,7 +29,7 @@ const StatusPanel: FC<ResultProps> = ({
   workflowRunId,
   onOpenTracingTab,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['runLog', 'workflow', 'appLog'])
   const docLink = useDocLink()
   const { data: pausedDetails } = useWorkflowPausedDetails({
     workflowRunId: workflowRunId || '',
@@ -95,6 +95,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div
             className={cn(
               'flex items-center gap-1 system-xs-semibold-uppercase',
+              status === 'scheduled' && 'text-text-secondary',
               status === 'succeeded' && 'text-util-colors-green-green-600',
               status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
@@ -103,46 +104,56 @@ const StatusPanel: FC<ResultProps> = ({
               status === 'running' && 'text-util-colors-blue-light-blue-light-600',
             )}
           >
+            {status === 'scheduled' && (
+              <>
+                <StatusDot status="disabled" />
+                <span>{t(($) => $['status.scheduled'], { ns: 'appLog' })}</span>
+              </>
+            )}
             {status === 'running' && (
               <>
                 <StatusDot status="normal" />
-                <span>{isListening ? 'Listening' : 'Running'}</span>
+                <span>
+                  {isListening
+                    ? t(($) => $['common.listening'], { ns: 'workflow' })
+                    : t(($) => $['status.running'], { ns: 'appLog' })}
+                </span>
               </>
             )}
             {status === 'succeeded' && (
               <>
                 <StatusDot status="success" />
-                <span>SUCCESS</span>
+                <span>{t(($) => $['status.succeeded'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'partial-succeeded' && (
               <>
                 <StatusDot status="success" />
-                <span>PARTIAL SUCCESS</span>
+                <span>{t(($) => $['status.partial-succeeded'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'exception' && (
               <>
                 <StatusDot status="warning" />
-                <span>EXCEPTION</span>
+                <span>{t(($) => $['tracing.status.exception'], { ns: 'workflow' })}</span>
               </>
             )}
             {status === 'failed' && (
               <>
                 <StatusDot status="error" />
-                <span>FAIL</span>
+                <span>{t(($) => $['status.failed'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'stopped' && (
               <>
                 <StatusDot status="warning" />
-                <span>STOP</span>
+                <span>{t(($) => $['status.stopped'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'paused' && (
               <>
                 <StatusDot status="warning" />
-                <span>PENDING</span>
+                <span>{t(($) => $['status.paused'], { ns: 'appLog' })}</span>
               </>
             )}
           </div>

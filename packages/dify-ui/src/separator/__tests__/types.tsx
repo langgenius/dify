@@ -10,8 +10,9 @@ export function separatorTypeContracts(ref: React.Ref<HTMLDivElement>) {
       style={(state) => ({ height: state.orientation === 'vertical' ? 24 : 1 })}
     />
   )
-  // @ts-expect-error Dify merges string class names, not state callbacks.
-  const className = <Separator className={() => 'custom'} />
+  const className = (
+    <Separator className={(state) => (state.orientation === 'vertical' ? 'custom' : undefined)} />
+  )
   // @ts-expect-error Orientation is inherited from Base UI.
   const orientation = <Separator orientation="diagonal" />
   return { decorative, semantic, render, className, orientation }

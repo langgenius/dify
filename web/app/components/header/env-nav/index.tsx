@@ -10,7 +10,7 @@ const headerEnvClassName: { [k: string]: string } = {
 }
 
 const EnvNav = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: currentEnv } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.meta.currentEnv,

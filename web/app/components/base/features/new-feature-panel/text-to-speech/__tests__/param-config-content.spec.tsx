@@ -142,7 +142,7 @@ describe('ParamConfigContent', () => {
       const languageLabel = screen.getByText(/voice\.voiceSettings\.language/)
       expect(languageLabel)!.toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: /voice\.voiceSettings\.resolutionTooltip/ }),
+        screen.getByRole('button', { name: /voice\.voiceSettings\.language/ }),
       )!.toBeInTheDocument()
     })
 

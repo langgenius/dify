@@ -18,8 +18,7 @@ does not implement the keyboard interaction or value semantics of a resizable se
 Keep headings and labels beside the separator, since descendants of `role="separator"` have
 presentational semantics. Use the owning menu family's separator inside menus.
 
-Base UI owns `orientation`, `render`, refs, and callback-valued `style`; render callbacks receive
-its orientation state. `className` accepts a string for Dify's class merging. Custom render
+Follow the shared [styling contract] for state callbacks. Custom render
 components must forward the received props and ref. Explicit DOM props and render overrides can
 change the default semantics; callers are responsible for keeping those overrides consistent
 with the intended role and `decorative` setting.
@@ -31,3 +30,4 @@ Use `variant` for the gradient rather than repeating its styles. To customize co
 background token for solid lines or a gradient-start token for gradient lines.
 
 [Base UI Separator]: https://base-ui.com/react/components/separator
+[styling contract]: ../../docs/styling.md

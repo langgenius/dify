@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import core.app.apps.workflow.app_generator as app_generator_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
-from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -39,6 +39,7 @@ def _workflow(
         kind=kind,
         version="1",
         created_by="creator",
+        graph={"nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}], "edges": []},
     )
 
 
@@ -121,24 +122,6 @@ def _repositories(
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         ),
     )
-
-
-def test_should_prepare_user_inputs_defaults_to_true():
-    args = {"inputs": {}}
-
-    assert WorkflowAppGenerator()._should_prepare_user_inputs(args)
-
-
-def test_should_prepare_user_inputs_skips_when_flag_truthy():
-    args = {"inputs": {}, SKIP_PREPARE_USER_INPUTS_KEY: True}
-
-    assert not WorkflowAppGenerator()._should_prepare_user_inputs(args)
-
-
-def test_should_prepare_user_inputs_keeps_validation_when_flag_false():
-    args = {"inputs": {}, SKIP_PREPARE_USER_INPUTS_KEY: False}
-
-    assert WorkflowAppGenerator()._should_prepare_user_inputs(args)
 
 
 def test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup(

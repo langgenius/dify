@@ -92,7 +92,6 @@ const createInstalledApp = (mode: AppMode = 'chat'): InstalledAppResponse => ({
   editable: true,
   is_pinned: false,
   last_used_at: null,
-  uninstallable: true,
   app: {
     id: 'app-123',
     name: 'Test App',

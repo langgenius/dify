@@ -18,7 +18,7 @@ type ItemProps = {
   item: LoopVariable
 } & LoopVariablesComponentShape
 const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable }: ItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const variableNameLabel = t(($) => $['nodes.loop.variableName'], { ns: 'workflow' })
 
   const checkVariableName = (value: string) => {

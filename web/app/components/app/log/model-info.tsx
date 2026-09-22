@@ -24,15 +24,13 @@ type Props = Readonly<{
 }>
 
 const ModelInfo: FC<Props> = ({ model }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const modelName = model.name
   const providerName = model.provider
   const { currentModel, currentProvider } = useTextGenerationCurrentProviderAndModelAndModelList({
     provider: providerName,
     model: modelName,
   })
-
-  const [open, setOpen] = React.useState(false)
 
   const getParamValue = (param: keyof typeof PARAM_MAP) => {
     const value = model.completion_params?.[param] ?? '-'
@@ -50,7 +48,7 @@ const ModelInfo: FC<Props> = ({ model }) => {
         <ModelIcon className="size-5!" provider={currentProvider} modelName={currentModel?.model} />
         <ModelName modelItem={currentModel} showMode />
       </div>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover>
         <div className="relative">
           <PopoverTrigger
             render={

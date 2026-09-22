@@ -12,7 +12,6 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
-import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
@@ -24,7 +23,7 @@ type AppDetailTopProps = {
 }
 
 export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   if (!expand) {
     return (
@@ -33,7 +32,9 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
           <DetailSidebarToggleButton
             expand={expand}
             onToggle={onToggle}
-            icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+            icon={
+              <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+            }
           />
         )}
       </div>
@@ -87,10 +88,7 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
               />
             }
           />
-          <TooltipContent
-            placement="bottom"
-            className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
-          >
+          <TooltipContent placement="bottom" className="flex items-center gap-1">
             <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
             <KbdGroup>
               {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
@@ -104,7 +102,9 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
         <DetailSidebarToggleButton
           expand={expand}
           onToggle={onToggle}
-          icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+          icon={
+            <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+          }
         />
       )}
     </div>

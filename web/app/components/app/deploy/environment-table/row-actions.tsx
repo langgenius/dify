@@ -68,8 +68,8 @@ export function EnvironmentRowActions({
   onRedeploy: (deployment: EnvironmentDeployment) => void
   onUndeploy: UndeployHandler
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['deployments'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const defaultVersionName = tWorkflow(($) => $['versionHistory.defaultName'])
   const currentVersionName = getWorkflowVersionName(
     row.deployment?.current_version,

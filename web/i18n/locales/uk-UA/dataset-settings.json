@@ -1,5 +1,6 @@
 {
   "desc": "Тут ви можете змінити властивості та методи роботи бази знань.",
+  "form.changeIcon": "Змінити значок бази знань",
   "form.chunkStructure.description": "про структуру шматків.",
   "form.chunkStructure.learnMore": "Дізнатися більше",
   "form.chunkStructure.title": "Структура шматків",

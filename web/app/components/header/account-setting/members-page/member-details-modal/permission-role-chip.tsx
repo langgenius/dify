@@ -23,7 +23,7 @@ const PermissionRoleChip = ({
   onRemove,
   className,
 }: PermissionRoleChipProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permissionKeys'])
   const permissions = permissionKeys
   const canRemoveRole = !isOwner && !!onRemove
   // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.

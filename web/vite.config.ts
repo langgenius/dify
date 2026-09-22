@@ -1,7 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
-import { getDeclaredRouteNamespaces } from './i18n/route-namespaces.ts'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
 import { i18nAnalysisPlugin } from './plugins/vite/i18n-analysis.ts'
 import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
@@ -10,7 +9,7 @@ import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
-const browserTestPattern = 'app/**/*.browser.spec.{ts,tsx}'
+const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
 
 export default defineConfig(({ command, mode, isPreview }) => {
   const isTest = mode === 'test'
@@ -41,12 +40,39 @@ export default defineConfig(({ command, mode, isPreview }) => {
           : undefined
 
       return [
-        i18nAnalysisPlugin({ getDeclaredNamespaces: getDeclaredRouteNamespaces }),
+        i18nAnalysisPlugin({
+          adapters: [
+            { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
+            {
+              module: 'i18n/lib.server.ts',
+              exportName: 'useTranslation',
+              namespaceArgument: 0,
+              implementationFunctions: ['getI18nConfig'],
+            },
+            { module: 'i18n/server.ts', exportName: 'getTranslation', namespaceArgument: 1 },
+            {
+              module: 'app/route-metadata.ts',
+              exportName: 'getRouteMetadata',
+              namespaceArgument: 0,
+              selectorArgument: 1,
+            },
+          ],
+        }),
         Inspect(),
         inspector,
         tailwindcss(),
         react(),
         vinext({ react: false }),
+        {
+          name: 'dify-css-asset-alias',
+          enforce: 'post',
+          // Prepend after Vinext's tsconfig aliases, which skip CSS resolution.
+          config: () => ({
+            resolve: {
+              alias: [{ find: '~@', replacement: projectRoot }],
+            },
+          }),
+        },
         customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
         // reactGrabOpenFilePlugin({
         //   injectTarget: rootClientInjectTarget,
@@ -61,7 +87,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
         { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
       ],
     },
-
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
@@ -118,6 +143,9 @@ export default defineConfig(({ command, mode, isPreview }) => {
             setupFiles: ['./vitest.browser.setup.ts'],
             include: [browserTestPattern],
             browser: {
+              expect: {
+                toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' },
+              },
               enabled: true,
               provider: playwright(),
               instances: [{ browser: 'chromium' }],

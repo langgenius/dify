@@ -25,7 +25,6 @@ import EmojiPicker from '@/app/components/base/emoji-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
-import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
 import { AuthHeaderPrefix, AuthType } from '../types'
 import ConfigCredentials from './config-credentials'
 import GetSchema from './get-schema'
@@ -53,7 +52,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   const providerNameInputId = React.useId()
   const privacyPolicyInputId = React.useId()
   const customDisclaimerInputId = React.useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const isAdd = !payload
   const isEdit = !!payload
 
@@ -294,7 +293,10 @@ const EditCustomCollectionModal: FC<Props> = ({
                               <div className="text-xs font-normal">
                                 {t(($) => $['createTool.viewSchemaSpec'], { ns: 'tools' })}
                               </div>
-                              <LinkExternal02 className="size-3" />
+                              <span
+                                aria-hidden
+                                className="i-custom-vender-line-general-link-external-02 size-3"
+                              />
                             </a>
                           </div>
                           <GetSchema onChange={setSchema} />

@@ -1,14 +1,14 @@
+import type { AgentStrategyParameter } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { AgentNodeType } from '../types'
 import type useConfig from '../use-config'
-import type { StrategyParamItem } from '@/app/components/plugins/types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { zAgentStrategyParameter } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
-import { AgentFeature } from '../types'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
 const mockResetEditor = vi.hoisted(() => vi.fn())
@@ -36,17 +36,17 @@ vi.mock('../../_base/components/agent-strategy', () => ({
       agent_strategy_name: string
       agent_strategy_label: string
       agent_output_schema: AgentNodeType['output_schema']
-      plugin_unique_identifier: string
+      plugin_unique_identifier?: string
       meta?: AgentNodeType['meta']
     }
-    formSchema: Array<{ variable: string; tooltip?: StrategyParamItem['help'] }>
+    formSchema: AgentStrategyParameter[]
     formValue: Record<string, unknown>
     onStrategyChange: (strategy: {
       agent_strategy_provider_name: string
       agent_strategy_name: string
       agent_strategy_label: string
       agent_output_schema: AgentNodeType['output_schema']
-      plugin_unique_identifier: string
+      plugin_unique_identifier?: string
       meta?: AgentNodeType['meta']
     }) => void
     onFormValueChange: (value: Record<string, unknown>) => void
@@ -124,20 +124,21 @@ vi.mock('../../_base/components/output-vars', () => ({
   ),
 }))
 
-const createStrategyParam = (overrides: Partial<StrategyParamItem> = {}): StrategyParamItem => ({
-  name: 'instruction',
-  type: FormTypeEnum.any,
-  required: true,
-  label: { en_US: 'Instruction' } as StrategyParamItem['label'],
-  help: { en_US: 'Instruction help' } as StrategyParamItem['help'],
-  placeholder: { en_US: 'Instruction placeholder' } as StrategyParamItem['placeholder'],
-  scope: 'global',
-  default: null,
-  options: [],
-  template: { enabled: false },
-  auto_generate: { type: 'none' },
-  ...overrides,
-})
+const createStrategyParam = (overrides: Partial<AgentStrategyParameter> = {}) =>
+  zAgentStrategyParameter.parse({
+    name: 'instruction',
+    type: FormTypeEnum.any,
+    required: true,
+    label: { en_US: 'Instruction' },
+    help: { en_US: 'Instruction help' },
+    placeholder: { en_US: 'Instruction placeholder' },
+    scope: 'global',
+    default: null,
+    options: [],
+    template: { enabled: false },
+    auto_generate: null,
+    ...overrides,
+  })
 
 const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   title: 'Agent',
@@ -179,7 +180,7 @@ const createConfigResult = (
       author: 'provider',
       name: 'react',
       icon: 'icon',
-      label: { en_US: 'React Agent' } as StrategyParamItem['label'],
+      label: { en_US: 'React Agent' },
       provider: 'provider/agent',
     },
     parameters: [
@@ -190,9 +191,9 @@ const createConfigResult = (
         required: false,
       }),
     ],
-    description: { en_US: 'agent description' } as StrategyParamItem['label'],
+    description: { en_US: 'agent description' },
     output_schema: {},
-    features: [AgentFeature.HISTORY_MESSAGES],
+    features: ['history-messages'],
   },
   formData: {
     instruction: 'Plan and answer',
@@ -257,11 +258,11 @@ describe('agent/panel', () => {
       expect.objectContaining({
         formSchema: expect.arrayContaining([
           expect.objectContaining({
-            variable: 'instruction',
-            tooltip: { en_US: 'Instruction help' },
+            name: 'instruction',
+            help: { en_US: 'Instruction help' },
           }),
           expect.objectContaining({
-            variable: 'modelParam',
+            name: 'modelParam',
           }),
         ]),
         formValue: {
@@ -294,6 +295,21 @@ describe('agent/panel', () => {
       }),
     )
     expect(mockResetEditor).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a saved strategy selected without optional plugin installation metadata', () => {
+    const inputs = createData({ plugin_unique_identifier: undefined })
+    mockUseConfig.mockReturnValue(createConfigResult({ inputs }))
+    render(<Panel id="agent-node" data={inputs} panelProps={panelProps} />)
+    expect(mockAgentStrategy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        strategy: expect.objectContaining({
+          agent_strategy_name: 'react',
+          plugin_unique_identifier: undefined,
+        }),
+        formValue: { instruction: 'Plan and answer' },
+      }),
+    )
   })
 
   it('hides memory config when chat mode support is unavailable', () => {

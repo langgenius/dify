@@ -20,7 +20,7 @@ export type HandleRunOptions = {
   allNodeIds?: string[]
 }
 
-type DebuggableTriggerType = Exclude<TriggerType, TriggerType.UserInput>
+type DebuggableTriggerType = Exclude<TriggerType, typeof TriggerType.UserInput>
 
 type AppDetailLike = {
   id?: string

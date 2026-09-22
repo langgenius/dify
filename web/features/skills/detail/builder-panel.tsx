@@ -54,7 +54,7 @@ function isSkillBuilderProgressStage(stage: unknown): stage is SkillBuilderProgr
 }
 
 function SkillBuilderProgressStageLabel({ stage }: { stage: SkillBuilderProgressStage }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
 
   if (stage === 'reading_draft')
     return <>{t(($) => $['skillManagement.detail.builder.progress.readingDraft'])}</>
@@ -76,7 +76,7 @@ function BuilderModelSelector({
   selectedModel: SkillBuilderModel | undefined
   onSelect: (model: SkillBuilderModel) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="flex w-fit max-w-full min-w-0 items-center gap-px">
@@ -151,7 +151,7 @@ function SkillBuilderThinkingMessage({
   reasoningContent?: string
   seconds: number
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = seconds % 60
   const duration = minutes > 0 ? `${minutes}m${remainingSeconds}s` : `${remainingSeconds}s`
@@ -296,7 +296,7 @@ export function SkillBuilderPanel({
   selectedFile: SkillFileResponse | undefined
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
   const titleId = useId()
   const [prompt, setPrompt] = useState('')
@@ -371,7 +371,18 @@ export function SkillBuilderPanel({
       }
     : undefined
   const [selectedModel, setSelectedModel] = useState<SkillBuilderModel | undefined>()
-  const activeSelectedModel = selectedModel ?? defaultBuilderModel ?? fallbackModel
+  const activeSelectedModel = [selectedModel, defaultBuilderModel, fallbackModel].find(
+    (candidate) =>
+      candidate &&
+      textGenerationModelList.some(
+        (provider) =>
+          provider.provider === candidate.provider &&
+          provider.status === ModelStatusEnum.active &&
+          provider.models.some(
+            (model) => model.model === candidate.model && model.status === ModelStatusEnum.active,
+          ),
+      ),
+  )
   const canSendBuilderMessage = !!activeSelectedModel?.provider && !!activeSelectedModel?.model
   const suggestions = [
     t(($) => $['skillManagement.detail.builder.exampleIssueTriage']),

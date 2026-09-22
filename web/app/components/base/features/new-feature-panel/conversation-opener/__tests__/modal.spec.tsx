@@ -288,7 +288,7 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByTestId('opener-questions-section')).toBeInTheDocument()
     expect(screen.getByText(/openingStatement\.editorTitle/)).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /openingStatement\.openingQuestionDescription/ }),
+      screen.getByRole('button', { name: /openingStatement\.openingQuestion/ }),
     ).toBeInTheDocument()
     expect(
       screen.queryByText(/openingStatement\.openingQuestionDescription/),
@@ -298,9 +298,7 @@ describe('OpeningSettingModal', () => {
   it('should show the opening questions description in an infotip', async () => {
     await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
 
-    await userEvent.hover(
-      screen.getByRole('button', { name: /openingStatement\.openingQuestionDescription/ }),
-    )
+    await userEvent.hover(screen.getByRole('button', { name: /openingStatement\.openingQuestion/ }))
 
     expect(
       await screen.findByText(/openingStatement\.openingQuestionDescription/),

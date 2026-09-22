@@ -11,7 +11,7 @@ import { useWorkspacePermissions } from '@/service/use-workspace'
 type InviteButtonProps = Omit<ButtonProps, 'children' | 'variant'>
 
 const InviteButton = (props: InviteButtonProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } =

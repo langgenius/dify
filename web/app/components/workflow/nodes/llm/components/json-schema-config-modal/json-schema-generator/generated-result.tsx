@@ -27,7 +27,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
   onClose,
   onApply,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
 

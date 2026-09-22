@@ -103,7 +103,7 @@ describe('EmbeddingProcess', () => {
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    expect(screen.getByText('datasetDocuments.embedding.processing')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('datasetDocuments.embedding.processing')
   })
 
   it('shows that document indexing has completed', () => {
@@ -111,7 +111,7 @@ describe('EmbeddingProcess', () => {
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('datasetDocuments.embedding.completed')
   })
 
   it('shows the vector-space admission alert after processing completes', () => {
@@ -131,7 +131,7 @@ describe('EmbeddingProcess', () => {
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('datasetDocuments.embedding.completed')
     expect(
       screen.getByText('vector space admission alert 61MB / 50MB without upgrade'),
     ).toBeInTheDocument()

@@ -1,24 +1,22 @@
 import json
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 from sqlalchemy import ColumnElement, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.model_template import default_app_templates
-from core.agent.entities import AgentToolEntity
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from core.agent.tool_configuration import mask_agent_tool_parameters
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ToolParameterConfigurationManager
 from enums import DeploymentEdition
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db  # noqa: F401
@@ -39,7 +37,9 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
+from models.provider_ids import ModelProviderID
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
@@ -49,6 +49,7 @@ from services.agent.workspace_service import AgentWorkspaceService
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
+from services.model_provider_service import ModelProviderService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
@@ -340,13 +341,6 @@ class AppService:
         return session.get(App, app_id)
 
     @staticmethod
-    def get_normal_app_by_id(
-        app_id: str,
-        session: Session,
-    ) -> App | None:
-        return session.scalar(select(App).where(App.id == app_id, App.status == "normal").limit(1))
-
-    @staticmethod
     def get_visible_app_by_id(
         app_id: str,
         session: Session,
@@ -572,6 +566,22 @@ class AppService:
         """
         app_mode = AppMode.value_of(params.mode)
         app_template = default_app_templates[app_mode]
+        initial_agent_soul: AgentSoulConfig | None = None
+        if app_mode == AppMode.AGENT:
+            default_model = ModelProviderService().get_default_model_selection(
+                tenant_id, ModelType.LLM, session=session
+            )
+            if default_model is not None:
+                agent_provider, agent_model = default_model
+                try:
+                    provider_id = ModelProviderID(agent_provider)
+                    initial_agent_soul = AgentSoulConfig(
+                        model=AgentSoulModelConfig(
+                            plugin_id=provider_id.plugin_id, model_provider=str(provider_id), model=agent_model
+                        )
+                    )
+                except ValueError:
+                    logger.warning("Invalid Agent default model, tenant_id: %s", tenant_id, exc_info=True)
 
         # get model config
         default_model_config = app_template.get("model_config")
@@ -682,8 +692,7 @@ class AppService:
 
         # Agent App type is backed 1:1 by a roster Agent (linked via Agent.app_id).
         # Created in the same transaction so the App and its backing Agent persist
-        # atomically; the Agent Soul (model/prompt/tools) is configured afterward
-        # in the Composer.
+        # atomically; the Agent Soul starts with the workspace model selection.
         backing_agent: Agent | None = None
         if app_mode == AppMode.AGENT:
             from services.agent.roster_service import AgentRosterService
@@ -700,6 +709,7 @@ class AppService:
                     icon_type=icon_type,
                     icon=params.icon,
                     icon_background=params.icon_background,
+                    initial_soul=initial_agent_soul,
                 )
             except IntegrityError as exc:
                 session.rollback()
@@ -764,42 +774,12 @@ class AppService:
             model_config = app.app_model_config_with_session(session=session)
             if not model_config:
                 return app
-            agent_mode = model_config.agent_mode_dict
-            # decrypt agent tool parameters if it's secret-input
-            for tool in agent_mode.get("tools") or []:
-                if not isinstance(tool, dict) or len(tool.keys()) <= 3:
-                    continue
-                typed_tool = {key: value for key, value in tool.items() if isinstance(key, str)}
-                if len(typed_tool) != len(tool):
-                    continue
-                agent_tool_entity = AgentToolEntity.model_validate(typed_tool)
-                # get tool
-                try:
-                    tool_runtime = ToolManager.get_agent_tool_runtime(
-                        tenant_id=current_user.current_tenant_id,
-                        app_id=app.id,
-                        agent_tool=agent_tool_entity,
-                        user_id=current_user.id,
-                    )
-                    manager = ToolParameterConfigurationManager(
-                        tenant_id=current_user.current_tenant_id,
-                        tool_runtime=tool_runtime,
-                        provider_name=agent_tool_entity.provider_id,
-                        provider_type=agent_tool_entity.provider_type,
-                        identity_id=f"AGENT.{app.id}",
-                    )
-
-                    # get decrypted parameters
-                    if agent_tool_entity.tool_parameters:
-                        parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
-                        masked_parameter = manager.mask_tool_parameters(parameters or {})
-                    else:
-                        masked_parameter = {}
-
-                    # override tool parameters
-                    tool["tool_parameters"] = masked_parameter
-                except Exception:
-                    logger.exception("Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name)
+            agent_mode = mask_agent_tool_parameters(
+                agent_mode=cast(Mapping[str, JsonValue], model_config.agent_mode_dict),
+                app_id=app.id,
+                tenant_id=current_user.current_tenant_id,
+                user_id=current_user.id,
+            )
 
             # override agent mode
             if model_config:

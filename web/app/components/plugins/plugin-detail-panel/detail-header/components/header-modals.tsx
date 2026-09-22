@@ -39,7 +39,7 @@ const HeaderModals: FC<HeaderModalsProps> = ({
   onUpdatedFromMarketplace,
   onDelete,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const locale = useGetLanguage()
 
   const { source, version, meta } = detail

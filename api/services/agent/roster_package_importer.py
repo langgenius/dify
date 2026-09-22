@@ -16,17 +16,15 @@ from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.agent import (
-    Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
-    AgentScope,
+    AgentIconType,
     AgentSource,
-    AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.model import App, AppMode, AppModelConfig, UploadFile
+from models.model import App, AppMode, AppModelConfig, IconType, UploadFile
 from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata
 from services.agent.dsl_service import AgentDslService
 from services.agent.errors import (
@@ -43,7 +41,7 @@ from services.agent.roster_service import AgentRosterService
 from services.app_creation_records import create_installed_app_record, create_site_record
 from services.app_service import AppService
 from services.entities.dsl_entities import DslImportWarning
-from services.icon_configuration import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE
+from services.icon_configuration import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE, is_valid_image_icon
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +75,19 @@ class RosterAgentPackageImporter:
 
             check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=app_dsl.dependencies)
             try:
-                self._ensure_name_available(tenant_id=tenant_id, name=agent_package.metadata.name)
+                icons = self._resources.materialize_icons(
+                    archive=package, icons=package.manifest.icons, tenant_id=tenant_id, account_id=account.id
+                )
+                if agent_package.metadata.icon_type == "image" and agent_package.metadata.icon in icons:
+                    agent_package.metadata.icon = icons[agent_package.metadata.icon]
+                app_metadata = AgentPackageMetadata(
+                    name=agent_package.metadata.name,
+                    icon_type=app_dsl.app.get("icon_type"),
+                    icon=app_dsl.app.get("icon"),
+                    icon_background=app_dsl.app.get("icon_background"),
+                )
+                if app_metadata.icon_type == "image" and app_metadata.icon in icons:
+                    app_metadata.icon = icons[app_metadata.icon]
                 materialized, skill_warnings = self._resources.materialize(
                     archive=package,
                     resources=package.manifest,
@@ -96,6 +106,7 @@ class RosterAgentPackageImporter:
                     tenant_id=tenant_id,
                     account=account,
                     metadata=agent_package.metadata,
+                    app_metadata=app_metadata,
                     soul=resolved_soul,
                 )
             except Exception as exc:
@@ -125,38 +136,31 @@ class RosterAgentPackageImporter:
             return RosterAgentPackageImportResult(app_id=app_id, agent_id=agent_id, warnings=warnings)
 
     @staticmethod
-    def _ensure_name_available(*, tenant_id: str, name: str) -> None:
-        with session_factory.create_session() as session:
-            exists = session.scalar(
-                select(Agent.id)
-                .where(
-                    Agent.tenant_id == tenant_id,
-                    Agent.scope == AgentScope.ROSTER,
-                    Agent.status == AgentStatus.ACTIVE,
-                    Agent.name == name,
-                )
-                .limit(1)
-            )
-        if exists is not None:
-            raise AgentNameConflictError()
-
-    @staticmethod
     def _persist_import(
         *,
         tenant_id: str,
         account: Account,
         metadata: AgentPackageMetadata,
         soul: AgentSoulConfig,
+        app_metadata: AgentPackageMetadata | None = None,
     ) -> tuple[str, str]:
         with session_factory.create_session() as session, session.begin():
+            name = AgentDslService(session).unique_roster_name(tenant_id=tenant_id, requested=metadata.name)
             app = App(**default_app_templates[AppMode.AGENT]["app"])
             app.id = str(uuid4())
             app.tenant_id = tenant_id
-            app.name = metadata.name
+            app.name = name
             app.description = metadata.description
             app.icon_type = DEFAULT_ICON_TYPE
             app.icon = DEFAULT_ICON
             app.icon_background = DEFAULT_ICON_BACKGROUND
+            app_metadata = app_metadata or metadata
+            if app_metadata.icon_type in {item.value for item in IconType} and is_valid_image_icon(
+                session=session, tenant_id=tenant_id, icon_type=app_metadata.icon_type, icon=app_metadata.icon
+            ):
+                app.icon_type = IconType(app_metadata.icon_type)
+                app.icon = app_metadata.icon or DEFAULT_ICON
+                app.icon_background = app_metadata.icon_background or DEFAULT_ICON_BACKGROUND
             app.api_rph = 0
             app.api_rpm = 0
             app.max_active_requests = None
@@ -173,13 +177,22 @@ class RosterAgentPackageImporter:
                 tenant_id=tenant_id,
                 account_id=account.id,
                 app_id=app.id,
-                name=metadata.name,
+                name=name,
                 description=metadata.description,
                 role=metadata.role,
+                icon_type=app.icon_type,
+                icon=app.icon,
+                icon_background=app.icon_background,
                 source=AgentSource.IMPORTED,
                 initial_soul=soul,
                 revision_operation=AgentConfigRevisionOperation.IMPORT_PACKAGE,
             )
+            if metadata.icon_type in {item.value for item in AgentIconType} and is_valid_image_icon(
+                session=session, tenant_id=tenant_id, icon_type=metadata.icon_type, icon=metadata.icon
+            ):
+                agent.icon_type = AgentIconType(metadata.icon_type)
+                agent.icon = metadata.icon
+                agent.icon_background = metadata.icon_background
             snapshot = session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
             if snapshot is None:
                 raise RuntimeError("Imported Agent snapshot was not created")

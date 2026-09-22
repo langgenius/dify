@@ -27,7 +27,7 @@ type NodeGroupItemProps = {
   item: GroupItem
 }
 const NodeGroupItem = ({ item }: NodeGroupItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const enteringNodePayload = useStore((s) => s.enteringNodePayload)
   const hoveringAssignVariableGroupId = useStore((s) => s.hoveringAssignVariableGroupId)
   const nodes: Node[] = useNodes()

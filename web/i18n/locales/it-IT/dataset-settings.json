@@ -1,5 +1,6 @@
 {
   "desc": "Qui puoi modificare le proprietà e i metodi di funzionamento della Conoscenza.",
+  "form.changeIcon": "Modifica l’icona della conoscenza",
   "form.chunkStructure.description": "sulla struttura a blocchi.",
   "form.chunkStructure.learnMore": "Ulteriori informazioni",
   "form.chunkStructure.title": "Struttura a blocchi",

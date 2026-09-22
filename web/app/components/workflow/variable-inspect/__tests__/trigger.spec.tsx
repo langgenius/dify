@@ -1,10 +1,12 @@
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { VarInInspectType } from '@/types/workflow'
 import { createNode } from '../../__tests__/fixtures'
 import { baseRunningData, renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus, VarType, WorkflowRunningStatus } from '../../types'
 import VariableInspectTrigger from '../trigger'
+import { EVENT_WORKFLOW_STOP } from '../types'
 
 type InspectVarsState = {
   conversationVars: VarInInspect[]
@@ -88,10 +90,16 @@ describe('VariableInspectTrigger', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should open the panel from the normal trigger state', () => {
+  it('should open the panel from the normal trigger state with the keyboard', async () => {
+    const user = userEvent.setup()
     const { store } = renderTrigger()
 
-    fireEvent.click(screen.getByText('workflow.debug.variableInspect.trigger.normal'))
+    await user.tab()
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.normal' }),
+    ).toHaveFocus()
+    await user.keyboard('{Enter}')
 
     expect(store.getState().showVariableInspectPanel).toBe(true)
   })
@@ -108,7 +116,8 @@ describe('VariableInspectTrigger', () => {
     expect(store.getState().showVariableInspectPanel).toBe(false)
   })
 
-  it('should clear cached variables and reset the focused node', () => {
+  it('should clear cached variables and reset the focused node with the keyboard', async () => {
+    const user = userEvent.setup()
     inspectVarsState = {
       conversationVars: [
         createVariable({
@@ -126,11 +135,34 @@ describe('VariableInspectTrigger', () => {
       },
     })
 
-    fireEvent.click(screen.getByText('workflow.debug.variableInspect.trigger.clear'))
+    await user.tab()
+    await user.tab()
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.clear' }),
+    ).toHaveFocus()
+    await user.keyboard(' ')
 
     expect(screen.getByText('workflow.debug.variableInspect.trigger.cached')).toBeInTheDocument()
     expect(mockDeleteAllInspectorVars).toHaveBeenCalledTimes(1)
     expect(store.getState().currentFocusNodeId).toBe('')
+  })
+
+  it('exposes a named stop button that works from the keyboard', async () => {
+    const user = userEvent.setup()
+    renderTrigger({
+      initialStoreState: {
+        workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Running } }),
+      },
+    })
+    await user.tab()
+    await user.tab()
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+    ).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(mockEmit).toHaveBeenCalledWith({ type: EVENT_WORKFLOW_STOP })
   })
 
   it('should show the running state and open the panel while running', () => {

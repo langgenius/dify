@@ -8,7 +8,7 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -33,7 +33,7 @@ const descriptionClassName = `
 type AccountAppItem = AppPartial & IItem
 
 export default function AccountPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const editNameInputId = useId()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appList } = useQuery(
@@ -49,6 +49,7 @@ export default function AccountPage() {
   )
   const apps = appList?.data || []
   const queryClient = useQueryClient()
+  const updateProfile = useMutation(consoleQuery.account.profile.patch.mutationOptions())
   // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
@@ -87,9 +88,8 @@ export default function AccountPage() {
   const handleSaveName = async () => {
     try {
       setEditing(true)
-      await updateUserProfile({ url: 'account/name', body: { name: editName } })
+      await updateProfile.mutateAsync({ body: { name: editName } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      mutateUserProfile()
       setEditNameModalVisible(false)
       setEditing(false)
     } catch (e) {
@@ -172,12 +172,7 @@ export default function AccountPage() {
         </h4>
       </div>
       <div className="mb-8 flex items-center rounded-xl bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
-        <AvatarWithEdit
-          avatar={userProfile.avatar_url}
-          name={userProfile.name}
-          onSave={mutateUserProfile}
-          size="3xl"
-        />
+        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} size="3xl" />
         <div className="ml-4">
           <p className="system-xl-semibold text-text-primary">
             {userProfile.name}
@@ -303,11 +298,11 @@ export default function AccountPage() {
               : t(($) => $['account.setPassword'], { ns: 'common' })}
           </div>
           {userProfile.is_password_set && (
-            <Field name="current-password" className="gap-0">
-              <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+            <Field name="current-password">
+              <FieldLabel className="system-sm-semibold">
                 {t(($) => $['account.currentPassword'], { ns: 'common' })}
               </FieldLabel>
-              <InputGroup className="mt-2">
+              <InputGroup>
                 <InputGroupInput
                   type={showCurrentPassword ? 'text' : 'password'}
                   value={currentPassword}
@@ -329,13 +324,13 @@ export default function AccountPage() {
               </InputGroup>
             </Field>
           )}
-          <Field name="new-password" className="mt-8 gap-0">
-            <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+          <Field name="new-password" className="mt-8">
+            <FieldLabel className="system-sm-semibold">
               {userProfile.is_password_set
                 ? t(($) => $['account.newPassword'], { ns: 'common' })
                 : t(($) => $['account.password'], { ns: 'common' })}
             </FieldLabel>
-            <InputGroup className="mt-2">
+            <InputGroup>
               <InputGroupInput
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -356,11 +351,11 @@ export default function AccountPage() {
               </InputGroupAddon>
             </InputGroup>
           </Field>
-          <Field name="confirm-password" className="mt-8 gap-0">
-            <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+          <Field name="confirm-password" className="mt-8">
+            <FieldLabel className="system-sm-semibold">
               {t(($) => $['account.confirmPassword'], { ns: 'common' })}
             </FieldLabel>
-            <InputGroup className="mt-2">
+            <InputGroup>
               <InputGroupInput
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}

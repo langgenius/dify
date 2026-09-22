@@ -125,12 +125,12 @@ describe('StatusItem', () => {
   describe('error message tooltip', () => {
     it('should show tooltip trigger when error message is provided', () => {
       render(<StatusItem status="error" errorMessage="Test error message" />)
-      expect(screen.getByLabelText('Test error message')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Error' })).toBeInTheDocument()
     })
 
     it('should not show tooltip trigger when no error message', () => {
       render(<StatusItem status="error" />)
-      expect(screen.queryByLabelText('Test error message')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Error' })).not.toBeInTheDocument()
     })
   })
 
@@ -149,9 +149,7 @@ describe('StatusItem', () => {
           canEdit
         />,
       )
-      // Switch component should be present in detail scene
-      const switchElement = document.querySelector('[role="switch"]')
-      expect(switchElement).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: 'Available' })).toBeInTheDocument()
     })
 
     it('should not show switch in list scene', () => {

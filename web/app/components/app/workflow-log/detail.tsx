@@ -15,7 +15,7 @@ type ILogDetail = {
 }
 
 const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const appDetail = useStore((state) => state.appDetail)
   const router = useRouter()
 
@@ -52,7 +52,7 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
                 </button>
               }
             />
-            <TooltipContent className="rounded-xl">
+            <TooltipContent>
               {t(($) => $['runDetail.testWithParams'], { ns: 'appLog' })}
             </TooltipContent>
           </Tooltip>

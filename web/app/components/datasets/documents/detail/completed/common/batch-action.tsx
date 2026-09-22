@@ -24,7 +24,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 const i18nPrefix = 'batchAction'
@@ -57,7 +56,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   onBatchReIndex,
   onCancel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -106,7 +105,7 @@ const BatchAction: FC<IBatchActionProps> = ({
         )}
         {onBatchSummary && isNonCloudEdition && (
           <Button variant="ghost" disabled={disabled} onClick={onBatchSummary}>
-            <SearchLinesSparkle className="size-4" />
+            <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle size-4" />
             <span>{t(($) => $['list.action.summary'], { ns: 'datasetDocuments' })}</span>
           </Button>
         )}

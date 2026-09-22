@@ -5,6 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
@@ -14,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getInputKeys } from '@/app/components/base/block-input'
-import { Infotip } from '@/app/components/base/infotip'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { checkKeys, getNewVar } from '@/utils/var'
@@ -38,7 +38,9 @@ const OpeningSettingModal = ({
   workflowVariables = [],
   onAutoAddPromptVariable,
 }: OpeningSettingModalProps) => {
-  const { t } = useTranslation()
+  const questionsLabelId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
   const [tempValue, setTempValue] = useState(data?.opening_statement || '')
   useEffect(() => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect
@@ -119,7 +121,10 @@ const OpeningSettingModal = ({
     <span className="block wrap-break-word whitespace-pre-wrap">
       {t(($) => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
       <br />
-      {t(($) => $['openingStatement.placeholderLine2'], { ns: 'appDebug' })}
+      {t(($) => $['openingStatement.placeholderLine2'], {
+        ns: 'appDebug',
+        variable: '{{variable}}',
+      })}
     </span>
   )
 
@@ -144,17 +149,14 @@ const OpeningSettingModal = ({
       <div>
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <div className="text-sm font-medium text-text-primary">
+            <div id={questionsLabelId} className="text-sm font-medium text-text-primary">
               {t(($) => $['openingStatement.openingQuestion'], { ns: 'appDebug' })}
             </div>
-            <Infotip
-              aria-label={t(($) => $['openingStatement.openingQuestionDescription'], {
-                ns: 'appDebug',
-              })}
-              className="size-3.5"
-              popupClassName="max-w-[220px] system-sm-regular text-text-secondary"
-            >
-              {t(($) => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={questionsLabelId} className="size-3.5" />
+              <InfotipContent aria-labelledby={questionsLabelId} className="max-w-55">
+                {t(($) => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <div className="text-xs leading-4.5 font-medium text-text-tertiary">
@@ -192,7 +194,7 @@ const OpeningSettingModal = ({
               >
                 <IconButton
                   {...getHandleProps(index)}
-                  className="handle size-6 shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
+                  className="handle shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
                 >
                   <span aria-hidden="true" className="i-ri-draggable size-4 text-text-quaternary" />
                 </IconButton>

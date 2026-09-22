@@ -33,7 +33,6 @@ type DeployedEnvironmentAccessPointsProps = {
   appId: string
   environmentId: string
   canManageAccessPoint: boolean
-  canReleaseAndVersion: boolean
   highlightedAccessPoint?: AccessPoint | null
 }
 
@@ -41,10 +40,9 @@ export function DeployedEnvironmentAccessPoints({
   appId,
   environmentId,
   canManageAccessPoint,
-  canReleaseAndVersion,
   highlightedAccessPoint,
 }: DeployedEnvironmentAccessPointsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments', 'tools'])
   const unsupportedStatusLabel = useAccessPointStatusLabel('unsupported')
 
   const title = (accessPoint: (typeof UNSUPPORTED_ACCESS_POINTS)[number]) => {
@@ -70,7 +68,6 @@ export function DeployedEnvironmentAccessPoints({
         appId={appId}
         environmentId={environmentId}
         canManageAccessPoint={canManageAccessPoint}
-        canReleaseAndVersion={canReleaseAndVersion}
         highlighted={highlightedAccessPoint === 'webApp'}
       />
       <EnvironmentServiceApiCard

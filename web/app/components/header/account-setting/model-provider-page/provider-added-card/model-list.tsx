@@ -18,7 +18,7 @@ import ModelListItem from './model-list-item'
 const ModelLoadBalancingLoadingDialog = ({
   onClose,
 }: Pick<ModelLoadBalancingModalProps, 'onClose'>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose?.()}>
@@ -65,7 +65,7 @@ const loadModelLoadBalancingModal = () => {
 }
 
 const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const configurativeMethods = provider.configurate_methods.filter(
     (method) => method !== ConfigurationMethodEnum.fetchFromRemote,
   )

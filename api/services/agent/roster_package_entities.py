@@ -5,10 +5,11 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import BinaryIO, Final, Literal, Self
+from typing import Any, BinaryIO, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from constants import IMAGE_EXTENSIONS
 from services.agent.dsl_entities import AgentAppDsl, AgentPackage
 
 ROSTER_AGENT_PACKAGE_FORMAT: Final[Literal["dify.roster-agent"]] = "dify.roster-agent"
@@ -78,6 +79,16 @@ class RosterAgentPackageFile(_RosterAgentPackageResource):
             raise ValueError("file path must start with the resource id and include an extension")
         if "/" in self.path or "\\" in self.path:
             raise ValueError("file path must be a root-level archive member")
+        return self
+
+
+class PackageIcon(_RosterAgentPackageResource):
+    id: str = Field(pattern=r"^i_[0-9]{6}$")
+
+    @model_validator(mode="after")
+    def validate_icon_path(self) -> Self:
+        if self.path not in {f"{self.id}.{extension}" for extension in IMAGE_EXTENSIONS}:
+            raise ValueError("icon path must use its resource id and an image extension")
         return self
 
 
@@ -154,11 +165,12 @@ class RosterAgentPackageManifest(AgentPackageResources):
     format: Literal["dify.roster-agent"]
     format_version: Literal[1]
     audit: RosterAgentPackageAudit | None = None
+    icons: list[PackageIcon] = Field(default_factory=list)
     apps: list[RosterAgentPackageApp] = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_app_paths(self) -> Self:
-        paths = [item.path.casefold() for item in [*self.apps, *self.skills, *self.files]]
+        paths = [item.path.casefold() for item in [*self.apps, *self.skills, *self.files, *self.icons]]
         if len(paths) != len(set(paths)):
             raise ValueError("resource paths must be unique")
         return self
@@ -167,6 +179,9 @@ class RosterAgentPackageManifest(AgentPackageResources):
         if set(apps) != {item.path for item in self.apps}:
             raise ValueError("app members must match the package app index")
         self.validate_packages(app.package for app in apps.values())
+        validate_icon_references(
+            self.icons, [metadata for app in apps.values() for metadata in (app.app, app.package.metadata.model_dump())]
+        )
 
 
 @dataclass(kw_only=True)
@@ -211,11 +226,28 @@ class RosterAgentPackageExport:
         self.close()
 
 
+def validate_icon_references(icons: list[PackageIcon], metadata: list[dict[str, Any]]) -> None:
+    references: set[str] = set()
+    for item in metadata:
+        if item.get("icon_type") == "image":
+            reference = item.get("icon")
+            if reference is not None and not isinstance(reference, str):
+                raise ValueError("Image icon references must be strings")
+            if reference:
+                references.add(reference)
+    ids = {item.id for item in icons}
+    if len(ids) != len(icons):
+        raise ValueError("Packaged icons must have unique ids")
+    if ids - references or any(ref.startswith("i_") and ref not in ids for ref in references):
+        raise ValueError("Packaged icons must match image references")
+
+
 __all__ = [
     "ROSTER_AGENT_PACKAGE_FORMAT",
     "ROSTER_AGENT_PACKAGE_FORMAT_VERSION",
     "ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES",
     "AgentPackageResources",
+    "PackageIcon",
     "PreparedPackageArchive",
     "PreparedRosterAgentPackage",
     "RosterAgentPackageApp",
@@ -225,4 +257,5 @@ __all__ = [
     "RosterAgentPackageManifest",
     "RosterAgentPackageMember",
     "RosterAgentPackageSkill",
+    "validate_icon_references",
 ]
