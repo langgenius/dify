@@ -76,6 +76,8 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     [setIsInstalling],
   )
 
+  const completedSteps: InstallStep[] = [InstallStep.installed, InstallStep.installFailed]
+
   return (
     <Dialog
       open
@@ -121,7 +123,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
                 onTaskStarted={foldIntoTaskTrigger}
               />
             )}
-            {[InstallStep.installed, InstallStep.installFailed].includes(step) && (
+            {completedSteps.includes(step) && (
               <Installed
                 payload={manifest!}
                 isMarketPayload

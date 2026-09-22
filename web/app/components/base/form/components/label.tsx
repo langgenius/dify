@@ -1,6 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '../../infotip'
 
 export type LabelProps = {
   htmlFor: string
@@ -28,8 +28,11 @@ const Label = ({ htmlFor, label, isRequired, showOptional, tooltip, className }:
         <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
       )}
       {tooltip && (
-        <Infotip aria-label={tooltip} className="ml-0.5 size-4" popupClassName="w-[200px]">
-          {tooltip}
+        <Infotip>
+          <InfotipTrigger aria-label={tooltip} className="ml-0.5" />
+          <InfotipContent aria-label={tooltip} className="w-50">
+            {tooltip}
+          </InfotipContent>
         </Infotip>
       )}
     </div>

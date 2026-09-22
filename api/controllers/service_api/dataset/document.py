@@ -75,7 +75,7 @@ from fields.document_fields import (
 )
 from libs.helper import dump_response
 from libs.login import current_user
-from libs.pagination import paginate_query
+from libs.pagination import clamp_pagination, paginate_query
 from models.dataset import Dataset, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -1032,9 +1032,9 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
-        effective_limit = min(query_params.limit, 100)
+        effective_page, effective_limit = clamp_pagination(query_params.page, query_params.limit, 100)
         paginated_documents = paginate_query(
-            query, session=session, page=query_params.page, per_page=effective_limit, max_per_page=100
+            query, session=session, page=effective_page, per_page=effective_limit, max_per_page=100
         )
         documents = paginated_documents.items
 
@@ -1047,10 +1047,12 @@ class DocumentListApi(DatasetApiResource):
 
         response = {
             "data": document_responses(documents, session=session),
-            "has_more": query_params.page * effective_limit < paginated_documents.total,
-            "limit": effective_limit,
+            # The result object already knows: it was built from the page the query
+            # ran with, while the requested values are only ever a request.
+            "has_more": paginated_documents.has_next,
+            "limit": paginated_documents.per_page,
             "total": paginated_documents.total,
-            "page": query_params.page,
+            "page": paginated_documents.page,
         }
 
         return dump_response(DocumentListResponse, response)

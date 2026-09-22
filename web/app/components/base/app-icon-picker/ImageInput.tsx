@@ -3,11 +3,10 @@
 import type { ChangeEvent, FC } from 'react'
 import type { Area, CropperProps } from 'react-easy-crop'
 import { cn } from '@langgenius/dify-ui/cn'
-import { createRef, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Cropper from 'react-easy-crop'
 import { useTranslation } from 'react-i18next'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
-import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
 import { checkIsAnimatedImage } from './utils'
 
@@ -55,11 +54,18 @@ const ImageInput: FC<UploaderProps> = ({ className, cropShape, onImageInput }) =
   const { isDragActive, handleDragEnter, handleDragOver, handleDragLeave, handleDrop } =
     useDraggableUploader((file: File) => setInputImage({ file, url: URL.createObjectURL(file) }))
 
-  const inputRef = createRef<HTMLInputElement>()
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const handleShowImage = () => {
     if (isAnimatedImage) {
-      return <img src={inputImage?.url} alt="" data-testid="animated-image" />
+      return (
+        <img
+          src={inputImage?.url}
+          alt=""
+          className="h-full w-full object-contain"
+          data-testid="animated-image"
+        />
+      )
     }
 
     return (
@@ -77,11 +83,12 @@ const ImageInput: FC<UploaderProps> = ({ className, cropShape, onImageInput }) =
   }
 
   return (
-    <div className={cn(className, 'w-full px-3 py-1.5')}>
+    <div className={cn(className, 'w-full p-3')}>
       <div
         className={cn(
-          'relative flex aspect-square flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed border-components-input-border-hover text-gray-500',
-          isDragActive && 'border-primary-600',
+          'relative flex h-60 flex-col items-center justify-center gap-2 overflow-hidden rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-center text-text-secondary',
+          isDragActive &&
+            'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
         )}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -90,15 +97,18 @@ const ImageInput: FC<UploaderProps> = ({ className, cropShape, onImageInput }) =
       >
         {!inputImage ? (
           <>
-            <ImagePlus className="pointer-events-none mb-3 h-7.5 w-7.5" />
-            <div className="mb-0.5 text-sm font-medium">
+            <span
+              className="pointer-events-none i-ri-image-add-line size-5 text-text-tertiary"
+              aria-hidden="true"
+            />
+            <div className="system-sm-medium">
               <span className="pointer-events-none">
                 {t(($) => $['imageInput.dropImageHere'], { ns: 'common' })}
                 &nbsp;
               </span>
               <button
                 type="button"
-                className="text-components-button-primary-bg"
+                className="rounded-sm text-text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
                 onClick={() => inputRef.current?.click()}
               >
                 {t(($) => $['imageInput.browse'], { ns: 'common' })}
@@ -113,7 +123,7 @@ const ImageInput: FC<UploaderProps> = ({ className, cropShape, onImageInput }) =
                 data-testid="image-input"
               />
             </div>
-            <div className="pointer-events-none">
+            <div className="pointer-events-none system-xs-regular text-text-tertiary">
               {t(($) => $['imageInput.supportedFormats'], { ns: 'common' })}
             </div>
           </>

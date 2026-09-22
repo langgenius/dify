@@ -8,12 +8,11 @@ from werkzeug.exceptions import NotFound
 
 from controllers.console.explore.error import (
     AppAccessDeniedError,
-    TrialAppFeatureDisabledError,
     TrialAppLimitExceeded,
     TrialAppNotAllowed,
 )
+from controllers.console.explore.trial_app_admission import trial_feature_enable
 from controllers.console.wraps import account_initialization_required
-from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import AccountTrialAppRecord, App, InstalledApp, TrialApp
@@ -105,16 +104,6 @@ def trial_app_required[**P, R](view: Callable[Concatenate[App, P], R] | None = N
     if view:
         return decorator(view)
     return decorator
-
-
-def trial_feature_enable[**P, R](view: Callable[P, R]):
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
-        if not application_services().recommended_app_queries.is_trial_enabled():
-            raise TrialAppFeatureDisabledError()
-        return view(*args, **kwargs)
-
-    return decorated
 
 
 class InstalledAppResource(Resource):

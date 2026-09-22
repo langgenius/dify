@@ -1,5 +1,6 @@
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   NumberField,
   NumberFieldControls,
@@ -10,7 +11,6 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { env } from '@/env'
 
 export type TopKFieldProps = {
@@ -67,8 +67,9 @@ export function TopKAndScoreThreshold({
       <Field name="top_k" className="gap-0">
         <div className="mb-0.5 flex h-6 items-center">
           <FieldLabel className="py-0 system-xs-medium text-text-secondary">{topKLabel}</FieldLabel>
-          <Infotip aria-label={topKTip} className="ml-0.5 size-3.5">
-            {topKTip}
+          <Infotip>
+            <InfotipTrigger aria-label={topKTip} className="ml-0.5 size-3.5" />
+            <InfotipContent aria-label={topKTip}>{topKTip}</InfotipContent>
           </Infotip>
         </div>
         <NumberField
@@ -102,8 +103,9 @@ export function TopKAndScoreThreshold({
                 />
                 <span className="grow truncate">{scoreThresholdLabel}</span>
               </FieldLabel>
-              <Infotip aria-label={scoreThresholdTip} className="ml-0.5 size-3.5">
-                {scoreThresholdTip}
+              <Infotip>
+                <InfotipTrigger aria-label={scoreThresholdTip} className="ml-0.5 size-3.5" />
+                <InfotipContent aria-label={scoreThresholdTip}>{scoreThresholdTip}</InfotipContent>
               </Infotip>
             </div>
           </Field>

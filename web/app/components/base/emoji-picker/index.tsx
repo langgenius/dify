@@ -2,10 +2,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
+import { defaultEmojiBackground, getRandomEmoji, getRandomEmojiBackground } from './constants'
 import EmojiPickerInner from './Inner'
+import { addRecentEmoji, useRecentEmojis } from './storage'
 
 type EmojiPickerProps = {
   open: boolean
@@ -33,13 +35,13 @@ type EmojiPickerContentProps = {
 function EmojiPickerContent({ className, onOpenChange, onSelect }: EmojiPickerContentProps) {
   const { t } = useTranslation()
   const [selectedEmoji, setSelectedEmoji] = useState('')
-  const [selectedBackground, setSelectedBackground] = useState<string>()
+  const [selectedBackground, setSelectedBackground] = useState(defaultEmojiBackground)
+  const [, setRecentEmojis] = useRecentEmojis()
 
   return (
     <DialogContent
       className={cn(
-        'max-h-none w-full overflow-hidden! text-left align-middle',
-        'flex max-h-138 flex-col rounded-xl border-[0.5px] border-divider-subtle p-0 shadow-xl',
+        'flex h-[min(480px,calc(100dvh-2rem))] max-h-none w-80.5 flex-col overflow-hidden p-0 text-left',
         className,
       )}
     >
@@ -48,23 +50,33 @@ function EmojiPickerContent({ className, onOpenChange, onSelect }: EmojiPickerCo
       </DialogTitle>
 
       <EmojiPickerInner
-        className="pt-3"
+        className="flex-1 overflow-hidden pt-3"
+        emoji={selectedEmoji}
+        background={selectedBackground}
         onSelect={(emoji, background) => {
           setSelectedEmoji(emoji)
           setSelectedBackground(background)
         }}
       />
-      <Divider className="mt-3 mb-0" />
-      <div className="flex w-full items-center justify-center gap-2 p-3">
-        <Button className="w-full" onClick={() => onOpenChange(false)}>
-          {t(($) => $['iconPicker.cancel'], { ns: 'app' })}
+      <Separator decorative className="m-0 h-[0.5px]" />
+      <div className="flex w-full shrink-0 items-center justify-center gap-2 bg-components-panel-bg-blur p-3 backdrop-blur-sm">
+        <Button
+          className="min-w-0 flex-1"
+          onClick={() => {
+            setSelectedEmoji(getRandomEmoji(selectedEmoji))
+            setSelectedBackground(getRandomEmojiBackground(selectedBackground))
+          }}
+        >
+          <span className="i-ri-dice-line size-4" aria-hidden="true" />
+          {t(($) => $['iconPicker.tryYourLuck'], { ns: 'app' })}
         </Button>
         <Button
           disabled={selectedEmoji === '' || !selectedBackground}
           variant="primary"
-          className="w-full"
+          className="min-w-0 flex-1"
           onClick={() => {
-            onSelect?.(selectedEmoji, selectedBackground!)
+            setRecentEmojis((recent) => addRecentEmoji(recent, selectedEmoji))
+            onSelect?.(selectedEmoji, selectedBackground)
             onOpenChange(false)
           }}
         >

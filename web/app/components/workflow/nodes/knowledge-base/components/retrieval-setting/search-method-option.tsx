@@ -6,6 +6,7 @@ import type { HybridSearchModeOption, Option } from './type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +19,6 @@ import {
   OptionCardEffectPurple,
   OptionCardEffectTeal,
 } from '@/app/components/base/icons/src/public/knowledge'
-import { Infotip } from '@/app/components/base/infotip'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 import { HybridSearchModeEnum, RetrievalSearchMethodEnum } from '../../types'
 import RerankingModelSelector from './reranking-model-selector'
@@ -282,8 +282,12 @@ export function SearchMethodOption({
                   />
                   <span className="truncate">{rerankModelLabel}</span>
                 </FieldLabel>
-                <Infotip aria-label={rerankModelTip} className="ml-0.5 size-3.5 shrink-0">
-                  {rerankModelTip}
+                <Infotip>
+                  <InfotipTrigger
+                    aria-label={rerankModelTip}
+                    className="ml-0.5 size-3.5 shrink-0"
+                  />
+                  <InfotipContent aria-label={rerankModelTip}>{rerankModelTip}</InfotipContent>
                 </Infotip>
               </div>
             </Field>

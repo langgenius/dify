@@ -7,6 +7,7 @@ import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { chunkTreeLabel, visibleDocumentChunkNodes } from './document-detail-model'
 
 const VIRTUALIZATION_THRESHOLD = 80
@@ -46,7 +47,7 @@ export function DocumentChunkTreePanel({
   const [treeHasFocus, setTreeHasFocus] = useState(false)
   const treeScrollRef = useRef<HTMLDivElement>(null)
   const loadMoreRequestedRef = useRef(false)
-  const chunkIdsBeforeLoadRef = useRef<Set<string>>(new Set())
+  const chunkIdsBeforeLoadRef = useRefWithInit<Set<string>>(() => new Set())
   const wasFetchingNextPageRef = useRef(false)
   const expandedChunkIds = useMemo(
     () => new Set([...tree.byId.keys()].filter((id) => !collapsedChunkIds.has(id))),
@@ -148,7 +149,13 @@ export function DocumentChunkTreePanel({
       if (shouldVirtualize) rowVirtualizerRef.current.scrollToIndex(index, { align: 'auto' })
       treeScrollRef.current?.focus()
     })
-  }, [isFetchNextPageError, isFetchingNextPage, shouldVirtualize, visibleNodes])
+  }, [
+    isFetchNextPageError,
+    isFetchingNextPage,
+    shouldVirtualize,
+    visibleNodes,
+    chunkIdsBeforeLoadRef,
+  ])
 
   const renderTreeItem = (item: (typeof visibleNodes)[number], style?: React.CSSProperties) => {
     const { depth, node, positionInSet, setSize } = item

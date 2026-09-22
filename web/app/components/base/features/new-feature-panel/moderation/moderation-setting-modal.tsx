@@ -4,12 +4,12 @@ import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useQueryState } from 'nuqs'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import Divider from '@/app/components/base/divider'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -45,7 +45,7 @@ function LabeledDivider({ children }: { children: ReactNode }) {
   return (
     <div className="flex w-full items-center gap-2">
       <span className="shrink-0 system-xs-medium-uppercase text-text-tertiary">{children}</span>
-      <Divider bgStyle="gradient" className="my-0 h-px flex-1" />
+      <Separator decorative variant="gradient" className="my-0 flex-1" />
     </div>
   )
 }

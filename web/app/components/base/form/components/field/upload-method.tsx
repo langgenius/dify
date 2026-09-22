@@ -2,10 +2,10 @@ import type { LabelProps } from '../label'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { TransferMethod } from '@/types/app'
 import { useFieldContext } from '../..'
 
@@ -72,12 +72,11 @@ const UploadMethodField = ({ label, labelOptions, className }: UploadMethodField
             <span className="ml-1 system-xs-regular text-text-destructive-secondary">*</span>
           )}
           {labelOptions?.tooltip && (
-            <Infotip
-              aria-label={labelOptions.tooltip}
-              className="ml-0.5 size-4"
-              popupClassName="w-[200px]"
-            >
-              {labelOptions.tooltip}
+            <Infotip>
+              <InfotipTrigger aria-label={labelOptions.tooltip} className="ml-0.5" />
+              <InfotipContent aria-label={labelOptions.tooltip} className="w-50">
+                {labelOptions.tooltip}
+              </InfotipContent>
             </Infotip>
           )}
         </div>
@@ -89,8 +88,7 @@ const UploadMethodField = ({ label, labelOptions, className }: UploadMethodField
                   value={option.value}
                   className={cn(
                     'flex h-8 w-full cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-xs',
-                    selectedMethod !== option.value &&
-                      'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                    'data-unchecked:cursor-pointer data-unchecked:hover:border-components-option-card-option-border-hover data-unchecked:hover:bg-components-option-card-option-bg-hover data-unchecked:hover:shadow-xs',
                   )}
                 >
                   <span>{option.label}</span>

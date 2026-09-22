@@ -652,12 +652,19 @@ describe('PriorityLabel Integration', () => {
     setupConsoleState()
   })
 
-  it('should display "standard" priority for sandbox plan', () => {
+  it('opens the standard priority explanation without changing the badge', async () => {
+    const user = userEvent.setup()
     setupBilling({ billing: { subscription: { plan: 'sandbox' } } })
 
     render(<PriorityLabel />)
 
     expect(screen.getByText(/plansCommon\.priority\.standard/i)).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: /plansCommon\.documentProcessingPriority$/i }),
+    )
+    expect(await screen.findByRole('dialog')).toHaveTextContent(
+      /plansCommon\.documentProcessingPriorityTip/i,
+    )
   })
 
   it('should display "priority" for professional plan with icon', () => {

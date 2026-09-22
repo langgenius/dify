@@ -2,12 +2,12 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Model } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
 type ModelInfo = {
@@ -83,11 +83,16 @@ const PromptEditor: FC<PromptEditorProps> = ({
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
           <span>{t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}</span>
-          <Infotip
-            aria-label={t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
-            className="size-3.5"
-          >
-            {t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
+              className="size-3.5"
+            />
+            <InfotipContent
+              aria-label={t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
+            >
+              {t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
+            </InfotipContent>
           </Infotip>
         </div>
         <div className="flex items-center">

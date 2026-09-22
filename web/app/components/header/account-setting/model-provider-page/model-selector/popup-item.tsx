@@ -61,7 +61,6 @@ function PopupItem({
   onSelect,
   onHide,
 }: PopupItemProps) {
-  const [modelsOpen, setModelsOpen] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const providerHeadingId = useId()
   const { t } = useTranslation()
@@ -123,8 +122,7 @@ function PopupItem({
 
   return (
     <Collapsible
-      open={modelsOpen}
-      onOpenChange={setModelsOpen}
+      defaultOpen
       className="mb-1"
       render={<section aria-labelledby={providerHeadingId} />}
     >

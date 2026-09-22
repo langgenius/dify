@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "เหตุการณ์ทริกเกอร์",
   "upgrade.addChunks.description": "คุณได้ถึงขีดจำกัดในการเพิ่มชิ้นส่วนสำหรับแผนนี้แล้ว",
   "upgrade.addChunks.title": "อัปเกรดเพื่อเพิ่มชิ้นส่วนต่อ",
+  "upgrade.agentRestore.description": "การกู้คืนเวอร์ชันแอปเอเจนต์ไม่พร้อมใช้งานในแผนปัจจุบันของคุณ",
+  "upgrade.agentRestore.title": "อัปเกรดเพื่อกู้คืนเวอร์ชันแอปเอเจนต์",
   "upgrade.uploadMultipleFiles.description": "อัปโหลดเอกสารหลายไฟล์พร้อมกัน และเพิ่มขนาดสูงสุดต่อไฟล์เป็น 50 MB",
   "upgrade.uploadMultipleFiles.title": "อัปเกรดเพื่อปลดล็อกการอัปโหลดแบบเป็นชุดและไฟล์ขนาดใหญ่ขึ้น",
   "upgrade.uploadMultiplePages.description": "คุณได้ถึงขีดจำกัดการอัปโหลดแล้ว — สามารถเลือกและอัปโหลดเอกสารได้เพียงไฟล์เดียวต่อครั้งในแผนปัจจุบันของคุณ",

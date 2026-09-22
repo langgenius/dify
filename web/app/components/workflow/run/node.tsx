@@ -229,9 +229,7 @@ const NodePanel: FC<Props> = ({
               </Header>
             }
           />
-          <TooltipContent>
-            <div className="max-w-xs">{nodeInfo.title}</div>
-          </TooltipContent>
+          <TooltipContent>{nodeInfo.title}</TooltipContent>
         </Tooltip>
         {!hideProcessDetail && (
           <div id={detailsId} hidden={collapseState} className="px-1 pb-1">

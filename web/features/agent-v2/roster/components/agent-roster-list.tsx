@@ -471,16 +471,15 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
           }
         />
       )}
-      {state.status === 'ready' &&
-        state.agents.length > 0 && (
-          // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
-          // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
-          <ul role="list" className={AGENT_ROSTER_GRID_CLASS_NAME}>
-            {state.agents.map((agent) => (
-              <AgentRosterItem key={agent.id} agent={agent} />
-            ))}
-          </ul>
-        )}
+      {state.status === 'ready' && state.agents.length > 0 && (
+        // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
+        // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
+        <ul role="list" className={AGENT_ROSTER_GRID_CLASS_NAME}>
+          {state.agents.map((agent) => (
+            <AgentRosterItem key={agent.id} agent={agent} />
+          ))}
+        </ul>
+      )}
       {state.status === 'ready' && state.footer.status === 'error' && (
         <div
           className="flex items-center justify-center gap-3 pt-1 system-xs-regular text-text-destructive"

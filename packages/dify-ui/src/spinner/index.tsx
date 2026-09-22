@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComponentProps } from 'react'
+import type * as React from 'react'
 import { Progress as BaseProgress } from '@base-ui/react/progress'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -24,7 +24,7 @@ type SpinnerAppearanceProps = {
 type SpinnerIconProps = SpinnerAppearanceProps
 
 type SpinnerProps = SpinnerAppearanceProps &
-  Pick<ComponentProps<'div'>, 'id' | 'aria-describedby'> &
+  Pick<React.ComponentProps<'div'>, 'id' | 'aria-describedby'> &
   (
     | { 'aria-label': string; 'aria-labelledby'?: never }
     | { 'aria-label'?: never; 'aria-labelledby': string }

@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "触发事件额度",
   "upgrade.addChunks.description": "您已达到此计划的添加分段上限。",
   "upgrade.addChunks.title": "升级以继续添加分段",
+  "upgrade.agentRestore.description": "当前套餐不支持恢复 Agent 应用版本。",
+  "upgrade.agentRestore.title": "升级以恢复 Agent 应用版本",
   "upgrade.uploadMultipleFiles.description": "一次可上传多个文档，单个文件大小上限也将提升至 50 MB。",
   "upgrade.uploadMultipleFiles.title": "升级以解锁批量上传和更大的文件",
   "upgrade.uploadMultiplePages.description": "您已达到当前套餐的上传限制 —— 该套餐每次只能选择并上传 1 个文档。",

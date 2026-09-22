@@ -2,10 +2,10 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { CreateSubscriptionButton } from './create'
 import { CreateButtonType } from './create/types'
 import { DeleteConfirm } from './delete-confirm'
@@ -33,11 +33,16 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             <span className="system-sm-semibold-uppercase text-text-secondary">
               {t(($) => $['subscription.listNum'], { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
-            <Infotip
-              aria-label={t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
-              className="size-3.5"
-            >
-              {t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
+                className="size-3.5"
+              />
+              <InfotipContent
+                aria-label={t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
+              >
+                {t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <CreateSubscriptionButton buttonType={CreateButtonType.ICON_BUTTON} shape="circle" />

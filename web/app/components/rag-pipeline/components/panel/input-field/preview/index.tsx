@@ -1,10 +1,10 @@
 import type { Datasource } from '../../test-run/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Divider from '@/app/components/base/divider'
 import { useInputFieldPanel } from '../../../../hooks/use-input-field-panel'
 import { useFloatingRight } from '../hooks'
 import DataSource from './data-source'
@@ -49,7 +49,7 @@ const PreviewPanel = () => {
       {/* Data source form Preview */}
       <DataSource onSelect={setDatasource} dataSourceNodeId={datasource?.nodeId || ''} />
       <div className="px-4 py-2">
-        <Divider type="horizontal" className="bg-divider-subtle" />
+        <Separator orientation="horizontal" className="my-2 h-[0.5px] bg-divider-subtle" />
       </div>
       {/* Process documents form Preview */}
       <ProcessDocuments dataSourceNodeId={datasource?.nodeId || ''} />

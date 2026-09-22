@@ -1,10 +1,11 @@
 'use client'
 
+import type * as React from 'react'
 import type { ButtonProps } from '../button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
-import * as React from 'react'
 import { Button } from '../button'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
 
 const AlertDialog = BaseAlertDialog.Root
@@ -17,17 +18,19 @@ type AlertDialogTriggerProps<Payload = unknown> = BaseAlertDialog.Trigger.Props<
 type AlertDialogTitleProps = BaseAlertDialog.Title.Props
 type AlertDialogDescriptionProps = BaseAlertDialog.Description.Props
 
-type AlertDialogBackdropProps = Omit<BaseAlertDialog.Backdrop.Props, 'className'> & {
-  className?: string
-}
+type AlertDialogBackdropProps = BaseAlertDialog.Backdrop.Props
 
 function AlertDialogBackdrop({ className, ...props }: AlertDialogBackdropProps) {
-  return <BaseAlertDialog.Backdrop {...props} className={cn(modalBackdropClassName, className)} />
+  return (
+    <BaseAlertDialog.Backdrop
+      {...props}
+      className={(state) => cn(modalBackdropClassName, resolveClassName(className, state))}
+    />
+  )
 }
 
-type AlertDialogContentProps = Omit<BaseAlertDialog.Popup.Props, 'children' | 'className'> & {
+type AlertDialogContentProps = Omit<BaseAlertDialog.Popup.Props, 'children'> & {
   children: React.ReactNode
-  className?: string
   backdropProps?: AlertDialogBackdropProps
 }
 
@@ -41,11 +44,13 @@ function AlertDialogContent({
     <BaseAlertDialog.Portal>
       <AlertDialogBackdrop {...backdropProps} />
       <BaseAlertDialog.Popup
-        className={cn(
-          'fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-          modalPopupAnimationClassName,
-          className,
-        )}
+        className={(state) =>
+          cn(
+            'fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            modalPopupAnimationClassName,
+            resolveClassName(className, state),
+          )
+        }
         {...props}
       >
         {children}

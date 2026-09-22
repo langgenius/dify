@@ -135,7 +135,6 @@ function AccessPointContent({
                 appId={appId}
                 environmentId={selectedEnvironment}
                 canManageAccessPoint={canManageAccessPoint}
-                canReleaseAndVersion={canReleaseAndVersion}
                 highlightedAccessPoint={selectedHighlightedAccessPoint}
               />
             )}
