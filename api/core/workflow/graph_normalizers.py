@@ -363,8 +363,25 @@ _HUMAN_INPUT_TIMEOUT_ALIASES = frozenset(
 # routes on.
 _FAIL_BRANCH_SUCCESS_ALIASES = frozenset({"success", "ok", "next", "on_success"})
 # ...and the words a planner might use for the failure arm. Valid on any
-# fail-branch node regardless of type.
-_FAIL_BRANCH_FAILURE_ALIASES = frozenset({"fail", "failure", "failed", "error", "on_error", "on_failure", "exception"})
+# fail-branch node regardless of type. Looked up by ``_canon_name`` like
+# every other name, so ``fail_branch`` / ``fail-branch`` / ``Fail Branch``
+# all hit the same key.
+_FAIL_BRANCH_FAILURE_ALIASES = frozenset(
+    {
+        "fail",
+        "failure",
+        "failed",
+        "error",
+        "on_error",
+        "on_failure",
+        "exception",
+        "fail_branch",
+        "failbranch",
+        "error_branch",
+        "on_fail",
+        "fallback",
+    }
+)
 
 # Declared handles that exist because of the node's configuration, not
 # because the author wired a branch: human-input's implicit "__timeout" arm
@@ -562,7 +579,10 @@ def repair_branch_edge_handles(nodes: list[Any], edges: list[Any]) -> list[dict[
        out under an invented name). Never applied to a plain (non-branch)
        fail-branch node (see ``_is_plain_fail_branch``): with only "source"
        and "fail-branch" declared, an unrecognized name is as likely to mean
-       one as the other, so only an explicit alias may resolve it;
+       one as the other, so only an explicit alias may resolve it. Nor to a
+       branch-type node whose "fail-branch" arm is still unwired: the
+       unknown name is as likely to be that failure arm as the one free
+       branch arm (ELSE / a class / an action);
     3. edges on the default ``source`` handle, when there are at least as
        many unused declared handles -> unused handles in declaration order
        (the pre-existing behaviour).
@@ -577,9 +597,10 @@ def repair_branch_edge_handles(nodes: list[Any], edges: list[Any]) -> list[dict[
 
     Anything else -- two different unknown names, one unknown edge with two
     free arms, a three-case node with invented names -- is left exactly as it
-    was and returned, so ``undeclared_branch_handles`` fails the graph closed.
-    A wrong guess would silently swap the IF and ELSE arms, or a success arm
-    for a failure arm; a visible rejection is better.
+    was and returned, so a caller can fail closed on it
+    (``undeclared_branch_handles`` still reports it afterwards). A wrong
+    guess would silently swap the IF and ELSE arms, or a success arm for a
+    failure arm; a visible rejection is better.
     """
     unresolved: list[dict[str, Any]] = []
     for node in nodes:
@@ -622,12 +643,16 @@ def repair_branch_edge_handles(nodes: list[Any], edges: list[Any]) -> list[dict[
         ]
         defaulted = [e for e in unknown if e not in named]
         distinct_names = {str(e.get("sourceHandle")) for e in named}
+        # "fail-branch" never counts as unused (see _UNCOUNTED_UNUSED_HANDLES),
+        # but while it is unwired an unknown name may well mean it.
+        fail_branch_unwired = "fail-branch" in handles and "fail-branch" not in taken
         if (
             named
             and not defaulted
             and len(distinct_names) == 1
             and len(unused) == 1
             and not _is_plain_fail_branch(node)
+            and not fail_branch_unwired
         ):
             for edge in named:
                 edge["sourceHandle"] = unused[0]
