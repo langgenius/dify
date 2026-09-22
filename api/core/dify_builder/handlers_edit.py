@@ -47,8 +47,10 @@ from core.dify_builder.handlers_fix import (
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
+    note_repair_error,
     note_unknown_outcome,
     perform_revert,
+    repair_is_repeating,
     run_finished_without_output,
     start_schema,
     testdata_form_fields,
@@ -88,6 +90,10 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     text, ok = action_string(turn, "text")
     if ok and text:
         fc.goal_text = text
+    # A new goal is a new repair loop: the breaker's counter must not carry
+    # over from whatever the previous edit was stuck on.
+    fc.repair_attempts = 0
+    fc.last_repair_error = ""
 
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
@@ -689,6 +695,34 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     )
     progress.activate("edit-diagnose-failure")
     diagnosis = env.agent.diagnose(run, graph, per_node)
+    note_repair_error(fc, run)
+    if repair_is_repeating(fc):
+        # Same breaker as Build's: the identical engine failure has survived
+        # MAX_REPEATED_REPAIRS repairs, so another round would aim at the same
+        # wrong thing. Stop and hand the decision back (no staged repair).
+        fc.diagnosis = diagnosis
+        fc.staged_repair = []
+        progress.finish()
+        stuck_items = append_card(
+            fc,
+            ErrorCard(
+                title="Repeated failure",
+                body=(
+                    f"{diagnosis.root_cause or 'The run failed.'}\n\n"
+                    "The same error survived the last repairs, so I've stopped retrying. "
+                    "Edit the node directly and test again, or revert."
+                ),
+                tone="danger",
+                node_id=diagnosis.culprit_node_id,
+            ),
+        )
+        return StepResult(
+            next=PcState.EDIT_AWAIT_REPAIR,
+            context=fc,
+            items=stuck_items,
+            run=run,
+            run_id_sink=[run.id],
+        )
     progress.activate("edit-prepare-repair")
     intents, risk = env.agent.propose_repair(diagnosis, graph)
     fc.diagnosis = diagnosis
