@@ -42,6 +42,7 @@ from models.workflow import Workflow
 from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import SpeechToTextDisabledServiceError
 from services.errors.conversation import ConversationNotExistsError
+from tests.unit_tests.model_factories import make_app
 
 unwrap: Any = inspect_unwrap
 
@@ -65,14 +66,7 @@ def trial_app_usage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 def _app(*, app_id: str, mode: AppMode, tenant_id: str = "tenant-1") -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name="Trial App",
-        mode=mode,
-        enable_site=True,
-        enable_api=False,
-    )
+    return make_app(app_id=app_id, tenant_id=tenant_id, name="Trial App", mode=mode, icon_type=None, enable_api=False)
 
 
 def _file_data() -> Any:

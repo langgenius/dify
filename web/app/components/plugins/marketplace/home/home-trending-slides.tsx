@@ -29,9 +29,13 @@ import {
 } from '@/utils/marketplace-site-track'
 import MarketplaceDetailDialog from '../detail-dialog'
 import TemplateDetailDialog from '../templates/template-detail-dialog'
-import { getPluginLinkInMarketplace, getTemplateLinkInMarketplace } from '../utils'
+import { useOptionalTemplateDetailRoute } from '../templates/use-optional-template-detail-route'
+import {
+  getPluginLinkInMarketplace,
+  getTemplateDetailLinkInMarketplace,
+  getTemplateLinkInMarketplace,
+} from '../utils'
 import background from './assets/background.webp'
-import difyUpdatesArt from './assets/dify-updates-art.png'
 import {
   EMBEDDED_MOBILE_BANNER_MEDIA,
   MARKETPLACE_MOBILE_BANNER_MEDIA,
@@ -147,7 +151,11 @@ const getLocalCardHref = (card: BannerRecommendCard) => {
       return `/plugin/${encodeURIComponent(identity.org)}/${encodeURIComponent(identity.name)}`
   }
 
-  if (card.item_type === 'template') return `/templates?tid=${encodeURIComponent(card.item_id)}`
+  if (card.item_type === 'template')
+    return getTemplateDetailLinkInMarketplace({
+      id: card.item_id,
+      publisher_unique_handle: card.creator || 'template',
+    })
 
   return '/'
 }
@@ -395,6 +403,7 @@ function EmbeddedRecommendTemplateCard({
 }) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
+  const templateDetailRoute = useOptionalTemplateDetailRoute()
   const href = getTemplateLinkInMarketplace(template)
 
   return (
@@ -405,20 +414,23 @@ function EmbeddedRecommendTemplateCard({
         className={cn(recommendCardClassName, 'cursor-pointer border-0 text-left')}
         onClick={() => {
           trackRecommendCardClick(banner, card, page, href)
-          setOpen(true)
+          if (templateDetailRoute) templateDetailRoute.open(template)
+          else setOpen(true)
         }}
       >
         <RecommendCardFace card={card} />
       </button>
-      <TemplateDetailDialog
-        open={open}
-        template={template}
-        onInstall={() => {
-          setOpen(false)
-          router.push(`/apps?template-id=${encodeURIComponent(template.id)}`)
-        }}
-        onOpenChange={setOpen}
-      />
+      {!templateDetailRoute && (
+        <TemplateDetailDialog
+          open={open}
+          template={template}
+          onInstall={() => {
+            setOpen(false)
+            router.push(`/apps?template-id=${encodeURIComponent(template.id)}`)
+          }}
+          onOpenChange={setOpen}
+        />
+      )}
     </>
   )
 }
@@ -556,6 +568,7 @@ function BlogBannerSlide({
   const href = sanitizeMarketplaceHref(banner.content.link)
   if (!href) return null
   const opensInNewTab = /^https?:\/\//.test(href)
+  const coverSrc = getMarketplaceAssetURL(banner.content.cover_image)
 
   return (
     <Link
@@ -640,18 +653,20 @@ function BlogBannerSlide({
           </div>
         </div>
       </div>
-      <img
-        src={difyUpdatesArt.src}
-        width={400}
-        height={200}
-        alt=""
-        aria-hidden
-        className={cn(
-          styles.updatesArt,
-          isMarketplacePlatform && styles.stackedVisual,
-          'h-[200px] shrink-0 rounded-2xl object-cover object-left',
-        )}
-      />
+      {coverSrc ? (
+        <img
+          src={coverSrc}
+          width={400}
+          height={200}
+          alt=""
+          aria-hidden
+          className={cn(
+            styles.updatesArt,
+            isMarketplacePlatform && styles.stackedVisual,
+            'h-[200px] shrink-0 rounded-2xl object-cover object-left',
+          )}
+        />
+      ) : null}
     </Link>
   )
 }

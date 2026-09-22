@@ -34,9 +34,7 @@ const DisplayToggle: FC<DisplayToggleProps> = ({ isCollapsed, toggleCollapsed })
           </button>
         }
       />
-      <TooltipContent className="border-[0.5px] border-components-panel-border system-xs-medium text-text-secondary">
-        {label}
-      </TooltipContent>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   )
 }

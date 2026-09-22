@@ -10,10 +10,10 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import RadioCard from '@/app/components/base/radio-card'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
@@ -126,7 +126,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 {t(($) => $['stepTwo.parentChunkForContext'], { ns: 'datasetCreation' })}
               </TextLabel>
             </div>
-            <Divider className="grow" bgStyle="gradient" />
+            <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
           </div>
           <RadioGroup<ParentMode>
             aria-label={t(($) => $['stepTwo.parentChunkForContext'], { ns: 'datasetCreation' })}
@@ -146,7 +146,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                     tooltip={t(($) => $['stepTwo.parentChildDelimiterTip'], {
                       ns: 'datasetCreation',
                     })!}
-                    onChange={(e) => onParentDelimiterChange(e.target.value)}
+                    onValueChange={onParentDelimiterChange}
                   />
                   <MaxLengthInput
                     unit="characters"
@@ -173,7 +173,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 {t(($) => $['stepTwo.childChunkForRetrieval'], { ns: 'datasetCreation' })}
               </TextLabel>
             </div>
-            <Divider className="grow" bgStyle="gradient" />
+            <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
           </div>
           <div className="mt-1 flex gap-3">
             <DelimiterInput
@@ -181,7 +181,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
               tooltip={t(($) => $['stepTwo.parentChildChunkDelimiterTip'], {
                 ns: 'datasetCreation',
               })!}
-              onChange={(e) => onChildDelimiterChange(e.target.value)}
+              onValueChange={onChildDelimiterChange}
             />
             <MaxLengthInput
               unit="characters"
@@ -197,7 +197,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
             <div className="inline-flex shrink-0">
               <TextLabel>{t(($) => $['stepTwo.rules'], { ns: 'datasetCreation' })}</TextLabel>
             </div>
-            <Divider className="grow" bgStyle="gradient" />
+            <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
           </div>
           <div className="mt-1">
             {rules.map((rule) => (

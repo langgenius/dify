@@ -1,5 +1,5 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import type { Locale } from '@/i18n-config/language'
+import type { Locale } from '@/i18n/locale'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'

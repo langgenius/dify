@@ -5,13 +5,13 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   navigateAfterWebAppLogin,
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
+import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import Link from '@/next/link'

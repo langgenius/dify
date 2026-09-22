@@ -6,8 +6,8 @@ import type {
   ToastManagerUpdateOptions,
   ToastObject,
 } from '@base-ui/react/toast'
+import type * as React from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
-import * as React from 'react'
 import { cn } from '../cn'
 import { iconButtonVariants } from '../icon-button/variants'
 
@@ -79,12 +79,22 @@ type ToastPromiseOptions<Value> = {
   error: ToastPromiseResultOption<unknown>
 }
 
-type ToastHostProps = {
-  timeout?: number
-  limit?: number
-  manager?: ToastManager
-  offset?: ToastHostOffset
+type ToastCardProps = {
+  toast: ToastObject<ToastData>
+  /** Additional content composed inside the card. */
+  children?: React.ReactNode
 }
+
+type ToastViewportProps = {
+  offset?: ToastHostOffset
+  children: React.ReactNode
+}
+
+const ToastProvider = BaseToast.Provider
+type ToastProviderProps = BaseToast.Provider.Props
+const ToastPortal = BaseToast.Portal
+type ToastPortalProps = BaseToast.Portal.Props
+const useToastManager = BaseToast.useToastManager
 
 type ToastHostOffset = Pick<React.CSSProperties, 'top' | 'right'>
 
@@ -161,9 +171,6 @@ function createToastManager(): ToastManager {
   return BaseToast.createToastManager<ToastData>()
 }
 
-const defaultToastManager = createToastManager()
-const toast = createToast(defaultToastManager)
-
 function ToastIcon({ type }: { type?: ToastRenderType }) {
   return type ? (
     <span aria-hidden="true" className={cn('h-5 w-5', TOAST_TONE_STYLES[type].iconClassName)} />
@@ -175,7 +182,7 @@ function getToneGradientClasses(type?: ToastRenderType) {
   return 'from-background-default-subtle to-background-gradient-mask-transparent'
 }
 
-function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
+function ToastCard({ toast: toastItem, children }: ToastCardProps) {
   const toastType = getToastRenderType(toastItem.type)
 
   return (
@@ -183,7 +190,7 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
       toast={toastItem}
       swipeDirection={['up', 'right']}
       className={cn(
-        'pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        'group/toast pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-expanded-offset-y:calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-gap)))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         'z-[calc(100-var(--toast-index))] h-(--toast-current-height)',
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
@@ -232,6 +239,7 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
               </div>
             )}
           </div>
+          {children}
           <div className="flex shrink-0 items-center justify-center rounded-md p-0.5">
             <BaseToast.Close
               aria-label={toastCloseLabel}
@@ -249,32 +257,33 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
   )
 }
 
-function ToastViewport({ offset }: { offset?: ToastHostOffset }) {
-  const { toasts } = BaseToast.useToastManager<ToastData>()
-
+function ToastViewport({ offset, children }: ToastViewportProps) {
   return (
     <BaseToast.Viewport
       aria-label={toastViewportLabel}
       className="group/toast-viewport pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8"
       style={offset}
     >
-      {toasts.map((toastItem) => (
-        <ToastCard key={toastItem.id} toast={toastItem} />
-      ))}
+      {children}
     </BaseToast.Viewport>
   )
 }
 
-function ToastHost({ timeout, limit, manager = defaultToastManager, offset }: ToastHostProps) {
-  return (
-    <BaseToast.Provider toastManager={manager} timeout={timeout} limit={limit}>
-      <BaseToast.Portal>
-        <ToastViewport offset={offset} />
-      </BaseToast.Portal>
-    </BaseToast.Provider>
-  )
+export {
+  createToast,
+  createToastManager,
+  ToastCard,
+  ToastPortal,
+  ToastProvider,
+  ToastViewport,
+  useToastManager,
 }
 
-export { createToast, createToastManager, toast, ToastHost }
-
-export type { ToastHostProps }
+export type {
+  ToastApi,
+  ToastCardProps,
+  ToastManager,
+  ToastPortalProps,
+  ToastProviderProps,
+  ToastViewportProps,
+}

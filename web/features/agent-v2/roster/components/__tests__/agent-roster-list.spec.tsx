@@ -1,9 +1,9 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentRosterListState } from '../agent-roster-list'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { AgentRosterList } from '../agent-roster-list'
 
@@ -383,27 +383,36 @@ describe('AgentRosterList', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('exports the Agent App DSL with the backing App id', async () => {
-    const user = userEvent.setup()
-    renderList([createAgent()])
+  it.each(['dropdown', 'context'])(
+    'exports the Agent App package from the %s menu with the backing App id',
+    async (menu) => {
+      const user = userEvent.setup()
+      renderList([createAgent()])
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
-    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+      if (menu === 'context')
+        await user.pointer({
+          target: screen.getByRole('link', { name: 'Research Agent' }),
+          keys: '[MouseRight]',
+        })
+      else await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+      await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
-    expect(exportAppDslMock).toHaveBeenCalledWith({
-      appId: 'app-1',
-      appName: 'Research Agent',
-    })
-  })
+      expect(exportAppDslMock).toHaveBeenCalledWith({
+        format: 'ifpkg',
+        appId: 'app-1',
+        appName: 'Research Agent',
+      })
+    },
+  )
 
-  it('disables export while an Agent App DSL export is pending', async () => {
+  it('disables export while an Agent App package export is pending', async () => {
     const user = userEvent.setup()
     exportAppDslState.isExporting = true
     renderList([createAgent()])
 
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
 
-    expect(screen.getByRole('menuitem', { name: 'app.export' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )

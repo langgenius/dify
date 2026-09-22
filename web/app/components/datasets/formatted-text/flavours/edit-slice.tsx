@@ -22,6 +22,7 @@ import { SliceContainer, SliceContent, SliceDivider, SliceLabel } from './shared
 type EditSliceProps = SliceProps<{
   label: ReactNode
   onDelete: () => void
+  deleteDisabled?: boolean
   labelClassName?: string
   labelInnerClassName?: string
   contentClassName?: string
@@ -36,6 +37,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
     className,
     text,
     onDelete,
+    deleteDisabled = false,
     labelClassName,
     labelInnerClassName,
     contentClassName,
@@ -58,7 +60,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
   const role = useRole(context)
   const { getReferenceProps, getFloatingProps } = useInteractions([hover, dismiss, role])
 
-  const isDestructive = delBtnShow && isDelBtnHover
+  const isDestructive = !deleteDisabled && delBtnShow && isDelBtnHover
 
   return (
     <>
@@ -86,7 +88,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
           <SliceDivider className={cn(isDestructive && 'bg-state-destructive-hover-alt!')} />
         )}
         {delBtnShow && (
-          <FloatingFocusManager context={context}>
+          <FloatingFocusManager context={context} disabled={deleteDisabled}>
             <span
               ref={refs.setFloating}
               style={floatingStyles}
@@ -99,7 +101,11 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
                 aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
                 variant="ghost"
                 tone="destructive"
-                className="rounded-lg bg-state-destructive-hover hover:bg-state-destructive-hover"
+                disabled={deleteDisabled}
+                className={cn(
+                  'rounded-lg',
+                  !deleteDisabled && 'bg-state-destructive-hover hover:bg-state-destructive-hover',
+                )}
                 onClick={(e) => {
                   e.stopPropagation()
                   onDelete()

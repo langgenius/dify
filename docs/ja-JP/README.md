@@ -141,7 +141,7 @@ Difyでは、あらゆる形の貢献を歓迎しています。
 
 - **コード**：[コントリビューションガイド](./CONTRIBUTING.md)を読み、[good first issue](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)を確認してください。
 - **アイデアとフィードバック**：[GitHub Discussions](https://github.com/langgenius/dify/discussions)で新しい議論を始めるか、既存の議論に参加してください。
-- **翻訳**：言語の追加や更新については、[国際化ガイド](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)に従ってください。
+- **翻訳**：言語の追加や更新については、[国際化ガイド](https://github.com/langgenius/dify/blob/main/web/i18n/README.md)に従ってください。
 - **コミュニティ**：作成したアプリを共有し、他のユーザーを支援し、Difyを広めてください。
 
 ### 貢献者

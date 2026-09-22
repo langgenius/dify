@@ -6,7 +6,7 @@ import type { DeploymentConfigurationQueryState } from './use-deployment-configu
 import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { CredentialsSection } from './credentials-section'
 import { DeploymentPrecheckAlert } from './deployment-precheck-alert'
 import { EnvironmentVariablesSection } from './environment-variables-section'
@@ -99,7 +99,7 @@ export function DeploymentConfigurationContent({
         aria-busy={isPrechecking || isLoadingDeploymentOptions}
         className="min-h-0 flex-1 overflow-y-auto"
       >
-        {isPrechecking && <Loading className="py-8" />}
+        {isPrechecking && <LoadingPlaceholder className="py-8" />}
         {!isPrechecking && precheckError && (
           <div className={cn('py-4', horizontalPaddingClassName)}>
             <ConfigurationError
@@ -114,7 +114,7 @@ export function DeploymentConfigurationContent({
             <DeploymentPrecheckAlert nodes={unsupportedNodes} />
           </div>
         )}
-        {isLoadingDeploymentOptions && <Loading className="py-8" />}
+        {isLoadingDeploymentOptions && <LoadingPlaceholder className="py-8" />}
         {!isLoadingDeploymentOptions && deploymentOptionsError && (
           <div className={cn('py-4', horizontalPaddingClassName)}>
             <ConfigurationError

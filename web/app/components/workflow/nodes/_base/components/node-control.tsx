@@ -4,7 +4,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -28,14 +27,16 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
   return (
     <div
       className={cn(
-        'invisible absolute -top-7 right-0 flex h-7 pb-1',
-        !pluginInstallLocked && 'group-hover:visible',
-        data.selected && 'visible',
-        'has-data-popup-open:visible',
+        'pointer-events-none absolute -top-8 right-0 flex h-8 origin-bottom-right pb-1 opacity-0',
+        'focus-within:pointer-events-auto focus-within:opacity-100',
+        !pluginInstallLocked && 'group-hover:pointer-events-auto group-hover:opacity-100',
+        data.selected && 'pointer-events-auto opacity-100',
+        'has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100',
       )}
+      style={{ scale: 'var(--workflow-control-scale, 1)' }}
     >
       <div
-        className="nodrag nopan nowheel flex h-6 items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg px-0.5 text-text-tertiary shadow-md backdrop-blur-[5px]"
+        className="nodrag nopan nowheel flex h-7 items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg px-0.5 text-text-tertiary shadow-md backdrop-blur-[5px]"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
@@ -47,7 +48,7 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
                 ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })
                 : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
             }
-            className={`flex size-5 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}
+            className={`flex size-6 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}
             onClick={() => {
               const action = isSingleRunning ? 'stop' : 'run'
 
@@ -61,7 +62,7 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
             }}
           >
             {isSingleRunning ? (
-              <Stop className="size-3" />
+              <span aria-hidden className="i-custom-vender-line-mediaanddevices-stop size-3" />
             ) : (
               <Tooltip>
                 <TooltipTrigger render={<span className="i-ri-play-large-line size-3" />} />
@@ -72,7 +73,7 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
             )}
           </button>
         )}
-        <NodeActionsDropdown id={id} data={data} triggerClassName="w-5! h-5!" />
+        <NodeActionsDropdown id={id} data={data} />
       </div>
     </div>
   )

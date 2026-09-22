@@ -63,14 +63,14 @@ export function ApiKeyTable({
               <td className="truncate px-3 py-2">
                 {formatTime(
                   Number(apiKey.created_at),
-                  t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                  t(($) => $['dateFormats.withSeconds'], { ns: 'time' }) as string,
                 )}
               </td>
               <td className="truncate px-3 py-2">
                 {apiKey.last_used_at
                   ? formatTime(
                       Number(apiKey.last_used_at),
-                      t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                      t(($) => $['dateFormats.withSeconds'], { ns: 'time' }) as string,
                     )
                   : t(($) => $.never, { ns: 'appApi' })}
               </td>

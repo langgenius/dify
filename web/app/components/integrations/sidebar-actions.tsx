@@ -30,8 +30,6 @@ type PermissionTooltipWrapperProps = {
   show: boolean
 }
 
-const permissionTooltipClassName = 'w-[112px] text-left'
-
 function PermissionTooltipWrapper({
   children,
   className,
@@ -51,7 +49,7 @@ function PermissionTooltipWrapper({
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />
-      <TooltipContent placement={placement} sideOffset={8} className={permissionTooltipClassName}>
+      <TooltipContent placement={placement} sideOffset={8}>
         {content}
       </TooltipContent>
     </Tooltip>

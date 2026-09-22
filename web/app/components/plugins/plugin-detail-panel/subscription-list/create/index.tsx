@@ -9,13 +9,13 @@ import {
   SelectItemIndicator,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Infotip } from '@/app/components/base/infotip'
+import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useInitiateTriggerOAuth,
@@ -94,6 +94,28 @@ export const CreateSubscriptionButton = ({
       [DEFAULT_METHOD]: t(($) => $['subscription.empty.button'], { ns: 'pluginTrigger' }),
     }
   }, [t])
+
+  const methodDescriptionMap = {
+    [SupportedCreationMethods.OAUTH]: t(
+      ($) => $['subscription.addType.options.oauth.description'],
+      {
+        ns: 'pluginTrigger',
+      },
+    ),
+    [SupportedCreationMethods.APIKEY]: t(
+      ($) => $['subscription.addType.options.apikey.description'],
+      {
+        ns: 'pluginTrigger',
+      },
+    ),
+    [SupportedCreationMethods.MANUAL]: t(
+      ($) => $['subscription.addType.options.manual.description'],
+      {
+        ns: 'pluginTrigger',
+      },
+    ),
+    [DEFAULT_METHOD]: '',
+  }
 
   const onClickClientSettings = useCallback(
     (e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
@@ -336,13 +358,7 @@ export const CreateSubscriptionButton = ({
               <TooltipContent>
                 {subscriptionCount >= MAX_COUNT
                   ? t(($) => $['subscription.maxCount'], { ns: 'pluginTrigger', num: MAX_COUNT })
-                  : t(
-                      ($) =>
-                        $[
-                          `subscription.addType.options.${methodType!.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`
-                        ],
-                      { ns: 'pluginTrigger' },
-                    )}
+                  : methodDescriptionMap[methodType!]}
               </TooltipContent>
             </Tooltip>
           )}

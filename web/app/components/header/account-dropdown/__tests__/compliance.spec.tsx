@@ -3,10 +3,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render as renderWithoutPricing, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { toast } from '@/app/notifications'
 import { getDocDownloadUrl } from '@/service/common'
 import { seedFeatures } from '@/test/console/query-data'
 import { downloadUrl } from '@/utils/download'

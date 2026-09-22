@@ -21,7 +21,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { AppModeEnum } from '@/types/app'
@@ -125,7 +125,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     setCurrentLog(undefined)
   }
 
-  if (!logs || !appDetail) return <Loading />
+  if (!logs || !appDetail) return <LoadingPlaceholder />
 
   return (
     <div className="overflow-x-auto">
@@ -141,7 +141,10 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
               <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              <th
+                aria-sort={sortOrder === 'asc' ? 'ascending' : 'descending'}
+                className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap"
+              >
                 <button
                   type="button"
                   className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
@@ -157,28 +160,28 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                     aria-hidden="true"
                   />
                 </button>
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.status'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.runtime'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.tokens'], { ns: 'appLog' })}
-              </td>
-              <td
+              </th>
+              <th
                 className={cn(
-                  'bg-background-section-burn py-1.5 pl-3 whitespace-nowrap',
+                  'bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap',
                   !isWorkflow ? 'rounded-r-lg' : '',
                 )}
               >
                 {t(($) => $['table.header.user'], { ns: 'appLog' })}
-              </td>
+              </th>
               {isWorkflow && (
-                <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                <th className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.triggered_from'], { ns: 'appLog' })}
-                </td>
+                </th>
               )}
             </tr>
           </thead>

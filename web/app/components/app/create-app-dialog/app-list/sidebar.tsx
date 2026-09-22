@@ -1,8 +1,8 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiStickyNoteAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 
 export enum AppCategories {
   RECOMMENDED = 'Recommended',
@@ -39,7 +39,7 @@ export default function Sidebar({ current, categories, onClick, onCreateFromBlan
           />
         ))}
       </ul>
-      <Divider bgStyle="gradient" />
+      <Separator className="my-2 h-[0.5px]" variant="gradient" />
       <button
         type="button"
         className="flex w-full cursor-pointer items-center gap-1 border-none bg-transparent px-3 py-1 text-left text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"

@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useWorkspacePermissions } from '@/service/use-workspace'
@@ -18,7 +18,7 @@ const InviteButton = (props: InviteButtonProps) => {
     useWorkspacePermissions(currentWorkspaceId, systemFeatures.branding.enabled)
   if (systemFeatures.branding.enabled) {
     if (isFetchingWorkspacePermissions) {
-      return <Loading />
+      return <LoadingPlaceholder />
     }
     if (!workspacePermissions || workspacePermissions.allow_member_invite !== true) {
       return null

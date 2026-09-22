@@ -25,7 +25,7 @@ const { mockToastError, mockIsPrivateOrLocalAddress } = vi.hoisted(() => ({
   mockIsPrivateOrLocalAddress: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },

@@ -6,11 +6,11 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
@@ -209,7 +209,7 @@ const ConfigContent: FC<Props> = ({
             <div className="mr-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
               {t(($) => $.rerankSettings, { ns: 'dataset' })}
             </div>
-            <Divider bgStyle="gradient" className="m-0 h-px!" />
+            <Separator decorative variant="gradient" className="m-0" />
           </div>
           {selectedDatasetsMode.inconsistentEmbeddingModel && (
             <div className="mt-4 system-xs-medium text-text-warning">

@@ -9,10 +9,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
+import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { DeleteAgentDialog } from '@/features/agent-v2/roster/components/delete-agent-dialog'
@@ -45,11 +46,12 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const handleExport = () => {
     if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
-      toast.error(tApp(($) => $.exportFailed))
+      toast.error(tApp(($) => $.exportAppFailed))
       return
     }
 
     return exportAppDsl({
+      format: 'ifpkg',
       appId: agent.app_id,
       appName: agent.name,
     })
@@ -67,12 +69,17 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
-          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
-        >
-          <span aria-hidden className="i-ri-more-fill size-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+          render={
+            <IconButton
+              aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
+              size="md"
+              className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+            >
+              <span aria-hidden className="i-ri-more-fill size-4" />
+            </IconButton>
+          }
+        />
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-max min-w-40">
           {capabilities.canEdit && (
             <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
@@ -94,7 +101,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
                 aria-hidden
                 className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
               />
-              <span>{tApp(($) => $.export)}</span>
+              <span>{tApp(($) => $.exportApp)}</span>
             </DropdownMenuItem>
           )}
           {capabilities.canDelete &&
