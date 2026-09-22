@@ -38,7 +38,7 @@ it('allows shortcut row composition and width constraints without restricting ot
   const diagnostics = lintFixture(`
     import { TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
     import { PopoverContent } from '@langgenius/dify-ui/popover'
-    import { Infotip } from '@/app/components/base/infotip'
+    import { InfotipContent } from '@langgenius/dify-ui/infotip'
     const examples = <>
       <TooltipContent className="flex items-center gap-1 max-w-60" />
       <TooltipContent className="w-58 max-w-65" />
@@ -46,7 +46,7 @@ it('allows shortcut row composition and width constraints without restricting ot
       <TooltipContent />
       <TooltipTrigger className="border-0 bg-transparent" />
       <PopoverContent className="shadow-none" />
-      <Infotip popupClassName="shadow-none" />
+      <InfotipContent className="shadow-none" />
       <div className="shadow-none" />
     </>
   `)

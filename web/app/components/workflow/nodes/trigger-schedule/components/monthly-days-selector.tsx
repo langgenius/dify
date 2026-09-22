@@ -1,7 +1,7 @@
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 
 type MonthlyDaysSelectorProps = {
   selectedDays: (number | 'last')[]
@@ -55,14 +55,21 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                   >
                     {t(($) => $['nodes.triggerSchedule.lastDay'], { ns: 'workflow' })}
                   </button>
-                  <Infotip
-                    aria-label={t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
-                      ns: 'workflow',
-                    })}
-                    className="mr-1 size-3"
-                    iconSize="small"
-                  >
-                    {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-label={t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
+                        ns: 'workflow',
+                      })}
+                      className="mr-1 size-3"
+                      iconSize="small"
+                    />
+                    <InfotipContent
+                      aria-label={t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
+                        ns: 'workflow',
+                      })}
+                    >
+                      {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
+                    </InfotipContent>
                   </Infotip>
                 </div>
               ) : (

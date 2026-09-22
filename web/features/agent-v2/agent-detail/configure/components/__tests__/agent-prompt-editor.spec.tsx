@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -213,10 +212,6 @@ vi.mock('lexical', () => ({
   $isTextNode: (node: { __text?: boolean } | null | undefined) => !!node?.__text,
   COMMAND_PRIORITY_LOW: 1,
   SELECTION_CHANGE_COMMAND: Symbol('selection-change-command'),
-}))
-
-vi.mock('@/app/components/base/infotip', () => ({
-  Infotip: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }))
 
 vi.mock('foxact/use-clipboard', () => ({

@@ -1,5 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   NumberField,
   NumberFieldControls,
@@ -19,7 +20,6 @@ import {
 import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
-import { Infotip } from '@/app/components/base/infotip'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import { ChunkStructureEnum, IndexMethodEnum } from '../types'
 import OptionCard from './option-card'
@@ -113,8 +113,11 @@ const IndexMethod = ({
                 >
                   {keywordNumberLabel}
                 </label>
-                <Infotip aria-label={keywordNumberLabel} className="ml-0.5 size-3.5">
-                  {keywordNumberLabel}
+                <Infotip>
+                  <InfotipTrigger aria-label={keywordNumberLabel} className="ml-0.5 size-3.5" />
+                  <InfotipContent aria-label={keywordNumberLabel}>
+                    {keywordNumberLabel}
+                  </InfotipContent>
                 </Infotip>
               </div>
               <Slider
