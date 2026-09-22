@@ -40,6 +40,8 @@ from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
 from tasks.clean_dataset_task import clean_dataset_task
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 # ============================================================================
 # Fixtures
 # ============================================================================

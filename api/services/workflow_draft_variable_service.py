@@ -43,11 +43,11 @@ from graphon.variables.utils import dumps_with_segments
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
-from models.enums import ConversationFromSource, DraftVariableType
+from models.enums import ConversationFromSource, CreatorUserRole, DraftVariableType
 from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
 from repositories.factory import DifyAPIRepositoryFactory
-from services.file_service import FileService
+from services.file_upload_service import FileUploadActor, FileUploadService
 from services.variable_truncator import VariableTruncator
 
 logger = logging.getLogger(__name__)
@@ -880,7 +880,9 @@ class DraftVariableSaver:
         node_execution_id: str,
         user: Account,
         enclosing_node_id: str | None = None,
-    ):
+        *,
+        file_uploads: FileUploadService,
+    ) -> None:
         # Important: `node_execution_id` parameter refers to the primary key (`id`) of the
         # WorkflowNodeExecutionModel/WorkflowNodeExecution, not their `node_execution_id`
         # field. These are distinct database fields with different purposes.
@@ -892,6 +894,7 @@ class DraftVariableSaver:
         self._node_execution_id = node_execution_id
         self._user = user
         self._enclosing_node_id = enclosing_node_id
+        self._file_uploads = file_uploads
 
     def _create_dummy_output_variable(self):
         return WorkflowDraftVariable.new_node_variable(
@@ -1088,16 +1091,12 @@ class DraftVariableSaver:
 
         original_size = len(original_content_serialized.encode("utf-8"))
 
-        bind = self._session.get_bind()
-        assert isinstance(bind, Engine)
-        file_srv = FileService(bind)
-
-        upload_file = file_srv.upload_file(
+        upload_file = self._file_uploads.upload_file_for_actor(
             filename=filename,
             content=original_content_serialized.encode(),
             mimetype=content_type,
-            user=self._user,
-            tenant_id=self._tenant_id,
+            actor=FileUploadActor(id=self._user.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=self._tenant_id,
         )
         # Create WorkflowDraftVariableFile record
         variable_file = WorkflowDraftVariableFile(
@@ -1110,7 +1109,7 @@ class DraftVariableSaver:
             user_id=self._user.id,
         )
         variable_file.id = str(uuidv7())
-        engine = bind = self._session.get_bind()
+        engine = self._session.get_bind()
         assert isinstance(engine, Engine)
         with sessionmaker(bind=engine, expire_on_commit=False).begin() as session:
             session.add(variable_file)

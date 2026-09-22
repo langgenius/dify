@@ -21,6 +21,7 @@ from graphon.file import File, FileUploadConfig
 from graphon.variables.input_entities import VariableEntityType
 from libs.orjson import orjson_dumps
 from models import Account, EndUser, Workflow, WorkflowRun
+from services.file_upload_service import FileUploadService
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ class _DebuggerDraftVariableSaver:
         self,
         *,
         account: Account,
+        file_uploads: FileUploadService,
         tenant_id: str,
         app_id: str,
         node_id: str,
@@ -47,6 +49,7 @@ class _DebuggerDraftVariableSaver:
         enclosing_node_id: str | None = None,
     ) -> None:
         self._account = account
+        self._file_uploads = file_uploads
         self._tenant_id = tenant_id
         self._app_id = app_id
         self._node_id = node_id
@@ -65,6 +68,7 @@ class _DebuggerDraftVariableSaver:
                 node_execution_id=self._node_execution_id,
                 enclosing_node_id=self._enclosing_node_id,
                 user=self._account,
+                file_uploads=self._file_uploads,
             ).save(process_data, outputs)
 
 
@@ -334,6 +338,7 @@ class BaseAppGenerator:
         account: Account | EndUser,
         *,
         tenant_id: str,
+        file_uploads: FileUploadService,
     ) -> DraftVariableSaverFactory:
         if invoke_from == InvokeFrom.DEBUGGER:
             assert isinstance(account, Account)
@@ -347,6 +352,7 @@ class BaseAppGenerator:
             ) -> DraftVariableSaver:
                 return _DebuggerDraftVariableSaver(
                     account=account,
+                    file_uploads=file_uploads,
                     tenant_id=tenant_id,
                     app_id=app_id,
                     node_id=node_id,

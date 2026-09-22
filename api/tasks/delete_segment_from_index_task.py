@@ -26,6 +26,8 @@ def delete_segment_from_index_task(
 
     Usage: delete_segment_from_index_task.delay(index_node_ids, dataset_id, document_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style("Start delete segment from index", fg="green"))
     start_at = time.perf_counter()
     with session_factory.create_session() as session:
@@ -50,7 +52,9 @@ def delete_segment_from_index_task(
 
             # Proceed with index cleanup using the index_node_ids directly
             # For actual deletion, we should delete summaries (not just disable them)
-            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+            index_processor = IndexProcessorFactory(
+                doc_form, file_uploads=application_services().file_uploads
+            ).init_index_processor()
             index_processor.clean(
                 dataset,
                 index_node_ids,

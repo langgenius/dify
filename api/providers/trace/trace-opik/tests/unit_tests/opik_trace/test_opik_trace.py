@@ -210,7 +210,7 @@ def test_workflow_trace_with_message_id(
     repo.get_by_workflow_execution.return_value = [node_llm, node_other]
 
     mock_factory = MagicMock()
-    mock_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_factory.create_workflow_node_execution_query.return_value = repo
     monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
 
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
@@ -219,6 +219,8 @@ def test_workflow_trace_with_message_id(
     trace_instance.add_span = MagicMock()
 
     trace_instance.workflow_trace(trace_info)
+
+    assert "file_uploads" not in mock_factory.create_workflow_node_execution_query.call_args.kwargs
 
     trace_instance.add_trace.assert_called_once()
     trace_data = trace_instance.add_trace.call_args[1].get("opik_trace_data", trace_instance.add_trace.call_args[0][0])
@@ -268,7 +270,7 @@ def test_workflow_trace_no_message_id(
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
     mock_factory = MagicMock()
-    mock_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_factory.create_workflow_node_execution_query.return_value = repo
     monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
@@ -695,7 +697,7 @@ def test_workflow_trace_usage_extraction_error_fixed(
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = [node]
     mock_factory = MagicMock()
-    mock_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_factory.create_workflow_node_execution_query.return_value = repo
     monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
     monkeypatch.setattr(
         "dify_trace_opik.opik_trace.db",

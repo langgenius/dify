@@ -12,6 +12,11 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.credit_usage import CreditUsageAppType
+from core.repositories.factory import (
+    WorkflowNodeExecutionQuery,
+    WorkflowNodeExecutionRepositories,
+    WorkflowNodeExecutionWriter,
+)
 from core.workflow.system_variables import default_system_variables
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.model import AppMode
@@ -76,7 +81,9 @@ def test_run_uses_single_node_execution_branch(
         workflow=workflow,
         system_user_id="system-user",
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     graph, variable_pool, graph_runtime_state = _make_graph_state()
@@ -193,7 +200,9 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
         workflow=workflow,
         system_user_id="system-user",
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     mock_workflow_entry = MagicMock()

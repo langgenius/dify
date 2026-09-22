@@ -21,6 +21,8 @@ def recover_document_indexing_task(dataset_id: str, document_id: str):
 
     Usage: recover_document_indexing_task.delay(dataset_id, document_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Recover document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
@@ -34,7 +36,7 @@ def recover_document_indexing_task(dataset_id: str, document_id: str):
             return
 
         try:
-            indexing_runner = IndexingRunner()
+            indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
             if document.indexing_status in {"waiting", "parsing", "cleaning"}:
                 indexing_runner.run([document], session)
             elif document.indexing_status == "splitting":

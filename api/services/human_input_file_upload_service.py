@@ -10,9 +10,10 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInput
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.account import Account
 from models.enums import CreatorUserRole
-from models.model import EndUser, UploadFile
+from models.model import EndUser
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from services.file_service import FileService
+from services.file_upload_service import FileUploadActor, FileUploadResult
 from services.human_input_service import FormExpiredError, FormNotFoundError, FormSubmittedError
 from services.remote_file_service import RemoteFileService, RemoteFileUploadResult
 
@@ -166,12 +167,18 @@ class HumanInputFileUploadService:
         filename: str,
         content: bytes,
         mimetype: str,
-    ) -> UploadFile:
+    ) -> FileUploadResult:
         upload_file = self._files.upload_file(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=context.owner,
+            user=FileUploadActor(
+                id=context.owner.id,
+                creator_role=CreatorUserRole.ACCOUNT
+                if isinstance(context.owner, Account)
+                else CreatorUserRole.END_USER,
+            ),
+            tenant_id=context.tenant_id,
             source=None,
         )
         self.record_upload_file(context=context, file_id=upload_file.id)

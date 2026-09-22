@@ -93,6 +93,8 @@ class WorkflowEventsApi(Resource):
     @service_api_ns.response(200, "SSE event stream", service_api_ns.models[EventStreamResponse.__name__])
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
     def get(self, app_model: App, end_user: EndUser, workflow_run_id: str):
+        from extensions.ext_application_services import application_services
+
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
             raise NotWorkflowAppError()
@@ -136,9 +138,9 @@ class WorkflowEventsApi(Resource):
             msg_generator = MessageGenerator()
             generator: BaseAppGenerator
             if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
+                generator = AdvancedChatAppGenerator(file_uploads=application_services().file_uploads)
             elif app_mode == AppMode.WORKFLOW:
-                generator = WorkflowAppGenerator()
+                generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
             else:
                 raise NotWorkflowAppError()
 

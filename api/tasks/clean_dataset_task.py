@@ -51,6 +51,8 @@ def clean_dataset_task(
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
     vector_cleanup_succeeded = False
@@ -93,7 +95,9 @@ def clean_dataset_task(
             # Add exception handling around IndexProcessorFactory.clean() to prevent single point of failure
             # This ensures Document/Segment deletion can continue even if vector database cleanup fails
             try:
-                index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+                index_processor = IndexProcessorFactory(
+                    doc_form, file_uploads=application_services().file_uploads
+                ).init_index_processor()
                 index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True, session=session)
                 vector_cleanup_succeeded = True
                 logger.info(click.style(f"Successfully cleaned vector database for dataset: {dataset_id}", fg="green"))

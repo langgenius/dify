@@ -146,7 +146,7 @@ class TestWorkflowTraceWithoutMessageId:
             patch("dify_trace_opik.opik_trace.db") as mock_db,
             patch("dify_trace_opik.opik_trace.sessionmaker"),
             patch(
-                "dify_trace_opik.opik_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                "dify_trace_opik.opik_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_query",
                 return_value=fake_repo,
             ),
         ):
@@ -279,7 +279,7 @@ class TestWorkflowTraceWithMessageId:
             patch("dify_trace_opik.opik_trace.db") as mock_db,
             patch("dify_trace_opik.opik_trace.sessionmaker"),
             patch(
-                "dify_trace_opik.opik_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                "dify_trace_opik.opik_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_query",
                 return_value=fake_repo,
             ),
         ):

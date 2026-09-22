@@ -110,6 +110,7 @@ def _execute_workflow_common(
     cfs_plan_scheduler_entity: AsyncWorkflowCFSPlanEntity,
 ):
     """Execute workflow with common logic and trigger log updates."""
+    from extensions.ext_application_services import application_services
 
     with session_factory.create_session() as session:
         trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
@@ -145,7 +146,7 @@ def _execute_workflow_common(
             user = _get_user(session, trigger_log)
 
             # Execute workflow using WorkflowAppGenerator
-            generator = WorkflowAppGenerator()
+            generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
 
             # Adapt trigger inputs and files for the generator.
             args = _build_generator_args(trigger_data)
@@ -196,6 +197,8 @@ def _execute_workflow_common(
 @shared_task(name="resume_workflow_execution")
 def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
     """Resume a paused workflow run via Celery."""
+    from extensions.ext_application_services import application_services
+
     task_data = WorkflowResumeTaskData.model_validate(task_data_dict)
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
@@ -245,12 +248,13 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowRunTriggeredFrom(workflow_run.triggered_from),
     )
-    workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+    workflow_node_execution_repositories = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        file_uploads=application_services().file_uploads,
     )
 
     pause_config = PauseStateLayerConfig(
@@ -258,7 +262,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         state_owner_user_id=workflow.created_by,
     )
 
-    generator = WorkflowAppGenerator()
+    generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
     start_time = datetime.now(UTC)
     graph_engine_layers = []
     trigger_log = _query_trigger_log_info(session_factory, task_data.workflow_run_id)
@@ -287,7 +291,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         application_generate_entity=generate_entity,
         graph_runtime_state=graph_runtime_state,
         workflow_execution_repository=workflow_execution_repository,
-        workflow_node_execution_repository=workflow_node_execution_repository,
+        workflow_node_execution_repositories=workflow_node_execution_repositories,
         graph_engine_layers=graph_engine_layers,
         pause_state_config=pause_config,
         response_stream_filter=response_stream_filter,

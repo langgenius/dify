@@ -27,6 +27,8 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
     Usage: document_indexing_sync_task.delay(dataset_id, document_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Start sync document: {document_id}", fg="green"))
     start_at = time.perf_counter()
     tenant_id = None
@@ -112,7 +114,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
     logger.info(click.style(f"Document {document_id} content changed, starting sync", fg="green"))
 
     try:
-        indexing_runner = IndexingRunner()
+        indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
         with session_factory.create_session() as session:
             document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             if not document:
@@ -124,7 +126,9 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             session.commit()
             if dataset:
                 try:
-                    index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                    index_processor = IndexProcessorFactory(
+                        index_type, file_uploads=application_services().file_uploads
+                    ).init_index_processor()
                     index_processor.clean(
                         dataset,
                         index_node_ids,

@@ -9,6 +9,8 @@ from events.event_handlers import create_document_index as handler_module
 from models.dataset import Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 @pytest.fixture
 def persisted_document(

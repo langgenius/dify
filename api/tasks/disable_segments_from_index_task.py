@@ -24,6 +24,8 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
 
     Usage: disable_segments_from_index_task.delay(segment_ids, dataset_id, document_id)
     """
+    from extensions.ext_application_services import application_services
+
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
@@ -41,7 +43,9 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
             logger.info(click.style(f"Document {document_id} status is invalid, pass.", fg="cyan"))
             return
         # sync index processor
-        index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
+        index_processor = IndexProcessorFactory(
+            dataset_document.doc_form, file_uploads=application_services().file_uploads
+        ).init_index_processor()
 
         segments = session.scalars(
             select(DocumentSegment).where(

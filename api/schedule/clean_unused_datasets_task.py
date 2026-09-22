@@ -25,6 +25,8 @@ class CleanupConfig(TypedDict):
 
 @app.celery.task(queue="dataset")
 def clean_unused_datasets_task():
+    from extensions.ext_application_services import application_services
+
     click.echo(click.style("Start clean unused datasets indexes.", fg="green"))
     start_at = time.perf_counter()
 
@@ -140,7 +142,8 @@ def clean_unused_datasets_task():
 
                                     # Remove index
                                     index_processor = IndexProcessorFactory(
-                                        dataset.get_doc_form(session=session)
+                                        dataset.get_doc_form(session=session),
+                                        file_uploads=application_services().file_uploads,
                                     ).init_index_processor()
                                     index_processor.clean(dataset, None, session=session)
 

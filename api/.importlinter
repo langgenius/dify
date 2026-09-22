@@ -31,6 +31,7 @@ ignore_imports =
     core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
     core.app.apps.advanced_chat.app_generator -> services.conversation_service
     core.app.apps.advanced_chat.app_generator -> services.errors.conversation
+    core.app.apps.advanced_chat.app_generator -> services.file_upload_service
     core.app.apps.advanced_chat.app_generator -> services.workflow_draft_variable_service
     core.app.apps.advanced_chat.app_runner -> services.conversation_variable_updater
     core.app.apps.agent_app.app_generator -> services.agent.composer_service
@@ -39,6 +40,7 @@ ignore_imports =
     core.app.apps.agent_app.runtime_request_builder -> services.agent.prompt_mentions
     core.app.apps.agent_app.session_store -> services.agent.workspace_service
     core.app.apps.agent_chat.app_generator -> services.conversation_service
+    core.app.apps.base_app_generator -> services.file_upload_service
     core.app.apps.base_app_generator -> services.workflow_draft_variable_service
     core.app.apps.chat.app_generator -> services.conversation_service
     core.app.apps.common.workflow_response_converter -> services.variable_truncator
@@ -51,9 +53,12 @@ ignore_imports =
     core.app.apps.pipeline.pipeline_generator -> services.dataset_service
     core.app.apps.pipeline.pipeline_generator -> services.datasource_provider_service
     core.app.apps.pipeline.pipeline_generator -> services.feature_service
+    core.app.apps.pipeline.pipeline_generator -> services.file_service
+    core.app.apps.pipeline.pipeline_generator -> services.file_upload_service
     core.app.apps.pipeline.pipeline_generator -> services.workflow_draft_variable_service
     core.app.apps.pipeline.pipeline_runner -> services.dataset_ref_service
     core.app.apps.workflow.app_generator -> controllers.console.app.workflow
+    core.app.apps.workflow.app_generator -> services.file_upload_service
     core.app.apps.workflow.app_generator -> services.snippet_generate_service
     core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
     core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
@@ -66,14 +71,17 @@ ignore_imports =
     core.datasource.datasource_manager -> services.datasource_provider_service
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
+    core.indexing_runner -> services.file_upload_service
     core.indexing_runner -> services.vector_space_admission_service
     core.mcp.auth_client -> services
     core.provider_manager -> services.credential_permission_service
     core.provider_manager -> services.credit_pool_service
     core.provider_manager -> services.feature_service
     core.rag.datasource.retrieval_service -> services.external_knowledge_service
+    core.rag.index_processor.index_processor -> services.file_upload_service
     core.rag.index_processor.index_processor -> services.vector_space_admission_service
-    core.rag.index_processor.index_processor_base -> services.file_service
+    core.rag.index_processor.index_processor_base -> services.file_upload_service
+    core.rag.index_processor.index_processor_factory -> services.file_upload_service
     core.rag.index_processor.processor.paragraph_index_processor -> services.account_service
     core.rag.index_processor.processor.paragraph_index_processor -> services.summary_index_service
     core.rag.index_processor.processor.parent_child_index_processor -> services.account_service
@@ -83,9 +91,13 @@ ignore_imports =
     core.rag.retrieval.dataset_retrieval -> services.feature_service
     core.rag.summary_index.summary_index -> services.summary_index_service
     core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
-    core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
-    core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
+    core.repositories.celery_workflow_node_execution_write_repository -> services.file_upload_service
+    core.repositories.factory -> services.file_upload_service
+    core.repositories.sqlalchemy_workflow_node_execution_write_repository -> services.file_upload_service
+    core.repositories.sqlalchemy_workflow_node_execution_write_repository -> services.variable_truncator
+    extensions.logstore.repositories.logstore_workflow_node_execution_write_repository -> services.file_upload_service
     core.tools.tool_manager -> services
+    core.workflow.node_factory -> extensions.ext_application_services
     core.workflow.node_runtime -> services
     core.workflow.nodes.agent.message_transformer -> services
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
@@ -97,6 +109,7 @@ ignore_imports =
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.validators -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.workspace_retirement_layer -> tasks.collect_agent_resources_task
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> services.file_upload_service
     libs.device_flow_security -> controllers.openapi._models
     libs.device_flow_security -> services.entities.feature_entities
     libs.device_flow_security -> services.system_feature_service
@@ -664,3 +677,20 @@ forbidden_modules =
     services.audio_service
     sqlalchemy
     werkzeug
+
+[importlinter:contract:file-upload-boundary]
+name = Shared file operations do not depend on transport or persistence implementations
+type = forbidden
+source_modules =
+    services.file_upload_service
+    services.file_service
+forbidden_modules =
+    controllers
+    extensions
+    factories
+    repositories
+    flask
+    sqlalchemy
+    werkzeug
+    models.model
+    models.account

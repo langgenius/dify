@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetAutoDisableLog, Document, DocumentSegment
@@ -180,7 +181,7 @@ class TestAddDocumentToIndexTask:
         # Assert: Verify the expected outcomes
         # Verify index processor was called correctly
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            IndexStructureType.PARAGRAPH_INDEX
+            IndexStructureType.PARAGRAPH_INDEX, file_uploads=application_services().file_uploads
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -231,7 +232,7 @@ class TestAddDocumentToIndexTask:
 
         # Assert: Verify different index type handling
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            IndexStructureType.QA_INDEX
+            IndexStructureType.QA_INDEX, file_uploads=application_services().file_uploads
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -402,7 +403,7 @@ class TestAddDocumentToIndexTask:
 
             # Assert: Verify parent-child index processing
             mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-                IndexStructureType.PARENT_CHILD_INDEX
+                IndexStructureType.PARENT_CHILD_INDEX, file_uploads=application_services().file_uploads
             )
             mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -477,7 +478,7 @@ class TestAddDocumentToIndexTask:
 
         # Assert: Verify index processing occurred but with empty documents list
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            IndexStructureType.PARAGRAPH_INDEX
+            IndexStructureType.PARAGRAPH_INDEX, file_uploads=application_services().file_uploads
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -545,7 +546,7 @@ class TestAddDocumentToIndexTask:
 
         # Verify index processing occurred normally
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            IndexStructureType.PARAGRAPH_INDEX
+            IndexStructureType.PARAGRAPH_INDEX, file_uploads=application_services().file_uploads
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -710,7 +711,7 @@ class TestAddDocumentToIndexTask:
 
         # Assert: Verify only eligible segments were processed
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            IndexStructureType.PARAGRAPH_INDEX
+            IndexStructureType.PARAGRAPH_INDEX, file_uploads=application_services().file_uploads
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 

@@ -22,6 +22,8 @@ def remove_document_from_index_task(document_id: str):
 
     Usage: remove_document_from_index.delay(document_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Start remove document segments from index: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
@@ -43,7 +45,9 @@ def remove_document_from_index_task(document_id: str):
             if not dataset:
                 raise Exception("Document has no dataset")
 
-            index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
+            index_processor = IndexProcessorFactory(
+                document.doc_form, file_uploads=application_services().file_uploads
+            ).init_index_processor()
 
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all()
 

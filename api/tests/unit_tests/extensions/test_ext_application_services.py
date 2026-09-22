@@ -34,11 +34,11 @@ from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.file_repository import SQLAlchemyFileRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services import account_forgot_password_service, audio_provider_gateway, recommended_app_catalog_gateway
@@ -77,6 +77,7 @@ from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
+from services.file_grant_gateways import FileGrantFileGateway
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
@@ -244,7 +245,8 @@ def test_build_application_services_reuses_file_service(
     )
 
     assert isinstance(services.files, FileService)
-    assert services.files._session_maker is sqlite_session_factory
+    assert isinstance(services.files._files, SQLAlchemyFileRepository)
+    assert services.files._files._session_factory is sqlite_session_factory
     assert services.web_app_runtime._file_service is services.files
 
 
@@ -305,8 +307,10 @@ def test_build_application_services_wires_upload_file_delivery(
     )
 
     assert isinstance(services.upload_file_delivery, UploadFileDeliveryService)
-    assert isinstance(services.upload_file_delivery._files, UploadFileDeliveryQueryRepository)
+    assert isinstance(services.upload_file_delivery._files, SQLAlchemyFileRepository)
     assert services.upload_file_delivery._files._session_factory is sqlite_session_factory
+    assert services.upload_file_delivery._files is services.files._files
+    assert services.upload_file_delivery._files is services.file_uploads._uploads
     assert services.upload_file_delivery._storage is ext_application_services.storage
 
 
@@ -332,7 +336,7 @@ def test_build_application_services_wires_workflow_run_archives(
     assert workflow_run_archives._sign_download_url is ext_application_services.sign_workflow_run_archive_download_url
 
 
-def test_build_application_services_wires_human_input_file_uploads(
+def test_build_application_services_wires_shared_file_services(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     services = ext_application_services.build_application_services(
@@ -348,7 +352,12 @@ def test_build_application_services_wires_human_input_file_uploads(
     assert human_input_file_uploads._uploads._session_factory is sqlite_session_factory
     assert human_input_file_uploads._remote_files is services.remote_files
     assert human_input_file_uploads._files is services.files
-    assert services.remote_files._files is services.files
+    assert services.remote_files._files is services.file_uploads
+    assert services.files._uploads is services.file_uploads
+    assert isinstance(services.file_grants._files, FileGrantFileGateway)
+    assert services.file_grants._files._file_service is services.files
+    assert isinstance(services.file_uploads._uploads, SQLAlchemyFileRepository)
+    assert services.file_uploads._uploads._session_factory is sqlite_session_factory
 
 
 def test_build_application_services_wires_app_site_boundary(

@@ -39,6 +39,8 @@ class WorkflowEventsApi(WebApiResource):
 
         Returns Server-Sent Events stream.
         """
+        from extensions.ext_application_services import application_services
+
         workflow_run_id = task_id
         session_maker = sessionmaker(db.engine)
         repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
@@ -79,9 +81,9 @@ class WorkflowEventsApi(WebApiResource):
             generator: BaseAppGenerator
             match app_mode:
                 case AppMode.ADVANCED_CHAT:
-                    generator = AdvancedChatAppGenerator()
+                    generator = AdvancedChatAppGenerator(file_uploads=application_services().file_uploads)
                 case AppMode.WORKFLOW:
-                    generator = WorkflowAppGenerator()
+                    generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
                 case _:
                     raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 

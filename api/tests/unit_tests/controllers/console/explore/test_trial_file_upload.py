@@ -22,19 +22,22 @@ import controllers.console.files as files_module
 import controllers.console.remote_files as remote_module
 import controllers.console.wraps as console_wraps
 import libs.login as login_module
-import services.file_service as file_module
+import services.file_upload_service as file_upload_module
+from configs import dify_config
 from core.file import remote_fetcher
 from core.tools.errors import ToolSSRFError
 from enums import DeploymentEdition
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
+from graphon.file import helpers as file_helpers
 from libs.external_api import ExternalApi
 from models import Account, AccountTrialAppRecord, App, AppMode, Tenant, TrialApp, UploadFile
 from models.account import TenantAccountRole
 from models.enums import CreatorUserRole
+from repositories.file_repository import SQLAlchemyFileRepository
 from repositories.trial_app_repository import TrialAppRepository
 from services.entities.feature_entities import FeatureModel
 from services.feature_service import FeatureService
-from services.file_service import FileService
+from services.file_upload_service import FileUploadService
 from services.remote_file_service import RemoteFileService
 from services.trial_app_access_service import TrialAppAccessService
 
@@ -89,7 +92,7 @@ class _ExternalIO:
 class _ApplicationServices:
     trial_app_access: TrialAppAccessService
     recommended_app_queries: _Features
-    files: FileService
+    file_uploads: FileUploadService
     remote_files: RemoteFileService
 
 
@@ -160,12 +163,17 @@ def harness(
         sessions.append(session)
 
     io = _ExternalIO(sessions)
-    files = FileService(session_factory=sqlite_session_factory)
+    uploads = FileUploadService(
+        uploads=SQLAlchemyFileRepository(session_factory=sqlite_session_factory),
+        storage=io,
+        storage_type=dify_config.STORAGE_TYPE,
+        sign_file_url=file_helpers.get_signed_file_url,
+    )
     services = _ApplicationServices(
         trial_app_access=TrialAppAccessService(apps=TrialAppRepository(session_factory=repository_factory)),
         recommended_app_queries=features,
-        files=files,
-        remote_files=RemoteFileService(files=files),
+        file_uploads=uploads,
+        remote_files=RemoteFileService(files=uploads),
     )
 
     def setup_completed() -> bool:
@@ -181,8 +189,7 @@ def harness(
     monkeypatch.setattr(console_wraps, "_is_setup_completed", setup_completed)
     monkeypatch.setattr(login_module, "current_user", account)
     monkeypatch.setattr(login_module, "check_csrf_token", csrf)
-    monkeypatch.setattr(file_module.storage, "save", io.save)
-    monkeypatch.setattr(file_module, "naive_utc_now", lambda: _CREATED_AT)
+    monkeypatch.setattr(file_upload_module, "naive_utc_now", lambda: _CREATED_AT)
     monkeypatch.setattr(remote_fetcher, "make_request", io.request)
 
     app = Flask(__name__)

@@ -56,6 +56,8 @@ from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 @pytest.fixture(autouse=True)
 def dataset_model_property_defaults():

@@ -28,6 +28,7 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
+from services.file_upload_service import FileUploadService
 
 
 @pytest.fixture
@@ -585,7 +586,10 @@ class TestDifyNodeFactoryCreateNode:
             (BuiltinNodeTypes.DOCUMENT_EXTRACTOR, "DocumentExtractorNode"),
         ],
     )
-    def test_creates_specialized_nodes(self, monkeypatch: pytest.MonkeyPatch, factory, node_type, constructor_name):
+    @pytest.mark.usefixtures("file_upload_services")
+    def test_creates_specialized_nodes(
+        self, monkeypatch: pytest.MonkeyPatch, factory, node_type, constructor_name, file_uploads: FileUploadService
+    ) -> None:
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
         constructor._mock_name = constructor_name
@@ -628,6 +632,8 @@ class TestDifyNodeFactoryCreateNode:
             assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
             assert kwargs["runtime"] is sentinel.tool_runtime
             factory._bound_tool_file_manager_factory.assert_called_once_with()
+        elif constructor_name == "KnowledgeIndexNode":
+            assert kwargs["file_uploads"] is file_uploads
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.remote_file_http_client

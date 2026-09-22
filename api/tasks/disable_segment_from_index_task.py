@@ -22,6 +22,8 @@ def disable_segment_from_index_task(segment_id: str):
 
     Usage: disable_segment_from_index_task.delay(segment_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Start disable segment from index: {segment_id}", fg="green"))
     start_at = time.perf_counter()
 
@@ -59,7 +61,9 @@ def disable_segment_from_index_task(segment_id: str):
                 return
 
             index_type = dataset_document.doc_form
-            index_processor = IndexProcessorFactory(index_type).init_index_processor()
+            index_processor = IndexProcessorFactory(
+                index_type, file_uploads=application_services().file_uploads
+            ).init_index_processor()
             assert segment.index_node_id
             index_processor.clean(dataset, [segment.index_node_id], session=session)
             session.commit()

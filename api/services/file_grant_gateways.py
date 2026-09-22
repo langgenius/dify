@@ -16,6 +16,7 @@ from core.file import remote_fetcher
 from core.helper import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from extensions.ext_storage import Storage
+from models.enums import CreatorUserRole
 from models.model import EndUser
 from services.entities.file_grant_entities import (
     FileContent,
@@ -32,6 +33,7 @@ from services.entities.file_grant_entities import (
 from services.errors.file import FileTooLargeError
 from services.errors.file_grant import EndUserNotFoundError
 from services.file_service import FileService
+from services.file_upload_service import FileUploadActor
 
 FILE_GRANT_AUDIENCE = "dify-files"
 FILE_CONTENT_AUDIENCE = "dify-files-content"
@@ -192,7 +194,8 @@ class FileGrantFileGateway:
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=end_user,
+            user=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+            tenant_id=context.tenant_id,
             source_url=source_url,
         )
         return StoredUpload(

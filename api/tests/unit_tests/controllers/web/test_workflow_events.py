@@ -16,6 +16,8 @@ from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
 from tests.unit_tests.model_factories import make_end_user
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 def _workflow_app() -> App:
     return App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
@@ -148,7 +150,9 @@ class TestWorkflowEventsApi:
         workflow_generator = Mock()
         workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
         snapshot_builder = Mock(return_value=["snapshot-events"])
-        monkeypatch.setattr("controllers.web.workflow_events.WorkflowAppGenerator", lambda: workflow_generator)
+        monkeypatch.setattr(
+            "controllers.web.workflow_events.WorkflowAppGenerator", Mock(return_value=workflow_generator)
+        )
         monkeypatch.setattr("controllers.web.workflow_events.build_workflow_event_stream", snapshot_builder)
 
         with app.test_request_context("/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true"):

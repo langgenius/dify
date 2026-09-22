@@ -20,11 +20,11 @@ import json
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine, event
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -1014,12 +1014,9 @@ class SQLiteControllerTest:
     session: Session
 
     @pytest.fixture(autouse=True)
-    def _use_sqlite_session(self, sqlite_session: Session, sqlite_engine: Engine) -> Iterator[None]:
+    def _use_sqlite_session(self, sqlite_session: Session) -> Iterator[None]:
         self.session = sqlite_session
-        with (
-            patch.object(type(document_module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
-            patch.object(document_module, "current_user", _account()),
-        ):
+        with patch.object(document_module, "current_user", _account()):
             yield
 
     def _persist_dataset(self, dataset: Dataset) -> None:
@@ -1604,14 +1601,14 @@ class TestDocumentAddByTextApi(SQLiteControllerTest):
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.KnowledgeConfig")
-    @patch("controllers.service_api.dataset.document.FileService")
+    @patch("controllers.service_api.dataset.document.application_services")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_create_document_by_text_success(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_file_svc_cls,
+        mock_application_services,
         mock_knowledge_config,
         mock_doc_svc,
         app: Flask,
@@ -1627,7 +1624,7 @@ class TestDocumentAddByTextApi(SQLiteControllerTest):
         mock_upload_file = _upload_file()
         mock_file_svc = Mock()
         mock_file_svc.upload_text.return_value = mock_upload_file
-        mock_file_svc_cls.return_value = mock_file_svc
+        mock_application_services.return_value.files = mock_file_svc
 
         mock_config = Mock()
         mock_knowledge_config.model_validate.return_value = mock_config
@@ -1783,14 +1780,14 @@ class TestDocumentUpdateByTextApiPost(SQLiteControllerTest):
     """
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    @patch("controllers.service_api.dataset.document.FileService")
+    @patch("controllers.service_api.dataset.document.application_services")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_update_by_text_success(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_file_svc_cls,
+        mock_application_services,
         mock_doc_svc,
         app: Flask,
         mock_tenant,
@@ -1803,7 +1800,7 @@ class TestDocumentUpdateByTextApiPost(SQLiteControllerTest):
         self._persist_dataset(mock_dataset)
 
         mock_upload = _upload_file()
-        mock_file_svc_cls.return_value.upload_text.return_value = mock_upload
+        mock_application_services.return_value.files.upload_text.return_value = mock_upload
 
         mock_document = make_serializable_document(id="doc-update-text", name="Updated Doc")
         mock_doc_svc.document_create_args_validate.return_value = None
@@ -1869,14 +1866,14 @@ class TestDocumentAddByFileApiPost(SQLiteControllerTest):
     """
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    @patch("controllers.service_api.dataset.document.FileService")
+    @patch("controllers.service_api.dataset.document.application_services")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_add_by_file_success_serializes_document_and_batch_shape(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_file_svc_cls,
+        mock_application_services,
         mock_doc_svc,
         app: Flask,
         mock_tenant,
@@ -1890,7 +1887,7 @@ class TestDocumentAddByFileApiPost(SQLiteControllerTest):
         self._persist_dataset(mock_dataset)
 
         mock_upload = _upload_file()
-        mock_file_svc_cls.return_value.upload_file.return_value = mock_upload
+        mock_application_services.return_value.files.upload_file.return_value = mock_upload
 
         mock_document = make_serializable_document(id="doc-create-file", name="File Document")
         mock_doc_svc.document_create_args_validate.return_value = None
@@ -1923,10 +1920,10 @@ class TestDocumentAddByFileApiPost(SQLiteControllerTest):
         "controllers.service_api.dataset.document.FeatureService.get_knowledge_file_size_limit",
         return_value=15,
     )
-    @patch("controllers.service_api.dataset.document.FileService")
+    @patch("controllers.service_api.dataset.document.application_services")
     def test_add_by_file_too_large_returns_http_413(
         self,
-        mock_file_svc_cls,
+        mock_application_services,
         mock_get_limit,
         app: Flask,
         mock_tenant,
@@ -1936,7 +1933,7 @@ class TestDocumentAddByFileApiPost(SQLiteControllerTest):
         mock_dataset.indexing_technique = "economy"
         mock_dataset.chunk_structure = None
         self._persist_dataset(mock_dataset)
-        mock_file_svc_cls.return_value.upload_file.side_effect = FileTooLargeServiceError()
+        mock_application_services.return_value.files.upload_file.side_effect = FileTooLargeServiceError()
 
         from io import BytesIO
 
@@ -2213,14 +2210,14 @@ class TestDocumentUpdateByFileApiPatch(SQLiteControllerTest):
                 )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    @patch("controllers.service_api.dataset.document.FileService")
+    @patch("controllers.service_api.dataset.document.application_services")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_update_by_file_success(
         self,
         mock_validate_token,
         mock_feature_svc,
-        mock_file_svc_cls,
+        mock_application_services,
         mock_doc_svc,
         app: Flask,
         mock_tenant,
@@ -2234,7 +2231,7 @@ class TestDocumentUpdateByFileApiPatch(SQLiteControllerTest):
         self._persist_dataset(mock_dataset)
 
         mock_upload = _upload_file()
-        mock_file_svc_cls.return_value.upload_file.return_value = mock_upload
+        mock_application_services.return_value.files.upload_file.return_value = mock_upload
 
         mock_document = make_serializable_document(id="doc-update-file", name="File Document", batch="batch-1")
         mock_doc_svc.document_create_args_validate.return_value = None

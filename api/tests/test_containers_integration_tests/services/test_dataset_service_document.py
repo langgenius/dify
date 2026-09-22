@@ -286,7 +286,7 @@ def test_get_upload_file_for_upload_file_document_raises_when_file_service_retur
         data_source_info={"upload_file_id": "missing-file"},
     )
 
-    with patch("services.dataset_service.FileService.get_upload_files_by_ids", return_value={}):
+    with patch("services.dataset_service.SQLAlchemyFileRepository.get_upload_files_by_ids", return_value={}):
         with pytest.raises(NotFound, match="Uploaded file not found"):
             DocumentService._get_upload_file_for_upload_file_document(document, session=db_session_with_containers)
 

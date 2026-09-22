@@ -20,6 +20,8 @@ from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, I
 from models.model import UploadFile
 from tasks.document_indexing_update_task import document_indexing_update_task
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 @pytest.fixture
 def task_harness(

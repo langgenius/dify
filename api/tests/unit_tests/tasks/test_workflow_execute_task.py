@@ -16,6 +16,11 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.repositories.factory import (
+    WorkflowNodeExecutionQuery,
+    WorkflowNodeExecutionRepositories,
+    WorkflowNodeExecutionWriter,
+)
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
@@ -32,6 +37,8 @@ from tasks.app_generate.workflow_execute_task import (
     _resume_app_execution,
     _resume_workflow,
 )
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 class _StreamEventModel(BaseModel):
@@ -1038,7 +1045,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.AdvancedChatAppGenerator",
-        lambda: generator_instance,
+        lambda *, file_uploads: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
@@ -1049,9 +1056,13 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
         "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_execution_repository",
         lambda **kwargs: MagicMock(),
     )
+    node_repositories = WorkflowNodeExecutionRepositories(
+        writer=MagicMock(spec=WorkflowNodeExecutionWriter),
+        query=MagicMock(spec=WorkflowNodeExecutionQuery),
+    )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
-        lambda **kwargs: MagicMock(),
+        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repositories",
+        lambda **kwargs: node_repositories,
     )
     _resume_advanced_chat(
         app_model=_make_app(),
@@ -1069,6 +1080,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
         session=sqlite_session,
     )
 
+    assert generator_instance.resume.call_args.kwargs["workflow_node_execution_repositories"] is node_repositories
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
     assert generator_instance.resume.call_args.kwargs["session"] is sqlite_session
@@ -1094,7 +1106,7 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.WorkflowAppGenerator",
-        lambda: generator_instance,
+        lambda *, file_uploads: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
@@ -1105,9 +1117,13 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(
         "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_execution_repository",
         lambda **kwargs: MagicMock(),
     )
+    node_repositories = WorkflowNodeExecutionRepositories(
+        writer=MagicMock(spec=WorkflowNodeExecutionWriter),
+        query=MagicMock(spec=WorkflowNodeExecutionQuery),
+    )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
-        lambda **kwargs: MagicMock(),
+        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repositories",
+        lambda **kwargs: node_repositories,
     )
     workflow_run_repo = MagicMock()
     pause_entity = MagicMock()
@@ -1127,6 +1143,7 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(
         pause_entity=pause_entity,
     )
 
+    assert generator_instance.resume.call_args.kwargs["workflow_node_execution_repositories"] is node_repositories
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
     publish_streaming_response.assert_called_once_with(
@@ -1152,7 +1169,7 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.WorkflowAppGenerator",
-        lambda: generator_instance,
+        lambda *, file_uploads: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
@@ -1163,9 +1180,13 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
         "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_execution_repository",
         lambda **kwargs: MagicMock(),
     )
+    node_repositories = WorkflowNodeExecutionRepositories(
+        writer=MagicMock(spec=WorkflowNodeExecutionWriter),
+        query=MagicMock(spec=WorkflowNodeExecutionQuery),
+    )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
-        lambda **kwargs: MagicMock(),
+        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repositories",
+        lambda **kwargs: node_repositories,
     )
     workflow_run_repo = MagicMock()
     workflow_run_repo.delete_workflow_pause.side_effect = _WorkflowRunError("WorkflowPause not found: old-pause")
@@ -1186,6 +1207,7 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
         pause_entity=pause_entity,
     )
 
+    assert generator_instance.resume.call_args.kwargs["workflow_node_execution_repositories"] is node_repositories
     publish_streaming_response.assert_called_once_with(
         response_stream,
         "workflow-run-id",

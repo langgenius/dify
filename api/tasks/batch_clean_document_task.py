@@ -37,6 +37,8 @@ def batch_clean_document_task(
 
     Usage: batch_clean_document_task.delay(document_ids, dataset_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style("Start batch clean documents when documents deleted", fg="green"))
     start_at = time.perf_counter()
     if not doc_form:
@@ -97,7 +99,9 @@ def batch_clean_document_task(
                     if not dataset:
                         logger.warning("Dataset not found for vector index cleanup, dataset_id: %s", dataset_id)
                     else:
-                        index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+                        index_processor = IndexProcessorFactory(
+                            doc_form, file_uploads=application_services().file_uploads
+                        ).init_index_processor()
                         index_processor.clean(
                             dataset,
                             index_node_ids,

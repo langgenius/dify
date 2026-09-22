@@ -16,6 +16,8 @@ from models.model import App, AppMode, AppModelConfig, EndUser
 from models.workflow import Workflow
 from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 class _Chunk(BaseModel):
     value: int

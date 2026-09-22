@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -17,11 +18,13 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.web.files import FileApi
+from extensions.storage.storage_type import StorageType
 from libs.exception import BaseHTTPException
 from models.enums import CreatorUserRole
-from models.model import App, AppMode, EndUser, UploadFile
+from models.model import App, AppMode, EndUser
 from services.errors import file as file_errors
-from tests.unit_tests.model_factories import make_end_user, make_upload_file
+from services.file_upload_service import FileUploadActor, FileUploadResult
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _app_model() -> App:
@@ -41,13 +44,24 @@ def _end_user() -> EndUser:
     return make_end_user(end_user_id="eu-1", app_id="app-1")
 
 
-def _upload_file() -> UploadFile:
-    return make_upload_file(
-        file_id="file-1",
+def _upload_file() -> FileUploadResult:
+    return FileUploadResult(
+        id="file-1",
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
         key="upload/test.txt",
+        name="test.txt",
         size=100,
+        extension="txt",
+        mime_type="text/plain",
         created_by_role=CreatorUserRole.END_USER,
         created_by="eu-1",
+        created_at=datetime(2024, 1, 1),
+        used=False,
+        used_by=None,
+        used_at=None,
+        hash=None,
+        source_url="",
     )
 
 
@@ -110,7 +124,8 @@ class TestFileApi:
             filename="test.txt",
             content=b"content",
             mimetype="text/plain",
-            user=end_user,
+            user=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+            tenant_id=end_user.tenant_id,
             source=expected_source,
         )
 

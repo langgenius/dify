@@ -41,6 +41,7 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.dataset_fields import (
     DatasetDetailResponse,
@@ -991,7 +992,7 @@ class DatasetIndexingEstimateApi(Resource):
                     extract_settings.append(extract_setting)
             case _:
                 raise ValueError("Data source type not support")
-        indexing_runner = IndexingRunner()
+        indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
         try:
             response = indexing_runner.indexing_estimate(
                 tenant_id=current_tenant_id,

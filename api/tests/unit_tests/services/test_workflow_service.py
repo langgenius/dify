@@ -23,6 +23,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.repositories.factory import WorkflowNodeExecutionQuery, WorkflowNodeExecutionRepositories
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
 from graphon.enums import (
@@ -65,6 +66,8 @@ from services.workflow_service import (
     _rebuild_single_file,
     _setup_variable_pool,
 )
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 class TestWorkflowAssociatedDataFactory:
@@ -3298,7 +3301,12 @@ class TestWorkflowServiceDraftExecution:
             mock_run.return_value = (mock_node, [mock_event])
 
             mock_repo = MagicMock()
-            mock_repo_factory.create_workflow_node_execution_repository.return_value = mock_repo
+            mock_repo_factory.create_workflow_node_execution_repositories.return_value = (
+                WorkflowNodeExecutionRepositories(
+                    writer=mock_repo,
+                    query=MagicMock(spec=WorkflowNodeExecutionQuery),
+                )
+            )
 
             service._node_execution_service_repo = MagicMock()
             mock_execution_record = MagicMock()

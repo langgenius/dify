@@ -18,6 +18,7 @@ from models import Account, Workflow
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation
 from services.errors.conversation import ConversationNotExistsError
+from services.file_upload_service import FileUploadService
 
 
 def _make_app_config() -> WorkflowUIBasedAppConfig:
@@ -86,7 +87,7 @@ def test_init_generate_records_sets_conversation_metadata(sqlite_session: Sessio
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 
-    generator = AdvancedChatAppGenerator()
+    generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
 
     conversation, _ = generator._init_generate_records(
         entity,
@@ -125,7 +126,7 @@ def test_init_generate_records_marks_existing_conversation(sqlite_session: Sessi
     sqlite_session.add(existing_conversation)
     sqlite_session.flush()
 
-    generator = AdvancedChatAppGenerator()
+    generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
 
     conversation, _ = generator._init_generate_records(
         entity,
@@ -174,7 +175,7 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
         lambda **_kwargs: SimpleNamespace(),
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repositories",
         lambda **_kwargs: SimpleNamespace(),
     )
 
@@ -187,7 +188,7 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
 
     monkeypatch.setattr(AdvancedChatAppGenerator, "_generate", fake_generate)
 
-    result = AdvancedChatAppGenerator().generate(
+    result = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService)).generate(
         app_model=app_model,
         workflow=workflow,
         user=user,

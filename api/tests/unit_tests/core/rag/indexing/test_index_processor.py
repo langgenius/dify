@@ -12,6 +12,7 @@ from core.rag.index_processor.index_processor import IndexProcessor
 from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
+from services.file_upload_service import FileUploadService
 
 
 def _persist_dataset_and_document(
@@ -50,8 +51,8 @@ def _persist_dataset_and_document(
 
 
 class TestIndexProcessor:
-    def test_format_preview_supports_qa_preview_shape(self) -> None:
-        preview = IndexProcessor().format_preview(
+    def test_format_preview_supports_qa_preview_shape(self, file_uploads: FileUploadService) -> None:
+        preview = IndexProcessor(file_uploads=file_uploads).format_preview(
             "qa_model",
             {"qa_chunks": [{"question": "Q1", "answer": "A1"}]},
         )
@@ -62,14 +63,16 @@ class TestIndexProcessor:
         assert preview.qa_preview[0].question == "Q1"
         assert preview.qa_preview[0].answer == "A1"
 
-    def test_index_and_clean_ends_transactions_around_index_io(self, sqlite_session: Session) -> None:
+    def test_index_and_clean_ends_transactions_around_index_io(
+        self, sqlite_session: Session, file_uploads: FileUploadService
+    ) -> None:
         dataset, document = _persist_dataset_and_document(sqlite_session)
         phase_events: list[str] = []
         event.listen(sqlite_session, "after_commit", lambda _session: phase_events.append("commit"))
 
         index_processor = MagicMock()
         index_processor.index.side_effect = lambda *args: phase_events.append("index")
-        processor = IndexProcessor()
+        processor = IndexProcessor(file_uploads=file_uploads)
         admission_service = MagicMock()
         chunks = {"general_chunks": ["content"]}
 
@@ -101,11 +104,11 @@ class TestIndexProcessor:
         )
 
     def test_index_and_clean_skips_admission_for_replacement_without_existing_vector_points(
-        self, sqlite_session: Session
+        self, sqlite_session: Session, file_uploads: FileUploadService
     ) -> None:
         dataset, document = _persist_dataset_and_document(sqlite_session)
         index_processor = MagicMock()
-        processor = IndexProcessor()
+        processor = IndexProcessor(file_uploads=file_uploads)
         chunks = {"general_chunks": ["content"]}
 
         with (
@@ -124,7 +127,9 @@ class TestIndexProcessor:
 
         admission_service_class.assert_not_called()
 
-    def test_index_and_clean_scopes_replacement_queries_to_dataset_owner(self, sqlite_session: Session) -> None:
+    def test_index_and_clean_scopes_replacement_queries_to_dataset_owner(
+        self, sqlite_session: Session, file_uploads: FileUploadService
+    ) -> None:
         dataset, document = _persist_dataset_and_document(sqlite_session)
         original_document = Document(
             id=str(uuid.uuid4()),
@@ -164,7 +169,7 @@ class TestIndexProcessor:
         sqlite_session.add_all([original_document, segment, control_segment])
         sqlite_session.flush()
 
-        processor = IndexProcessor()
+        processor = IndexProcessor(file_uploads=file_uploads)
         with (
             patch("core.rag.index_processor.index_processor.VectorSpaceAdmissionService") as admission_service_class,
             patch("core.rag.index_processor.index_processor.IndexProcessorFactory") as index_processor_factory,
@@ -192,9 +197,11 @@ class TestIndexProcessor:
         index_backend.index.assert_called_once_with(dataset, document, {}, sqlite_session)
         admission_service_class.assert_not_called()
 
-    def test_get_preview_output_scopes_document_to_dataset_owner(self, sqlite_session: Session) -> None:
+    def test_get_preview_output_scopes_document_to_dataset_owner(
+        self, sqlite_session: Session, file_uploads: FileUploadService
+    ) -> None:
         dataset, document = _persist_dataset_and_document(sqlite_session, indexing_technique=IndexTechniqueType.ECONOMY)
-        processor = IndexProcessor()
+        processor = IndexProcessor(file_uploads=file_uploads)
         expected_preview = MagicMock()
 
         with patch.object(processor, "format_preview", return_value=expected_preview):
@@ -210,7 +217,7 @@ class TestIndexProcessor:
         assert result is expected_preview
 
     def test_preview_summary_workers_use_independent_sessions(
-        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], file_uploads: FileUploadService
     ) -> None:
         dataset, _ = _persist_dataset_and_document(
             sqlite_session,
@@ -225,7 +232,7 @@ class TestIndexProcessor:
             preview=[PreviewItem(content="chunk-1"), PreviewItem(content="chunk-2")],
         )
         flask_app = SimpleNamespace(app_context=lambda: nullcontext())
-        processor = IndexProcessor()
+        processor = IndexProcessor(file_uploads=file_uploads)
 
         def generate_summary(*_args, **kwargs):
             phase_events.append("worker")

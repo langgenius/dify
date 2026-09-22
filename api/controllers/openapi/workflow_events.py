@@ -65,6 +65,8 @@ class OpenApiWorkflowEventsApi(Resource):
         returns=(200, EventStreamResponse, "SSE event stream"),
     )
     def get(self, ctx: Context, app_id: str, task_id: str):
+        from extensions.ext_application_services import application_services
+
         # The router's session closes as soon as this returns, so everything the SSE
         # body needs is read off `ctx` here and the generators below close over plain
         # values only.
@@ -116,9 +118,9 @@ class OpenApiWorkflowEventsApi(Resource):
             msg_generator = MessageGenerator()
             generator: BaseAppGenerator
             if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
+                generator = AdvancedChatAppGenerator(file_uploads=application_services().file_uploads)
             else:
-                generator = WorkflowAppGenerator()
+                generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"

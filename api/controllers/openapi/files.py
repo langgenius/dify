@@ -28,7 +28,9 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
+from libs.helper import extract_tenant_id
 from libs.oauth_bearer import Scope
+from services.file_upload_service import FileUploadActor
 
 
 @openapi_ns.route("/apps/<string:app_id>/files")
@@ -54,7 +56,7 @@ class AppFileUploadApi(Resource):
         ),
         returns=(201, FileResponse, "File uploaded"),
     )
-    def post(self, ctx: Context, app_id: str):
+    def post(self, ctx: Context, app_id: str) -> FileResponse:
         if "file" not in request.files:
             raise NoFileUploadedError()
         if len(request.files) > 1:
@@ -71,7 +73,8 @@ class AppFileUploadApi(Resource):
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=ctx.caller,
+                user=FileUploadActor(id=ctx.caller.id, creator_role=ctx.subject.caller_role),
+                tenant_id=extract_tenant_id(ctx.caller) or "",
             )
         except services.errors.file.FileTooLargeError as exc:
             raise FileTooLargeError(exc.description) from exc

@@ -19,7 +19,9 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_query_repository import (
+    SQLAlchemyWorkflowNodeExecutionQueryRepository,
+)
 from dify_trace_tencent.client import TencentTraceClient
 from dify_trace_tencent.config import TencentConfig
 from dify_trace_tencent.entities.tencent_trace_entity import SpanData
@@ -30,7 +32,7 @@ from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
 from graphon.nodes import BuiltinNodeTypes
-from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
+from models import Account, App, TenantAccountJoin
 
 logger = logging.getLogger(__name__)
 
@@ -252,12 +254,10 @@ class TencentDataTrace(BaseTraceInstance):
                 if not service_account:
                     raise ValueError(f"Creator account not found for app {app_id}")
 
-            repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            repository = SQLAlchemyWorkflowNodeExecutionQueryRepository(
                 session_factory=session_maker,
                 tenant_id=app.tenant_id,
-                user=service_account,
                 app_id=trace_info.metadata.get("app_id"),
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             )
 
             executions = repository.get_by_workflow_execution(workflow_execution_id=trace_info.workflow_run_id)

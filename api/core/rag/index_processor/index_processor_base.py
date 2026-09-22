@@ -25,12 +25,13 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import Account, ToolFile
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
+from models.enums import CreatorUserRole
 from models.model import UploadFile
+from services.file_upload_service import FileUploadActor, FileUploadService
 
 if TYPE_CHECKING:
     from core.model_manager import ModelInstance
@@ -45,6 +46,9 @@ class SummaryIndexSettingDict(TypedDict):
 
 class BaseIndexProcessor(ABC):
     """Interface for extract files."""
+
+    def __init__(self, *, file_uploads: FileUploadService) -> None:
+        self._file_uploads = file_uploads
 
     @abstractmethod
     def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
@@ -243,8 +247,6 @@ class BaseIndexProcessor(ABC):
         Download the image from the URL.
         Image size must not exceed 2MB.
         """
-        from services.file_service import FileService
-
         MAX_IMAGE_SIZE = dify_config.ATTACHMENT_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
         DOWNLOAD_TIMEOUT = dify_config.ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT
 
@@ -297,11 +299,12 @@ class BaseIndexProcessor(ABC):
                 logging.warning("Image from %s is empty", image_url)
                 return None
 
-            upload_file = FileService(db.engine).upload_file(
+            upload_file = self._file_uploads.upload_file_for_actor(
                 filename=filename,
                 content=blob,
                 mimetype=content_type,
-                user=current_user,
+                actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+                resource_tenant_id=current_user.current_tenant_id or "",
             )
             return upload_file.id
         except httpx.TimeoutException:
@@ -318,16 +321,15 @@ class BaseIndexProcessor(ABC):
         """
         Download the tool file from the ID.
         """
-        from services.file_service import FileService
-
         tool_file = session.get(ToolFile, tool_file_id)
         if not tool_file:
             return None
         blob = storage.load_once(tool_file.file_key)
-        upload_file = FileService(db.engine).upload_file(
+        upload_file = self._file_uploads.upload_file_for_actor(
             filename=tool_file.name,
             content=blob,
             mimetype=tool_file.mimetype,
-            user=current_user,
+            actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=current_user.current_tenant_id or "",
         )
         return upload_file.id

@@ -17,6 +17,8 @@ from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 @pytest.fixture
 def indexed_segment(sqlite_session: Session) -> tuple[Dataset, Document, DocumentSegment]:

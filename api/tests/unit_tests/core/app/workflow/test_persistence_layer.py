@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
+from core.repositories.factory import WorkflowNodeExecutionQuery
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
@@ -42,19 +44,15 @@ class _RepoRecorder:
         self.saved: list[object] = []
         self.synchronously_saved: list[object] = []
         self.saved_exec_data: list[object] = []
-        self.loaded: list[object] = []
 
-    def save(self, entity):
-        self.saved.append(entity)
+    def save(self, execution: object) -> None:
+        self.saved.append(execution)
 
-    def save_synchronously(self, entity):
-        self.synchronously_saved.append(entity)
+    def save_synchronously(self, execution: object) -> None:
+        self.synchronously_saved.append(execution)
 
-    def save_execution_data(self, entity):
-        self.saved_exec_data.append(entity)
-
-    def get_by_workflow_execution(self, _workflow_execution_id):
-        return self.loaded
+    def save_execution_data(self, execution: object) -> None:
+        self.saved_exec_data.append(execution)
 
 
 def _naive_utc_now() -> datetime:
@@ -66,6 +64,7 @@ def _make_layer(
     *,
     extras: dict | None = None,
     trace_manager: object | None = None,
+    loaded_node_executions: list[WorkflowNodeExecution] | None = None,
 ):
     system_variables = system_variables or build_system_variables(
         workflow_execution_id="run-id",
@@ -100,12 +99,15 @@ def _make_layer(
 
     workflow_execution_repo = _RepoRecorder()
     workflow_node_execution_repo = _RepoRecorder()
+    workflow_node_execution_query = Mock(spec=WorkflowNodeExecutionQuery)
+    workflow_node_execution_query.get_by_workflow_execution.return_value = loaded_node_executions or []
 
     layer = WorkflowPersistenceLayer(
         application_generate_entity=application_generate_entity,
         workflow_info=workflow_info,
         workflow_execution_repository=workflow_execution_repo,
-        workflow_node_execution_repository=workflow_node_execution_repo,
+        workflow_node_execution_writer=workflow_node_execution_repo,
+        workflow_node_execution_query=workflow_node_execution_query,
         trace_manager=trace_manager,
     )
     layer.initialize(read_only_state, command_channel=None)
@@ -175,7 +177,6 @@ class TestWorkflowPersistenceLayer:
         assert exec_repo.saved
 
     def test_resumption_restores_container_execution_before_terminal_event(self):
-        layer, _, node_repo, _ = _make_layer()
         started_at = _naive_utc_now()
         execution = WorkflowNodeExecution(
             id="loop-exec",
@@ -188,7 +189,7 @@ class TestWorkflowPersistenceLayer:
             status=WorkflowNodeExecutionStatus.RUNNING,
             created_at=started_at,
         )
-        node_repo.loaded = [execution]
+        layer, _, node_repo, _ = _make_layer(loaded_node_executions=[execution])
 
         layer.on_event(GraphRunStartedEvent(reason=WorkflowStartReason.RESUMPTION))
         layer.on_event(
@@ -202,6 +203,7 @@ class TestWorkflowPersistenceLayer:
         )
 
         assert execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert node_repo.saved[-1] is execution
         assert layer._next_node_sequence() == 5
 
     def test_handle_graph_run_succeeded_updates_execution(self):

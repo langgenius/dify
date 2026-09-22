@@ -5,7 +5,7 @@ from typing import override
 
 import pytest
 from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
@@ -26,6 +26,7 @@ from services.workflow_draft_variable_service import (
     VariableResetError,
     WorkflowDraftVariableService,
 )
+from tests.file_service_test_utils import make_file_upload_service
 
 
 @pytest.mark.usefixtures("flask_req_ctx")
@@ -311,6 +312,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                 # Use DraftVariableSaver to create offloaded variable (this mimics production)
                 saver = DraftVariableSaver(
                     session=session,
+                    file_uploads=make_file_upload_service(sessionmaker(bind=db.engine)),
                     tenant_id=self._test_tenant_id,
                     app_id=self._test_app_id,
                     node_id="test_offload_node",

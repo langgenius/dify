@@ -90,6 +90,8 @@ class WorkflowTool(Tool):
         """
         invoke the tool
         """
+        from extensions.ext_application_services import application_services
+
         app = self._get_app(app_id=self.workflow_app_id)
         workflow = self._get_workflow(app_id=self.workflow_app_id, version=self.version)
 
@@ -98,7 +100,7 @@ class WorkflowTool(Tool):
 
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
-        generator = WorkflowAppGenerator()
+        generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
 

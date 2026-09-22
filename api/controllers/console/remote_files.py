@@ -27,7 +27,7 @@ from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
 from models import Account
-from services.file_service import FileUploadActor
+from services.file_upload_service import FileUploadActor
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
 )

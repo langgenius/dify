@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.ext_application_services import application_services
 from models import Account, AccountStatus, Dataset, DocumentSegment, TenantAccountRole, TenantStatus
 from models import Document as DatasetDocument
 from models.dataset import DatasetProcessRule
@@ -288,7 +289,9 @@ class TestDisableSegmentsFromIndexTask:
                 assert result is None  # Task should complete without returning a value
 
                 # Verify index processor was called correctly
-                mock_factory.assert_called_once_with(document.doc_form)
+                mock_factory.assert_called_once_with(
+                    document.doc_form, file_uploads=application_services().file_uploads
+                )
                 mock_processor.clean.assert_called_once()
 
                 # Verify the call arguments (checking by attributes rather than object identity)
@@ -533,7 +536,7 @@ class TestDisableSegmentsFromIndexTask:
 
                     # Assert
                     assert result is None  # Task should complete without returning a value
-                    mock_factory.assert_called_with(doc_form)
+                    mock_factory.assert_called_with(doc_form, file_uploads=application_services().file_uploads)
 
     def test_disable_segments_performance_timing(
         self, db_session_with_containers: Session, caplog: pytest.LogCaptureFixture

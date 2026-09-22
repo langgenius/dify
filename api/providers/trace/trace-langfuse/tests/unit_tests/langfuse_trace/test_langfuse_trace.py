@@ -219,7 +219,7 @@ def test_workflow_trace_with_message_id(
     repo.get_by_workflow_execution.return_value = [node_llm, node_other]
 
     mock_factory = MagicMock()
-    mock_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_factory.create_workflow_node_execution_query.return_value = repo
     monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)
 
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
@@ -230,6 +230,8 @@ def test_workflow_trace_with_message_id(
     trace_instance.add_generation = MagicMock()
 
     trace_instance.workflow_trace(trace_info)
+
+    assert "file_uploads" not in mock_factory.create_workflow_node_execution_query.call_args.kwargs
 
     # Verify add_trace (Workflow Level)
     trace_instance.add_trace.assert_called_once()
@@ -293,7 +295,7 @@ def test_workflow_trace_no_message_id(
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
     mock_factory = MagicMock()
-    mock_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_factory.create_workflow_node_execution_query.return_value = repo
     monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
@@ -758,7 +760,7 @@ def test_workflow_trace_handles_usage_extraction_error(
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = [node]
     mock_factory = MagicMock()
-    mock_factory.create_workflow_node_execution_repository.return_value = repo
+    mock_factory.create_workflow_node_execution_query.return_value = repo
     monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)
     monkeypatch.setattr(
         "dify_trace_langfuse.langfuse_trace.db",

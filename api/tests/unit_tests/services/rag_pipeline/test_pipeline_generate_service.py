@@ -13,6 +13,8 @@ from models.workflow import Workflow, WorkflowType
 from services.dataset_ref_service import DatasetRefService
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 def _make_pipeline(*, tenant_id: str = "tenant-1") -> Pipeline:
     pipeline = Pipeline(tenant_id=tenant_id, name="Pipeline", description="")

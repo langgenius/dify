@@ -117,6 +117,8 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke chat app
         """
+        from extensions.ext_application_services import application_services
+
         match app.mode:
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app)
@@ -128,7 +130,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     state_owner_user_id=workflow.created_by,
                 )
 
-                return AdvancedChatAppGenerator().generate(
+                return AdvancedChatAppGenerator(file_uploads=application_services().file_uploads).generate(
                     app_model=app,
                     workflow=workflow,
                     user=user,
@@ -188,12 +190,14 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke workflow app
         """
+        from extensions.ext_application_services import application_services
+
         pause_config = PauseStateLayerConfig(
             session_factory=db.engine,
             state_owner_user_id=workflow.created_by,
         )
 
-        return WorkflowAppGenerator().generate(
+        return WorkflowAppGenerator(file_uploads=application_services().file_uploads).generate(
             app_model=app,
             workflow=workflow,
             user=user,

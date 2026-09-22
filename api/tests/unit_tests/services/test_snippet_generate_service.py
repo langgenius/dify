@@ -12,6 +12,8 @@ from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
 from services.snippet_generate_service import SnippetGenerateService
 from tests.unit_tests.model_factories import make_account, make_workflow
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 def _workflow(graph: dict) -> Workflow:
     return make_workflow(workflow_id="workflow-1", app_id="snippet-1", kind=WorkflowKind.SNIPPET, graph=graph)

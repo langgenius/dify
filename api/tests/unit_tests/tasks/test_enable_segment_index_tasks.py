@@ -13,6 +13,8 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, Se
 from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 @pytest.fixture
 def indexed_segment(sqlite_session: Session) -> tuple[Dataset, Document, DocumentSegment]:

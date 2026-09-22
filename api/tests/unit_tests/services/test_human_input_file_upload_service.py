@@ -11,6 +11,7 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInput
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.enums import CreatorUserRole
+from services.file_upload_service import FileUploadActor
 from services.human_input_file_upload_service import (
     HITL_UPLOAD_TOKEN_PREFIX,
     HumanInputFileUploadRepository,
@@ -185,7 +186,8 @@ def test_upload_local_file_records_the_form_file_link() -> None:
         filename="sample.txt",
         content=b"content",
         mimetype="text/plain",
-        user=context.owner,
+        user=FileUploadActor(id=context.owner.id, creator_role=CreatorUserRole.ACCOUNT),
+        tenant_id=context.tenant_id,
         source=None,
     )
     uploads.add_file.assert_called_once_with(

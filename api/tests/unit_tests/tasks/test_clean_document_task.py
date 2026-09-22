@@ -34,7 +34,10 @@ SQLITE_MODELS = (
     DatasetMetadataBinding,
 )
 
-pytestmark = pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
+pytestmark = [
+    pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True),
+    pytest.mark.usefixtures("file_upload_services"),
+]
 
 
 @pytest.fixture

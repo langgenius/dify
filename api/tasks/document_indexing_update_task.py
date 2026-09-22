@@ -28,6 +28,8 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
 
     Usage: document_indexing_update_task.delay(dataset_id, document_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Start update document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
@@ -58,7 +60,9 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             clean_success = False
             index_processor = None
             try:
-                index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                index_processor = IndexProcessorFactory(
+                    index_type, file_uploads=application_services().file_uploads
+                ).init_index_processor()
                 if index_node_ids:
                     index_processor.clean(
                         dataset,
@@ -164,7 +168,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                             storage_key,
                         )
 
-            indexing_runner = IndexingRunner()
+            indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
             indexing_runner.run([document], session)
             session.commit()
 

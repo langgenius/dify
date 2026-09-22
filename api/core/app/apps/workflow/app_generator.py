@@ -40,7 +40,7 @@ from core.helper.trace_id_helper import (
 )
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepositories
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
@@ -55,6 +55,7 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from services.file_upload_service import FileUploadService
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -70,6 +71,9 @@ def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> 
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
+    def __init__(self, *, file_uploads: FileUploadService) -> None:
+        self._file_uploads = file_uploads
+
     @staticmethod
     def _ensure_snippet_start_node_in_worker(*, session: Session, workflow: Workflow) -> Workflow:
         """Re-apply snippet virtual Start injection after worker reloads workflow from DB."""
@@ -247,12 +251,15 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 triggered_from=workflow_triggered_from,
             )
             # Create workflow node execution repository
-            workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-                session_factory=session_factory,
-                tenant_id=app_model.tenant_id,
-                user=user,
-                app_id=application_generate_entity.app_config.app_id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            workflow_node_execution_repositories = (
+                DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
+                    session_factory=session_factory,
+                    tenant_id=app_model.tenant_id,
+                    user=user,
+                    app_id=application_generate_entity.app_config.app_id,
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                    file_uploads=self._file_uploads,
+                )
             )
 
             return self._generate(
@@ -262,7 +269,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 application_generate_entity=application_generate_entity,
                 invoke_from=invoke_from,
                 workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
+                workflow_node_execution_repositories=workflow_node_execution_repositories,
                 streaming=streaming,
                 root_node_id=root_node_id,
                 graph_engine_layers=graph_engine_layers,
@@ -278,7 +285,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity: WorkflowAppGenerateEntity,
         graph_runtime_state: GraphRuntimeState,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
@@ -307,7 +314,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             application_generate_entity=application_generate_entity,
             invoke_from=application_generate_entity.invoke_from,
             workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_node_execution_repositories=workflow_node_execution_repositories,
             streaming=application_generate_entity.stream,
             variable_loader=variable_loader,
             graph_engine_layers=graph_engine_layers,
@@ -325,7 +332,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         root_node_id: str | None = None,
@@ -343,7 +350,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param application_generate_entity: application generate entity
         :param invoke_from: invoke from source
         :param workflow_execution_repository: repository for workflow execution
-        :param workflow_node_execution_repository: repository for workflow node execution
+        :param workflow_node_execution_repositories: repository for workflow node execution
         :param streaming: is stream
         """
         with self._bind_file_access_scope(
@@ -388,7 +395,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     "variable_loader": variable_loader,
                     "root_node_id": root_node_id,
                     "workflow_execution_repository": workflow_execution_repository,
-                    "workflow_node_execution_repository": workflow_node_execution_repository,
+                    "workflow_node_execution_repositories": workflow_node_execution_repositories,
                     "graph_engine_layers": tuple(graph_layers),
                     "graph_runtime_state": graph_runtime_state,
                     "response_stream_filter": resolved_response_stream_filter,
@@ -401,6 +408,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 invoke_from,
                 user,
                 tenant_id=app_model.tenant_id,
+                file_uploads=self._file_uploads,
             )
 
             try:
@@ -491,12 +499,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         # Create workflow node execution repository
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repositories = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            file_uploads=self._file_uploads,
         )
         draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
@@ -514,7 +523,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_node_execution_repositories=workflow_node_execution_repositories,
             streaming=streaming,
             variable_loader=var_loader,
             pause_state_config=None,
@@ -583,12 +592,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         # Create workflow node execution repository
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repositories = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            file_uploads=self._file_uploads,
         )
         draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
@@ -605,7 +615,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_node_execution_repositories=workflow_node_execution_repositories,
             streaming=streaming,
             variable_loader=var_loader,
             pause_state_config=None,
@@ -619,7 +629,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         context: contextvars.Context,
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
@@ -674,7 +684,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow=workflow,
                 system_user_id=system_user_id,
                 workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
+                workflow_node_execution_repositories=workflow_node_execution_repositories,
                 root_node_id=root_node_id,
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
@@ -722,7 +732,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param queue_manager: queue manager
         :param user: account or end user
         :param stream: is stream
-        :param workflow_node_execution_repository: optional repository for workflow node execution
+        :param workflow_node_execution_repositories: optional repository for workflow node execution
         :return:
         """
         # init generate task pipeline

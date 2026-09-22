@@ -24,7 +24,6 @@ from models import Account, Tenant
 from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
-from services.file_service import FileService
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +44,13 @@ def rag_pipeline_run_task(
     :param rag_pipeline_invoke_entities_file_id: File ID containing serialized RAG pipeline invoke entities
     :param tenant_id: Tenant ID for the pipeline execution
     """
+    from extensions.ext_application_services import application_services
+
     # run with threading, thread pool size is 10
 
     try:
         start_at = time.perf_counter()
-        rag_pipeline_invoke_entities_content = FileService(db.engine).get_file_content(
+        rag_pipeline_invoke_entities_content = application_services().files.get_file_content(
             rag_pipeline_invoke_entities_file_id
         )
         rag_pipeline_invoke_entities = json.loads(rag_pipeline_invoke_entities_content)
@@ -111,13 +112,15 @@ def rag_pipeline_run_task(
         else:
             # No more waiting tasks, clear the flag
             tenant_isolated_task_queue.delete_task_key()
-        file_service = FileService(db.engine)
+        file_service = application_services().files
         file_service.delete_file(rag_pipeline_invoke_entities_file_id)
         db.session.close()
 
 
 def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], flask_app):
     """Run a single RAG pipeline task within Flask app context."""
+    from extensions.ext_application_services import application_services
+
     # Create Flask application context for this thread
     with flask_app.app_context():
         try:
@@ -166,13 +169,14 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                     triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
                 )
 
-                workflow_node_execution_repository = (
-                    DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                workflow_node_execution_repositories = (
+                    DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
                         session_factory=session_factory,
                         tenant_id=pipeline.tenant_id,
                         user=account,
                         app_id=entity.app_config.app_id,
                         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+                        file_uploads=application_services().file_uploads,
                     )
                 )
 
@@ -186,7 +190,9 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 # Since we're already in a thread pool, no need for nested threading
                 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 
-                pipeline_generator = PipelineGenerator()
+                pipeline_generator = PipelineGenerator(
+                    file_uploads=application_services().file_uploads, files=application_services().files
+                )
                 # Using protected method intentionally for async execution
                 pipeline_generator._generate(  # type: ignore[attr-defined]
                     session=session,
@@ -198,7 +204,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                     application_generate_entity=entity,
                     invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
                     workflow_execution_repository=workflow_execution_repository,
-                    workflow_node_execution_repository=workflow_node_execution_repository,
+                    workflow_node_execution_repositories=workflow_node_execution_repositories,
                     streaming=streaming,
                     workflow_thread_pool_id=workflow_thread_pool_id,
                 )

@@ -35,6 +35,8 @@ class VectorService:
         session: Session,
     ):
         """Create vector records for document segments using the caller's active DB session."""
+        from extensions.ext_application_services import application_services
+
         documents: list[Document] = []
         multimodal_documents: list[AttachmentDocument] = []
 
@@ -105,7 +107,9 @@ class VectorService:
                         },
                     )
                     multimodal_documents.append(multimodal_document)
-        index_processor: BaseIndexProcessor = IndexProcessorFactory(doc_form).init_index_processor()
+        index_processor: BaseIndexProcessor = IndexProcessorFactory(
+            doc_form, file_uploads=application_services().file_uploads
+        ).init_index_processor()
 
         if len(documents) > 0:
             index_processor.load(
@@ -162,7 +166,11 @@ class VectorService:
         session: Session,
     ):
         """Generate child chunks and persist them with the caller's active DB session."""
-        index_processor = IndexProcessorFactory(dataset.get_doc_form(session=session)).init_index_processor()
+        from extensions.ext_application_services import application_services
+
+        index_processor = IndexProcessorFactory(
+            dataset.get_doc_form(session=session), file_uploads=application_services().file_uploads
+        ).init_index_processor()
         assert segment.index_node_id
         if regenerate:
             # delete child chunks

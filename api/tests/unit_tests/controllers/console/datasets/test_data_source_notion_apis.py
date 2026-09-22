@@ -26,6 +26,8 @@ from models.dataset import DataSourceType
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 from tests.unit_tests.model_factories import make_dataset, make_document
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 def _dataset() -> Dataset:
     return make_dataset(dataset_id="ds-1", created_by="u1")

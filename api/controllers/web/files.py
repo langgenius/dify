@@ -15,7 +15,9 @@ from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
 from libs.helper import dump_response
+from models.enums import CreatorUserRole
 from models.model import App, EndUser
+from services.file_upload_service import FileUploadActor
 
 register_response_schema_models(web_ns, FileResponse)
 
@@ -83,7 +85,8 @@ class FileApi(WebApiResource):
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=end_user,
+                user=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+                tenant_id=end_user.tenant_id,
                 source="datasets" if source == "datasets" else None,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:

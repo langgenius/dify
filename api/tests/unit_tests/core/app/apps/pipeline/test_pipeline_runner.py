@@ -24,6 +24,11 @@ from sqlalchemy.orm import Session
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.repositories.factory import (
+    WorkflowNodeExecutionQuery,
+    WorkflowNodeExecutionRepositories,
+    WorkflowNodeExecutionWriter,
+)
 from graphon.graph_events import GraphRunFailedEvent
 from models.dataset import Dataset, Document, Pipeline
 from models.enums import DocumentCreatedFrom
@@ -123,7 +128,9 @@ def runner():
     variable_loader = MagicMock()
     workflow = _workflow()
     workflow_execution_repository = MagicMock()
-    workflow_node_execution_repository = MagicMock()
+    workflow_node_execution_repositories = WorkflowNodeExecutionRepositories(
+        writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+    )
 
     return PipelineRunner(
         application_generate_entity=app_generate_entity,
@@ -132,7 +139,7 @@ def runner():
         workflow=workflow,
         system_user_id="sys",
         workflow_execution_repository=workflow_execution_repository,
-        workflow_node_execution_repository=workflow_node_execution_repository,
+        workflow_node_execution_repositories=workflow_node_execution_repositories,
     )
 
 
@@ -227,7 +234,9 @@ def test_run_pipeline_not_found():
         workflow=_workflow(),
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     with pytest.raises(ValueError):
@@ -315,7 +324,9 @@ def test_run_workflow_not_initialized(sqlite_session: Session):
         workflow=_workflow(),
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
     with pytest.raises(ValueError):
         runner.run()
@@ -336,7 +347,9 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
         workflow=_workflow(),
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
@@ -387,7 +400,9 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
         workflow=workflow,
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)

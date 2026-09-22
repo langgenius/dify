@@ -22,6 +22,7 @@ from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.notion_extractor import NotionExtractor
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.datetime_utils import naive_utc_now
@@ -402,7 +403,7 @@ class DataSourceNotionIndexingEstimateApi(Resource):
                     document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)
-        indexing_runner = IndexingRunner()
+        indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
         response = indexing_runner.indexing_estimate(
             tenant_id=current_tenant_id,
             extract_settings=extract_settings,

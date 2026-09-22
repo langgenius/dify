@@ -15,6 +15,7 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.ext_application_services import application_services
 from models import (
     Account,
     AccountStatus,
@@ -276,7 +277,9 @@ class TestDeleteSegmentFromIndexTask:
         assert result is None  # Task should return None on success
 
         # Verify index processor factory was called with correct document form
-        mock_index_processor_factory.assert_called_once_with(document.doc_form)
+        mock_index_processor_factory.assert_called_once_with(
+            document.doc_form, file_uploads=application_services().file_uploads
+        )
 
         # Verify index processor clean method was called with correct parameters
         # Note: We can't directly compare Dataset objects as they are different instances
@@ -465,7 +468,7 @@ class TestDeleteSegmentFromIndexTask:
             assert result is None
 
             # Verify index processor factory was called with correct document form
-            mock_index_processor_factory.assert_called_with(doc_form)
+            mock_index_processor_factory.assert_called_with(doc_form, file_uploads=application_services().file_uploads)
 
             # Verify index processor clean method was called with correct parameters
             assert mock_processor.clean.call_count == 1

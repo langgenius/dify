@@ -9,6 +9,7 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models import CreatorUserRole, Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from services.file_upload_service import FileUploadService
 
 
 def _workflow_run(*, graph: str | None) -> WorkflowRun:
@@ -602,6 +603,7 @@ class TestBaseAppGeneratorExtras:
             InvokeFrom.DEBUGGER,
             account,
             tenant_id="tenant-id",
+            file_uploads=Mock(spec=FileUploadService),
         )
         saver = factory(
             app_id="app-id",

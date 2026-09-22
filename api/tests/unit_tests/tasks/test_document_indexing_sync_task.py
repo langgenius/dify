@@ -17,11 +17,14 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
-pytestmark = pytest.mark.parametrize(
-    "sqlite_session",
-    [(Dataset, Document, DocumentSegment)],
-    indirect=True,
-)
+pytestmark = [
+    pytest.mark.parametrize(
+        "sqlite_session",
+        [(Dataset, Document, DocumentSegment)],
+        indirect=True,
+    ),
+    pytest.mark.usefixtures("file_upload_services"),
+]
 
 
 @pytest.fixture

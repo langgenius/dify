@@ -6,7 +6,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
@@ -34,10 +34,10 @@ from fields.file_fields import FileResponse, UploadConfig
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
-from models import Account, UploadFile
+from models import Account
 from models.enums import CreatorUserRole
 from services.feature_service import FeatureService
-from services.file_service import FileUploadActor, FileUploadResult
+from services.file_upload_service import FileUploadActor, FileUploadResult
 
 register_response_schema_models(
     console_ns,
@@ -96,7 +96,7 @@ def _file_upload_errors() -> Generator[None, None, None]:
         raise BlockedFileExtensionError(blocked_extension_error.description) from blocked_extension_error
 
 
-def upload_file_from_request(*, current_user: Account, resource_tenant_id: str | None = None) -> UploadFile:
+def upload_file_from_request(*, current_user: Account, resource_tenant_id: str | None = None) -> FileUploadResult:
     """Validate the multipart request and persist the file under the requested resource tenant."""
     file, filename, source = _parse_file_upload()
     if source == "datasets" and not current_user.is_dataset_editor:
@@ -113,8 +113,8 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
             filename=filename,
             content=file.stream.read(),
             mimetype=file.mimetype,
-            user=current_user,
-            tenant_id=resource_tenant_id,
+            user=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id=resource_tenant_id if resource_tenant_id is not None else current_user.current_tenant_id or "",
             source=source,
             default_file_size_limit=default_file_size_limit,
         )
@@ -131,7 +131,7 @@ def upload_file_from_request_context(*, request_context: RequestContext, resourc
     )
     actor = FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT)
     with _file_upload_errors():
-        return application_services().files.upload_file_for_actor(
+        return application_services().file_uploads.upload_file_for_actor(
             actor=actor,
             resource_tenant_id=resource_tenant_id,
             filename=filename,
@@ -183,7 +183,10 @@ class FilePreviewApi(Resource):
     def get(self, request_context: RequestContext, file_id: UUID) -> dict[str, object]:
         current_tenant_id = request_context.active_workspace_id
         file_id_str = str(file_id)
-        text = application_services().files.get_file_preview(file_id=file_id_str, tenant_id=current_tenant_id)
+        try:
+            text = application_services().files.get_file_preview(file_id=file_id_str, tenant_id=current_tenant_id)
+        except services.errors.file.FileNotExistsError as exc:
+            raise NotFound(exc.description) from exc
         return dump_response(TextContentResponse, {"content": text})
 
 

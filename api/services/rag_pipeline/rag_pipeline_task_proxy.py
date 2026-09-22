@@ -7,7 +7,6 @@ from configs import dify_config
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
-from extensions.ext_database import db
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from tasks.rag_pipeline.priority_rag_pipeline_run_task import priority_rag_pipeline_run_task
@@ -21,8 +20,14 @@ class RagPipelineTaskProxy:
     _RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME = "rag_pipeline_invoke_entities.json"
 
     def __init__(
-        self, dataset_tenant_id: str, user_id: str, rag_pipeline_invoke_entities: Sequence[RagPipelineInvokeEntity]
-    ):
+        self,
+        dataset_tenant_id: str,
+        user_id: str,
+        rag_pipeline_invoke_entities: Sequence[RagPipelineInvokeEntity],
+        *,
+        files: FileService,
+    ) -> None:
+        self._files = files
         self._dataset_tenant_id = dataset_tenant_id
         self._user_id = user_id
         self._rag_pipeline_invoke_entities = rag_pipeline_invoke_entities
@@ -36,7 +41,7 @@ class RagPipelineTaskProxy:
         text = [item.model_dump() for item in self._rag_pipeline_invoke_entities]
         # Convert list to proper JSON string
         json_text = json.dumps(text)
-        upload_file = FileService(db.engine).upload_text(
+        upload_file = self._files.upload_text(
             json_text, self._RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME, self._user_id, self._dataset_tenant_id
         )
         logger.info(

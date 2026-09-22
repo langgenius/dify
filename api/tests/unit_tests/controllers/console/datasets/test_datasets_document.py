@@ -70,6 +70,8 @@ from services.vector_space_admission_service import (
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 def make_serializable_document(**overrides):
     return make_document(data_source_info=json.dumps({"upload_file_id": "file-1"}), **overrides)

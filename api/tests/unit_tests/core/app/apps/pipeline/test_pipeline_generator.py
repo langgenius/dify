@@ -13,10 +13,17 @@ import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.repositories.factory import (
+    WorkflowNodeExecutionQuery,
+    WorkflowNodeExecutionRepositories,
+    WorkflowNodeExecutionWriter,
+)
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
+from services.file_service import FileService
+from services.file_upload_service import FileUploadService
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -38,7 +45,7 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 
 @pytest.fixture
 def generator(mocker: MockerFixture, sqlite_engine: Engine):
-    gen = module.PipelineGenerator()
+    gen = module.PipelineGenerator(files=MagicMock(spec=FileService), file_uploads=MagicMock(spec=FileUploadService))
 
     _patch_sqlite_engine(mocker, sqlite_engine)
     mocker.patch.object(module, "RagPipelineGenerateEntity", FakeRagPipelineGenerateEntity)
@@ -190,7 +197,7 @@ def test_generate_debugger_calls_generate(generator, mocker: MockerFixture, sqli
     )
     mocker.patch.object(
         module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
+        "create_workflow_node_execution_repositories",
         return_value=MagicMock(),
     )
 
@@ -240,7 +247,7 @@ def test_generate_published_pipeline_creates_documents_and_delay(
     )
     mocker.patch.object(
         module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
+        "create_workflow_node_execution_repositories",
         return_value=MagicMock(),
     )
 
@@ -333,7 +340,7 @@ def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture, sqli
     )
     mocker.patch.object(
         module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
+        "create_workflow_node_execution_repositories",
         return_value=MagicMock(),
     )
 
@@ -389,7 +396,9 @@ def test_generate_worker_handles_errors(
         context=contextlib.nullcontext(),
         variable_loader=MagicMock(),
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     queue_manager.publish_error.assert_called_once()
@@ -423,7 +432,9 @@ def test_generate_worker_sets_system_user_id_for_external_call(
         context=contextlib.nullcontext(),
         variable_loader=MagicMock(),
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
     )
 
     assert module.PipelineRunner.call_args.kwargs["system_user_id"] == "session"
@@ -451,7 +462,9 @@ def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixtur
             ),
             invoke_from=InvokeFrom.DEBUGGER,
             workflow_execution_repository=MagicMock(),
-            workflow_node_execution_repository=MagicMock(),
+            workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+                writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+            ),
             streaming=True,
         )
 
@@ -500,7 +513,9 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
         ),
         invoke_from=InvokeFrom.DEBUGGER,
         workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_node_execution_repositories=WorkflowNodeExecutionRepositories(
+            writer=MagicMock(spec=WorkflowNodeExecutionWriter), query=MagicMock(spec=WorkflowNodeExecutionQuery)
+        ),
         streaming=True,
     )
 
@@ -558,7 +573,7 @@ def test_single_iteration_generate_success(
     )
     mocker.patch.object(
         module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
+        "create_workflow_node_execution_repositories",
         return_value=MagicMock(),
     )
     mocker.patch.object(module, "WorkflowDraftVariableService", return_value=MagicMock())
@@ -598,7 +613,7 @@ def test_single_loop_generate_success(
     )
     mocker.patch.object(
         module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
+        "create_workflow_node_execution_repositories",
         return_value=MagicMock(),
     )
     mocker.patch.object(module, "WorkflowDraftVariableService", return_value=MagicMock())

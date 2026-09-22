@@ -10,10 +10,12 @@ from core.file.remote_file_metadata import InvalidRemoteFileMetadataError, guess
 from core.helper.ssrf_proxy import MaxRetriesExceededError
 from core.tools.errors import ToolSSRFError
 from graphon.file import helpers as file_helpers
+from libs.helper import extract_tenant_id
 from models import Account
+from models.enums import CreatorUserRole
 from models.model import EndUser
 from services.errors.file import FileTooLargeError
-from services.file_service import FileService, FileUploadActor
+from services.file_upload_service import FileUploadActor, FileUploadService
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,8 +65,8 @@ class RemoteFileInvalidResponseError(RemoteFileError):
 
 
 class RemoteFileService:
-    def __init__(self, *, files: FileService) -> None:
-        self._files = files
+    def __init__(self, *, files: FileUploadService) -> None:
+        self._files: FileUploadService = files
 
     def fetch_info(self, *, url: str) -> RemoteFileInfoResult:
         response = self._request("HEAD", url=url)
@@ -123,12 +125,23 @@ class RemoteFileService:
         else:
             content = self._fetch_content(url=url)
 
-        upload_file = self._files.upload_file(
+        actor = (
+            user
+            if isinstance(user, FileUploadActor)
+            else FileUploadActor(
+                id=user.id,
+                creator_role=CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER,
+            )
+        )
+        resource_tenant_id = tenant_id
+        if resource_tenant_id is None and not isinstance(user, FileUploadActor):
+            resource_tenant_id = extract_tenant_id(user)
+        upload_file = self._files.upload_file_for_actor(
             filename=file_info.filename,
             content=content,
             mimetype=file_info.mimetype,
-            user=user,
-            tenant_id=tenant_id,
+            actor=actor,
+            resource_tenant_id=resource_tenant_id or "",
             source_url=url,
         )
         return RemoteFileUploadResult(

@@ -1,9 +1,10 @@
 import io
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
@@ -21,11 +22,13 @@ from controllers.console.files import (
     FileSupportTypeApi,
     upload_file_from_request,
 )
+from extensions.storage.storage_type import StorageType
 from machinery.context import RequestContext
-from models import Account
+from models import Account, Tenant
 from models.account import AccountStatus, TenantAccountRole
-from models.model import UploadFile
-from tests.unit_tests.model_factories import make_upload_file
+from models.enums import CreatorUserRole
+from services.errors.file import FileNotExistsError
+from services.file_upload_service import FileUploadActor, FileUploadResult
 
 
 def unwrap(func):
@@ -37,13 +40,24 @@ def unwrap(func):
     return func
 
 
-def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> UploadFile:
-    return make_upload_file(
-        file_id=file_id,
+def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> FileUploadResult:
+    return FileUploadResult(
+        id=file_id,
         tenant_id="tenant-123",
+        storage_type=StorageType.LOCAL,
         key=f"upload/{file_id}/test.txt",
+        name="test.txt",
         size=size,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-123",
+        created_at=datetime(2024, 1, 1),
+        used=False,
+        used_by=None,
+        used_at=None,
+        hash=None,
+        source_url="",
     )
 
 
@@ -82,6 +96,9 @@ def mock_current_user():
     user = Account(name="Test User", email="user-1@example.com", status=AccountStatus.ACTIVE)
     user.id = "user-1"
     user.role = TenantAccountRole.OWNER
+    tenant = Tenant(name="Test")
+    tenant.id = "tenant-123"
+    user._current_tenant = tenant
     return user
 
 
@@ -191,8 +208,8 @@ class TestFileApiPost:
             filename="test.txt",
             content=b"hello",
             mimetype="text/plain",
-            user=mock_account_context,
-            tenant_id=None,
+            user=FileUploadActor(id=mock_account_context.id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id="tenant-123",
             source=None,
             default_file_size_limit=None,
         )
@@ -332,6 +349,18 @@ class TestFilePreviewApi:
 
         assert result == {"content": "preview text"}
         mock_file_service.get_file_preview.assert_called_once_with(file_id="1234", tenant_id="tenant-123")
+
+    def test_missing_preview_maps_service_error_to_http_404(self, app: Flask, mock_file_service):
+        error = FileNotExistsError("File not found")
+        mock_file_service.get_file_preview.side_effect = error
+        api = FilePreviewApi()
+
+        with app.test_request_context(), pytest.raises(NotFound) as exc_info:
+            unwrap(api.get)(api, _request_context(workspace_id="tenant-123"), "missing-id")
+
+        assert exc_info.value.code == 404
+        assert exc_info.value.description == "File not found"
+        assert exc_info.value.__cause__ is error
 
 
 class TestFileSupportTypeApi:

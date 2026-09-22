@@ -27,6 +27,8 @@ def add_document_to_index_task(dataset_document_id: str):
 
     Usage: add_document_to_index_task.delay(dataset_document_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Start add document to index: {dataset_document_id}", fg="green"))
     start_at = time.perf_counter()
 
@@ -102,7 +104,9 @@ def add_document_to_index_task(dataset_document_id: str):
                 documents.append(document)
 
             index_type = dataset.get_doc_form(session=session)
-            index_processor = IndexProcessorFactory(index_type).init_index_processor()
+            index_processor = IndexProcessorFactory(
+                index_type, file_uploads=application_services().file_uploads
+            ).init_index_processor()
             index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
 
             # delete auto disable log

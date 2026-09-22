@@ -50,6 +50,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.file_service import FileService
 from services.workflow_run_service import WorkflowRunService
+from tests.file_service_test_utils import make_file_service
 
 
 def _create_initialized_response_stream_filter() -> ResponseStreamFilter:
@@ -96,7 +97,7 @@ class TestPauseStatePersistenceLayerTestContainers:
     @pytest.fixture
     def file_service(self, engine: Engine):
         """Create FileService instance with TestContainers engine."""
-        return FileService(engine)
+        return make_file_service(sessionmaker(bind=engine))
 
     @pytest.fixture
     def workflow_run_service(self, engine: Engine, file_service: FileService):

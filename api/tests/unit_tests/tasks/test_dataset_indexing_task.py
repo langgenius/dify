@@ -20,6 +20,7 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
+from services.file_upload_service import FileUploadService
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,
@@ -28,6 +29,8 @@ from tasks.document_indexing_task import (
     priority_document_indexing_task,
 )
 from tests.unit_tests.config_override import apply_config_overrides, config_overrides_context
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 @pytest.fixture
@@ -204,6 +207,7 @@ class TestDocumentIndexing:
         document_ids: list[str],
         indexing_runner: MagicMock,
         monkeypatch: pytest.MonkeyPatch,
+        file_uploads: FileUploadService,
     ) -> None:
         _persist_indexing_rows(
             sqlite_session,
@@ -223,7 +227,9 @@ class TestDocumentIndexing:
 
         persisted = _persisted_documents(sqlite_session, document_ids)
         assert [document.indexing_status for document in persisted] == [IndexingStatus.PARSING] * 3
-        indexing_runner._constructor_mock.assert_called_once_with(enforce_vector_space_admission=True)
+        indexing_runner._constructor_mock.assert_called_once_with(
+            enforce_vector_space_admission=True, file_uploads=file_uploads
+        )
         indexing_runner.run.assert_called_once()
         assert isinstance(indexing_runner.run.call_args.args[1], Session)
 

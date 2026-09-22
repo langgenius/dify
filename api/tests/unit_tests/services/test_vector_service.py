@@ -21,6 +21,8 @@ from models.enums import DataSourceType, DocumentCreatedFrom, ProcessRuleMode
 from services.vector_service import VectorService
 from tests.unit_tests.model_factories import make_upload_file
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 @dataclass(frozen=True)
 class _ChildDocStub:

@@ -53,6 +53,7 @@ from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapt
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.entities.base_node_data import BaseNodeData
@@ -493,6 +494,10 @@ class DifyNodeFactory(NodeFactory):
             BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
+        if node_type == KNOWLEDGE_INDEX_NODE_TYPE:
+            from extensions.ext_application_services import application_services
+
+            node_init_kwargs["file_uploads"] = application_services().file_uploads
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
         node = node_class(
             node_id=node_id,

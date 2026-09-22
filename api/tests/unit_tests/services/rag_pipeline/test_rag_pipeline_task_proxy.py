@@ -9,12 +9,18 @@ from enums import CloudPlan, DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+from services.file_service import FileService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
-def proxy(mocker: MockerFixture):
+def file_service() -> Mock:
+    return Mock(spec=FileService)
+
+
+@pytest.fixture
+def proxy(mocker: MockerFixture, file_service: Mock):
     """Create a RagPipelineTaskProxy with mocked dependencies."""
     mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue")
     entity = Mock()
@@ -23,6 +29,7 @@ def proxy(mocker: MockerFixture):
         dataset_tenant_id="tenant-1",
         user_id="user-1",
         rag_pipeline_invoke_entities=[entity],
+        files=file_service,
     )
 
 
@@ -35,6 +42,7 @@ def test_delay_with_empty_entities_logs_warning_and_returns(mocker: MockerFixtur
         dataset_tenant_id="tenant-1",
         user_id="user-1",
         rag_pipeline_invoke_entities=[],
+        files=Mock(spec=FileService),
     )
     dispatch_mock = mocker.patch.object(proxy, "_dispatch")
 
@@ -150,7 +158,7 @@ def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(mocker: MockerFi
 # --- _upload_invoke_entities ---
 
 
-def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) -> None:
+def test_upload_invoke_entities_returns_file_id(file_service: Mock, proxy) -> None:
     upload_file = UploadFile(
         tenant_id="tenant-1",
         storage_type=StorageType.LOCAL,
@@ -165,11 +173,9 @@ def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) ->
         used=True,
     )
     upload_file.id = "uploaded-file-1"
-    file_service_cls = mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-    file_service_cls.return_value.upload_text.return_value = upload_file
-    mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine="fake-engine"))
+    file_service.upload_text.return_value = upload_file
 
     result = proxy._upload_invoke_entities()
 
     assert result == "uploaded-file-1"
-    file_service_cls.return_value.upload_text.assert_called_once()
+    file_service.upload_text.assert_called_once()

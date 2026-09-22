@@ -51,9 +51,9 @@ from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset, Pipeline
 from models.enums import CreatorUserRole
-from models.model import UploadFile
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.errors.file import UnsupportedFileTypeError
+from services.file_upload_service import FileUploadActor, FileUploadResult
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
     DatasourceNodeRunApiEntity,
     PipelineRunApiEntity,
@@ -682,15 +682,16 @@ class TestPipelineRunApiPost:
 class TestFileUploadApiPost:
     """Tests for KnowledgebasePipelineFileUploadApi.post()."""
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
+    @patch("extensions.ext_application_services.application_services")
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
         new_callable=lambda: Account(name="Upload User", email="upload@example.com"),
     )
-    def test_upload_success(self, current_account, mock_file_svc_cls, app: Flask, sqlite_engine):
+    def test_upload_success(self, current_account, mock_application_services, app: Flask, sqlite_engine):
         """Test successful file upload."""
         current_account.id = str(uuid.uuid4())
-        upload = UploadFile(
+        upload = FileUploadResult(
+            id="file1",
             tenant_id=str(uuid.uuid4()),
             storage_type=StorageType.LOCAL,
             key="pipeline/doc.pdf",
@@ -702,11 +703,15 @@ class TestFileUploadApiPost:
             created_by=current_account.id,
             created_at=datetime(2024, 1, 1, tzinfo=UTC),
             used=False,
+            used_by=None,
+            used_at=None,
+            hash=None,
+            source_url="",
         )
 
         mock_file_svc_instance = Mock()
         mock_file_svc_instance.upload_file.return_value = upload
-        mock_file_svc_cls.return_value = mock_file_svc_instance
+        mock_application_services.return_value.files = mock_file_svc_instance
 
         file_data = FileStorage(
             stream=io.BytesIO(b"fake pdf content"),
@@ -723,26 +728,30 @@ class TestFileUploadApiPost:
                 data={"file": file_data},
             ),
         ):
-            response, status = KnowledgebasePipelineFileUploadApi().post(tenant_id=str(uuid.uuid4()))
+            tenant_id = str(uuid.uuid4())
+            response, status = KnowledgebasePipelineFileUploadApi().post(tenant_id=tenant_id)
 
         assert status == 201
         assert response["name"] == "doc.pdf"
         assert response["extension"] == "pdf"
+        kwargs = mock_file_svc_instance.upload_file.call_args.kwargs
+        assert kwargs["user"] == FileUploadActor(id=current_account.id, creator_role=CreatorUserRole.ACCOUNT)
+        assert kwargs["tenant_id"] == tenant_id
 
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FeatureService"
         ".get_knowledge_file_size_limit",
         return_value=15,
     )
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
+    @patch("extensions.ext_application_services.application_services")
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
         new_callable=lambda: Account(name="Upload User", email="upload@example.com"),
     )
     def test_upload_file_too_large_returns_http_413(
-        self, current_account, mock_file_svc_cls, mock_get_limit, app: Flask, sqlite_engine
+        self, current_account, mock_application_services, mock_get_limit, app: Flask, sqlite_engine
     ):
-        mock_file_svc_cls.return_value.upload_file.side_effect = FileTooLargeServiceError()
+        mock_application_services.return_value.files.upload_file.side_effect = FileTooLargeServiceError()
         file_data = FileStorage(
             stream=io.BytesIO(b"oversized content"),
             filename="doc.pdf",

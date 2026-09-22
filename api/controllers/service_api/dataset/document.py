@@ -62,7 +62,7 @@ from controllers.service_api.wraps import (
 from core.errors.error import ProviderTokenNotInitError
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentListResponse,
@@ -77,6 +77,7 @@ from libs.helper import dump_response
 from libs.login import current_user
 from libs.pagination import clamp_pagination, paginate_query
 from models.dataset import Dataset, Document
+from models.enums import CreatorUserRole
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocForm,
@@ -86,7 +87,8 @@ from services.entities.knowledge_entities.knowledge_entities import (
     RetrievalModel,
 )
 from services.feature_service import FeatureService
-from services.file_service import FileService
+from services.file_service import FileArchiveEntry
+from services.file_upload_service import FileUploadActor
 from services.summary_index_service import SummaryIndexService
 
 
@@ -426,7 +428,7 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
     if not current_user:
         raise ValueError("current_user is required")
 
-    upload_file = FileService(db.engine).upload_text(
+    upload_file = application_services().files.upload_text(
         text=payload.text, text_name=payload.name, user_id=current_user.id, tenant_id=tenant_id_str
     )
     data_source = {
@@ -491,7 +493,7 @@ def _update_document_by_text(
         name = args.get("name")
         if not current_user:
             raise ValueError("current_user is required")
-        upload_file = FileService(db.engine).upload_text(
+        upload_file = application_services().files.upload_text(
             text=str(text), text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
         )
         data_source = {
@@ -803,11 +805,12 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not current_user:
             raise ValueError("current_user is required")
         try:
-            upload_file = FileService(db.engine).upload_file(
+            upload_file = application_services().files.upload_file(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=current_user,
+                user=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+                tenant_id=tenant_id,
                 source="datasets",
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
@@ -881,11 +884,12 @@ def _update_document_by_file(
             raise ValueError("current_user is required")
 
         try:
-            upload_file = FileService(db.engine).upload_file(
+            upload_file = application_services().files.upload_file(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=current_user,
+                user=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+                tenant_id=tenant_id,
                 source="datasets",
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
@@ -1101,7 +1105,11 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
         )
 
         with ExitStack() as stack:
-            zip_path = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
+            zip_path = stack.enter_context(
+                application_services().files.build_upload_files_zip_tempfile(
+                    upload_files=[FileArchiveEntry(name=file.name, key=file.key) for file in upload_files]
+                )
+            )
             response = send_file(
                 zip_path,
                 mimetype="application/zip",

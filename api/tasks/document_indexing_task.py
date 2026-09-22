@@ -54,6 +54,8 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
     Usage: _document_indexing(dataset_id, document_ids)
     """
+    from extensions.ext_application_services import application_services
+
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
@@ -107,7 +109,9 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
     # Phase 2: Execute indexing without holding locks from the parsing-status update.
     has_error = False
     try:
-        indexing_runner = IndexingRunner(enforce_vector_space_admission=True)
+        indexing_runner = IndexingRunner(
+            enforce_vector_space_admission=True, file_uploads=application_services().file_uploads
+        )
         with session_factory.create_session() as session:
             dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:

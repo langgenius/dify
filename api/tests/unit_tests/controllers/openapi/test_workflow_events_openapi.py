@@ -26,6 +26,8 @@ from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 class _SealableContext:
     """A `Context` stand-in that refuses reads once `seal()` is called.
@@ -121,7 +123,7 @@ class TestOpenApiWorkflowEventsApi:
         module = sys.modules["controllers.openapi.workflow_events"]
         generator_mock = Mock()
         generator_mock.convert_to_event_stream.return_value = iter([])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
+        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda *, file_uploads: generator_mock)
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
@@ -241,7 +243,7 @@ class TestOpenApiWorkflowEventsApi:
 
         generator_mock = Mock()
         generator_mock.convert_to_event_stream.return_value = iter(["event: a\n\n", "event: b\n\n"])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
+        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda *, file_uploads: generator_mock)
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)

@@ -42,7 +42,7 @@ from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.repositories.factory import (
     DifyCoreRepositoryFactory,
     WorkflowExecutionRepository,
-    WorkflowNodeExecutionRepository,
+    WorkflowNodeExecutionRepositories,
 )
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -53,6 +53,8 @@ from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from services.datasource_provider_service import DatasourceProviderService
+from services.file_service import FileService
+from services.file_upload_service import FileUploadService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
@@ -60,6 +62,10 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineGenerator(BaseAppGenerator):
+    def __init__(self, *, files: FileService, file_uploads: FileUploadService) -> None:
+        self._files = files
+        self._file_uploads = file_uploads
+
     @overload
     def generate(
         self,
@@ -222,12 +228,15 @@ class PipelineGenerator(BaseAppGenerator):
                 triggered_from=workflow_triggered_from,
             )
 
-            workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-                session_factory=session_factory,
-                tenant_id=pipeline.tenant_id,
-                user=user,
-                app_id=application_generate_entity.app_config.app_id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+            workflow_node_execution_repositories = (
+                DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
+                    session_factory=session_factory,
+                    tenant_id=pipeline.tenant_id,
+                    user=user,
+                    app_id=application_generate_entity.app_config.app_id,
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+                    file_uploads=self._file_uploads,
+                )
             )
             if invoke_from == InvokeFrom.DEBUGGER or is_retry:
                 return self._generate(
@@ -240,7 +249,7 @@ class PipelineGenerator(BaseAppGenerator):
                     application_generate_entity=application_generate_entity,
                     invoke_from=invoke_from,
                     workflow_execution_repository=workflow_execution_repository,
-                    workflow_node_execution_repository=workflow_node_execution_repository,
+                    workflow_node_execution_repositories=workflow_node_execution_repositories,
                     streaming=streaming,
                     workflow_thread_pool_id=workflow_thread_pool_id,
                 )
@@ -261,7 +270,7 @@ class PipelineGenerator(BaseAppGenerator):
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry:
             session.commit()
         if rag_pipeline_invoke_entities:
-            RagPipelineTaskProxy(dataset.tenant_id, user.id, rag_pipeline_invoke_entities).delay()
+            RagPipelineTaskProxy(dataset.tenant_id, user.id, rag_pipeline_invoke_entities, files=self._files).delay()
         # return batch, dataset, documents
         return {
             "batch": batch,
@@ -298,7 +307,7 @@ class PipelineGenerator(BaseAppGenerator):
         application_generate_entity: RagPipelineGenerateEntity,
         invoke_from: InvokeFrom,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         workflow_thread_pool_id: str | None = None,
@@ -312,7 +321,7 @@ class PipelineGenerator(BaseAppGenerator):
         :param application_generate_entity: application generate entity
         :param invoke_from: invoke from source
         :param workflow_execution_repository: repository for workflow execution
-        :param workflow_node_execution_repository: repository for workflow node execution
+        :param workflow_node_execution_repositories: repository for workflow node execution
         :param streaming: is stream
         :param workflow_thread_pool_id: workflow thread pool id
         """
@@ -340,7 +349,7 @@ class PipelineGenerator(BaseAppGenerator):
                     "workflow_thread_pool_id": workflow_thread_pool_id,
                     "variable_loader": variable_loader,
                     "workflow_execution_repository": workflow_execution_repository,
-                    "workflow_node_execution_repository": workflow_node_execution_repository,
+                    "workflow_node_execution_repositories": workflow_node_execution_repositories,
                 },
             )
 
@@ -350,6 +359,7 @@ class PipelineGenerator(BaseAppGenerator):
                 invoke_from,
                 user,
                 tenant_id=pipeline.tenant_id,
+                file_uploads=self._file_uploads,
             )
             try:
                 response = self._handle_response(
@@ -445,12 +455,13 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
         )
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repositories = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
             session_factory=session_factory,
             tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            file_uploads=self._file_uploads,
         )
         draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
@@ -470,7 +481,7 @@ class PipelineGenerator(BaseAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_node_execution_repositories=workflow_node_execution_repositories,
             streaming=streaming,
             variable_loader=var_loader,
             context=contextvars.copy_context(),
@@ -546,12 +557,13 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
         )
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repositories = DifyCoreRepositoryFactory.create_workflow_node_execution_repositories(
             session_factory=session_factory,
             tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            file_uploads=self._file_uploads,
         )
         draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
@@ -571,7 +583,7 @@ class PipelineGenerator(BaseAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_node_execution_repositories=workflow_node_execution_repositories,
             streaming=streaming,
             variable_loader=var_loader,
             context=contextvars.copy_context(),
@@ -585,7 +597,7 @@ class PipelineGenerator(BaseAppGenerator):
         context: contextvars.Context,
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         workflow_thread_pool_id: str | None = None,
     ) -> None:
         """
@@ -634,7 +646,7 @@ class PipelineGenerator(BaseAppGenerator):
                         workflow=workflow,
                         system_user_id=system_user_id,
                         workflow_execution_repository=workflow_execution_repository,
-                        workflow_node_execution_repository=workflow_node_execution_repository,
+                        workflow_node_execution_repositories=workflow_node_execution_repositories,
                     )
 
                     runner.run()

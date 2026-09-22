@@ -39,6 +39,8 @@ from services.errors.app import (
     WorkflowNotFoundError,
 )
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 # ---------------------------------------------------------------------------
 # Helpers / Fakes

@@ -21,6 +21,7 @@ from models.dataset import Dataset, DocumentCreatedFrom, DocumentSegment, Segmen
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DataSourceType
 from models.model import UploadFile
+from services.file_upload_service import FileUploadService
 
 
 class TestParagraphIndexProcessor:
@@ -33,8 +34,8 @@ class TestParagraphIndexProcessor:
         self.session_factory = sqlite_session_factory
 
     @pytest.fixture
-    def processor(self) -> ParagraphIndexProcessor:
-        return ParagraphIndexProcessor()
+    def processor(self, file_uploads: FileUploadService) -> ParagraphIndexProcessor:
+        return ParagraphIndexProcessor(file_uploads=file_uploads)
 
     @pytest.fixture
     def dataset(self) -> Dataset:

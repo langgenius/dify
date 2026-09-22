@@ -1,6 +1,7 @@
 import uuid
 from unittest.mock import MagicMock, patch
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,8 @@ from models.enums import DataSourceType
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_dataset, make_document
+
+pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 def _dataset(tenant_id: str) -> Dataset:

@@ -12,6 +12,8 @@ from models.enums import CreatorUserRole, DataSourceType
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task
 
+pytestmark = pytest.mark.usefixtures("file_upload_services")
+
 
 @pytest.fixture
 def cleanup_rows(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> tuple[str, str, str]:

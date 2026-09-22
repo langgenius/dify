@@ -24,6 +24,7 @@ from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
+from graphon.file.helpers import get_signed_file_url
 from libs.datetime_utils import naive_utc_now, utc_now
 from libs.helper import RateLimiter
 from libs.oauth import GitHubOAuth, GoogleOAuth
@@ -48,6 +49,7 @@ from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSour
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
+from repositories.file_repository import SQLAlchemyFileRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
@@ -59,7 +61,6 @@ from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchem
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_repository import TrialAppRepository
-from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
@@ -165,6 +166,8 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
 from services.file_grant_service import FileGrantService
 from services.file_service import FileService
+from services.file_service_adapters import extract_file_text
+from services.file_upload_service import FileUploadService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
@@ -283,6 +286,7 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     file_grants: FileGrantService
     files: FileService
+    file_uploads: FileUploadService
     human_input_file_uploads: HumanInputFileUploadService
     message_file_previews: MessageFilePreviewService
     message_suggested_questions: MessageSuggestedQuestions
@@ -352,14 +356,14 @@ def _build_oauth_server_service(
     )
 
 
-def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> FileGrantService:
+def _build_file_grant_service(*, database_client: sessionmaker[Session], file_service: FileService) -> FileGrantService:
     repository = FileGrantRepository(session_factory=database_client)
     return FileGrantService(
         repository=repository,
         files=FileGrantFileGateway(
             load_end_user=repository.get_end_user,
             subject_exists=repository.subject_exists,
-            file_service=FileService(session_factory=database_client),
+            file_service=file_service,
             tool_files=ToolFileManager(),
             storage=storage,
         ),
@@ -462,8 +466,22 @@ def build_application_services(
         trial_enabled=trial_app_enabled,
     )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
-    file_service = FileService(session_factory=database_client)
-    remote_file_service = RemoteFileService(files=file_service)
+    file_repository = SQLAlchemyFileRepository(session_factory=database_client)
+    file_uploads = FileUploadService(
+        uploads=file_repository,
+        storage=storage,
+        storage_type=dify_config.STORAGE_TYPE,
+        sign_file_url=get_signed_file_url,
+    )
+    file_service = FileService(
+        files=file_repository,
+        uploads=file_uploads,
+        storage=storage,
+        storage_type=dify_config.STORAGE_TYPE,
+        extract_text=extract_file_text,
+        sign_file_url=get_signed_file_url,
+    )
+    remote_file_service = RemoteFileService(files=file_uploads)
     passwords = DefaultAccountPasswordHasher()
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
@@ -694,8 +712,9 @@ def build_application_services(
             features=feature_gateway,
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
-        file_grants=_build_file_grant_service(database_client=database_client),
+        file_grants=_build_file_grant_service(database_client=database_client, file_service=file_service),
         files=file_service,
+        file_uploads=file_uploads,
         human_input_file_uploads=HumanInputFileUploadService(
             uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=database_client),
             workflow_run_repository=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
@@ -715,7 +734,7 @@ def build_application_services(
         ),
         tool_file_downloads=ToolFileDownloadService(tool_files=ToolFileManager()),
         upload_file_delivery=UploadFileDeliveryService(
-            files=UploadFileDeliveryQueryRepository(session_factory=database_client),
+            files=file_repository,
             storage=storage,
         ),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),

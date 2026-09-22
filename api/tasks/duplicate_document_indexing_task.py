@@ -77,6 +77,8 @@ def _duplicate_document_indexing_task_with_tenant_queue(
 
 
 def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[str]):
+    from extensions.ext_application_services import application_services
+
     documents: list[Document] = []
     start_at = time.perf_counter()
 
@@ -132,7 +134,9 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
 
                 # clean old data
                 index_type = document.doc_form
-                index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                index_processor = IndexProcessorFactory(
+                    index_type, file_uploads=application_services().file_uploads
+                ).init_index_processor()
 
                 segments = session.scalars(
                     select(DocumentSegment).where(DocumentSegment.document_id == document.id)
@@ -161,7 +165,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
             # Do not keep segment deletions or parsing status changes open during extraction.
             session.commit()
 
-            indexing_runner = IndexingRunner()
+            indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
             indexing_runner.run(list(documents), session)
             session.commit()
             end_at = time.perf_counter()

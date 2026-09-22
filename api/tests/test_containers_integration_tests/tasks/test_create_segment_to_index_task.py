@@ -15,6 +15,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
@@ -227,7 +228,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            dataset.get_doc_form(session=db_session_with_containers), file_uploads=application_services().file_uploads
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -555,7 +556,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            dataset.get_doc_form(session=db_session_with_containers), file_uploads=application_services().file_uploads
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -600,7 +601,9 @@ class TestCreateSegmentToIndexTask:
             assert segment.status == SegmentStatus.COMPLETED
 
             # Verify correct doc_form was passed to factory
-            mock_external_service_dependencies["index_processor_factory"].assert_called_with(doc_form)
+            mock_external_service_dependencies["index_processor_factory"].assert_called_with(
+                doc_form, file_uploads=application_services().file_uploads
+            )
 
     def test_create_segment_to_index_performance_timing(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -988,7 +991,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            dataset.get_doc_form(session=db_session_with_containers), file_uploads=application_services().file_uploads
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -1064,7 +1067,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            dataset.get_doc_form(session=db_session_with_containers), file_uploads=application_services().file_uploads
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 

@@ -21,6 +21,8 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
 
     Usage: clean_notion_document_task.delay(document_ids, dataset_id)
     """
+    from extensions.ext_application_services import application_services
+
     logger.info(click.style(f"Start clean document when import form notion document deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
     total_index_node_ids = []
@@ -31,7 +33,9 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
         if not dataset:
             raise Exception("Document has no dataset")
         index_type = dataset.get_doc_form(session=session)
-        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        index_processor = IndexProcessorFactory(
+            index_type, file_uploads=application_services().file_uploads
+        ).init_index_processor()
 
         document_delete_stmt = delete(Document).where(Document.id.in_(document_ids))
         session.execute(document_delete_stmt)

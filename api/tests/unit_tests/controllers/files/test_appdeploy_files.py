@@ -42,6 +42,7 @@ from services.entities.file_grant_entities import FileGrantContext, FileGrantSco
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.file_grant_gateways import FILE_CONTENT_AUDIENCE, FileGrantFileGateway
 from services.file_grant_service import MAX_FILE_GRANT_REFS, FileGrantService
+from tests.file_service_test_utils import make_file_service
 from tests.unit_tests.file_grant_test_utils import issue_file_grant
 
 CONTROLLER_MODULE = "controllers.files.appdeploy_files"
@@ -106,7 +107,11 @@ def granted_config(config_overrides: Callable[..., None]) -> None:
 
 @pytest.fixture
 def sqlite_db(sqlite_engine: Engine) -> Iterator[FileGrantService]:
-    service = _build_file_grant_service(database_client=sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    database_client = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    service = _build_file_grant_service(
+        database_client=database_client,
+        file_service=make_file_service(session_factory=database_client),
+    )
     services = SimpleNamespace(file_grants=service)
     with (
         patch(f"{CONTROLLER_MODULE}.application_services", return_value=services),

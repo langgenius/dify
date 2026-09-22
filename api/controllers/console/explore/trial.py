@@ -105,7 +105,7 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.file_service import FileUploadActor
+from services.file_upload_service import FileUploadActor
 from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_service import (

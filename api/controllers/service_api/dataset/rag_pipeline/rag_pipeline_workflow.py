@@ -39,9 +39,10 @@ from libs.login import current_user
 from models import Account
 from models.dataset import Dataset, Pipeline
 from models.engine import db
+from models.enums import CreatorUserRole
 from services.errors.file import UnsupportedFileTypeError
 from services.feature_service import FeatureService
-from services.file_service import FileService
+from services.file_upload_service import FileUploadActor
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
     DatasourceNodeRunApiEntity,
     DatasourceType,
@@ -365,6 +366,8 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
 
         Accepts a single file upload via multipart/form-data.
         """
+        from extensions.ext_application_services import application_services
+
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -383,11 +386,12 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
             raise ValueError("Invalid user account")
 
         try:
-            upload_file = FileService(db.engine).upload_file(
+            upload_file = application_services().files.upload_file(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=current_user,
+                user=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+                tenant_id=tenant_id,
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:

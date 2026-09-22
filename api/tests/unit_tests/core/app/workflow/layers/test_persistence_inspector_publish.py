@@ -37,7 +37,8 @@ def layer() -> WorkflowPersistenceLayer:
     instance = WorkflowPersistenceLayer.__new__(WorkflowPersistenceLayer)
     # Minimum surface the handlers touch:
     instance._workflow_execution_repository = MagicMock()
-    instance._workflow_node_execution_repository = MagicMock()
+    instance._workflow_node_execution_writer = MagicMock()
+    instance._workflow_node_execution_query = MagicMock()
     instance._trace_manager = None
     instance._workflow_info = MagicMock(workflow_id="wf-1")
     instance._application_generate_entity = MagicMock()

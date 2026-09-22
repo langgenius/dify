@@ -17,7 +17,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import create_session
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepositories
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
@@ -49,7 +49,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         workflow: Workflow,
         system_user_id: str,
         workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_node_execution_repositories: WorkflowNodeExecutionRepositories,
         workflow_thread_pool_id: str | None = None,
     ) -> None:
         """
@@ -67,7 +67,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self._workflow = workflow
         self._sys_user_id = system_user_id
         self._workflow_execution_repository = workflow_execution_repository
-        self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._workflow_node_execution_repositories = workflow_node_execution_repositories
 
     def _get_app_id(self) -> str:
         return self.application_generate_entity.app_config.app_id
@@ -228,7 +228,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 graph_data=workflow.graph_dict,
             ),
             workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
+            workflow_node_execution_writer=self._workflow_node_execution_repositories.writer,
+            workflow_node_execution_query=self._workflow_node_execution_repositories.query,
             trace_manager=self.application_generate_entity.trace_manager,
         )
 

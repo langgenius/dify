@@ -27,7 +27,9 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from fields.file_fields import FileResponse
+from models.enums import CreatorUserRole
 from services.file_service import FileService
+from services.file_upload_service import FileUploadActor
 
 
 class TestFileResponse:
@@ -293,7 +295,8 @@ class TestFileApiPost:
             filename="test.pdf",
             content=b"file content",
             mimetype="application/pdf",
-            user=mock_end_user,
+            user=FileUploadActor(id=mock_end_user.id, creator_role=CreatorUserRole.END_USER),
+            tenant_id=mock_end_user.tenant_id,
         )
 
     def test_upload_no_file(self, app: Flask, mock_app_model, mock_end_user):

@@ -39,6 +39,7 @@ from services.file_grant_service import (
     RUN_GRANT_EXPIRY_GRACE_SECONDS,
     FileGrantService,
 )
+from tests.file_service_test_utils import make_file_service
 
 CONTROLLER_MODULE = "controllers.inner_api.app.file_grants"
 
@@ -135,7 +136,11 @@ def _persist_tool_file(session: Session, *, owner_id: str, tenant_id: str = TENA
 @pytest.fixture
 def sqlite_db(sqlite_engine: Engine, granted_config: None) -> Iterator[None]:
     del granted_config
-    service = _build_file_grant_service(database_client=sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    database_client = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    service = _build_file_grant_service(
+        database_client=database_client,
+        file_service=make_file_service(session_factory=database_client),
+    )
     services = SimpleNamespace(file_grants=service)
     with patch(f"{CONTROLLER_MODULE}.application_services", return_value=services):
         yield

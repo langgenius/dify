@@ -13,16 +13,25 @@ from controllers.common.errors import (
 )
 from controllers.openapi.files import AppFileUploadApi
 from libs.exception import BaseHTTPException
-from models import Account
+from models import Account, Tenant
+from models.enums import CreatorUserRole
 from services.errors.file import BlockedFileExtensionError as ServiceBlockedFileExtensionError
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
+from services.file_upload_service import FileUploadActor
 
 
 def _caller() -> Account:
     caller = Account(name="Uploader", email="uploader@example.com")
     caller.id = "account-1"
+    tenant = Tenant(name="Test")
+    tenant.id = "tenant-1"
+    caller._current_tenant = tenant
     return caller
+
+
+def _context(caller: Account) -> SimpleNamespace:
+    return SimpleNamespace(caller=caller, subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT))
 
 
 def _upload_result() -> SimpleNamespace:
@@ -55,14 +64,15 @@ def test_upload_uses_injected_file_service(app: Flask, monkeypatch: pytest.Monke
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
-        result = api.post.__handler__(api, SimpleNamespace(caller=caller), app_id="app-1")
+        result = api.post.__handler__(api, _context(caller), app_id="app-1")
 
     assert result.id == "00000000-0000-0000-0000-000000000001"
     service.upload_file.assert_called_once_with(
         filename="note.txt",
         content=b"hello",
         mimetype="text/plain",
-        user=caller,
+        user=FileUploadActor(id=caller.id, creator_role=CreatorUserRole.ACCOUNT),
+        tenant_id="tenant-1",
     )
 
 
@@ -106,7 +116,7 @@ def test_upload_preserves_specific_file_errors(
     ):
         api = AppFileUploadApi()
         with pytest.raises(controller_error) as error_info:
-            api.post.__handler__(api, SimpleNamespace(caller=_caller()), app_id="app-1")
+            api.post.__handler__(api, _context(_caller()), app_id="app-1")
 
     assert error_info.value.code == status
     assert error_info.value.error_code == error_code
@@ -127,7 +137,7 @@ def test_upload_maps_other_value_errors_to_bad_request(app: Flask, monkeypatch: 
     ):
         api = AppFileUploadApi()
         with pytest.raises(BadRequest) as error_info:
-            api.post.__handler__(api, SimpleNamespace(caller=_caller()), app_id="app-1")
+            api.post.__handler__(api, _context(_caller()), app_id="app-1")
 
     assert error_info.value.description == str(service_error)
     assert error_info.value.__cause__ is service_error

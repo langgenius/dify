@@ -8,9 +8,10 @@ import pytest
 from core.file.remote_file_metadata import FileInfo, InvalidRemoteFileMetadataError
 from core.helper.ssrf_proxy import MaxRetriesExceededError
 from core.tools.errors import ToolSSRFError
+from models.enums import CreatorUserRole
 from models.model import Account
 from services.errors.file import FileTooLargeError
-from services.file_service import FileService
+from services.file_upload_service import FileUploadActor, FileUploadService
 from services.remote_file_service import (
     RemoteFileAccessDeniedError,
     RemoteFileError,
@@ -49,7 +50,7 @@ def _account() -> Account:
 
 @pytest.fixture
 def file_service() -> MagicMock:
-    service = MagicMock(spec=FileService)
+    service = MagicMock(spec=FileUploadService)
     service.is_file_size_within_limit.return_value = True
     return service
 
@@ -186,7 +187,7 @@ def test_upload_reuses_get_fallback_content_and_returns_signed_result(
         created_by=account.id,
         created_at=created_at,
     )
-    file_service.upload_file.return_value = upload_file
+    file_service.upload_file_for_actor.return_value = upload_file
 
     with (
         patch(
@@ -210,12 +211,12 @@ def test_upload_reuses_get_fallback_content_and_returns_signed_result(
         call("GET", url=REMOTE_URL, timeout=3, follow_redirects=True),
     ]
     file_service.is_file_size_within_limit.assert_called_once_with(extension=".pdf", file_size=14)
-    file_service.upload_file.assert_called_once_with(
+    file_service.upload_file_for_actor.assert_called_once_with(
         filename="report.pdf",
         content=b"remote content",
         mimetype="application/pdf",
-        user=account,
-        tenant_id="tenant-id",
+        actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+        resource_tenant_id="tenant-id",
         source_url=REMOTE_URL,
     )
     get_signed_file_url.assert_called_once_with(upload_file_id="upload-id")
@@ -239,7 +240,7 @@ def test_upload_fetches_content_after_successful_head(
     head_response = _response("HEAD", httpx.codes.OK)
     content_response = _response("GET", httpx.codes.OK, content=b"downloaded content")
     file_info = FileInfo(filename="report.pdf", extension=".pdf", mimetype="application/pdf", size=18)
-    file_service.upload_file.return_value = SimpleNamespace(
+    file_service.upload_file_for_actor.return_value = SimpleNamespace(
         id="upload-id",
         name="report.pdf",
         size=18,
@@ -260,8 +261,8 @@ def test_upload_fetches_content_after_successful_head(
         remote_file_service.upload_from_url(url=REMOTE_URL, user=account)
 
     assert make_request.call_args_list == [call("HEAD", url=REMOTE_URL), call("GET", url=REMOTE_URL)]
-    assert file_service.upload_file.call_args.kwargs["content"] == b"downloaded content"
-    assert file_service.upload_file.call_args.kwargs["tenant_id"] is None
+    assert file_service.upload_file_for_actor.call_args.kwargs["content"] == b"downloaded content"
+    assert file_service.upload_file_for_actor.call_args.kwargs["resource_tenant_id"] == ""
 
 
 def test_upload_rejects_failed_content_download(
@@ -282,7 +283,7 @@ def test_upload_rejects_failed_content_download(
         with pytest.raises(RemoteFileUnavailableError):
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
-    file_service.upload_file.assert_not_called()
+    file_service.upload_file_for_actor.assert_not_called()
 
 
 def test_upload_rejects_invalid_remote_metadata(
@@ -300,7 +301,7 @@ def test_upload_rejects_invalid_remote_metadata(
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     assert error_info.value.__cause__ is metadata_error
-    file_service.upload_file.assert_not_called()
+    file_service.upload_file_for_actor.assert_not_called()
 
 
 def test_upload_does_not_translate_unknown_metadata_failure(
@@ -318,7 +319,7 @@ def test_upload_does_not_translate_unknown_metadata_failure(
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     assert error_info.value.__cause__ is source_error
-    file_service.upload_file.assert_not_called()
+    file_service.upload_file_for_actor.assert_not_called()
 
 
 def test_upload_rejects_remote_filename_with_path_separator(
@@ -335,7 +336,7 @@ def test_upload_rejects_remote_filename_with_path_separator(
         with pytest.raises(RemoteFileInvalidResponseError):
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
-    file_service.upload_file.assert_not_called()
+    file_service.upload_file_for_actor.assert_not_called()
 
 
 def test_upload_rejects_file_that_exceeds_size_limit(
@@ -354,4 +355,4 @@ def test_upload_rejects_file_that_exceeds_size_limit(
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     file_service.is_file_size_within_limit.assert_called_once_with(extension=".pdf", file_size=1024)
-    file_service.upload_file.assert_not_called()
+    file_service.upload_file_for_actor.assert_not_called()

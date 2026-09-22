@@ -17,11 +17,15 @@ logger = logging.getLogger(__name__)
 
 @document_index_created.connect
 def handle(sender, **kwargs):
+    from extensions.ext_application_services import application_services
+
     dataset_id = sender
     document_ids = kwargs.get("document_ids", [])
     start_at = time.perf_counter()
     try:
-        indexing_runner = IndexingRunner(enforce_vector_space_admission=True)
+        indexing_runner = IndexingRunner(
+            enforce_vector_space_admission=True, file_uploads=application_services().file_uploads
+        )
         with session_factory.create_session() as session:
             documents = []
             for document_id in document_ids:

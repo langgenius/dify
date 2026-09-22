@@ -1,4 +1,4 @@
-"""Testcontainers integration tests for SQLAlchemyWorkflowNodeExecutionRepository."""
+"""Testcontainers integration tests for SQLAlchemyWorkflowNodeExecutionWriteRepository."""
 
 from __future__ import annotations
 
@@ -10,8 +10,11 @@ from uuid import uuid4
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories import SQLAlchemyWorkflowNodeExecutionWriteRepository
 from core.repositories.factory import OrderConfig
+from core.repositories.sqlalchemy_workflow_node_execution_query_repository import (
+    SQLAlchemyWorkflowNodeExecutionQueryRepository,
+)
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -22,6 +25,7 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.account import Account, Tenant
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from tests.file_service_test_utils import make_file_upload_service
 
 
 def _create_account_with_tenant(session: Session) -> Account:
@@ -37,18 +41,28 @@ def _create_account_with_tenant(session: Session) -> Account:
     return account
 
 
-def _make_repo(session: Session, account: Account, app_id: str) -> SQLAlchemyWorkflowNodeExecutionRepository:
+def _make_repo(session: Session, account: Account, app_id: str) -> SQLAlchemyWorkflowNodeExecutionWriteRepository:
     engine = session.get_bind()
     assert isinstance(engine, Engine)
     tenant_id = account.current_tenant_id
     assert tenant_id is not None
-    return SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=sessionmaker(bind=engine, expire_on_commit=False),
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
+    return SQLAlchemyWorkflowNodeExecutionWriteRepository(
+        session_factory=sessions,
+        file_uploads=make_file_upload_service(sessions),
         tenant_id=tenant_id,
         user=account,
         app_id=app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
+
+
+def _make_query(session: Session, account: Account, app_id: str) -> SQLAlchemyWorkflowNodeExecutionQueryRepository:
+    engine = session.get_bind()
+    assert isinstance(engine, Engine)
+    tenant_id = account.current_tenant_id
+    assert tenant_id is not None
+    return SQLAlchemyWorkflowNodeExecutionQueryRepository(engine, tenant_id=tenant_id, app_id=app_id)
 
 
 def _create_node_execution_model(
@@ -177,7 +191,7 @@ class TestGetByWorkflowExecution:
         app_id = str(uuid4())
         workflow_id = str(uuid4())
         workflow_run_id = str(uuid4())
-        repo = _make_repo(db_session_with_containers, account, app_id)
+        repo = _make_query(db_session_with_containers, account, app_id)
 
         _create_node_execution_model(
             db_session_with_containers,
@@ -216,7 +230,7 @@ class TestGetByWorkflowExecution:
         app_id = str(uuid4())
         workflow_id = str(uuid4())
         workflow_run_id = str(uuid4())
-        repo = _make_repo(db_session_with_containers, account, app_id)
+        repo = _make_query(db_session_with_containers, account, app_id)
 
         _create_node_execution_model(
             db_session_with_containers,
@@ -306,7 +320,7 @@ class TestToDomainModel:
     def test_converts_db_to_domain_model(self, db_session_with_containers: Session) -> None:
         account = _create_account_with_tenant(db_session_with_containers)
         app_id = str(uuid4())
-        repo = _make_repo(db_session_with_containers, account, app_id)
+        repo = _make_query(db_session_with_containers, account, app_id)
 
         inputs_dict = {"input_key": "input_value"}
         process_data_dict = {"process_key": "process_value"}
@@ -363,7 +377,7 @@ class TestToDomainModel:
 
     def test_domain_model_without_offload_data(self, db_session_with_containers: Session) -> None:
         account = _create_account_with_tenant(db_session_with_containers)
-        repo = _make_repo(db_session_with_containers, account, str(uuid4()))
+        repo = _make_query(db_session_with_containers, account, str(uuid4()))
 
         process_data = {"normal": "data"}
         db_model = WorkflowNodeExecutionModel()

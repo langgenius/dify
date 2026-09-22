@@ -601,16 +601,16 @@ class TestWorkflowTrace:
         repo.get_by_workflow_execution.return_value = nodes
 
         mock_factory = MagicMock()
-        mock_factory.create_workflow_node_execution_repository.return_value = repo
+        mock_factory.create_workflow_node_execution_query.return_value = repo
 
         monkeypatch.setattr("dify_trace_weave.weave_trace.DifyCoreRepositoryFactory", mock_factory)
         monkeypatch.setattr("dify_trace_weave.weave_trace.sessionmaker", lambda bind: MagicMock())
         monkeypatch.setattr("dify_trace_weave.weave_trace.db", MagicMock(engine="engine"))
-        return repo
+        return mock_factory
 
     def test_workflow_trace_no_nodes_no_message_id(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Workflow trace with no nodes and no message_id."""
-        self._setup_repo(monkeypatch, nodes=[])
+        mock_factory = self._setup_repo(monkeypatch, nodes=[])
         monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
         trace_instance.start_call = MagicMock()
@@ -618,6 +618,8 @@ class TestWorkflowTrace:
 
         trace_info = _make_workflow_trace_info(message_id=None)
         trace_instance.workflow_trace(trace_info)
+
+        assert "file_uploads" not in mock_factory.create_workflow_node_execution_query.call_args.kwargs
 
         # Only workflow run: start_call and finish_call each called once
         assert trace_instance.start_call.call_count == 1

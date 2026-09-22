@@ -16,6 +16,7 @@ from core.rag.index_processor.processor.qa_index_processor import QAIndexProcess
 from core.rag.models.document import AttachmentDocument, Document
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from services.file_upload_service import FileUploadService
 
 
 class _ImmediateThread:
@@ -33,8 +34,8 @@ class _ImmediateThread:
 
 class TestQAIndexProcessor:
     @pytest.fixture
-    def processor(self) -> QAIndexProcessor:
-        return QAIndexProcessor()
+    def processor(self, file_uploads: FileUploadService) -> QAIndexProcessor:
+        return QAIndexProcessor(file_uploads=file_uploads)
 
     @pytest.fixture
     def dataset(self) -> Dataset:

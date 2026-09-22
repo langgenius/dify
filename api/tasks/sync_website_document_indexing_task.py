@@ -29,6 +29,8 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
 
     Usage: sync_website_document_indexing_task.delay(dataset_id, document_id)
     """
+    from extensions.ext_application_services import application_services
+
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
@@ -69,7 +71,9 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
         logger.info(click.style(f"Start sync website document: {document_id}", fg="green"))
         try:
             # clean old data
-            index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
+            index_processor = IndexProcessorFactory(
+                document.doc_form, file_uploads=application_services().file_uploads
+            ).init_index_processor()
 
             segments = session.scalars(
                 select(DocumentSegment).where(
@@ -103,7 +107,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
             # Release document/segment locks before extraction starts.
             session.commit()
 
-            indexing_runner = IndexingRunner()
+            indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
             indexing_runner.run([document], session)
             session.commit()
             redis_client.delete(sync_indexing_cache_key)

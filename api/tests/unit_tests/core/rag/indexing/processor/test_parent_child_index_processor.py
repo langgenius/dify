@@ -14,6 +14,7 @@ from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentCreatedFrom, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType
+from services.file_upload_service import FileUploadService
 from tests.unit_tests.config_override import config_overrides_context
 
 
@@ -27,8 +28,8 @@ class TestParentChildIndexProcessor:
         self.session_factory = sqlite_session_factory
 
     @pytest.fixture
-    def processor(self) -> ParentChildIndexProcessor:
-        return ParentChildIndexProcessor()
+    def processor(self, file_uploads: FileUploadService) -> ParentChildIndexProcessor:
+        return ParentChildIndexProcessor(file_uploads=file_uploads)
 
     @pytest.fixture
     def dataset(self) -> Dataset:
