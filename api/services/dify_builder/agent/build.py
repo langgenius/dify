@@ -18,6 +18,7 @@ from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import graph_ops
 from services.dify_builder.agent import form_schema, graph_translate, llm, resources
 from services.dify_builder.agent.model_resolver import resolve_model_instance
+from services.dify_builder.agent.resources import ResourceRef
 from services.workflow_generator_service import WorkflowGeneratorService
 
 logger = logging.getLogger(__name__)
@@ -128,10 +129,45 @@ _DIFY_NODE_VOCABULARY = """\
 - "human-input"         — pause for a person to review, approve, or enter data."""
 
 
+# How many ready tools the Builder's planner is shown. The ESQ1-302 tenant had
+# 35; a cap keeps the prompt bounded on tenants with hundreds. Sorted by id so
+# the listing is stable across calls.
+_MAX_PLANNER_TOOLS = 40
+
+
+def ready_tool_catalogue(tenant_id: str) -> list[ResourceRef]:
+    """The installed tools the planner may name: ``ready`` ones only (an
+    installed-but-unauthorized tool cannot cover a step), capped and sorted.
+    A listing failure yields ``[]`` -- the plan then just cannot name tools,
+    which is the pre-existing behaviour, never a crashed advance."""
+    try:
+        tools = resources.list_tenant_resources(tenant_id).tools
+    except Exception:
+        logger.warning("dify_builder: tool listing failed; planning without a tool catalogue", exc_info=True)
+        return []
+    ready = sorted((t for t in tools if t.readiness == "ready"), key=lambda t: t.id)
+    return ready[:_MAX_PLANNER_TOOLS]
+
+
+def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
+    if not tools:
+        return ""
+    listing = "\n".join(f"- {t.id} — {t.label}" for t in tools)
+    return (
+        "\n\n# Installed tools you may name (ready to use)\n"
+        "When one of these covers a step, plan that step as a `tool` node and name the tool "
+        "by its id. Plan an `http-request` step only for an endpoint the user actually gave "
+        "you -- never invent one.\n"
+        f"{listing}"
+    )
+
+
 def propose_plan_v1(
     model,
     requirements: dict[str, Any],
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    tools: Sequence[ResourceRef] = (),
 ) -> list[str]:
     if model is None:
         return _degraded_plan()
@@ -146,8 +182,9 @@ def propose_plan_v1(
         "-- that names a product, not a node.\n\n"
         "Dify has no scheduler, database, email or messaging node. A step that needs one of "
         "those is either a `tool` node (when an installed plugin provides it), an "
-        "`http-request` node, or outside the workflow entirely -- say so in the step rather "
-        "than inventing a node.\n\n"
+        "`http-request` node for an endpoint the user supplied, or outside the workflow "
+        "entirely -- say so in the step rather than inventing a node or an endpoint."
+        f"{_planner_tool_section(tools)}\n\n"
         'Reply with ONLY JSON: {"plan": ["step", ...]}.'
     ) + llm.json_language_instruction("plan steps")
     try:

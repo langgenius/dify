@@ -116,6 +116,7 @@ class LlmBuilderAgent:
             self.model_or_none(),
             requirements,
             self._reasoning_for("propose-build-plan"),
+            tools=build.ready_tool_catalogue(self._tenant_id),
         )
 
     def discover_resources(self, plan_items):

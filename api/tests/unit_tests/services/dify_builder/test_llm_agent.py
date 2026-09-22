@@ -54,8 +54,8 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     self._tenant_id/self._model_config directly instead)."""
     seen = {}
 
-    def mock_propose_plan_v1(model, requirements, _reasoning=None):
-        seen["propose_plan_v1"] = (model, requirements)
+    def mock_propose_plan_v1(model, requirements, _reasoning=None, *, tools=()):
+        seen["propose_plan_v1"] = (model, requirements, list(tools))
         return []
 
     def mock_discover_resources(model, tenant_id, plan_items, _reasoning=None):
@@ -79,6 +79,9 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
         return "skill"
 
     monkeypatch.setattr(build_mod, "propose_plan_v1", mock_propose_plan_v1)
+    # The wrapper now hands the planner the tenant's READY tools (Plan 3 Task 2);
+    # stub the listing so this test never reaches the plugin daemon.
+    monkeypatch.setattr(build_mod, "ready_tool_catalogue", lambda _tenant_id: ["catalogue-stub"])
     monkeypatch.setattr(build_mod, "discover_resources", mock_discover_resources)
     monkeypatch.setattr(build_mod, "assess_capability_gap", mock_assess_capability_gap)
     monkeypatch.setattr(build_mod, "bind_resources", mock_bind_resources)
@@ -90,7 +93,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
 
     agent.propose_plan_v1({"x": 1})
-    assert seen["propose_plan_v1"] == ("MODEL", {"x": 1})
+    assert seen["propose_plan_v1"] == ("MODEL", {"x": 1}, ["catalogue-stub"])
 
     agent.discover_resources(["step"])
     assert seen["discover_resources"] == ("MODEL", "t1", ["step"])
