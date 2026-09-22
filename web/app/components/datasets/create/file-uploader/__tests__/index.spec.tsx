@@ -1,12 +1,21 @@
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { PROGRESS_NOT_STARTED } from '../constants'
 import FileUploader from '../index'
 
-const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
+const render = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.files.supportType.get.queryOptions().queryKey, {
+    allowed_extensions: ['pdf', 'docx', 'txt'],
+  })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+}
 
 const mockNotify = vi.fn()
 vi.mock('use-context-selector', async () => {
@@ -26,9 +35,6 @@ vi.mock('@/service/base', () => ({
 vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({
     data: { file_size_limit: 15, batch_count_limit: 5, file_upload_limit: 10 },
-  }),
-  useFileSupportTypes: () => ({
-    data: { allowed_extensions: ['pdf', 'docx', 'txt'] },
   }),
 }))
 vi.mock('@/i18n/language', () => ({
