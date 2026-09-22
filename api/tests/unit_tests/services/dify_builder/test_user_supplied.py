@@ -95,3 +95,59 @@ def test_trusted_text_for_combines_goal_and_requirements_json():
 
 def test_trusted_text_for_empty_requirements():
     assert us.trusted_text_for("goal only", {}) == "goal only\n{}"
+
+
+# --- Fix round 1: is_credential_key decides on the key's LAST segment -----
+
+
+def test_is_credential_key_true_for_real_credential_keys():
+    for key in ("api_key", "apiKey", "x-api-key", "access_token", "Authorization"):
+        assert us.is_credential_key(key), key
+
+
+def test_is_credential_key_false_for_lookalike_keys():
+    for key in ("password_policy", "token_limit", "session_token_expiry", "max_tokens", "key_points"):
+        assert not us.is_credential_key(key), key
+
+
+def test_is_credential_key_false_for_empty_key():
+    assert us.is_credential_key("") is False
+
+
+# --- Fix round 1: url_hosts stops at the first non-URL character ----------
+
+
+def test_url_hosts_drops_trailing_sentence_punctuation():
+    text = "… to https://render.acme.internal. Thanks."
+    assert us.url_hosts(text) == {"render.acme.internal"}
+
+
+def test_url_hosts_stops_before_cjk_text():
+    text = "请调用https://api.x.com接口完成任务"
+    assert us.url_hosts(text) == {"api.x.com"}
+
+
+def test_is_user_supplied_url_true_with_url_at_end_of_sentence():
+    trusted = "… to https://render.acme.internal. Thanks."
+    assert us.is_user_supplied_url("https://render.acme.internal/v2/pptx", trusted) is True
+
+
+def test_url_hosts_lowercases_host_with_port():
+    assert us.url_hosts("https://API.Example.com:8443/x") == {"api.example.com"}
+
+
+# --- Fix round 1: strip_auth_scheme is a shared, exported helper ----------
+
+
+def test_strip_auth_scheme_strips_known_prefixes_case_insensitively():
+    assert us.strip_auth_scheme("Bearer sk-live-abc123") == "sk-live-abc123"
+    assert us.strip_auth_scheme("basic sk-live-abc123") == "sk-live-abc123"
+    assert us.strip_auth_scheme("TOKEN sk-live-abc123") == "sk-live-abc123"
+
+
+def test_strip_auth_scheme_leaves_a_plain_value_unchanged():
+    assert us.strip_auth_scheme("sk-live-abc123") == "sk-live-abc123"
+
+
+def test_strip_auth_scheme_handles_empty_value():
+    assert us.strip_auth_scheme("") == ""

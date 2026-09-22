@@ -143,6 +143,49 @@ def test_scrub_invented_defaults_blanks_a_credential_the_goal_does_not_state():
     assert out["api_key"] == ""
 
 
+def test_scrub_invented_defaults_keeps_lookalike_keys_that_are_not_credentials():
+    # ESQ1-302 fix round 1: an unanchored credential-key regex blanked these
+    # (token_limit contains "token", password_policy contains "password",
+    # session_token_expiry contains "token") even though none of them holds
+    # a secret. Credential-ness is decided by the key's LAST segment.
+    values = {
+        "password_policy": "strong",
+        "token_limit": "unlimited",
+        "session_token_expiry": "30 minutes",
+    }
+
+    out = build._scrub_invented_defaults(values, _S5B_GOAL)
+
+    assert out == values
+
+
+def test_scrub_invented_defaults_keeps_a_non_credential_placeholder_looking_string():
+    # ESQ1-302 fix round 1: CREDENTIAL_PLACEHOLDER_RE's "<...>" shape must
+    # not blank an ordinary templated-greeting default that happens to use
+    # angle brackets.
+    values = {"greeting_template": "Dear <customer_name>,"}
+
+    out = build._scrub_invented_defaults(values, _S5B_GOAL)
+
+    assert out == values
+
+
+def test_scrub_invented_defaults_blanks_a_bearer_placeholder_under_a_non_credential_key():
+    values = {"x": "Bearer YOUR_API_KEY"}
+
+    out = build._scrub_invented_defaults(values, _S5B_GOAL)
+
+    assert out["x"] == ""
+
+
+def test_scrub_invented_defaults_blanks_a_placeholder_under_a_credential_key():
+    values = {"api_key": "<your key>"}
+
+    out = build._scrub_invented_defaults(values, _S5B_GOAL)
+
+    assert out["api_key"] == ""
+
+
 def test_analyze_goal_scrubs_invented_defaults_end_to_end(monkeypatch):
     captured: dict[str, str] = {}
     raw = {
