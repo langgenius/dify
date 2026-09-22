@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
+from core.plugin.entities.plugin_daemon import PluginAgentProviderEntity
 from core.plugin.impl.agent import PluginAgentClient
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.tools.tool_manager import ToolManager
@@ -153,7 +154,7 @@ class AgentService:
         return result
 
     @classmethod
-    def list_agent_providers(cls, user_id: str, tenant_id: str):
+    def list_agent_providers(cls, user_id: str, tenant_id: str) -> list[PluginAgentProviderEntity]:
         """
         List agent providers
         """
@@ -161,7 +162,7 @@ class AgentService:
         return manager.fetch_agent_strategy_providers(tenant_id)
 
     @classmethod
-    def get_agent_provider(cls, user_id: str, tenant_id: str, provider_name: str):
+    def get_agent_provider(cls, user_id: str, tenant_id: str, provider_name: str) -> PluginAgentProviderEntity:
         """
         Get agent provider
         """

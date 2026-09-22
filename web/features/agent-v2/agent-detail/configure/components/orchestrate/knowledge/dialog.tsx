@@ -9,12 +9,12 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/d
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { SearchInput } from '@/app/components/base/search-input'
 import {
   useKnowledgeValidationMessage,
@@ -203,11 +203,17 @@ export function AgentKnowledgeRetrievalDialog({ initialBindings, onConfirm, onCl
               <DialogTitle className="title-xl-semi-bold text-text-primary">
                 {t(($) => $['agentDetail.configure.knowledgeFs.title'])}
               </DialogTitle>
-              <Infotip aria-label={t(($) => $['agentDetail.configure.knowledgeFs.description'])}>
-                {t(($) => $['agentDetail.configure.knowledgeFs.description'])}
+              <Infotip>
+                <InfotipTrigger
+                  aria-label={t(($) => $['agentDetail.configure.knowledgeFs.description'])}
+                />
+                <InfotipContent>
+                  {t(($) => $['agentDetail.configure.knowledgeFs.description'])}
+                </InfotipContent>
               </Infotip>
               <IconButton
-                className="ml-auto shrink-0"
+                size="lg"
+                className="-my-0.5 ml-auto shrink-0"
                 aria-label={tc(($) => $['operation.close'])}
                 onClick={onClose}
               >

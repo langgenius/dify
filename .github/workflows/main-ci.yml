@@ -112,6 +112,7 @@ jobs:
               - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'
               - '.github/actions/setup-core-e2e/**'
+              - '.github/actions/wait-e2e-web-build/**'
             vdb:
               - 'api/core/rag/datasource/**'
               - 'api/tests/integration_tests/vdb/**'

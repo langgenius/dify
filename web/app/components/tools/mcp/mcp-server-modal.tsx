@@ -2,11 +2,11 @@
 import type { MCPServerDetail } from '@/app/components/tools/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
 import {
   useCreateMCPServer,
@@ -141,7 +141,11 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
                   <div className="shrink-0 system-xs-medium-uppercase text-text-primary">
                     {t(($) => $['mcp.server.modal.parameters'], { ns: 'tools' })}
                   </div>
-                  <Divider type="horizontal" className="m-0! h-px! grow bg-divider-subtle" />
+                  <Separator
+                    decorative
+                    orientation="horizontal"
+                    className="m-0 grow bg-divider-subtle"
+                  />
                 </div>
                 <div className="mb-2 body-xs-regular text-text-tertiary">
                   {t(($) => $['mcp.server.modal.parametersTip'], { ns: 'tools' })}

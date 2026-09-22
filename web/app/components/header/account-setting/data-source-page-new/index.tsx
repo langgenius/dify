@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -10,8 +10,8 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { consoleQuery } from '@/service/console'
 import { useGetDataSourceListAuth, useInvalidDataSourceListAuth } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import UpdateSettingDialog from '../update-setting-dialog'
 import Card from './card'
@@ -55,6 +55,7 @@ function DataSourceListSkeleton() {
 
 const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSourcePageProps) => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const renderI18nObject = useRenderI18nObject()
   const [searchText, setSearchText] = useState('')
   const { canSetPluginPreferences } = usePluginSettingsAccess()
@@ -69,7 +70,6 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(installedPluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
-  const invalidateDataSourceList = useInvalidDataSourceList()
   const dataSources = useMemo(() => data?.result ?? [], [data?.result])
   const dataSourcePluginDetails = useMemo(() => {
     return pluginListWithLatestVersion.filter(
@@ -97,8 +97,10 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
   const handlePluginUpdate = useCallback(() => {
     invalidateInstalledPluginList()
     invalidateDataSourceListAuth()
-    invalidateDataSourceList()
-  }, [invalidateDataSourceList, invalidateDataSourceListAuth, invalidateInstalledPluginList])
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
+    })
+  }, [queryClient, invalidateDataSourceListAuth, invalidateInstalledPluginList])
 
   const toolbar = (
     <div

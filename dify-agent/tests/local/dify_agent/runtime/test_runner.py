@@ -69,6 +69,8 @@ from dify_agent.protocol.schemas import (
     RunLayerSpec,
     RunSucceededEvent,
 )
+
+from dify_agent.runtime.observability import AgentObservability
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import (
@@ -264,6 +266,8 @@ def _request(
     ask_human_config: DifyAskHumanLayerConfig | None = None,
     llm_layer_name: str = DIFY_AGENT_MODEL_LAYER_ID,
     execution_context_layer_name: str = "execution_context",
+    app_id: str | None = None,
+    agent_id: str | None = None,
     on_exit: LayerExitSignals | None = None,
     output_config: Mapping[str, object] | DifyOutputLayerConfig | None = None,
     model_settings: ModelSettings | None = None,
@@ -296,6 +300,8 @@ def _request(
             type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
             config=DifyExecutionContextLayerConfig(
                 tenant_id="tenant-1",
+                app_id=app_id,
+                agent_id=agent_id,
                 user_from="account",
                 agent_mode="workflow_run",
                 invoke_from="service-api",
@@ -737,6 +743,61 @@ def test_runner_passes_context_compaction(monkeypatch: pytest.MonkeyPatch) -> No
     asyncio.run(scenario())
 
     assert sink.statuses["run-compaction"] == "succeeded"
+
+
+def test_runner_instruments_agent_with_injected_observability(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeAgentObservability:
+        def __init__(self) -> None:
+            self.instrumented: list[tuple[object, DifyExecutionContextLayerConfig | None]] = []
+
+        def instrument(
+            self,
+            agent: object,
+            *,
+            execution_context: DifyExecutionContextLayerConfig | None = None,
+        ) -> None:
+            self.instrumented.append((agent, execution_context))
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            return FakeAgentRunResult("done")
+
+    observability = FakeAgentObservability()
+    created_agent = FakeAgent()
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: created_agent)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request(app_id="app-1", agent_id="agent-1"),
+                run_id="run-observed",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                agent_observability=cast(AgentObservability, observability),
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert sink.statuses["run-observed"] == "succeeded"
+    # The run's Dify context reaches observability through the model layer's
+    # execution-context dependency, whose node name the caller chooses.
+    assert len(observability.instrumented) == 1
+    instrumented_agent, execution_context = observability.instrumented[0]
+    assert instrumented_agent is created_agent
+    assert execution_context is not None
+    assert (execution_context.tenant_id, execution_context.app_id, execution_context.agent_id) == (
+        "tenant-1",
+        "app-1",
+        "agent-1",
+    )
 
 
 def test_runner_rejects_compaction_budget_before_model_resolution_or_invocation(

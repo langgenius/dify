@@ -1,16 +1,23 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { PluginDetail } from '../types'
+import type { ReadmePanelState } from './store'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { usePluginReadme } from '@/service/use-plugins'
+import { resolveDatasourceIcon } from '@/app/components/rag-pipeline/utils/datasource-icon'
+import { useGetLanguage } from '@/context/i18n'
+import { consoleQuery } from '@/service/console'
+import Icon from '../card/base/card-icon'
+import Description from '../card/base/description'
+import OrgInfo from '../card/base/org-info'
+import Title from '../card/base/title'
 import DetailHeader from '../plugin-detail-panel/detail-header'
 
 type ReadmePanelContentProps = {
-  detail: PluginDetail
+  detail: ReadmePanelState['detail']
   title: ReactNode
   closeButton: ReactNode
 }
@@ -18,16 +25,25 @@ type ReadmePanelContentProps = {
 export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelContentProps) {
   const { t } = useTranslation()
   const language = useLanguage()
-  const pluginUniqueIdentifier = detail.plugin_unique_identifier || ''
+  const locale = useGetLanguage()
+  const pluginUniqueIdentifier = detail.plugin_unique_identifier
 
   const {
     data: readmeData,
     isLoading,
     error,
-  } = usePluginReadme({
-    plugin_unique_identifier: pluginUniqueIdentifier,
-    language: language === 'zh-Hans' ? undefined : language,
-  })
+  } = useQuery(
+    consoleQuery.workspaces.current.plugin.readme.get.queryOptions({
+      input: pluginUniqueIdentifier
+        ? {
+            query: {
+              plugin_unique_identifier: pluginUniqueIdentifier,
+              language,
+            },
+          }
+        : skipToken,
+    }),
+  )
 
   let readmeContent: ReactNode
   if (isLoading) {
@@ -70,7 +86,41 @@ export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelCo
           </div>
           {closeButton}
         </div>
-        <DetailHeader detail={detail} isReadmeView={true} />
+        {'id' in detail ? (
+          <DetailHeader detail={detail} isReadmeView={true} />
+        ) : (
+          <div>
+            <div className="flex">
+              <div className="overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-bg">
+                <Icon src={resolveDatasourceIcon(detail.declaration.identity.icon)} />
+              </div>
+              <div className="ml-3 min-w-0 grow">
+                <Title
+                  title={
+                    detail.declaration.identity.label[locale] ??
+                    detail.declaration.identity.label.en_US
+                  }
+                />
+                <OrgInfo
+                  orgName={detail.declaration.identity.author}
+                  packageName={
+                    detail.declaration.identity.name.split('/').pop() ??
+                    detail.declaration.identity.name
+                  }
+                  packageNameClassName="w-auto"
+                />
+              </div>
+            </div>
+            <Description
+              className="mt-2"
+              text={
+                detail.declaration.identity.description[locale] ??
+                detail.declaration.identity.description.en_US
+              }
+              descriptionLineRows={2}
+            />
+          </div>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">

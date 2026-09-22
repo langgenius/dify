@@ -1,6 +1,6 @@
+import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
 import type { Getter } from 'jotai'
 import type { Source, SourceSyncPolicy, SourceWorkflowRun } from '../source-models'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import knowledgeSpaceTranslations from '@/i18n/locales/en-US/knowledge-space.json'
@@ -377,6 +377,7 @@ const firecrawlDatasourcePlugin: DataSourceItem = {
         },
         parameters: [
           {
+            description: { en_US: '' },
             label: { en_US: 'Starting URL' },
             name: 'url',
             required: true,
@@ -384,6 +385,7 @@ const firecrawlDatasourcePlugin: DataSourceItem = {
           },
           {
             default: true,
+            description: { en_US: '' },
             label: { en_US: 'Follow links' },
             name: 'crawl_subpages',
             required: false,
@@ -391,14 +393,17 @@ const firecrawlDatasourcePlugin: DataSourceItem = {
           },
           {
             default: 100,
+            description: { en_US: '' },
             label: { en_US: 'Page cap' },
             max: 200,
             min: 1,
             name: 'limit',
             required: false,
-            type: 'integer',
+            type: 'number',
+            precision: 0,
           },
           {
+            description: { en_US: '' },
             label: { en_US: 'Included paths' },
             name: 'include_paths',
             required: false,
@@ -437,6 +442,7 @@ const notionDatasourcePlugin: DataSourceItem = {
         },
         parameters: [
           {
+            description: { en_US: '' },
             label: { en_US: 'Workspace' },
             name: 'workspace',
             required: true,
@@ -475,6 +481,7 @@ const googleDriveDatasourcePlugin: DataSourceItem = {
         },
         parameters: [
           {
+            description: { en_US: '' },
             label: { en_US: 'Folder' },
             name: 'folder',
             required: true,
@@ -1553,9 +1560,10 @@ describe('SourcesPage', () => {
     async (invalidParameter) => {
       const user = userEvent.setup()
       const plugin = structuredClone(firecrawlDatasourcePlugin)
-      const datasource = plugin.declaration.datasources[0]
+      const datasource = plugin.declaration.datasources![0]
       if (!datasource) throw new Error('Expected the Firecrawl datasource fixture')
-      datasource.parameters.push({
+      datasource.parameters!.push({
+        description: { en_US: '' },
         label: { en_US: 'New required parameter' },
         name: 'new_parameter',
         required: true,

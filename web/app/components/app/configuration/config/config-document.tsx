@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -7,8 +8,6 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Document } from '@/app/components/base/icons/src/vender/features'
-import { Infotip } from '@/app/components/base/infotip'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 
@@ -48,18 +47,26 @@ const ConfigDocument: FC = () => {
     <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-2">
       <div className="shrink-0 p-1">
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-          <Document className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-features-document size-4 text-text-primary-on-surface"
+          />
         </div>
       </div>
       <div className="flex grow items-center">
         <div className="mr-1 system-sm-semibold text-text-secondary">
           {t(($) => $['feature.documentUpload.title'], { ns: 'appDebug' })}
         </div>
-        <Infotip
-          aria-label={t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
-          popupClassName="w-[180px]"
-        >
-          {t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
+        <Infotip>
+          <InfotipTrigger
+            aria-label={t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
+          />
+          <InfotipContent
+            aria-label={t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
+            className="w-45"
+          >
+            {t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
+          </InfotipContent>
         </Infotip>
       </div>
       {!readonly && (

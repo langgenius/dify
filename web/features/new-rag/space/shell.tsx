@@ -15,7 +15,6 @@ import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
@@ -259,7 +258,12 @@ export function KnowledgeSpaceShell({
             <DetailSidebarToggleButton
               expand={sidebarExpanded}
               onToggle={() => setSidebarExpanded((expanded) => !expanded)}
-              icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+              icon={
+                <span
+                  aria-hidden
+                  className="i-custom-vender-line-arrows-sidebar-left-arrow size-4"
+                />
+              }
               className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
             />
           </div>

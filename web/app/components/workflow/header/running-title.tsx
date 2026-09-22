@@ -1,6 +1,5 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 import { useIsChatMode } from '../hooks/use-workflow'
 import { useStore } from '../store'
 import { formatWorkflowRunIdentifier } from '../utils'
@@ -12,7 +11,10 @@ const RunningTitle = () => {
 
   return (
     <div className="flex h-4.5 items-center text-xs text-gray-500">
-      <ClockPlay className="mr-1 size-3 text-gray-500" />
+      <span
+        aria-hidden
+        className="mr-1 i-custom-vender-line-time-clock-play size-3 text-gray-500"
+      />
       <span>
         {isChatMode
           ? `Test Chat${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`

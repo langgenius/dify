@@ -1,7 +1,7 @@
 import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
 import type { NewKnowledgeSourceDraft } from '../../setup/source-draft'
 import type { SourceConnection, SourceProvider } from '../../source-models'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'

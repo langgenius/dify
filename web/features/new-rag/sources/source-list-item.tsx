@@ -4,10 +4,10 @@ import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import type { Source, SourceDisplayStatus } from './source-models'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { knowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
 import { SourceProviderIcon } from './setup/fields'
@@ -152,12 +152,14 @@ export function SourceRow({
           <span className="sr-only">{source.name}: </span>
           {t(($) => $[`sourceStatus.${displayStatus}`])}
           {displayStatus === 'error' && syncFailureMessageKey && (
-            <Infotip
-              aria-label={t(($) => $[syncFailureMessageKey])}
-              iconVariant="information"
-              popupClassName="max-w-80"
-            >
-              {t(($) => $[syncFailureMessageKey])}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={t(($) => $[syncFailureMessageKey])}
+                iconVariant="information"
+              />
+              <InfotipContent className="max-w-80">
+                {t(($) => $[syncFailureMessageKey])}
+              </InfotipContent>
             </Infotip>
           )}
         </span>

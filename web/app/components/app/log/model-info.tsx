@@ -32,8 +32,6 @@ const ModelInfo: FC<Props> = ({ model }) => {
     model: modelName,
   })
 
-  const [open, setOpen] = React.useState(false)
-
   const getParamValue = (param: keyof typeof PARAM_MAP) => {
     const value = model.completion_params?.[param] ?? '-'
     if (param === 'stop') {
@@ -50,7 +48,7 @@ const ModelInfo: FC<Props> = ({ model }) => {
         <ModelIcon className="size-5!" provider={currentProvider} modelName={currentModel?.model} />
         <ModelName modelItem={currentModel} showMode />
       </div>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover>
         <div className="relative">
           <PopoverTrigger
             render={

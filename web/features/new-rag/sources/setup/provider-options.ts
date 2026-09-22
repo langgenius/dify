@@ -1,12 +1,12 @@
+import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
 import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './source-draft'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import {
   datasourceParameterDefaults,
   datasourceParameterSchemas,
   websiteDatasourceParameterSchemas,
 } from './datasource-parameter-model'
 
-type Datasource = DataSourceItem['declaration']['datasources'][number]
+type Datasource = NonNullable<DataSourceItem['declaration']['datasources']>[number]
 
 type RecommendedProvider = {
   aliases: string[]
@@ -172,9 +172,9 @@ function installedRecommendedProvider(
   )
   if (!plugin) return undefined
   const datasource =
-    plugin.declaration.datasources.find((candidate) =>
+    plugin.declaration.datasources?.find((candidate) =>
       datasourceMatchesAliases(plugin, candidate, definition.aliases),
-    ) ?? plugin.declaration.datasources[0]
+    ) ?? plugin.declaration.datasources?.[0]
   if (!datasource) return undefined
   return {
     datasource,
@@ -230,7 +230,7 @@ export function discoverSourceProviderOptions(
   for (const plugin of datasourcePlugins) {
     const discoveredSourceType = sourceTypeForProviderType(plugin.declaration.provider_type)
     if (discoveredSourceType !== sourceType) continue
-    for (const datasource of plugin.declaration.datasources) {
+    for (const datasource of plugin.declaration.datasources ?? []) {
       const key = providerKey(sourceType, plugin, datasource)
       if (consumedKeys.has(key)) continue
       const rawLabel =

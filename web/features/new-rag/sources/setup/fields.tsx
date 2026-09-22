@@ -195,20 +195,6 @@ export function SourceProviderIcon({
     )
   }
 
-  if (icon && typeof icon !== 'string')
-    return (
-      <span
-        aria-hidden
-        className={cn(
-          'flex size-4 shrink-0 items-center justify-center overflow-hidden rounded text-2xs',
-          className,
-        )}
-        style={{ backgroundColor: icon.background }}
-      >
-        {icon.content}
-      </span>
-    )
-
   return <span aria-hidden className={cn(fallbackIcon, 'size-4 shrink-0', className)} />
 }
 

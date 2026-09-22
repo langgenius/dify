@@ -453,7 +453,7 @@ export function WebsiteCrawlPreview({
       parameterSchemas,
       initialDraft?.parameters,
     )
-    if (!providerOption || providerOption.datasource.parameters.length === 0) {
+    if (!providerOption || !providerOption.datasource.parameters?.length) {
       const crawlSubpagesParameter = parameterSchemas.find((parameter) =>
         ['crawl_sub_pages', 'crawl_subpages'].includes(parameter.name),
       )

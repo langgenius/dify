@@ -890,7 +890,6 @@ class AppApi(Resource):
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=None)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
@@ -1086,14 +1085,10 @@ class AppExportApi(Resource):
                     tenant_id=app_model.tenant_id, agent_id=agent_id, version_id=req_data.version_id
                 )
             else:
-                exported = AppPackageService().export(
-                    dsl=AppDslService.export_dsl(
-                        app_model=app_model,
-                        session=db.session(),
-                        include_secret=req_data.include_secret,
-                        workflow_id=req_data.workflow_id,
-                    ),
-                    name=app_model.name,
+                exported = AppPackageService().export_app(
+                    app_model=app_model,
+                    include_secret=req_data.include_secret,
+                    workflow_id=req_data.workflow_id,
                 )
             try:
                 archive_response = send_file(

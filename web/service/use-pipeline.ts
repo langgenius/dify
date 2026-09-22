@@ -1,5 +1,4 @@
 import type { MutationOptions } from '@tanstack/react-query'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import type { IconInfo } from '@/models/datasets'
 import type {
   ConversionResponse,
@@ -33,7 +32,11 @@ import type {
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { DatasourceType } from '@/models/pipeline'
 import { del, get, patch, post } from './base'
+import { consoleQuery } from './console'
 import { useInvalid } from './use-base'
+
+export const useDataSourceList = (enabled: boolean) =>
+  useQuery(consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({ enabled }))
 
 const NAME_SPACE = 'pipeline'
 
@@ -198,24 +201,6 @@ export const usePublishedPipelineProcessingParams = (params: PipelineProcessingP
     },
     staleTime: 0,
   })
-}
-
-export const useDataSourceList = (enabled: boolean, onSuccess?: (v: DataSourceItem[]) => void) => {
-  return useQuery<DataSourceItem[]>({
-    enabled,
-    queryKey: [NAME_SPACE, 'datasource'],
-    staleTime: 0,
-    queryFn: async () => {
-      const data = await get<DataSourceItem[]>('/rag/pipelines/datasource-plugins')
-      onSuccess?.(data)
-      return data
-    },
-    retry: false,
-  })
-}
-
-export const useInvalidDataSourceList = () => {
-  return useInvalid([NAME_SPACE, 'datasource'])
 }
 
 export const publishedPipelineInfoQueryKeyPrefix = [NAME_SPACE, 'published-pipeline']

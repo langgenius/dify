@@ -76,7 +76,12 @@ export const useConfigurations = (props: {
 
   const handleTypeChange = useCallback(
     (type: PipelineInputVarType) => {
-      if ([PipelineInputVarType.singleFile, PipelineInputVarType.multiFiles].includes(type)) {
+      const fileInputTypes: readonly PipelineInputVarType[] = [
+        PipelineInputVarType.singleFile,
+        PipelineInputVarType.multiFiles,
+      ]
+
+      if (fileInputTypes.includes(type)) {
         setFieldValue(
           'allowedFileUploadMethods',
           DEFAULT_FILE_UPLOAD_SETTING.allowed_file_upload_methods,

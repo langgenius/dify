@@ -12,9 +12,9 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -111,7 +111,7 @@ const RecallSettings: FC<Props> = ({
             <div className="mr-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
               {t(($) => $.rerankSettings, { ns: 'dataset' })}
             </div>
-            <Divider bgStyle="gradient" className="m-0 h-px!" />
+            <Separator decorative variant="gradient" className="m-0 h-px!" />
           </div>
 
           <div className="space-y-4">

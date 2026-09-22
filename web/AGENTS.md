@@ -17,7 +17,7 @@ Web owns application-specific requirements and consumes shared architecture guid
 - Give save and submit flows a real form boundary with visible labels and accessible errors. Use Dify UI `Form` when its structured submission and validation contract is the owner; otherwise use a native form. Follow the canonical [form contract].
 - Follow the canonical [Button contract] and [IconButton contract] for action semantics, loading, accessible names, and primitive composition. Do not add a Web wrapper that hides those contracts.
 - Follow [Accessible names and descriptions] when choosing or changing visible labels, ARIA naming, descriptions, or visually hidden text. Web owns localization and feature-specific status announcements; do not redefine the Dify UI naming contract locally.
-- Follow the [Dify UI overlay contract] for primitive selection, portals, focus, and layering. Reuse the Web `Infotip` composite for an info glyph that opens explanatory content. Do not introduce a generic Web wrapper that recreates Dify UI overlay behavior.
+- Follow the [Dify UI overlay contract] for primitive selection, portals, focus, and layering. Use `@langgenius/dify-ui/infotip` for an info glyph that opens explanatory content. Do not introduce a generic Web wrapper that recreates Dify UI overlay behavior.
 - For custom SVG icons, follow `../packages/iconify-collections/README.md`; do not add generated React icons under `app/components/base/icons/src/`.
 - `docs/test.md` is the single source of truth for Web automated-test policy. Skills may route and execute that policy but must not redefine it.
 

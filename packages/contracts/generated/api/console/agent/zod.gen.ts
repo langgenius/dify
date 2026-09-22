@@ -1103,6 +1103,7 @@ export const zAgentPublishResponse = z.object({
   active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
   active_config_snapshot_id: z.string(),
   draft: zAgentConfigDraftSummaryResponse.nullish(),
+  publication_kind: z.enum(['first', 'update']),
   result: z.string(),
 })
 

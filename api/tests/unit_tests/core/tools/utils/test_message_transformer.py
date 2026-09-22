@@ -3,6 +3,8 @@ from typing import Any
 import pytest
 
 import core.tools.utils.message_transformer as mt
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from models.tools import ToolFile
 
@@ -135,3 +137,32 @@ def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():
 
     assert len(out) == 1
     assert out[0].meta["tool_file_id"] == "existing-tool-file"
+
+
+def test_transform_tool_invoke_messages_grants_tool_file_to_current_end_user_scope():
+    """Workflow-as-tool LLM nodes need a grant for plugin files (#41169)."""
+    msg = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.IMAGE_LINK,
+        message=ToolInvokeMessage.TextMessage(text="/files/tools/existing-tool-file.png"),
+        meta={},
+    )
+    scope = FileAccessScope(
+        tenant_id="t1",
+        user_id="end-user-1",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        list(
+            mt.ToolFileMessageTransformer.transform_tool_invoke_messages(
+                messages=_gen([msg]),
+                user_id="u1",
+                tenant_id="t1",
+                conversation_id="c1",
+            )
+        )
+        current_scope = get_current_file_access_scope()
+
+    assert current_scope is not None
+    assert "existing-tool-file" in current_scope.granted_tool_file_ids

@@ -28,6 +28,8 @@ Choose the mode from the user's requested outcome:
 
 After selecting the operating mode, read only the topic references required by the change:
 
+- Component moves, module boundaries, props, types, or owner placement: read [`references/ownership.md`][ownership].
+- Dify UI wrappers or primitive state styling: read the package's [Public API authoring] and [Styling] contracts.
 - Jotai, graph-entry decisions, form drafts, shared client state, route identity, URL state, isolation/reset, or persistence: read [`references/state.md`][state].
 - Generated contracts, nullable API data, Query, mutations, SSR, authentication, or workspace state: read [`references/data.md`][data].
 - A feature graph that combines Jotai isolation with TanStack Query atoms or commands: read both [`references/state.md`][state] and [`references/data.md`][data].
@@ -58,6 +60,8 @@ Run the checks documented by the owning package: `web/docs/test.md` or `web/docs
 - Write canonical Tailwind v4 classes; prefer canonical utilities over equivalent arbitrary values.
 - Common forms include `w-105` instead of `w-[420px]`, `px-2.25` instead of `px-[9px]`, `bg-linear-to-b` instead of `bg-gradient-to-b`, `wrap-break-word` instead of `break-words`, and `field-sizing-content` instead of `[field-sizing:content]`.
 
+[Public API authoring]: ../../../packages/dify-ui/docs/authoring.md
+[Styling]: ../../../packages/dify-ui/docs/styling.md
 [data]: references/data.md
 [interactions]: references/interactions.md
 [ownership]: references/ownership.md

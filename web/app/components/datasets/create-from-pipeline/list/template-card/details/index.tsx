@@ -1,11 +1,11 @@
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiAddLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { Infotip } from '@/app/components/base/infotip'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { usePipelineTemplateById } from '@/service/use-pipeline'
@@ -99,11 +99,16 @@ const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
             <span className="system-sm-semibold-uppercase text-text-secondary">
               {t(($) => $['details.structure'], { ns: 'datasetPipeline' })}
             </span>
-            <Infotip
-              aria-label={t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
-              popupClassName="max-w-[240px]"
-            >
-              {t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
+              />
+              <InfotipContent
+                aria-label={t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
+                className="max-w-60"
+              >
+                {t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <ChunkStructureCard {...chunkStructureConfig[pipelineTemplateInfo.chunk_structure]} />

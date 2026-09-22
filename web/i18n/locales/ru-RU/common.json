@@ -476,6 +476,8 @@
   "operation.more": "Больше",
   "operation.moreActions": "Дополнительные действия",
   "operation.moreActionsFor": "Дополнительные действия для {{name}}",
+  "operation.moveDown": "Переместить вниз",
+  "operation.moveUp": "Переместить вверх",
   "operation.no": "Нет",
   "operation.noSearchCount": "0 {{content}}",
   "operation.noSearchResults": "Ничего {{content}} не найдено",

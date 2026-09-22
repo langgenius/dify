@@ -8,7 +8,6 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 
 type IItemOperationProps = {
@@ -60,7 +59,10 @@ function ItemOperation({
             togglePin()
           }}
         >
-          <Pin02 className="size-4 shrink-0 text-text-secondary" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-general-pin-02 size-4 shrink-0 text-text-secondary"
+          />
           <span className={s.actionName}>
             {isPinned ? t(($) => $['sidebar.action.unpin']) : t(($) => $['sidebar.action.pin'])}
           </span>

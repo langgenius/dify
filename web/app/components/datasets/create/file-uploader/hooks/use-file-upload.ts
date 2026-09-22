@@ -1,7 +1,7 @@
 'use client'
 import type { RefObject } from 'react'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -10,7 +10,8 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LanguagesSupported } from '@/i18n/language'
 import { upload } from '@/service/base'
-import { useFileSupportTypes, useFileUploadConfig } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
+import { useFileUploadConfig } from '@/service/use-common'
 import { getFileExtension } from '@/utils/format'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../constants'
 
@@ -28,8 +29,7 @@ type UseFileUploadOptions = {
   onPreview: (file: File) => void
   supportBatchUpload?: boolean
   /**
-   * Optional list of allowed file extensions. If not provided, fetches from API.
-   * Pass this when you need custom extension filtering instead of using the global config.
+   * Overrides the supported extensions from the API, including an empty list.
    */
   allowedExtensions?: string[]
 }
@@ -86,8 +86,9 @@ export const useFileUpload = ({
   const hideUpload = !supportBatchUpload && fileList.length > 0
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const { data: supportFileTypesResponse } = useFileSupportTypes()
-  // Use provided allowedExtensions or fetch from API
+  const { data: supportFileTypesResponse } = useQuery(
+    consoleQuery.files.supportType.get.queryOptions(),
+  )
   const supportTypes = useMemo(
     () => allowedExtensions ?? supportFileTypesResponse?.allowed_extensions ?? [],
     [allowedExtensions, supportFileTypesResponse?.allowed_extensions],

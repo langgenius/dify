@@ -1,5 +1,5 @@
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
@@ -446,6 +446,213 @@ describe('SkillDetailPage builder', () => {
     expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
     expect(sendButton).toBeDisabled()
   }, 15000)
+
+  it('uses an available model instead of a default model that no longer exists', async () => {
+    const user = userEvent.setup()
+    mocks.defaultTextGenerationModel = {
+      provider: { provider: 'langgenius/openai/openai' },
+      model: 'gpt-5-chat-latest',
+    }
+
+    renderSkillDetailPage()
+
+    const promptInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.builder.modifyPlaceholder',
+    )
+    await user.type(promptInput, 'Update the skill{Enter}')
+
+    expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: expect.objectContaining({
+          provider: 'langgenius/openai/openai',
+          model: 'gpt-5.5',
+        }),
+      }),
+    )
+    expect(mocks.modelParameterRulesFetch).toHaveBeenCalled()
+    const requestedModels = mocks.modelParameterRulesFetch.mock.calls.map(([input]) => {
+      const url = input instanceof Request ? input.url : String(input)
+      return new URL(url).searchParams.get('model')
+    })
+    expect(requestedModels).toEqual(['gpt-5.5'])
+  })
+
+  it('does not request parameters or send with an unavailable default and no usable model', async () => {
+    const user = userEvent.setup()
+    mocks.defaultTextGenerationModel = {
+      provider: { provider: 'langgenius/openai/openai' },
+      model: 'gpt-5-chat-latest',
+    }
+    mocks.textGenerationModelList = []
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+
+    renderSkillDetailPage()
+
+    const promptInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.builder.placeholder',
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.send',
+      }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
+      }),
+    ).toBeDisabled()
+    await user.type(promptInput, 'Create a skill{Enter}')
+
+    expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
+    expect(mocks.modelParameterRulesFetch).not.toHaveBeenCalled()
+  })
+
+  it('keeps an available default model instead of replacing it with the first model', async () => {
+    const user = userEvent.setup()
+    mocks.textGenerationModelList[0]!.models.unshift({
+      model: 'gpt-4.1',
+      status: 'active',
+    })
+
+    renderSkillDetailPage()
+    const promptInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.builder.modifyPlaceholder',
+    )
+    await user.type(promptInput, 'Update the skill{Enter}')
+
+    expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: expect.objectContaining({ model: 'gpt-5.5' }),
+      }),
+    )
+    expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { target: 'provider', status: 'disabled' },
+    { target: 'model', status: 'disabled' },
+    { target: 'model', status: 'credential-removed' },
+  ])('does not use a default whose $target has status $status', async ({ target, status }) => {
+    const user = userEvent.setup()
+    const defaultProvider = mocks.textGenerationModelList[0]!
+    if (target === 'provider') defaultProvider.status = status
+    else defaultProvider.models[0]!.status = status
+    mocks.textGenerationModelList.push({
+      provider: 'langgenius/anthropic/anthropic',
+      status: 'active',
+      models: [{ model: 'claude-sonnet-4-6', status: 'active' }],
+    })
+
+    renderSkillDetailPage()
+    const promptInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.builder.modifyPlaceholder',
+    )
+    await user.type(promptInput, 'Update the skill{Enter}')
+
+    expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: expect.objectContaining({
+          provider: 'langgenius/anthropic/anthropic',
+          model: 'claude-sonnet-4-6',
+        }),
+      }),
+    )
+    expect(mocks.modelParameterRulesFetch).toHaveBeenCalledTimes(1)
+    const request = mocks.modelParameterRulesFetch.mock.calls[0]![0]
+    const url = new URL(request instanceof Request ? request.url : String(request))
+    expect(url.pathname).toContain('/model-providers/langgenius/anthropic/anthropic/')
+    expect(url.searchParams.get('model')).toBe('claude-sonnet-4-6')
+  })
+
+  it('waits for available models before requesting parameters or allowing Builder sends', async () => {
+    const user = userEvent.setup()
+    let resolveModels: (response: { data: typeof mocks.textGenerationModelList }) => void = () => {}
+    const modelListResponse = new Promise<{ data: typeof mocks.textGenerationModelList }>(
+      (resolve) => {
+        resolveModels = resolve
+      },
+    )
+    mocks.textGenerationModelListGet.mockReturnValue(modelListResponse)
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+
+    renderSkillDetailPage()
+    const promptInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.builder.placeholder',
+    )
+    const sendButton = screen.getByRole('button', {
+      name: 'skill.skillManagement.detail.builder.send',
+    })
+    const suggestion = screen.getByRole('button', {
+      name: 'skill.skillManagement.detail.builder.exampleIssueTriage',
+    })
+    await user.type(promptInput, 'Create a skill{Enter}')
+
+    expect(sendButton).toBeDisabled()
+    expect(suggestion).toBeDisabled()
+    expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
+    expect(mocks.modelParameterRulesFetch).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveModels({ data: mocks.textGenerationModelList })
+      await modelListResponse
+    })
+    await waitFor(() => expect(sendButton).toBeEnabled())
+    expect(suggestion).toBeEnabled()
+    await user.keyboard('{Enter}')
+
+    expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ model: expect.objectContaining({ model: 'gpt-5.5' }) }),
+    )
+    expect(mocks.modelParameterRulesFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves user-edited parameters for an available Builder model', async () => {
+    const user = userEvent.setup()
+    mocks.modelParameterRulesFetch.mockImplementation(async () =>
+      Response.json({
+        data: [
+          {
+            name: 'temperature',
+            label: { en_US: 'Temperature' },
+            help: { en_US: 'Control randomness' },
+            type: 'float',
+            min: 0,
+            max: 2,
+            default: 0.7,
+            precision: 1,
+          },
+        ],
+      }),
+    )
+
+    renderSkillDetailPage()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'common.modelProvider.modelSettings',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'common.modelProvider.modelSettings',
+    })
+    const temperature = await within(dialog).findByRole('spinbutton', { name: 'Temperature' })
+    await user.clear(temperature)
+    await user.type(temperature, '1.2')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await user.type(
+      screen.getByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
+      'Update the skill{Enter}',
+    )
+
+    expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: {
+          provider: 'langgenius/openai/openai',
+          model: 'gpt-5.5',
+          model_settings: { temperature: 1.2 },
+        },
+      }),
+    )
+  })
 
   it('uploads image attachments in Skill Builder', async () => {
     const user = userEvent.setup({ applyAccept: false })

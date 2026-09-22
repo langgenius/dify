@@ -10,8 +10,6 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Badge from '@/app/components/base/badge'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import InputVarTypeIcon from '../../_base/components/input-var-type-icon'
 
 type Props = Readonly<{
@@ -60,11 +58,15 @@ const VarItem: FC<Props> = ({
       )}
     >
       <div className="flex w-0 grow items-center space-x-1">
-        <Variable02
+        <span
+          aria-hidden
           className={cn(
-            'size-3.5 text-text-accent',
-            canDrag &&
-              'group-hover:opacity-0 group-has-[.handle:focus]:opacity-0 group-has-[.handle[aria-pressed=true]]:opacity-0',
+            'i-custom-vender-solid-development-variable-02 h-6 w-6',
+            cn(
+              'size-3.5 text-text-accent',
+              canDrag &&
+                'group-hover:opacity-0 group-has-[.handle:focus]:opacity-0 group-has-[.handle[aria-pressed=true]]:opacity-0',
+            ),
           )}
         />
         <div
@@ -112,7 +114,10 @@ const VarItem: FC<Props> = ({
                     className="mr-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={() => setIsShowEditVarModal(true)}
                   >
-                    <Edit03 className="size-4 text-text-tertiary" aria-hidden="true" />
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-solid-general-edit-03 size-4 text-text-tertiary"
+                    />
                   </button>
                   <button
                     type="button"

@@ -1,3 +1,4 @@
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -22,13 +23,14 @@ const Header = () => {
       <div className="grow pr-8 pl-1 system-xl-semibold text-text-primary">
         {t(($) => $['testRun.title'], { ns: 'datasetPipeline' })}
       </div>
-      <button
-        type="button"
-        className="flex size-8 shrink-0 items-center justify-center p-1.5"
+      <IconButton
+        size="lg"
+        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+        className="shrink-0"
         onClick={handleClose}
       >
-        <RiCloseLine className="size-4 text-text-tertiary" />
-      </button>
+        <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
+      </IconButton>
     </div>
   )
 }

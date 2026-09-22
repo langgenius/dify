@@ -1,4 +1,5 @@
-import type { ToolNodeType, ToolVarInputs } from '../types'
+import type { ToolNodeType } from '../types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { capitalize } from 'es-toolkit/string'
 import { produce } from 'immer'
@@ -122,7 +123,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         const configuredToolSettings = getConfiguredValue(
           tool_configurations,
           toolSettingSchema,
-        ) as ToolVarInputs
+        ) as ResourceVarInputs
         if (Object.keys(configuredToolSettings).length > 0)
           draft.tool_configurations = configuredToolSettings
       }
@@ -130,7 +131,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         const configuredToolParameters = getConfiguredValue(
           tool_parameters,
           toolInputVarSchema,
-        ) as ToolVarInputs
+        ) as ResourceVarInputs
         if (Object.keys(configuredToolParameters).length > 0)
           draft.tool_parameters = configuredToolParameters
       }
@@ -154,7 +155,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   // setting when call
   const setInputVar = useCallback(
-    (value: ToolVarInputs) => {
+    (value: ResourceVarInputs) => {
       setInputs({
         ...inputs,
         tool_parameters: value,

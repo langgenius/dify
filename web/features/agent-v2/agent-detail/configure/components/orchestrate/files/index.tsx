@@ -12,12 +12,12 @@ import {
   FileTreeIcon,
   FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import {
@@ -363,13 +363,16 @@ function AgentBuildNoteInfotip() {
   const docLink = useDocLink()
 
   return (
-    <Infotip
-      aria-label={t(($) => $['agentDetail.configure.files.buildNote.tooltip'])}
-      className="size-5 text-text-quaternary hover:text-text-quaternary"
-      iconSize="large"
-      popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
-    >
-      <p className="body-xs-regular text-text-secondary">
+    <Infotip>
+      <InfotipTrigger
+        aria-label={t(($) => $['agentDetail.configure.files.buildNote.tooltip'])}
+        className="size-5 hover:text-text-quaternary"
+        iconSize="large"
+      />
+      <InfotipContent
+        aria-label={t(($) => $['agentDetail.configure.files.buildNote.tooltip'])}
+        className="w-57.5"
+      >
         <Trans
           i18nKey={($) => $['agentDetail.configure.files.buildNote.richTooltip']}
           ns="agentV2"
@@ -377,7 +380,7 @@ function AgentBuildNoteInfotip() {
             docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
           }}
         />
-      </p>
+      </InfotipContent>
     </Infotip>
   )
 }

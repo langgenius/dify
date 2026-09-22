@@ -105,7 +105,6 @@ function SourceOpenAction({ source }: { source: Resources['sources'][number] }) 
 
 const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
   const fileType =
     data.dataSourceType !== 'notion' ? /\.([^.]*)$/.exec(data.documentName)?.[1] || '' : 'notion'
 
@@ -125,7 +124,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         nativeButton={false}
         render={

@@ -6,6 +6,7 @@ import type {
   KnowledgeFsSourceResponse,
   KnowledgeFsSourceWorkflowResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
@@ -14,7 +15,6 @@ import type {
   DataSourceAuth,
   DataSourceCredential,
 } from '@/app/components/header/account-setting/data-source-page-new/types'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -280,9 +280,10 @@ const notionDatasourcePluginWithParameters: DataSourceItem = {
     ...notionDatasourcePlugin.declaration,
     datasources: [
       {
-        ...notionDatasourcePlugin.declaration.datasources[0]!,
+        ...notionDatasourcePlugin.declaration.datasources![0]!,
         parameters: [
           {
+            description: { en_US: '' },
             label: { en_US: 'Workspace' },
             name: 'workspace',
             required: true,
@@ -723,9 +724,9 @@ describe('ConnectedSourceWorkflow', () => {
         ...notionDatasourcePlugin.declaration,
         datasources: [
           {
-            ...notionDatasourcePlugin.declaration.datasources[0]!,
+            ...notionDatasourcePlugin.declaration.datasources![0]!,
             identity: {
-              ...notionDatasourcePlugin.declaration.datasources[0]!.identity,
+              ...notionDatasourcePlugin.declaration.datasources![0]!.identity,
               label: { en_US: 'Outline', zh_Hans: 'Outline' },
               name: 'outline',
               provider: 'outline',

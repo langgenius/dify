@@ -1,6 +1,6 @@
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
+import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
 
-type Datasource = DataSourceItem['declaration']['datasources'][number]
+type Datasource = NonNullable<DataSourceItem['declaration']['datasources']>[number]
 
 const LEGACY_WEBSITE_PARAMETER_SCHEMAS: DatasourceParameterSchema[] = [
   {
@@ -106,7 +106,7 @@ function defaultValue(
 }
 
 export function datasourceParameterSchemas(datasource: Datasource): DatasourceParameterSchema[] {
-  return datasource.parameters.flatMap((rawParameter) => {
+  return (datasource.parameters ?? []).flatMap((rawParameter) => {
     const parameter = record(rawParameter)
     if (!parameter || typeof parameter.name !== 'string' || !parameter.name.trim()) return []
     const type = parameterType(parameter.type)

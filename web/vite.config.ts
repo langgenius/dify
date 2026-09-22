@@ -10,7 +10,7 @@ import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
-const browserTestPattern = 'app/**/*.browser.spec.{ts,tsx}'
+const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
 
 export default defineConfig(({ command, mode, isPreview }) => {
   const isTest = mode === 'test'
@@ -41,12 +41,41 @@ export default defineConfig(({ command, mode, isPreview }) => {
           : undefined
 
       return [
-        i18nAnalysisPlugin({ getDeclaredNamespaces: getDeclaredRouteNamespaces }),
+        i18nAnalysisPlugin({
+          adapters: [
+            { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
+            {
+              module: 'i18n/lib.server.ts',
+              exportName: 'useTranslation',
+              namespaceArgument: 0,
+              implementationFunctions: ['getI18nConfig'],
+            },
+            { module: 'i18n/server.ts', exportName: 'getTranslation', namespaceArgument: 1 },
+            {
+              module: 'app/route-metadata.ts',
+              exportName: 'getRouteMetadata',
+              namespaceArgument: 0,
+              selectorArgument: 1,
+            },
+          ],
+          getDeclaredNamespaces: getDeclaredRouteNamespaces,
+          // Runtime namespace providers remain unknown; validate detected usage only.
+        }),
         Inspect(),
         inspector,
         tailwindcss(),
         react(),
         vinext({ react: false }),
+        {
+          name: 'dify-css-asset-alias',
+          enforce: 'post',
+          // Prepend after Vinext's tsconfig aliases, which skip CSS resolution.
+          config: () => ({
+            resolve: {
+              alias: [{ find: '~@', replacement: projectRoot }],
+            },
+          }),
+        },
         customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
         // reactGrabOpenFilePlugin({
         //   injectTarget: rootClientInjectTarget,
