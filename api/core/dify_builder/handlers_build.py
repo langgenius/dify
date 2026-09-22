@@ -564,6 +564,13 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         # on the first test run). Nothing was written. Say which node and why,
         # and keep the plan approvable: re-approving regenerates the graph.
         logger.warning("Dify Builder: generated graph rejected before write for app %s: %s", s.app_id, exc)
+        # apply_repair streams a canvas marker per applied intent BEFORE its
+        # preflight runs (on_canvas=env.emit_canvas above), so the client has
+        # already seen add_*/apply_* markers for mutations that were never
+        # written. Nothing was persisted -- the draft is still the checkpoint
+        # taken at plan approval (create_checkpoint, above) -- so tell the
+        # client to revert to it, same signal perform_revert uses.
+        emit_canvas(env, "revert_checkpoint")
         progress.fail_step("build-apply-graph")
         execution = progress.finish(status="error")
         error_items = append_card(

@@ -2392,17 +2392,28 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     """``apply_repair`` now dry-validates the graph it is about to write and
     raises ``PreflightError`` (a ``ValueError``). Before this, the error left
     the handler uncaught and the advance died mid-step; now it is a card and
-    the plan stays approvable, so re-approving regenerates the graph."""
+    the plan stays approvable, so re-approving regenerates the graph.
+
+    ``apply_repair`` also streams a canvas marker per applied intent BEFORE
+    its preflight raises (on_canvas=env.emit_canvas), so by the time this
+    exception is caught the client has already seen markers for mutations
+    that were never written. The fake mirrors that ordering (calls on_canvas
+    once, then raises) so the assertion below covers the real sequence: the
+    handler must revert the client's canvas back to the plan-approval
+    checkpoint."""
     from core.dify_builder.handlers_build import handle_plan_approval
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     dify = FakeBuildDifyPort()
 
-    def would_not_start(*_a, **_k):
+    def would_not_start(*_a, on_canvas=None, **_k):
+        if on_canvas is not None:
+            on_canvas({"event": "add_node", "node_id": "llm"})
         raise ValueError("the draft would not start: node 'llm' (llm): 2 validation errors for LLMNodeData")
 
     dify.apply_repair = would_not_start
-    env, repo = _new_env(dify=dify)
+    events: list[dict] = []
+    env, repo = _new_env(dify=dify, emit_canvas=events.append)
     s = _seed_build_session(
         repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve", "Summarize"], plan_version_tag="v1"
     )
@@ -2417,3 +2428,7 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     assert "node 'llm' (llm)" in error.payload["body"]
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert assistant.payload["execution"]["status"] == "error"
+    # The already-streamed add_node marker precedes the revert: the handler
+    # tells the client to fall back to the checkpoint AFTER apply_repair's
+    # own per-intent markers, same as production ordering.
+    assert [e["event"] for e in events] == ["create_checkpoint", "add_node", "revert_checkpoint"]
