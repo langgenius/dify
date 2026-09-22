@@ -267,6 +267,10 @@ export type PublishWorkflowPayload = {
 export type WorkflowPublishResponse = {
   created_at: number
   result: string
+  /**
+   * Advisory warning for variable references that can read a skipped branch. Publish still succeeds.
+   */
+  warning?: string | null
 }
 
 export type WorkflowUpdatePayload = {

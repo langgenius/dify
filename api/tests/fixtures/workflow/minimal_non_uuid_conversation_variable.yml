@@ -1,0 +1,118 @@
+app:
+  description: Minimal fake-node DSL. One conversation variable uses a hand-written id.
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: advanced-chat
+  name: Minimal non-UUID conversation variable
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.5.0
+workflow:
+  conversation_variables:
+  - description: optional comparison prompt text
+    id: opt-comp-prompt-var
+    name: optimization_comparison_prompt
+    selector:
+    - conversation
+    - optimization_comparison_prompt
+    value: '-'
+    value_type: string
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        sourceType: start
+        targetType: if-else
+      id: start-branch
+      source: start
+      sourceHandle: source
+      target: branch
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: if-else
+        targetType: template-transform
+      id: branch-true-producer
+      source: branch
+      sourceHandle: 'true'
+      target: producer
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: start
+        targetType: answer
+      id: start-answer
+      source: start
+      sourceHandle: source
+      target: answer
+      targetHandle: target
+      type: custom
+    nodes:
+    - data:
+        title: Start
+        type: start
+        variables: []
+      id: start
+      position:
+        x: 80
+        y: 200
+      type: custom
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: contains
+            id: cond-hello
+            value: hello
+            varType: string
+            variable_selector:
+            - sys
+            - query
+          id: 'true'
+          logical_operator: and
+        title: Branch
+        type: if-else
+      id: branch
+      position:
+        x: 360
+        y: 80
+      type: custom
+    - data:
+        template: produced
+        title: Producer
+        type: template-transform
+        variables: []
+      id: producer
+      position:
+        x: 640
+        y: 80
+      type: custom
+    - data:
+        answer: '{{#conversation.optimization_comparison_prompt#}} {{#producer.output#}}'
+        title: Answer
+        type: answer
+      id: answer
+      position:
+        x: 360
+        y: 320
+      type: custom
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

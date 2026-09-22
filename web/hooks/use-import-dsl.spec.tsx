@@ -218,4 +218,29 @@ describe('useImportDSL', () => {
     expect(mockGetRedirection).toHaveBeenCalledTimes(1)
     expect(result.current.isFetching).toBe(false)
   })
+
+  it('should toast the backend error when import status is failed', async () => {
+    mockImportDSL.mockResolvedValue({
+      id: 'import-failed',
+      status: DSLImportStatus.FAILED,
+      error: "Missing app data in YAML content. Not a valid Dify app DSL: the top-level 'app' section is required (found: meta).",
+    })
+    const onFailed = vi.fn()
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+    await act(async () => {
+      await result.current.handleImportDSL(
+        {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: 'meta: {}\n',
+        },
+        { onFailed },
+      )
+    })
+
+    expect(toastMocks.error).toHaveBeenCalledWith(
+      "Missing app data in YAML content. Not a valid Dify app DSL: the top-level 'app' section is required (found: meta).",
+    )
+    expect(onFailed).toHaveBeenCalled()
+  })
 })

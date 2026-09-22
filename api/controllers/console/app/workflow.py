@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, NotRequired, Self, TypedDict
 
@@ -101,6 +101,10 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.workflow_variable_reference_validator import (
+    format_variable_reference_errors,
+    validate_variable_references,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -401,6 +405,10 @@ class WorkflowOnlineUsersResponse(ResponseModel):
 class WorkflowPublishResponse(ResponseModel):
     result: str
     created_at: int
+    warning: str | None = Field(
+        default=None,
+        description="Advisory warning for variable references that can read a skipped branch. Publish still succeeds.",
+    )
 
 
 class SyncDraftWorkflowResponse(ResponseModel):
@@ -1266,6 +1274,18 @@ class DraftWorkflowNodeRunApi(Resource):
         ).model_dump(mode="json")
 
 
+def _advisory_variable_reference_warning(graph: Mapping[str, Any]) -> str | None:
+    """Return a non-blocking publish warning. A checker failure must not fail publish."""
+    try:
+        issues = validate_variable_references(graph)
+    except Exception:
+        logger.warning("Skipped advisory variable reference check", exc_info=True)
+        return None
+    if not issues:
+        return None
+    return format_variable_reference_errors(issues)
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
     @console_ns.doc("get_published_workflow")
@@ -1330,10 +1350,13 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
+            published_graph = workflow.graph_dict
 
+        warning = _advisory_variable_reference_warning(published_graph)
         return {
             "result": "success",
             "created_at": workflow_created_at,
+            "warning": warning,
         }
 
 

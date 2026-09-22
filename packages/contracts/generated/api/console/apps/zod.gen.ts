@@ -681,6 +681,10 @@ export const zPublishWorkflowPayload = z.object({
 export const zWorkflowPublishResponse = z.object({
   created_at: z.int(),
   result: z.string(),
+  /**
+   * Advisory warning for variable references that can read a skipped branch. Publish still succeeds.
+   */
+  warning: z.string().nullish(),
 })
 
 /**

@@ -112,11 +112,12 @@ export const useImportDSL = () => {
           importIdRef.current = id
           onPending?.(response)
         } else {
-          toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+          toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
           onFailed?.()
         }
-      } catch {
-        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      } catch (error) {
+        if (!(error instanceof Response))
+          toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
         onFailed?.()
       } finally {
         actionInFlightRef.current = false
@@ -151,6 +152,11 @@ export const useImportDSL = () => {
         })
 
         const { status, app_id, app_mode, permission_keys } = response
+        if (status === DSLImportStatus.FAILED) {
+          toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+          onFailed?.()
+          return
+        }
         if (!app_id) return
 
         if (
@@ -188,12 +194,10 @@ export const useImportDSL = () => {
               isRbacEnabled,
             })
           }
-        } else if (status === DSLImportStatus.FAILED) {
-          toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-          onFailed?.()
         }
-      } catch {
-        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      } catch (error) {
+        if (!(error instanceof Response))
+          toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
         onFailed?.()
       } finally {
         actionInFlightRef.current = false

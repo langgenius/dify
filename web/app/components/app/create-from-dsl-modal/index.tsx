@@ -229,8 +229,10 @@ function CreateFromDSLModal({
 
       const response = await importMutation.mutateAsync(source)
       await handleImportResponse(response)
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      // A failed import is HTTP 400. The request layer already toasts `error`.
+      if (!(error instanceof Response))
+        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
 
@@ -249,8 +251,9 @@ function CreateFromDSLModal({
 
       if (response.status === 'failed')
         toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      if (!(error instanceof Response))
+        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
 
