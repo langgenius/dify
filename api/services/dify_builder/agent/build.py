@@ -664,6 +664,10 @@ def build_nodes(
         _ground(intents, grounding_mc, tenant_id, plan_items)
         for node_id in _ground_placeholder_endpoints(intents, trusted_text=trusted_text):
             logger.info("Dify Builder: http-request %s had a placeholder URL; now read from a start variable", node_id)
+        for node_id in _ground_placeholder_credentials(intents, trusted_text=trusted_text):
+            logger.info(
+                "Dify Builder: http-request %s had a placeholder credential; now read from a start variable", node_id
+            )
         applicable, rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
         if not applicable:
             reason = rejected[0][1] if rejected else "no applicable node intents"
@@ -761,6 +765,24 @@ def _is_placeholder_endpoint(url: str) -> bool:
     return _PLACEHOLDER_URL_RE.search(text) is not None or _is_localhost_host(text)
 
 
+def _add_required_start_variable(variables: list[dict], var_name: str, label: str) -> None:
+    """Append a REQUIRED text-input start variable (max 2048 chars) named
+    ``var_name`` to ``variables`` if not already present -- the write shared
+    by every grounding pass that turns an invented literal (URL, credential)
+    into a start-node input, so it is not duplicated per pass."""
+    if any(isinstance(v, dict) and v.get("variable") == var_name for v in variables):
+        return
+    variables.append(
+        {
+            "variable": var_name,
+            "label": label,
+            "type": "text-input",
+            "required": True,
+            "max_length": 2048,
+        }
+    )
+
+
 def _ground_placeholder_endpoints(intents: list[MutationIntent], *, trusted_text: str = "") -> list[str]:
     """Replace every http-request URL the user didn't supply with a REQUIRED
     start-node variable and a template reference to it.
@@ -801,17 +823,148 @@ def _ground_placeholder_endpoints(intents: list[MutationIntent], *, trusted_text
             continue
         node_id = str(intent.args.get("node_id") or "")
         var_name = f"{node_id}_url"
-        if not any(v.get("variable") == var_name for v in variables if isinstance(v, dict)):
-            variables.append(
-                {
-                    "variable": var_name,
-                    "label": f"{node_config.get('title') or node_id} URL",
-                    "type": "text-input",
-                    "required": True,
-                    "max_length": 2048,
-                }
-            )
+        _add_required_start_variable(variables, var_name, f"{node_config.get('title') or node_id} URL")
         node_config["url"] = f"{{{{#{start_id}.{var_name}#}}}}"
+        intent.args["config"] = node_config
+        grounded.append(node_id)
+    if grounded:
+        config["variables"] = variables
+        start.args["config"] = config
+    return grounded
+
+
+def _is_invented_credential(value: str, trusted_text: str) -> bool:
+    """Mirrors ``_ground_placeholder_endpoints``'s OR-of-two-checks shape, but
+    for a credential value (a header/param 'Value' half, or an
+    ``authorization.config.api_key``): an unmistakable placeholder
+    (``CREDENTIAL_PLACEHOLDER_RE``, after stripping a leading ``Bearer
+    ``/``Basic ``/``Token `` scheme) grounds even in placeholder-only mode
+    (``trusted_text == ""``, mirroring how a shaped-like-invented URL grounds
+    with no goal text at all); otherwise, with ``trusted_text`` non-empty, a
+    value that never appears verbatim in it also grounds (S5b-style
+    plausible-looking secret the model invented). An empty value has nothing
+    to ground.
+    """
+    stripped_value = value.strip()
+    remainder = user_supplied.strip_auth_scheme(stripped_value)
+    if not remainder:
+        return False
+    if user_supplied.CREDENTIAL_PLACEHOLDER_RE.search(remainder):
+        return True
+    return bool(trusted_text) and not user_supplied.is_user_supplied_secret(stripped_value, trusted_text)
+
+
+def _replace_credential_value(value: str, template_ref: str) -> str:
+    """Rebuild a header/param 'Value' half with its secret swapped for
+    ``template_ref``, preserving surrounding whitespace and a leading
+    ``Bearer ``/``Basic ``/``Token `` auth-scheme prefix exactly as written
+    (e.g. ``" Bearer YOUR_API_KEY"`` -> ``" Bearer {{#s.h_api_key#}}"``)."""
+    lstripped = value.lstrip(" \t")
+    leading_ws = value[: len(value) - len(lstripped)]
+    core = lstripped.rstrip(" \t")
+    trailing_ws = lstripped[len(core) :]
+    remainder = user_supplied.strip_auth_scheme(core)
+    scheme_prefix = core[: len(core) - len(remainder)]
+    return f"{leading_ws}{scheme_prefix}{template_ref}{trailing_ws}"
+
+
+def _ground_credential_text(text: str, template_ref: str, *, trusted_text: str) -> tuple[str, bool]:
+    """Ground each ``Key: Value`` line of an http-request ``headers``/
+    ``params`` text block whose key names a credential
+    (``user_supplied.is_credential_key``, decided by the key's LAST segment)
+    and whose value the user didn't supply (``_is_invented_credential``),
+    replacing only the secret part of that line with ``template_ref``. Every
+    other line -- including a credential line the user DID supply -- passes
+    through byte-identical. Returns ``(new_text, changed)``.
+    """
+    if not text:
+        return text, False
+    lines = text.split("\n")
+    changed = False
+    new_lines: list[str] = []
+    for line in lines:
+        if ":" not in line:
+            new_lines.append(line)
+            continue
+        key, _sep, value = line.partition(":")
+        if not user_supplied.is_credential_key(key.strip()) or not _is_invented_credential(value, trusted_text):
+            new_lines.append(line)
+            continue
+        new_lines.append(f"{key}:{_replace_credential_value(value, template_ref)}")
+        changed = True
+    return "\n".join(new_lines), changed
+
+
+def _ground_placeholder_credentials(intents: list[MutationIntent], *, trusted_text: str = "") -> list[str]:
+    """Replace every http-request credential literal the user didn't supply
+    -- a header/param whose key names a credential, or an ``api-key``
+    authorization's ``config.api_key`` -- with a REQUIRED start-node variable
+    and a template reference to it. Sibling to ``_ground_placeholder_endpoints``,
+    called right after it in ``build_nodes`` and sharing its start-variable
+    insertion write (``_add_required_start_variable``); reads the start
+    node's config fresh, so a variable that pass already added (e.g.
+    ``<node>_url``) is seen and not clobbered.
+
+    S5b/F2: requirements analysis invented an ``Authorization: Bearer
+    YOUR_API_KEY`` header for a goal that named no credential. Turning it
+    into an input makes the test-data gate ask the user for the real key --
+    or, when mocked, drop it (``without_endpoint_values`` -> now
+    ``endpoint_variable_names``, extended to also scan headers/params/
+    authorization) so the run fails on a missing required input instead of
+    an invented secret the target API rejects.
+
+    A single ``<node>_api_key`` variable covers every credential grounded on
+    that node, however many lines/fields triggered it. Returns the ids of the
+    http-request nodes it re-pointed.
+    """
+    start = next((i for i in intents if i.op == "create_node" and i.args.get("node_type") == "start"), None)
+    if start is None:
+        return []
+    start_id = str(start.args.get("node_id") or "")
+    if not start_id:
+        return []
+    config = dict(start.args.get("config") or {})
+    variables = list(config.get("variables") or [])
+    grounded: list[str] = []
+    for intent in intents:
+        if intent.op != "create_node" or intent.args.get("node_type") != "http-request":
+            continue
+        node_config = dict(intent.args.get("config") or {})
+        node_id = str(intent.args.get("node_id") or "")
+        var_name = f"{node_id}_api_key"
+        template_ref = f"{{{{#{start_id}.{var_name}#}}}}"
+        changed = False
+
+        new_headers, headers_changed = _ground_credential_text(
+            str(node_config.get("headers") or ""), template_ref, trusted_text=trusted_text
+        )
+        if headers_changed:
+            node_config["headers"] = new_headers
+            changed = True
+
+        new_params, params_changed = _ground_credential_text(
+            str(node_config.get("params") or ""), template_ref, trusted_text=trusted_text
+        )
+        if params_changed:
+            node_config["params"] = new_params
+            changed = True
+
+        authorization = node_config.get("authorization")
+        auth_config = authorization.get("config") if isinstance(authorization, dict) else None
+        if (
+            isinstance(authorization, dict)
+            and authorization.get("type") == "api-key"
+            and isinstance(auth_config, dict)
+            and _is_invented_credential(str(auth_config.get("api_key") or ""), trusted_text)
+        ):
+            new_auth_config = dict(auth_config)
+            new_auth_config["api_key"] = template_ref
+            node_config["authorization"] = {**authorization, "config": new_auth_config}
+            changed = True
+
+        if not changed:
+            continue
+        _add_required_start_variable(variables, var_name, f"{node_config.get('title') or node_id} API key")
         intent.args["config"] = node_config
         grounded.append(node_id)
     if grounded:
