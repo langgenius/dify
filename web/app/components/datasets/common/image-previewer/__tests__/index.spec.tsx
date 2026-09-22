@@ -150,4 +150,30 @@ describe('ImagePreviewer', () => {
 
     await waitFor(() => expect(mockRevokeObjectURL).toHaveBeenCalledTimes(3))
   })
+
+  it('refetches when the images prop changes without releasing cached blob URLs', async () => {
+    const initialImages = [
+      { url: 'https://example.com/image1.png', name: 'image1.png', size: 1024 },
+      { url: 'https://example.com/image2.png', name: 'image2.png', size: 2048 },
+    ]
+    const nextImages = [
+      { url: 'https://example.com/image3.png', name: 'image3.png', size: 3072 },
+      { url: 'https://example.com/image4.png', name: 'image4.png', size: 4096 },
+    ]
+
+    const { rerender } = render(<ImagePreviewer images={initialImages} onClose={vi.fn()} />)
+    expect(await screen.findByRole('img', { name: 'image1.png' })).toBeInTheDocument()
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(mockRevokeObjectURL).not.toHaveBeenCalled()
+
+    rerender(<ImagePreviewer images={nextImages} onClose={vi.fn()} />)
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(4))
+    expect(mockFetch).toHaveBeenCalledWith('https://example.com/image3.png')
+    expect(mockFetch).toHaveBeenCalledWith('https://example.com/image4.png')
+
+    // Cached blob URLs for the previous images must NOT be revoked yet;
+    // releasing them here would render any still-mounted preview of the old
+    // list broken until they were re-fetched.
+    expect(mockRevokeObjectURL).not.toHaveBeenCalled()
+  })
 })
