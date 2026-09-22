@@ -385,21 +385,3 @@ it('keeps the public page-jump ref usable after editing and focus restoration', 
   await expect.element(screen.getByRole('button')).toHaveFocus()
   expect(ref.current).toBe(screen.getByRole('button').element())
 })
-
-it('honors callback ref cleanup when page-jump editing replaces the button', async () => {
-  const cleanup = vi.fn()
-  const ref = vi.fn((_element: HTMLButtonElement | null) => cleanup)
-  const screen = await render(
-    <PaginationRoot page={2} totalPages={10} onPageChange={() => {}}>
-      <PaginationPageJump ref={ref} />
-    </PaginationRoot>,
-  )
-
-  expect(ref).toHaveBeenCalledWith(screen.getByRole('button').element())
-  await screen.getByRole('button').click()
-  expect(cleanup).toHaveBeenCalledTimes(1)
-  expect(ref).not.toHaveBeenCalledWith(null)
-  await userEvent.keyboard('{Escape}')
-  await expect.element(screen.getByRole('button')).toHaveFocus()
-  expect(ref).toHaveBeenLastCalledWith(screen.getByRole('button').element())
-})

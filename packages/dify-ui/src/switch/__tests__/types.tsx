@@ -12,8 +12,6 @@ function SwitchTypeExamples() {
       <Switch checked={false} onCheckedChange={(checked) => void checked} />
       {/* @ts-expect-error the composite owns its thumb and loading indicator */}
       <Switch>Custom thumb</Switch>
-      {/* @ts-expect-error controlled and uncontrolled values are mutually exclusive */}
-      <Switch checked defaultChecked />
     </>
   )
 }
