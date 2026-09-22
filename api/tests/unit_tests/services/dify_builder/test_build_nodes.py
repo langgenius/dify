@@ -599,5 +599,9 @@ def test_is_placeholder_endpoint_recognises_the_usual_inventions():
     assert build._is_placeholder_endpoint("https://<your-domain>/generate")
     assert build._is_placeholder_endpoint("https://api.acme.com/{tenant}/x")
     assert build._is_placeholder_endpoint("")
+    assert build._is_placeholder_endpoint("http://localhost:11434/api")  # the host IS localhost
     assert not build._is_placeholder_endpoint("https://api.openai.com/v1")
     assert not build._is_placeholder_endpoint("{{#s.endpoint#}}/x")  # a Dify template is a real reference
+    assert not build._is_placeholder_endpoint(
+        "https://abc123.localhost.run/webhook"
+    )  # a real tunnel domain, not the localhost host
