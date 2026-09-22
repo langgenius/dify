@@ -4,11 +4,6 @@
       "count": 1
     }
   },
-  "cli/test/e2e/suites/output/json-yaml-output.e2e.ts": {
-    "prefer-const": {
-      "count": 1
-    }
-  },
   "packages/migrate-no-unchecked-indexed-access/src/no-unchecked-indexed-access/migrate.ts": {
     "no-console": {
       "count": 11
@@ -260,9 +255,6 @@
     }
   },
   "web/app/components/app/configuration/config-var/config-modal/__tests__/form-fields.spec.tsx": {
-    "no-unused-vars": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -609,11 +601,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/type-selector/index.tsx": {
-    "unicorn/prefer-includes": {
-      "count": 2
-    }
-  },
   "web/app/components/app/workflow-log/__tests__/list.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -666,11 +653,6 @@
   "web/app/components/base/amplitude/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    }
-  },
-  "web/app/components/base/app-icon-picker/ImageInput.tsx": {
-    "eslint-react/no-create-ref": {
-      "count": 1
     }
   },
   "web/app/components/base/audio-btn/audio.player.manager.ts": {
@@ -901,9 +883,6 @@
     }
   },
   "web/app/components/base/error-boundary/index.tsx": {
-    "eslint-react/jsx-no-key-after-spread": {
-      "count": 1
-    },
     "react/only-export-components": {
       "count": 1
     },
@@ -3426,9 +3405,6 @@
   "web/app/components/workflow/nodes/_base/components/variable/variable-label/hooks.ts": {
     "eslint-react/no-unnecessary-use-prefix": {
       "count": 2
-    },
-    "eslint-react/use-memo": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/_base/components/variable/variable-label/index.tsx": {
@@ -3513,9 +3489,6 @@
     }
   },
   "web/app/components/workflow/nodes/agent/node.tsx": {
-    "eslint-react/jsx-no-key-after-spread": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -4659,9 +4632,6 @@
   },
   "web/app/components/workflow/workflow-generator/example-prompts.tsx": {
     "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "no-useless-return": {
       "count": 1
     }
   },
