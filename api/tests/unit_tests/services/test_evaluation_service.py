@@ -17,11 +17,13 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationConfigData,
     EvaluationDatasetInput,
     EvaluationRunRequest,
+    EvaluationRunSnapshot,
     NodeInfo,
 )
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from libs.datetime_utils import naive_utc_now
+from models.account import Tenant
 from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
@@ -33,6 +35,7 @@ from models.model import AppMode
 from models.workflow import WorkflowKind, WorkflowType
 from services.errors.evaluation import EvaluationDatasetInvalidError
 from services.evaluation_service import EvaluationService
+from tests.unit_tests.model_factories import make_upload_file
 
 
 @pytest.fixture(autouse=True)
@@ -69,6 +72,44 @@ def test_parse_csv_dataset_rejects_duplicate_indices() -> None:
             b"index,query\n1,first\n1,second\n",
             "dataset.csv",
         )
+
+
+def test_parse_csv_dataset_preserves_supported_scalar_input_types() -> None:
+    items = EvaluationService._parse_dataset(
+        b"index,query,temperature,enabled\n1,hello,2,true\n2,world,0.75,0\n3,large,9007199254740993,YES\n",
+        "dataset.csv",
+        input_types={"query": "string", "temperature": "number", "enabled": "boolean"},
+    )
+
+    assert items[0].inputs == {"query": "hello", "temperature": 2, "enabled": True}
+    assert items[1].inputs == {"query": "world", "temperature": 0.75, "enabled": False}
+    assert items[2].inputs == {"query": "large", "temperature": 9007199254740993, "enabled": True}
+
+
+def test_parse_csv_dataset_rejects_invalid_number_input() -> None:
+    with pytest.raises(EvaluationDatasetInvalidError, match="temperature.*number.*7"):
+        EvaluationService._parse_dataset(
+            b"index,temperature\n7,not-a-number\n",
+            "dataset.csv",
+            input_types={"temperature": "number"},
+        )
+
+
+def test_parse_csv_dataset_rejects_invalid_boolean_input() -> None:
+    with pytest.raises(EvaluationDatasetInvalidError, match="enabled.*boolean.*8"):
+        EvaluationService._parse_dataset(
+            b"index,enabled\n8,maybe\n",
+            "dataset.csv",
+            input_types={"enabled": "boolean"},
+        )
+
+
+def test_dataset_input_columns_reject_unsupported_types() -> None:
+    assert EvaluationService._dataset_input_types([{"variable": "enabled", "type": "checkbox"}]) == {
+        "enabled": "boolean"
+    }
+    with pytest.raises(ValueError, match="only support string, number, and boolean.*file"):
+        EvaluationService._dataset_input_types([{"variable": "attachment", "type": "file"}])
 
 
 def test_dataset_validation_requires_references_for_reference_metrics() -> None:
@@ -115,6 +156,41 @@ def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPa
             target_id="app-1",
             data=config,
         )
+
+
+def test_validate_config_requires_default_embedding_for_embedding_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
+    workflow = SimpleNamespace(
+        walk_nodes=lambda: iter([("node-1", {"type": "llm"})]),
+        user_input_form=lambda: [],
+    )
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
+    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["answer_relevancy"]))
+    validate_embeddings = MagicMock()
+    monkeypatch.setattr(EvaluationService, "_validate_default_embedding_model", validate_embeddings)
+    config = EvaluationConfigData(
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="answer_relevancy",
+                node_info_list=[NodeInfo(node_id="node-1", type="llm", title="LLM")],
+            )
+        ],
+    )
+
+    EvaluationService.validate_evaluation_config(
+        session=session,
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        data=config,
+    )
+
+    validate_embeddings.assert_called_once_with(tenant_id="tenant-1")
 
 
 def test_validate_knowledge_base_config_uses_retrieval_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -225,10 +301,10 @@ def test_pin_target_workflow_returns_published_snapshot_id(monkeypatch: pytest.M
     target = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
     session = MagicMock()
     session.scalar.return_value = target
-    workflow = SimpleNamespace(id="workflow-version-7")
+    workflow = SimpleNamespace(id="workflow-version-7", user_input_form=lambda: [])
     monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
 
-    version_id, resolved_workflow = EvaluationService._pin_target_workflow(
+    version_id, resolved_workflow, input_fields = EvaluationService._pin_target_workflow(
         session=session,
         tenant_id="tenant-1",
         target_type="apps",
@@ -237,6 +313,7 @@ def test_pin_target_workflow_returns_published_snapshot_id(monkeypatch: pytest.M
 
     assert version_id == "workflow-version-7"
     assert resolved_workflow is workflow
+    assert input_fields == []
 
 
 def test_extract_llm_context_node_mapping_uses_published_graph_selectors() -> None:
@@ -523,6 +600,57 @@ def test_stage_target_cleanup_removes_target_rows_and_preserves_evaluator_defaul
     assert preserved.metrics_config_dict["customized_metrics"] is None
 
 
+@pytest.mark.parametrize("target_type", ["apps", "knowledge_base"])
+def test_stage_target_cleanup_deletes_result_file_after_target_deletion_commits(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    target_type: str,
+) -> None:
+    tenant_id = "10000000-0000-0000-0000-000000000010"
+    target_id = "10000000-0000-0000-0000-000000000100"
+    result_file = make_upload_file(
+        file_id="10000000-0000-0000-0000-000000000020",
+        tenant_id=tenant_id,
+        key="evaluation_results/tenant/result.xlsx",
+        name="result.xlsx",
+        extension="xlsx",
+        mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        created_by="10000000-0000-0000-0000-000000001000",
+        used=True,
+    )
+    run = EvaluationRun(
+        id="10000000-0000-0000-0000-000000000021",
+        tenant_id=tenant_id,
+        target_type=target_type,
+        target_id=target_id,
+        evaluation_config_id="10000000-0000-0000-0000-000000000001",
+        config_snapshot="{}",
+        status=EvaluationRunStatus.COMPLETED,
+        result_file_id=result_file.id,
+        total_items=1,
+        created_by="10000000-0000-0000-0000-000000001000",
+    )
+    sqlite_session.add_all([result_file, run])
+    sqlite_session.commit()
+    storage_delete = MagicMock()
+    monkeypatch.setattr("extensions.ext_storage.storage.delete", storage_delete)
+
+    EvaluationService.stage_target_evaluation_cleanup(
+        session=sqlite_session,
+        tenant_id=tenant_id,
+        target_type=target_type,
+        target_id=target_id,
+    )
+    sqlite_session.flush()
+
+    assert sqlite_session.get(type(result_file), result_file.id) is None
+    storage_delete.assert_not_called()
+
+    sqlite_session.commit()
+
+    storage_delete.assert_called_once_with("evaluation_results/tenant/result.xlsx")
+
+
 def test_get_run_items_hides_incomplete_target_checkpoints(sqlite_session: Session) -> None:
     run = EvaluationRun(
         id="10000000-0000-0000-0000-000000000012",
@@ -611,6 +739,94 @@ def test_stage_target_cleanup_does_not_stop_tasks_after_rollback(
     stop_workflow_tasks.assert_not_called()
 
 
+def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant = Tenant(name="Evaluation Tenant")
+    tenant.id = "30000000-0000-0000-0000-000000000010"
+    run_request = EvaluationRunSnapshot(
+        file_id="30000000-0000-0000-0000-000000000020",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[DefaultMetric(metric="context_relevance", node_info_list=[])],
+        dataset_input_types={"query": "string"},
+    )
+    run = EvaluationRun(
+        id="30000000-0000-0000-0000-000000000021",
+        tenant_id=tenant.id,
+        target_type="knowledge_base",
+        target_id="30000000-0000-0000-0000-000000000030",
+        evaluation_config_id="30000000-0000-0000-0000-000000000040",
+        config_snapshot=run_request.model_dump_json(),
+        status=EvaluationRunStatus.FAILED,
+        dataset_file_id=run_request.file_id,
+        total_items=2,
+        completed_items=0,
+        failed_items=2,
+        progress_rate=0.9,
+        error="worker unavailable",
+        celery_task_id="old-task-id",
+        created_by="30000000-0000-0000-0000-000000000050",
+        started_at=naive_utc_now(),
+        completed_at=naive_utc_now(),
+    )
+    checkpoint = EvaluationRunItem(
+        evaluation_run_id=run.id,
+        item_index=1,
+        status=EvaluationRunItemStatus.COMPLETED,
+        inputs='{"query": "first"}',
+        judgment="{}",
+    )
+    sqlite_session.add_all([tenant, run, checkpoint])
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=object()),
+    )
+    apply_async = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task.run_evaluation.apply_async", apply_async)
+
+    retried = EvaluationService.retry_evaluation_run(
+        session=sqlite_session,
+        tenant_id=tenant.id,
+        target_type="knowledge_base",
+        target_id=run.target_id,
+        run_id=run.id,
+        dataset_file_content=b"index,query\n1,first\n2,second\n",
+        dataset_filename="dataset.csv",
+    )
+
+    assert retried.status == EvaluationRunStatus.PENDING
+    assert retried.celery_task_id != "old-task-id"
+    assert retried.execution_token is None
+    assert retried.started_at is None
+    assert retried.completed_at is None
+    assert retried.error is None
+    assert retried.completed_items == 1
+    assert retried.failed_items == 0
+    assert retried.progress_rate == 0.5
+    assert sqlite_session.get(EvaluationRunItem, checkpoint.id) is not None
+    apply_async.assert_called_once()
+    dispatched_payload = apply_async.call_args.kwargs["args"][0]
+    assert dispatched_payload["evaluation_run_id"] == run.id
+    assert [item["inputs"] for item in dispatched_payload["input_list"]] == [
+        {"query": "first"},
+        {"query": "second"},
+    ]
+
+    with pytest.raises(ValueError, match="Only failed"):
+        EvaluationService.retry_evaluation_run(
+            session=sqlite_session,
+            tenant_id=tenant.id,
+            target_type="knowledge_base",
+            target_id=run.target_id,
+            run_id=run.id,
+            dataset_file_content=b"index,query\n1,first\n2,second\n",
+            dataset_filename="dataset.csv",
+        )
+
+
 def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     session = MagicMock()
     session.scalar.return_value = "tenant-1"
@@ -637,6 +853,10 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
             return_value=(
                 "workflow-version-7",
                 SimpleNamespace(walk_nodes=lambda: iter([])),
+                [
+                    {"variable": "query", "type": "text-input"},
+                    {"variable": "enabled", "type": "checkbox"},
+                ],
             )
         ),
     )
@@ -649,16 +869,18 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
         target_type="apps",
         target_id="app-1",
         account_id="account-1",
-        dataset_file_content=b"index,query\n1,hello\n",
+        dataset_file_content=b"index,query,enabled\n1,hello,true\n",
         dataset_filename="dataset.csv",
         run_request=EvaluationRunRequest(file_id="file-1", evaluation_model="model"),
     )
 
     assert run.target_workflow_version_id == "workflow-version-7"
+    assert run.config_snapshot_dict["dataset_input_types"] == {"query": "string", "enabled": "boolean"}
     dispatch_kwargs = apply_async.call_args.kwargs
     assert set(dispatch_kwargs) == {"args", "task_id"}
     dispatched_payload = dispatch_kwargs["args"][0]
     assert dispatched_payload["target_workflow_version_id"] == "workflow-version-7"
+    assert dispatched_payload["input_list"][0]["inputs"] == {"query": "hello", "enabled": True}
 
 
 def test_run_single_app_target_loads_pinned_workflow_version(monkeypatch: pytest.MonkeyPatch) -> None:

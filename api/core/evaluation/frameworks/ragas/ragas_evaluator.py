@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 # Metrics not listed here are unsupported by ragas and will be skipped.
 _RAGAS_METRIC_MAP: dict[EvaluationMetricName, str] = {
     EvaluationMetricName.FAITHFULNESS: "Faithfulness",
+    EvaluationMetricName.ANSWER_RELEVANCY: "AnswerRelevancy",
     EvaluationMetricName.ANSWER_CORRECTNESS: "AnswerCorrectness",
+    EvaluationMetricName.SEMANTIC_SIMILARITY: "SemanticSimilarity",
     EvaluationMetricName.CONTEXT_PRECISION: "ContextPrecision",
     EvaluationMetricName.CONTEXT_RECALL: "ContextRecall",
     EvaluationMetricName.CONTEXT_RELEVANCE: "ContextRelevance",
@@ -92,18 +94,21 @@ class RagasEvaluator(BaseEvaluationInstance):
         category: EvaluationCategory,
     ) -> list[EvaluationItemResult]:
         """Core evaluation logic using RAGAS."""
+        from core.evaluation.frameworks.ragas.ragas_embeddings_wrapper import DifyEmbeddingsWrapper
         from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
 
         model_wrapper = DifyModelWrapper(model_provider, model_name, tenant_id)
+        embeddings_wrapper = DifyEmbeddingsWrapper(tenant_id)
         requested_metrics = metric_names or self.get_supported_metrics(category)
 
-        return self._evaluate_with_ragas(items, requested_metrics, model_wrapper, category)
+        return self._evaluate_with_ragas(items, requested_metrics, model_wrapper, embeddings_wrapper, category)
 
     def _evaluate_with_ragas(
         self,
         items: list[EvaluationItemInput],
         requested_metrics: list[str],
         model_wrapper: DifyModelWrapper,
+        embeddings_wrapper: Any,
         category: EvaluationCategory,
     ) -> list[EvaluationItemResult]:
         """Evaluate using RAGAS library.
@@ -122,7 +127,7 @@ class RagasEvaluator(BaseEvaluationInstance):
 
         dataset = EvaluationDataset(samples=samples)
 
-        ragas_metrics = self._build_ragas_metrics(requested_metrics)
+        ragas_metrics = self._build_ragas_metrics(requested_metrics, embeddings_wrapper)
         if not ragas_metrics:
             logger.warning("No valid RAGAS metrics found for: %s", requested_metrics)
             return [EvaluationItemResult(index=item.index, actual_output=item.output) for item in items]
@@ -197,7 +202,7 @@ class RagasEvaluator(BaseEvaluationInstance):
                 )
 
     @staticmethod
-    def _build_ragas_metrics(requested_metrics: list[str]) -> list[Any]:
+    def _build_ragas_metrics(requested_metrics: list[str], embeddings_wrapper: Any) -> list[Any]:
         """Build RAGAS metric instances from canonical metric names."""
         try:
             metrics_module = _import_ragas_metrics_module()
@@ -207,6 +212,7 @@ class RagasEvaluator(BaseEvaluationInstance):
                 EvaluationMetricName.FAITHFULNESS: metrics_module.Faithfulness,
                 EvaluationMetricName.ANSWER_RELEVANCY: metrics_module.AnswerRelevancy,
                 EvaluationMetricName.ANSWER_CORRECTNESS: metrics_module.AnswerCorrectness,
+                EvaluationMetricName.SEMANTIC_SIMILARITY: metrics_module.SemanticSimilarity,
                 EvaluationMetricName.CONTEXT_PRECISION: metrics_module.ContextPrecision,
                 EvaluationMetricName.CONTEXT_RECALL: metrics_module.ContextRecall,
                 EvaluationMetricName.CONTEXT_RELEVANCE: metrics_module.ContextRelevance,
@@ -216,19 +222,12 @@ class RagasEvaluator(BaseEvaluationInstance):
             for name in requested_metrics:
                 metric_class = ragas_class_map.get(name)
                 if metric_class:
-                    if name == EvaluationMetricName.ANSWER_CORRECTNESS:
-                        # ragas answer_correctness blends factuality with semantic
-                        # similarity. The latter requires an embeddings backend,
-                        # which is not wired through Dify's evaluation stack yet.
-                        # Keep the metric usable by relying on the factuality
-                        # component only for now.
-                        metrics.append(
-                            metric_class(
-                                name=name,
-                                weights=[1.0, 0.0],
-                                embeddings=_NoopRagasEmbeddings(),
-                            )
-                        )
+                    if name in {
+                        EvaluationMetricName.ANSWER_RELEVANCY,
+                        EvaluationMetricName.ANSWER_CORRECTNESS,
+                        EvaluationMetricName.SEMANTIC_SIMILARITY,
+                    }:
+                        metrics.append(metric_class(name=name, embeddings=embeddings_wrapper))
                     else:
                         metrics.append(metric_class(name=name))
                 else:
@@ -250,24 +249,6 @@ def _import_ragas_metrics_module() -> Any:
         return import_module("ragas.metrics")
     except ImportError:
         return import_module("ragas.metrics.collections")
-
-
-class _NoopRagasEmbeddings:
-    """Placeholder embeddings for ragas metrics whose embedding branch is disabled.
-
-    ragas eagerly injects a default embeddings backend for any metric that
-    subclasses ``MetricWithEmbeddings``. For answer_correctness we currently
-    disable the semantic-similarity weight, so no real embedding call should
-    happen. Supplying this placeholder keeps ragas from constructing its
-    default OpenAI embeddings client during setup.
-    """
-
-    async def aembed_query(self, text: str) -> list[float]:
-        del text
-        return [0.0]
-
-    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
-        return [[0.0] for _ in texts]
 
 
 def _format_input(inputs: dict[str, Any], category: EvaluationCategory) -> str:

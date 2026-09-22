@@ -2,8 +2,10 @@ import csv
 import io
 import json
 import logging
+import math
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from decimal import Decimal, InvalidOperation
 from typing import Any, TypedDict, Union, cast
 
 from openpyxl import Workbook, load_workbook
@@ -25,6 +27,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationMetricName,
     EvaluationRunData,
     EvaluationRunRequest,
+    EvaluationRunSnapshot,
     NodeInfo,
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
@@ -82,6 +85,16 @@ class EvaluationService:
         EvaluationMetricName.CONTEXT_PRECISION.value,
         EvaluationMetricName.CONTEXT_RECALL.value,
     }
+    METRICS_REQUIRING_EMBEDDINGS = {
+        EvaluationMetricName.ANSWER_RELEVANCY.value,
+        EvaluationMetricName.ANSWER_CORRECTNESS.value,
+        EvaluationMetricName.SEMANTIC_SIMILARITY.value,
+    }
+    STRING_DATASET_INPUT_TYPES = {"", "string", "text", "text-input", "paragraph", "select"}
+    NUMBER_DATASET_INPUT_TYPES = {"number", "integer", "float", "int"}
+    BOOLEAN_DATASET_INPUT_TYPES = {"boolean", "bool", "checkbox", "switch"}
+    TRUE_DATASET_VALUES = {"true", "1", "yes", "y", "on"}
+    FALSE_DATASET_VALUES = {"false", "0", "no", "n", "off"}
 
     @classmethod
     def generate_dataset_template(
@@ -207,6 +220,7 @@ class EvaluationService:
         headers = ["index"]
 
         for field in input_fields:
+            cls._normalize_template_column_type(field.get("type") or field.get("value_type") or field.get("input_type"))
             variable_name = str(field.get("variable") or field.get("label") or "")
             headers.append(variable_name)
 
@@ -441,6 +455,8 @@ class EvaluationService:
                 provider=data.evaluation_model_provider,
                 model_name=data.evaluation_model,
             )
+            if any(metric.metric in cls.METRICS_REQUIRING_EMBEDDINGS for metric in data.default_metrics):
+                cls._validate_default_embedding_model(tenant_id=tenant_id)
 
         published_node_types: dict[str, str] = {}
         if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
@@ -480,6 +496,14 @@ class EvaluationService:
             )
             if published_workflow is None:
                 raise ValueError("The evaluation target must have a published workflow.")
+            target_input_fields = (
+                target.input_fields_list
+                if isinstance(target, CustomizedSnippet) and target.input_fields_list
+                else published_workflow.user_input_form()
+                if hasattr(published_workflow, "user_input_form")
+                else []
+            )
+            cls._dataset_input_types([field for field in target_input_fields if isinstance(field, Mapping)])
             published_node_types = {
                 node_id: str(node_data.get("type", "")) for node_id, node_data in published_workflow.walk_nodes()
             }
@@ -601,6 +625,20 @@ class EvaluationService:
             ) from exc
 
     @staticmethod
+    def _validate_default_embedding_model(*, tenant_id: str) -> None:
+        """Ensure embedding-backed RAGAS metrics can use the tenant default model."""
+        try:
+            from core.model_manager import ModelManager
+            from graphon.model_runtime.entities.model_entities import ModelType
+
+            ModelManager.for_tenant(tenant_id=tenant_id).get_default_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.TEXT_EMBEDDING,
+            )
+        except Exception as exc:
+            raise ValueError(f"Failed to validate the default text embedding model: {exc}") from exc
+
+    @staticmethod
     def _validate_customized_inputs(
         *,
         customized_metrics: CustomizedMetrics,
@@ -718,11 +756,11 @@ class EvaluationService:
         tenant_id: str,
         target_type: str,
         target_id: str,
-    ) -> tuple[str | None, Workflow | None]:
-        """Resolve the target's immutable published workflow snapshot."""
+    ) -> tuple[str | None, Workflow | None, list[Mapping[str, Any]]]:
+        """Resolve the target's immutable workflow and dataset input schema."""
         normalized_target_type = EvaluationTargetType(target_type)
         if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
-            return None, None
+            return None, None, [{"variable": "query", "type": "string"}]
 
         target: App | CustomizedSnippet | None
         if normalized_target_type == EvaluationTargetType.APPS:
@@ -748,7 +786,11 @@ class EvaluationService:
         workflow = cls._resolve_published_workflow(target, normalized_target_type.value, session)
         if workflow is None:
             raise ValueError("The evaluation target must have a published workflow.")
-        return workflow.id, workflow
+        if isinstance(target, CustomizedSnippet) and target.input_fields_list:
+            input_fields = target.input_fields_list
+        else:
+            input_fields = workflow.user_input_form() if hasattr(workflow, "user_input_form") else []
+        return workflow.id, workflow, [field for field in input_fields if isinstance(field, Mapping)]
 
     @staticmethod
     def _extract_llm_context_node_mapping(workflow: Workflow | None) -> dict[str, list[str]]:
@@ -804,12 +846,13 @@ class EvaluationService:
             tenant_id=tenant_id,
             run_request=resolved_run_request,
         )
-        target_workflow_version_id, target_workflow = cls._pin_target_workflow(
+        target_workflow_version_id, target_workflow, target_input_fields = cls._pin_target_workflow(
             session=session,
             tenant_id=tenant_id,
             target_type=target_type,
             target_id=target_id,
         )
+        dataset_input_types = cls._dataset_input_types(target_input_fields)
 
         # Save the editable configuration without pinning it to today's published evaluator.
         config = cls.save_evaluation_config(
@@ -824,7 +867,11 @@ class EvaluationService:
         )
 
         # Parse dataset
-        items = cls._parse_dataset(dataset_file_content, dataset_filename)
+        items = cls._parse_dataset(
+            dataset_file_content,
+            dataset_filename,
+            input_types=dataset_input_types,
+        )
         max_rows = dify_config.EVALUATION_MAX_DATASET_ROWS
         if len(items) > max_rows:
             raise EvaluationDatasetInvalidError(f"Dataset has {len(items)} rows, max is {max_rows}.")
@@ -852,13 +899,19 @@ class EvaluationService:
             raise EvaluationMaxConcurrentRunsError(f"Maximum concurrent runs ({max_concurrent}) reached.")
 
         celery_task_id = str(uuid.uuid4())
+        run_snapshot = EvaluationRunSnapshot.model_validate(
+            {
+                **pinned_run_request.model_dump(mode="json"),
+                "dataset_input_types": dataset_input_types,
+            }
+        )
         evaluation_run = EvaluationRun(
             tenant_id=tenant_id,
             target_type=target_type,
             target_id=target_id,
             target_workflow_version_id=target_workflow_version_id,
             evaluation_config_id=config.id,
-            config_snapshot=json.dumps(pinned_run_request.model_dump(mode="json"), ensure_ascii=False),
+            config_snapshot=run_snapshot.model_dump_json(),
             status=EvaluationRunStatus.PENDING,
             progress_rate=0.0,
             dataset_file_id=resolved_run_request.file_id,
@@ -902,6 +955,198 @@ class EvaluationService:
             raise
 
         return evaluation_run
+
+    @classmethod
+    def retry_evaluation_run(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        target_type: str,
+        target_id: str,
+        run_id: str,
+        dataset_file_content: bytes,
+        dataset_filename: str,
+    ) -> EvaluationRun:
+        """Redispatch a failed run while retaining its immutable snapshot and row checkpoints."""
+        if EvaluationManager.get_evaluation_instance() is None:
+            raise EvaluationFrameworkNotConfiguredError()
+
+        run = cls.get_evaluation_run_detail(session, tenant_id, target_type, target_id, run_id)
+        if run.status != EvaluationRunStatus.FAILED:
+            raise ValueError("Only failed evaluation runs can be retried.")
+
+        run_snapshot = EvaluationRunSnapshot.model_validate(run.config_snapshot_dict)
+        run_request = EvaluationRunRequest.model_validate(run_snapshot.model_dump(exclude={"dataset_input_types"}))
+        pinned_workflow = cls._resolve_pinned_target_workflow_for_run(session=session, run=run)
+        if run_snapshot.dataset_input_types:
+            input_types = run_snapshot.dataset_input_types
+        elif EvaluationTargetType(run.target_type) == EvaluationTargetType.KNOWLEDGE_BASE:
+            input_types = {"query": "string"}
+        elif pinned_workflow is not None:
+            input_types = cls._dataset_input_types(
+                [field for field in pinned_workflow.user_input_form() if isinstance(field, Mapping)]
+            )
+        else:
+            # The worker owns the terminal missing-version decision. Parsing as
+            # strings here still lets the retry be recorded and fail consistently.
+            input_types = {}
+
+        items = cls._parse_dataset(
+            dataset_file_content,
+            dataset_filename,
+            input_types=input_types,
+        )
+        if len(items) != run.total_items:
+            raise EvaluationDatasetInvalidError("The persisted evaluation dataset no longer matches the run.")
+        cls._validate_dataset_expected_outputs(items, run_request.default_metrics)
+        if target_type == EvaluationTargetType.KNOWLEDGE_BASE.value:
+            missing_query_indices = [item.index for item in items if not str(item.inputs.get("query", "")).strip()]
+            if missing_query_indices:
+                raise EvaluationDatasetInvalidError(
+                    "Knowledge base datasets require a non-empty 'query' value; "
+                    f"invalid rows: {missing_query_indices[:10]}."
+                )
+
+        run_data = EvaluationRunData(
+            evaluation_run_id=run.id,
+            tenant_id=run.tenant_id,
+            target_type=EvaluationTargetType(run.target_type).value,
+            target_id=run.target_id,
+            target_workflow_version_id=run.target_workflow_version_id,
+            evaluation_model_provider=run_request.evaluation_model_provider,
+            evaluation_model=run_request.evaluation_model,
+            default_metrics=run_request.default_metrics,
+            customized_metrics=run_request.customized_metrics,
+            judgment_config=run_request.judgment_config,
+            llm_context_node_mapping=cls._extract_llm_context_node_mapping(pinned_workflow),
+            input_list=items,
+        )
+
+        # End the read transaction before taking the same tenant admission lock
+        # used by new runs. The run status is rechecked under a row lock below.
+        session.rollback()
+        locked_tenant = session.scalar(select(Tenant.id).where(Tenant.id == tenant_id).with_for_update())
+        if locked_tenant is None:
+            raise ValueError("Tenant not found.")
+        active_runs = (
+            session.query(EvaluationRun)
+            .filter_by(tenant_id=tenant_id)
+            .filter(EvaluationRun.status.in_([EvaluationRunStatus.PENDING, EvaluationRunStatus.RUNNING]))
+            .count()
+        )
+        max_concurrent = dify_config.EVALUATION_MAX_CONCURRENT_RUNS
+        if active_runs >= max_concurrent:
+            raise EvaluationMaxConcurrentRunsError(f"Maximum concurrent runs ({max_concurrent}) reached.")
+
+        locked_run = session.scalar(
+            select(EvaluationRun)
+            .where(
+                EvaluationRun.id == run_id,
+                EvaluationRun.tenant_id == tenant_id,
+                EvaluationRun.target_type == target_type,
+                EvaluationRun.target_id == target_id,
+            )
+            .with_for_update()
+        )
+        if locked_run is None:
+            raise EvaluationNotFoundError("Evaluation run not found.")
+        if locked_run.status != EvaluationRunStatus.FAILED:
+            raise ValueError("Only failed evaluation runs can be retried.")
+
+        checkpoint_rows = session.execute(
+            select(EvaluationRunItem.item_index, EvaluationRunItem.status, EvaluationRunItem.error).where(
+                EvaluationRunItem.evaluation_run_id == locked_run.id
+            )
+        ).all()
+        dataset_indices = {item.index for item in items}
+        stale_checkpoint_indices = [
+            item_index for item_index, _, _ in checkpoint_rows if item_index not in dataset_indices
+        ]
+        if stale_checkpoint_indices:
+            raise EvaluationDatasetInvalidError(
+                "The persisted evaluation dataset no longer matches the run checkpoints."
+            )
+        completed_items = sum(
+            1 for _, status, error in checkpoint_rows if status == EvaluationRunItemStatus.COMPLETED and error is None
+        )
+        failed_items = sum(
+            1
+            for _, status, error in checkpoint_rows
+            if status == EvaluationRunItemStatus.COMPLETED and error is not None
+        )
+        checkpointed_items = completed_items + failed_items
+        celery_task_id = str(uuid.uuid4())
+        locked_run.status = EvaluationRunStatus.PENDING
+        locked_run.celery_task_id = celery_task_id
+        locked_run.execution_token = None
+        locked_run.started_at = None
+        locked_run.heartbeat_at = None
+        locked_run.completed_at = None
+        locked_run.completed_items = completed_items
+        locked_run.failed_items = failed_items
+        locked_run.progress_rate = (
+            min(0.95, 0.05 + 0.9 * checkpointed_items / locked_run.total_items)
+            if checkpointed_items and locked_run.total_items
+            else 0.0
+        )
+        locked_run.metrics_summary = None
+        locked_run.error = None
+        session.commit()
+
+        from tasks.evaluation_task import run_evaluation
+
+        try:
+            run_evaluation.apply_async(
+                args=(run_data.model_dump(mode="json"),),
+                task_id=celery_task_id,
+            )
+        except Exception as exc:
+            locked_run.status = EvaluationRunStatus.FAILED
+            locked_run.error = f"Failed to dispatch evaluation task: {exc}"[:2000]
+            locked_run.completed_at = naive_utc_now()
+            session.commit()
+            raise
+
+        return locked_run
+
+    @classmethod
+    def _resolve_pinned_target_workflow_for_run(
+        cls,
+        *,
+        session: Session,
+        run: EvaluationRun,
+    ) -> Workflow | None:
+        """Load the immutable target workflow when it still exists."""
+        target_type = EvaluationTargetType(run.target_type)
+        workflow_id = run.target_workflow_version_id
+        if target_type == EvaluationTargetType.KNOWLEDGE_BASE or not workflow_id:
+            return None
+        if target_type == EvaluationTargetType.SNIPPETS:
+            snippet = session.scalar(
+                select(CustomizedSnippet).where(
+                    CustomizedSnippet.id == run.target_id,
+                    CustomizedSnippet.tenant_id == run.tenant_id,
+                )
+            )
+            if snippet is None:
+                return None
+            return SnippetService(session=session).get_published_workflow_by_id(snippet, workflow_id)
+
+        app = session.scalar(
+            select(App).where(
+                App.id == run.target_id,
+                App.tenant_id == run.tenant_id,
+                App.status == "normal",
+            )
+        )
+        if app is None:
+            return None
+        return WorkflowService().get_published_workflow_by_id(
+            app_model=app,
+            workflow_id=workflow_id,
+            session=session,
+        )
 
     @classmethod
     def _validate_dataset_expected_outputs(
@@ -1406,13 +1651,29 @@ class EvaluationService:
     @staticmethod
     def _normalize_template_column_type(raw_type: Any) -> str:
         normalized = str(raw_type or "").strip().lower()
-        if normalized in {"number", "integer", "float", "int"}:
+        if normalized in EvaluationService.NUMBER_DATASET_INPUT_TYPES:
             return "number"
-        if normalized in {"bool", "boolean", "switch"}:
+        if normalized in EvaluationService.BOOLEAN_DATASET_INPUT_TYPES:
             return "boolean"
-        if normalized in {"file", "files"}:
-            return "file"
-        return "string"
+        if normalized in EvaluationService.STRING_DATASET_INPUT_TYPES:
+            return "string"
+        raise ValueError(
+            "Evaluation datasets only support string, number, and boolean inputs; "
+            f"unsupported input type: {normalized}."
+        )
+
+    @classmethod
+    def _dataset_input_types(cls, input_fields: Sequence[Mapping[str, Any]]) -> dict[str, str]:
+        """Return target input names mapped to the supported dataset scalar types."""
+        input_types: dict[str, str] = {}
+        for field in input_fields:
+            column_name = str(field.get("variable") or field.get("label") or "").strip()
+            if not column_name:
+                continue
+            input_types[column_name] = cls._normalize_template_column_type(
+                field.get("type") or field.get("value_type") or field.get("input_type")
+            )
+        return input_types
 
     @classmethod
     def _nodes_for_metrics_from_workflow(
@@ -1868,7 +2129,13 @@ class EvaluationService:
     # ---- Dataset Parsing ----
 
     @classmethod
-    def _parse_dataset(cls, file_content: bytes, filename: str) -> list[EvaluationDatasetInput]:
+    def _parse_dataset(
+        cls,
+        file_content: bytes,
+        filename: str,
+        *,
+        input_types: Mapping[str, str] | None = None,
+    ) -> list[EvaluationDatasetInput]:
         """Parse evaluation dataset from CSV or XLSX content.
 
         Supported schemas:
@@ -1881,13 +2148,18 @@ class EvaluationService:
         """
         filename_lower = filename.lower()
         if filename_lower.endswith(".csv"):
-            return cls._parse_csv_dataset(file_content)
+            return cls._parse_csv_dataset(file_content, input_types=input_types)
         if filename_lower.endswith(".xlsx"):
-            return cls._parse_xlsx_dataset(file_content)
+            return cls._parse_xlsx_dataset(file_content, input_types=input_types)
         raise EvaluationDatasetInvalidError("Evaluation datasets must be CSV or XLSX files.")
 
     @classmethod
-    def _parse_xlsx_dataset(cls, xlsx_content: bytes) -> list[EvaluationDatasetInput]:
+    def _parse_xlsx_dataset(
+        cls,
+        xlsx_content: bytes,
+        *,
+        input_types: Mapping[str, str] | None = None,
+    ) -> list[EvaluationDatasetInput]:
         """Parse evaluation dataset from XLSX bytes."""
         wb = load_workbook(io.BytesIO(xlsx_content), read_only=True)
         ws = wb.active
@@ -1903,12 +2175,17 @@ class EvaluationService:
             raise EvaluationDatasetInvalidError("First column header must be 'index'.")
 
         try:
-            return cls._rows_to_dataset_items(rows)
+            return cls._rows_to_dataset_items(rows, input_types=input_types)
         finally:
             wb.close()
 
     @classmethod
-    def _parse_csv_dataset(cls, csv_content: bytes) -> list[EvaluationDatasetInput]:
+    def _parse_csv_dataset(
+        cls,
+        csv_content: bytes,
+        *,
+        input_types: Mapping[str, str] | None = None,
+    ) -> list[EvaluationDatasetInput]:
         """Parse evaluation dataset from UTF-8 CSV bytes.
 
         CSV follows the same schema as XLSX:
@@ -1930,10 +2207,15 @@ class EvaluationService:
         if not headers or headers[0].lower() != "index":
             raise EvaluationDatasetInvalidError("First column header must be 'index'.")
 
-        return cls._rows_to_dataset_items(rows)
+        return cls._rows_to_dataset_items(rows, input_types=input_types)
 
     @classmethod
-    def _rows_to_dataset_items(cls, rows: Sequence[Sequence[Any]]) -> list[EvaluationDatasetInput]:
+    def _rows_to_dataset_items(
+        cls,
+        rows: Sequence[Sequence[Any]],
+        *,
+        input_types: Mapping[str, str] | None = None,
+    ) -> list[EvaluationDatasetInput]:
         """Normalize spreadsheet rows into dataset items with index validation."""
         headers = [str(h).strip() if h is not None else "" for h in rows[0]]
         input_headers = headers[1:]
@@ -1967,7 +2249,12 @@ class EvaluationService:
                 string_value = str(val) if val is not None else ""
                 expected_output_target = cls._parse_expected_output_header(header)
                 if expected_output_target is None:
-                    inputs[header] = string_value
+                    inputs[header] = cls._coerce_dataset_input(
+                        value=val,
+                        input_type=(input_types or {}).get(header, "string"),
+                        header=header,
+                        row_index=index,
+                    )
                     continue
 
                 if expected_output_target == "":
@@ -1987,6 +2274,53 @@ class EvaluationService:
         if not items:
             raise EvaluationDatasetInvalidError("Dataset must contain at least one non-empty data row.")
         return items
+
+    @staticmethod
+    def _coerce_dataset_input(
+        *, value: Any, input_type: str, header: str, row_index: int
+    ) -> str | int | float | bool | None:
+        """Coerce one dataset cell to a supported workflow scalar."""
+        if input_type == "string":
+            return str(value) if value is not None else ""
+        if input_type == "boolean":
+            if value is None or (isinstance(value, str) and not value.strip()):
+                return None
+            if isinstance(value, bool):
+                return value
+            normalized_value = str(value).strip().lower()
+            if normalized_value in EvaluationService.TRUE_DATASET_VALUES:
+                return True
+            if normalized_value in EvaluationService.FALSE_DATASET_VALUES:
+                return False
+            raise EvaluationDatasetInvalidError(
+                f"Dataset input '{header}' must be a boolean; invalid row: {row_index}."
+            )
+        if input_type != "number":
+            raise EvaluationDatasetInvalidError(f"Dataset input '{header}' has unsupported type '{input_type}'.")
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        if isinstance(value, bool):
+            raise EvaluationDatasetInvalidError(f"Dataset input '{header}' must be a number; invalid row: {row_index}.")
+        if isinstance(value, int):
+            return value
+        try:
+            decimal_value = Decimal(str(value).strip())
+        except (InvalidOperation, TypeError, ValueError) as exc:
+            raise EvaluationDatasetInvalidError(
+                f"Dataset input '{header}' must be a number; invalid row: {row_index}."
+            ) from exc
+        if not decimal_value.is_finite():
+            raise EvaluationDatasetInvalidError(
+                f"Dataset input '{header}' must be a finite number; invalid row: {row_index}."
+            )
+        if decimal_value == decimal_value.to_integral_value():
+            return int(decimal_value)
+        numeric_value = float(decimal_value)
+        if not math.isfinite(numeric_value):
+            raise EvaluationDatasetInvalidError(
+                f"Dataset input '{header}' must be a finite number; invalid row: {row_index}."
+            )
+        return numeric_value
 
     @staticmethod
     def _parse_expected_output_header(header: str) -> str | None:

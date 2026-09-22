@@ -9,12 +9,14 @@ from core.evaluation.entities.evaluation_entity import EvaluationCategory
 from core.evaluation.frameworks.ragas.ragas_evaluator import RagasEvaluator
 
 
-def test_supported_metrics_only_expose_metrics_without_external_embeddings() -> None:
+def test_supported_metrics_cover_all_ragas_llm_and_retrieval_metrics() -> None:
     evaluator = RagasEvaluator(RagasConfig())
 
     assert evaluator.get_supported_metrics(EvaluationCategory.LLM) == [
         "faithfulness",
+        "answer_relevancy",
         "answer_correctness",
+        "semantic_similarity",
     ]
     assert evaluator.get_supported_metrics(EvaluationCategory.RETRIEVAL) == [
         "context_precision",
@@ -34,6 +36,7 @@ def test_build_ragas_metrics_preserves_canonical_names(monkeypatch: pytest.Monke
         Faithfulness=FakeMetric,
         AnswerRelevancy=FakeMetric,
         AnswerCorrectness=FakeMetric,
+        SemanticSimilarity=FakeMetric,
         ContextPrecision=FakeMetric,
         ContextRecall=FakeMetric,
         ContextRelevance=FakeMetric,
@@ -43,13 +46,19 @@ def test_build_ragas_metrics_preserves_canonical_names(monkeypatch: pytest.Monke
         lambda: metrics_module,
     )
 
+    embeddings = object()
     metrics = RagasEvaluator._build_ragas_metrics(
-        ["faithfulness", "answer_correctness", "context_relevance", "semantic_similarity"]
+        ["faithfulness", "answer_relevancy", "answer_correctness", "context_relevance", "semantic_similarity"],
+        embeddings,
     )
 
     assert [metric.name for metric in metrics] == [
         "faithfulness",
+        "answer_relevancy",
         "answer_correctness",
         "context_relevance",
+        "semantic_similarity",
     ]
-    assert metrics[1].weights == [1.0, 0.0]
+    assert metrics[1].embeddings is embeddings
+    assert metrics[2].embeddings is embeddings
+    assert metrics[4].embeddings is embeddings
