@@ -476,11 +476,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/create-app-dialog/app-card/__tests__/index.spec.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
   "web/app/components/app/create-app-dialog/app-list/sidebar.tsx": {
     "react/only-export-components": {
       "count": 1
@@ -4987,11 +4982,6 @@
     },
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "web/service/use-explore.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
     }
   },
   "web/service/use-flow.ts": {

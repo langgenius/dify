@@ -1,7 +1,7 @@
 'use client'
 
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ReactNode } from 'react'
-import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
@@ -26,7 +26,7 @@ type EmptyCreateAction = {
 
 type Props = {
   onCreateBlank: () => void
-  onCreateLearnDify?: (app: App) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onCreateTemplate: () => void
   onImportDSL: () => void
   onTryLearnDify?: (params: TryAppSelection) => void

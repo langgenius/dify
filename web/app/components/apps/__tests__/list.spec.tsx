@@ -1,6 +1,6 @@
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { keepPreviousData } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -54,8 +54,6 @@ const mockLearnDifyApp = vi.hoisted(
         icon_background: '#fff',
         icon_url: '',
         name: 'Learn Dify Template',
-        description: 'Learn how to build with Dify',
-        use_icon_as_answer_icon: false,
       },
       description: 'Learn how to build with Dify',
       copyright: '',
@@ -64,12 +62,8 @@ const mockLearnDifyApp = vi.hoisted(
       categories: ['Assistant'],
       position: 1,
       is_listed: true,
-      install_count: 0,
-      installed: false,
-      editable: false,
-      is_agent: false,
       can_trial: true,
-    }) satisfies App,
+    }) satisfies RecommendedAppResponse,
 )
 
 let mockSearchParams = new URLSearchParams('')
@@ -446,7 +440,7 @@ vi.mock('@/app/components/explore/learn-dify', () => ({
     onTry,
   }: {
     title?: string
-    onCreate?: (app: App) => void
+    onCreate?: (app: RecommendedAppResponse) => void
     onTry?: (params: TryAppSelection) => void
   }) =>
     React.createElement(
@@ -490,7 +484,7 @@ beforeAll(() => {
 })
 
 type RenderListOptions = {
-  onCreateLearnDify?: (app: App) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onTryLearnDify?: (params: TryAppSelection) => void
   systemFeatures?: Partial<GetSystemFeaturesResponse>
 }

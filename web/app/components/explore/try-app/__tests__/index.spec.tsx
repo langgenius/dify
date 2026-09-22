@@ -1,18 +1,18 @@
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ComponentProps } from 'react'
-import type { App as ExploreApp } from '@/models/explore'
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TryAppComponent from '../index'
 import { TypeEnum } from '../types'
 
-const defaultApp = { can_trial: true } as ExploreApp
+const defaultApp: RecommendedAppResponse = { app_id: 'test-app-id', can_trial: true }
 
 function TryApp({
   app = defaultApp,
   ...props
 }: Omit<ComponentProps<typeof TryAppComponent>, 'app'> & {
-  app?: ExploreApp
+  app?: RecommendedAppResponse
 }) {
   return <TryAppComponent {...props} app={app} />
 }
@@ -153,7 +153,7 @@ describe('TryApp (main index.tsx)', () => {
 
   describe('content rendering', () => {
     it('uses app trial eligibility as the authoritative default tab', async () => {
-      const app = { can_trial: true } as ExploreApp
+      const app: RecommendedAppResponse = { app_id: 'test-app-id', can_trial: true }
 
       render(<TryApp appId="test-app-id" app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
 
@@ -161,7 +161,7 @@ describe('TryApp (main index.tsx)', () => {
     })
 
     it('defaults to details and disables trial when the app is ineligible', async () => {
-      const app = { can_trial: false } as ExploreApp
+      const app: RecommendedAppResponse = { app_id: 'test-app-id', can_trial: false }
 
       render(<TryApp appId="test-app-id" app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
 

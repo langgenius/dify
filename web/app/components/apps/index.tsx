@@ -1,18 +1,20 @@
 'use client'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
-import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { EducationExpireNotice } from '@/app/education/expire-notice'
+import { toast } from '@/app/notifications'
 import AppListContext from '@/context/app-list-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { fetchAppDetail } from '@/service/explore'
+import { consoleClient } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { List } from './list'
@@ -29,6 +31,7 @@ const ImportFromMarketplaceTemplateModal = dynamic(
 const AppListProvider = AppListContext.Provider
 
 const AppsContent = () => {
+  const { t } = useTranslation()
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -39,7 +42,7 @@ const AppsContent = () => {
   const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(
     undefined,
   )
-  const currentCreateAppModeRef = useRef<TryAppSelection['app']['app']['mode'] | null>(null)
+  const currentCreateAppModeRef = useRef<TrackCreateAppParams['appMode'] | null>(null)
   const currentCreateAppTrackingRef = useRef<Pick<
     TrackCreateAppParams,
     'source' | 'templateId'
@@ -58,7 +61,7 @@ const AppsContent = () => {
   const handleTryLearnDify = (params: TryAppSelection) => {
     openTryAppPanel(params)
   }
-  const handleCreateLearnDify = (app: App) => {
+  const handleCreateLearnDify = (app: RecommendedAppResponse) => {
     if (!canCreateApp) return
 
     setCurrentTryAppParams({ appId: app.app_id, app })
@@ -74,21 +77,18 @@ const AppsContent = () => {
     }
     setIsShowCreateModal(true)
   }, [canCreateApp, currentTryAppParams?.app.app_id, currentTryAppParams?.appId])
-  const trackCurrentCreateApp = useCallback(
-    (appMode?: TryAppSelection['app']['app']['mode'] | null) => {
-      const currentCreateAppTracking = currentCreateAppTrackingRef.current
-      const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
-      if (!resolvedAppMode || !currentCreateAppTracking) return
+  const trackCurrentCreateApp = useCallback((appMode?: TrackCreateAppParams['appMode'] | null) => {
+    const currentCreateAppTracking = currentCreateAppTrackingRef.current
+    const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
+    if (!resolvedAppMode || !currentCreateAppTracking) return
 
-      trackCreateApp({
-        ...currentCreateAppTracking,
-        appMode: resolvedAppMode,
-      })
-      currentCreateAppTrackingRef.current = null
-      currentCreateAppModeRef.current = null
-    },
-    [],
-  )
+    trackCreateApp({
+      ...currentCreateAppTracking,
+      appMode: resolvedAppMode,
+    })
+    currentCreateAppTrackingRef.current = null
+    currentCreateAppModeRef.current = null
+  }, [])
 
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
@@ -141,32 +141,38 @@ const AppsContent = () => {
 
   const onCreate: CreateAppModalProps['onConfirm'] = useCallback(
     async ({ name, icon_type, icon, icon_background, description }) => {
-      if (!canCreateApp) return
+      if (!canCreateApp || !currApp) return
 
       hideTryAppPanel()
 
-      const { export_data, mode } = await fetchAppDetail(currApp?.app.id as string)
-      currentCreateAppModeRef.current = mode
-      const payload = {
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: export_data,
-        name,
-        icon_type,
-        icon,
-        icon_background,
-        description,
+      try {
+        const { export_data, mode } = await consoleClient.explore.apps.byAppId.get({
+          params: { app_id: currApp.app_id },
+        })
+        currentCreateAppModeRef.current = mode
+        const payload = {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: export_data,
+          name,
+          icon_type,
+          icon,
+          icon_background,
+          description,
+        }
+        await handleImportDSL(payload, {
+          onSuccess: (response) => {
+            trackCurrentCreateApp(response.app_mode)
+            setIsShowCreateModal(false)
+          },
+          onPending: () => {
+            setShowDSLConfirmModal(true)
+          },
+        })
+      } catch {
+        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
       }
-      await handleImportDSL(payload, {
-        onSuccess: (response) => {
-          trackCurrentCreateApp(response.app_mode)
-          setIsShowCreateModal(false)
-        },
-        onPending: () => {
-          setShowDSLConfirmModal(true)
-        },
-      })
     },
-    [canCreateApp, currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp],
+    [canCreateApp, currApp, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp, t],
   )
 
   return (
@@ -183,7 +189,7 @@ const AppsContent = () => {
             <TryApp
               appId={currentTryAppParams.appId}
               app={currentTryAppParams.app}
-              categories={currentTryAppParams.app.categories}
+              categories={currentTryAppParams.app.categories ?? []}
               onClose={hideTryAppPanel}
               onCreate={handleShowFromTryApp}
             />
@@ -200,12 +206,16 @@ const AppsContent = () => {
 
           {isShowCreateModal && (
             <CreateAppModal
-              appIconType={currApp?.app.icon_type || 'emoji'}
-              appIcon={currApp?.app.icon || ''}
-              appIconBackground={currApp?.app.icon_background || ''}
-              appIconUrl={currApp?.app.icon_url}
-              appName={currApp?.app.name || ''}
-              appDescription={currApp?.app.description || ''}
+              appIconType={
+                currApp?.app?.icon_type === 'image' || currApp?.app?.icon_type === 'link'
+                  ? currApp.app.icon_type
+                  : 'emoji'
+              }
+              appIcon={currApp?.app?.icon ?? ''}
+              appIconBackground={currApp?.app?.icon_background ?? ''}
+              appIconUrl={currApp?.app?.icon_url}
+              appName={currApp?.app?.name ?? ''}
+              appDescription=""
               show
               onConfirm={onCreate}
               confirmDisabled={isFetching}

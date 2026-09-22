@@ -1,10 +1,10 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { InstalledAppListResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { AccessMode } from '@/models/access-control'
-import * as exploreService from '@/service/explore'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -190,8 +190,14 @@ vi.mock('@/service/apps', () => ({
   deleteApp: vi.fn(() => Promise.resolve()),
 }))
 
-vi.mock('@/service/explore', () => ({
-  fetchInstalledAppList: vi.fn(() => Promise.resolve({ installed_apps: [{ id: 'installed-1' }] })),
+const { installedRequest } = vi.hoisted(() => ({
+  installedRequest:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: installedRequest,
 }))
 
 vi.mock('@/service/access-control', () => ({
@@ -214,11 +220,13 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
   }),
 }))
 
-// Mock hooks
-const mockOpenAsyncWindow = vi.fn()
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => mockOpenAsyncWindow,
-}))
+const popup: {
+  location: { href: string }
+  opener: Window | null
+  close: ReturnType<typeof vi.fn>
+} = { location: { href: '' }, opener: null, close: vi.fn() }
+let installedApps: InstalledAppListResponse
+const openWindow = vi.fn<() => typeof popup | null>()
 
 // Mock utils
 const { mockGetRedirection } = vi.hoisted(() => ({
@@ -430,7 +438,34 @@ describe('AppCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockOpenAsyncWindow.mockReset()
+    openWindow.mockReturnValue(popup)
+    popup.location.href = ''
+    popup.opener = window
+    vi.stubGlobal('open', openWindow)
+    installedApps = {
+      has_more: false,
+      next_cursor: null,
+      installed_apps: ['installed-1', 'installed-2'].map((id) => ({
+        id,
+        app_owner_tenant_id: 'workspace-1',
+        editable: false,
+        is_pinned: false,
+        last_used_at: null,
+        uninstallable: true,
+        app: {
+          id: mockApp.id,
+          name: mockApp.name,
+          description: '',
+          mode: 'chat',
+          icon: null,
+          icon_type: null,
+          icon_background: null,
+          icon_url: null,
+          use_icon_as_answer_icon: false,
+        },
+      })),
+    }
+    installedRequest.mockResolvedValue(Response.json(installedApps))
     mockWebappAuthEnabled = false
     mockRbacEnabled = true
     mockUserCanAccessApp.result = true
@@ -447,6 +482,10 @@ describe('AppCard', () => {
     mockWorkflowAppDslExport.exportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   describe('Rendering', () => {
@@ -1439,46 +1478,39 @@ describe('AppCard', () => {
       })
     })
 
-    it('should handle open in explore via async window', async () => {
-      let openedUrl = ''
-      // Configure mockOpenAsyncWindow to actually call the callback
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        openedUrl = await callback()
+    it('opens the popup before lookup completes and navigates to the first installed app', async () => {
+      let resolveResponse!: (response: Response) => void
+      const response = new Promise<Response>((resolve) => {
+        resolveResponse = resolve
       })
-
+      installedRequest.mockReturnValueOnce(response)
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
 
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalledWith(mockApp.id)
-        expect(openedUrl).toBe('/installed/installed-1')
-      })
+      expect(openWindow).toHaveBeenCalledOnce()
+      expect(openWindow).toHaveBeenCalledWith('about:blank', '_blank', undefined)
+      expect(popup.opener).toBeNull()
+      expect(popup.location.href).toBe('')
+      await waitFor(() => expect(installedRequest).toHaveBeenCalledOnce())
+      const url = new URL(installedRequest.mock.calls[0]![0])
+      expect(url.pathname).toBe('/console/api/installed-apps')
+      expect(url.searchParams.get('app_id')).toBe(mockApp.id)
+      expect(installedRequest.mock.calls[0]![2].request.method).toBe('GET')
+      resolveResponse(Response.json(installedApps))
+      await waitFor(() => expect(popup.location.href).toBe('/installed/installed-1'))
+      expect(popup.close).not.toHaveBeenCalled()
     })
 
-    it('should show string errors from open in explore onError callback', async () => {
-      mockOpenAsyncWindow.mockImplementationOnce(
-        async (
-          _callback: () => Promise<string>,
-          options?: { onError?: (err: unknown) => void },
-        ) => {
-          options?.onError?.('Window failed')
-        },
-      )
-
+    it('reports a blocked popup without making a request', async () => {
+      openWindow.mockReturnValueOnce(null)
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.openInExplore'))
-      })
-
-      await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'Window failed' })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
+      expect(installedRequest).not.toHaveBeenCalled()
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Failed to open new window',
       })
     })
   })
@@ -1527,70 +1559,38 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByText('app.openInExplore'))
 
-      expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
-      expect(exploreService.fetchInstalledAppList).not.toHaveBeenCalled()
+      expect(openWindow).not.toHaveBeenCalled()
+      expect(installedRequest).not.toHaveBeenCalled()
       expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'error',
         message: 'app.notPublishedYet',
       })
     })
 
-    it('should handle case when installed_apps is empty array', async () => {
-      vi.mocked(exploreService.fetchInstalledAppList).mockResolvedValueOnce({
-        has_more: false,
-        installed_apps: [],
-        next_cursor: null,
-      })
-
-      // Configure mockOpenAsyncWindow to call the callback and trigger error
-      mockOpenAsyncWindow.mockImplementationOnce(
-        async (callback: () => Promise<string>, options?: { onError?: (err: unknown) => void }) => {
-          try {
-            await callback()
-          } catch (err) {
-            options?.onError?.(err)
-          }
-        },
+    it('closes the popup and reports an empty installed list', async () => {
+      installedRequest.mockResolvedValueOnce(
+        Response.json({ has_more: false, installed_apps: [], next_cursor: null }),
       )
-
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.notPublishedYet',
-        })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
+      await waitFor(() => expect(popup.close).toHaveBeenCalledOnce())
+      expect(popup.location.href).toBe('')
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'app.notPublishedYet',
       })
     })
 
-    it('should handle case when API throws in callback', async () => {
-      vi.mocked(exploreService.fetchInstalledAppList).mockRejectedValueOnce(
-        new Error('Network error'),
-      )
-
-      // Configure mockOpenAsyncWindow to call the callback without catching
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        return await callback()
-      })
-
+    it('closes the popup and reports a failed lookup without retrying', async () => {
+      installedRequest.mockRejectedValueOnce(new Error('Network error'))
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-      })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
+      await waitFor(() => expect(popup.close).toHaveBeenCalledOnce())
+      expect(installedRequest).toHaveBeenCalledOnce()
+      expect(popup.location.href).toBe('')
+      expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'Network error' })
     })
   })
 
@@ -1715,8 +1715,8 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByText('app.openInExplore'))
 
-      expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
-      expect(exploreService.fetchInstalledAppList).not.toHaveBeenCalled()
+      expect(openWindow).not.toHaveBeenCalled()
+      expect(installedRequest).not.toHaveBeenCalled()
       expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'error',
         message: 'app.notPublishedYet',
