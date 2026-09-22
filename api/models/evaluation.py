@@ -29,6 +29,13 @@ class EvaluationTargetType(StrEnum):
     KNOWLEDGE_BASE = "knowledge_base"
 
 
+class EvaluationRunItemStatus(StrEnum):
+    """Durable checkpoint state for one evaluation dataset row."""
+
+    TARGET_COMPLETED = "target_completed"
+    COMPLETED = "completed"
+
+
 class EvaluationConfiguration(Base):
     """Latest editable evaluation configuration for a tenant-owned target."""
 
@@ -158,6 +165,11 @@ class EvaluationRunItem(Base):
     evaluation_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     item_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[EvaluationRunItemStatus] = mapped_column(
+        EnumText(EvaluationRunItemStatus, length=20),
+        nullable=False,
+        default=EvaluationRunItemStatus.COMPLETED,
+    )
 
     inputs: Mapped[str | None] = mapped_column(LongText, nullable=True)
     expected_output: Mapped[str | None] = mapped_column(LongText, nullable=True)
