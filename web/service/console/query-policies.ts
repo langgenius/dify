@@ -15,6 +15,99 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
     experimental_defaults: {
       workspaces: {
         current: {
+          endpoints: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, _error, _variables, _result, context) => {
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                    }),
+                  ])
+                },
+              },
+            },
+            byId: {
+              patch: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            enable: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            disable: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+          },
           skills: {
             bySkillId: {
               delete: {

@@ -312,6 +312,33 @@ describe('normalizeInstalledPluginDetail', () => {
     expect(categoryDetail.plugin_id).toBe('langgenius/category-plugin')
   })
 
+  it('preserves endpoint setting types at the dynamic plugin manifest boundary', () => {
+    const plugin = createPluginInstallation()
+    plugin.declaration.endpoint = {
+      settings: [
+        { name: 'enabled', type: 'boolean', default: false, required: true, label: null },
+        {
+          name: 'count',
+          type: 'text-input',
+          default: '0',
+          placeholder: { en_US: 'Count', zh_Hans: null },
+        },
+      ],
+      endpoints: null,
+    }
+    const detail = normalizeInstalledPluginDetail(plugin)
+
+    expect(detail.declaration.endpoint?.settings?.[0]).toMatchObject({
+      default: false,
+      label: null,
+    })
+    expect(detail.declaration.endpoint?.settings?.[1]).toMatchObject({
+      default: '0',
+      placeholder: { zh_Hans: null },
+    })
+    expect(detail.declaration.endpoint?.endpoints).toBeNull()
+  })
+
   it('should preserve generated plugin declaration capabilities', () => {
     const detail = normalizeInstalledPluginDetail(createPluginInstallation())
 

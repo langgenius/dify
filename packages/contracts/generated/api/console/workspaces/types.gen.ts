@@ -129,8 +129,8 @@ export type EndpointCreatePayload = {
   }
 }
 
-export type SuccessResponse = {
-  success: boolean
+export type EndpointMutationResponse = {
+  success: true
 }
 
 export type EndpointIdPayload = {
@@ -389,6 +389,10 @@ export type PluginAutoUpgradeChangeResponse = {
 export type ParserExcludePlugin = {
   category: TenantPluginAutoUpgradeCategory
   plugin_id: string
+}
+
+export type SuccessResponse = {
+  success: boolean
 }
 
 export type PluginAutoUpgradeFetchResponse = {
@@ -3147,7 +3151,7 @@ export type PostWorkspacesCurrentEndpointsErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsResponse =
@@ -3165,7 +3169,7 @@ export type PostWorkspacesCurrentEndpointsCreateErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponse =
@@ -3183,7 +3187,7 @@ export type PostWorkspacesCurrentEndpointsDeleteErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponse =
@@ -3201,7 +3205,7 @@ export type PostWorkspacesCurrentEndpointsDisableErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponse =
@@ -3219,7 +3223,7 @@ export type PostWorkspacesCurrentEndpointsEnableErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponse =
@@ -3272,7 +3276,7 @@ export type PostWorkspacesCurrentEndpointsUpdateErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponse =
@@ -3292,7 +3296,7 @@ export type DeleteWorkspacesCurrentEndpointsByIdErrors = {
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponse =
@@ -3312,7 +3316,7 @@ export type PatchWorkspacesCurrentEndpointsByIdErrors = {
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse =
