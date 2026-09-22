@@ -29,7 +29,7 @@ const onUpdate = vi.fn()
 const content = '![image](/files/image-id/file-preview)'
 const signContent = '![image](/files/image-id/file-preview?timestamp=123&sign=signed)'
 
-function detail(canEdit: boolean, docForm = ChunkingMode.text) {
+function detail(canEdit: boolean, docForm: ChunkingMode = ChunkingMode.text) {
   return (
     // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
     <DocumentContext.Provider value={{ canEdit, docForm, parentMode: 'paragraph' }}>

@@ -125,6 +125,13 @@ const BaseField = ({
   onChange,
   fieldState,
 }: BaseFieldProps) => {
+  const inputFieldTypes: readonly FormTypeEnum[] = [
+    FormTypeEnum.textInput,
+    FormTypeEnum.secretInput,
+    FormTypeEnum.textNumber,
+  ]
+  const textFieldTypes: readonly FormTypeEnum[] = [FormTypeEnum.textInput, FormTypeEnum.secretInput]
+
   const renderI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
   const {
@@ -170,11 +177,7 @@ const BaseField = ({
   }
   const isDynamicSelect = formItemType === FormTypeEnum.dynamicSelect
   const isSelect = formItemType === FormTypeEnum.select || isDynamicSelect
-  const isSingleControl = [
-    FormTypeEnum.textInput,
-    FormTypeEnum.secretInput,
-    FormTypeEnum.textNumber,
-  ].includes(formItemType)
+  const isSingleControl = inputFieldTypes.includes(formItemType)
 
   const [
     translatedLabel,
@@ -320,7 +323,7 @@ const BaseField = ({
           )}
         </div>
         <div className={cn(inputContainerClassName)} data-form-field={field.name}>
-          {[FormTypeEnum.textInput, FormTypeEnum.secretInput].includes(formItemType) && (
+          {textFieldTypes.includes(formItemType) && (
             <Field
               className="contents"
               invalid={validateStatus === FormItemValidateStatusEnum.Error}

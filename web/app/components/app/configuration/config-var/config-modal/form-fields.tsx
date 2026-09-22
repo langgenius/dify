@@ -81,6 +81,8 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   validationError,
   t: rawTranslate,
 }) => {
+  const fileInputTypes: readonly InputVarType[] = [InputVarType.singleFile, InputVarType.multiFiles]
+
   const t = getStringSelectorTranslate(rawTranslate)
   const { type, label, variable } = tempPayload
   const numberDefault =
@@ -88,7 +90,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
     (typeof tempPayload.default === 'string' && tempPayload.default.trim() !== '')
       ? Number(tempPayload.default)
       : Number.NaN
-  const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
+  const isFileInput = fileInputTypes.includes(type)
   const docLink = useDocLink()
   const fieldId = React.useId()
   const errorId = `${fieldId}-error`

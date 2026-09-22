@@ -5,10 +5,12 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 
-export enum EditItemType {
-  Query = 'query',
-  Answer = 'answer',
-}
+export const EditItemType = {
+  Query: 'query',
+  Answer: 'answer',
+} as const
+
+export type EditItemType = (typeof EditItemType)[keyof typeof EditItemType]
 type Props = Readonly<{
   type: EditItemType
   content: string

@@ -266,7 +266,7 @@ export function BlockSelectorContent({
     if (blocksFromProps) return blocksFromProps
 
     return (availableNodesMetaData?.nodes ?? []).filter((block) => {
-      return ![
+      const excludedBlockTypes: readonly BlockEnum[] = [
         BlockEnum.Start,
         BlockEnum.StartPlaceholder,
         BlockEnum.DataSource,
@@ -274,7 +274,9 @@ export function BlockSelectorContent({
         BlockEnum.IterationStart,
         BlockEnum.LoopStart,
         BlockEnum.DataSourceEmpty,
-      ].includes(block.metaData.type)
+      ]
+
+      return !excludedBlockTypes.includes(block.metaData.type)
     })
   }, [availableNodesMetaData?.nodes, blocksFromProps])
   const dataSources = dataSourcesFromProps ?? fallbackDataSources ?? []

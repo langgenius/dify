@@ -45,7 +45,7 @@ type ImportNotificationPayload = {
   children?: string
 }
 
-export const getInvalidNodeTypes = (mode?: AppModeEnum) => {
+export const getInvalidNodeTypes = (mode?: AppModeEnum): BlockEnum[] => {
   if (mode === AppModeEnum.ADVANCED_CHAT) {
     return [
       BlockEnum.End,
