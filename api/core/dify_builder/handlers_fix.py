@@ -30,6 +30,7 @@ import re
 import uuid
 from typing import Any
 
+from core.dify_builder import credentials
 from core.dify_builder.changes import describe_changed_nodes
 from core.dify_builder.contract import (
     AssistantTurnItem,
@@ -460,22 +461,64 @@ def upload_variable_names(schema: StartSchema) -> set[str]:
 
 
 # ``{{#<node_id>.<var>#}}`` -- the Dify template reference syntax -- may sit
-# anywhere inside a URL string (e.g. ``https://x.com/{{#s.path#}}``), so this
-# searches the whole string rather than anchoring to it.
+# anywhere inside a string (e.g. ``https://x.com/{{#s.path#}}``), so this
+# searches the whole string rather than anchoring to it, except where a
+# caller below deliberately anchors it with ``.match``.
 _ENDPOINT_TEMPLATE_RE = re.compile(r"\{\{#([^.#{}]+)\.([^.#{}]+)#\}\}")
 
 
+def _start_var_names(text: str, start_id: str) -> set[str]:
+    """Every start-node template's variable name occurring ANYWHERE in
+    ``text`` -- used where the field IS the credential/endpoint itself (an
+    ``authorization.config.api_key``, or the value half of a credential-keyed
+    header/param line), so position within it doesn't matter."""
+    return {var_name for node_id, var_name in _ENDPOINT_TEMPLATE_RE.findall(text or "") if node_id == start_id}
+
+
+def _leading_start_var_name(text: str, start_id: str) -> str | None:
+    """The variable name of a start-node template occupying the HOST
+    position: ``text``, stripped of whitespace, STARTS with the template --
+    not merely containing one later, e.g. in a path or query
+    (``https://wttr.in/{{#s.city#}}``'s ``city`` is an ordinary data input,
+    not an endpoint). Returns None when there is no such leading template.
+    """
+    match = _ENDPOINT_TEMPLATE_RE.match((text or "").strip())
+    if match and match.group(1) == start_id:
+        return match.group(2)
+    return None
+
+
+def _credential_line_var_names(text: str, start_id: str, key_is_credential) -> set[str]:
+    """Start-variable templates in the VALUE half of each ``Key: Value`` line
+    of a ``headers``/``params`` text block whose KEY names a credential per
+    ``key_is_credential`` -- an ordinary data field read via a header/param
+    (a search query, an ``Accept-Language``) must stay mockable, so only a
+    credential-keyed line's value counts."""
+    names: set[str] = set()
+    for line in (text or "").split("\n"):
+        if ":" not in line:
+            continue
+        key, _sep, value = line.partition(":")
+        if key_is_credential(key.strip()):
+            names |= _start_var_names(value, start_id)
+    return names
+
+
 def endpoint_variable_names(graph: Graph) -> set[str]:
-    """Names of the start variables an http-request node reads its URL,
-    headers, params, or API-key authorization from.
+    """Names of the start variables an http-request node reads a real
+    endpoint or credential from: the url's HOST position, a credential-keyed
+    ``headers``/``params`` line, or an ``api-key`` authorization's
+    ``config.api_key``.
 
     Nothing can invent a real endpoint or credential any more than it can
     invent an upload (ESQ1-302 / build.py's ``_ground_placeholder_endpoints``
     and Task 3's credential grounding), so these are values a human still has
-    to supply even when every other field is mocked for them. Only a
-    reference to the graph's own START node counts -- a reference to some
-    other node's output is an ordinary wired value, not an endpoint/credential
-    waiting on the user.
+    to supply even when every other field is mocked for them. An ORDINARY
+    data input the workflow happens to read via the url path/query, or via a
+    non-credential header/param (a search query, an ``Accept-Language``), is
+    NOT collected -- it stays mockable, same as any other start variable.
+    Only a reference to the graph's own START node counts at all -- a
+    reference to some other node's output is an ordinary wired value.
     """
     start_id = ""
     for node in graph.get("nodes", []):
@@ -486,23 +529,21 @@ def endpoint_variable_names(graph: Graph) -> set[str]:
     if not start_id:
         return set()
     names: set[str] = set()
-
-    def _collect(text: str) -> None:
-        for node_id, var_name in _ENDPOINT_TEMPLATE_RE.findall(text):
-            if node_id == start_id:
-                names.add(var_name)
-
     for node in graph.get("nodes", []):
         data = node.get("data") or {}
         if data.get("type") != "http-request":
             continue
-        _collect(str(data.get("url") or ""))
-        _collect(str(data.get("headers") or ""))
-        _collect(str(data.get("params") or ""))
+        leading = _leading_start_var_name(str(data.get("url") or ""), start_id)
+        if leading:
+            names.add(leading)
+        names |= _credential_line_var_names(str(data.get("headers") or ""), start_id, credentials.is_credential_key)
+        names |= _credential_line_var_names(
+            str(data.get("params") or ""), start_id, credentials.is_credential_param_key
+        )
         authorization = data.get("authorization")
         auth_config = authorization.get("config") if isinstance(authorization, dict) else None
-        if isinstance(auth_config, dict):
-            _collect(str(auth_config.get("api_key") or ""))
+        if isinstance(authorization, dict) and authorization.get("type") == "api-key" and isinstance(auth_config, dict):
+            names |= _start_var_names(str(auth_config.get("api_key") or ""), start_id)
     return names
 
 

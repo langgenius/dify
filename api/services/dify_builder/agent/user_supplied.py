@@ -19,6 +19,19 @@ from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlsplit
 
+from core.dify_builder.credentials import is_credential_key, is_credential_param_key
+
+__all__ = [
+    "CREDENTIAL_PLACEHOLDER_RE",
+    "is_credential_key",
+    "is_credential_param_key",
+    "is_user_supplied_secret",
+    "is_user_supplied_url",
+    "strip_auth_scheme",
+    "trusted_text_for",
+    "url_hosts",
+]
+
 # A URL literal as it appears embedded in freeform prose. Restricted to the
 # ASCII characters RFC 3986 allows in a URI, so it stops before CJK or other
 # non-URL text glued onto the URL with no separating space (e.g. a Chinese
@@ -50,21 +63,6 @@ CREDENTIAL_PLACEHOLDER_RE = re.compile(
     r"|\*{6,}",
     re.IGNORECASE,
 )
-
-# A dict/field key's last word-segment that, by itself, names a credential
-# regardless of what comes before it (so "access_token" and "auth" both
-# qualify, but "token_limit" does not -- "limit" is the last segment).
-_CREDENTIAL_LAST_SEGMENTS = {"authorization", "auth", "token", "secret", "password", "passwd"}
-
-# A last segment of "key" only counts as a credential when the segment (or
-# merged word) before it names what kind of key it is -- otherwise ordinary
-# fields like "key_points" would match on "key" alone.
-_CREDENTIAL_KEY_PREFIXES = {"api", "access", "secret", "private", "auth"}
-
-# Splits an identifier into camelCase words: an uppercase run immediately
-# followed by "Xy" (e.g. the "API" in "APIKey"), or an optional leading
-# capital plus a run of lowercase/digits (e.g. "api", "Key", "3").
-_CAMEL_SEGMENT_RE = re.compile(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z0-9]+|[A-Z]+|[0-9]+")
 
 
 def url_hosts(text: str) -> set[str]:
@@ -123,34 +121,6 @@ def is_user_supplied_secret(value: str, trusted_text: str) -> bool:
     if CREDENTIAL_PLACEHOLDER_RE.search(remainder):
         return False
     return remainder in (trusted_text or "")
-
-
-def _key_segments(key: str) -> list[str]:
-    """Lowercase word-segments of a dict/field key, split on ``_``, ``-``,
-    ``.``, whitespace, and camelCase boundaries -- so ``x-api-key``,
-    ``apiKey`` and ``api_key`` all segment to ``["api", "key"]``."""
-    segments: list[str] = []
-    for part in re.split(r"[_\-.\s]+", key or ""):
-        if not part:
-            continue
-        segments.extend(match.lower() for match in _CAMEL_SEGMENT_RE.findall(part))
-    return segments
-
-
-def is_credential_key(key: str) -> bool:
-    """True iff ``key`` names a credential, decided by its LAST segment --
-    not by containing a credential-ish substring anywhere. So
-    ``password_policy``, ``token_limit``, ``session_token_expiry`` and
-    ``max_tokens`` are NOT credential keys, but ``api_key``, ``apiKey``,
-    ``x-api-key``, ``access_token`` and ``Authorization`` are.
-    """
-    segments = _key_segments(key)
-    if not segments:
-        return False
-    last = segments[-1]
-    if last in _CREDENTIAL_LAST_SEGMENTS or last == "apikey":
-        return True
-    return last == "key" and len(segments) >= 2 and segments[-2] in _CREDENTIAL_KEY_PREFIXES
 
 
 def trusted_text_for(goal_text: str, requirements: Mapping[str, Any]) -> str:

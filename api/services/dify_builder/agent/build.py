@@ -833,22 +833,44 @@ def _ground_placeholder_endpoints(intents: list[MutationIntent], *, trusted_text
     return grounded
 
 
+# A value that IS one of these words and nothing else (no content after it)
+# is a bare auth-scheme with no credential attached -- ``strip_auth_scheme``
+# alone does not catch this: its regex only strips a scheme word FOLLOWED BY
+# whitespace, so a bare "Bearer" (nothing after it) comes back unstripped,
+# not empty.
+_BARE_SCHEME_WORDS = frozenset({"bearer", "basic", "token"})
+
+# Mirrors user_supplied._TEMPLATE_MARKER: a Dify template reference names a
+# variable, not a literal, so it is never "invented" and must never be
+# re-grounded -- checked BEFORE the placeholder-shape check below, since a
+# grounded variable's own NAME (e.g. "your_api_key") can coincidentally match
+# CREDENTIAL_PLACEHOLDER_RE's "YOUR...KEY" pattern.
+_TEMPLATE_MARKER = "{{#"
+
+
 def _is_invented_credential(value: str, trusted_text: str) -> bool:
     """Mirrors ``_ground_placeholder_endpoints``'s OR-of-two-checks shape, but
     for a credential value (a header/param 'Value' half, or an
-    ``authorization.config.api_key``): an unmistakable placeholder
-    (``CREDENTIAL_PLACEHOLDER_RE``, after stripping a leading ``Bearer
-    ``/``Basic ``/``Token `` scheme) grounds even in placeholder-only mode
-    (``trusted_text == ""``, mirroring how a shaped-like-invented URL grounds
-    with no goal text at all); otherwise, with ``trusted_text`` non-empty, a
-    value that never appears verbatim in it also grounds (S5b-style
-    plausible-looking secret the model invented). An empty value has nothing
-    to ground.
+    ``authorization.config.api_key``):
+
+    1. Already a Dify template reference (contains ``{{#``) -- a real
+       reference, never re-grounded, checked first (see ``_TEMPLATE_MARKER``).
+    2. Empty, or nothing beyond a bare ``Bearer``/``Basic``/``Token`` scheme
+       word -- never a valid credential either way, so it grounds
+       unconditionally.
+    3. An unmistakable placeholder (``CREDENTIAL_PLACEHOLDER_RE``) -- grounds
+       even in placeholder-only mode (``trusted_text == ""``, mirroring how a
+       shaped-like-invented URL grounds with no goal text at all).
+    4. Otherwise, with ``trusted_text`` non-empty, a value that never appears
+       verbatim in it also grounds (S5b-style plausible-looking secret the
+       model invented).
     """
     stripped_value = value.strip()
     remainder = user_supplied.strip_auth_scheme(stripped_value)
-    if not remainder:
+    if _TEMPLATE_MARKER in remainder:
         return False
+    if not remainder or remainder.lower() in _BARE_SCHEME_WORDS:
+        return True
     if user_supplied.CREDENTIAL_PLACEHOLDER_RE.search(remainder):
         return True
     return bool(trusted_text) and not user_supplied.is_user_supplied_secret(stripped_value, trusted_text)
@@ -856,26 +878,34 @@ def _is_invented_credential(value: str, trusted_text: str) -> bool:
 
 def _replace_credential_value(value: str, template_ref: str) -> str:
     """Rebuild a header/param 'Value' half with its secret swapped for
-    ``template_ref``, preserving surrounding whitespace and a leading
-    ``Bearer ``/``Basic ``/``Token `` auth-scheme prefix exactly as written
-    (e.g. ``" Bearer YOUR_API_KEY"`` -> ``" Bearer {{#s.h_api_key#}}"``)."""
-    lstripped = value.lstrip(" \t")
+    ``template_ref``, preserving surrounding whitespace (including a ``\\r``
+    left by a ``\\r\\n`` line ending) and a leading ``Bearer ``/``Basic ``/
+    ``Token `` auth-scheme prefix exactly as written (e.g. ``" Bearer
+    YOUR_API_KEY"`` -> ``" Bearer {{#s.h_api_key#}}"``). A BARE scheme word
+    with nothing after it (``"Bearer"``) keeps the word, adding the
+    separating space the grounded value now needs."""
+    lstripped = value.lstrip(" \t\r")
     leading_ws = value[: len(value) - len(lstripped)]
-    core = lstripped.rstrip(" \t")
+    core = lstripped.rstrip(" \t\r")
     trailing_ws = lstripped[len(core) :]
     remainder = user_supplied.strip_auth_scheme(core)
-    scheme_prefix = core[: len(core) - len(remainder)]
+    if remainder == core and core.lower() in _BARE_SCHEME_WORDS:
+        scheme_prefix = f"{core} "
+    else:
+        scheme_prefix = core[: len(core) - len(remainder)]
     return f"{leading_ws}{scheme_prefix}{template_ref}{trailing_ws}"
 
 
-def _ground_credential_text(text: str, template_ref: str, *, trusted_text: str) -> tuple[str, bool]:
+def _ground_credential_text(text: str, template_ref: str, *, trusted_text: str, key_is_credential) -> tuple[str, bool]:
     """Ground each ``Key: Value`` line of an http-request ``headers``/
-    ``params`` text block whose key names a credential
-    (``user_supplied.is_credential_key``, decided by the key's LAST segment)
-    and whose value the user didn't supply (``_is_invented_credential``),
-    replacing only the secret part of that line with ``template_ref``. Every
-    other line -- including a credential line the user DID supply -- passes
-    through byte-identical. Returns ``(new_text, changed)``.
+    ``params`` text block whose key names a credential per
+    ``key_is_credential`` (``user_supplied.is_credential_key`` for headers;
+    ``user_supplied.is_credential_param_key`` for params, which also treats a
+    bare ``key`` as one) and whose value the user didn't supply
+    (``_is_invented_credential``), replacing only the secret part of that
+    line with ``template_ref``. Every other line -- including a credential
+    line the user DID supply -- passes through byte-identical. Returns
+    ``(new_text, changed)``.
     """
     if not text:
         return text, False
@@ -887,7 +917,7 @@ def _ground_credential_text(text: str, template_ref: str, *, trusted_text: str) 
             new_lines.append(line)
             continue
         key, _sep, value = line.partition(":")
-        if not user_supplied.is_credential_key(key.strip()) or not _is_invented_credential(value, trusted_text):
+        if not key_is_credential(key.strip()) or not _is_invented_credential(value, trusted_text):
             new_lines.append(line)
             continue
         new_lines.append(f"{key}:{_replace_credential_value(value, template_ref)}")
@@ -936,14 +966,20 @@ def _ground_placeholder_credentials(intents: list[MutationIntent], *, trusted_te
         changed = False
 
         new_headers, headers_changed = _ground_credential_text(
-            str(node_config.get("headers") or ""), template_ref, trusted_text=trusted_text
+            str(node_config.get("headers") or ""),
+            template_ref,
+            trusted_text=trusted_text,
+            key_is_credential=user_supplied.is_credential_key,
         )
         if headers_changed:
             node_config["headers"] = new_headers
             changed = True
 
         new_params, params_changed = _ground_credential_text(
-            str(node_config.get("params") or ""), template_ref, trusted_text=trusted_text
+            str(node_config.get("params") or ""),
+            template_ref,
+            trusted_text=trusted_text,
+            key_is_credential=user_supplied.is_credential_param_key,
         )
         if params_changed:
             node_config["params"] = new_params
